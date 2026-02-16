@@ -15,7 +15,7 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     // Initialize OpenTelemetry (skips in dev unless OTEL_ENABLED=true)
     const { initTelemetry } = await import('./lib/telemetry/opentelemetry');
-    const otelSdk = initTelemetry();
+    const otelSdk = await initTelemetry();
 
     let isShuttingDown = false;
 

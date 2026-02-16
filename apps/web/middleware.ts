@@ -10,12 +10,38 @@
  * - Performance timing
  */
 
-// Using Node.js runtime for full Node.js API support
-export const runtime = 'nodejs';
-
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
+
+// Edge-compatible auth wrapper (no Prisma/DB dependencies)
+const { auth } = NextAuth(authConfig);
+
+// Edge-compatible HMAC-SHA256 using Web Crypto API
+async function hmacSha256Hex(secret: string, data: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(data));
+  return Array.from(new Uint8Array(sig))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+// Edge-compatible constant-time string comparison
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
 
 // CSRF constants (inline to avoid server-only import chain)
 const CSRF_TOKEN_NAME = 'csrf_token';
@@ -43,14 +69,14 @@ const CSRF_EXEMPT_PATHS = [
 ];
 
 /**
- * Verify CSRF token signature and expiry (inline implementation)
+ * Verify CSRF token signature and expiry (Edge-compatible implementation)
  */
-function verifyCSRFToken(token: string, userId?: string): boolean {
+async function verifyCSRFToken(token: string, userId?: string): Promise<boolean> {
   try {
     const secret = process.env.NEXTAUTH_SECRET || process.env.CSRF_SECRET;
     if (!secret) return false;
 
-    const decoded = Buffer.from(token, 'base64').toString('utf-8');
+    const decoded = atob(token);
     const dotIndex = decoded.lastIndexOf('.');
     if (dotIndex === -1) return false;
 
@@ -58,11 +84,9 @@ function verifyCSRFToken(token: string, userId?: string): boolean {
     const signature = decoded.substring(dotIndex + 1);
     if (!data || !signature) return false;
 
-    const expectedSignature = createHmac('sha256', secret)
-      .update(data)
-      .digest('hex');
+    const expectedSignature = await hmacSha256Hex(secret, data);
 
-    if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+    if (!constantTimeEqual(signature, expectedSignature)) {
       return false;
     }
 
@@ -113,59 +137,14 @@ function cleanupRateLimitStore() {
   }
 }
 
-// Redis rate limiter — lazy-initialized singleton
-let redisClient: import('ioredis').default | null = null;
-let redisUnavailable = false;
-
-async function getRedisClient(): Promise<import('ioredis').default | null> {
-  if (redisUnavailable) return null;
-  if (redisClient) return redisClient;
-
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) {
-    redisUnavailable = true;
-    return null;
-  }
-
-  try {
-    const Redis = (await import('ioredis')).default;
-    redisClient = new Redis(redisUrl, {
-      maxRetriesPerRequest: 1,
-      connectTimeout: 2000,
-      lazyConnect: true,
-      enableOfflineQueue: false,
-    });
-    await redisClient.connect();
-    redisClient.on('error', () => {
-      // Silently degrade to in-memory on connection loss
-      redisUnavailable = true;
-      redisClient = null;
-    });
-    return redisClient;
-  } catch {
-    redisUnavailable = true;
-    return null;
-  }
-}
+// Redis rate limiter — disabled in Edge Runtime (ioredis not available)
+// Falls back to in-memory rate limiting
 
 async function checkRateLimitRedis(
-  identifier: string,
-  maxRequests: number
+  _identifier: string,
+  _maxRequests: number
 ): Promise<{ allowed: boolean; remaining: number } | null> {
-  const redis = await getRedisClient();
-  if (!redis) return null; // Signal caller to use fallback
-
-  try {
-    const key = `rl:${identifier}`;
-    const current = await redis.incr(key);
-    if (current === 1) {
-      await redis.expire(key, RATE_LIMIT_WINDOW);
-    }
-    const allowed = current <= maxRequests;
-    return { allowed, remaining: Math.max(0, maxRequests - current) };
-  } catch {
-    return null; // Fallback to in-memory
-  }
+  return null; // Always use in-memory fallback in Edge Runtime
 }
 
 function checkRateLimitMemory(identifier: string, maxRequests: number): { allowed: boolean; remaining: number } {
@@ -437,7 +416,7 @@ export default auth(async (req) => {
       return addTracingHeaders(response);
     }
 
-    if (!verifyCSRFToken(headerToken, req.auth?.user?.id)) {
+    if (!(await verifyCSRFToken(headerToken, req.auth?.user?.id))) {
       const response = NextResponse.json(
         { error: "Forbidden", message: "Invalid or expired CSRF token", code: "CSRF_INVALID", requestId },
         { status: 403 }

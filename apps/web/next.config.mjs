@@ -57,6 +57,16 @@ const nextConfig = {
     'ioredis',
     'perf_hooks',
     'crypto',
+    '@opentelemetry/sdk-node',
+    '@opentelemetry/auto-instrumentations-node',
+    '@opentelemetry/exporter-trace-otlp-http',
+    '@opentelemetry/exporter-metrics-otlp-http',
+    '@opentelemetry/exporter-logs-otlp-http',
+    '@opentelemetry/otlp-exporter-base',
+    '@opentelemetry/sdk-metrics',
+    '@opentelemetry/resources',
+    '@opentelemetry/semantic-conventions',
+    '@opentelemetry/api',
   ],
   
   // Optimized static generation
@@ -143,7 +153,7 @@ const nextConfig = {
   },
 
   // Minimal webpack configuration
-  webpack: (config, { isServer, dev, webpack }) => {
+  webpack: (config, { isServer, dev, webpack, nextRuntime }) => {
     // Avoid noisy warnings for ESM packages that use top-level await (e.g. pdfjs-dist)
     // by declaring async/await support in the target environment.
     config.output.environment = {
@@ -201,7 +211,8 @@ const nextConfig = {
     }
 
     // Only apply optimizations in development mode to reduce memory usage
-    if (process.env.NODE_ENV !== 'production') {
+    // Skip for Edge Runtime — it needs its own ESM-compatible chunk format
+    if (process.env.NODE_ENV !== 'production' && nextRuntime !== 'edge') {
       config.optimization = {
         ...config.optimization,
         minimize: false,
@@ -338,8 +349,9 @@ const nextConfig = {
         worker_threads: false,
         canvas: false,
       };
-    } else {
-      // Server-side: ensure 'self' is defined for webpack runtime
+    } else if (nextRuntime !== 'edge') {
+      // Server-side (Node.js only): ensure 'self' is defined for webpack runtime
+      // Edge Runtime already has 'self' defined natively
       config.resolve.fallback = {
         ...config.resolve.fallback,
       };
