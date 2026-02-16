@@ -42,13 +42,11 @@ import {
   Command,
   User,
   LogOut,
-  HelpCircle,
   Sparkles,
   AlertCircle,
   CheckCircle2,
   Clock,
   Zap,
-  Edit3,
   Link2,
   Building2,
   Shield,
@@ -104,7 +102,6 @@ const navigationGroups: NavigationGroup[] = [
       { name: 'Contracts', href: '/contracts', icon: FileText, description: 'Manage your contracts' },
       { name: 'Renewals', href: '/renewals', icon: RefreshCcw, description: 'Track & manage renewals', badge: 'Live' },
       { name: 'Obligations', href: '/obligations', icon: Calendar, description: 'Track obligations & deadlines' },
-      { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Manage contract templates' },
       { name: 'Compare', href: '/compare', icon: Target, description: 'Side-by-side contract comparison' },
     ]
   },
@@ -112,6 +109,7 @@ const navigationGroups: NavigationGroup[] = [
     id: 'lifecycle',
     label: 'Contract Lifecycle',
     items: [
+      { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Manage contract templates' },
       { name: 'Clauses', href: '/clauses', icon: BookOpen, description: 'Clause library & governance' },
       { name: 'Drafting', href: '/drafting', icon: PenTool, description: 'AI-assisted contract drafting' },
       { name: 'Workflows', href: '/workflows', icon: GitBranch, description: 'Workflows, approvals & SLA' },
@@ -136,7 +134,7 @@ const navigationGroups: NavigationGroup[] = [
     label: 'Procurement',
     items: [
       { name: 'Suppliers', href: '/suppliers', icon: Truck, description: 'Supplier management & performance' },
-      { name: 'Rate Cards', href: '/rate-cards/dashboard', icon: Receipt, description: 'Rate monitoring, benchmarking & trends' },
+      { name: 'Rate Cards', href: '/rate-cards/dashboard', icon: Receipt, description: 'Rate monitoring & benchmarking' },
       { name: 'Spend', href: '/spend', icon: Wallet, description: 'PO, Invoice & 3-way matching' },
       { name: 'Forecast', href: '/forecast', icon: TrendingUp, description: 'Spend & contract forecasting' },
     ]
@@ -156,10 +154,6 @@ const navigationGroups: NavigationGroup[] = [
     items: [
       { name: 'Self-Service Hub', href: '/self-service', icon: Zap, description: 'Quick actions & overview', isNew: true },
       { name: 'My Requests', href: '/self-service/my-requests', icon: Clock, description: 'Track your contract requests' },
-      { name: 'New Request', href: '/requests/new', icon: Edit3, description: 'Submit a contract request' },
-      { name: 'Generate Contract', href: '/contracts/generate', icon: PenTool, description: 'AI-powered contract drafting' },
-      { name: 'AI Report Builder', href: '/reports/ai-builder', icon: FileBarChart, description: 'Generate AI-powered reports' },
-      { name: 'Help & Guides', href: '/self-service/help', icon: HelpCircle, description: 'FAQs, guides & tips' },
     ]
   },
   {
@@ -167,6 +161,7 @@ const navigationGroups: NavigationGroup[] = [
     label: 'Analytics',
     items: [
       { name: 'Reports', href: '/analytics', icon: BarChart3, description: 'Analytics & reports' },
+      { name: 'AI Report Builder', href: '/reports/ai-builder', icon: FileBarChart, description: 'Generate AI-powered reports' },
       { name: 'Ecosystem', href: '/ecosystem', icon: Network, description: 'ERP, Spend & Contract synergy' },
     ]
   },
