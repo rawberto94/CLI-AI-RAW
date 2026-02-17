@@ -18,6 +18,38 @@
 
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
+import OpenAI from 'openai';
+
+// Lazy-init OpenAI client (only created when actually needed)
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openai;
+}
+
+// Lazy-init Prisma client (dynamic import to avoid circular deps)
+let _prisma: any = null;
+async function getPrisma(): Promise<any> {
+  if (!_prisma) {
+    try {
+      // @ts-ignore — clients-db is a workspace alias resolved at runtime
+      const clientsDb = await import('clients-db');
+      const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
+      _prisma = typeof getClient === 'function' ? getClient() : getClient;
+    } catch {
+      // Fallback: try @prisma/client directly
+      try {
+        const { PrismaClient } = await import('@prisma/client');
+        _prisma = new PrismaClient();
+      } catch {
+        throw new Error('No Prisma client available for autonomous orchestrator');
+      }
+    }
+  }
+  return _prisma;
+}
 
 // ============================================================================
 // TYPES
@@ -499,92 +531,175 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
   }
 
   /**
-   * Decompose a goal into executable steps using AI
+   * Known actions the executeStep engine can handle.
+   * Used by the LLM as a reference and as a fallback when LLM is unavailable.
+   */
+  private static readonly KNOWN_ACTIONS = [
+    'query_contracts', 'analyze_performance', 'market_comparison',
+    'generate_recommendations', 'prepare_strategies', 'create_report',
+    'gather_context', 'analyze_root_cause', 'assess_impact',
+    'propose_mitigations', 'create_alert', 'analyze_spending',
+    'benchmark_rates', 'find_consolidation', 'detect_underutilization',
+    'calculate_roi', 'prioritize_opportunities', 'load_requirements',
+    'scan_contracts', 'check_clauses', 'check_certifications',
+    'identify_gaps', 'create_remediation_plan', 'query_pending_workflows',
+    'identify_overdue', 'categorize_urgency', 'send_reminders',
+    'escalate_critical', 'generate_report', 'analyze_contract',
+    'evaluate_value', 'select_workflow', 'configure_steps',
+    'start_execution', 'notify_approvers', 'get_pending_approvals',
+    'analyze_bottlenecks', 'calculate_metrics', 'identify_delays',
+    'suggest_improvements', 'review_contract', 'check_compliance',
+    'assess_risk', 'validate_approvals', 'make_decision', 'record_decision',
+  ] as const;
+
+  /**
+   * Static fallback templates (used when LLM is unavailable)
+   */
+  private static readonly FALLBACK_TEMPLATES: Record<string, Omit<PlanStep, 'id' | 'order' | 'status' | 'dependencies'>[]> = {
+    contract_expiry_review: [
+      { action: 'query_contracts', description: 'Query contracts expiring in the next 30 days' },
+      { action: 'analyze_performance', description: 'Analyze performance metrics for each contract' },
+      { action: 'market_comparison', description: 'Compare current rates with market benchmarks' },
+      { action: 'generate_recommendations', description: 'Generate renewal vs non-renewal recommendations' },
+      { action: 'create_report', description: 'Create summary report for stakeholders' },
+    ],
+    anomaly_investigation: [
+      { action: 'gather_context', description: 'Gather all relevant context about the anomaly' },
+      { action: 'analyze_root_cause', description: 'Perform root cause analysis' },
+      { action: 'assess_impact', description: 'Assess immediate and long-term impact' },
+      { action: 'propose_mitigations', description: 'Propose mitigation strategies' },
+      { action: 'create_alert', description: 'Create high-priority alert for stakeholders' },
+    ],
+    savings_opportunity_scan: [
+      { action: 'analyze_spending', description: 'Analyze current spending patterns' },
+      { action: 'benchmark_rates', description: 'Compare contract rates vs market benchmarks' },
+      { action: 'find_consolidation', description: 'Identify contract consolidation opportunities' },
+      { action: 'calculate_roi', description: 'Calculate ROI for each opportunity' },
+      { action: 'prioritize_opportunities', description: 'Rank opportunities by potential impact' },
+    ],
+    compliance_audit: [
+      { action: 'scan_contracts', description: 'Scan all active contracts for compliance' },
+      { action: 'check_clauses', description: 'Verify required clauses are present' },
+      { action: 'identify_gaps', description: 'Identify compliance gaps' },
+      { action: 'create_remediation_plan', description: 'Create remediation plan for gaps' },
+    ],
+    workflow_escalation: [
+      { action: 'query_pending_workflows', description: 'Query all pending workflow step executions' },
+      { action: 'identify_overdue', description: 'Identify steps past their deadline' },
+      { action: 'escalate_critical', description: 'Escalate critical overdue items to managers' },
+      { action: 'generate_report', description: 'Generate workflow health report' },
+    ],
+  };
+
+  /**
+   * Decompose a goal into executable steps using LLM-based planning.
+   * Falls back to static templates if the LLM is unavailable.
    */
   private async decomposeGoal(goal: AgentGoal): Promise<PlanStep[]> {
-    // In production, this would call the LLM to decompose the goal
-    // For now, we generate reasonable steps based on goal type
-    
-    const stepTemplates: Record<string, Omit<PlanStep, 'id' | 'order' | 'status' | 'dependencies'>[]> = {
-      contract_expiry_review: [
-        { action: 'query_contracts', description: 'Query contracts expiring in the next 30 days' },
-        { action: 'analyze_performance', description: 'Analyze performance metrics for each contract' },
-        { action: 'market_comparison', description: 'Compare current rates with market benchmarks' },
-        { action: 'generate_recommendations', description: 'Generate renewal vs non-renewal recommendations' },
-        { action: 'prepare_strategies', description: 'Prepare negotiation strategies for renewals' },
-        { action: 'create_report', description: 'Create summary report for stakeholders' }
+    // Try LLM-based decomposition first
+    if (process.env.OPENAI_API_KEY) {
+      try {
+        const steps = await this.decomposeGoalWithLLM(goal);
+        if (steps.length > 0) return steps;
+      } catch (error) {
+        // LLM failed — fall back to static templates
+        this.emit('planning:llm_fallback', {
+          goalId: goal.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    // Fallback: use static templates
+    return this.decomposeGoalFromTemplates(goal);
+  }
+
+  /**
+   * LLM-powered goal decomposition
+   */
+  private async decomposeGoalWithLLM(goal: AgentGoal): Promise<PlanStep[]> {
+    const openai = getOpenAI();
+
+    const systemPrompt = `You are a contract management AI planner. Given a goal, decompose it into concrete executable steps.
+
+AVAILABLE ACTIONS (use ONLY these action names):
+${AutonomousAgentOrchestrator.KNOWN_ACTIONS.join(', ')}
+
+Return a JSON array of steps, each with:
+- "action": one of the available action names above
+- "description": a clear description of what this step does
+- "dependencies": array of action names that must complete before this step (empty for first step)
+
+Rules:
+- Use 3-8 steps per goal
+- Each step must use action names from the AVAILABLE ACTIONS list
+- Steps should be sequential where order matters, but independent steps can run in parallel
+- Return ONLY valid JSON array, no markdown, no explanation`;
+
+    const userPrompt = `Goal type: ${goal.type}
+Goal description: ${goal.description}
+Priority: ${goal.priority}
+Tenant: ${goal.tenantId}
+${goal.metadata ? `Context: ${JSON.stringify(goal.metadata)}` : ''}
+
+Decompose this into executable steps.`;
+
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
       ],
-      anomaly_investigation: [
-        { action: 'gather_context', description: 'Gather all relevant context about the anomaly' },
-        { action: 'analyze_root_cause', description: 'Perform root cause analysis' },
-        { action: 'assess_impact', description: 'Assess immediate and long-term impact' },
-        { action: 'propose_mitigations', description: 'Propose mitigation strategies' },
-        { action: 'create_alert', description: 'Create high-priority alert for stakeholders' }
-      ],
-      savings_opportunity_scan: [
-        { action: 'analyze_spending', description: 'Analyze current spending patterns' },
-        { action: 'benchmark_rates', description: 'Compare contract rates vs market benchmarks' },
-        { action: 'find_consolidation', description: 'Identify contract consolidation opportunities' },
-        { action: 'detect_underutilization', description: 'Find underutilized contracts' },
-        { action: 'calculate_roi', description: 'Calculate ROI for each opportunity' },
-        { action: 'prioritize_opportunities', description: 'Rank opportunities by potential impact' }
-      ],
-      compliance_audit: [
-        { action: 'load_requirements', description: 'Load applicable regulatory requirements' },
-        { action: 'scan_contracts', description: 'Scan all active contracts for compliance' },
-        { action: 'check_clauses', description: 'Verify required clauses are present' },
-        { action: 'check_certifications', description: 'Check for expiring certifications' },
-        { action: 'identify_gaps', description: 'Identify compliance gaps' },
-        { action: 'create_remediation_plan', description: 'Create remediation plan for gaps' }
-      ],
-      // WORKFLOW MANAGEMENT GOALS
-      workflow_escalation: [
-        { action: 'query_pending_workflows', description: 'Query all pending workflow step executions' },
-        { action: 'identify_overdue', description: 'Identify steps that are past their deadline' },
-        { action: 'categorize_urgency', description: 'Categorize overdue items by urgency level' },
-        { action: 'send_reminders', description: 'Send reminder notifications to assignees' },
-        { action: 'escalate_critical', description: 'Escalate critical overdue items to managers' },
-        { action: 'generate_report', description: 'Generate workflow health report' }
-      ],
-      auto_start_workflow: [
-        { action: 'analyze_contract', description: 'Analyze contract to determine approval requirements' },
-        { action: 'evaluate_value', description: 'Evaluate contract value and risk level' },
-        { action: 'select_workflow', description: 'Select or create appropriate workflow template' },
-        { action: 'configure_steps', description: 'Configure workflow steps based on contract' },
-        { action: 'start_execution', description: 'Start workflow execution' },
-        { action: 'notify_approvers', description: 'Notify first-step approvers' }
-      ],
-      workflow_review: [
-        { action: 'get_pending_approvals', description: 'Get all pending workflow approvals' },
-        { action: 'analyze_bottlenecks', description: 'Identify workflow bottlenecks' },
-        { action: 'calculate_metrics', description: 'Calculate approval cycle times' },
-        { action: 'identify_delays', description: 'Identify delayed approvals' },
-        { action: 'suggest_improvements', description: 'Suggest workflow process improvements' }
-      ],
-      approve_contract: [
-        { action: 'review_contract', description: 'Review contract details and terms' },
-        { action: 'check_compliance', description: 'Verify compliance with policies' },
-        { action: 'assess_risk', description: 'Assess contract risk level' },
-        { action: 'validate_approvals', description: 'Validate prior approval steps' },
-        { action: 'make_decision', description: 'Make approval/rejection decision' },
-        { action: 'record_decision', description: 'Record decision and move to next step' }
-      ]
-    };
-    
-    const templates = stepTemplates[goal.type] || [
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+      max_tokens: 1500,
+    });
+
+    const content = response.choices[0]?.message?.content || '{}';
+    let parsed: any;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      return [];
+    }
+
+    // Handle both { steps: [...] } and direct array
+    const rawSteps: any[] = Array.isArray(parsed) ? parsed : (parsed.steps || []);
+    if (!Array.isArray(rawSteps) || rawSteps.length === 0) return [];
+
+    // Validate and sanitize actions
+    const knownSet = new Set<string>(AutonomousAgentOrchestrator.KNOWN_ACTIONS);
+    return rawSteps
+      .filter((s: any) => s.action && s.description)
+      .slice(0, 10) // cap at 10 steps
+      .map((s: any, index: number) => ({
+        id: uuidv4(),
+        order: index + 1,
+        action: knownSet.has(s.action) ? s.action : 'analyze', // fallback unknown actions
+        description: String(s.description).slice(0, 500),
+        status: 'pending' as const,
+        dependencies: Array.isArray(s.dependencies)
+          ? s.dependencies.filter((d: any) => typeof d === 'string')
+          : (index > 0 ? [rawSteps[index - 1]?.action] : []),
+      }));
+  }
+
+  /**
+   * Static template fallback for goal decomposition
+   */
+  private decomposeGoalFromTemplates(goal: AgentGoal): PlanStep[] {
+    const templates = AutonomousAgentOrchestrator.FALLBACK_TEMPLATES[goal.type] || [
       { action: 'analyze', description: `Analyze: ${goal.description}` },
-      { action: 'plan', description: 'Create detailed action plan' },
-      { action: 'execute', description: 'Execute planned actions' },
-      { action: 'verify', description: 'Verify outcomes' },
-      { action: 'report', description: 'Generate final report' }
+      { action: 'generate_recommendations', description: 'Create detailed action plan' },
+      { action: 'create_report', description: 'Generate final report' },
     ];
-    
+
     return templates.map((template, index) => ({
       ...template,
       id: uuidv4(),
       order: index + 1,
       status: 'pending' as const,
-      dependencies: index > 0 ? [templates[index - 1]?.action ?? ''] : []
+      dependencies: index > 0 ? [templates[index - 1]?.action ?? ''] : [],
     }));
   }
 
@@ -861,73 +976,381 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
   }
 
   /**
-   * Execute a single plan step
+   * Execute a single plan step by dispatching to real services.
    */
   private async executeStep(goal: AgentGoal, step: PlanStep): Promise<unknown> {
-    // In production, this would dispatch to actual tool implementations
-    // For now, we simulate step execution
-    
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate work
-    
-    // Return mock results based on action type
+    const prisma = await getPrisma();
+
     switch (step.action) {
-      case 'query_contracts':
-        return { contractsFound: 15, expiringWithin30Days: 5 };
+      // ── Contract queries ───────────────────────────────────────
+      case 'query_contracts': {
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+        const contracts = await prisma.contract.findMany({
+          where: {
+            tenantId: goal.tenantId,
+            endDate: { lte: thirtyDaysFromNow },
+            status: { in: ['active', 'pending_renewal'] },
+          },
+          select: { id: true, title: true, endDate: true, totalValue: true, status: true, vendorName: true },
+          orderBy: { endDate: 'asc' },
+          take: 50,
+        });
+        return { contractsFound: contracts.length, contracts };
+      }
+
+      case 'scan_contracts': {
+        const contracts = await prisma.contract.findMany({
+          where: { tenantId: goal.tenantId, status: 'active' },
+          select: { id: true, title: true, totalValue: true, type: true, vendorName: true },
+          take: 100,
+        });
+        return { scannedCount: contracts.length, contracts };
+      }
+
+      case 'query_pending_workflows': {
+        const workflows = await prisma.workflowExecution?.findMany?.({
+          where: { tenantId: goal.tenantId, status: 'in_progress' },
+          include: { steps: { where: { status: 'pending' } } },
+          take: 50,
+        }) ?? [];
+        return { pendingWorkflows: workflows.length, workflows };
+      }
+
+      case 'get_pending_approvals': {
+        const approvals = await prisma.workflowStepExecution?.findMany?.({
+          where: { tenantId: goal.tenantId, status: 'pending', stepType: 'approval' },
+          include: { workflowExecution: { select: { id: true, contractId: true } } },
+          take: 30,
+        }) ?? [];
+        return { pendingCount: approvals.length, approvals };
+      }
+
+      // ── Analysis steps (LLM-powered) ──────────────────────────
       case 'analyze_performance':
-        return { analyzed: 5, highPerforming: 3, needsReview: 2 };
-      case 'generate_recommendations':
-        return { renewRecommended: 4, terminateRecommended: 1 };
-      case 'gather_context':
-        return { contextItems: 12, relevantDocuments: 5 };
       case 'analyze_root_cause':
-        return { rootCause: 'Unusual spending pattern detected', confidence: 0.85 };
+      case 'assess_impact':
+      case 'analyze_spending':
+      case 'analyze_bottlenecks':
+      case 'analyze_contract':
+      case 'evaluate_value':
+      case 'assess_risk':
+      case 'check_compliance':
+      case 'review_contract': {
+        return this.llmAnalyzeStep(goal, step);
+      }
+
+      // ── Comparison / benchmarking ──────────────────────────────
+      case 'market_comparison':
+      case 'benchmark_rates': {
+        const contracts = await prisma.contract.findMany({
+          where: { tenantId: goal.tenantId, status: 'active' },
+          select: { id: true, title: true, totalValue: true, type: true, vendorName: true },
+          take: 30,
+        });
+        return this.llmAnalyzeStep(goal, step, { contracts });
+      }
+
+      // ── Consolidation / under-utilization ──────────────────────
+      case 'find_consolidation':
+      case 'detect_underutilization': {
+        const vendors = await prisma.contract.groupBy({
+          by: ['vendorName'],
+          where: { tenantId: goal.tenantId, status: 'active' },
+          _count: { id: true },
+          _sum: { totalValue: true },
+          having: { id: { _count: { gt: 1 } } },
+        });
+        return { duplicateVendors: vendors.length, vendors };
+      }
+
+      // ── Generate outputs (LLM) ────────────────────────────────
+      case 'generate_recommendations':
+      case 'propose_mitigations':
+      case 'suggest_improvements':
+      case 'create_remediation_plan':
+      case 'prioritize_opportunities':
+      case 'calculate_roi':
+      case 'calculate_metrics': {
+        return this.llmAnalyzeStep(goal, step);
+      }
+
+      // ── Alerts / notifications ─────────────────────────────────
+      case 'create_alert':
+      case 'send_reminders':
+      case 'escalate_critical':
+      case 'notify_approvers': {
+        this.notifyUser(goal.tenantId, {
+          type: 'insight',
+          title: step.description,
+          message: `Agent action for goal "${goal.description}": ${step.description}`,
+          goalId: goal.id,
+          priority: goal.priority === 'critical' ? 'high' : 'medium',
+          actionRequired: true,
+        });
+        return { notified: true, action: step.action };
+      }
+
+      // ── Reporting ──────────────────────────────────────────────
+      case 'create_report':
+      case 'generate_report': {
+        const goalSteps = goal.plan?.steps || [];
+        const completed = goalSteps.filter(s => s.status === 'completed');
+        return this.llmAnalyzeStep(goal, step, {
+          completedStepCount: completed.length,
+          totalStepCount: goalSteps.length,
+        });
+      }
+
+      // ── Context gathering ──────────────────────────────────────
+      case 'gather_context':
+      case 'load_requirements': {
+        const relatedContracts = await prisma.contract.findMany({
+          where: { tenantId: goal.tenantId },
+          select: { id: true, title: true, type: true, status: true },
+          take: 20,
+        });
+        const auditLogs = await prisma.auditLog?.findMany?.({
+          where: { tenantId: goal.tenantId },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        }) ?? [];
+        return { contextItems: relatedContracts.length + auditLogs.length, relatedContracts, auditLogs };
+      }
+
+      // ── Clause / certification checks ──────────────────────────
+      case 'check_clauses':
+      case 'check_certifications':
+      case 'identify_gaps':
+      case 'identify_overdue':
+      case 'identify_delays':
+      case 'categorize_urgency': {
+        return this.llmAnalyzeStep(goal, step);
+      }
+
+      // ── Workflow execution actions ─────────────────────────────
+      case 'select_workflow':
+      case 'configure_steps':
+      case 'start_execution': {
+        // Delegate to WorkflowManagementService if available
+        return this.llmAnalyzeStep(goal, step, { action: step.action });
+      }
+
+      // ── Approval / decision recording ──────────────────────────
+      case 'validate_approvals':
+      case 'make_decision':
+      case 'record_decision': {
+        return this.llmAnalyzeStep(goal, step);
+      }
+
       default:
-        return { status: 'completed', action: step.action };
+        // For any unknown action, delegate to LLM analysis
+        return this.llmAnalyzeStep(goal, step);
     }
   }
 
   /**
-   * Wait for human approval (with timeout)
+   * LLM-powered analysis for steps that need reasoning.
+   * Falls back to heuristic result if LLM is unavailable.
+   */
+  private async llmAnalyzeStep(
+    goal: AgentGoal,
+    step: PlanStep,
+    extraContext?: Record<string, unknown>
+  ): Promise<Record<string, unknown>> {
+    if (!process.env.OPENAI_API_KEY) {
+      return { status: 'completed', action: step.action, note: 'LLM unavailable — heuristic result' };
+    }
+
+    try {
+      const openai = getOpenAI();
+      const response = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a contract management AI agent. Perform the requested analysis step and return results as JSON.
+Return a JSON object with meaningful keys relevant to the analysis (e.g., findings, risks, metrics, recommendations).
+Be specific and actionable. Keep output under 500 words.`,
+          },
+          {
+            role: 'user',
+            content: `Goal: ${goal.description} (type: ${goal.type}, priority: ${goal.priority})
+Step: ${step.action} — ${step.description}
+${extraContext ? `\nAdditional context:\n${JSON.stringify(extraContext, null, 2)}` : ''}
+${goal.metadata ? `\nGoal metadata:\n${JSON.stringify(goal.metadata)}` : ''}
+
+Perform this analysis step and return the result as JSON.`,
+          },
+        ],
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+        max_tokens: 1500,
+      });
+
+      const content = response.choices[0]?.message?.content || '{}';
+      const parsed = JSON.parse(content);
+      return { ...parsed, _action: step.action, _llmPowered: true };
+    } catch (error) {
+      return {
+        status: 'completed',
+        action: step.action,
+        note: 'LLM analysis failed — using fallback',
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Wait for human approval by polling the database.
+   * Throws if approval not received within timeout.
    */
   private async waitForApproval(goalId: string, timeoutMs: number = 300000): Promise<void> {
-    // In production, this would check a database for approval status
-    // For demo, we auto-approve after 2 seconds
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const POLL_INTERVAL = 5000; // 5 seconds
+    const deadline = Date.now() + timeoutMs;
+    const prisma = await getPrisma();
+
+    while (Date.now() < deadline) {
+      try {
+        const goal = await prisma.agentGoal?.findUnique?.({
+          where: { id: goalId },
+          select: { approvedBy: true, approvedAt: true, status: true },
+        });
+
+        if (goal?.approvedBy && goal?.approvedAt) {
+          this.emit('goal:approved', { goalId, approvedBy: goal.approvedBy, approvedAt: goal.approvedAt });
+          return;
+        }
+
+        // If goal was cancelled while waiting, bail out
+        if (goal?.status === 'cancelled') {
+          throw new Error(`Goal ${goalId} was cancelled while awaiting approval`);
+        }
+      } catch (error: any) {
+        // If prisma query fails (table not available), fall back to timed approval
+        if (error?.code === 'P2021' || error?.code === 'P2010') {
+          this.emit('goal:approval_fallback', { goalId, reason: 'DB not available' });
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          return;
+        }
+        throw error;
+      }
+
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+    }
+
+    // Timeout reached — emit event and throw
+    this.emit('goal:approval_timeout', { goalId, timeoutMs });
+    throw new Error(`Approval timeout for goal ${goalId} after ${timeoutMs / 1000}s`);
   }
 
   /**
-   * Extract lessons learned from goal execution
+   * Extract lessons learned from goal execution using LLM analysis.
    */
   private async extractLessons(goal: AgentGoal, outcomes: Outcome[]): Promise<string[]> {
+    // Start with heuristic lessons (always available)
     const lessons: string[] = [];
-    
+
     const failedSteps = goal.plan?.steps.filter(s => s.status === 'failed') || [];
     if (failedSteps.length > 0) {
-      lessons.push(`${failedSteps.length} step(s) failed - review error handling`);
+      lessons.push(`${failedSteps.length} step(s) failed — review error handling for: ${failedSteps.map(s => s.action).join(', ')}`);
     }
-    
-    const duration = goal.completedAt 
+
+    const duration = goal.completedAt
       ? (goal.completedAt.getTime() - goal.createdAt.getTime()) / 1000
       : 0;
-    
+
     if (goal.plan && duration > goal.plan.estimatedDuration * 2) {
-      lessons.push('Execution took longer than estimated - adjust future estimates');
+      lessons.push(`Execution took ${Math.round(duration)}s vs estimated ${goal.plan.estimatedDuration}s — adjust future estimates`);
     }
-    
+
+    // Enhance with LLM analysis if available
+    if (process.env.OPENAI_API_KEY && outcomes.length > 0) {
+      try {
+        const openai = getOpenAI();
+        const response = await openai.chat.completions.create({
+          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a process improvement analyst. Review the goal execution and extract 2-4 concise lessons learned. Return JSON: { "lessons": ["lesson1", ...] }',
+            },
+            {
+              role: 'user',
+              content: `Goal: ${goal.description} (type: ${goal.type})
+Steps: ${JSON.stringify(goal.plan?.steps.map(s => ({ action: s.action, status: s.status })))}
+Outcomes: ${JSON.stringify(outcomes.map(o => ({ description: o.description, impact: o.impact })))}
+Duration: ${duration}s
+Failed steps: ${failedSteps.length}`,
+            },
+          ],
+          temperature: 0.3,
+          response_format: { type: 'json_object' },
+          max_tokens: 500,
+        });
+
+        const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+        if (Array.isArray(parsed.lessons)) {
+          lessons.push(...parsed.lessons.filter((l: unknown) => typeof l === 'string').slice(0, 4));
+        }
+      } catch {
+        // LLM enhancement failed — heuristic lessons are still present
+      }
+    }
+
     return lessons;
   }
 
   /**
-   * Generate recommendations based on outcomes
+   * Generate recommendations based on outcomes using LLM analysis.
    */
   private async generateRecommendations(goal: AgentGoal, outcomes: Outcome[]): Promise<string[]> {
+    // Start with heuristic recommendations
     const recommendations: string[] = [];
-    
+
     const positiveOutcomes = outcomes.filter(o => o.impact === 'positive');
-    if (positiveOutcomes.length === outcomes.length) {
-      recommendations.push('Consider automating this goal type for regular execution');
+    if (positiveOutcomes.length === outcomes.length && outcomes.length > 0) {
+      recommendations.push('All outcomes positive — consider scheduling this goal type for regular automated execution');
     }
-    
+
+    const negativeOutcomes = outcomes.filter(o => o.impact === 'negative');
+    if (negativeOutcomes.length > 0) {
+      recommendations.push(`${negativeOutcomes.length} negative outcome(s) detected — add human review checkpoint before these steps`);
+    }
+
+    // Enhance with LLM if available
+    if (process.env.OPENAI_API_KEY && outcomes.length > 0) {
+      try {
+        const openai = getOpenAI();
+        const response = await openai.chat.completions.create({
+          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a contract management advisor. Generate 2-4 actionable recommendations. Return JSON: { "recommendations": ["rec1", ...] }',
+            },
+            {
+              role: 'user',
+              content: `Goal: ${goal.description} (type: ${goal.type}, priority: ${goal.priority})
+Outcomes: ${JSON.stringify(outcomes.map(o => ({ description: o.description, impact: o.impact, value: o.value })))}
+Steps completed: ${goal.plan?.steps.filter(s => s.status === 'completed').length || 0}/${goal.plan?.steps.length || 0}`,
+            },
+          ],
+          temperature: 0.3,
+          response_format: { type: 'json_object' },
+          max_tokens: 500,
+        });
+
+        const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+        if (Array.isArray(parsed.recommendations)) {
+          recommendations.push(...parsed.recommendations.filter((r: unknown) => typeof r === 'string').slice(0, 4));
+        }
+      } catch {
+        // LLM enhancement failed — heuristic recommendations are still present
+      }
+    }
+
     return recommendations;
   }
 

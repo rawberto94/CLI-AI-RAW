@@ -1,5 +1,15 @@
 import pino from 'pino';
 import clientsDb from 'clients-db';
+import OpenAI from 'openai';
+
+// Lazy-init OpenAI for LLM-powered risk detection
+let _riskOpenAI: OpenAI | null = null;
+function getRiskOpenAI(): OpenAI {
+  if (!_riskOpenAI) {
+    _riskOpenAI = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _riskOpenAI;
+}
 
 // Define types to match workflow-auto-start.service.ts
 interface AutoStartRule {
@@ -182,13 +192,36 @@ export class ProactiveRiskDetector {
   }
 
   /**
-   * Detect missing critical clauses
+   * Detect missing critical clauses — regex fast-pass + LLM deep analysis
    */
   private async detectMissingCriticalClauses(
     contractType: string,
     contractText: string,
     artifacts?: Record<string, any>
   ): Promise<DetectedRisk[]> {
+    // ── Stage 1: regex fast-pass (always runs) ──────────────────
+    const regexRisks = this.detectMissingClausesRegex(contractText);
+
+    // ── Stage 2: LLM semantic analysis (if key available) ───────
+    if (process.env.OPENAI_API_KEY && contractText.length > 100) {
+      try {
+        const llmRisks = await this.detectMissingClausesLLM(contractType, contractText);
+        // Merge: LLM results are more authoritative — deduplicate by title
+        const seen = new Set(llmRisks.map(r => r.title));
+        const merged = [...llmRisks, ...regexRisks.filter(r => !seen.has(r.title))];
+        return merged;
+      } catch (error) {
+        logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'LLM clause detection failed, using regex fallback');
+      }
+    }
+
+    return regexRisks;
+  }
+
+  /**
+   * Regex-based clause detection (fast, low-cost)
+   */
+  private detectMissingClausesRegex(contractText: string): DetectedRisk[] {
     const risks: DetectedRisk[] = [];
     const text = contractText.toLowerCase();
 
@@ -220,6 +253,69 @@ export class ProactiveRiskDetector {
     }
 
     return risks;
+  }
+
+  /**
+   * LLM-powered semantic clause detection
+   */
+  private async detectMissingClausesLLM(
+    contractType: string,
+    contractText: string,
+  ): Promise<DetectedRisk[]> {
+    const openai = getRiskOpenAI();
+    const truncated = contractText.slice(0, 12000); // Stay within token limits
+
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a contract risk analyst. Analyze the contract text and identify MISSING critical clauses.
+
+For each missing clause, return:
+- "title": name of the missing clause
+- "severity": "critical" | "high" | "medium" | "low"
+- "description": why this clause is important
+- "impact": business impact of this omission
+- "recommendation": specific action to take
+
+Return JSON: { "missing_clauses": [...] }
+Only include genuinely missing clauses — do NOT flag clauses that ARE present. Be precise.`,
+        },
+        {
+          role: 'user',
+          content: `Contract type: ${contractType}\n\nContract text:\n${truncated}`,
+        },
+      ],
+      temperature: 0.1,
+      response_format: { type: 'json_object' },
+      max_tokens: 1500,
+    });
+
+    const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+    const missingClauses = Array.isArray(parsed.missing_clauses) ? parsed.missing_clauses : [];
+
+    const severityMap: Record<string, RiskSeverity> = {
+      critical: RiskSeverity.CRITICAL,
+      high: RiskSeverity.HIGH,
+      medium: RiskSeverity.MEDIUM,
+      low: RiskSeverity.LOW,
+    };
+
+    return missingClauses
+      .filter((c: any) => c.title && c.severity)
+      .slice(0, 10)
+      .map((c: any) => ({
+        type: RiskType.MISSING_CRITICAL_CLAUSE,
+        severity: severityMap[c.severity?.toLowerCase()] || RiskSeverity.MEDIUM,
+        title: `Missing ${String(c.title).slice(0, 100)}`,
+        description: String(c.description || '').slice(0, 500),
+        evidence: 'Identified by LLM semantic analysis',
+        impact: String(c.impact || '').slice(0, 500),
+        recommendation: String(c.recommendation || '').slice(0, 500),
+        autoFixable: false,
+        requiresHumanReview: true,
+      }));
   }
 
   /**
@@ -443,9 +539,30 @@ export class ProactiveRiskDetector {
   }
 
   /**
-   * Detect ambiguous language
+   * Detect ambiguous language — regex fast-pass + LLM semantic analysis
    */
   private async detectAmbiguousLanguage(contractText: string): Promise<DetectedRisk[]> {
+    // ── Stage 1: regex fast-pass ─────────────────────────────────
+    const regexRisks = this.detectAmbiguousLanguageRegex(contractText);
+
+    // ── Stage 2: LLM semantic analysis ───────────────────────────
+    if (process.env.OPENAI_API_KEY && contractText.length > 100) {
+      try {
+        const llmRisks = await this.detectAmbiguousLanguageLLM(contractText);
+        const seen = new Set(llmRisks.map(r => r.title));
+        return [...llmRisks, ...regexRisks.filter(r => !seen.has(r.title))];
+      } catch (error) {
+        logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'LLM ambiguity detection failed, using regex fallback');
+      }
+    }
+
+    return regexRisks;
+  }
+
+  /**
+   * Regex-based ambiguity detection (fast, low-cost)
+   */
+  private detectAmbiguousLanguageRegex(contractText: string): DetectedRisk[] {
     const risks: DetectedRisk[] = [];
 
     const ambiguousPatterns = [
@@ -472,6 +589,68 @@ export class ProactiveRiskDetector {
     }
 
     return risks;
+  }
+
+  /**
+   * LLM-powered ambiguity detection for nuanced contract language issues
+   */
+  private async detectAmbiguousLanguageLLM(contractText: string): Promise<DetectedRisk[]> {
+    const openai = getRiskOpenAI();
+    const truncated = contractText.slice(0, 12000);
+
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a contract language analyst specializing in detecting ambiguous, vague, or legally risky language.
+
+Identify passages that could cause disputes: vague timing, undefined terms, unclear obligations, subjective standards, missing definitions, or contradictory statements.
+
+For each issue return:
+- "title": short descriptive title
+- "severity": "critical" | "high" | "medium" | "low"
+- "evidence": the exact phrase(s) found
+- "description": why this is problematic
+- "recommendation": specific fix
+
+Return JSON: { "ambiguities": [...] }
+Only flag genuinely problematic language, not standard legal phrasing.`,
+        },
+        {
+          role: 'user',
+          content: `Analyze this contract text for ambiguous language:\n\n${truncated}`,
+        },
+      ],
+      temperature: 0.1,
+      response_format: { type: 'json_object' },
+      max_tokens: 1500,
+    });
+
+    const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+    const ambiguities = Array.isArray(parsed.ambiguities) ? parsed.ambiguities : [];
+
+    const severityMap: Record<string, RiskSeverity> = {
+      critical: RiskSeverity.CRITICAL,
+      high: RiskSeverity.HIGH,
+      medium: RiskSeverity.MEDIUM,
+      low: RiskSeverity.LOW,
+    };
+
+    return ambiguities
+      .filter((a: any) => a.title)
+      .slice(0, 8)
+      .map((a: any) => ({
+        type: RiskType.AMBIGUOUS_LANGUAGE,
+        severity: severityMap[a.severity?.toLowerCase()] || RiskSeverity.MEDIUM,
+        title: String(a.title).slice(0, 100),
+        description: String(a.description || '').slice(0, 500),
+        evidence: String(a.evidence || 'Identified by LLM semantic analysis').slice(0, 500),
+        impact: 'May lead to disputes about obligations or create legal exposure',
+        recommendation: String(a.recommendation || 'Review and clarify language').slice(0, 500),
+        autoFixable: false,
+        requiresHumanReview: true,
+      }));
   }
 
   /**

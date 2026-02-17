@@ -5430,11 +5430,11 @@ model AiDecision {
   artifactId String? @map("artifact_id")
 
   // AI details
-  feature        String // extraction, summarization, comparison, risk_analysis, etc.
-  subFeature     String? @map("sub_feature")
-  model          String // gpt-4o, claude-3-opus, etc.
-  modelVersion   String? @map("model_version")
-  promptVersion  String? @map("prompt_version")
+  feature       String // extraction, summarization, comparison, risk_analysis, etc.
+  subFeature    String? @map("sub_feature")
+  model         String // gpt-4o, claude-3-opus, etc.
+  modelVersion  String? @map("model_version")
+  promptVersion String? @map("prompt_version")
 
   // Input/Output
   inputHash    String  @map("input_hash")
@@ -5444,17 +5444,17 @@ model AiDecision {
 
   // Quality metrics
   confidence       Float
-  processingTimeMs Int     @map("processing_time_ms")
-  tokensUsed       Int?    @map("tokens_used")
-  estimatedCost    Float?  @map("estimated_cost")
+  processingTimeMs Int    @map("processing_time_ms")
+  tokensUsed       Int?   @map("tokens_used")
+  estimatedCost    Float? @map("estimated_cost")
 
   // Citations
   citations     Json @default("[]")
   evidenceChain Json @default("[]") @map("evidence_chain")
 
   // Outcome & feedback
-  outcome      String  @default("pending") // accepted, rejected, modified, pending, auto_applied
-  userFeedback Json?   @map("user_feedback")
+  outcome      String    @default("pending") // accepted, rejected, modified, pending, auto_applied
+  userFeedback Json?     @map("user_feedback")
   reviewedAt   DateTime? @map("reviewed_at")
   expiresAt    DateTime? @map("expires_at")
 
@@ -5487,7 +5487,7 @@ model AiPrediction {
   probability    Float? // For binary predictions
 
   // Time context
-  horizon   String // 30d, 60d, 90d, 6m, 1y, 2y
+  horizon    String // 30d, 60d, 90d, 6m, 1y, 2y
   validUntil DateTime @map("valid_until")
 
   // Factors and recommendations

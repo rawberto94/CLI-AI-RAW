@@ -167,6 +167,18 @@ async function startWorkers() {
       logger.warn({ error: triggerError }, '⚠️ Autonomous triggers failed to register (non-fatal)');
     }
 
+    // Activate obligation monitoring (continuous SLA/deadline checker)
+    try {
+      // @ts-ignore — @repo/agents workspace alias resolved at runtime by pnpm
+      const { getObligationTrackingAgent } = await import('@repo/agents');
+      const obligationAgent = getObligationTrackingAgent();
+      const OBLIGATION_INTERVAL = parseInt(process.env.OBLIGATION_CHECK_INTERVAL_MS || '3600000', 10); // 1 hour default
+      obligationAgent.startMonitoring(OBLIGATION_INTERVAL);
+      logger.info({ intervalMs: OBLIGATION_INTERVAL }, '📋 Obligation monitoring activated');
+    } catch (obligationError) {
+      logger.warn({ error: obligationError }, '⚠️ Obligation monitoring failed to start (non-fatal)');
+    }
+
     // Start backpressure monitoring
     backpressure.start();
     logger.info('📊 Backpressure monitoring started');

@@ -85,6 +85,28 @@ export async function PUT(
       reason
     );
 
+    // ── Feed user edit into the learning system (fire-and-forget) ──
+    try {
+      const { UserFeedbackLearner } = await import('@repo/workers/agents/user-feedback-learner');
+      const learner = new UserFeedbackLearner();
+      const tenantIdForFeedback = ctx.tenantId || 'unknown';
+      // Don't await — run in the background so the API response is fast
+      learner.processFeedback({
+        feedbackType: 'artifact_edit' as any,
+        artifactType: updatedArtifact.artifactType || 'unknown',
+        originalData: updatedArtifact.previousContent ?? {},
+        editedData: updates,
+        timestamp: new Date(),
+        userId,
+        tenantId: tenantIdForFeedback,
+        comment: reason || undefined,
+      }).catch(() => {
+        // Feedback processing failures are non-critical
+      });
+    } catch {
+      // Import or instantiation failure — feedback learning is optional
+    }
+
     // Queue RAG re-indexing if this is a critical artifact type
     let ragReindexQueued = false;
     const tenantId = ctx.tenantId;
