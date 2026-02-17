@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   BarChart3, 
@@ -44,27 +44,17 @@ interface ApprovalStats {
   }>;
 }
 
-// Mock data - replace with real data from API
-const mockStats: ApprovalStats = {
-  totalApprovals: 156,
-  pendingApprovals: 12,
-  approvedThisWeek: 23,
-  rejectedThisWeek: 3,
-  avgApprovalTime: 4.5,
-  avgApprovalTimeChange: -15,
-  approvalRate: 88.5,
-  bottleneckStep: 'Legal Review',
-  topApprovers: [
-    { name: 'Sarah Johnson', count: 45 },
-    { name: 'Mike Chen', count: 38 },
-    { name: 'Emily Davis', count: 31 },
-  ],
-  recentActivity: [
-    { id: '1', action: 'approved', contractName: 'Master Agreement - Acme', by: 'Sarah Johnson', timestamp: '2h ago' },
-    { id: '2', action: 'submitted', contractName: 'NDA - TechFlow', by: 'Mike Chen', timestamp: '3h ago' },
-    { id: '3', action: 'rejected', contractName: 'Vendor Agreement - Global', by: 'Emily Davis', timestamp: '5h ago' },
-    { id: '4', action: 'approved', contractName: 'Service Contract - CloudOps', by: 'Sarah Johnson', timestamp: '6h ago' },
-  ],
+// Default stats (used while loading)
+const defaultStats: ApprovalStats = {
+  totalApprovals: 0,
+  pendingApprovals: 0,
+  approvedThisWeek: 0,
+  rejectedThisWeek: 0,
+  avgApprovalTime: 0,
+  avgApprovalTimeChange: 0,
+  approvalRate: 0,
+  topApprovers: [],
+  recentActivity: [],
 };
 
 interface ApprovalAnalyticsProps {
@@ -73,7 +63,28 @@ interface ApprovalAnalyticsProps {
 }
 
 export function ApprovalAnalytics({ className, variant = 'full' }: ApprovalAnalyticsProps) {
-  const [stats] = useState<ApprovalStats>(mockStats);
+  const [stats, setStats] = useState<ApprovalStats>(defaultStats);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchAnalytics() {
+      try {
+        const res = await fetch('/api/approvals/analytics');
+        if (!res.ok) throw new Error('Failed to fetch analytics');
+        const json = await res.json();
+        if (!cancelled) {
+          setStats(json.data as ApprovalStats);
+        }
+      } catch (err) {
+        console.error('[ApprovalAnalytics] fetch error', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    fetchAnalytics();
+    return () => { cancelled = true; };
+  }, []);
 
   if (variant === 'mini') {
     return (

@@ -42,7 +42,6 @@ export {
   SuggestionBadge,
   ConfidenceMeter,
   useSmartSuggestion,
-  generateMockSuggestion
 } from './SmartApprovalSuggestions';
 export {
   SwipeableApprovalCard,

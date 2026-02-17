@@ -760,7 +760,7 @@ export function SmartSuggestionPanel({
   );
 }
 
-// Hook for fetching suggestions
+// Hook for fetching suggestions from the real AI API
 export function useSmartSuggestion(approvalId: string | null) {
   const [suggestion, setSuggestion] = useState<ApprovalSuggestion | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -773,11 +773,16 @@ export function useSmartSuggestion(approvalId: string | null) {
     setError(null);
     
     try {
-      // In production, this would call an API
-      // For now, generate mock suggestion
-      await new Promise(resolve => setTimeout(resolve, 800));
-      const mockSuggestion = generateMockSuggestion(approvalId);
-      setSuggestion(mockSuggestion);
+      const res = await fetch(`/api/approvals/${approvalId}/suggestion`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch AI suggestion');
+      }
+      const json = await res.json();
+      const data = json.data;
+      setSuggestion({
+        ...data,
+        generatedAt: data.generatedAt ? new Date(data.generatedAt) : new Date(),
+      } as ApprovalSuggestion);
     } catch {
       setError('Failed to fetch AI suggestion');
     } finally {

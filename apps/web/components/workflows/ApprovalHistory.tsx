@@ -122,77 +122,7 @@ const typeConfig = {
   termination: { label: 'Termination', color: 'bg-red-100 text-red-700' },
 };
 
-// Mock history data
-const mockHistory: HistoryEntry[] = [
-  {
-    id: 'h1',
-    contractId: 'contract-001',
-    contractName: 'Cloud Services Agreement - TechCorp',
-    type: 'contract',
-    action: 'approved',
-    actor: { name: 'Michael Chen', email: 'michael@company.com', role: 'CFO' },
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    stepName: 'Executive Approval',
-    comment: 'Approved. Budget allocated from Q1 operations.',
-    metadata: { value: 450000, supplier: 'TechCorp Solutions' },
-  },
-  {
-    id: 'h2',
-    contractId: 'contract-001',
-    contractName: 'Cloud Services Agreement - TechCorp',
-    type: 'contract',
-    action: 'approved',
-    actor: { name: 'Emily Davis', email: 'emily@company.com', role: 'Legal Counsel' },
-    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-    stepName: 'Legal Review',
-    comment: 'Terms reviewed. No significant risks identified.',
-  },
-  {
-    id: 'h3',
-    contractId: 'contract-002',
-    contractName: 'Hardware Procurement - DataTech',
-    type: 'contract',
-    action: 'rejected',
-    actor: { name: 'Sarah Johnson', email: 'sarah@company.com', role: 'Procurement Manager' },
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    stepName: 'Initial Review',
-    comment: 'Pricing 15% above market rate. Please renegotiate.',
-    metadata: { value: 125000, supplier: 'DataTech Inc', reason: 'Price too high' },
-  },
-  {
-    id: 'h4',
-    contractId: 'contract-003',
-    contractName: 'Software License Renewal - Adobe',
-    type: 'renewal',
-    action: 'delegated',
-    actor: { name: 'John Smith', email: 'john@company.com', role: 'IT Director' },
-    timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    stepName: 'IT Review',
-    metadata: { previousAssignee: 'John Smith', newAssignee: 'Alex Williams', value: 85000 },
-  },
-  {
-    id: 'h5',
-    contractId: 'contract-004',
-    contractName: 'Maintenance Agreement - FacilityPro',
-    type: 'amendment',
-    action: 'escalated',
-    actor: { name: 'Lisa Park', email: 'lisa@company.com', role: 'Operations Manager' },
-    timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    stepName: 'Operations Review',
-    comment: 'Scope change requires VP approval due to budget impact.',
-    metadata: { value: 200000 },
-  },
-  {
-    id: 'h6',
-    contractId: 'contract-005',
-    contractName: 'Consulting Services - McKinsey',
-    type: 'contract',
-    action: 'created',
-    actor: { name: 'Tom Wilson', email: 'tom@company.com', role: 'Strategy Lead' },
-    timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    metadata: { value: 750000, supplier: 'McKinsey & Company' },
-  },
-];
+// History data fetched from API — no mock data
 
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
@@ -384,22 +314,27 @@ export function ApprovalHistory({
   const [dateRange, setDateRange] = useState<'all' | '7d' | '30d' | '90d'>('all');
 
   useEffect(() => {
-    // Simulate API fetch
+    let cancelled = false;
     const fetchHistory = async () => {
       setLoading(true);
-      // In production, fetch from API
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      let filtered = [...mockHistory];
-      if (contractId) {
-        filtered = filtered.filter(h => h.contractId === contractId);
+      try {
+        const params = new URLSearchParams();
+        if (contractId) params.set('contractId', contractId);
+        params.set('limit', String(limit));
+        const res = await fetch(`/api/approvals/history?${params.toString()}`);
+        if (!res.ok) throw new Error('Failed to fetch history');
+        const json = await res.json();
+        if (!cancelled) {
+          setHistory((json.data?.history ?? []) as HistoryEntry[]);
+        }
+      } catch (err) {
+        console.error('[ApprovalHistory] fetch error', err);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      
-      setHistory(filtered.slice(0, limit));
-      setLoading(false);
     };
-    
     fetchHistory();
+    return () => { cancelled = true; };
   }, [contractId, limit]);
 
   const filteredHistory = history.filter(entry => {
@@ -618,12 +553,24 @@ export function CompactApprovalHistory({
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   useEffect(() => {
-    // Filter mock data
-    let filtered = [...mockHistory];
-    if (contractId) {
-      filtered = filtered.filter(h => h.contractId === contractId);
-    }
-    setHistory(filtered.slice(0, limit));
+    let cancelled = false;
+    const fetchCompactHistory = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (contractId) params.set('contractId', contractId);
+        params.set('limit', String(limit));
+        const res = await fetch(`/api/approvals/history?${params.toString()}`);
+        if (!res.ok) throw new Error('Failed to fetch');
+        const json = await res.json();
+        if (!cancelled) {
+          setHistory((json.data?.history ?? []) as HistoryEntry[]);
+        }
+      } catch (err) {
+        console.error('[CompactApprovalHistory] fetch error', err);
+      }
+    };
+    fetchCompactHistory();
+    return () => { cancelled = true; };
   }, [contractId, limit]);
 
   return (

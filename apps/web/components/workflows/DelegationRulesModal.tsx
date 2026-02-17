@@ -77,41 +77,7 @@ interface TeamMember {
   role: string;
 }
 
-// Mock team members
-const mockTeamMembers: TeamMember[] = [
-  { id: 'tm1', name: 'Sarah Johnson', email: 'sarah@company.com', role: 'Legal Manager' },
-  { id: 'tm2', name: 'Michael Chen', email: 'michael@company.com', role: 'Finance Director' },
-  { id: 'tm3', name: 'Emily Davis', email: 'emily@company.com', role: 'Procurement Lead' },
-  { id: 'tm4', name: 'James Wilson', email: 'james@company.com', role: 'Contract Analyst' },
-];
-
-// Mock delegation rules
-const mockRules: DelegationRule[] = [
-  {
-    id: 'dr1',
-    name: 'Vacation Coverage',
-    delegateTo: mockTeamMembers[0]!,
-    triggerType: 'date_range',
-    startDate: '2024-03-15',
-    endDate: '2024-03-25',
-    approvalTypes: ['contract', 'amendment', 'renewal'],
-    priority: 'all',
-    isActive: true,
-    notifyOnDelegation: true,
-    createdAt: '2024-01-10',
-  },
-  {
-    id: 'dr2',
-    name: 'High Priority Backup',
-    delegateTo: mockTeamMembers[1]!,
-    triggerType: 'condition',
-    approvalTypes: ['contract', 'termination'],
-    priority: 'high',
-    isActive: false,
-    notifyOnDelegation: true,
-    createdAt: '2024-01-05',
-  },
-];
+// Team members and rules are fetched from the API
 
 interface DelegationRulesModalProps {
   isOpen: boolean;
@@ -119,10 +85,27 @@ interface DelegationRulesModalProps {
 }
 
 export function DelegationRulesModal({ isOpen, onClose }: DelegationRulesModalProps) {
-  const [rules, setRules] = useState<DelegationRule[]>(mockRules);
+  const queryClient = useQueryClient();
+
+  // Fetch delegation rules and team members from API
+  const { data: apiData, isLoading: isLoadingRules } = useQuery({
+    queryKey: ['delegation-rules'],
+    queryFn: async () => {
+      const res = await fetch('/api/workflows/delegation-rules?includeTeamMembers=true');
+      if (!res.ok) throw new Error('Failed to fetch delegation rules');
+      const json = await res.json();
+      return json.data as {
+        rules: DelegationRule[];
+        teamMembers: TeamMember[];
+      };
+    },
+    enabled: isOpen,
+  });
+
+  const rules = apiData?.rules ?? [];
+  const teamMembers = apiData?.teamMembers ?? [];
   const [isAddingRule, setIsAddingRule] = useState(false);
   const [editingRule, setEditingRule] = useState<DelegationRule | null>(null);
-  const queryClient = useQueryClient();
 
   // New rule form state
   const [newRule, setNewRule] = useState<Partial<DelegationRule>>({
@@ -147,25 +130,25 @@ export function DelegationRulesModal({ isOpen, onClose }: DelegationRulesModalPr
     setEditingRule(null);
   };
 
-  // Save rule mutation
+  // Save rule mutation — calls real API
   const saveRuleMutation = useMutation({
     mutationFn: async (rule: Partial<DelegationRule>) => {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return rule;
-    },
-    onSuccess: (rule) => {
-      if (editingRule) {
-        setRules(prev => prev.map(r => r.id === editingRule.id ? { ...r, ...rule } as DelegationRule : r));
-        toast.success('Delegation rule updated');
-      } else {
-        const newDelegationRule: DelegationRule = {
-          ...rule,
-          id: `dr${Date.now()}`,
-          createdAt: new Date().toISOString(),
-        } as DelegationRule;
-        setRules(prev => [...prev, newDelegationRule]);
-        toast.success('Delegation rule created');
+      const isEditing = !!editingRule;
+      const method = isEditing ? 'PATCH' : 'POST';
+      const payload = isEditing ? { id: editingRule!.id, ...rule } : rule;
+      const res = await fetch('/api/workflows/delegation-rules', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error?.message || 'Failed to save');
       }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast.success(editingRule ? 'Delegation rule updated' : 'Delegation rule created');
       resetNewRule();
       queryClient.invalidateQueries({ queryKey: ['delegation-rules'] });
     },
@@ -177,12 +160,13 @@ export function DelegationRulesModal({ isOpen, onClose }: DelegationRulesModalPr
   // Delete rule mutation
   const deleteRuleMutation = useMutation({
     mutationFn: async (ruleId: string) => {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const res = await fetch(`/api/workflows/delegation-rules?id=${ruleId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete');
       return ruleId;
     },
-    onSuccess: (ruleId) => {
-      setRules(prev => prev.filter(r => r.id !== ruleId));
+    onSuccess: () => {
       toast.success('Delegation rule deleted');
+      queryClient.invalidateQueries({ queryKey: ['delegation-rules'] });
     },
     onError: () => {
       toast.error('Failed to delete delegation rule');
@@ -192,12 +176,17 @@ export function DelegationRulesModal({ isOpen, onClose }: DelegationRulesModalPr
   // Toggle rule mutation
   const toggleRuleMutation = useMutation({
     mutationFn: async ({ ruleId, isActive }: { ruleId: string; isActive: boolean }) => {
-      await new Promise(resolve => setTimeout(resolve, 200));
+      const res = await fetch('/api/workflows/delegation-rules', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: ruleId, isActive }),
+      });
+      if (!res.ok) throw new Error('Failed to toggle');
       return { ruleId, isActive };
     },
-    onSuccess: ({ ruleId, isActive }) => {
-      setRules(prev => prev.map(r => r.id === ruleId ? { ...r, isActive } : r));
+    onSuccess: ({ isActive }) => {
       toast.success(isActive ? 'Delegation rule enabled' : 'Delegation rule disabled');
+      queryClient.invalidateQueries({ queryKey: ['delegation-rules'] });
     },
   });
 
@@ -277,7 +266,7 @@ export function DelegationRulesModal({ isOpen, onClose }: DelegationRulesModalPr
                   <Select
                     value={(newRule.delegateTo as TeamMember)?.id || ''}
                     onValueChange={(value) => {
-                      const member = mockTeamMembers.find(m => m.id === value);
+                      const member = teamMembers.find(m => m.id === value);
                       if (member) {
                         setNewRule(prev => ({ ...prev, delegateTo: member }));
                       }
@@ -287,7 +276,7 @@ export function DelegationRulesModal({ isOpen, onClose }: DelegationRulesModalPr
                       <SelectValue placeholder="Select team member" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockTeamMembers.map(member => (
+                      {teamMembers.map(member => (
                         <SelectItem key={member.id} value={member.id}>
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-medium">

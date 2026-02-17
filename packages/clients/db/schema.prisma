@@ -5531,6 +5531,36 @@ model Conversation {
 }
 
 // ============================================
+// Delegation Rules
+// ============================================
+
+/// Delegation rules for approval routing (out-of-office, backup approvers)
+model DelegationRule {
+  id                 String    @id @default(uuid())
+  tenantId           String    @map("tenant_id")
+  userId             String    @map("user_id") // owner of the rule
+  name               String
+  delegateToId       String    @map("delegate_to_id") // user who receives delegated approvals
+  delegateToName     String    @map("delegate_to_name")
+  delegateToEmail    String    @map("delegate_to_email")
+  triggerType        String    @map("trigger_type") // date_range, always, condition
+  startDate          DateTime? @map("start_date")
+  endDate            DateTime? @map("end_date")
+  approvalTypes      String[]  @map("approval_types") // contract, amendment, renewal, termination
+  priority           String    @default("all") // low, medium, high, all
+  isActive           Boolean   @default(true) @map("is_active")
+  notifyOnDelegation Boolean   @default(true) @map("notify_on_delegation")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([tenantId, userId])
+  @@index([isActive])
+  @@map("delegation_rules")
+}
+
+// ============================================
 // Adaptive Learning & Feedback Tables
 // ============================================
 
