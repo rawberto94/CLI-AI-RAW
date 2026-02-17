@@ -5118,7 +5118,7 @@ model ABTest {
   @@map("ab_tests")
 }
 
-/// A/B Test Result - Individual test run results
+/// A/B Test Result - Individual model comparison results (head-to-head A vs B)
 model ABTestResult {
   id     String  @id @default(cuid())
   testId String  @map("test_id")
@@ -5148,7 +5148,7 @@ model ABTestResult {
   @@index([userId])
   @@index([winner])
   @@index([createdAt])
-  @@map("ab_test_results")
+  @@map("ab_test_comparison_results")
 }
 
 // ============================================================================
@@ -5536,50 +5536,159 @@ model Conversation {
 
 /// User feedback log — stores every user correction/rating for learning
 model UserFeedbackLog {
-  id           String   @id @default(cuid())
+  id           String   @id @default(uuid())
   tenantId     String   @map("tenant_id")
   userId       String   @map("user_id")
-  feedbackType String   @map("feedback_type") // artifact_edit, quality_rating, error_report, positive_feedback
+  feedbackType String   @map("feedback_type") // artifact_edit, artifact_regeneration, quality_rating, error_report, positive_feedback
   artifactType String   @map("artifact_type")
-  originalData Json?    @map("original_data") @db.JsonB
+  originalData Json     @map("original_data") @db.JsonB
   editedData   Json?    @map("edited_data") @db.JsonB
   rating       Int? // 1-5
   comment      String?  @db.Text
   timestamp    DateTime @default(now())
+  createdAt    DateTime @default(now()) @map("created_at")
 
   @@index([tenantId])
   @@index([tenantId, artifactType])
   @@index([timestamp])
+  @@index([userId])
   @@map("user_feedback_log")
 }
 
 /// Quality thresholds — adaptive thresholds adjusted by the feedback learner
 model QualityThreshold {
-  id                 String   @id @default(cuid())
-  tenantId           String   @map("tenant_id")
-  artifactType       String   @map("artifact_type")
-  thresholds         Json     @db.JsonB // { overall, completeness, accuracy }
-  previousThresholds Json?    @map("previous_thresholds") @db.JsonB
-  adjustmentReason   String?  @map("adjustment_reason") @db.Text
-  updatedAt          DateTime @default(now()) @map("updated_at")
+  id                  String   @id @default(uuid())
+  tenantId            String   @map("tenant_id")
+  artifactType        String   @map("artifact_type")
+  thresholds          Json     @db.JsonB // { overall, completeness, accuracy, consistency, confidence }
+  previousThresholds  Json?    @map("previous_thresholds") @db.JsonB
+  adjustmentReason    String?  @map("adjustment_reason") @db.Text
+  adjustmentMagnitude Float?   @map("adjustment_magnitude") // 0-0.5
+  updatedAt           DateTime @default(now()) @map("updated_at")
+  createdAt           DateTime @default(now()) @map("created_at")
 
   @@unique([tenantId, artifactType])
   @@index([tenantId])
+  @@index([updatedAt])
   @@map("quality_thresholds")
 }
 
 /// AB test winners — tracks which variant won for each test
 model ABTestWinner {
-  id              String   @id @default(cuid())
-  testName        String   @map("test_name")
-  winnerVariantId String   @map("winner_variant_id")
-  winnerName      String   @map("winner_name")
-  confidence      Float    @default(0)
-  sampleSize      Int      @default(0) @map("sample_size")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @default(now()) @map("updated_at")
+  id                String   @id @default(uuid())
+  testName          String   @map("test_name")
+  winnerVariantId   String   @map("winner_variant_id")
+  winnerVariantName String   @map("winner_variant_name")
+  tStatistic        Float    @map("t_statistic")
+  pValue            Float?   @map("p_value")
+  sampleSize        Int      @default(0) @map("sample_size")
+  avgQualityScore   Float    @default(0) @map("avg_quality_score")
+  avgCost           Float    @default(0) @map("avg_cost")
+  determinedAt      DateTime @default(now()) @map("determined_at")
+  createdAt         DateTime @default(now()) @map("created_at")
 
   @@unique([testName])
-  @@index([testName])
+  @@index([determinedAt])
   @@map("ab_test_winners")
+}
+
+/// Agent A/B test results — per-variant quality tracking (distinct from ABTestResult model comparisons)
+model AgentABTestResult {
+  id             String   @id @default(uuid())
+  testName       String   @map("test_name")
+  tenantId       String   @map("tenant_id")
+  contractId     String?  @map("contract_id")
+  artifactId     String?  @map("artifact_id")
+  variantId      String   @map("variant_id")
+  variantName    String   @map("variant_name")
+  artifactType   String   @map("artifact_type")
+  artifactData   Json     @map("artifact_data") @db.JsonB
+  qualityScore   Float    @map("quality_score")
+  completeness   Float
+  accuracy       Float
+  consistency    Float
+  confidence     Float
+  generationTime Int      @map("generation_time") // ms
+  tokenCount     Int      @map("token_count")
+  cost           Float
+  userAccepted   Boolean? @map("user_accepted")
+  userRating     Int?     @map("user_rating") // 1-5
+  timestamp      DateTime @default(now())
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([testName, timestamp])
+  @@index([tenantId, timestamp])
+  @@index([testName, variantId])
+  @@index([testName, qualityScore])
+  @@map("agent_ab_test_results")
+}
+
+/// Agent performance log — tracks execution quality per specialist agent
+model AgentPerformanceLog {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  contractId     String   @map("contract_id")
+  agentType      String   @map("agent_type") // LEGAL, PRICING, COMPLIANCE, RISK, OPERATIONS
+  artifactType   String   @map("artifact_type")
+  executionTime  Int      @map("execution_time") // ms
+  cost           Float
+  qualityScore   Float?   @map("quality_score")
+  confidence     Float?
+  wonNegotiation Boolean? @map("won_negotiation")
+  timestamp      DateTime @default(now())
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, timestamp])
+  @@index([agentType, timestamp])
+  @@map("agent_performance_log")
+}
+
+/// Risk detection log — tracks proactive risk detections
+model RiskDetectionLog {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  contractId      String    @map("contract_id")
+  riskType        String    @map("risk_type")
+  severity        String // CRITICAL, HIGH, MEDIUM, LOW
+  description     String    @db.Text
+  recommendation  String?   @db.Text
+  affectedSection String?   @map("affected_section")
+  estimatedImpact String?   @map("estimated_impact")
+  estimatedCost   Float?    @map("estimated_cost")
+  detectedAt      DateTime  @default(now()) @map("detected_at")
+  acknowledged    Boolean   @default(false)
+  acknowledgedAt  DateTime? @map("acknowledged_at")
+  acknowledgedBy  String?   @map("acknowledged_by")
+  resolved        Boolean   @default(false)
+  resolvedAt      DateTime? @map("resolved_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId, detectedAt])
+  @@index([contractId, detectedAt])
+  @@index([severity, detectedAt])
+  @@map("risk_detection_log")
+}
+
+/// Intent detection log — tracks detected user intents for goal-oriented reasoning
+model IntentDetectionLog {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  contractId     String   @map("contract_id")
+  userId         String?  @map("user_id")
+  userQuery      String?  @map("user_query") @db.Text
+  userRole       String?  @map("user_role")
+  detectedGoal   String   @map("detected_goal")
+  secondaryGoals String[] @map("secondary_goals")
+  confidence     Float
+  urgency        String? // low, medium, high
+  signals        Json?    @db.JsonB
+  detectedAt     DateTime @default(now()) @map("detected_at")
+  correct        Boolean? // user feedback on detection accuracy
+  userFeedback   String?  @map("user_feedback") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, detectedAt])
+  @@index([detectedGoal, detectedAt])
+  @@index([confidence])
+  @@map("intent_detection_log")
 }

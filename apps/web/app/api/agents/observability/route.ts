@@ -205,19 +205,30 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
     switch (action) {
       case 'create_trace': {
-        // In production, store in database
-        const newTrace: AgentTrace = {
-          id: `trace-${Date.now()}`,
-          ...trace,
-          tenantId,
-          startTime: new Date().toISOString(),
-          status: 'running',
-          steps: [],
-          tokensUsed: 0,
-          estimatedCost: 0 };
+        // Persist trace as an AgentGoal (observability record)
+        const goal = await prisma.agentGoal.create({
+          data: {
+            tenantId,
+            userId: trace?.userId || 'system',
+            type: trace?.agentType || 'custom',
+            title: trace?.goal || 'Agent trace',
+            description: `Agent: ${trace?.agentName || 'unknown'} | Session: ${trace?.sessionId || 'none'}`,
+            status: 'IN_PROGRESS',
+            context: {
+              agentId: trace?.agentId,
+              agentName: trace?.agentName,
+              agentType: trace?.agentType,
+              sessionId: trace?.sessionId,
+              contractId: trace?.contractId,
+              source: 'observability_trace',
+            },
+            contractId: trace?.contractId,
+            startedAt: new Date(),
+          },
+        });
 
         return createSuccessResponse(ctx, { 
-          traceId: newTrace.id,
+          traceId: goal.id,
           message: 'Trace created successfully' 
         });
       }
@@ -227,14 +238,36 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'traceId and step are required', 400);
         }
 
-        // In production, update trace in database
-        const newStep: AgentStep = {
-          id: `step-${Date.now()}`,
-          ...step,
-          timestamp: new Date().toISOString() };
+        // Count existing steps and persist the new step
+        const existingSteps = await prisma.agentGoalStep.count({ where: { goalId: traceId } });
+        const goalStep = await prisma.agentGoalStep.create({
+          data: {
+            goalId: traceId,
+            name: step.content?.substring(0, 200) || `Step ${existingSteps + 1}`,
+            type: step.type || 'action',
+            order: step.stepNumber || existingSteps + 1,
+            status: 'COMPLETED',
+            input: step.toolInput ? step.toolInput : undefined,
+            output: step.toolOutput ? { result: step.toolOutput, confidence: step.confidence } : undefined,
+            duration: step.durationMs,
+            startedAt: new Date(step.timestamp || Date.now()),
+            completedAt: new Date(),
+          },
+        });
+
+        // Update parent goal's token/cost tracking in context
+        if (step.tokens) {
+          await prisma.agentGoal.update({
+            where: { id: traceId },
+            data: {
+              currentStep: existingSteps + 1,
+              totalSteps: existingSteps + 1,
+            },
+          }).catch(() => {}); // best-effort
+        }
 
         return createSuccessResponse(ctx, {
-          stepId: newStep.id,
+          stepId: goalStep.id,
           message: 'Step added successfully' });
       }
 
@@ -243,7 +276,15 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'traceId is required', 400);
         }
 
-        // In production, update trace status in database
+        await prisma.agentGoal.update({
+          where: { id: traceId },
+          data: {
+            status: 'COMPLETED',
+            completedAt: new Date(),
+            progress: 100,
+          },
+        });
+
         return createSuccessResponse(ctx, {
           message: 'Trace completed successfully' });
       }
@@ -255,7 +296,15 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
         const { error: errorMessage } = body;
 
-        // In production, update trace status in database
+        await prisma.agentGoal.update({
+          where: { id: traceId },
+          data: {
+            status: 'FAILED',
+            completedAt: new Date(),
+            error: errorMessage || 'Unknown error',
+          },
+        });
+
         return createSuccessResponse(ctx, {
           message: 'Trace marked as failed',
           error: errorMessage });

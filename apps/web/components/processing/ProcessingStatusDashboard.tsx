@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -77,153 +77,65 @@ export default function ProcessingStatusDashboard() {
   const [selectedJob, setSelectedJob] = useState<ProcessingJob | null>(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'failed'>('all')
+  const [loading, setLoading] = useState(true)
 
-  // Mock data for demonstration
-  useEffect(() => {
-    const mockJobs: ProcessingJob[] = [
-      {
-        id: 'job_001',
-        contractId: 'contract_001',
-        filename: 'service-agreement-2024.pdf',
-        status: 'processing',
-        currentStage: 'financial_analysis',
-        totalProgress: 65,
-        startTime: new Date(Date.now() - 5 * 60 * 1000),
-        estimatedCompletion: new Date(Date.now() + 2 * 60 * 1000),
-        stages: [
-          { id: 'text_extraction', name: 'Text Extraction', status: 'completed', progress: 100 },
-          { id: 'metadata_extraction', name: 'Metadata Extraction', status: 'completed', progress: 100 },
-          { id: 'financial_analysis', name: 'Financial Analysis', status: 'running', progress: 75 },
-          { id: 'risk_assessment', name: 'Risk Assessment', status: 'pending', progress: 0 },
-          { id: 'compliance_check', name: 'Compliance Check', status: 'pending', progress: 0 },
-          { id: 'clause_extraction', name: 'Clause Extraction', status: 'pending', progress: 0 },
-          { id: 'search_indexing', name: 'Search Indexing', status: 'pending', progress: 0 },
-          { id: 'finalization', name: 'Finalization', status: 'pending', progress: 0 }
-        ],
-        metadata: {
-          fileSize: 2048576,
-          uploadedBy: 'john.doe@company.com'
-        }
-      },
-      {
-        id: 'job_002',
-        contractId: 'contract_002',
-        filename: 'purchase-order-Q1.docx',
-        status: 'queued',
-        currentStage: 'text_extraction',
-        totalProgress: 0,
-        startTime: new Date(Date.now() - 1 * 60 * 1000),
-        stages: [
-          { id: 'text_extraction', name: 'Text Extraction', status: 'pending', progress: 0 },
-          { id: 'metadata_extraction', name: 'Metadata Extraction', status: 'pending', progress: 0 },
-          { id: 'financial_analysis', name: 'Financial Analysis', status: 'pending', progress: 0 },
-          { id: 'risk_assessment', name: 'Risk Assessment', status: 'pending', progress: 0 },
-          { id: 'compliance_check', name: 'Compliance Check', status: 'pending', progress: 0 },
-          { id: 'clause_extraction', name: 'Clause Extraction', status: 'pending', progress: 0 },
-          { id: 'search_indexing', name: 'Search Indexing', status: 'pending', progress: 0 },
-          { id: 'finalization', name: 'Finalization', status: 'pending', progress: 0 }
-        ],
-        metadata: {
-          fileSize: 1024000,
-          uploadedBy: 'jane.smith@company.com'
-        }
-      },
-      {
-        id: 'job_003',
-        contractId: 'contract_003',
-        filename: 'employment-contract.pdf',
-        status: 'completed',
-        currentStage: 'finalization',
-        totalProgress: 100,
-        startTime: new Date(Date.now() - 15 * 60 * 1000),
-        stages: [
-          { id: 'text_extraction', name: 'Text Extraction', status: 'completed', progress: 100 },
-          { id: 'metadata_extraction', name: 'Metadata Extraction', status: 'completed', progress: 100 },
-          { id: 'financial_analysis', name: 'Financial Analysis', status: 'completed', progress: 100 },
-          { id: 'risk_assessment', name: 'Risk Assessment', status: 'completed', progress: 100 },
-          { id: 'compliance_check', name: 'Compliance Check', status: 'completed', progress: 100 },
-          { id: 'clause_extraction', name: 'Clause Extraction', status: 'completed', progress: 100 },
-          { id: 'search_indexing', name: 'Search Indexing', status: 'completed', progress: 100 },
-          { id: 'finalization', name: 'Finalization', status: 'completed', progress: 100 }
-        ],
-        metadata: {
-          fileSize: 512000,
-          uploadedBy: 'hr@company.com'
+  const fetchData = useCallback(async () => {
+    try {
+      const [jobsRes, workersRes, metricsRes] = await Promise.all([
+        fetch('/api/processing-status?type=jobs'),
+        fetch('/api/processing-status?type=workers'),
+        fetch('/api/processing-status?type=metrics'),
+      ]);
+
+      if (jobsRes.ok) {
+        const jobsData = await jobsRes.json();
+        if (jobsData.data?.jobs?.length) {
+          setJobs(jobsData.data.jobs.map((j: Record<string, unknown>) => ({
+            ...j,
+            startTime: j.startTime ? new Date(j.startTime as string) : new Date(),
+            estimatedCompletion: j.estimatedCompletion ? new Date(j.estimatedCompletion as string) : undefined,
+          })));
         }
       }
-    ]
 
-    const mockWorkers: WorkerStatus[] = [
-      {
-        id: 'worker_001',
-        name: 'Text Extraction Worker',
-        status: 'active',
-        currentJob: 'job_001',
-        processedJobs: 45,
-        averageProcessingTime: 120000,
-        lastActivity: new Date(),
-        cpuUsage: 75,
-        memoryUsage: 60
-      },
-      {
-        id: 'worker_002',
-        name: 'Financial Analysis Worker',
-        status: 'active',
-        currentJob: 'job_001',
-        processedJobs: 38,
-        averageProcessingTime: 180000,
-        lastActivity: new Date(),
-        cpuUsage: 85,
-        memoryUsage: 70
-      },
-      {
-        id: 'worker_003',
-        name: 'Risk Assessment Worker',
-        status: 'idle',
-        processedJobs: 42,
-        averageProcessingTime: 150000,
-        lastActivity: new Date(Date.now() - 2 * 60 * 1000),
-        cpuUsage: 15,
-        memoryUsage: 25
-      },
-      {
-        id: 'worker_004',
-        name: 'Compliance Worker',
-        status: 'idle',
-        processedJobs: 35,
-        averageProcessingTime: 200000,
-        lastActivity: new Date(Date.now() - 5 * 60 * 1000),
-        cpuUsage: 10,
-        memoryUsage: 20
+      if (workersRes.ok) {
+        const workersData = await workersRes.json();
+        if (workersData.data?.workers?.length) {
+          setWorkers(workersData.data.workers.map((w: Record<string, unknown>) => ({
+            ...w,
+            lastActivity: w.lastActivity ? new Date(w.lastActivity as string) : new Date(),
+          })));
+        }
       }
-    ]
 
-    const mockMetrics: SystemMetrics = {
-      totalJobs: 156,
-      activeJobs: 1,
-      completedJobs: 142,
-      failedJobs: 13,
-      averageProcessingTime: 165000,
-      throughput: 8.5,
-      queueDepth: 1,
-      systemLoad: 45
+      if (metricsRes.ok) {
+        const metricsData = await metricsRes.json();
+        if (metricsData.data) {
+          setMetrics(metricsData.data);
+        }
+      }
+    } catch {
+      // Silently handle fetch errors — dashboard shows empty state
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    setJobs(mockJobs)
-    setWorkers(mockWorkers)
-    setMetrics(mockMetrics)
-  }, [])
+  // Initial fetch
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Auto-refresh functionality
   useEffect(() => {
     if (!autoRefresh) return
 
     const interval = setInterval(() => {
-      // In a real implementation, this would fetch fresh data from the API
+      fetchData();
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [autoRefresh])
+  }, [autoRefresh, fetchData])
 
   const getStatusIcon = (status: string) => {
     switch (status) {

@@ -304,7 +304,7 @@ export class ABTestingEngine {
           AVG(generation_time) as avg_time,
           SUM(CASE WHEN user_accepted = true THEN 1 ELSE 0 END)::float / 
             NULLIF(SUM(CASE WHEN user_accepted IS NOT NULL THEN 1 ELSE 0 END), 0) as acceptance_rate
-        FROM ab_test_results
+        FROM agent_ab_test_results
         WHERE test_name = ${testName}
           AND timestamp > NOW() - INTERVAL '30 days'
         GROUP BY variant_id, variant_name
@@ -350,7 +350,7 @@ export class ABTestingEngine {
           variant_id,
           AVG(quality_score) as avg_score,
           COUNT(*) as sample_count
-        FROM ab_test_results
+        FROM agent_ab_test_results
         WHERE test_name = ${testName}
           AND timestamp > NOW() - INTERVAL '30 days'
         GROUP BY variant_id
@@ -423,7 +423,7 @@ export class ABTestingEngine {
       if (!variant) return;
 
       await prisma.$executeRaw`
-        INSERT INTO ab_test_results (
+        INSERT INTO agent_ab_test_results (
           test_name,
           tenant_id,
           variant_id,
