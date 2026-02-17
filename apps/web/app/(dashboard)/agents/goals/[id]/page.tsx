@@ -25,6 +25,7 @@ import {
   Ban,
   Edit3,
   MessageSquare,
+  WifiOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +34,20 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAgentSSE } from '@/hooks/useAgentSSE';
+import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
 
 interface GoalStep {
   id: string;
@@ -105,6 +120,7 @@ export default function GoalDetailPage() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackAction, setFeedbackAction] = useState<'reject' | 'modify'>('reject');
   const [feedback, setFeedback] = useState('');
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
 
   const fetchGoal = useCallback(async () => {
     try {
@@ -122,50 +138,18 @@ export default function GoalDetailPage() {
     }
   }, [goalId]);
 
+  // Real-time SSE via shared hook
+  const { isConnected: sseConnected, isReconnectExhausted, reconnect: sseReconnect } = useAgentSSE({
+    onEvent: (_eventType, data) => {
+      if (data?.goalId === goalId) fetchGoal();
+    },
+  });
+
   useEffect(() => {
     if (goalId) fetchGoal();
-
-    // Live SSE subscription for real-time updates on this goal
-    let es: EventSource | null = null;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let reconnectAttempts = 0;
-    const MAX_RECONNECT = 5;
-
-    const connectSSE = () => {
-      try {
-        es = new EventSource('/api/agents/sse');
-        const goalEvents = ['goal_approved', 'goal_rejected', 'goal_updated', 'goal_completed', 'goal_failed'];
-        for (const eventType of goalEvents) {
-          es.addEventListener(eventType, (e) => {
-            try {
-              const data = JSON.parse((e as MessageEvent).data);
-              if (data.goalId === goalId) fetchGoal();
-            } catch { /* ignore */ }
-          });
-        }
-        es.addEventListener('connected', () => { reconnectAttempts = 0; });
-        es.onerror = () => {
-          es?.close();
-          es = null;
-          if (reconnectAttempts < MAX_RECONNECT) {
-            reconnectAttempts++;
-            reconnectTimer = setTimeout(connectSSE, Math.min(5000 * reconnectAttempts, 30000));
-          }
-        };
-      } catch { /* SSE unavailable */ }
-    };
-
-    connectSSE();
-
-    // Polling fallback
-    const interval = setInterval(fetchGoal, 10000);
-
-    return () => {
-      clearInterval(interval);
-      es?.close();
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-    };
-  }, [goalId, fetchGoal]);
+    const interval = setInterval(fetchGoal, sseConnected ? 60000 : 30000);
+    return () => clearInterval(interval);
+  }, [goalId, fetchGoal, sseConnected]);
 
   // --- HITL Actions ---
   const handleApprove = async () => {
@@ -237,8 +221,16 @@ export default function GoalDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="space-y-6 max-w-4xl mx-auto">
+        <Skeleton className="h-4 w-40" />
+        <div>
+          <Skeleton className="h-7 w-64 mb-2" />
+          <Skeleton className="h-4 w-96 mb-2" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <Skeleton className="h-20 w-full rounded-lg" />
+        <Skeleton className="h-32 w-full rounded-lg" />
+        <Skeleton className="h-48 w-full rounded-lg" />
       </div>
     );
   }
@@ -263,27 +255,44 @@ export default function GoalDetailPage() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1 text-sm text-muted-foreground" aria-label="Breadcrumb">
+        <Link href="/agents" className="hover:text-foreground transition-colors">Agents</Link>
+        <ChevronRight className="h-3 w-3" />
+        <span className="text-foreground font-medium truncate max-w-[300px]">{goal.title}</span>
+      </nav>
+
+      {/* SSE Connection Warning */}
+      {isReconnectExhausted && (
+        <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg" role="alert">
+          <WifiOff className="h-5 w-5 text-amber-600 flex-shrink-0" />
+          <span className="text-sm text-amber-800 dark:text-amber-200">
+            Real-time connection lost. Data may be stale.
+          </span>
+          <Button variant="outline" size="sm" onClick={sseReconnect} className="ml-auto">
+            Reconnect
+          </Button>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="flex items-start gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{goal.title}</h1>
-            <Badge className={cn(statusCfg.color)}>
-              <StatusIcon className="h-3 w-3 mr-1" />
-              {statusCfg.label}
-            </Badge>
-          </div>
-          {goal.description && (
-            <p className="text-muted-foreground mt-1">{goal.description}</p>
-          )}
-          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-            <span>Type: <strong className="capitalize">{goal.type.replace('_', ' ')}</strong></span>
-            <span>Priority: <strong>{goal.priority}</strong></span>
-            <span>Created: <strong>{new Date(goal.createdAt).toLocaleString()}</strong></span>
-          </div>
+      <div>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">{goal.title}</h1>
+          <Badge className={cn(statusCfg.color)}>
+            <StatusIcon className="h-3 w-3 mr-1" />
+            {statusCfg.label}
+          </Badge>
+        </div>
+        {goal.description && (
+          <p className="text-muted-foreground mt-1">{goal.description}</p>
+        )}
+        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+          <span>Type: <strong className="capitalize">{goal.type.replace('_', ' ')}</strong></span>
+          <span>Priority: <strong>{goal.priority}</strong></span>
+          <span title={new Date(goal.createdAt).toLocaleString()}>
+            Created: <strong>{formatDistanceToNow(new Date(goal.createdAt), { addSuffix: true })}</strong>
+          </span>
         </div>
       </div>
 
@@ -299,13 +308,30 @@ export default function GoalDetailPage() {
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  onClick={handleApprove}
+                  onClick={() => setShowApproveConfirm(true)}
                   disabled={!!actionLoading}
                   className="bg-green-600 hover:bg-green-700 text-white"
+                  aria-label="Approve this goal"
                 >
                   {actionLoading === 'approve' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
                   Approve
                 </Button>
+                <AlertDialog open={showApproveConfirm} onOpenChange={setShowApproveConfirm}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Approve this goal?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        The agent will begin executing this goal autonomously. You can still cancel it later.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => { handleApprove(); setShowApproveConfirm(false); }} className="bg-green-600 hover:bg-green-700">
+                        Approve
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 <Button
                   size="sm"
                   variant="destructive"
@@ -395,18 +421,24 @@ export default function GoalDetailPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">Created</p>
-              <p className="font-medium">{new Date(goal.createdAt).toLocaleString()}</p>
+              <p className="font-medium" title={new Date(goal.createdAt).toLocaleString()}>
+                {formatDistanceToNow(new Date(goal.createdAt), { addSuffix: true })}
+              </p>
             </div>
             {goal.startedAt && (
               <div>
                 <p className="text-muted-foreground">Started</p>
-                <p className="font-medium">{new Date(goal.startedAt).toLocaleString()}</p>
+                <p className="font-medium" title={new Date(goal.startedAt).toLocaleString()}>
+                  {formatDistanceToNow(new Date(goal.startedAt), { addSuffix: true })}
+                </p>
               </div>
             )}
             {goal.completedAt && (
               <div>
                 <p className="text-muted-foreground">Completed</p>
-                <p className="font-medium">{new Date(goal.completedAt).toLocaleString()}</p>
+                <p className="font-medium" title={new Date(goal.completedAt).toLocaleString()}>
+                  {formatDistanceToNow(new Date(goal.completedAt), { addSuffix: true })}
+                </p>
               </div>
             )}
             {goal.approvedBy && (

@@ -36,7 +36,9 @@ import {
   Loader2,
   MoreVertical,
   History,
-  Brain
+  Brain,
+  WifiOff,
+  ExternalLink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription as _CardDescription, CardHeader as _CardHeader, CardTitle as _CardTitle } from '@/components/ui/card';
@@ -68,6 +70,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAgentSSE } from '@/hooks/useAgentSSE';
+import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
 
 // ============================================================================
 // TYPES
@@ -233,6 +249,7 @@ const GoalCard: React.FC<{
   onViewDetails: (goal: AgentGoal) => void;
 }> = ({ goal, onCancel, onViewDetails }) => {
   const [expanded, setExpanded] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const router = useRouter();
   
   const isActive = ['planning', 'executing', 'awaiting_approval'].includes(goal.status);
@@ -292,13 +309,15 @@ const GoalCard: React.FC<{
               variant="ghost"
               size="sm"
               onClick={() => setExpanded(!expanded)}
+              aria-label={expanded ? 'Collapse details' : 'Expand details'}
+              aria-expanded={expanded}
             >
               {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             </Button>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" aria-label="Goal actions">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -309,7 +328,7 @@ const GoalCard: React.FC<{
                 </DropdownMenuItem>
                 {isActive && (
                   <DropdownMenuItem 
-                    onClick={() => onCancel(goal.id)}
+                    onClick={() => setShowCancelConfirm(true)}
                     className="text-red-600"
                   >
                     <XCircle className="h-4 w-4 mr-2" />
@@ -318,6 +337,23 @@ const GoalCard: React.FC<{
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel this goal?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will stop all in-progress work. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Keep Running</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => onCancel(goal.id)} className="bg-red-600 hover:bg-red-700">
+                    Cancel Goal
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
         
@@ -377,9 +413,13 @@ const GoalCard: React.FC<{
       </div>
       
       <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-t text-xs text-gray-500 dark:text-slate-400 flex items-center justify-between">
-        <span>Created: {new Date(goal.createdAt).toLocaleString()}</span>
+        <span title={new Date(goal.createdAt).toLocaleString()}>
+          Created {formatDistanceToNow(new Date(goal.createdAt), { addSuffix: true })}
+        </span>
         {goal.completedAt && (
-          <span>Completed: {new Date(goal.completedAt).toLocaleString()}</span>
+          <span title={new Date(goal.completedAt).toLocaleString()}>
+            Completed {formatDistanceToNow(new Date(goal.completedAt), { addSuffix: true })}
+          </span>
         )}
       </div>
     </motion.div>
@@ -427,7 +467,9 @@ const TriggerCard: React.FC<{
           {trigger.triggerCount} executions
         </span>
         {trigger.lastTriggered && (
-          <span>Last: {new Date(trigger.lastTriggered).toLocaleDateString()}</span>
+          <span title={new Date(trigger.lastTriggered).toLocaleString()}>
+            Last: {formatDistanceToNow(new Date(trigger.lastTriggered), { addSuffix: true })}
+          </span>
         )}
       </div>
     </div>
@@ -676,6 +718,7 @@ const CreateTriggerDialog: React.FC<{
 // ============================================================================
 
 export const AutonomousAgentDashboard: React.FC = () => {
+  const router = useRouter();
   const [status, setStatus] = useState<OrchestratorStatus | null>(null);
   const [goals, setGoals] = useState<AgentGoal[]>([]);
   const [triggers, setTriggers] = useState<AgentTrigger[]>([]);
@@ -686,6 +729,7 @@ export const AutonomousAgentDashboard: React.FC = () => {
   const [createTriggerDialogOpen, setCreateTriggerDialogOpen] = useState(false);
   const [_selectedGoal, setSelectedGoal] = useState<AgentGoal | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [confirmStopOpen, setConfirmStopOpen] = useState(false);
   
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -716,66 +760,18 @@ export const AutonomousAgentDashboard: React.FC = () => {
     }
   }, []);
   
+  // Real-time SSE via shared hook
+  const { isConnected: sseConnected, isReconnectExhausted, reconnect: sseReconnect } = useAgentSSE({
+    onEvent: () => { fetchData(); },
+  });
+
   useEffect(() => {
     fetchData();
     
-    // Poll for updates as fallback
-    const interval = setInterval(fetchData, 5000);
-
-    // SSE for real-time HITL + goal events via the proper SSE endpoint
-    let es: EventSource | null = null;
-    let sseReconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let sseReconnectAttempts = 0;
-    const SSE_MAX_RECONNECT = 5;
-
-    const connectSSE = () => {
-      try {
-        es = new EventSource('/api/agents/sse');
-
-        es.addEventListener('connected', () => {
-          sseReconnectAttempts = 0; // Reset on successful connection
-        });
-
-        // Listen for all relevant HITL and goal lifecycle events
-        const sseEventTypes = [
-          'approval_required',
-          'approval_escalated',
-          'goal_approved',
-          'goal_rejected',
-          'goal_updated',
-          'goal_completed',
-          'goal_failed',
-          'pending_approvals',
-        ];
-        for (const eventType of sseEventTypes) {
-          es.addEventListener(eventType, () => {
-            fetchData();
-          });
-        }
-
-        es.onerror = () => {
-          es?.close();
-          es = null;
-          // Auto-reconnect with exponential backoff
-          if (sseReconnectAttempts < SSE_MAX_RECONNECT) {
-            sseReconnectAttempts++;
-            const delay = Math.min(5000 * sseReconnectAttempts, 30000);
-            sseReconnectTimer = setTimeout(connectSSE, delay);
-          }
-        };
-      } catch {
-        // SSE not available — polling covers it
-      }
-    };
-
-    connectSSE();
-
-    return () => {
-      clearInterval(interval);
-      es?.close();
-      if (sseReconnectTimer) clearTimeout(sseReconnectTimer);
-    };
-  }, [fetchData]);
+    // Reduce polling frequency when SSE is active
+    const interval = setInterval(fetchData, sseConnected ? 60000 : 30000);
+    return () => clearInterval(interval);
+  }, [fetchData, sseConnected]);
   
   // Handlers
   const handleToggleOrchestrator = async () => {
@@ -863,8 +859,34 @@ export const AutonomousAgentDashboard: React.FC = () => {
   
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Skeleton className="w-12 h-12 rounded-full" />
+          <div>
+            <Skeleton className="h-6 w-48 mb-2" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-9 w-9 rounded-lg" />
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-1" />
+                    <Skeleton className="h-7 w-10" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <Skeleton key={i} className="h-24 w-full rounded-lg" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -906,7 +928,8 @@ export const AutonomousAgentDashboard: React.FC = () => {
           
           <Button
             variant={status?.isRunning ? 'destructive' : 'default'}
-            onClick={handleToggleOrchestrator}
+            onClick={status?.isRunning ? () => setConfirmStopOpen(true) : handleToggleOrchestrator}
+            aria-label={status?.isRunning ? 'Stop orchestrator' : 'Start orchestrator'}
           >
             {status?.isRunning ? (
               <>
@@ -920,9 +943,26 @@ export const AutonomousAgentDashboard: React.FC = () => {
               </>
             )}
           </Button>
+
+          <AlertDialog open={confirmStopOpen} onOpenChange={setConfirmStopOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Stop the orchestrator?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will pause all autonomous agent processing. Active goals will remain in their current state.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep Running</AlertDialogCancel>
+                <AlertDialogAction onClick={() => { handleToggleOrchestrator(); setConfirmStopOpen(false); }} className="bg-red-600 hover:bg-red-700">
+                  Stop Orchestrator
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           
           <div className="relative">
-            <Button variant="ghost" size="icon" className="relative" onClick={() => setShowNotifications(!showNotifications)}>
+            <Button variant="ghost" size="icon" className="relative" onClick={() => setShowNotifications(!showNotifications)} aria-label={`Notifications${unreadNotifications.length > 0 ? ` (${unreadNotifications.length} unread)` : ''}`}>
               <Bell className="h-5 w-5" />
               {unreadNotifications.length > 0 && (
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
@@ -940,7 +980,13 @@ export const AutonomousAgentDashboard: React.FC = () => {
                   <div className="p-4 text-center text-sm text-slate-400">No notifications</div>
                 ) : (
                   notifications.slice(0, 10).map((n) => (
-                    <div key={n.id} className={`p-3 border-b border-slate-100 dark:border-slate-700 text-sm ${n.read ? 'opacity-60' : ''}`}>
+                    <div 
+                      key={n.id} 
+                      className={`p-3 border-b border-slate-100 dark:border-slate-700 text-sm ${n.read ? 'opacity-60' : ''} ${n.goalId ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50' : ''}`}
+                      onClick={() => n.goalId && router.push(`/agents/goals/${n.goalId}`)}
+                      role={n.goalId ? 'link' : undefined}
+                      aria-label={n.goalId ? `View goal: ${n.title}` : undefined}
+                    >
                       <div className="font-medium text-slate-800 dark:text-white">{n.title}</div>
                       <div className="text-xs text-slate-500 mt-0.5">{n.message}</div>
                     </div>
@@ -952,6 +998,30 @@ export const AutonomousAgentDashboard: React.FC = () => {
         </div>
       </div>
       
+      {/* SSE Connection Warning */}
+      {isReconnectExhausted && (
+        <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg" role="alert">
+          <WifiOff className="h-5 w-5 text-amber-600 flex-shrink-0" />
+          <span className="text-sm text-amber-800 dark:text-amber-200">
+            Real-time connection lost. Data may be stale.
+          </span>
+          <Button variant="outline" size="sm" onClick={sseReconnect} className="ml-auto">
+            Reconnect
+          </Button>
+        </div>
+      )}
+
+      {/* Approval Queue Link */}
+      {activeGoals.filter(g => g.status === 'awaiting_approval').length > 0 && (
+        <Link href="/agents/approvals" className="flex items-center gap-3 p-3 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors">
+          <Shield className="h-5 w-5 text-violet-600 flex-shrink-0" />
+          <span className="text-sm font-medium text-violet-800 dark:text-violet-200">
+            {activeGoals.filter(g => g.status === 'awaiting_approval').length} goal(s) awaiting your approval
+          </span>
+          <ExternalLink className="h-4 w-4 text-violet-400 ml-auto" />
+        </Link>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>

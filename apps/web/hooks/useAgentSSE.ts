@@ -38,12 +38,16 @@ export interface UseAgentSSEOptions {
   onConnect?: () => void;
   /** Called on disconnect */
   onDisconnect?: () => void;
+  /** Called when all reconnect attempts are exhausted */
+  onReconnectExhausted?: () => void;
   /** Enable the connection (default true) — set false to pause */
   enabled?: boolean;
 }
 
 export interface UseAgentSSEReturn {
   isConnected: boolean;
+  /** True when all reconnect attempts have been exhausted */
+  isReconnectExhausted: boolean;
   reconnect: () => void;
   disconnect: () => void;
 }
@@ -77,6 +81,7 @@ export function useAgentSSE(options: UseAgentSSEOptions = {}): UseAgentSSEReturn
   const { enabled = true } = options;
 
   const [isConnected, setIsConnected] = useState(false);
+  const [isReconnectExhausted, setIsReconnectExhausted] = useState(false);
   const esRef = useRef<EventSource | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
@@ -86,9 +91,11 @@ export function useAgentSSE(options: UseAgentSSEOptions = {}): UseAgentSSEReturn
   const onEventRef = useRef(options.onEvent);
   const onConnectRef = useRef(options.onConnect);
   const onDisconnectRef = useRef(options.onDisconnect);
+  const onReconnectExhaustedRef = useRef(options.onReconnectExhausted);
   onEventRef.current = options.onEvent;
   onConnectRef.current = options.onConnect;
   onDisconnectRef.current = options.onDisconnect;
+  onReconnectExhaustedRef.current = options.onReconnectExhausted;
 
   const cleanup = useCallback(() => {
     if (reconnectTimerRef.current) {
@@ -122,6 +129,7 @@ export function useAgentSSE(options: UseAgentSSEOptions = {}): UseAgentSSEReturn
 
           if (eventType === 'connected') {
             setIsConnected(true);
+            setIsReconnectExhausted(false);
             reconnectAttemptsRef.current = 0;
             onConnectRef.current?.();
           }
@@ -146,6 +154,9 @@ export function useAgentSSE(options: UseAgentSSEOptions = {}): UseAgentSSEReturn
           reconnectTimerRef.current = setTimeout(() => {
             if (shouldConnectRef.current) connect();
           }, delay);
+        } else if (shouldConnectRef.current) {
+          setIsReconnectExhausted(true);
+          onReconnectExhaustedRef.current?.();
         }
       };
     } catch {
@@ -156,6 +167,7 @@ export function useAgentSSE(options: UseAgentSSEOptions = {}): UseAgentSSEReturn
   const reconnect = useCallback(() => {
     shouldConnectRef.current = true;
     reconnectAttemptsRef.current = 0;
+    setIsReconnectExhausted(false);
     connect();
   }, [connect]);
 
@@ -179,5 +191,5 @@ export function useAgentSSE(options: UseAgentSSEOptions = {}): UseAgentSSEReturn
     };
   }, [enabled, connect, cleanup]);
 
-  return { isConnected, reconnect, disconnect };
+  return { isConnected, isReconnectExhausted, reconnect, disconnect };
 }
