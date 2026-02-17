@@ -64,7 +64,7 @@ export function EnhancedAppShell({ children }: EnhancedAppShellProps) {
   const commandPalette = useCommandPalette();
   const onboarding = useOnboardingTour();
   const [showNotifications, setShowNotifications] = React.useState(false);
-  const [notifications, setNotifications] = React.useState<Notification[]>(sampleNotifications);
+  const [notifications, setNotifications] = React.useState<Notification[]>([]);
 
   const handleMarkAsRead = (id: string) => {
     setNotifications(prev => 

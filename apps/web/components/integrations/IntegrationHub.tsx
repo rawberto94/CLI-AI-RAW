@@ -321,10 +321,10 @@ export function IntegrationHub() {
   const { useRealData } = useDataMode();
   const { toast } = useToast();
   
-  const [integrations, setIntegrations] = useState<Integration[]>(mockIntegrations);
-  const [syncLogs, setSyncLogs] = useState<SyncLog[]>(mockSyncLogs);
-  const [webhooks, setWebhooks] = useState<Webhook[]>(mockWebhooks);
-  const [loading, setLoading] = useState(false);
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
+  const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   const [activeTab, setActiveTab] = useState<'integrations' | 'logs' | 'webhooks' | 'api' | 'oauth'>('integrations');
@@ -335,9 +335,7 @@ export function IntegrationHub() {
   // Fetch integrations from API
   const fetchIntegrations = useCallback(async () => {
     if (!useRealData) {
-      setIntegrations(mockIntegrations);
-      setSyncLogs(mockSyncLogs);
-      setWebhooks(mockWebhooks);
+      setLoading(false);
       return;
     }
 
@@ -376,13 +374,10 @@ export function IntegrationHub() {
           },
         }));
         
-        setIntegrations(mapped.length > 0 ? mapped : mockIntegrations);
-      } else {
-        setIntegrations(mockIntegrations);
+        setIntegrations(mapped);
       }
     } catch {
       setError('Failed to load integrations');
-      setIntegrations(mockIntegrations);
     } finally {
       setLoading(false);
     }

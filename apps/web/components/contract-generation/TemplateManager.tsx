@@ -679,14 +679,10 @@ export function TemplateManager() {
       try {
         if (useRealData) {
           const data = await fetchTemplates(searchQuery, selectedCategory);
-          setTemplates(data.length > 0 ? data : mockTemplates);
-        } else {
-          // Use mock data
-          setTemplates(mockTemplates);
+          setTemplates(data);
         }
       } catch {
-        setError('Failed to load templates. Using sample data.');
-        setTemplates(mockTemplates);
+        setError('Failed to load templates.');
       } finally {
         setLoading(false);
       }

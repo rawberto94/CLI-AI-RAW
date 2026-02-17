@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   BarChart3, 
@@ -101,62 +101,26 @@ export interface TrendDataPoint {
   pending: number;
 }
 
-// Mock data generator
-function generateMockMetrics(): ApprovalMetrics {
-  return {
-    totalApprovals: 1247,
-    pendingCount: 23,
-    approvedCount: 1089,
-    rejectedCount: 135,
-    averageProcessingTime: 18.5,
-    averageProcessingTimeTrend: -12.3,
-    approvalRate: 87.4,
-    approvalRateTrend: 2.1,
-    slaComplianceRate: 92.3,
-    slaComplianceTrend: 5.6,
-    escalationRate: 8.2,
-    escalationTrend: -3.4
-  };
-}
+// Default analytics data (replace with API fetch in production)
+const DEFAULT_METRICS: ApprovalMetrics = {
+    totalApprovals: 0,
+    pendingCount: 0,
+    approvedCount: 0,
+    rejectedCount: 0,
+    averageProcessingTime: 0,
+    averageProcessingTimeTrend: 0,
+    approvalRate: 0,
+    approvalRateTrend: 0,
+    slaComplianceRate: 0,
+    slaComplianceTrend: 0,
+    escalationRate: 0,
+    escalationTrend: 0
+};
 
-function generateMockProcessingTime(): ProcessingTimeData[] {
-  return [
-    { label: 'Department Review', value: 4.2, benchmark: 4 },
-    { label: 'Legal Review', value: 8.1, benchmark: 6 },
-    { label: 'Finance Approval', value: 3.8, benchmark: 4 },
-    { label: 'Executive Sign-off', value: 2.4, benchmark: 2 }
-  ];
-}
-
-function generateMockBottlenecks(): BottleneckData[] {
-  return [
-    { step: 'Legal Review', role: 'Legal Team', avgTime: 8.1, count: 156, percentageOfTotal: 43.7 },
-    { step: 'Department Review', role: 'Dept. Manager', avgTime: 4.2, count: 89, percentageOfTotal: 22.6 },
-    { step: 'Finance Approval', role: 'Finance Director', avgTime: 3.8, count: 67, percentageOfTotal: 20.5 },
-    { step: 'Executive Sign-off', role: 'Executive', avgTime: 2.4, count: 32, percentageOfTotal: 13.2 }
-  ];
-}
-
-function generateMockApprovers(): ApproverPerformance[] {
-  return [
-    { id: '1', name: 'John Smith', role: 'Legal Manager', approvalCount: 234, avgResponseTime: 4.2, approvalRate: 92, slaCompliance: 96 },
-    { id: '2', name: 'Sarah Johnson', role: 'Finance Director', approvalCount: 189, avgResponseTime: 2.8, approvalRate: 88, slaCompliance: 98 },
-    { id: '3', name: 'Mike Chen', role: 'Dept. Manager', approvalCount: 156, avgResponseTime: 5.1, approvalRate: 94, slaCompliance: 89 },
-    { id: '4', name: 'Emily Davis', role: 'Compliance Officer', approvalCount: 142, avgResponseTime: 6.3, approvalRate: 85, slaCompliance: 82 },
-    { id: '5', name: 'Robert Wilson', role: 'Executive', approvalCount: 98, avgResponseTime: 1.5, approvalRate: 91, slaCompliance: 99 }
-  ];
-}
-
-function generateMockTrends(): TrendDataPoint[] {
-  return [
-    { date: 'Jan', approved: 78, rejected: 12, pending: 8 },
-    { date: 'Feb', approved: 92, rejected: 15, pending: 6 },
-    { date: 'Mar', approved: 105, rejected: 11, pending: 12 },
-    { date: 'Apr', approved: 88, rejected: 14, pending: 9 },
-    { date: 'May', approved: 112, rejected: 8, pending: 5 },
-    { date: 'Jun', approved: 125, rejected: 10, pending: 4 }
-  ];
-}
+const DEFAULT_PROCESSING_TIME: ProcessingTimeData[] = [];
+const DEFAULT_BOTTLENECKS: BottleneckData[] = [];
+const DEFAULT_APPROVERS: ApproverPerformance[] = [];
+const DEFAULT_TRENDS: TrendDataPoint[] = [];
 
 // Stat Card Component
 interface StatCardProps {
@@ -512,17 +476,30 @@ export function ApprovalAnalyticsDashboard({ className }: ApprovalAnalyticsDashb
   const [timeRange, setTimeRange] = useState('30d');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // In production, these would come from API calls
-  const metrics = generateMockMetrics();
-  const processingTimeData = generateMockProcessingTime();
-  const bottleneckData = generateMockBottlenecks();
-  const approverData = generateMockApprovers();
-  const trendData = generateMockTrends();
+  // In production, replace with API fetch using useEffect
+  const [metrics, setMetrics] = useState<ApprovalMetrics>(DEFAULT_METRICS);
+  const [processingTimeData, setProcessingTimeData] = useState<ProcessingTimeData[]>(DEFAULT_PROCESSING_TIME);
+  const [bottleneckData, setBottleneckData] = useState<BottleneckData[]>(DEFAULT_BOTTLENECKS);
+  const [approverData, setApproverData] = useState<ApproverPerformance[]>(DEFAULT_APPROVERS);
+  const [trendData, setTrendData] = useState<TrendDataPoint[]>(DEFAULT_TRENDS);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsRefreshing(false);
+    try {
+      const res = await fetch(`/api/approvals/analytics?range=${timeRange}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.metrics) setMetrics(data.metrics);
+        if (data.processingTime) setProcessingTimeData(data.processingTime);
+        if (data.bottlenecks) setBottleneckData(data.bottlenecks);
+        if (data.approvers) setApproverData(data.approvers);
+        if (data.trends) setTrendData(data.trends);
+      }
+    } catch {
+      // Keep current state on error
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   return (
@@ -670,7 +647,14 @@ interface ApprovalMetricsWidgetProps {
 }
 
 export function ApprovalMetricsWidget({ className }: ApprovalMetricsWidgetProps) {
-  const metrics = generateMockMetrics();
+  const [metrics, setMetrics] = useState<ApprovalMetrics>(DEFAULT_METRICS);
+
+  useEffect(() => {
+    fetch('/api/approvals/analytics?range=30d')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data?.metrics) setMetrics(data.metrics); })
+      .catch(() => {});
+  }, []);
 
   return (
     <Card className={className}>

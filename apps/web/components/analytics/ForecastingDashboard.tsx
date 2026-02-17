@@ -382,19 +382,16 @@ export const ForecastingDashboard: React.FC = () => {
   
   const [selectedScenario, setSelectedScenario] = useState<string>('s1');
   const [timeRange, setTimeRange] = useState<'6m' | '12m' | '24m'>('12m');
-  const [forecastData, setForecastData] = useState<ForecastData[]>(mockForecastData);
-  const [scenarios, setScenarios] = useState<CostScenario[]>(mockScenarios);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>(mockOpportunities);
-  const [supplierSpend, setSupplierSpend] = useState<SupplierSpend[]>(mockSupplierSpend);
-  const [loading, setLoading] = useState(false);
+  const [forecastData, setForecastData] = useState<ForecastData[]>([]);
+  const [scenarios, setScenarios] = useState<CostScenario[]>([]);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [supplierSpend, setSupplierSpend] = useState<SupplierSpend[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAnalyticsData = useCallback(async () => {
     if (!useRealData) {
-      setForecastData(mockForecastData);
-      setScenarios(mockScenarios);
-      setOpportunities(mockOpportunities);
-      setSupplierSpend(mockSupplierSpend);
+      setLoading(false);
       return;
     }
 

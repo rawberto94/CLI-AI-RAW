@@ -160,8 +160,7 @@ export const ApiKeysManager = memo(function ApiKeysManager({
       {
         onSuccess: (response) => {
           // Show the secret to user (only time it's visible)
-          const mockKey = `sk_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
-          setNewKeySecret(response?.apiKey?.key || mockKey);
+          setNewKeySecret(response?.apiKey?.key || 'key_generation_failed');
         },
       }
     );

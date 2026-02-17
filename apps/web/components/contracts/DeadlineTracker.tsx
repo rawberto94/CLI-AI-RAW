@@ -229,10 +229,10 @@ export const DeadlineTracker = memo(function DeadlineTracker({
           createdAt: new Date(d.createdAt),
         })));
       } else {
-        setDeadlines(generateMockDeadlines());
+        setDeadlines([]);
       }
     } catch {
-      setDeadlines(generateMockDeadlines());
+      setDeadlines([]);
     } finally {
       setLoading(false);
     }

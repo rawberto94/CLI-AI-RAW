@@ -292,10 +292,10 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
   const [isLoading, setIsLoading] = useState(!!supplierId);
   const [portalData, setPortalData] = useState<{
     supplier: typeof supplierInfo;
-    contracts: typeof mockContracts;
-    tasks: typeof mockTasks;
-    messages: typeof mockMessages;
-    documents: typeof mockDocuments;
+    contracts: PortalContract[];
+    tasks: Task[];
+    messages: Message[];
+    documents: Document[];
   } | null>(null);
 
   // Fetch real data if supplierId is provided
@@ -339,8 +339,8 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
             description: t.title,
             status: 'pending',
           })),
-          messages: mockMessages, // Use mock for now
-          documents: mockDocuments, // Use mock for now
+          messages: data.data.messages || [],
+          documents: data.data.documents || [],
         });
       }
     } catch (err) {
@@ -362,10 +362,10 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
     relationship: '3 years',
   };
 
-  const tasks = portalData?.tasks || mockTasks;
-  const messages = portalData?.messages || mockMessages;
-  const contracts = portalData?.contracts || mockContracts;
-  const documents = portalData?.documents || mockDocuments;
+  const tasks = portalData?.tasks || [];
+  const messages = portalData?.messages || [];
+  const contracts = portalData?.contracts || [];
+  const documents = portalData?.documents || [];
 
   const pendingActions = tasks.filter(t => t.status !== 'completed').length;
   const unreadMessages = messages.filter(m => !m.read && m.fromRole === 'buyer').length;
@@ -533,7 +533,7 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
                   <h3 className="font-semibold text-gray-900">Urgent Actions Required</h3>
                 </div>
                 <div className="divide-y divide-gray-100">
-                  {mockTasks
+                  {tasks
                     .filter(t => t.priority === 'critical' || t.priority === 'high')
                     .map((task) => (
                       <div key={task.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">

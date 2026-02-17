@@ -111,37 +111,6 @@ const statusConfig: Record<string, { color: string; icon: React.ElementType }> =
   suspended: { color: 'text-red-600', icon: Ban },
 };
 
-// Mock data generator
-function generateMockUsers(): User[] {
-  const names = [
-    'Alice Johnson', 'Bob Smith', 'Carol Williams', 'David Brown',
-    'Emma Davis', 'Frank Miller', 'Grace Wilson', 'Henry Taylor'
-  ];
-  const departments = ['Legal', 'Finance', 'Operations', 'IT', 'Sales'];
-  const roles: User['role'][] = ['admin', 'manager', 'analyst', 'viewer'];
-  const statuses: User['status'][] = ['active', 'active', 'active', 'pending', 'inactive', 'suspended'];
-
-  return names.map((name, i) => {
-    const role = roles[i % roles.length] as User['role'];
-    const status = statuses[Math.floor(Math.random() * statuses.length)] as User['status'];
-    const department = departments[Math.floor(Math.random() * departments.length)];
-    return {
-      id: `usr_${i + 1}`,
-      email: name.toLowerCase().replace(' ', '.') + '@example.com',
-      name,
-      avatar: undefined,
-      role,
-      status,
-      createdAt: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000),
-      lastLoginAt: Math.random() > 0.2 
-        ? new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000)
-        : undefined,
-      department,
-      permissions: roleConfig[role]!.permissions,
-    };
-  });
-}
-
 export const UserManagement = memo(function UserManagement({
   className,
 }: UserManagementProps) {

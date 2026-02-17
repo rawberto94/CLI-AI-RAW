@@ -6,9 +6,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuthApiHandler, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   try {
+    const { tenantId } = ctx;
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
@@ -17,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     const { prisma } = await import('@/lib/prisma');
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { tenantId };
     if (field) where.field = field;
     if (correctionType) where.correctionType = correctionType;
 
@@ -78,4 +80,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

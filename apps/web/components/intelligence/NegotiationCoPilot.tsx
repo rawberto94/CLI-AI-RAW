@@ -455,9 +455,8 @@ export const NegotiationCoPilot: React.FC = () => {
   // Fetch redline changes from API or use mock data based on mode
   useEffect(() => {
     async function fetchRedlines() {
-      // If in demo mode, always use mock data
+      // If in demo mode, skip fetch
       if (isMockData) {
-        setRedlines(mockRedlines);
         setLoading(false);
         return;
       }
@@ -467,7 +466,7 @@ export const NegotiationCoPilot: React.FC = () => {
         const json = await res.json();
         if (json.success && json.data?.redlines?.length > 0) {
           // Map API response to ensure field compatibility
-          const mapped: RedlineChange[] = json.data.redlines.map((r: any) => ({
+          const mapped: RedlineChange[] = json.data.redlines.map((r: Record<string, unknown>) => ({
             id: r.id,
             type: r.type || r.changeType || 'modification',
             originalText: r.originalText || '',
@@ -486,12 +485,9 @@ export const NegotiationCoPilot: React.FC = () => {
             status: r.status || 'pending',
           }));
           setRedlines(mapped);
-        } else {
-          setRedlines(mockRedlines);
         }
       } catch {
-        toast.error('Failed to load redline analysis — showing sample data');
-        setRedlines(mockRedlines);
+        toast.error('Failed to load redline analysis');
       } finally {
         setLoading(false);
       }

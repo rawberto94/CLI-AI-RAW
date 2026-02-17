@@ -102,51 +102,6 @@ export function SmartSearch() {
         })
         const data = await response.json()
         setResults(data.results)
-      } else {
-        // Mock results
-        await new Promise(resolve => setTimeout(resolve, 800))
-        
-        const mockResults: SearchResult[] = [
-          {
-            id: '1',
-            title: 'Software Development Services Agreement',
-            type: 'contract',
-            snippet: `...found matching terms for "${q}" in the contract scope and deliverables section...`,
-            metadata: {
-              supplier: 'TechCorp Inc',
-              value: 1250000,
-              date: '2024-01-15',
-              status: 'Active'
-            },
-            relevance: 0.95
-          },
-          {
-            id: '2',
-            title: 'Rate Card - Senior Developers',
-            type: 'artifact',
-            snippet: `...rate information matching "${q}" with competitive pricing and terms...`,
-            metadata: {
-              supplier: 'DevStaff Solutions',
-              value: 850000,
-              date: '2024-03-20',
-              status: 'Active'
-            },
-            relevance: 0.87
-          },
-          {
-            id: '3',
-            title: 'Acme Corporation',
-            type: 'supplier',
-            snippet: `...supplier profile matching "${q}" with 15 active contracts and excellent ratings...`,
-            metadata: {
-              value: 3200000,
-              status: 'Preferred'
-            },
-            relevance: 0.82
-          }
-        ]
-
-        setResults(mockResults)
       }
     } catch {
       // Search error

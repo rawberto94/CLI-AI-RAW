@@ -159,10 +159,10 @@ export const BackupRestore = memo(function BackupRestore({
           createdAt: new Date(b.createdAt),
         })));
       } else {
-        setBackups(generateMockBackups());
+        setBackups([]);
       }
     } catch {
-      setBackups(generateMockBackups());
+      setBackups([]);
     } finally {
       setLoading(false);
     }

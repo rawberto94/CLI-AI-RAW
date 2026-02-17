@@ -68,7 +68,7 @@ interface ESignatureWorkflowProps {
 // Mock data for UI demonstration
 // ============================================================================
 
-function createMockEnvelope(contractId: string): SignatureEnvelope {
+function createBlankEnvelope(contractId: string): SignatureEnvelope {
   return {
     id: 'env_' + Date.now().toString(36),
     contractId,
@@ -107,7 +107,7 @@ const SIGNER_STATUS: Record<string, { label: string; color: string }> = {
 // ============================================================================
 
 export default function ESignatureWorkflow({ contractId, contractTitle, className }: ESignatureWorkflowProps) {
-  const [envelope, setEnvelope] = useState<SignatureEnvelope>(createMockEnvelope(contractId));
+  const [envelope, setEnvelope] = useState<SignatureEnvelope>(createBlankEnvelope(contractId));
   const [activeTab, setActiveTab] = useState('setup');
   const [sending, setSending] = useState(false);
   const [loadingEnvelope, setLoadingEnvelope] = useState(true);

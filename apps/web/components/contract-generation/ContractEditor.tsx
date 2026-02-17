@@ -644,8 +644,8 @@ export function ContractEditor({ draft, onSave, onSubmit }: EditorProps) {
   const { toast } = useToast();
   
   const [clauses, setClauses] = useState<DraftClause[]>([]);
-  const [libraryClauses, setLibraryClauses] = useState<LibraryClause[]>(mockLibraryClauses);
-  const [variables, setVariables] = useState<TemplateVariable[]>(mockVariables);
+  const [libraryClauses, setLibraryClauses] = useState<LibraryClause[]>([]);
+  const [variables, setVariables] = useState<TemplateVariable[]>([]);
   const [selectedClauseId, setSelectedClauseId] = useState<string | null>(null);
   const [editingClauseId, setEditingClauseId] = useState<string | null>(null);
   const [variableValues, setVariableValues] = useState<Record<string, unknown>>({});
@@ -668,14 +668,10 @@ export function ContractEditor({ draft, onSave, onSubmit }: EditorProps) {
             title: 'Clauses loaded',
             description: `${data.clauses.length} clause(s) loaded from database`,
           });
-        } else {
-          setClauses(mockClauses);
         }
-      } else {
-        setClauses(mockClauses);
       }
     } catch {
-      setClauses(mockClauses);
+      // Empty state on error
     } finally {
       setLoading(false);
     }

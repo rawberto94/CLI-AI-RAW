@@ -104,7 +104,7 @@ function detectResultType(text: string): SearchResult['type'] {
 // Mock Data
 // ============================================================================
 
-const mockSuggestions: SearchSuggestion[] = [
+const defaultSuggestions: SearchSuggestion[] = [
   { id: 's1', query: 'Contracts expiring in next 90 days', category: 'popular', icon: Calendar },
   { id: 's2', query: 'High-risk liability clauses', category: 'popular', icon: AlertTriangle },
   { id: 's3', query: 'Auto-renewal terms', category: 'popular', icon: RotateCcw },
@@ -424,7 +424,7 @@ export const UniversalRAGSearch: React.FC = () => {
       const json = await res.json();
       
       if (json.success && json.results?.length > 0) {
-        results = json.results.map((r: any, idx: number) => ({
+        results = json.results.map((r: Record<string, unknown>, idx: number) => ({
           id: `result-${idx}`,
           type: detectResultType(r.text),
           title: r.contractName || 'Contract Match',
@@ -580,7 +580,7 @@ export const UniversalRAGSearch: React.FC = () => {
                   Popular Searches
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {mockSuggestions
+                  {defaultSuggestions
                     .filter(s => s.category === 'popular')
                     .map(suggestion => {
                       const Icon = suggestion.icon;
@@ -608,7 +608,7 @@ export const UniversalRAGSearch: React.FC = () => {
                   Recent
                 </h4>
                 <div className="space-y-2">
-                  {mockSuggestions
+                  {defaultSuggestions
                     .filter(s => s.category === 'recent')
                     .map(suggestion => {
                       const Icon = suggestion.icon;
@@ -636,7 +636,7 @@ export const UniversalRAGSearch: React.FC = () => {
                   Suggested for You
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                  {mockSuggestions
+                  {defaultSuggestions
                     .filter(s => s.category === 'suggested')
                     .map(suggestion => (
                       <button

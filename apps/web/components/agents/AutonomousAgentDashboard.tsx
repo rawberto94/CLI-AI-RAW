@@ -763,8 +763,8 @@ export const AutonomousAgentDashboard: React.FC = () => {
       if (!res.ok) throw new Error(`Failed to ${action.replace('_', ' ')}`);
       toast.success(status?.isRunning ? 'Orchestrator stopped' : 'Orchestrator started');
       fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to toggle orchestrator');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err) || 'Failed to toggle orchestrator');
     }
   };
   
@@ -778,8 +778,8 @@ export const AutonomousAgentDashboard: React.FC = () => {
       if (!res.ok) throw new Error('Failed to create goal');
       toast.success('Goal created successfully');
       fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to create goal');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err) || 'Failed to create goal');
     }
   };
   
@@ -793,8 +793,8 @@ export const AutonomousAgentDashboard: React.FC = () => {
       if (!res.ok) throw new Error('Failed to cancel goal');
       toast.success('Goal cancelled');
       fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to cancel goal');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err) || 'Failed to cancel goal');
     }
   };
   
@@ -808,8 +808,8 @@ export const AutonomousAgentDashboard: React.FC = () => {
       if (!res.ok) throw new Error('Failed to toggle trigger');
       toast.success(enabled ? 'Trigger enabled' : 'Trigger disabled');
       fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to toggle trigger');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err) || 'Failed to toggle trigger');
     }
   };
 
@@ -823,8 +823,8 @@ export const AutonomousAgentDashboard: React.FC = () => {
       if (!res.ok) throw new Error('Failed to create trigger');
       toast.success('Trigger created');
       fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to create trigger');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : String(err) || 'Failed to create trigger');
     }
   };
   

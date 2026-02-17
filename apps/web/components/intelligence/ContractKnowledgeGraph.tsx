@@ -452,7 +452,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
         if (cancelled) return;
         if (json.success && json.data) {
           // Map API response to component types
-          const apiNodes: GraphNode[] = (json.data.nodes || []).map((n: any) => ({
+          const apiNodes: GraphNode[] = (json.data.nodes || []).map((n: Record<string, unknown>) => ({
             id: n.id,
             type: n.type || 'contract',
             label: n.label,
@@ -462,7 +462,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
             status: n.metadata?.risk === 'CRITICAL' ? 'critical' : n.metadata?.risk === 'HIGH' ? 'warning' : 'active',
           }));
           // Build connections from edges
-          const apiEdges: GraphEdge[] = (json.data.edges || []).map((e: any, i: number) => ({
+          const apiEdges: GraphEdge[] = (json.data.edges || []).map((e: Record<string, unknown>, i: number) => ({
             id: e.id || `e-${i}`,
             source: e.source,
             target: e.target,
@@ -489,8 +489,8 @@ export const ContractKnowledgeGraph: React.FC = () => {
   }, [isMockData]);
 
   // Choose data source
-  const activeNodes = isMockData ? mockNodes : (liveNodes.length > 0 ? liveNodes : mockNodes);
-  const activeEdges = isMockData ? mockEdges : (liveEdges.length > 0 ? liveEdges : mockEdges);
+  const activeNodes = liveNodes;
+  const activeEdges = liveEdges;
 
   // Filter nodes based on visibility and search
   const filteredNodes = useMemo(() => {
@@ -539,7 +539,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
   // Check if node is in highlighted cluster
   // Build clusters dynamically from active data or fall back to mock
   const activeClusters = useMemo(() => {
-    if (isMockData || liveNodes.length === 0) return mockClusters;
+    if (liveNodes.length === 0) return [] as GraphCluster[];
     // Auto-generate clusters from supplier groups
     const supplierClusters: GraphCluster[] = [];
     const suppliers = activeNodes.filter(n => n.type === 'supplier');
@@ -557,8 +557,8 @@ export const ContractKnowledgeGraph: React.FC = () => {
         });
       }
     });
-    return supplierClusters.length > 0 ? supplierClusters : mockClusters;
-  }, [isMockData, liveNodes, activeNodes, activeEdges]);
+    return supplierClusters;
+  }, [liveNodes, activeNodes, activeEdges]);
 
   const isInHighlightedCluster = useCallback((nodeId: string) => {
     if (!highlightCluster) return true;

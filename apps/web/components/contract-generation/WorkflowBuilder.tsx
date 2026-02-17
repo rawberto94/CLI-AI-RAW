@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play,
@@ -736,9 +736,28 @@ function WorkflowEditor({ workflow: initialWorkflow, onSave, onCancel }: Workflo
 // ====================
 
 export function WorkflowBuilder() {
-  const [workflows, setWorkflows] = useState<WorkflowDefinition[]>(mockWorkflows);
+  const [workflows, setWorkflows] = useState<WorkflowDefinition[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowDefinition | null>(null);
   const [showNewWorkflow, setShowNewWorkflow] = useState(false);
+
+  // Fetch workflows from API
+  useEffect(() => {
+    async function fetchWorkflows() {
+      try {
+        const res = await fetch('/api/workflows');
+        const data = await res.json();
+        if (data.success && data.data?.length) {
+          setWorkflows(data.data);
+        }
+      } catch {
+        // Empty state on error
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchWorkflows();
+  }, []);
 
   const handleCreateNew = useCallback(() => {
     const newWorkflow: WorkflowDefinition = {

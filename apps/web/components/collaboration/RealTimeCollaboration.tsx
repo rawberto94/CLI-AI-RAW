@@ -75,38 +75,21 @@ export function RealTimeCollaboration({ contractId, tenantId }: RealTimeCollabor
         }
       }
       
-      // Mock WebSocket for development/demo
-      const mockSocket = {
+      // Fallback stub socket when WebSocket is unavailable
+      const stubSocket = {
         send: () => {},
         close: () => {},
         addEventListener: () => {},
         removeEventListener: () => {},
       } as any;
 
-      setWs(mockSocket);
-      setConnected(true);
+      setWs(stubSocket);
+      setConnected(false);
 
-      // Simulate presence updates
-      const presenceInterval = setInterval(() => {
-        setPresence(generateMockPresence());
-      }, 10000);
-
-      // Simulate activity feed
-      const activityInterval = setInterval(() => {
-        setActivities((prev) => {
-          const newActivity = generateMockActivity();
-          return [newActivity, ...prev].slice(0, 20); // Keep last 20
-        });
-      }, 15000);
-
-      // Initial data
-      setPresence(generateMockPresence());
-      setActivities(generateMockActivities(10));
+      // No simulated data — presence and activities stay empty until real WS connects
 
       return () => {
-        clearInterval(presenceInterval);
-        clearInterval(activityInterval);
-        mockSocket.close();
+        stubSocket.close();
       };
     };
 

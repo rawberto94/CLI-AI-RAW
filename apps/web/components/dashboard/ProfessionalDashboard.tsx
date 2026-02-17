@@ -754,20 +754,20 @@ export function ProfessionalDashboard() {
   const { metrics, chartData, recentContracts, expirations, loading } = useDashboardData();
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('30d');
   
-  // Demo data for new widgets (replace with API calls in production)
-  const [favoriteContracts, setFavoriteContracts] = useState<any[]>([]);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  // Widget data (fetched from API)
+  const [favoriteContracts, setFavoriteContracts] = useState<Record<string, unknown>[]>([]);
+  const [recentActivity, setRecentActivity] = useState<Record<string, unknown>[]>([]);
   // Fetch renewals from API
-  const [upcomingRenewals, setUpcomingRenewals] = useState<any[]>([]);
-  const [aiInsights, setAiInsights] = useState<any[]>([]);
-  const [aiMetrics, setAiMetrics] = useState<any>(null);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [upcomingRenewals, setUpcomingRenewals] = useState<Record<string, unknown>[]>([]);
+  const [aiInsights, setAiInsights] = useState<Record<string, unknown>[]>([]);
+  const [aiMetrics, setAiMetrics] = useState<Record<string, unknown> | null>(null);
+  const [notifications, setNotifications] = useState<Record<string, unknown>[]>([]);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   
   // New widget data
-  const [savingsData, setSavingsData] = useState<any>(null);
-  const [teamData, setTeamData] = useState<{ activities: any[]; members: any[] }>({ activities: [], members: [] });
-  const [integrations, setIntegrations] = useState<any[]>([]);
+  const [savingsData, setSavingsData] = useState<Record<string, unknown> | null>(null);
+  const [teamData, setTeamData] = useState<{ activities: Record<string, unknown>[]; members: Record<string, unknown>[] }>({ activities: [], members: [] });
+  const [integrations, setIntegrations] = useState<Record<string, unknown>[]>([]);
 
   // Fetch all widget data from APIs
   useEffect(() => {

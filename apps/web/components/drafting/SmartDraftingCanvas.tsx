@@ -93,13 +93,13 @@ interface Version {
   label?: string;
 }
 
-const mockCollaborators: Collaborator[] = [
+const collaborators: Collaborator[] = [
   { id: '1', name: 'Sarah Chen', color: '#3B82F6', isActive: true, lastSeen: 'now' },
   { id: '2', name: 'Mike Johnson', color: '#10B981', isActive: true, lastSeen: 'now' },
   { id: '3', name: 'Lisa Park', color: '#8B5CF6', isActive: false, lastSeen: '5m ago' },
 ];
 
-const mockComments: Comment[] = [
+const comments: Comment[] = [
   {
     id: 'c1',
     author: 'Sarah Chen',
@@ -122,7 +122,7 @@ const mockComments: Comment[] = [
   },
 ];
 
-const mockSuggestions: Suggestion[] = [
+const suggestions: Suggestion[] = [
   {
     id: 's1',
     type: 'risk',
@@ -155,7 +155,7 @@ const mockSuggestions: Suggestion[] = [
   },
 ];
 
-const mockVersions: Version[] = [
+const versions: Version[] = [
   { id: 'v1', version: '3.2', author: 'Sarah Chen', timestamp: '10 minutes ago', changes: 5, label: 'Current' },
   { id: 'v2', version: '3.1', author: 'Mike Johnson', timestamp: '2 hours ago', changes: 12 },
   { id: 'v3', version: '3.0', author: 'Lisa Park', timestamp: '1 day ago', changes: 28, label: 'Legal Review' },
@@ -163,6 +163,30 @@ const mockVersions: Version[] = [
 ];
 
 export function SmartDraftingCanvas() {
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [versions, setVersions] = useState<Version[]>([]);
+
+  // Fetch collaboration data
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await fetch('/api/drafts/current/collaboration');
+        const data = await res.json();
+        if (data.success) {
+          if (data.collaborators) setCollaborators(data.collaborators);
+          if (data.comments) setComments(data.comments);
+          if (data.suggestions) setSuggestions(data.suggestions);
+          if (data.versions) setVersions(data.versions);
+        }
+      } catch {
+        // Empty state on error
+      }
+    }
+    fetchData();
+  }, []);
+
   const [content, setContent] = useState(`MASTER SERVICES AGREEMENT
 
 This Master Services Agreement ("Agreement") is entered into as of [DATE] by and between:
@@ -279,7 +303,7 @@ and
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex -space-x-2">
-                    {mockCollaborators.slice(0, 3).map((collab) => (
+                    {collaborators.slice(0, 3).map((collab) => (
                       <div
                         key={collab.id}
                         className="h-7 w-7 rounded-full flex items-center justify-center text-white text-xs font-medium ring-2 ring-white"
@@ -290,7 +314,7 @@ and
                       </div>
                     ))}
                   </div>
-                  <span className="text-sm text-gray-600">{mockCollaborators.length}</span>
+                  <span className="text-sm text-gray-600">{collaborators.length}</span>
                   <ChevronDown className="h-4 w-4 text-gray-400" />
                 </button>
 
@@ -305,7 +329,7 @@ and
                       <div className="px-3 py-2 border-b border-gray-100">
                         <p className="text-sm font-medium text-gray-700">Active Collaborators</p>
                       </div>
-                      {mockCollaborators.map((collab) => (
+                      {collaborators.map((collab) => (
                         <div key={collab.id} className="px-3 py-2 flex items-center gap-3 hover:bg-gray-50">
                           <div className="relative">
                             <div
@@ -544,8 +568,8 @@ and
           {/* Tab Navigation */}
           <div className="flex border-b border-gray-200">
             {[
-              { id: 'suggestions', icon: Lightbulb, label: 'AI Suggestions', count: mockSuggestions.length },
-              { id: 'comments', icon: MessageSquare, label: 'Comments', count: mockComments.filter(c => !c.resolved).length },
+              { id: 'suggestions', icon: Lightbulb, label: 'AI Suggestions', count: suggestions.length },
+              { id: 'comments', icon: MessageSquare, label: 'Comments', count: comments.filter(c => !c.resolved).length },
               { id: 'versions', icon: History, label: 'History', count: null },
             ].map((tab) => (
               <button
@@ -579,7 +603,7 @@ and
                     Apply All Safe
                   </button>
                 </div>
-                {mockSuggestions.map((suggestion) => (
+                {suggestions.map((suggestion) => (
                   <motion.div
                     key={suggestion.id}
                     initial={{ opacity: 0, x: 20 }}
@@ -661,7 +685,7 @@ and
                 </div>
 
                 {/* Comments List */}
-                {mockComments.map((comment) => (
+                {comments.map((comment) => (
                   <div
                     key={comment.id}
                     className={`p-3 rounded-lg border ${
@@ -719,7 +743,7 @@ and
                     Compare
                   </button>
                 </div>
-                {mockVersions.map((version, index) => (
+                {versions.map((version, index) => (
                   <div
                     key={version.id}
                     className={`p-3 rounded-lg border cursor-pointer transition-colors ${

@@ -50,7 +50,7 @@ interface AgentRecommendation {
   confidence: number;
   potentialValue?: number;
   effort: 'low' | 'medium' | 'high';
-  actions: any[];
+  actions: Record<string, unknown>[];
 }
 
 interface AgentStatusProps {

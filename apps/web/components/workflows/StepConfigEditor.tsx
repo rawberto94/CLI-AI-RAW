@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,20 +83,9 @@ interface StepConfigEditorProps {
   onSave: (step: StepConfig) => void;
 }
 
-// Sample data for assignees
-const SAMPLE_USERS = [
-  { id: 'user-1', name: 'John Smith', role: 'Legal Counsel', email: 'john@company.com' },
-  { id: 'user-2', name: 'Sarah Johnson', role: 'Finance Manager', email: 'sarah@company.com' },
-  { id: 'user-3', name: 'Mike Chen', role: 'Procurement Lead', email: 'mike@company.com' },
-  { id: 'user-4', name: 'Lisa Wang', role: 'VP Operations', email: 'lisa@company.com' },
-];
-
-const SAMPLE_ROLES = [
-  { id: 'role-legal', name: 'Legal Team', members: 5 },
-  { id: 'role-finance', name: 'Finance Team', members: 8 },
-  { id: 'role-procurement', name: 'Procurement Team', members: 12 },
-  { id: 'role-executive', name: 'Executive Team', members: 3 },
-];
+// Assignee data (fetched from API)
+interface AssigneeUser { id: string; name: string; role: string; email: string }
+interface AssigneeRole { id: string; name: string; members: number }
 
 const CONDITION_FIELDS = [
   { value: 'contractValue', label: 'Contract Value', type: 'number' },
@@ -108,6 +97,17 @@ const CONDITION_FIELDS = [
 export function StepConfigEditor({ step, open, onClose, onSave }: StepConfigEditorProps) {
   const [config, setConfig] = useState<StepConfig>(step);
   const [activeTab, setActiveTab] = useState('general');
+  const [availableUsers, setAvailableUsers] = useState<AssigneeUser[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<AssigneeRole[]>([]);
+
+  useEffect(() => {
+    fetch('/api/users?limit=50').then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.users) setAvailableUsers(data.users); })
+      .catch(() => {});
+    fetch('/api/roles').then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.roles) setAvailableRoles(data.roles); })
+      .catch(() => {});
+  }, []);
 
   const updateConfig = (updates: Partial<StepConfig>) => {
     setConfig({ ...config, ...updates });
@@ -204,7 +204,7 @@ export function StepConfigEditor({ step, open, onClose, onSave }: StepConfigEdit
                   <Label htmlFor="stepType">Step Type</Label>
                   <Select
                     value={config.stepType}
-                    onValueChange={(value: any) => updateConfig({ stepType: value })}
+                    onValueChange={(value: string) => updateConfig({ stepType: value as StepConfig['stepType'] })}
                   >
                     <SelectTrigger id="stepType">
                       <SelectValue />
@@ -223,7 +223,7 @@ export function StepConfigEditor({ step, open, onClose, onSave }: StepConfigEdit
                     <Label htmlFor="approvalType">Approval Type</Label>
                     <Select
                       value={config.approvalType || 'any'}
-                      onValueChange={(value: any) => updateConfig({ approvalType: value })}
+                      onValueChange={(value: string) => updateConfig({ approvalType: value as StepConfig['approvalType'] })}
                     >
                       <SelectTrigger id="approvalType">
                         <SelectValue />
@@ -334,7 +334,7 @@ export function StepConfigEditor({ step, open, onClose, onSave }: StepConfigEdit
                 <Label>Assignee Type</Label>
                 <Select
                   value={config.assigneeType}
-                  onValueChange={(value: any) => updateConfig({ assigneeType: value, assignees: [] })}
+                  onValueChange={(value: string) => updateConfig({ assigneeType: value as StepConfig['assigneeType'], assignees: [] })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -353,7 +353,7 @@ export function StepConfigEditor({ step, open, onClose, onSave }: StepConfigEdit
                 <div className="space-y-3">
                   <Label>Select Users</Label>
                   <div className="grid grid-cols-2 gap-2 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg max-h-96 overflow-y-auto">
-                    {SAMPLE_USERS.map((user) => (
+                    {availableUsers.map((user) => (
                       <button
                         key={user.id}
                         onClick={() => toggleAssignee(user.id)}
@@ -380,7 +380,7 @@ export function StepConfigEditor({ step, open, onClose, onSave }: StepConfigEdit
                 <div className="space-y-3">
                   <Label>Select Roles</Label>
                   <div className="grid grid-cols-2 gap-2 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
-                    {SAMPLE_ROLES.map((role) => (
+                    {availableRoles.map((role) => (
                       <button
                         key={role.id}
                         onClick={() => toggleAssignee(role.id)}
@@ -626,16 +626,16 @@ export function StepConfigEditor({ step, open, onClose, onSave }: StepConfigEdit
                     <button
                       key={channel.value}
                       onClick={() => {
-                        const channels = config.notifications.channels.includes(channel.value as any)
+                        const channels = config.notifications.channels.includes(channel.value as string)
                           ? config.notifications.channels.filter((c) => c !== channel.value)
-                          : [...config.notifications.channels, channel.value as any];
+                          : [...config.notifications.channels, channel.value as string];
                         updateConfig({
                           notifications: { ...config.notifications, channels },
                         });
                       }}
                       className={cn(
                         'flex items-center gap-2 p-3 rounded-lg border-2 transition-all',
-                        config.notifications.channels.includes(channel.value as any)
+                        config.notifications.channels.includes(channel.value as string)
                           ? 'bg-violet-50 border-indigo-300'
                           : 'bg-white border-slate-200 hover:border-slate-300'
                       )}

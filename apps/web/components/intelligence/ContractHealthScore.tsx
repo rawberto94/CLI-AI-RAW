@@ -890,10 +890,8 @@ export const ContractHealthScore: React.FC = () => {
   // Fetch health data from API or use mock data based on mode
   useEffect(() => {
     async function fetchHealthData() {
-      // If in demo mode, always use mock data
+      // If in demo mode, skip fetch
       if (isMockData) {
-        setHealthData(mockHealthData);
-        setSelectedContract(mockHealthData[0] ?? null);
         setLoading(false);
         return;
       }
@@ -902,7 +900,7 @@ export const ContractHealthScore: React.FC = () => {
         const res = await fetch('/api/intelligence/health');
         const json = await res.json();
         if (json.success && json.data?.contracts?.length > 0) {
-          const mapped = json.data.contracts.map((item: any) => ({
+          const mapped = json.data.contracts.map((item: Record<string, unknown>) => ({
             contractId: item.contractId || item.id,
             contractName: item.contractName || item.name || 'Unknown Contract',
             supplierName: item.supplierName || item.counterparty || item.vendor || 'Unknown',
@@ -917,14 +915,9 @@ export const ContractHealthScore: React.FC = () => {
           }));
           setHealthData(mapped);
           setSelectedContract(mapped[0] ?? null);
-        } else {
-          setHealthData(mockHealthData);
-          setSelectedContract(mockHealthData[0] ?? null);
         }
       } catch {
-        toast.error('Failed to load health scores — showing sample data');
-        setHealthData(mockHealthData);
-        setSelectedContract(mockHealthData[0] ?? null);
+        toast.error('Failed to load health scores');
       } finally {
         setLoading(false);
       }

@@ -129,7 +129,7 @@ export function CommentsThread({
   onCommentAdded,
   className 
 }: CommentsThreadProps) {
-  const [comments, setComments] = useState<Comment[]>(mockComments);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isExpanded, setIsExpanded] = useState(true);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);

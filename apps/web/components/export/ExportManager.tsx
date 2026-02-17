@@ -122,13 +122,7 @@ export const ExportManager = memo(function ExportManager({
         toast.success(`Export complete: ${data.count} contracts`);
         onExportComplete?.(data.downloadUrl);
       } else {
-        // Mock export
-        await new Promise(r => setTimeout(r, 500));
-        const mockUrl = `/exports/contracts-${Date.now()}.${config.format}`;
-        const mockCount = contractIds?.length || 50;
-        setExportResult({ url: mockUrl, count: mockCount });
-        toast.success(`Export complete: ${mockCount} contracts`);
-        onExportComplete?.(mockUrl);
+        toast.error('Export service unavailable');
       }
 
       setProgress(100);

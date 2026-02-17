@@ -19,6 +19,8 @@ import { prisma } from '@/lib/prisma';
 // In-memory subscriber tracking
 // =============================================================================
 
+const MAX_SUBSCRIBERS = 1000; // M5: prevent memory exhaustion
+
 interface SSESubscriber {
   tenantId: string;
   controller: ReadableStreamDefaultController;
@@ -61,17 +63,23 @@ export function getSSESubscriberCount(): number {
 // =============================================================================
 
 export async function GET(request: NextRequest): Promise<Response> {
-  // Quick auth check: extract tenantId from cookie/header
-  // In production, use the same session extraction as withAuthApiHandler
-  let tenantId = 'system';
-  try {
-    const cookie = request.cookies.get('tenantId');
-    if (cookie?.value) tenantId = cookie.value;
-    // Also check header (for API clients)
-    const headerTenant = request.headers.get('x-tenant-id');
-    if (headerTenant) tenantId = headerTenant;
-  } catch {
-    // Default to 'system'
+  // C1: Defense-in-depth auth — require x-user-id header (injected by edge middleware)
+  const userId = request.headers.get('x-user-id');
+  if (!userId) {
+    return new Response(JSON.stringify({ error: 'Authentication required' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const tenantId = request.headers.get('x-tenant-id') || 'demo';
+
+  // M5: Rate limit — reject if at capacity
+  if (subscribers.size >= MAX_SUBSCRIBERS) {
+    return new Response(JSON.stringify({ error: 'Too many active connections' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const subscriberId = `sse-${++subscriberIdCounter}`;

@@ -106,7 +106,7 @@ interface AgentStep {
   durationMs: number;
   toolId?: string;
   toolInput?: Record<string, any>;
-  toolOutput?: any;
+  toolOutput?: Record<string, unknown>;
   confidence?: number;
   tokens?: number;
 }
@@ -154,7 +154,7 @@ interface _ToolUsageEvent {
   success: boolean;
   durationMs: number;
   input: Record<string, any>;
-  output?: any;
+  output?: Record<string, unknown>;
   error?: string;
 }
 
@@ -191,7 +191,7 @@ const MetricCard = memo(function MetricCard({
   title: string;
   value: string | number;
   subValue?: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   trend?: number;
   className?: string;
 }) {
