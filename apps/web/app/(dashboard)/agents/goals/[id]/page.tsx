@@ -6,7 +6,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
@@ -22,6 +22,9 @@ import {
   Brain,
   Zap,
   Shield,
+  Ban,
+  Edit3,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Textarea } from '@/components/ui/textarea';
 
 interface GoalStep {
   id: string;
@@ -97,25 +101,130 @@ export default function GoalDetailPage() {
   const [goal, setGoal] = useState<GoalDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackAction, setFeedbackAction] = useState<'reject' | 'modify'>('reject');
+  const [feedback, setFeedback] = useState('');
+
+  const fetchGoal = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/agents/goals/${goalId}`);
+      const json = await res.json();
+      if (json.success) {
+        setGoal(json.data);
+      } else {
+        toast.error(json.error || 'Goal not found');
+      }
+    } catch {
+      toast.error('Failed to load goal');
+    } finally {
+      setLoading(false);
+    }
+  }, [goalId]);
 
   useEffect(() => {
-    const fetchGoal = async () => {
-      try {
-        const res = await fetch(`/api/agents/goals/${goalId}`);
-        const json = await res.json();
-        if (json.success) {
-          setGoal(json.data);
-        } else {
-          toast.error(json.error || 'Goal not found');
-        }
-      } catch {
-        toast.error('Failed to load goal');
-      } finally {
-        setLoading(false);
-      }
-    };
     if (goalId) fetchGoal();
-  }, [goalId]);
+
+    // Live SSE subscription for real-time updates on this goal
+    let es: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT = 5;
+
+    const connectSSE = () => {
+      try {
+        es = new EventSource('/api/agents/sse');
+        const goalEvents = ['goal_approved', 'goal_rejected', 'goal_updated', 'goal_completed', 'goal_failed'];
+        for (const eventType of goalEvents) {
+          es.addEventListener(eventType, (e) => {
+            try {
+              const data = JSON.parse((e as MessageEvent).data);
+              if (data.goalId === goalId) fetchGoal();
+            } catch { /* ignore */ }
+          });
+        }
+        es.addEventListener('connected', () => { reconnectAttempts = 0; });
+        es.onerror = () => {
+          es?.close();
+          es = null;
+          if (reconnectAttempts < MAX_RECONNECT) {
+            reconnectAttempts++;
+            reconnectTimer = setTimeout(connectSSE, Math.min(5000 * reconnectAttempts, 30000));
+          }
+        };
+      } catch { /* SSE unavailable */ }
+    };
+
+    connectSSE();
+
+    // Polling fallback
+    const interval = setInterval(fetchGoal, 10000);
+
+    return () => {
+      clearInterval(interval);
+      es?.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+    };
+  }, [goalId, fetchGoal]);
+
+  // --- HITL Actions ---
+  const handleApprove = async () => {
+    setActionLoading('approve');
+    try {
+      const res = await fetch('/api/agents/goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goalId, action: 'approve' }),
+      });
+      if (!res.ok) throw new Error('Failed to approve goal');
+      toast.success('Goal approved — execution will begin shortly');
+      fetchGoal();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to approve goal');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRejectOrModify = async () => {
+    if (!feedback.trim()) return;
+    const action = feedbackAction;
+    setActionLoading(action);
+    try {
+      const res = await fetch('/api/agents/goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goalId, action, feedback }),
+      });
+      if (!res.ok) throw new Error(`Failed to ${action} goal`);
+      toast.success(action === 'reject' ? 'Goal rejected' : 'Changes requested');
+      setShowFeedback(false);
+      setFeedback('');
+      fetchGoal();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : `Failed to ${action} goal`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCancel = async () => {
+    setActionLoading('cancel');
+    try {
+      const res = await fetch('/api/agents/orchestrator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel_goal', goalId }),
+      });
+      if (!res.ok) throw new Error('Failed to cancel goal');
+      toast.success('Goal cancelled');
+      fetchGoal();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to cancel goal');
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const toggleStep = (stepId: string) => {
     setExpandedSteps(prev => {
@@ -177,6 +286,90 @@ export default function GoalDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* HITL Action Bar — visible for AWAITING_APPROVAL and active goals */}
+      {goal.status === 'AWAITING_APPROVAL' && (
+        <Card className="border-amber-200 bg-amber-50/50">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-amber-600" />
+                <span className="font-medium text-amber-800">This goal requires your approval</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleApprove}
+                  disabled={!!actionLoading}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {actionLoading === 'approve' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+                  Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => { setFeedbackAction('reject'); setShowFeedback(true); }}
+                  disabled={!!actionLoading}
+                >
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Reject
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setFeedbackAction('modify'); setShowFeedback(true); }}
+                  disabled={!!actionLoading}
+                >
+                  <Edit3 className="h-4 w-4 mr-1" />
+                  Request Changes
+                </Button>
+              </div>
+            </div>
+            {showFeedback && (
+              <div className="mt-4 space-y-2">
+                <label className="text-sm font-medium text-amber-800 flex items-center gap-1">
+                  <MessageSquare className="h-4 w-4" />
+                  {feedbackAction === 'reject' ? 'Rejection Reason' : 'Requested Changes'}
+                </label>
+                <Textarea
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder={feedbackAction === 'reject' ? 'Why is this goal being rejected...' : 'What changes are needed...'}
+                  rows={3}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => { setShowFeedback(false); setFeedback(''); }}>Cancel</Button>
+                  <Button
+                    size="sm"
+                    onClick={handleRejectOrModify}
+                    disabled={!feedback.trim() || !!actionLoading}
+                  >
+                    {actionLoading === feedbackAction ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                    Submit
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Cancel action for in-progress goals */}
+      {['PENDING', 'PLANNING', 'EXECUTING'].includes(goal.status) && (
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-red-600 border-red-200 hover:bg-red-50"
+            onClick={handleCancel}
+            disabled={!!actionLoading}
+          >
+            {actionLoading === 'cancel' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Ban className="h-4 w-4 mr-1" />}
+            Cancel Goal
+          </Button>
+        </div>
+      )}
 
       {/* Progress */}
       {goal.status === 'EXECUTING' && (

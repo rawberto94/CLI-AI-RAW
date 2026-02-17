@@ -14,6 +14,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { sendHITLApprovalNotification } from '@/lib/notifications/hitl-notification.service';
 
 // =============================================================================
 // In-memory subscriber tracking
@@ -34,6 +35,9 @@ let subscriberIdCounter = 0;
 /**
  * Broadcast an SSE event to all subscribers for a given tenant.
  * Called from the goals API or orchestrator when HITL-relevant events occur.
+ *
+ * For 'approval_required' events, also fires out-of-browser notifications
+ * (in-app, push, Slack, webhook) via the HITL notification service.
  */
 export function broadcastSSE(tenantId: string, event: string, data: Record<string, unknown>): void {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -48,6 +52,20 @@ export function broadcastSSE(tenantId: string, event: string, data: Record<strin
         subscribers.delete(id);
       }
     }
+  }
+
+  // Out-of-browser notifications for approval requests
+  if (event === 'approval_required' && data.goalId) {
+    sendHITLApprovalNotification({
+      tenantId,
+      goalId: data.goalId as string,
+      goalTitle: (data.title as string) || 'Agent Goal',
+      goalType: (data.goalType as string) || 'unknown',
+      goalDescription: data.description as string | undefined,
+      riskLevel: (data.riskLevel as string) || 'high',
+      requiredApprovals: (data.requiredApprovals as string[]) || ['human_review'],
+      creatorUserId: data.userId as string | undefined,
+    }).catch(() => {}); // fire-and-forget — SSE already delivered
   }
 }
 

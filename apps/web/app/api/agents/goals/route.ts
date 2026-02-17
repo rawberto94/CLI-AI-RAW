@@ -8,6 +8,7 @@ import { AgentGoalStatus } from '@prisma/client';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { monitoringService } from 'data-orchestration/services';
 import { broadcastSSE } from '@/app/api/agents/sse/route';
+import { sendHITLApprovalNotification, sendHITLDecisionNotification } from '@/lib/notifications/hitl-notification.service';
 
 /**
  * Add a goal execution job to the queue (BullMQ or fallback)
@@ -185,6 +186,15 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       approvedBy: action === 'approve' ? ctx.userId : undefined,
       timestamp: new Date().toISOString(),
     });
+
+    // Send out-of-browser decision notifications (Slack, push, etc.)
+    sendHITLDecisionNotification(
+      ctx.tenantId,
+      goalId,
+      goal.title,
+      action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'modified',
+      ctx.userId,
+    ).catch(() => {}); // fire-and-forget
 
     return createSuccessResponse(ctx, {
       goal: updatedGoal,

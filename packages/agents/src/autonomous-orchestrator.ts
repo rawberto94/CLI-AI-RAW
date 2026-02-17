@@ -1688,13 +1688,64 @@ Perform this analysis step and return the result as JSON.`,
    * The HITL approval UI (/agents/approvals) approves goals via /api/agents/goals,
    * which sets approvedBy/approvedAt and status=EXECUTING, or status=CANCELLED for rejection.
    * This method watches for either outcome.
+   *
+   * Escalation behaviour:
+   *  - At 50% of the timeout, emits 'goal:approval_escalated' so the notification layer
+   *    can widen the audience (e.g. add management / admin).
+   *  - At 80% of the timeout, emits a second escalation at 'critical' urgency.
+   *  - On full timeout the goal is marked CANCELLED with an escalation-timeout reason.
    */
   private async waitForApproval(goalId: string, timeoutMs: number = 300000): Promise<void> {
     const POLL_INTERVAL = 5000; // 5 seconds
     const deadline = Date.now() + timeoutMs;
+    const escalateAt50 = Date.now() + timeoutMs * 0.5;
+    const escalateAt80 = Date.now() + timeoutMs * 0.8;
+    let escalatedLevel1 = false;
+    let escalatedLevel2 = false;
     const prisma = await getPrisma();
 
     while (Date.now() < deadline) {
+      // --- Escalation checks ---
+      if (!escalatedLevel1 && Date.now() >= escalateAt50) {
+        escalatedLevel1 = true;
+        this.emit('goal:approval_escalated', {
+          goalId,
+          level: 1,
+          urgency: 'high',
+          message: `Goal ${goalId} has been waiting for approval for ${Math.round(timeoutMs * 0.5 / 60000)} minutes — escalating to management.`,
+          additionalRoles: ['management_approval', 'admin'],
+        });
+        // Persist escalation metadata in the goal's context JSON
+        try {
+          const existing = await prisma.agentGoal?.findUnique?.({ where: { id: goalId }, select: { context: true } });
+          const ctx = (existing?.context as Record<string, unknown>) ?? {};
+          await prisma.agentGoal?.update?.({
+            where: { id: goalId },
+            data: { context: { ...ctx, escalatedAt: new Date().toISOString(), escalationLevel: 1 } },
+          });
+        } catch { /* non-critical — continue polling */ }
+      }
+
+      if (!escalatedLevel2 && Date.now() >= escalateAt80) {
+        escalatedLevel2 = true;
+        this.emit('goal:approval_escalated', {
+          goalId,
+          level: 2,
+          urgency: 'critical',
+          message: `Goal ${goalId} is about to time out — escalating to admin with critical urgency.`,
+          additionalRoles: ['admin'],
+        });
+        try {
+          const existing = await prisma.agentGoal?.findUnique?.({ where: { id: goalId }, select: { context: true } });
+          const ctx = (existing?.context as Record<string, unknown>) ?? {};
+          await prisma.agentGoal?.update?.({
+            where: { id: goalId },
+            data: { context: { ...ctx, escalatedAt: new Date().toISOString(), escalationLevel: 2 } },
+          });
+        } catch { /* non-critical */ }
+      }
+
+      // --- Status polling ---
       try {
         const goal = await prisma.agentGoal?.findUnique?.({
           where: { id: goalId },
@@ -1740,9 +1791,36 @@ Perform this analysis step and return the result as JSON.`,
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
     }
 
-    // Timeout reached — emit event and throw
-    this.emit('goal:approval_timeout', { goalId, timeoutMs });
-    throw new Error(`Approval timeout for goal ${goalId} after ${timeoutMs / 1000}s`);
+    // --- Timeout reached ---
+    // Mark goal as timed-out so it shows clearly in the UI
+    try {
+      await prisma.agentGoal?.update?.({
+        where: { id: goalId },
+        data: {
+          status: 'CANCELLED',
+          context: {
+            timedOut: true,
+            timeoutMs,
+            escalationLevel: escalatedLevel2 ? 2 : escalatedLevel1 ? 1 : 0,
+            timedOutAt: new Date().toISOString(),
+          },
+        },
+      });
+    } catch { /* best-effort */ }
+
+    const memGoal = this.goals.get(goalId);
+    if (memGoal) {
+      memGoal.status = 'cancelled';
+      memGoal.updatedAt = new Date();
+      memGoal.result = {
+        success: false,
+        summary: `Goal timed out after ${timeoutMs / 1000}s waiting for approval (escalation level ${escalatedLevel2 ? 2 : escalatedLevel1 ? 1 : 0})`,
+        outcomes: [],
+      };
+    }
+
+    this.emit('goal:approval_timeout', { goalId, timeoutMs, escalationLevel: escalatedLevel2 ? 2 : escalatedLevel1 ? 1 : 0 });
+    throw new Error(`Approval timeout for goal ${goalId} after ${timeoutMs / 1000}s (escalated to level ${escalatedLevel2 ? 2 : escalatedLevel1 ? 1 : 0})`);
   }
 
   /**

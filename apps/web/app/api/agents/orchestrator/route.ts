@@ -8,6 +8,44 @@ import { NextRequest } from 'next/server';
 import { getAutonomousOrchestrator, AgentGoalStatus } from '@repo/agents';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { z } from 'zod';
+import { broadcastSSE } from '@/app/api/agents/sse/route';
+import { sendHITLApprovalNotification } from '@/lib/notifications/hitl-notification.service';
+
+// ============================================================================
+// Wire up escalation events from the orchestrator singleton.
+// The listener is attached once at module-load time.
+// ============================================================================
+const _orchestratorSingleton = getAutonomousOrchestrator();
+let _escalationListenerAttached = false;
+
+if (!_escalationListenerAttached) {
+  _escalationListenerAttached = true;
+
+  _orchestratorSingleton.on('goal:approval_escalated', (payload: {
+    goalId: string;
+    level: number;
+    urgency: string;
+    message: string;
+    additionalRoles: string[];
+  }) => {
+    // Broadcast via SSE so the UI can show an escalation banner
+    broadcastSSE('*', 'approval_escalated', {
+      goalId: payload.goalId,
+      level: payload.level,
+      urgency: payload.urgency,
+      message: payload.message,
+    });
+
+    // Fire out-of-browser notifications to the escalated roles
+    sendHITLApprovalNotification({
+      goalId: payload.goalId,
+      goalTitle: payload.message,
+      requiredApprovals: payload.additionalRoles,
+      riskLevel: payload.urgency === 'critical' ? 'critical' : 'high',
+      tenantId: '*', // escalation targets all tenant admins
+    }).catch(() => { /* fire-and-forget */ });
+  });
+}
 
 const orchestratorGetSchema = z.object({
   resource: z.enum(['status', 'goals', 'goal', 'triggers', 'notifications']).default('status'),

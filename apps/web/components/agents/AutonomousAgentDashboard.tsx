@@ -722,32 +722,58 @@ export const AutonomousAgentDashboard: React.FC = () => {
     // Poll for updates as fallback
     const interval = setInterval(fetchData, 5000);
 
-    // SSE for real-time updates
+    // SSE for real-time HITL + goal events via the proper SSE endpoint
     let es: EventSource | null = null;
-    try {
-      es = new EventSource('/api/agents/goals?stream=true');
-      es.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (['goal_created', 'goal_approved', 'goal_rejected', 'goal_completed', 'goal_failed'].includes(data.type)) {
+    let sseReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let sseReconnectAttempts = 0;
+    const SSE_MAX_RECONNECT = 5;
+
+    const connectSSE = () => {
+      try {
+        es = new EventSource('/api/agents/sse');
+
+        es.addEventListener('connected', () => {
+          sseReconnectAttempts = 0; // Reset on successful connection
+        });
+
+        // Listen for all relevant HITL and goal lifecycle events
+        const sseEventTypes = [
+          'approval_required',
+          'approval_escalated',
+          'goal_approved',
+          'goal_rejected',
+          'goal_updated',
+          'goal_completed',
+          'goal_failed',
+          'pending_approvals',
+        ];
+        for (const eventType of sseEventTypes) {
+          es.addEventListener(eventType, () => {
             fetchData();
-          }
-        } catch {
-          // ignore parse errors
+          });
         }
-      };
-      es.onerror = () => {
-        // SSE failed — polling will keep working
-        es?.close();
-        es = null;
-      };
-    } catch {
-      // SSE not available — polling covers it
-    }
+
+        es.onerror = () => {
+          es?.close();
+          es = null;
+          // Auto-reconnect with exponential backoff
+          if (sseReconnectAttempts < SSE_MAX_RECONNECT) {
+            sseReconnectAttempts++;
+            const delay = Math.min(5000 * sseReconnectAttempts, 30000);
+            sseReconnectTimer = setTimeout(connectSSE, delay);
+          }
+        };
+      } catch {
+        // SSE not available — polling covers it
+      }
+    };
+
+    connectSSE();
 
     return () => {
       clearInterval(interval);
       es?.close();
+      if (sseReconnectTimer) clearTimeout(sseReconnectTimer);
     };
   }, [fetchData]);
   

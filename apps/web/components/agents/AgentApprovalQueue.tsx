@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useAgentSSE } from '@/hooks/useAgentSSE';
 import {
   CheckCircle2,
   XCircle,
@@ -42,7 +43,10 @@ interface AgentGoal {
   status: 'PENDING' | 'PLANNING' | 'AWAITING_APPROVAL' | 'EXECUTING' | 'PAUSED' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
   type: string;
   context?: Record<string, unknown>;
-  plan?: Record<string, unknown>;
+  plan?: Record<string, unknown> & {
+    requiredApprovals?: string[];
+    riskAssessment?: { level?: string; requiresHumanApproval?: boolean };
+  };
   progress: number;
   error?: string;
   createdAt: string;
@@ -50,6 +54,14 @@ interface AgentGoal {
   approvedBy?: string;
   steps: AgentGoalStep[];
 }
+
+// Role-based approval type labels and colors
+const APPROVAL_TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+  human_review: { label: 'Human Review', color: 'bg-blue-100 text-blue-800', icon: '👤' },
+  management_approval: { label: 'Management', color: 'bg-purple-100 text-purple-800', icon: '👔' },
+  finance_approval: { label: 'Finance', color: 'bg-green-100 text-green-800', icon: '💰' },
+  legal_approval: { label: 'Legal', color: 'bg-orange-100 text-orange-800', icon: '⚖️' },
+};
 
 interface ApprovalQueueProps {
   onGoalApproved?: (goalId: string) => void;
@@ -136,22 +148,75 @@ function GoalCard({
   goal: AgentGoal;
   onApprove: (id: string) => void;
   onReject: (id: string, feedback: string) => void;
-  onModify: (id: string, feedback: string) => void;
+  onModify: (id: string, feedback: string, modifiedPlan?: Record<string, unknown>) => void;
   isProcessing: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [feedbackAction, setFeedbackAction] = useState<'reject' | 'modify'>('reject');
+  const [editedSteps, setEditedSteps] = useState<Array<{ action: string; description: string }>>([]);
+  const [showStepEditor, setShowStepEditor] = useState(false);
+
+  // Initialize edited steps from plan when opening modify mode
+  const openModifyMode = () => {
+    setFeedbackAction('modify');
+    setShowFeedback(true);
+    const planSteps = (goal.plan as Record<string, unknown>)?.steps;
+    if (Array.isArray(planSteps)) {
+      setEditedSteps(planSteps.map((s: Record<string, unknown>) => ({
+        action: String(s.action || ''),
+        description: String(s.description || ''),
+      })));
+      setShowStepEditor(true);
+    } else {
+      setEditedSteps([]);
+      setShowStepEditor(false);
+    }
+  };
+
+  const updateStep = (index: number, field: 'action' | 'description', value: string) => {
+    setEditedSteps(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const removeStep = (index: number) => {
+    setEditedSteps(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addStep = () => {
+    setEditedSteps(prev => [...prev, { action: '', description: '' }]);
+  };
 
   const handleSubmitFeedback = () => {
     if (feedbackAction === 'reject') {
       onReject(goal.id, feedback);
     } else {
-      onModify(goal.id, feedback);
+      // Build modified plan if steps were edited
+      let modifiedPlan: Record<string, unknown> | undefined;
+      if (showStepEditor && editedSteps.length > 0) {
+        const plan = (goal.plan || {}) as Record<string, unknown>;
+        modifiedPlan = {
+          ...plan,
+          steps: editedSteps.map((s, i) => ({
+            id: `step-${i + 1}`,
+            order: i,
+            action: s.action,
+            description: s.description,
+            status: 'pending',
+            dependencies: [],
+          })),
+        };
+      }
+      onModify(goal.id, feedback, modifiedPlan);
     }
     setShowFeedback(false);
     setFeedback('');
+    setEditedSteps([]);
+    setShowStepEditor(false);
   };
 
   const isAwaitingApproval = goal.status === 'AWAITING_APPROVAL';
@@ -185,6 +250,28 @@ function GoalCard({
                 <span>Progress: {goal.progress}%</span>
               )}
             </div>
+            {/* Required approval types — role-based routing badges */}
+            {goal.plan?.requiredApprovals && goal.plan.requiredApprovals.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {goal.plan.requiredApprovals.map((approval: string) => {
+                  const config = APPROVAL_TYPE_CONFIG[approval] || { label: approval.replace(/_/g, ' '), color: 'bg-gray-100 text-gray-700', icon: '🔒' };
+                  return (
+                    <span key={approval} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+                      {config.icon} {config.label}
+                    </span>
+                  );
+                })}
+                {goal.plan.riskAssessment?.level && (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    goal.plan.riskAssessment.level === 'critical' ? 'bg-red-100 text-red-800' :
+                    goal.plan.riskAssessment.level === 'high' ? 'bg-orange-100 text-orange-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    Risk: {goal.plan.riskAssessment.level}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           
           <button
@@ -225,7 +312,7 @@ function GoalCard({
               Reject
             </button>
             <button
-              onClick={() => { setFeedbackAction('modify'); setShowFeedback(true); }}
+              onClick={openModifyMode}
               disabled={isProcessing}
               className="inline-flex items-center gap-1 px-3 py-1.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -235,7 +322,7 @@ function GoalCard({
           </div>
         )}
 
-        {/* Feedback input */}
+        {/* Feedback input + optional structured step editor */}
         {showFeedback && (
           <div className="mt-4 p-3 bg-gray-50 rounded-lg">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -251,9 +338,56 @@ function GoalCard({
               className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-violet-500"
               rows={3}
             />
+
+            {/* Structured step editor (only for modify action when plan has steps) */}
+            {feedbackAction === 'modify' && showStepEditor && editedSteps.length > 0 && (
+              <div className="mt-3 border-t pt-3">
+                <h5 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                  <ListChecks className="h-4 w-4" />
+                  Edit Execution Steps
+                </h5>
+                <div className="space-y-2">
+                  {editedSteps.map((step, idx) => (
+                    <div key={idx} className="flex gap-2 items-start bg-white p-2 rounded border">
+                      <span className="text-xs text-gray-400 mt-2 w-6 text-center flex-shrink-0">{idx + 1}</span>
+                      <div className="flex-1 space-y-1">
+                        <input
+                          type="text"
+                          value={step.action}
+                          onChange={(e) => updateStep(idx, 'action', e.target.value)}
+                          placeholder="Action name"
+                          className="w-full px-2 py-1 border rounded text-xs font-mono focus:ring-1 focus:ring-violet-400"
+                        />
+                        <input
+                          type="text"
+                          value={step.description}
+                          onChange={(e) => updateStep(idx, 'description', e.target.value)}
+                          placeholder="Step description"
+                          className="w-full px-2 py-1 border rounded text-xs focus:ring-1 focus:ring-violet-400"
+                        />
+                      </div>
+                      <button
+                        onClick={() => removeStep(idx)}
+                        className="text-red-400 hover:text-red-600 p-1 flex-shrink-0"
+                        title="Remove step"
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={addStep}
+                  className="mt-2 text-xs text-violet-600 hover:text-violet-800 font-medium"
+                >
+                  + Add Step
+                </button>
+              </div>
+            )}
+
             <div className="mt-2 flex justify-end gap-2">
               <button
-                onClick={() => setShowFeedback(false)}
+                onClick={() => { setShowFeedback(false); setShowStepEditor(false); }}
                 className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
               >
                 Cancel
@@ -346,54 +480,24 @@ export function AgentApprovalQueue({
     }
   }, [filter]);
 
+  // Auto-reconnecting SSE via useAgentSSE hook
+  const { isConnected: sseConnected } = useAgentSSE({
+    onEvent: () => {
+      // Any agent event — refresh the approval list
+      fetchGoals();
+    },
+  });
+
   useEffect(() => {
     fetchGoals();
     
-    // Poll for updates every 30 seconds (fallback)
-    const interval = setInterval(fetchGoals, 30000);
-
-    // SSE: subscribe to real-time HITL events for instant updates
-    let eventSource: EventSource | null = null;
-    try {
-      eventSource = new EventSource('/api/agents/sse');
-
-      eventSource.addEventListener('approval_required', () => {
-        // New goal needs approval — refresh immediately
-        fetchGoals();
-      });
-
-      eventSource.addEventListener('goal_approved', () => {
-        fetchGoals();
-      });
-
-      eventSource.addEventListener('goal_rejected', () => {
-        fetchGoals();
-      });
-
-      eventSource.addEventListener('goal_updated', () => {
-        fetchGoals();
-      });
-
-      eventSource.addEventListener('pending_approvals', (e) => {
-        // Initial catch-up from SSE endpoint — refresh
-        try {
-          const data = JSON.parse((e as MessageEvent).data);
-          if (data.count > 0) fetchGoals();
-        } catch { /* ignore parse errors */ }
-      });
-
-      eventSource.onerror = () => {
-        // SSE connection failed — polling interval is still active as fallback
-      };
-    } catch {
-      // EventSource not available (SSR or old browser) — polling handles it
-    }
+    // Poll for updates every 30 seconds (fallback when SSE disconnects)
+    const interval = setInterval(fetchGoals, sseConnected ? 60000 : 30000);
 
     return () => {
       clearInterval(interval);
-      eventSource?.close();
     };
-  }, [fetchGoals]);
+  }, [fetchGoals, sseConnected]);
 
   const handleApprove = async (goalId: string) => {
     setProcessing(goalId);
@@ -439,13 +543,13 @@ export function AgentApprovalQueue({
     }
   };
 
-  const handleModify = async (goalId: string, feedback: string) => {
+  const handleModify = async (goalId: string, feedback: string, modifiedPlan?: Record<string, unknown>) => {
     setProcessing(goalId);
     try {
       const response = await fetch('/api/agents/goals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goalId, action: 'modify', feedback }),
+        body: JSON.stringify({ goalId, action: 'modify', feedback, ...(modifiedPlan && { modifiedPlan }) }),
       });
 
       if (!response.ok) {
