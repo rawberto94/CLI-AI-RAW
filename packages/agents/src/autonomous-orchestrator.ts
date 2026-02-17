@@ -19,6 +19,7 @@
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
 import OpenAI from 'openai';
+import { getLearningContext, formatLearningContextForPrompt, invalidateLearningContext } from './learning-context';
 
 // Lazy-init OpenAI client (only created when actually needed)
 let _openai: OpenAI | null = null;
@@ -49,6 +50,154 @@ async function getPrisma(): Promise<any> {
     }
   }
   return _prisma;
+}
+
+// ============================================================================
+// DATABASE PERSISTENCE LAYER
+// Wraps Prisma operations with graceful fallback to in-memory for resilience.
+// Goals, triggers, and notifications are persisted to DB and cached in-memory.
+// ============================================================================
+
+async function persistGoalToDB(goal: AgentGoal): Promise<void> {
+  try {
+    const prisma = await getPrisma();
+    await prisma.agentGoal.upsert({
+      where: { id: goal.id },
+      create: {
+        id: goal.id,
+        tenantId: goal.tenantId,
+        type: goal.type,
+        title: goal.description,
+        description: goal.description,
+        priority: goalPriorityToInt(goal.priority),
+        status: goalStatusToEnum(goal.status),
+        context: goal.metadata ?? {},
+        plan: goal.plan ? JSON.parse(JSON.stringify(goal.plan)) : undefined,
+        totalSteps: goal.plan?.steps.length ?? 0,
+        requiresApproval: goal.plan?.riskAssessment?.requiresHumanApproval ?? false,
+        result: goal.result ? JSON.parse(JSON.stringify(goal.result)) : undefined,
+      },
+      update: {
+        status: goalStatusToEnum(goal.status),
+        progress: goal.status === 'completed' ? 100 : goal.status === 'executing' ? 50 : 0,
+        plan: goal.plan ? JSON.parse(JSON.stringify(goal.plan)) : undefined,
+        totalSteps: goal.plan?.steps.length ?? 0,
+        result: goal.result ? JSON.parse(JSON.stringify(goal.result)) : undefined,
+        startedAt: goal.status === 'executing' ? new Date() : undefined,
+        completedAt: goal.completedAt ?? undefined,
+        error: goal.result && !goal.result.success ? goal.result.summary : undefined,
+      },
+    });
+  } catch (error: any) {
+    // Graceful fallback — in-memory still works
+    if (error?.code !== 'P2021' && error?.code !== 'P2010') {
+      console.warn('[Orchestrator] DB persist failed for goal:', goal.id, error?.message);
+    }
+  }
+}
+
+async function persistNotificationToDB(notification: AgentNotification): Promise<void> {
+  try {
+    const prisma = await getPrisma();
+    await prisma.auditLog?.create?.({
+      data: {
+        tenantId: notification.tenantId,
+        userId: notification.userId ?? 'system',
+        action: `agent:${notification.type}`,
+        resource: 'agent_notification',
+        resourceId: notification.goalId ?? notification.id,
+        details: {
+          notificationId: notification.id,
+          title: notification.title,
+          message: notification.message,
+          priority: notification.priority,
+          actionRequired: notification.actionRequired,
+        },
+      },
+    });
+  } catch {
+    // Notifications are best-effort — in-memory still serves them
+  }
+}
+
+async function loadGoalsFromDB(tenantId: string): Promise<AgentGoal[]> {
+  try {
+    const prisma = await getPrisma();
+    const dbGoals = await prisma.agentGoal.findMany({
+      where: { tenantId, status: { notIn: ['COMPLETED', 'FAILED', 'CANCELLED'] } },
+      include: { steps: { orderBy: { order: 'asc' } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    return dbGoals.map((g: any) => dbGoalToInMemory(g));
+  } catch {
+    return [];
+  }
+}
+
+async function loadTriggersFromDB(tenantId?: string): Promise<AgentTrigger[]> {
+  try {
+    const prisma = await getPrisma();
+    const where: any = { isActive: true };
+    if (tenantId) where.tenantId = tenantId;
+    const dbTriggers = await prisma.agentTrigger.findMany({ where, take: 200 });
+    return dbTriggers.map((t: any) => dbTriggerToInMemory(t));
+  } catch {
+    return [];
+  }
+}
+
+function goalPriorityToInt(p: AgentGoalPriority): number {
+  const map: Record<AgentGoalPriority, number> = { critical: 1, high: 2, medium: 5, low: 7, background: 10 };
+  return map[p] ?? 5;
+}
+
+function goalStatusToEnum(s: AgentGoalStatus): string {
+  const map: Record<AgentGoalStatus, string> = {
+    pending: 'PENDING', planning: 'PLANNING', executing: 'EXECUTING',
+    awaiting_approval: 'AWAITING_APPROVAL', completed: 'COMPLETED',
+    failed: 'FAILED', cancelled: 'CANCELLED',
+  };
+  return map[s] ?? 'PENDING';
+}
+
+function dbGoalToInMemory(g: any): AgentGoal {
+  const priorityMap: Record<number, AgentGoalPriority> = { 1: 'critical', 2: 'high', 5: 'medium', 7: 'low', 10: 'background' };
+  const statusMap: Record<string, AgentGoalStatus> = {
+    PENDING: 'pending', PLANNING: 'planning', EXECUTING: 'executing',
+    AWAITING_APPROVAL: 'awaiting_approval', COMPLETED: 'completed',
+    FAILED: 'failed', CANCELLED: 'cancelled', PAUSED: 'pending',
+  };
+  return {
+    id: g.id,
+    tenantId: g.tenantId,
+    type: g.type,
+    description: g.description ?? g.title,
+    priority: priorityMap[g.priority] ?? 'medium',
+    status: statusMap[g.status] ?? 'pending',
+    trigger: { type: 'user_request', source: 'db_restore' },
+    plan: g.plan ?? undefined,
+    result: g.result ?? undefined,
+    createdAt: g.createdAt,
+    updatedAt: g.updatedAt,
+    completedAt: g.completedAt ?? undefined,
+    metadata: g.context ?? {},
+  };
+}
+
+function dbTriggerToInMemory(t: any): AgentTrigger {
+  return {
+    id: t.id,
+    tenantId: t.tenantId,
+    name: t.name,
+    type: t.type?.toLowerCase() as TriggerType ?? 'event',
+    enabled: t.isActive,
+    condition: { type: t.cronExpression ? 'cron' : 'event_match', config: t.eventFilter ?? { schedule: t.cronExpression } },
+    goalTemplate: { type: t.name, description: t.name, priority: 'medium' },
+    lastTriggered: t.lastTriggeredAt ?? undefined,
+    triggerCount: t.triggerCount ?? 0,
+    createdAt: t.createdAt,
+  };
 }
 
 // ============================================================================
@@ -190,6 +339,7 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
   private executionQueue: AgentGoal[] = [];
   private isRunning: boolean = false;
   private processingGoal: string | null = null;
+  private hydrated: boolean = false;
   
   // Configuration
   private maxConcurrentGoals: number = 3;
@@ -199,6 +349,46 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
   constructor() {
     super();
     this.setupDefaultTriggers();
+    // Auto-hydrate from DB on startup (non-blocking)
+    this.hydrateFromDB().catch(() => {});
+  }
+
+  /**
+   * Restore active goals and triggers from the database after a restart.
+   * This ensures no work is lost across PM2 restarts or deployments.
+   */
+  async hydrateFromDB(tenantId?: string): Promise<{ goals: number; triggers: number }> {
+    if (this.hydrated) return { goals: 0, triggers: 0 };
+    
+    try {
+      // Load active goals
+      const dbGoals = await loadGoalsFromDB(tenantId ?? 'system');
+      for (const goal of dbGoals) {
+        if (!this.goals.has(goal.id)) {
+          this.goals.set(goal.id, goal);
+          if (goal.status === 'pending' || goal.status === 'planning') {
+            this.executionQueue.push(goal);
+          }
+        }
+      }
+      this.sortExecutionQueue();
+
+      // Load triggers from DB
+      const dbTriggers = await loadTriggersFromDB(tenantId);
+      for (const trigger of dbTriggers) {
+        if (!this.triggers.has(trigger.id)) {
+          this.triggers.set(trigger.id, trigger);
+        }
+      }
+
+      this.hydrated = true;
+      this.emit('orchestrator:hydrated', { goals: dbGoals.length, triggers: dbTriggers.length });
+      return { goals: dbGoals.length, triggers: dbTriggers.length };
+    } catch (error) {
+      // DB not available — continue with in-memory only
+      this.hydrated = true;
+      return { goals: 0, triggers: 0 };
+    }
   }
 
   // ============================================================================
@@ -429,6 +619,9 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
     // Sort queue by priority
     this.sortExecutionQueue();
     
+    // Persist to database (fire-and-forget, in-memory is primary for speed)
+    persistGoalToDB(goal).catch(() => {});
+    
     this.emit('goal:created', goal);
     this.notifyUser(tenantId, {
       type: 'goal_started',
@@ -468,6 +661,9 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
     
     // Remove from queue
     this.executionQueue = this.executionQueue.filter(g => g.id !== goalId);
+    
+    // Persist cancellation to DB
+    persistGoalToDB(goal).catch(() => {});
     
     this.emit('goal:cancelled', goal);
     
@@ -620,11 +816,16 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
   private async decomposeGoalWithLLM(goal: AgentGoal): Promise<PlanStep[]> {
     const openai = getOpenAI();
 
+    // Inject learning context — the system gets smarter over time
+    const learningCtx = await getLearningContext(goal.tenantId);
+    const learnedPatterns = formatLearningContextForPrompt(learningCtx);
+
     const systemPrompt = `You are a contract management AI planner. Given a goal, decompose it into concrete executable steps.
 
 AVAILABLE ACTIONS (use ONLY these action names):
 ${AutonomousAgentOrchestrator.KNOWN_ACTIONS.join(', ')}
 
+${learnedPatterns ? `\n${learnedPatterns}\n` : ''}
 Return a JSON array of steps, each with:
 - "action": one of the available action names above
 - "description": a clear description of what this step does
@@ -634,7 +835,8 @@ Rules:
 - Use 3-8 steps per goal
 - Each step must use action names from the AVAILABLE ACTIONS list
 - Steps should be sequential where order matters, but independent steps can run in parallel
-- Return ONLY valid JSON array, no markdown, no explanation`;
+- Return ONLY valid JSON array, no markdown, no explanation
+- If historical patterns show failures for certain goal types, add extra validation steps`;
 
     const userPrompt = `Goal type: ${goal.type}
 Goal description: ${goal.description}
@@ -866,10 +1068,16 @@ Decompose this into executable steps.`;
         await this.planGoal(goal);
       }
       
+      // Persist planned state
+      persistGoalToDB(goal).catch(() => {});
+      
       // Phase 2: Approval check
       if (goal.plan?.riskAssessment.requiresHumanApproval) {
         goal.status = 'awaiting_approval';
         goal.updatedAt = new Date();
+        
+        // Persist awaiting_approval state to DB so the approval UI can show it
+        persistGoalToDB(goal).catch(() => {});
         
         this.notifyUser(goal.tenantId, {
           type: 'approval_required',
@@ -882,8 +1090,7 @@ Decompose this into executable steps.`;
         
         this.emit('goal:awaiting_approval', goal);
         
-        // In production, we'd wait for approval here
-        // For now, we'll simulate auto-approval after a delay
+        // Wait for human approval via DB polling
         await this.waitForApproval(goal.id);
       }
       
@@ -891,6 +1098,7 @@ Decompose this into executable steps.`;
       goal.status = 'executing';
       goal.updatedAt = new Date();
       this.emit('goal:executing', goal);
+      persistGoalToDB(goal).catch(() => {});
       
       const outcomes: Outcome[] = [];
       
@@ -958,6 +1166,9 @@ Decompose this into executable steps.`;
         lessonsLearned: await this.extractLessons(goal, outcomes),
         recommendations: await this.generateRecommendations(goal, outcomes)
       };
+      
+      // Persist final state to DB
+      persistGoalToDB(goal).catch(() => {});
       
       this.notifyUser(goal.tenantId, {
         type: 'goal_completed',
@@ -1164,6 +1375,11 @@ Decompose this into executable steps.`;
 
     try {
       const openai = getOpenAI();
+
+      // Inject learning context — accumulated knowledge improves analysis quality
+      const learningCtx = await getLearningContext(goal.tenantId);
+      const learnedPatterns = formatLearningContextForPrompt(learningCtx);
+
       const response = await openai.chat.completions.create({
         model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
         messages: [
@@ -1171,7 +1387,8 @@ Decompose this into executable steps.`;
             role: 'system',
             content: `You are a contract management AI agent. Perform the requested analysis step and return results as JSON.
 Return a JSON object with meaningful keys relevant to the analysis (e.g., findings, risks, metrics, recommendations).
-Be specific and actionable. Keep output under 500 words.`,
+Be specific and actionable. Keep output under 500 words.
+${learnedPatterns ? `\n${learnedPatterns}` : ''}`,
           },
           {
             role: 'user',
@@ -1190,7 +1407,7 @@ Perform this analysis step and return the result as JSON.`,
 
       const content = response.choices[0]?.message?.content || '{}';
       const parsed = JSON.parse(content);
-      return { ...parsed, _action: step.action, _llmPowered: true };
+      return { ...parsed, _action: step.action, _llmPowered: true, _learningContextApplied: learnedPatterns.length > 0 };
     } catch (error) {
       return {
         status: 'completed',
@@ -1203,7 +1420,9 @@ Perform this analysis step and return the result as JSON.`,
 
   /**
    * Wait for human approval by polling the database.
-   * Throws if approval not received within timeout.
+   * The HITL approval UI (/agents/approvals) approves goals via /api/agents/goals,
+   * which sets approvedBy/approvedAt and status=EXECUTING, or status=CANCELLED for rejection.
+   * This method watches for either outcome.
    */
   private async waitForApproval(goalId: string, timeoutMs: number = 300000): Promise<void> {
     const POLL_INTERVAL = 5000; // 5 seconds
@@ -1217,14 +1436,28 @@ Perform this analysis step and return the result as JSON.`,
           select: { approvedBy: true, approvedAt: true, status: true },
         });
 
+        // Approved: user clicked "Approve" in the HITL UI
         if (goal?.approvedBy && goal?.approvedAt) {
           this.emit('goal:approved', { goalId, approvedBy: goal.approvedBy, approvedAt: goal.approvedAt });
           return;
         }
 
-        // If goal was cancelled while waiting, bail out
-        if (goal?.status === 'cancelled') {
-          throw new Error(`Goal ${goalId} was cancelled while awaiting approval`);
+        // Also check if status was set to EXECUTING by the goals API (backup check)
+        if (goal?.status === 'EXECUTING') {
+          this.emit('goal:approved', { goalId, approvedBy: 'api', approvedAt: new Date() });
+          return;
+        }
+
+        // Rejected: user clicked "Reject" → status set to CANCELLED
+        if (goal?.status === 'CANCELLED') {
+          // Update in-memory goal to reflect rejection
+          const memGoal = this.goals.get(goalId);
+          if (memGoal) {
+            memGoal.status = 'cancelled';
+            memGoal.updatedAt = new Date();
+            memGoal.result = { success: false, summary: 'Goal rejected by human reviewer', outcomes: [] };
+          }
+          throw new Error(`Goal ${goalId} was rejected by human reviewer`);
         }
       } catch (error: any) {
         // If prisma query fails (table not available), fall back to timed approval
@@ -1233,6 +1466,8 @@ Perform this analysis step and return the result as JSON.`,
           await new Promise(resolve => setTimeout(resolve, 3000));
           return;
         }
+        // Re-throw rejection errors
+        if (error?.message?.includes('rejected')) throw error;
         throw error;
       }
 
@@ -1378,6 +1613,10 @@ Steps completed: ${goal.plan?.steps.filter(s => s.status === 'completed').length
     }
     
     this.notifications.get(tenantId)!.push(fullNotification);
+    
+    // Persist notification to audit log for durability
+    persistNotificationToDB(fullNotification).catch(() => {});
+    
     this.emit('notification:created', fullNotification);
   }
 

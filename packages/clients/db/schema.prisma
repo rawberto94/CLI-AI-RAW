@@ -5529,3 +5529,57 @@ model Conversation {
   @@index([tenantId, userId])
   @@map("conversations")
 }
+
+// ============================================
+// Adaptive Learning & Feedback Tables
+// ============================================
+
+/// User feedback log — stores every user correction/rating for learning
+model UserFeedbackLog {
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  userId       String   @map("user_id")
+  feedbackType String   @map("feedback_type") // artifact_edit, quality_rating, error_report, positive_feedback
+  artifactType String   @map("artifact_type")
+  originalData Json?    @map("original_data") @db.JsonB
+  editedData   Json?    @map("edited_data") @db.JsonB
+  rating       Int? // 1-5
+  comment      String?  @db.Text
+  timestamp    DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, artifactType])
+  @@index([timestamp])
+  @@map("user_feedback_log")
+}
+
+/// Quality thresholds — adaptive thresholds adjusted by the feedback learner
+model QualityThreshold {
+  id                 String   @id @default(cuid())
+  tenantId           String   @map("tenant_id")
+  artifactType       String   @map("artifact_type")
+  thresholds         Json     @db.JsonB // { overall, completeness, accuracy }
+  previousThresholds Json?    @map("previous_thresholds") @db.JsonB
+  adjustmentReason   String?  @map("adjustment_reason") @db.Text
+  updatedAt          DateTime @default(now()) @map("updated_at")
+
+  @@unique([tenantId, artifactType])
+  @@index([tenantId])
+  @@map("quality_thresholds")
+}
+
+/// AB test winners — tracks which variant won for each test
+model ABTestWinner {
+  id              String   @id @default(cuid())
+  testName        String   @map("test_name")
+  winnerVariantId String   @map("winner_variant_id")
+  winnerName      String   @map("winner_name")
+  confidence      Float    @default(0)
+  sampleSize      Int      @default(0) @map("sample_size")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @map("updated_at")
+
+  @@unique([testName])
+  @@index([testName])
+  @@map("ab_test_winners")
+}

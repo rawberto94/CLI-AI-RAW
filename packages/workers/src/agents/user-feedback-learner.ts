@@ -70,12 +70,52 @@ export class UserFeedbackLearner {
     // Store feedback
     await this.storeFeedback(feedback);
 
+    // Also write to learning_records (Prisma model) for the adaptive learning loop
+    await this.writeToLearningRecords(feedback);
+
     // Analyze patterns
     const insights = await this.analyzeFeedbackPatterns(feedback.tenantId, feedback.artifactType);
 
     // Adjust thresholds if needed
     if (insights.length > 0) {
       await this.adjustQualityThresholds(feedback.tenantId, feedback.artifactType, insights);
+    }
+
+    // Invalidate the learning context cache so next LLM call picks up new patterns
+    try {
+      // @ts-ignore — @repo/agents workspace alias resolved at runtime by pnpm
+      const { invalidateLearningContext } = await import('@repo/agents');
+      invalidateLearningContext(feedback.tenantId);
+    } catch {
+      // agents package not available from workers — expected in some setups
+    }
+  }
+
+  /**
+   * Write feedback to the learning_records Prisma table (which has a proper schema).
+   * This bridges the raw SQL feedback system to the schema-backed learning context.
+   */
+  private async writeToLearningRecords(feedback: UserFeedback): Promise<void> {
+    if (feedback.feedbackType !== FeedbackType.ARTIFACT_EDIT || !feedback.editedData) return;
+
+    try {
+      const changedFields = this.getChangedFields(feedback.originalData, feedback.editedData);
+      
+      for (const field of changedFields) {
+        await prisma.learningRecord?.create?.({
+          data: {
+            tenantId: feedback.tenantId,
+            artifactType: feedback.artifactType,
+            field,
+            aiExtracted: JSON.stringify(feedback.originalData[field]),
+            userCorrected: JSON.stringify(feedback.editedData[field]),
+            confidence: 0.5, // Will be refined by the learning loop
+            correctionType: 'manual_edit',
+          },
+        }).catch(() => {}); // Graceful — learningRecord model may not exist in all envs
+      }
+    } catch {
+      // Non-critical
     }
   }
 

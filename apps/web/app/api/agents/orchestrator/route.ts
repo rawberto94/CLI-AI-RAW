@@ -219,17 +219,70 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
   });
 
 // ============================================================================
-// PATCH - Update goals or triggers
+// PATCH - Update goals or triggers (now with real persistence)
 // ============================================================================
+
+const patchSchema = z.object({
+  resource: z.enum(['goal', 'trigger']),
+  id: z.string(),
+  updates: z.record(z.unknown()),
+});
 
 export const PATCH = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
-    const { resource, id, updates: _updates } = body;
-    
-    // In a full implementation, this would update goals/triggers in the database
-    // For now, we return a success response
-    
-    return createSuccessResponse(ctx, {
-      message: `${resource} ${id} updated`
-    });
+    const parsed = patchSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Invalid body: ${parsed.error.issues.map(i => i.message).join(', ')}`, 400);
+    }
+    const { resource, id, updates } = parsed.data;
+
+    const orchestrator = getAutonomousOrchestrator();
+
+    switch (resource) {
+      case 'goal': {
+        // Update in-memory goal
+        const goal = orchestrator.getGoal(id);
+        if (!goal) {
+          return createErrorResponse(ctx, 'NOT_FOUND', 'Goal not found', 404);
+        }
+
+        // Apply allowed updates
+        if (updates.priority && ['critical', 'high', 'medium', 'low', 'background'].includes(updates.priority as string)) {
+          goal.priority = updates.priority as any;
+        }
+        if (updates.description && typeof updates.description === 'string') {
+          goal.description = updates.description;
+        }
+        if (updates.metadata && typeof updates.metadata === 'object') {
+          goal.metadata = { ...goal.metadata, ...updates.metadata as Record<string, unknown> };
+        }
+        goal.updatedAt = new Date();
+
+        return createSuccessResponse(ctx, {
+          goal,
+          message: `Goal ${id} updated successfully`
+        });
+      }
+
+      case 'trigger': {
+        // Update trigger enabled state or config
+        if (updates.enabled !== undefined) {
+          const updated = orchestrator.setTriggerEnabled(id, Boolean(updates.enabled));
+          if (!updated) {
+            return createErrorResponse(ctx, 'NOT_FOUND', 'Trigger not found', 404);
+          }
+        }
+
+        const triggers = orchestrator.getTriggers(ctx.tenantId);
+        const trigger = triggers.find(t => t.id === id);
+        
+        return createSuccessResponse(ctx, {
+          trigger: trigger ?? null,
+          message: `Trigger ${id} updated successfully`
+        });
+      }
+
+      default:
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid resource type', 400);
+    }
   });

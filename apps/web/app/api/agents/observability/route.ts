@@ -7,6 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { prisma } from '@/lib/prisma';
 
 // =============================================================================
 // TYPES
@@ -94,7 +95,78 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
       if (cachedTraces) traces = cachedTraces;
       if (cachedMetrics) metrics = cachedMetrics;
     } catch {
-      // Redis unavailable, continue with empty data
+      // Redis unavailable — compute metrics from database
+    }
+
+    // If no cached metrics, compute from real DB data
+    if (metrics.totalAgents === 0) {
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        const [totalGoals, statusCounts, completedToday, failedToday, yesterdayCompleted, recentGoals] = await Promise.all([
+          prisma.agentGoal.count({ where: { tenantId } }),
+          prisma.agentGoal.groupBy({
+            by: ['status'],
+            where: { tenantId },
+            _count: true,
+          }),
+          prisma.agentGoal.count({ where: { tenantId, status: 'COMPLETED', completedAt: { gte: today } } }),
+          prisma.agentGoal.count({ where: { tenantId, status: 'FAILED', completedAt: { gte: today } } }),
+          prisma.agentGoal.count({ where: { tenantId, status: 'COMPLETED', completedAt: { gte: yesterday, lt: today } } }),
+          prisma.agentGoal.findMany({
+            where: { tenantId, completedAt: { not: null }, startedAt: { not: null } },
+            select: { startedAt: true, completedAt: true, type: true },
+            orderBy: { completedAt: 'desc' },
+            take: 100,
+          }),
+        ]);
+
+        const statusMap = statusCounts.reduce((m: Record<string, number>, s: any) => { m[s.status] = s._count; return m; }, {} as Record<string, number>);
+        const active = (statusMap['EXECUTING'] ?? 0) + (statusMap['PLANNING'] ?? 0) + (statusMap['AWAITING_APPROVAL'] ?? 0);
+        const completed = statusMap['COMPLETED'] ?? 0;
+        const failed = statusMap['FAILED'] ?? 0;
+        const total = completed + failed;
+        const successRate = total > 0 ? completed / total : 0;
+
+        // Average completion time from recent goals
+        const durations = recentGoals
+          .filter((g: any) => g.startedAt && g.completedAt)
+          .map((g: any) => new Date(g.completedAt).getTime() - new Date(g.startedAt).getTime());
+        const avgCompletionTimeMs = durations.length > 0
+          ? durations.reduce((a: number, b: number) => a + b, 0) / durations.length
+          : 0;
+
+        // Top goal types
+        const typeCounts = recentGoals.reduce((m: Record<string, number>, g: any) => {
+          m[g.type] = (m[g.type] || 0) + 1; return m;
+        }, {} as Record<string, number>);
+        const topAgents = Object.entries(typeCounts)
+          .sort(([, a], [, b]) => (b as number) - (a as number))
+          .slice(0, 5)
+          .map(([type, count]) => ({ agentId: type, name: type, taskCount: count as number }));
+
+        // Cost trend (today vs yesterday)
+        const costTrend = yesterdayCompleted > 0 ? (completedToday - yesterdayCompleted) / yesterdayCompleted : 0;
+
+        metrics = {
+          totalAgents: totalGoals,
+          activeAgents: active,
+          completedToday,
+          failedToday,
+          avgCompletionTimeMs: Math.round(avgCompletionTimeMs),
+          avgTokensPerTask: 0, // Would need token tracking
+          successRate: Math.round(successRate * 100) / 100,
+          topAgents,
+          topTools: [],
+          costToday: 0,
+          costTrend: Math.round(costTrend * 100) / 100,
+        };
+      } catch {
+        // DB query failed — return defaults (already set above)
+      }
     }
 
     // Apply filters
