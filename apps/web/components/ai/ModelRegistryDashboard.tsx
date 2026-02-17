@@ -1,11 +1,20 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -444,6 +453,7 @@ export function ModelRegistryDashboard({ tenantId, className }: ModelRegistryDas
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [providerFilter, setProviderFilter] = useState<string>('all');
+  const [createTestOpen, setCreateTestOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -519,6 +529,41 @@ export function ModelRegistryDashboard({ tenantId, className }: ModelRegistryDas
     }
     return true;
   });
+
+  const handleCreateABTest = async (data: { name: string; modelA: string; modelB: string; trafficSplit: number }) => {
+    try {
+      const res = await fetch('/api/ai/ab-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Failed to create experiment');
+      const json = await res.json();
+      if (json.success) {
+        toast.success('A/B test created');
+        // Refresh ab tests
+        const refreshRes = await fetch('/api/ai/ab-test');
+        const refreshJson = await refreshRes.json();
+        if (refreshJson.success && refreshJson.data) {
+          const rawTests = Array.isArray(refreshJson.data) ? refreshJson.data : (refreshJson.data.tests || refreshJson.data.data || []);
+          setABTests(rawTests.map((t: Record<string, unknown>) => ({
+            id: (t.id as string) || String(Math.random()),
+            name: (t.name as string) || 'A/B Test',
+            modelA: (t.modelA as string) || (t.model_a as string) || '',
+            modelB: (t.modelB as string) || (t.model_b as string) || '',
+            trafficSplit: (t.trafficSplit as number) ?? (t.traffic_split as number) ?? 50,
+            status: (t.status as ABTest['status']) || 'running',
+            startedAt: new Date((t.startedAt as string) ?? (t.started_at as string) ?? Date.now()),
+            results: t.results as ABTest['results'] | undefined,
+          })));
+        }
+      } else {
+        throw new Error(json.error || 'Failed to create experiment');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create A/B test');
+    }
+  };
 
   const totalRequests = models.reduce((sum, m) => sum + (m.versions[0]?.performance.totalRequests || 0), 0);
   const avgSuccessRate = models.length > 0 
@@ -742,7 +787,7 @@ export function ModelRegistryDashboard({ tenantId, className }: ModelRegistryDas
         <TabsContent value="experiments" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-medium">A/B Test Experiments</h3>
-            <Button size="sm">
+            <Button size="sm" onClick={() => setCreateTestOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
               New Experiment
             </Button>
@@ -752,6 +797,9 @@ export function ModelRegistryDashboard({ tenantId, className }: ModelRegistryDas
             {abTests.map(test => (
               <ABTestCard key={test.id} test={test} />
             ))}
+            {abTests.length === 0 && (
+              <p className="text-center text-muted-foreground py-8 col-span-2">No experiments yet. Create one to compare models.</p>
+            )}
           </div>
         </TabsContent>
 
@@ -803,7 +851,123 @@ export function ModelRegistryDashboard({ tenantId, className }: ModelRegistryDas
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Create A/B Test Dialog */}
+      <CreateABTestDialog
+        open={createTestOpen}
+        onOpenChange={setCreateTestOpen}
+        models={models}
+        onSubmit={handleCreateABTest}
+      />
     </div>
+  );
+}
+
+// ============================================================================
+// Create A/B Test Dialog
+// ============================================================================
+
+function CreateABTestDialog({
+  open,
+  onOpenChange,
+  models,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  models: RegisteredModel[];
+  onSubmit: (data: { name: string; modelA: string; modelB: string; trafficSplit: number }) => void;
+}) {
+  const [name, setName] = useState('');
+  const [modelA, setModelA] = useState('');
+  const [modelB, setModelB] = useState('');
+  const [trafficSplit, setTrafficSplit] = useState('50');
+
+  const activeModels = models.filter(m => m.status === 'active' || m.status === 'testing');
+
+  const handleSubmit = () => {
+    onSubmit({ name, modelA, modelB, trafficSplit: parseInt(trafficSplit, 10) });
+    setName('');
+    setModelA('');
+    setModelB('');
+    setTrafficSplit('50');
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>New A/B Test Experiment</DialogTitle>
+          <DialogDescription>
+            Compare two models by splitting traffic between them
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div>
+            <Label>Experiment Name</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. GPT-4o vs Claude comparison"
+            />
+          </div>
+
+          <div>
+            <Label>Model A (Control)</Label>
+            <Select value={modelA} onValueChange={setModelA}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select model A" />
+              </SelectTrigger>
+              <SelectContent>
+                {activeModels.map(m => (
+                  <SelectItem key={m.id} value={m.modelId}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Model B (Challenger)</Label>
+            <Select value={modelB} onValueChange={setModelB}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select model B" />
+              </SelectTrigger>
+              <SelectContent>
+                {activeModels.filter(m => m.modelId !== modelA).map(m => (
+                  <SelectItem key={m.id} value={m.modelId}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Traffic Split (% to Model A)</Label>
+            <Select value={trafficSplit} onValueChange={setTrafficSplit}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="50">50/50 — Equal split</SelectItem>
+                <SelectItem value="70">70/30 — Favor A</SelectItem>
+                <SelectItem value="80">80/20 — Heavy A</SelectItem>
+                <SelectItem value="90">90/10 — Canary B</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={!name || !modelA || !modelB || modelA === modelB}>
+              Start Experiment
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

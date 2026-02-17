@@ -8,6 +8,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -232,6 +233,7 @@ const GoalCard: React.FC<{
   onViewDetails: (goal: AgentGoal) => void;
 }> = ({ goal, onCancel, onViewDetails }) => {
   const [expanded, setExpanded] = useState(false);
+  const router = useRouter();
   
   const isActive = ['planning', 'executing', 'awaiting_approval'].includes(goal.status);
   
@@ -301,7 +303,7 @@ const GoalCard: React.FC<{
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onViewDetails(goal)}>
+                <DropdownMenuItem onClick={() => router.push(`/agents/goals/${goal.id}`)}>
                   <Eye className="h-4 w-4 mr-2" />
                   View Details
                 </DropdownMenuItem>
@@ -519,6 +521,157 @@ const CreateGoalDialog: React.FC<{
 };
 
 // ============================================================================
+// CREATE TRIGGER DIALOG
+// ============================================================================
+
+const CreateTriggerDialog: React.FC<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: { name: string; type: string; cronExpression?: string; eventType?: string; goalType: string; goalDescription: string; priority: string }) => void;
+}> = ({ open, onOpenChange, onSubmit }) => {
+  const [name, setName] = useState('');
+  const [type, setType] = useState('cron');
+  const [cronExpression, setCronExpression] = useState('0 9 * * 1');
+  const [eventType, setEventType] = useState('contract_uploaded');
+  const [goalType, setGoalType] = useState('custom');
+  const [goalDescription, setGoalDescription] = useState('');
+  const [priority, setPriority] = useState('medium');
+
+  const handleSubmit = () => {
+    onSubmit({
+      name,
+      type,
+      ...(type === 'cron' ? { cronExpression } : { eventType }),
+      goalType,
+      goalDescription,
+      priority,
+    });
+    setName('');
+    setGoalDescription('');
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Create Trigger</DialogTitle>
+          <DialogDescription>
+            Set up an automated trigger that creates goals on a schedule or event
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div>
+            <Label>Trigger Name</Label>
+            <Textarea
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Weekly compliance check"
+              rows={1}
+            />
+          </div>
+
+          <div>
+            <Label>Trigger Type</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cron">Scheduled (Cron)</SelectItem>
+                <SelectItem value="event">Event-Based</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {type === 'cron' ? (
+            <div>
+              <Label>Cron Expression</Label>
+              <Textarea
+                value={cronExpression}
+                onChange={(e) => setCronExpression(e.target.value)}
+                placeholder="0 9 * * 1 (every Monday at 9am)"
+                rows={1}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Format: minute hour dayOfMonth month dayOfWeek
+              </p>
+            </div>
+          ) : (
+            <div>
+              <Label>Event Type</Label>
+              <Select value={eventType} onValueChange={setEventType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="contract_uploaded">Contract Uploaded</SelectItem>
+                  <SelectItem value="contract_expiring">Contract Expiring</SelectItem>
+                  <SelectItem value="anomaly_detected">Anomaly Detected</SelectItem>
+                  <SelectItem value="approval_timeout">Approval Timeout</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div>
+            <Label>Goal Type</Label>
+            <Select value={goalType} onValueChange={setGoalType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="contract_expiry_review">Contract Expiry Review</SelectItem>
+                <SelectItem value="savings_opportunity_scan">Savings Opportunity Scan</SelectItem>
+                <SelectItem value="compliance_audit">Compliance Audit</SelectItem>
+                <SelectItem value="anomaly_investigation">Anomaly Investigation</SelectItem>
+                <SelectItem value="custom">Custom Goal</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Goal Description</Label>
+            <Textarea
+              value={goalDescription}
+              onChange={(e) => setGoalDescription(e.target.value)}
+              placeholder="What should the agent accomplish when triggered..."
+              rows={2}
+            />
+          </div>
+
+          <div>
+            <Label>Priority</Label>
+            <Select value={priority} onValueChange={setPriority}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="critical">Critical</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="background">Background</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={!name || !goalDescription}>
+              Create Trigger
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ============================================================================
 // MAIN DASHBOARD COMPONENT
 // ============================================================================
 
@@ -530,6 +683,7 @@ export const AutonomousAgentDashboard: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState('active');
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createTriggerDialogOpen, setCreateTriggerDialogOpen] = useState(false);
   const [_selectedGoal, setSelectedGoal] = useState<AgentGoal | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   
@@ -565,58 +719,113 @@ export const AutonomousAgentDashboard: React.FC = () => {
   useEffect(() => {
     fetchData();
     
-    // Poll for updates
+    // Poll for updates as fallback
     const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
+
+    // SSE for real-time updates
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource('/api/agents/goals?stream=true');
+      es.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (['goal_created', 'goal_approved', 'goal_rejected', 'goal_completed', 'goal_failed'].includes(data.type)) {
+            fetchData();
+          }
+        } catch {
+          // ignore parse errors
+        }
+      };
+      es.onerror = () => {
+        // SSE failed — polling will keep working
+        es?.close();
+        es = null;
+      };
+    } catch {
+      // SSE not available — polling covers it
+    }
+
+    return () => {
+      clearInterval(interval);
+      es?.close();
+    };
   }, [fetchData]);
   
   // Handlers
   const handleToggleOrchestrator = async () => {
-    const action = status?.isRunning ? 'stop_processing' : 'start_processing';
-    await fetch('/api/agents/orchestrator', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action })
-    });
-    fetchData();
+    try {
+      const action = status?.isRunning ? 'stop_processing' : 'start_processing';
+      const res = await fetch('/api/agents/orchestrator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+      if (!res.ok) throw new Error(`Failed to ${action.replace('_', ' ')}`);
+      toast.success(status?.isRunning ? 'Orchestrator stopped' : 'Orchestrator started');
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to toggle orchestrator');
+    }
   };
   
   const handleCreateGoal = async (data: { type: string; description: string; priority: string }) => {
-    await fetch('/api/agents/orchestrator', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        action: 'create_goal',
-        ...data
-      })
-    });
-    fetchData();
+    try {
+      const res = await fetch('/api/agents/orchestrator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create_goal', ...data })
+      });
+      if (!res.ok) throw new Error('Failed to create goal');
+      toast.success('Goal created successfully');
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create goal');
+    }
   };
   
   const handleCancelGoal = async (goalId: string) => {
-    await fetch('/api/agents/orchestrator', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        action: 'cancel_goal',
-        goalId,
-        reason: 'User requested cancellation'
-      })
-    });
-    fetchData();
+    try {
+      const res = await fetch('/api/agents/orchestrator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel_goal', goalId, reason: 'User requested cancellation' })
+      });
+      if (!res.ok) throw new Error('Failed to cancel goal');
+      toast.success('Goal cancelled');
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to cancel goal');
+    }
   };
   
   const handleToggleTrigger = async (triggerId: string, enabled: boolean) => {
-    await fetch('/api/agents/orchestrator', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        action: 'toggle_trigger',
-        triggerId,
-        triggerEnabled: enabled
-      })
-    });
-    fetchData();
+    try {
+      const res = await fetch('/api/agents/orchestrator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'toggle_trigger', triggerId, triggerEnabled: enabled })
+      });
+      if (!res.ok) throw new Error('Failed to toggle trigger');
+      toast.success(enabled ? 'Trigger enabled' : 'Trigger disabled');
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to toggle trigger');
+    }
+  };
+
+  const handleCreateTrigger = async (data: { name: string; type: string; cronExpression?: string; eventType?: string; goalType: string; goalDescription: string; priority: string }) => {
+    try {
+      const res = await fetch('/api/agents/orchestrator', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'register_trigger', ...data })
+      });
+      if (!res.ok) throw new Error('Failed to create trigger');
+      toast.success('Trigger created');
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to create trigger');
+    }
   };
   
   // Filter goals by tab
@@ -864,13 +1073,27 @@ export const AutonomousAgentDashboard: React.FC = () => {
         
         <TabsContent value="triggers" className="mt-4">
           <div className="space-y-3">
-            {triggers.map(trigger => (
-              <TriggerCard
-                key={trigger.id}
-                trigger={trigger}
-                onToggle={handleToggleTrigger}
-              />
-            ))}
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => setCreateTriggerDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Create Trigger
+              </Button>
+            </div>
+            {triggers.length === 0 ? (
+              <div className="text-center py-12 text-gray-500 dark:text-slate-400">
+                <Zap className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p>No triggers configured</p>
+                <p className="text-sm mt-1">Create a trigger to automate goal creation</p>
+              </div>
+            ) : (
+              triggers.map(trigger => (
+                <TriggerCard
+                  key={trigger.id}
+                  trigger={trigger}
+                  onToggle={handleToggleTrigger}
+                />
+              ))
+            )}
           </div>
         </TabsContent>
       </Tabs>
@@ -880,6 +1103,13 @@ export const AutonomousAgentDashboard: React.FC = () => {
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         onSubmit={handleCreateGoal}
+      />
+
+      {/* Create Trigger Dialog */}
+      <CreateTriggerDialog
+        open={createTriggerDialogOpen}
+        onOpenChange={setCreateTriggerDialogOpen}
+        onSubmit={handleCreateTrigger}
       />
     </div>
   );

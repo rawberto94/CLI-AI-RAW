@@ -45,6 +45,7 @@ import {
   Gauge,
   GitCompare,
   Target,
+  ListChecks,
 } from "lucide-react";
 import {
   Tooltip,
@@ -116,6 +117,8 @@ const navigationGroups: NavGroup[] = [
       { href: "/ai/chat", label: "AI Assistant", icon: MessageSquare, description: "Chat with AI agent personas via @mentions", tourId: "ai-assistant" },
       { href: "/agents", label: "Agent Dashboard", icon: Cog, description: "Monitor all 12 intelligence agents", isNew: true, tourId: "agents" },
       { href: "/agents/observability", label: "Agent Observability", icon: Gauge, description: "Agent metrics, latency & error rates", isNew: true, tourId: "agent-observability" },
+      { href: "/agents/approvals", label: "Approval Queue", icon: ListChecks, description: "Review & approve agent goals before execution", isNew: true, tourId: "agent-approvals" },
+      { href: "/intelligence/learning", label: "Learning Records", icon: BookOpen, description: "AI correction history & adaptive learning", isNew: true, tourId: "learning-records" },
       { href: "/search", label: "Smart Search", icon: Search, description: "AI-powered contract search", tourId: "smart-search" },
       { href: "/search/saved", label: "Saved Searches", icon: Inbox, description: "Saved searches with alerts", isNew: true, tourId: "saved-searches" },
       { href: "/intelligence/search", label: "RAG Search", icon: Search, description: "Semantic vector search with RAG", isNew: true, tourId: "rag-search" },
@@ -450,7 +453,7 @@ function MobileSidebar({
             {/* Navigation */}
             <TooltipProvider delayDuration={500}>
               <nav className="p-4 space-y-2" aria-label="Main navigation">
-                {navigationGroups.map((group) => (
+                {enhancedNavigationGroups.map((group) => (
                   <NavGroupSection key={group.id} group={group} pathname={pathname} />
                 ))}
               </nav>
@@ -503,6 +506,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [showTutorial, setShowTutorial] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
   const welcomeBannerKey = 'contigo-welcome-banner-dismissed';
   const legacyWelcomeBannerKey = 'pactum-tutorial-seen';
   
@@ -512,6 +516,23 @@ export function Sidebar() {
     if (!dismissed) {
       setShowTutorial(true);
     }
+  }, []);
+
+  // Fetch pending approval count for badge
+  useEffect(() => {
+    let cancelled = false;
+    const fetchCount = async () => {
+      try {
+        const res = await fetch('/api/agents/goals?status=awaiting&limit=1&offset=0');
+        if (res.ok) {
+          const json = await res.json();
+          if (!cancelled) setPendingApprovalCount(json.data?.total ?? 0);
+        }
+      } catch { /* ignore */ }
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 30000); // Every 30s
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   const dismissTutorial = useCallback(() => {
@@ -531,6 +552,21 @@ export function Sidebar() {
     // Dispatch event to trigger the welcome tour
     window.dispatchEvent(new CustomEvent('contigo-start-tour'));
   }, []);
+
+  // Inject dynamic pending-approval badge into navigation groups
+  const enhancedNavigationGroups = useMemo(() => {
+    if (pendingApprovalCount === 0) return navigationGroups;
+    return navigationGroups.map(group => {
+      if (group.id !== 'intelligence') return group;
+      return {
+        ...group,
+        items: group.items.map(item => {
+          if (item.href !== '/agents/approvals') return item;
+          return { ...item, badge: String(pendingApprovalCount), badgeVariant: 'destructive' as const };
+        }),
+      };
+    });
+  }, [pendingApprovalCount]);
   
   return (
     <aside className="hidden border-r border-slate-200/60 bg-gradient-to-b from-white via-slate-50/30 to-slate-100/50 md:block shadow-sm backdrop-blur-sm">
@@ -659,7 +695,7 @@ export function Sidebar() {
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-4 px-3">
           <nav className="space-y-1" aria-label="Main navigation">
-            {navigationGroups.map((group) => (
+            {enhancedNavigationGroups.map((group) => (
               <NavGroupSection key={group.id} group={group} pathname={pathname} />
             ))}
           </nav>

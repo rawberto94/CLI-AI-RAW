@@ -527,6 +527,74 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
     });
   }, [traces, statusFilter, agentTypeFilter, searchQuery]);
 
+  // Computed stats from real trace/metrics data
+  const computedStats = useMemo(() => {
+    // Tool performance: average step duration and success rate from all steps
+    const allSteps = traces.flatMap(t => t.steps ?? []);
+    const toolSteps = allSteps.filter(s => s.type === 'tool_call');
+    const avgToolTimeMs = toolSteps.length > 0
+      ? toolSteps.reduce((a, s) => a + (s.durationMs ?? 0), 0) / toolSteps.length
+      : 0;
+    // Based on traces: completed vs failed
+    const completedTraces = traces.filter(t => t.status === 'completed').length;
+    const failedTraces = traces.filter(t => t.status === 'failed').length;
+    const totalDone = completedTraces + failedTraces;
+    const toolSuccessRate = totalDone > 0 ? Math.round((completedTraces / totalDone) * 100) : 0;
+
+    // Agent avg time from metrics
+    const avgAgentTimeSec = metrics?.avgCompletionTimeMs
+      ? (metrics.avgCompletionTimeMs / 1000).toFixed(1)
+      : '0';
+    const agentSuccessRate = metrics?.successRate
+      ? `${Math.round(metrics.successRate * 100)}%`
+      : '0%';
+
+    // Cost by agent type from traces
+    const costByType: Record<string, number> = {};
+    for (const t of traces) {
+      const cost = t.estimatedCost ?? 0;
+      costByType[t.agentType] = (costByType[t.agentType] || 0) + cost;
+    }
+    const totalCostFromTraces = Object.values(costByType).reduce((a, b) => a + b, 0);
+    const costBreakdown = Object.entries(costByType)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([type, cost]) => ({
+        type,
+        cost,
+        pct: totalCostFromTraces > 0 ? Math.round((cost / totalCostFromTraces) * 100) : 0,
+      }));
+
+    // Token usage per-day for last 7 days from traces
+    const now = new Date();
+    const tokenByDay: { day: string; tokens: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const label = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const dayStart = new Date(d); dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(d); dayEnd.setHours(23, 59, 59, 999);
+      const dayTokens = traces
+        .filter(t => {
+          const ts = new Date(t.startTime);
+          return ts >= dayStart && ts <= dayEnd;
+        })
+        .reduce((a, t) => a + (t.tokensUsed ?? 0), 0);
+      tokenByDay.push({ day: label, tokens: dayTokens });
+    }
+    const maxTokens = Math.max(...tokenByDay.map(d => d.tokens), 1);
+
+    return {
+      avgToolTime: avgToolTimeMs > 0 ? `${(avgToolTimeMs / 1000).toFixed(1)}s` : 'N/A',
+      toolSuccessRate: totalDone > 0 ? `${toolSuccessRate}% success` : 'N/A',
+      avgAgentTimeSec: `${avgAgentTimeSec}s`,
+      agentSuccessRate,
+      costBreakdown,
+      tokenByDay,
+      maxTokens,
+    };
+  }, [traces, metrics]);
+
   // Handlers
   const handleRefresh = useCallback(async () => {
     setIsLoading(true);
@@ -834,8 +902,8 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium">~1.2s</p>
-                        <p className="text-sm text-green-600">98% success</p>
+                        <p className="font-medium">{computedStats.avgToolTime}</p>
+                        <p className="text-sm text-green-600">{computedStats.toolSuccessRate}</p>
                       </div>
                     </div>
                   ))}
@@ -875,11 +943,11 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
                   <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
                     <div className="p-2 rounded-lg bg-muted/50 text-center">
                       <p className="text-muted-foreground">Avg Time</p>
-                      <p className="font-medium">12.5s</p>
+                      <p className="font-medium">{computedStats.avgAgentTimeSec}</p>
                     </div>
                     <div className="p-2 rounded-lg bg-muted/50 text-center">
                       <p className="text-muted-foreground">Success</p>
-                      <p className="font-medium text-green-600">96%</p>
+                      <p className="font-medium text-green-600">{computedStats.agentSuccessRate}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -897,9 +965,27 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
                 <CardDescription>Last 7 days</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-48 flex items-center justify-center text-muted-foreground">
-                  <BarChart3 className="h-12 w-12 opacity-50" />
-                  <span className="ml-2">Chart visualization</span>
+                <div className="h-48 flex flex-col justify-end gap-1">
+                  <div className="flex items-end gap-1 h-36">
+                    {computedStats.tokenByDay.map((d, i) => (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                        <div
+                          className="w-full rounded-t bg-primary/80 transition-all min-h-[2px]"
+                          style={{ height: `${(d.tokens / computedStats.maxTokens) * 100}%` }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-1">
+                    {computedStats.tokenByDay.map((d, i) => (
+                      <div key={i} className="flex-1 text-center text-[10px] text-muted-foreground">
+                        {d.day}
+                      </div>
+                    ))}
+                  </div>
+                  {computedStats.tokenByDay.every(d => d.tokens === 0) && (
+                    <p className="text-center text-sm text-muted-foreground mt-2">No token data yet</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -911,23 +997,19 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span>ReAct Agents</span>
-                    <span className="font-medium">$5.23</span>
-                  </div>
-                  <Progress value={42} className="h-2" />
-                  
-                  <div className="flex items-center justify-between">
-                    <span>Debate Agents</span>
-                    <span className="font-medium">$4.12</span>
-                  </div>
-                  <Progress value={33} className="h-2" />
-                  
-                  <div className="flex items-center justify-between">
-                    <span>Extraction Agents</span>
-                    <span className="font-medium">$3.10</span>
-                  </div>
-                  <Progress value={25} className="h-2" />
+                  {computedStats.costBreakdown.length > 0 ? (
+                    computedStats.costBreakdown.map((item) => (
+                      <div key={item.type}>
+                        <div className="flex items-center justify-between">
+                          <span className="capitalize">{item.type.replace('_', ' ')} Agents</span>
+                          <span className="font-medium">${item.cost.toFixed(2)}</span>
+                        </div>
+                        <Progress value={item.pct} className="h-2 mt-1" />
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">No cost data yet</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

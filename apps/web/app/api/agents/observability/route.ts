@@ -98,6 +98,59 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
       // Redis unavailable — compute metrics from database
     }
 
+    // If no traces from Redis, build from DB agentGoal + steps
+    if (traces.length === 0) {
+      try {
+        const dbGoals = await prisma.agentGoal.findMany({
+          where: { tenantId },
+          include: { steps: { orderBy: { order: 'asc' } } },
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+        });
+
+        traces = dbGoals.map((g: any) => {
+          const startTime = g.startedAt ?? g.createdAt;
+          const endTime = g.completedAt ?? (g.status === 'FAILED' ? g.updatedAt : undefined);
+          const tokenUsage = (g.result as any)?._tokenUsage;
+
+          const statusMap: Record<string, string> = {
+            PENDING: 'running',
+            PLANNING: 'running',
+            AWAITING_APPROVAL: 'running',
+            EXECUTING: 'running',
+            COMPLETED: 'completed',
+            FAILED: 'failed',
+            CANCELLED: 'failed',
+          };
+
+          return {
+            id: g.id,
+            agentId: g.type,
+            agentName: g.title,
+            agentType: g.type,
+            sessionId: g.id,
+            startTime: startTime.toISOString(),
+            endTime: endTime ? endTime.toISOString() : undefined,
+            status: statusMap[g.status] ?? 'running',
+            goal: g.description ?? g.title,
+            steps: g.steps.map((s: any) => ({
+              type: s.type === 'tool_call' ? 'tool_call' : s.type === 'decision' ? 'decision' : 'action',
+              content: s.name,
+              durationMs: s.duration ?? 0,
+              toolInput: s.input ? JSON.stringify(s.input) : undefined,
+              toolOutput: s.output ? JSON.stringify(s.output) : undefined,
+              confidence: s.progress ? s.progress / 100 : undefined,
+              tokens: 0,
+            })),
+            tokensUsed: tokenUsage?.totalTokens ?? 0,
+            estimatedCost: tokenUsage?.estimatedCost ?? 0,
+          } as AgentTrace;
+        });
+      } catch {
+        // DB trace fallback failed — traces stays empty
+      }
+    }
+
     // If no cached metrics, compute from real DB data
     if (metrics.totalAgents === 0) {
       try {

@@ -148,16 +148,13 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         break;
 
       case 'modify':
-        // Keep in awaiting state but update the plan
-        if (!body.modifiedPlan) {
-          return createErrorResponse(ctx, 'BAD_REQUEST', 'Modified plan required for modify action', 400);
-        }
-        
+        // Keep in awaiting state — accept feedback alone or an optional modified plan
         updatedGoal = await prisma.agentGoal.update({
           where: { id: goalId },
           data: {
-            plan: body.modifiedPlan,
-            error: feedback, // Store modification notes
+            ...(body.modifiedPlan ? { plan: body.modifiedPlan } : {}),
+            error: feedback || 'Changes requested', // Store modification notes
+            status: AgentGoalStatus.AWAITING_APPROVAL, // Stay in awaiting state
           } });
         break;
 
