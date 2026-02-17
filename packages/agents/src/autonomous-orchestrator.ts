@@ -53,6 +53,41 @@ async function getPrisma(): Promise<any> {
 }
 
 // ============================================================================
+// AB-TEST-AWARE MODEL SELECTION
+// Queries ab_test_winners for the winning variant's model name so the
+// orchestrator automatically adopts proven-better models.
+// Caches the winner for 5 minutes to avoid per-call DB queries.
+// ============================================================================
+
+let _abWinnerCache: { model: string | null; fetchedAt: number } = { model: null, fetchedAt: 0 };
+const AB_WINNER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getABTestWinnerModel(): Promise<string> {
+  const fallback = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  const now = Date.now();
+
+  // Return cached value if still fresh
+  if (_abWinnerCache.fetchedAt > 0 && now - _abWinnerCache.fetchedAt < AB_WINNER_CACHE_TTL) {
+    return _abWinnerCache.model || fallback;
+  }
+
+  try {
+    const prisma = await getPrisma();
+    const winner = await prisma.aBTestWinner?.findFirst?.({
+      where: { testName: 'contract-extraction' },
+      orderBy: { determinedAt: 'desc' },
+    });
+    const model = winner?.winnerVariantName ?? null;
+    _abWinnerCache = { model, fetchedAt: now };
+    return model || fallback;
+  } catch {
+    // DB not available — keep using environment variable
+    _abWinnerCache = { model: null, fetchedAt: now };
+    return fallback;
+  }
+}
+
+// ============================================================================
 // DATABASE PERSISTENCE LAYER
 // Wraps Prisma operations with graceful fallback to in-memory for resilience.
 // Goals, triggers, and notifications are persisted to DB and cached in-memory.
@@ -340,6 +375,10 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
   private isRunning: boolean = false;
   private processingGoal: string | null = null;
   private hydrated: boolean = false;
+  private cronInterval: ReturnType<typeof setInterval> | null = null;
+  
+  /** Accumulated token usage per goal for observability */
+  private goalTokenUsage: Map<string, { promptTokens: number; completionTokens: number; totalTokens: number; estimatedCost: number }> = new Map();
   
   // Configuration
   private maxConcurrentGoals: number = 3;
@@ -351,6 +390,8 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
     this.setupDefaultTriggers();
     // Auto-hydrate from DB on startup (non-blocking)
     this.hydrateFromDB().catch(() => {});
+    // Start the cron scheduler for trigger evaluation
+    this.startCronScheduler();
   }
 
   /**
@@ -389,6 +430,125 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
       this.hydrated = true;
       return { goals: 0, triggers: 0 };
     }
+  }
+
+  // ============================================================================
+  // CRON TRIGGER SCHEDULER
+  // ============================================================================
+
+  /**
+   * Start the cron scheduler that evaluates triggers on a regular interval.
+   * Checks every 60 seconds which cron-based triggers should fire.
+   */
+  startCronScheduler(): void {
+    if (this.cronInterval) return; // Already running
+
+    const CRON_CHECK_INTERVAL_MS = 60_000; // Check every minute
+
+    this.cronInterval = setInterval(async () => {
+      try {
+        await this.evaluateCronTriggers();
+      } catch (error) {
+        console.error('[Orchestrator] Cron scheduler error:', error);
+      }
+    }, CRON_CHECK_INTERVAL_MS);
+
+    // Don't block process exit
+    if (this.cronInterval?.unref) this.cronInterval.unref();
+    this.emit('cron:scheduler_started');
+  }
+
+  /**
+   * Stop the cron scheduler.
+   */
+  stopCronScheduler(): void {
+    if (this.cronInterval) {
+      clearInterval(this.cronInterval);
+      this.cronInterval = null;
+      this.emit('cron:scheduler_stopped');
+    }
+  }
+
+  /**
+   * Evaluate all enabled cron triggers and fire any that are due.
+   * Uses a simple cron expression matching approach.
+   */
+  private async evaluateCronTriggers(): Promise<void> {
+    const now = new Date();
+
+    for (const trigger of this.triggers.values()) {
+      if (!trigger.enabled) continue;
+      if (trigger.condition.type !== 'cron') continue;
+
+      const schedule = trigger.condition.config?.schedule as string;
+      if (!schedule) continue;
+
+      if (this.cronExpressionMatches(schedule, now)) {
+        // Prevent double-fire: skip if triggered within the last 55 seconds
+        if (trigger.lastTriggered) {
+          const elapsed = now.getTime() - trigger.lastTriggered.getTime();
+          if (elapsed < 55_000) continue;
+        }
+
+        trigger.lastTriggered = now;
+        trigger.triggerCount += 1;
+
+        this.emit('trigger:fired', { triggerId: trigger.id, name: trigger.name, at: now });
+
+        try {
+          await this.createGoal(
+            trigger.tenantId,
+            trigger.goalTemplate.type,
+            trigger.goalTemplate.description,
+            {
+              priority: trigger.goalTemplate.priority,
+              trigger: { type: 'schedule', source: trigger.name },
+              metadata: { triggerId: trigger.id, cronSchedule: schedule },
+            }
+          );
+        } catch (err) {
+          console.error(`[Orchestrator] Failed to create goal for trigger ${trigger.name}:`, err);
+        }
+      }
+    }
+  }
+
+  /**
+   * Minimal cron expression matcher: "min hour dom month dow"
+   * Supports * (any), specific numbers, and */n (every n).
+   */
+  private cronExpressionMatches(cron: string, date: Date): boolean {
+    const parts = cron.trim().split(/\s+/);
+    if (parts.length !== 5) return false;
+
+    const fields = [
+      date.getMinutes(),   // 0
+      date.getHours(),     // 1
+      date.getDate(),      // 2 (1-31)
+      date.getMonth() + 1, // 3 (1-12)
+      date.getDay(),       // 4 (0=Sun, 6=Sat)
+    ];
+
+    for (let i = 0; i < 5; i++) {
+      const part = parts[i]!;
+      const value = fields[i]!;
+
+      if (part === '*') continue;
+
+      // */n — every n
+      const stepMatch = part.match(/^\*\/(\d+)$/);
+      if (stepMatch) {
+        const step = parseInt(stepMatch[1]!, 10);
+        if (step > 0 && value % step !== 0) return false;
+        continue;
+      }
+
+      // Comma-separated values
+      const allowed = part.split(',').map(v => parseInt(v, 10));
+      if (!allowed.includes(value)) return false;
+    }
+
+    return true;
   }
 
   // ============================================================================
@@ -619,8 +779,8 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
     // Sort queue by priority
     this.sortExecutionQueue();
     
-    // Persist to database (fire-and-forget, in-memory is primary for speed)
-    persistGoalToDB(goal).catch(() => {});
+    // Write-ahead: persist to DB BEFORE processing to prevent goal loss on crash
+    await persistGoalToDB(goal);
     
     this.emit('goal:created', goal);
     this.notifyUser(tenantId, {
@@ -662,8 +822,8 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
     // Remove from queue
     this.executionQueue = this.executionQueue.filter(g => g.id !== goalId);
     
-    // Persist cancellation to DB
-    persistGoalToDB(goal).catch(() => {});
+    // Persist cancellation to DB (write-ahead)
+    await persistGoalToDB(goal);
     
     this.emit('goal:cancelled', goal);
     
@@ -846,8 +1006,9 @@ ${goal.metadata ? `Context: ${JSON.stringify(goal.metadata)}` : ''}
 
 Decompose this into executable steps.`;
 
+    const selectedModel = await getABTestWinnerModel();
     const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      model: selectedModel,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -856,6 +1017,9 @@ Decompose this into executable steps.`;
       response_format: { type: 'json_object' },
       max_tokens: 1500,
     });
+
+    // Track token usage for observability
+    this.trackTokenUsage('_planning', response.usage);
 
     const content = response.choices[0]?.message?.content || '{}';
     let parsed: any;
@@ -1053,6 +1217,7 @@ Decompose this into executable steps.`;
    */
   stopProcessing(): void {
     this.isRunning = false;
+    this.stopCronScheduler();
     this.emit('orchestrator:stopping');
   }
 
@@ -1068,16 +1233,16 @@ Decompose this into executable steps.`;
         await this.planGoal(goal);
       }
       
-      // Persist planned state
-      persistGoalToDB(goal).catch(() => {});
+      // Persist planned state (write-ahead)
+      await persistGoalToDB(goal);
       
       // Phase 2: Approval check
       if (goal.plan?.riskAssessment.requiresHumanApproval) {
         goal.status = 'awaiting_approval';
         goal.updatedAt = new Date();
         
-        // Persist awaiting_approval state to DB so the approval UI can show it
-        persistGoalToDB(goal).catch(() => {});
+        // Persist awaiting_approval state to DB so the approval UI can show it (write-ahead)
+        await persistGoalToDB(goal);
         
         this.notifyUser(goal.tenantId, {
           type: 'approval_required',
@@ -1098,7 +1263,7 @@ Decompose this into executable steps.`;
       goal.status = 'executing';
       goal.updatedAt = new Date();
       this.emit('goal:executing', goal);
-      persistGoalToDB(goal).catch(() => {});
+      await persistGoalToDB(goal);
       
       const outcomes: Outcome[] = [];
       
@@ -1167,8 +1332,11 @@ Decompose this into executable steps.`;
         recommendations: await this.generateRecommendations(goal, outcomes)
       };
       
-      // Persist final state to DB
-      persistGoalToDB(goal).catch(() => {});
+      // Persist final state to DB (write-ahead)
+      await persistGoalToDB(goal);
+      
+      // Persist accumulated token usage for this goal
+      await this.persistTokenUsage(goal.id, goal.tenantId);
       
       this.notifyUser(goal.tenantId, {
         type: 'goal_completed',
@@ -1380,8 +1548,9 @@ Decompose this into executable steps.`;
       const learningCtx = await getLearningContext(goal.tenantId);
       const learnedPatterns = formatLearningContextForPrompt(learningCtx);
 
+      const selectedModel = await getABTestWinnerModel();
       const response = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        model: selectedModel,
         messages: [
           {
             role: 'system',
@@ -1405,9 +1574,18 @@ Perform this analysis step and return the result as JSON.`,
         max_tokens: 1500,
       });
 
+      // Track token usage for observability
+      this.trackTokenUsage(goal.id, response.usage);
+
       const content = response.choices[0]?.message?.content || '{}';
       const parsed = JSON.parse(content);
-      return { ...parsed, _action: step.action, _llmPowered: true, _learningContextApplied: learnedPatterns.length > 0 };
+      return {
+        ...parsed,
+        _action: step.action,
+        _llmPowered: true,
+        _learningContextApplied: learnedPatterns.length > 0,
+        _tokensUsed: response.usage?.total_tokens ?? 0,
+      };
     } catch (error) {
       return {
         status: 'completed',
@@ -1415,6 +1593,93 @@ Perform this analysis step and return the result as JSON.`,
         note: 'LLM analysis failed — using fallback',
         error: error instanceof Error ? error.message : String(error),
       };
+    }
+  }
+
+  // ============================================================================
+  // TOKEN USAGE TRACKING
+  // ============================================================================
+
+  /**
+   * Accumulate token usage for a goal from an OpenAI response.
+   */
+  private trackTokenUsage(goalId: string, usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }): void {
+    if (!usage) return;
+    const existing = this.goalTokenUsage.get(goalId) ?? { promptTokens: 0, completionTokens: 0, totalTokens: 0, estimatedCost: 0 };
+    existing.promptTokens += usage.prompt_tokens ?? 0;
+    existing.completionTokens += usage.completion_tokens ?? 0;
+    existing.totalTokens += usage.total_tokens ?? 0;
+    // Estimate cost at $0.15 / 1M input + $0.60 / 1M output (gpt-4o-mini pricing)
+    existing.estimatedCost += ((usage.prompt_tokens ?? 0) * 0.00000015) + ((usage.completion_tokens ?? 0) * 0.0000006);
+    this.goalTokenUsage.set(goalId, existing);
+  }
+
+  /**
+   * Persist accumulated token usage to the agent_goals table result JSON.
+   */
+  private async persistTokenUsage(goalId: string, tenantId: string): Promise<void> {
+    const usage = this.goalTokenUsage.get(goalId);
+    if (!usage || usage.totalTokens === 0) return;
+
+    try {
+      const prisma = await getPrisma();
+      // Merge token metrics into the goal's result JSON
+      const goal = await prisma.agentGoal?.findUnique?.({ where: { id: goalId }, select: { result: true } });
+      const currentResult = (goal?.result as Record<string, unknown>) ?? {};
+      await prisma.agentGoal?.update?.({
+        where: { id: goalId },
+        data: {
+          result: {
+            ...currentResult,
+            _tokenUsage: usage,
+          },
+        },
+      });
+    } catch {
+      // Non-critical — token data is best-effort
+    } finally {
+      this.goalTokenUsage.delete(goalId);
+    }
+  }
+
+  /**
+   * Get token usage summary across all completed goals for observability.
+   */
+  async getTokenUsageSummary(tenantId: string): Promise<{ avgTokensPerTask: number; totalTokensToday: number; estimatedCostToday: number }> {
+    try {
+      const prisma = await getPrisma();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const goals = await prisma.agentGoal?.findMany?.({
+        where: {
+          tenantId,
+          completedAt: { gte: today },
+          status: 'COMPLETED',
+        },
+        select: { result: true },
+      }) ?? [];
+
+      let totalTokens = 0;
+      let totalCost = 0;
+      let counted = 0;
+
+      for (const g of goals) {
+        const tokenUsage = (g.result as any)?._tokenUsage;
+        if (tokenUsage?.totalTokens) {
+          totalTokens += tokenUsage.totalTokens;
+          totalCost += tokenUsage.estimatedCost ?? 0;
+          counted++;
+        }
+      }
+
+      return {
+        avgTokensPerTask: counted > 0 ? Math.round(totalTokens / counted) : 0,
+        totalTokensToday: totalTokens,
+        estimatedCostToday: Math.round(totalCost * 10000) / 10000,
+      };
+    } catch {
+      return { avgTokensPerTask: 0, totalTokensToday: 0, estimatedCostToday: 0 };
     }
   }
 
@@ -1504,8 +1769,9 @@ Perform this analysis step and return the result as JSON.`,
     if (process.env.OPENAI_API_KEY && outcomes.length > 0) {
       try {
         const openai = getOpenAI();
+        const selectedModel = await getABTestWinnerModel();
         const response = await openai.chat.completions.create({
-          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+          model: selectedModel,
           messages: [
             {
               role: 'system',
@@ -1558,8 +1824,9 @@ Failed steps: ${failedSteps.length}`,
     if (process.env.OPENAI_API_KEY && outcomes.length > 0) {
       try {
         const openai = getOpenAI();
+        const selectedModel = await getABTestWinnerModel();
         const response = await openai.chat.completions.create({
-          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+          model: selectedModel,
           messages: [
             {
               role: 'system',

@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { AgentGoalStatus } from '@prisma/client';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { monitoringService } from 'data-orchestration/services';
+import { broadcastSSE } from '@/app/api/agents/sse/route';
 
 /**
  * Add a goal execution job to the queue (BullMQ or fallback)
@@ -177,6 +178,16 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           previousStatus: goal.status,
           newStatus: updatedGoal.status,
           feedback } } });
+
+    // Broadcast real-time SSE event to connected subscribers
+    broadcastSSE(ctx.tenantId, `goal_${action}d`, {
+      goalId,
+      action,
+      status: updatedGoal.status,
+      title: goal.title,
+      approvedBy: action === 'approve' ? ctx.userId : undefined,
+      timestamp: new Date().toISOString(),
+    });
 
     return createSuccessResponse(ctx, {
       goal: updatedGoal,

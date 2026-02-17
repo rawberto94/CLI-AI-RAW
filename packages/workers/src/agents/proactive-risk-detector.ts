@@ -160,6 +160,11 @@ export class ProactiveRiskDetector {
     // Store risks in database
     await this.storeRisks(contractId, tenantId, risks);
 
+    // AGENT RESULT CHAINING: Feed risk findings into the adaptive learning loop
+    // Writing to learning_records means the orchestrator's learning context will
+    // include risk patterns, making future goal decomposition risk-aware.
+    await this.chainRisksToLearningRecords(contractId, tenantId, risks);
+
     // ENHANCED: Trigger workflow escalation if needed
     if (escalationNeeded) {
       await this.triggerRiskEscalationWorkflow(contractId, tenantId, {
@@ -833,6 +838,60 @@ Only flag genuinely problematic language, not standard legal phrasing.`,
         contractId,
       }, 'Failed to trigger risk escalation workflow');
       // Don't rethrow - this is a best-effort notification
+    }
+  }
+
+  /**
+   * AGENT RESULT CHAINING — Feed risk findings into learning_records.
+   * High/critical risks are written as learning signals so the orchestrator's
+   * adaptive learning context becomes risk-aware over time.
+   */
+  private async chainRisksToLearningRecords(
+    contractId: string,
+    tenantId: string,
+    risks: DetectedRisk[]
+  ): Promise<void> {
+    // Only chain high-severity risks to avoid noise
+    const significantRisks = risks.filter(
+      r => r.severity === RiskSeverity.CRITICAL || r.severity === RiskSeverity.HIGH
+    );
+    if (significantRisks.length === 0) return;
+
+    try {
+      for (const risk of significantRisks) {
+        await prisma.learningRecord?.create?.({
+          data: {
+            tenantId,
+            artifactType: 'PROACTIVE_RISKS',
+            field: risk.title,
+            aiExtracted: JSON.stringify({
+              severity: risk.severity,
+              riskType: risk.type,
+              contractId,
+              evidence: risk.evidence,
+            }),
+            userCorrected: JSON.stringify({
+              description: risk.description,
+              recommendation: risk.recommendation,
+              impact: risk.impact,
+              autoFixable: risk.autoFixable,
+            }),
+            confidence: risk.severity === RiskSeverity.CRITICAL ? 0.95 : 0.80,
+            correctionType: 'risk_detection',
+            modelUsed: 'proactive-risk-detector',
+          },
+        }).catch(() => {}); // Graceful — table may not exist
+      }
+
+      logger.info(
+        { contractId, count: significantRisks.length },
+        '🔗 Chained risk findings to learning records'
+      );
+    } catch (error) {
+      logger.warn(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Failed to chain risks to learning records (non-critical)'
+      );
     }
   }
 

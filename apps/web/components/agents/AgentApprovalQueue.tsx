@@ -349,9 +349,50 @@ export function AgentApprovalQueue({
   useEffect(() => {
     fetchGoals();
     
-    // Poll for updates every 30 seconds
+    // Poll for updates every 30 seconds (fallback)
     const interval = setInterval(fetchGoals, 30000);
-    return () => clearInterval(interval);
+
+    // SSE: subscribe to real-time HITL events for instant updates
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource('/api/agents/sse');
+
+      eventSource.addEventListener('approval_required', () => {
+        // New goal needs approval — refresh immediately
+        fetchGoals();
+      });
+
+      eventSource.addEventListener('goal_approved', () => {
+        fetchGoals();
+      });
+
+      eventSource.addEventListener('goal_rejected', () => {
+        fetchGoals();
+      });
+
+      eventSource.addEventListener('goal_updated', () => {
+        fetchGoals();
+      });
+
+      eventSource.addEventListener('pending_approvals', (e) => {
+        // Initial catch-up from SSE endpoint — refresh
+        try {
+          const data = JSON.parse((e as MessageEvent).data);
+          if (data.count > 0) fetchGoals();
+        } catch { /* ignore parse errors */ }
+      });
+
+      eventSource.onerror = () => {
+        // SSE connection failed — polling interval is still active as fallback
+      };
+    } catch {
+      // EventSource not available (SSR or old browser) — polling handles it
+    }
+
+    return () => {
+      clearInterval(interval);
+      eventSource?.close();
+    };
   }, [fetchGoals]);
 
   const handleApprove = async (goalId: string) => {

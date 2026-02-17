@@ -151,17 +151,42 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
         // Cost trend (today vs yesterday)
         const costTrend = yesterdayCompleted > 0 ? (completedToday - yesterdayCompleted) / yesterdayCompleted : 0;
 
+        // Compute real token usage and cost from goal results
+        let avgTokensPerTask = 0;
+        let costToday = 0;
+        try {
+          const todayGoals = await prisma.agentGoal.findMany({
+            where: { tenantId, status: 'COMPLETED', completedAt: { gte: today } },
+            select: { result: true },
+          });
+          let totalTokens = 0;
+          let totalCost = 0;
+          let counted = 0;
+          for (const g of todayGoals) {
+            const tokenUsage = (g.result as any)?._tokenUsage;
+            if (tokenUsage?.totalTokens) {
+              totalTokens += tokenUsage.totalTokens;
+              totalCost += tokenUsage.estimatedCost ?? 0;
+              counted++;
+            }
+          }
+          avgTokensPerTask = counted > 0 ? Math.round(totalTokens / counted) : 0;
+          costToday = Math.round(totalCost * 10000) / 10000;
+        } catch {
+          // Non-critical — token data is best-effort
+        }
+
         metrics = {
           totalAgents: totalGoals,
           activeAgents: active,
           completedToday,
           failedToday,
           avgCompletionTimeMs: Math.round(avgCompletionTimeMs),
-          avgTokensPerTask: 0, // Would need token tracking
+          avgTokensPerTask,
           successRate: Math.round(successRate * 100) / 100,
           topAgents,
           topTools: [],
-          costToday: 0,
+          costToday,
           costTrend: Math.round(costTrend * 100) / 100,
         };
       } catch {
