@@ -98,120 +98,41 @@ const activityConfig: Record<ActivityType, {
   export_completed: { icon: Download, color: 'text-violet-600', bg: 'bg-violet-100', label: 'Export' },
 };
 
-// Demo activity data
-const generateDemoActivities = (): ActivityEvent[] => {
-  const users: Array<{ name: string; email: string }> = [
-    { name: 'John Smith', email: 'john@company.com' },
-    { name: 'Sarah Johnson', email: 'sarah@company.com' },
-    { name: 'Michael Chen', email: 'michael@company.com' },
-    { name: 'Emily Davis', email: 'emily@company.com' },
-  ];
-  
-  const defaultUser = { name: 'Unknown', email: 'unknown@company.com' };
+// Fetch real activities from the API
+async function fetchActivities(
+  contractId?: string,
+  limit: number = 50
+): Promise<ActivityEvent[]> {
+  try {
+    const params = new URLSearchParams();
+    if (contractId) params.set('contractId', contractId);
+    params.set('limit', String(limit));
 
-  const contracts = [
-    { id: 'c1', name: 'Master Service Agreement - TechCorp' },
-    { id: 'c2', name: 'NDA - Startup Inc' },
-    { id: 'c3', name: 'Vendor Agreement - SupplyCo' },
-    { id: 'c4', name: 'Employment Contract - J.Smith' },
-  ];
+    const res = await fetch(`/api/activity?${params.toString()}`);
+    if (!res.ok) return [];
+    const json = await res.json();
+    const items: any[] = json?.data ?? json?.activities ?? [];
 
-  const activities: ActivityEvent[] = [
-    {
-      id: '1',
-      type: 'contract_approved',
-      title: 'Contract approved',
-      description: 'Final approval granted',
-      user: users[0] ?? defaultUser,
-      timestamp: new Date(Date.now() - 2 * 60 * 1000),
-      contractId: contracts[0]?.id,
-      contractName: contracts[0]?.name,
-    },
-    {
-      id: '2',
-      type: 'processing_completed',
-      title: 'AI processing complete',
-      description: 'Extracted 45 key terms, 12 obligations',
-      user: { name: 'System', email: 'system@company.com' },
-      timestamp: new Date(Date.now() - 5 * 60 * 1000),
-      contractId: contracts[1]?.id,
-      contractName: contracts[1]?.name,
-    },
-    {
-      id: '3',
-      type: 'comment_added',
-      title: 'Comment added',
-      description: 'Please review the payment terms on page 5.',
-      user: users[1] ?? defaultUser,
-      timestamp: new Date(Date.now() - 15 * 60 * 1000),
-      contractId: contracts[0]?.id,
-      contractName: contracts[0]?.name,
-    },
-    {
-      id: '4',
-      type: 'contract_created',
-      title: 'New contract uploaded',
-      user: users[2] ?? defaultUser,
-      timestamp: new Date(Date.now() - 30 * 60 * 1000),
-      contractId: contracts[2]?.id,
-      contractName: contracts[2]?.name,
-    },
-    {
-      id: '5',
-      type: 'contract_updated',
-      title: 'Contract metadata updated',
-      description: 'Updated expiration date and value',
-      user: users[1] ?? defaultUser,
-      timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000),
-      contractId: contracts[0]?.id,
-      contractName: contracts[0]?.name,
-    },
-    {
-      id: '6',
-      type: 'import_completed',
-      title: 'Bulk import completed',
-      description: '12 contracts imported from external database',
-      user: users[0] ?? defaultUser,
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    },
-    {
-      id: '7',
-      type: 'contract_downloaded',
-      title: 'Contract downloaded',
-      user: users[3] ?? defaultUser,
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000),
-      contractId: contracts[3]?.id,
-      contractName: contracts[3]?.name,
-    },
-    {
-      id: '8',
-      type: 'processing_failed',
-      title: 'Processing failed',
-      description: 'OCR could not extract text from scanned document',
-      user: { name: 'System', email: 'system@company.com' },
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      contractId: 'c5',
-      contractName: 'Scanned Contract.pdf',
-    },
-    {
-      id: '9',
-      type: 'user_login',
-      title: 'User logged in',
-      user: users[2] ?? defaultUser,
-      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000),
-    },
-    {
-      id: '10',
-      type: 'settings_changed',
-      title: 'System settings updated',
-      description: 'API rate limits increased',
-      user: users[0] ?? defaultUser,
-      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    },
-  ];
+    return items.map((item: any) => ({
+      id: item.id,
+      type: (item.type ?? 'contract_viewed') as ActivityType,
+      title: item.title ?? item.action ?? 'Activity',
+      description: item.description,
+      user: {
+        name: item.userName ?? item.user?.name ?? 'System',
+        email: item.userEmail ?? item.user?.email ?? '',
+        avatar: item.userAvatar ?? item.user?.avatar,
+      },
+      metadata: item.metadata,
+      timestamp: new Date(item.timestamp),
+      contractId: item.contractId,
+      contractName: item.contractName,
+    }));
+  } catch {
+    return [];
+  }
+}
 
-  return activities;
-};
 interface ActivityFeedProps {
   contractId?: string;
   maxItems?: number;
@@ -233,49 +154,32 @@ export const ActivityFeed = memo(function ActivityFeed({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize activities
+  // Initialize activities from the real API
   useEffect(() => {
-    let allActivities = generateDemoActivities();
-    
-    if (contractId) {
-      allActivities = allActivities.filter(a => a.contractId === contractId);
-    }
-    
-    setActivities(allActivities.slice(0, maxItems));
+    let cancelled = false;
+    fetchActivities(contractId, maxItems).then((data) => {
+      if (!cancelled) setActivities(data);
+    });
+    return () => { cancelled = true; };
   }, [contractId, maxItems]);
 
-  // Simulate real-time updates
+  // Poll for real-time updates when live mode is on
   useEffect(() => {
     if (!isLive) return;
 
     const interval = setInterval(() => {
-      // Randomly add new activities for demo
-      if (Math.random() > 0.7) {
-        const types: ActivityType[] = ['contract_viewed', 'comment_added', 'processing_completed'];
-        const type = types[Math.floor(Math.random() * types.length)] ?? 'contract_viewed';
-        
-        const config = activityConfig[type] ?? { label: 'Activity', icon: FileText, color: 'text-gray-500', bgColor: 'bg-gray-100' };
-        
-        const newActivity: ActivityEvent = {
-          id: `new-${Date.now()}`,
-          type,
-          title: config.label,
-          user: { name: 'Active User', email: 'user@company.com' },
-          timestamp: new Date(),
-          contractName: 'Sample Contract',
-        };
-
-        setActivities(prev => [newActivity, ...prev].slice(0, maxItems));
-      }
-    }, 10000);
+      fetchActivities(contractId, maxItems).then((data) => {
+        if (data.length > 0) setActivities(data);
+      });
+    }, 15000); // Poll every 15 seconds
 
     return () => clearInterval(interval);
-  }, [isLive, maxItems]);
+  }, [isLive, contractId, maxItems]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setActivities(generateDemoActivities().slice(0, maxItems));
+    const data = await fetchActivities(contractId, maxItems);
+    setActivities(data);
     setIsRefreshing(false);
   };
 

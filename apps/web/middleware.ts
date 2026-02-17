@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import NextAuth from "next-auth";
 import { authConfig } from "@/lib/auth.config";
+import { Redis } from "@upstash/redis";
 
 // Edge-compatible auth wrapper (no Prisma/DB dependencies)
 const { auth } = NextAuth(authConfig);
@@ -137,14 +138,37 @@ function cleanupRateLimitStore() {
   }
 }
 
-// Redis rate limiter — disabled in Edge Runtime (ioredis not available)
-// Falls back to in-memory rate limiting
+// Upstash Redis REST client — Edge Runtime compatible (HTTP-based, no TCP)
+let rateLimitRedis: Redis | null = null;
+try {
+  if (process.env.REDIS_URL && process.env.REDIS_TOKEN) {
+    rateLimitRedis = new Redis({
+      url: process.env.REDIS_URL,
+      token: process.env.REDIS_TOKEN,
+    });
+  }
+} catch {
+  // Redis init failed — will fall back to in-memory
+}
 
 async function checkRateLimitRedis(
-  _identifier: string,
-  _maxRequests: number
+  identifier: string,
+  maxRequests: number
 ): Promise<{ allowed: boolean; remaining: number } | null> {
-  return null; // Always use in-memory fallback in Edge Runtime
+  if (!rateLimitRedis) return null;
+  try {
+    const key = `rl:${identifier}`;
+    const count = await rateLimitRedis.incr(key);
+    if (count === 1) {
+      // First request in window — set TTL
+      await rateLimitRedis.expire(key, RATE_LIMIT_WINDOW);
+    }
+    const remaining = Math.max(0, maxRequests - count);
+    return { allowed: count <= maxRequests, remaining };
+  } catch {
+    // Redis error — fall back to in-memory
+    return null;
+  }
 }
 
 function checkRateLimitMemory(identifier: string, maxRequests: number): { allowed: boolean; remaining: number } {

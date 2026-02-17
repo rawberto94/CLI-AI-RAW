@@ -206,19 +206,21 @@ class PredictiveAnalyticsEngine {
   private async persistPrediction(prediction: Prediction): Promise<void> {
     this.predictions.set(prediction.id, prediction);
     try {
-      await prismaSingleton.rateForecast.create({
+      await prismaSingleton.aiPrediction.create({
         data: {
           id: prediction.id,
           tenantId: prediction.tenantId,
           contractId: prediction.contractId,
-          forecastType: prediction.type,
+          type: prediction.type,
           predictedValue: prediction.predictedValue,
           confidence: prediction.confidence,
+          probability: prediction.probability,
           horizon: prediction.horizon,
+          validUntil: prediction.validUntil,
           factors: prediction.factors as any,
           recommendations: prediction.recommendations as any,
           modelVersion: prediction.modelVersion,
-          validUntil: prediction.validUntil,
+          featureImportance: prediction.featureImportance as any,
         },
       });
     } catch (e) {

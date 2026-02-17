@@ -5414,3 +5414,118 @@ model AiCostLog {
   @@index([createdAt])
   @@map("ai_cost_logs")
 }
+
+// ============================================
+// AI Decision Audit Model
+// ============================================
+
+model AiDecision {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+
+  // Context
+  userId     String? @map("user_id")
+  sessionId  String? @map("session_id")
+  contractId String? @map("contract_id")
+  artifactId String? @map("artifact_id")
+
+  // AI details
+  feature        String // extraction, summarization, comparison, risk_analysis, etc.
+  subFeature     String? @map("sub_feature")
+  model          String // gpt-4o, claude-3-opus, etc.
+  modelVersion   String? @map("model_version")
+  promptVersion  String? @map("prompt_version")
+
+  // Input/Output
+  inputHash    String  @map("input_hash")
+  inputSummary String? @map("input_summary") @db.Text
+  output       Json
+  outputType   String  @map("output_type")
+
+  // Quality metrics
+  confidence       Float
+  processingTimeMs Int     @map("processing_time_ms")
+  tokensUsed       Int?    @map("tokens_used")
+  estimatedCost    Float?  @map("estimated_cost")
+
+  // Citations
+  citations     Json @default("[]")
+  evidenceChain Json @default("[]") @map("evidence_chain")
+
+  // Outcome & feedback
+  outcome      String  @default("pending") // accepted, rejected, modified, pending, auto_applied
+  userFeedback Json?   @map("user_feedback")
+  reviewedAt   DateTime? @map("reviewed_at")
+  expiresAt    DateTime? @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([tenantId, feature])
+  @@index([tenantId, createdAt])
+  @@index([contractId])
+  @@index([model])
+  @@index([outcome])
+  @@index([confidence])
+  @@map("ai_decisions")
+}
+
+// ============================================
+// AI Prediction Model (fixes broken RateForecast writes)
+// ============================================
+
+model AiPrediction {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+
+  contractId String @map("contract_id")
+  type       String // renewal, churn, cost, risk, value, compliance, negotiation_outcome
+
+  // Prediction details
+  predictedValue Float  @map("predicted_value")
+  confidence     Float
+  probability    Float? // For binary predictions
+
+  // Time context
+  horizon   String // 30d, 60d, 90d, 6m, 1y, 2y
+  validUntil DateTime @map("valid_until")
+
+  // Factors and recommendations
+  factors         Json @default("[]")
+  recommendations Json @default("[]")
+
+  // Model info
+  modelVersion      String @map("model_version")
+  featureImportance Json   @default("{}") @map("feature_importance")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([tenantId, type])
+  @@index([tenantId, contractId])
+  @@index([validUntil])
+  @@map("ai_predictions")
+}
+
+// ============================================
+// Conversation Memory Model
+// ============================================
+
+model Conversation {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  userId   String @map("user_id")
+
+  messages Json @default("[]") // Array of ConversationMessage
+  state    Json @default("{}") // Conversation state with references
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([tenantId, userId])
+  @@map("conversations")
+}

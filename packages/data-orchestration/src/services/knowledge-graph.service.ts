@@ -362,9 +362,47 @@ Return JSON array with format:
     clauseText: string,
     minSimilarity: number = 0.7
   ): Promise<Array<{ contractId: string; clause: string; similarity: number }>> {
-    // This would ideally use vector similarity search
-    // For now, return empty array - would need pgvector or similar
-    return [];
+    try {
+      // Generate embedding for the query clause via OpenAI
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        console.warn('[KnowledgeGraph] findSimilarClauses: OPENAI_API_KEY not set');
+        return [];
+      }
+      const { OpenAI } = await import('openai');
+      const openai = new OpenAI({ apiKey });
+      const model = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
+      const embRes = await openai.embeddings.create({ model, input: clauseText });
+      const queryVec = embRes.data[0]?.embedding;
+      if (!queryVec) return [];
+
+      const vectorQuery = `[${queryVec.join(',')}]`;
+
+      const rows = await prisma.$queryRawUnsafe<
+        Array<{ contractId: string; chunkText: string; similarity: number }>
+      >(
+        `SELECT "contractId", "chunkText",
+                1 - ("embedding" <=> $1::vector) AS similarity
+         FROM "ContractEmbedding"
+         WHERE "tenantId" = $2
+           AND "embedding" IS NOT NULL
+           AND 1 - ("embedding" <=> $1::vector) >= $3
+         ORDER BY similarity DESC
+         LIMIT 20`,
+        vectorQuery,
+        tenantId,
+        minSimilarity
+      );
+
+      return rows.map((r) => ({
+        contractId: r.contractId,
+        clause: r.chunkText,
+        similarity: Number(r.similarity),
+      }));
+    } catch (err) {
+      console.error('[KnowledgeGraph] findSimilarClauses error:', err);
+      return [];
+    }
   }
 
   async getEntityNetwork(

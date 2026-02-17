@@ -7,6 +7,34 @@
 import { NextRequest } from 'next/server';
 import { getAutonomousOrchestrator, AgentGoalStatus } from '@repo/agents';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { z } from 'zod';
+
+const orchestratorGetSchema = z.object({
+  resource: z.enum(['status', 'goals', 'goal', 'triggers', 'notifications']).default('status'),
+  status: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
+  id: z.string().optional(),
+  unreadOnly: z.enum(['true', 'false']).optional(),
+});
+
+const orchestratorPostSchema = z.object({
+  action: z.enum(['create_goal', 'cancel_goal', 'register_trigger', 'toggle_trigger', 'mark_notification_read', 'start_processing', 'stop_processing']),
+  type: z.string().optional(),
+  description: z.string().optional(),
+  priority: z.string().optional(),
+  metadata: z.record(z.unknown()).optional(),
+  goalId: z.string().optional(),
+  reason: z.string().optional(),
+  name: z.string().optional(),
+  triggerType: z.string().optional(),
+  condition: z.record(z.unknown()).optional(),
+  goalTemplate: z.record(z.unknown()).optional(),
+  enabled: z.boolean().optional(),
+  triggerId: z.string().optional(),
+  triggerEnabled: z.boolean().optional(),
+  notificationId: z.string().optional(),
+});
 
 // ============================================================================
 // GET - Get orchestrator status, goals, triggers, or notifications
@@ -15,8 +43,19 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 export const GET = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
-    const resource = searchParams.get('resource') || 'status';
-    
+    const parsed = orchestratorGetSchema.safeParse({
+      resource: searchParams.get('resource') || undefined,
+      status: searchParams.get('status') || undefined,
+      limit: searchParams.get('limit') || undefined,
+      offset: searchParams.get('offset') || undefined,
+      id: searchParams.get('id') || undefined,
+      unreadOnly: searchParams.get('unreadOnly') || undefined,
+    });
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Invalid parameters: ${parsed.error.issues.map(i => i.message).join(', ')}`, 400);
+    }
+    const { resource } = parsed.data;
+
     const orchestrator = getAutonomousOrchestrator();
 
     switch (resource) {
@@ -25,17 +64,15 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
 
       case 'goals':
         const validStatuses: AgentGoalStatus[] = ['pending', 'planning', 'awaiting_approval', 'executing', 'completed', 'failed', 'cancelled'];
-        const statusParam = searchParams.get('status')?.toLowerCase();
+        const statusParam = parsed.data.status?.toLowerCase();
         const goalStatus = statusParam && validStatuses.includes(statusParam as AgentGoalStatus) 
           ? statusParam as AgentGoalStatus
           : undefined;
-        const limit = parseInt(searchParams.get('limit') || '20');
-        const offset = parseInt(searchParams.get('offset') || '0');
-        
-        return createSuccessResponse(ctx, orchestrator.getGoals(tenantId, { status: goalStatus, limit, offset }));
+
+        return createSuccessResponse(ctx, orchestrator.getGoals(tenantId, { status: goalStatus, limit: parsed.data.limit, offset: parsed.data.offset }));
 
       case 'goal':
-        const goalId = searchParams.get('id');
+        const goalId = parsed.data.id;
         if (!goalId) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'Goal ID required', 400);
         }
@@ -51,8 +88,8 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
         return createSuccessResponse(ctx, orchestrator.getTriggers(tenantId));
 
       case 'notifications':
-        const unreadOnly = searchParams.get('unreadOnly') === 'true';
-        
+        const unreadOnly = parsed.data.unreadOnly === 'true';
+
         return createSuccessResponse(ctx, orchestrator.getNotifications(tenantId, unreadOnly));
 
       default:
@@ -67,13 +104,17 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
     const body = await request.json();
-    const { action } = body;
-    
+    const parsed = orchestratorPostSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Invalid body: ${parsed.error.issues.map(i => i.message).join(', ')}`, 400);
+    }
+    const { action } = parsed.data;
+
     const orchestrator = getAutonomousOrchestrator();
 
     switch (action) {
       case 'create_goal':
-        const { type, description, priority, metadata } = body;
+        const { type, description, priority, metadata } = parsed.data;
         
         if (!type || !description) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'Goal type and description required', 400);
@@ -94,7 +135,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         });
 
       case 'cancel_goal':
-        const { goalId, reason } = body;
+        const { goalId, reason } = parsed.data;
         
         if (!goalId) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'Goal ID required', 400);
@@ -108,7 +149,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         });
 
       case 'register_trigger':
-        const { name, triggerType, condition, goalTemplate, enabled = true } = body;
+        const { name, triggerType, condition, goalTemplate, enabled = true } = parsed.data;
         
         if (!name || !triggerType || !condition || !goalTemplate) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'Trigger name, type, condition, and goal template required', 400);
@@ -129,7 +170,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         });
 
       case 'toggle_trigger':
-        const { triggerId, triggerEnabled } = body;
+        const { triggerId, triggerEnabled } = parsed.data;
         
         if (!triggerId || triggerEnabled === undefined) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'Trigger ID and enabled state required', 400);
@@ -145,7 +186,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         });
 
       case 'mark_notification_read':
-        const { notificationId } = body;
+        const { notificationId } = parsed.data;
         
         if (!notificationId) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'Notification ID required', 400);

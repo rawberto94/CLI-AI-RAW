@@ -105,9 +105,20 @@ class ConversationMemoryService {
       await redis.set(conversationId, JSON.stringify(conversation), { ex: this.CACHE_TTL });
     }
 
-    // Also store in database for persistence
-    // Note: Would need to add Conversation model to Prisma schema
-    // For now, storing in user metadata or separate table
+    // Persist to database
+    try {
+      await prisma.conversation.create({
+        data: {
+          id: conversationId,
+          userId,
+          tenantId,
+          messages: [],
+          state: {},
+        },
+      });
+    } catch (e) {
+      console.warn('Failed to persist conversation to DB:', e);
+    }
 
     return conversationId;
   }
@@ -122,7 +133,27 @@ class ConversationMemoryService {
     }
 
     // Fall back to database
-    // Would need Conversation model
+    try {
+      const dbConv = await prisma.conversation.findUnique({ where: { id: conversationId } });
+      if (dbConv) {
+        const conversation: ConversationContext = {
+          conversationId: dbConv.id,
+          userId: dbConv.userId,
+          tenantId: dbConv.tenantId,
+          messages: dbConv.messages as ConversationMessage[],
+          state: dbConv.state as ConversationContext['state'],
+          createdAt: dbConv.createdAt,
+          updatedAt: dbConv.updatedAt,
+        };
+        // Re-cache in Redis
+        if (redis) {
+          await redis.set(conversationId, JSON.stringify(conversation), { ex: this.CACHE_TTL });
+        }
+        return conversation;
+      }
+    } catch (e) {
+      console.warn('Failed to load conversation from DB:', e);
+    }
     return null;
   }
 
@@ -160,6 +191,19 @@ class ConversationMemoryService {
     // Update storage
     if (redis) {
       await redis.set(conversationId, JSON.stringify(conversation), { ex: this.CACHE_TTL });
+    }
+
+    // Persist to database
+    try {
+      await prisma.conversation.update({
+        where: { id: conversationId },
+        data: {
+          messages: conversation.messages as any,
+          state: conversation.state as any,
+        },
+      });
+    } catch (e) {
+      console.warn('Failed to persist message to DB:', e);
     }
   }
 

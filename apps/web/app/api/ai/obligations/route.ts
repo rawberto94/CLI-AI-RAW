@@ -1,5 +1,15 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { z } from 'zod';
+
+const obligationsGetSchema = z.object({
+  action: z.enum(['list', 'detail', 'alerts', 'summary', 'compliance', 'upcoming', 'overdue']).default('list'),
+  contractId: z.string().optional(),
+  obligationId: z.string().optional(),
+  status: z.string().optional(),
+  priority: z.string().optional(),
+  dueWithin: z.coerce.number().int().min(1).max(365).optional(),
+});
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -11,12 +21,18 @@ export const maxDuration = 120;
 export const GET = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
-    const action = searchParams.get('action') || 'list';
-    const contractId = searchParams.get('contractId');
-    const obligationId = searchParams.get('obligationId');
-    const status = searchParams.get('status');
-    const priority = searchParams.get('priority');
-    const dueWithin = searchParams.get('dueWithin'); // days
+    const parsed = obligationsGetSchema.safeParse({
+      action: searchParams.get('action') || undefined,
+      contractId: searchParams.get('contractId') || undefined,
+      obligationId: searchParams.get('obligationId') || undefined,
+      status: searchParams.get('status') || undefined,
+      priority: searchParams.get('priority') || undefined,
+      dueWithin: searchParams.get('dueWithin') || undefined,
+    });
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Invalid parameters: ${parsed.error.issues.map(i => i.message).join(', ')}`, 400);
+    }
+    const { action, contractId, obligationId, status, priority, dueWithin } = parsed.data;
 
     // Dynamic import to avoid build issues
     const services = await import('data-orchestration/services');
@@ -35,7 +51,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
           contractId,
           status,
           priority,
-          dueWithin: dueWithin ? parseInt(dueWithin) : undefined });
+          dueWithin });
         break;
 
       case 'detail':
@@ -70,8 +86,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
         if (!tenantId) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required', 400);
         }
-        const days = parseInt(dueWithin || '30');
-        result = await obligationService.getUpcomingDeadlines(tenantId, days);
+        result = await obligationService.getUpcomingDeadlines(tenantId, dueWithin ?? 30);
         break;
 
       case 'overdue':

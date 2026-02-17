@@ -1,5 +1,31 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { z } from 'zod';
+
+const predictionsGetSchema = z.object({
+  action: z.enum(['contract', 'portfolio', 'renewal-probability', 'risk-forecast', 'cost-projection', 'value-optimization', 'at-risk', 'high-value']).default('contract'),
+  contractId: z.string().optional(),
+  type: z.enum(['renewal', 'risk', 'cost', 'value']).optional(),
+  horizon: z.enum(['short', 'medium', 'long']).default('medium'),
+});
+
+const predictionsPostSchema = z.object({
+  action: z.enum(['generate', 'bulk-generate', 'update-features', 'record-outcome', 'calibrate', 'scenario']).default('generate'),
+  contractId: z.string().optional(),
+  contractFeatures: z.record(z.unknown()).optional(),
+  horizon: z.enum(['short', 'medium', 'long']).default('medium'),
+  contracts: z.array(z.object({
+    contractId: z.string(),
+    features: z.record(z.unknown()),
+    horizon: z.string().optional(),
+  })).optional(),
+  predictionId: z.string().optional(),
+  actualOutcome: z.unknown().optional(),
+  outcomeDate: z.string().optional(),
+  tenantId: z.string().optional(),
+  scenarioName: z.string().optional(),
+  modifications: z.record(z.unknown()).optional(),
+});
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -11,10 +37,16 @@ export const maxDuration = 120;
 export const GET = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
-    const action = searchParams.get('action') || 'contract';
-    const contractId = searchParams.get('contractId');
-    const predictionType = searchParams.get('type'); // renewal, risk, cost, value
-    const horizon = searchParams.get('horizon') || 'medium'; // short, medium, long
+    const parsed = predictionsGetSchema.safeParse({
+      action: searchParams.get('action') || undefined,
+      contractId: searchParams.get('contractId') || undefined,
+      type: searchParams.get('type') || undefined,
+      horizon: searchParams.get('horizon') || undefined,
+    });
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Invalid parameters: ${parsed.error.issues.map(i => i.message).join(', ')}`, 400);
+    }
+    const { action, contractId, type: predictionType, horizon } = parsed.data;
 
     // Dynamic import to avoid build issues
     const services = await import('data-orchestration/services');
@@ -96,7 +128,11 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
     const body = await request.json();
-    const { action = 'generate', ...data } = body;
+    const parsed = predictionsPostSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Invalid body: ${parsed.error.issues.map(i => i.message).join(', ')}`, 400);
+    }
+    const { action, ...data } = parsed.data;
 
     // Dynamic import to avoid build issues
     const services = await import('data-orchestration/services');

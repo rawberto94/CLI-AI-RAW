@@ -222,34 +222,7 @@ services:
       timeout: 20s
       retries: 3
 
-  # ======================
-  # ChromaDB Vector Store
-  # ======================
-  chromadb:
-    image: chromadb/chroma:latest
-    container_name: contract-intel-chromadb
-    restart: unless-stopped
-    environment:
-      - IS_PERSISTENT=TRUE
-      - PERSIST_DIRECTORY=/chroma/chroma
-      - ANONYMIZED_TELEMETRY=FALSE
-    volumes:
-      - chromadb_data:/chroma/chroma
-    networks:
-      - contract-intel-network
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '1'
-        reservations:
-          memory: 512M
-          cpus: '0.5'
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+  # ChromaDB removed — pgvector handles all vector search via ContractEmbedding table
 
 # ======================
 # Networks
@@ -270,6 +243,4 @@ volumes:
   redis_data:
     driver: local
   minio_data:
-    driver: local
-  chromadb_data:
     driver: local

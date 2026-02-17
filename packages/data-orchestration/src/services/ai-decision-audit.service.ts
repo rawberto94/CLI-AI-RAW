@@ -12,6 +12,7 @@
  */
 
 import { randomUUID } from 'crypto';
+import { prisma } from '../lib/prisma';
 
 // Types
 export type AIFeature = 
@@ -187,6 +188,40 @@ class AIDecisionAuditService {
 
     this.decisions.set(id, fullDecision);
 
+    // Persist to database
+    try {
+      await prisma.aiDecision.create({
+        data: {
+          id: fullDecision.id,
+          tenantId: fullDecision.tenantId,
+          userId: fullDecision.userId,
+          sessionId: fullDecision.sessionId,
+          contractId: fullDecision.contractId,
+          artifactId: fullDecision.artifactId,
+          feature: fullDecision.feature,
+          subFeature: fullDecision.subFeature,
+          model: fullDecision.model,
+          modelVersion: fullDecision.modelVersion,
+          promptVersion: fullDecision.promptVersion,
+          inputHash: fullDecision.inputHash,
+          inputSummary: fullDecision.inputSummary,
+          output: fullDecision.output as any,
+          outputType: fullDecision.outputType,
+          confidence: fullDecision.confidence,
+          processingTimeMs: fullDecision.processingTimeMs,
+          tokensUsed: fullDecision.tokensUsed,
+          estimatedCost: fullDecision.estimatedCost,
+          citations: fullDecision.citations as any,
+          evidenceChain: fullDecision.evidenceChain as any,
+          outcome: fullDecision.outcome,
+          userFeedback: fullDecision.userFeedback as any,
+          expiresAt: fullDecision.expiresAt,
+        },
+      });
+    } catch (e) {
+      console.warn('Failed to persist AI decision to DB:', e);
+    }
+
     // Update feature stats
     this.updateFeatureStats(decision.feature, decision.confidence);
 
@@ -232,6 +267,45 @@ class AIDecisionAuditService {
     total: number;
     hasMore: boolean;
   }> {
+    const offset = query.offset || 0;
+    const limit = query.limit || 50;
+
+    // Try database first
+    try {
+      const where: any = { tenantId: query.tenantId };
+      if (query.startDate) where.createdAt = { ...where.createdAt, gte: query.startDate };
+      if (query.endDate) where.createdAt = { ...where.createdAt, lte: query.endDate };
+      if (query.feature) where.feature = query.feature;
+      if (query.model) where.model = query.model;
+      if (query.minConfidence !== undefined) where.confidence = { ...where.confidence, gte: query.minConfidence };
+      if (query.maxConfidence !== undefined) where.confidence = { ...where.confidence, lte: query.maxConfidence };
+      if (query.outcome) where.outcome = query.outcome;
+      if (query.contractId) where.contractId = query.contractId;
+      if (query.userId) where.userId = query.userId;
+      if (query.hasUserFeedback !== undefined) {
+        where.userFeedback = query.hasUserFeedback ? { not: null } : null;
+      }
+
+      const [dbDecisions, total] = await Promise.all([
+        prisma.aiDecision.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip: offset,
+          take: limit,
+        }),
+        prisma.aiDecision.count({ where }),
+      ]);
+
+      return {
+        decisions: dbDecisions as unknown as AIDecision[],
+        total,
+        hasMore: offset + limit < total,
+      };
+    } catch (e) {
+      console.warn('Failed to query decisions from DB, falling back to in-memory:', e);
+    }
+
+    // Fallback to in-memory
     let filtered = Array.from(this.decisions.values())
       .filter(d => d.tenantId === query.tenantId);
 
@@ -273,8 +347,6 @@ class AIDecisionAuditService {
     filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
     const total = filtered.length;
-    const offset = query.offset || 0;
-    const limit = query.limit || 50;
     const decisions = filtered.slice(offset, offset + limit);
 
     return {

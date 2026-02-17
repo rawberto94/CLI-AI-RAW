@@ -1,5 +1,19 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { z } from 'zod';
+
+const modelsGetSchema = z.object({
+  action: z.enum(['list', 'detail', 'versions', 'performance', 'compare', 'recommend', 'usage', 'quotas']).default('list'),
+  modelId: z.string().optional(),
+  capability: z.string().optional(),
+  provider: z.string().optional(),
+  status: z.string().optional(),
+  model1: z.string().optional(),
+  model2: z.string().optional(),
+  maxLatency: z.coerce.number().optional(),
+  maxCost: z.coerce.number().optional(),
+  minAccuracy: z.coerce.number().optional(),
+});
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -11,11 +25,22 @@ export const maxDuration = 60;
 export const GET = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
-    const action = searchParams.get('action') || 'list';
-    const modelId = searchParams.get('modelId');
-    const capability = searchParams.get('capability');
-    const provider = searchParams.get('provider');
-    const status = searchParams.get('status');
+    const parsed = modelsGetSchema.safeParse({
+      action: searchParams.get('action') || undefined,
+      modelId: searchParams.get('modelId') || undefined,
+      capability: searchParams.get('capability') || undefined,
+      provider: searchParams.get('provider') || undefined,
+      status: searchParams.get('status') || undefined,
+      model1: searchParams.get('model1') || undefined,
+      model2: searchParams.get('model2') || undefined,
+      maxLatency: searchParams.get('maxLatency') || undefined,
+      maxCost: searchParams.get('maxCost') || undefined,
+      minAccuracy: searchParams.get('minAccuracy') || undefined,
+    });
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Invalid parameters: ${parsed.error.issues.map(i => i.message).join(', ')}`, 400);
+    }
+    const { action, modelId, capability, provider, status } = parsed.data;
 
     // Dynamic import to avoid build issues
     const services = await import('data-orchestration/services');
@@ -57,9 +82,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
         break;
 
       case 'compare':
-        const model1 = searchParams.get('model1');
-        const model2 = searchParams.get('model2');
-        
+        const { model1, model2 } = parsed.data;
         if (!model1 || !model2) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'model1 and model2 are required for comparison', 400);
         }
@@ -71,15 +94,10 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'capability is required for recommendations', 400);
         }
         const constraints = {
-          maxLatencyMs: searchParams.get('maxLatency') 
-            ? parseInt(searchParams.get('maxLatency')!) 
-            : undefined,
-          maxCostPer1kTokens: searchParams.get('maxCost')
-            ? parseFloat(searchParams.get('maxCost')!)
-            : undefined,
-          minAccuracy: searchParams.get('minAccuracy')
-            ? parseFloat(searchParams.get('minAccuracy')!)
-            : undefined };
+          maxLatencyMs: parsed.data.maxLatency,
+          maxCostPer1kTokens: parsed.data.maxCost,
+          minAccuracy: parsed.data.minAccuracy,
+        };
         result = await modelRegistry.recommendModel(capability, constraints);
         break;
 
