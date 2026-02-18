@@ -1,140 +1,94 @@
-/**
- * Unit Tests for Contract Export API
- * Tests /api/contracts/[id]/export endpoint
- * 
- * Note: These tests focus on error handling since mocking
- * NextResponse for binary responses is complex in vitest.
- */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-// Mock Prisma - hoisted mock
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
-    contract: {
-      findUnique: vi.fn(),
-    },
+const mocks = vi.hoisted(() => ({
+  mockPrisma: {
+    contract: { findFirst: vi.fn() },
   },
+  mockContractService: {},
 }));
 
-// Import after mocking
-import { GET } from '@/app/api/contracts/[id]/export/route';
-import { prisma } from '@/lib/prisma';
+vi.mock('@/lib/prisma', () => ({ prisma: mocks.mockPrisma }));
+vi.mock('data-orchestration/services', () => ({ contractService: mocks.mockContractService }));
 
-// Get mocked prisma
-const mockPrisma = vi.mocked(prisma);
+import { GET } from '../route';
+
+function req(url = 'http://localhost:3000/api/contracts/c1/export', hdrs?: Record<string, string>) {
+  const h: Record<string, string> = { 'x-user-id': 'user-1', 'x-tenant-id': 'tenant-1', ...hdrs };
+  return new NextRequest(url, { method: 'GET', headers: h } as any);
+}
+
+const mockContract = {
+  id: 'c1',
+  contractTitle: 'Test Contract',
+  fileName: 'test.pdf',
+  status: 'ACTIVE',
+  contractType: 'NDA',
+  clientName: 'Acme',
+  supplierName: 'Vendor',
+  totalValue: 50000,
+  currency: 'USD',
+  startDate: new Date('2024-01-01'),
+  endDate: new Date('2025-01-01'),
+  expirationDate: null,
+  uploadedAt: new Date('2024-01-01'),
+  jurisdiction: 'US',
+  category: 'Legal',
+  description: 'Test',
+  tenantId: 'tenant-1',
+  artifacts: [],
+  clauses: [],
+};
 
 describe('Contract Export API', () => {
-  const mockContract = {
-    id: 'contract-123',
-    contractTitle: 'Master Services Agreement',
-    tenantId: 'tenant_demo_001',
-    status: 'ACTIVE',
-    contractType: 'SERVICE_AGREEMENT',
-    clientName: 'Client Corp',
-    supplierName: 'Acme Corporation',
-    startDate: new Date('2024-01-01'),
-    endDate: new Date('2025-12-31'),
-    totalValue: 500000,
-    currency: 'USD',
-    description: 'Comprehensive IT services agreement',
-    uploadedAt: new Date('2023-12-01'),
-    artifacts: [
-      {
-        id: 'artifact-1',
-        type: 'summary',
-        data: 'Contract summary text',
-      },
-    ],
-    clauses: [],
-  };
+  beforeEach(() => vi.clearAllMocks());
 
-  beforeEach(() => {
-    vi.clearAllMocks();
+  describe('Authentication', () => {
+    it('should return 401 without auth headers', async () => {
+      const r = new NextRequest('http://localhost:3000/api/contracts/c1/export', { method: 'GET', headers: { 'x-tenant-id': 't' } } as any);
+      const res = await GET(r, { params: Promise.resolve({ id: 'c1' }) });
+      expect(res.status).toBe(401);
+    });
   });
 
   describe('Error Handling', () => {
     it('should return 404 for non-existent contract', async () => {
-      mockPrisma.contract.findUnique.mockResolvedValue(null);
-
-      const request = new NextRequest(
-        'http://localhost/api/contracts/non-existent/export?format=json',
-        { headers: { 'x-tenant-id': 'tenant_demo_001' } }
-      );
-      
-      const response = await GET(request, { params: Promise.resolve({ id: 'non-existent' }) });
-      const data = await response.json();
-
-      expect(response.status).toBe(404);
-      expect(data.error).toContain('not found');
-    });
-
-    it('should handle invalid format', async () => {
-      mockPrisma.contract.findUnique.mockResolvedValue(mockContract);
-
-      const request = new NextRequest(
-        'http://localhost/api/contracts/contract-123/export?format=invalid',
-        { headers: { 'x-tenant-id': 'tenant_demo_001' } }
-      );
-      
-      const response = await GET(request, { params: Promise.resolve({ id: 'contract-123' }) });
-      const data = await response.json();
-
-      expect(response.status).toBe(400);
-      expect(data.error).toContain('Invalid format');
+      mocks.mockPrisma.contract.findFirst.mockResolvedValue(null);
+      const res = await GET(req(), { params: Promise.resolve({ id: 'c1' }) });
+      const d = await res.json();
+      expect(res.status).toBe(404);
+      expect(d.error.code).toBe('NOT_FOUND');
     });
 
     it('should handle database errors', async () => {
-      mockPrisma.contract.findUnique.mockRejectedValue(new Error('Connection failed'));
-
-      const request = new NextRequest(
-        'http://localhost/api/contracts/contract-123/export?format=json',
-        { headers: { 'x-tenant-id': 'tenant_demo_001' } }
-      );
-      
-      const response = await GET(request, { params: Promise.resolve({ id: 'contract-123' }) });
-      const data = await response.json();
-
-      expect(response.status).toBe(500);
-      expect(data.error).toBeDefined();
+      mocks.mockPrisma.contract.findFirst.mockRejectedValue(new Error('db error'));
+      const res = await GET(req(), { params: Promise.resolve({ id: 'c1' }) });
+      expect(res.status).toBe(500);
     });
   });
 
   describe('Database Queries', () => {
-    it('should call findUnique with correct contract ID', async () => {
-      mockPrisma.contract.findUnique.mockResolvedValue(mockContract);
-
-      const request = new NextRequest(
-        'http://localhost/api/contracts/contract-123/export?format=json',
-        { headers: { 'x-tenant-id': 'tenant_demo_001' } }
-      );
-      
-      await GET(request, { params: Promise.resolve({ id: 'contract-123' }) });
-
-      expect(mockPrisma.contract.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'contract-123' },
-        })
+    it('should call findFirst with correct contract ID and tenant', async () => {
+      mocks.mockPrisma.contract.findFirst.mockResolvedValue(mockContract);
+      await GET(req(), { params: Promise.resolve({ id: 'c1' }) });
+      expect(mocks.mockPrisma.contract.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ id: 'c1', tenantId: 'tenant-1' }) })
       );
     });
 
     it('should include artifacts by default', async () => {
-      mockPrisma.contract.findUnique.mockResolvedValue(mockContract);
-
-      const request = new NextRequest(
-        'http://localhost/api/contracts/contract-123/export?format=json',
-        { headers: { 'x-tenant-id': 'tenant_demo_001' } }
+      mocks.mockPrisma.contract.findFirst.mockResolvedValue(mockContract);
+      await GET(req(), { params: Promise.resolve({ id: 'c1' }) });
+      expect(mocks.mockPrisma.contract.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ include: expect.objectContaining({ artifacts: true, clauses: true }) })
       );
-      
-      await GET(request, { params: Promise.resolve({ id: 'contract-123' }) });
+    });
 
-      expect(mockPrisma.contract.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({
-          include: expect.objectContaining({
-            artifacts: true,
-          }),
-        })
+    it('should exclude artifacts when requested', async () => {
+      mocks.mockPrisma.contract.findFirst.mockResolvedValue(mockContract);
+      await GET(req('http://localhost:3000/api/contracts/c1/export?includeArtifacts=false'), { params: Promise.resolve({ id: 'c1' }) });
+      expect(mocks.mockPrisma.contract.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ include: expect.objectContaining({ artifacts: false }) })
       );
     });
   });

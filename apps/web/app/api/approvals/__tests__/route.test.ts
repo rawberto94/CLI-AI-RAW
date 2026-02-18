@@ -1,265 +1,272 @@
+/**
+ * Unit Tests for Approvals API
+ * Tests /api/approvals endpoint
+ */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET, POST, PATCH } from '../route';
 
-// Mock dependencies
+const { mockExecutionFindMany, mockStepExecUpdateMany, mockStepExecFindMany,
+  mockStepExecFindFirst, mockExecutionUpdate, mockNotificationCreate,
+} = vi.hoisted(() => ({
+  mockExecutionFindMany: vi.fn(),
+  mockStepExecUpdateMany: vi.fn(),
+  mockStepExecFindMany: vi.fn(),
+  mockStepExecFindFirst: vi.fn(),
+  mockExecutionUpdate: vi.fn(),
+  mockNotificationCreate: vi.fn(),
+}));
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    approvalRequest: {
-      findMany: vi.fn(),
-      create: vi.fn(),
-      findFirst: vi.fn(),
-      update: vi.fn(),
-    },
     workflowExecution: {
-      findFirst: vi.fn(),
-      update: vi.fn(),
+      findMany: mockExecutionFindMany,
+      update: mockExecutionUpdate,
     },
     workflowStepExecution: {
-      findFirst: vi.fn(),
-      update: vi.fn(),
+      updateMany: mockStepExecUpdateMany,
+      findMany: mockStepExecFindMany,
+      findFirst: mockStepExecFindFirst,
     },
-    contract: {
-      findFirst: vi.fn(),
-    },
-    auditLog: {
-      create: vi.fn(),
+    notification: {
+      create: mockNotificationCreate,
     },
   },
 }));
 
-vi.mock('@/lib/tenant-server', () => ({
-  getApiTenantId: vi.fn(),
+vi.mock('data-orchestration/services', () => ({
+  workflowService: {},
 }));
 
-// Import mocked modules
-import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { GET, POST, PATCH } from '../route';
 
-function createRequest(
-  method: string = 'GET',
-  url: string = 'http://localhost:3000/api/approvals',
-  body?: Record<string, unknown>
+function createAuthenticatedRequest(
+  method: string,
+  url: string,
+  options?: { body?: object }
 ): NextRequest {
-  const options: RequestInit = { method };
-  if (body) {
-    options.body = JSON.stringify(body);
-    options.headers = { 'Content-Type': 'application/json' };
-  }
-  return new NextRequest(new URL(url), options);
+  return new NextRequest(url, {
+    method,
+    headers: {
+      'x-user-id': 'user-1',
+      'x-tenant-id': 'tenant-1',
+      'Content-Type': 'application/json',
+    },
+    body: options?.body ? JSON.stringify(options.body) : undefined,
+  });
 }
 
-describe('GET /api/approvals', () => {
+function createUnauthenticatedRequest(method: string, url: string): NextRequest {
+  return new NextRequest(url, { method });
+}
+
+describe('Approvals API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should return 400 when tenant ID is missing', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue(null);
+  describe('GET /api/approvals', () => {
+    it('returns 401 without auth headers', async () => {
+      const request = createUnauthenticatedRequest('GET', 'http://localhost:3000/api/approvals');
+      const response = await GET(request);
+      const data = await response.json();
 
-    const request = createRequest();
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.success).toBe(false);
-    expect(data.error).toBe('Tenant ID is required');
-  });
-
-  it('should return approvals list successfully', async () => {
-    const mockApprovals = [
-      {
-        id: 'apr1',
-        type: 'contract',
-        title: 'Test Contract',
-        status: 'pending',
-        priority: 'high',
-        tenantId: 'tenant1',
-        createdAt: new Date(),
-        requestedBy: { name: 'John Doe', email: 'john@example.com' },
-        contract: { id: 'c1', title: 'Contract 1' },
-      },
-    ];
-
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.approvalRequest.findMany).mockResolvedValue(mockApprovals);
-
-    const request = createRequest();
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-    expect(data.approvals).toBeDefined();
-  });
-
-  it('should filter approvals by status', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.approvalRequest.findMany).mockResolvedValue([]);
-
-    const request = createRequest('GET', 'http://localhost:3000/api/approvals?status=pending');
-    await GET(request);
-
-    expect(prisma.approvalRequest.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ tenantId: 'tenant1', status: 'pending' }),
-      })
-    );
-  });
-
-  it('should filter approvals by priority', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.approvalRequest.findMany).mockResolvedValue([]);
-
-    const request = createRequest('GET', 'http://localhost:3000/api/approvals?priority=high');
-    await GET(request);
-
-    expect(prisma.approvalRequest.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ tenantId: 'tenant1', priority: 'high' }),
-      })
-    );
-  });
-
-  it('should filter approvals by type', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.approvalRequest.findMany).mockResolvedValue([]);
-
-    const request = createRequest('GET', 'http://localhost:3000/api/approvals?type=contract');
-    await GET(request);
-
-    expect(prisma.approvalRequest.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ tenantId: 'tenant1', type: 'contract' }),
-      })
-    );
-  });
-
-  it('should handle database errors gracefully', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.approvalRequest.findMany).mockRejectedValue(new Error('Database error'));
-
-    const request = createRequest();
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(500);
-    expect(data.success).toBe(false);
-  });
-});
-
-describe('POST /api/approvals', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('should return 400 when tenant ID is missing', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue(null);
-
-    const request = createRequest('POST', 'http://localhost:3000/api/approvals', { title: 'Test' });
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.success).toBe(false);
-    expect(data.error).toBe('Tenant ID is required');
-  });
-
-  it('should create approval request successfully', async () => {
-    const mockApproval = {
-      id: 'apr1',
-      type: 'contract',
-      title: 'New Approval',
-      status: 'pending',
-      tenantId: 'tenant1',
-      createdAt: new Date(),
-    };
-
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.approvalRequest.create).mockResolvedValue(mockApproval);
-
-    const request = createRequest('POST', 'http://localhost:3000/api/approvals', {
-      title: 'New Approval',
-      type: 'contract',
-      contractId: 'c1',
+      expect(response.status).toBe(401);
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('UNAUTHORIZED');
     });
-    const response = await POST(request);
-    const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-  });
-});
+    it('returns empty approvals list when no executions exist', async () => {
+      mockExecutionFindMany.mockResolvedValue([]);
 
-describe('PATCH /api/approvals', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/approvals');
+      const response = await GET(request);
+      const data = await response.json();
 
-  it('should return 400 when tenant ID is missing', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue(null);
-
-    const request = createRequest('PATCH', 'http://localhost:3000/api/approvals', { id: 'apr1' });
-    const response = await PATCH(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.success).toBe(false);
-    expect(data.error).toBe('Tenant ID is required');
-  });
-
-  it('should return 400 when approval ID is missing', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-
-    const request = createRequest('PATCH', 'http://localhost:3000/api/approvals', { status: 'approved' });
-    const response = await PATCH(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.success).toBe(false);
-    expect(data.error).toBe('Approval ID is required');
-  });
-
-  it('should return 404 when approval not found', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.approvalRequest.findFirst).mockResolvedValue(null);
-
-    const request = createRequest('PATCH', 'http://localhost:3000/api/approvals', {
-      id: 'nonexistent',
-      status: 'approved',
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.data.items).toEqual([]);
+      expect(data.data.data.stats.total).toBe(0);
     });
-    const response = await PATCH(request);
-    const data = await response.json();
 
-    expect(response.status).toBe(404);
-    expect(data.success).toBe(false);
-    expect(data.error).toBe('Approval not found');
+    it('returns approvals from database with stats', async () => {
+      const mockExecs = [
+        {
+          id: 'exec-1',
+          tenantId: 'tenant-1',
+          contractId: 'c1',
+          status: 'PENDING',
+          createdAt: new Date(),
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          initiatedBy: 'user-2',
+          startedBy: 'user-2',
+          metadata: { priority: 'high', type: 'contract' },
+          workflow: { name: 'Standard Approval', type: 'APPROVAL', description: 'desc' },
+          contract: {
+            id: 'c1',
+            contractTitle: 'Test Contract',
+            fileName: 'test.pdf',
+            supplierName: 'Supplier Inc',
+            totalValue: 500000,
+            status: 'ACTIVE',
+          },
+          stepExecutions: [
+            {
+              id: 'step-1',
+              stepName: 'Legal Review',
+              stepOrder: 1,
+              status: 'COMPLETED',
+              assignedTo: 'reviewer-1',
+              completedAt: new Date(),
+            },
+            {
+              id: 'step-2',
+              stepName: 'Finance Review',
+              stepOrder: 2,
+              status: 'PENDING',
+              assignedTo: 'reviewer-2',
+              completedAt: null,
+            },
+          ],
+        },
+      ];
+      mockExecutionFindMany.mockResolvedValue(mockExecs);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/approvals');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.data.items).toHaveLength(1);
+      expect(data.data.data.stats.total).toBe(1);
+      expect(data.data.data.stats.pending).toBe(1);
+      expect(data.data.source).toBe('database');
+    });
+
+    it('returns filter options', async () => {
+      mockExecutionFindMany.mockResolvedValue([]);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/approvals');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(data.data.data.filters).toBeDefined();
+      expect(data.data.data.filters.statuses).toContain('pending');
+      expect(data.data.data.filters.priorities).toContain('high');
+    });
+
+    it('handles database errors', async () => {
+      mockExecutionFindMany.mockRejectedValue(new Error('Database error'));
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/approvals');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data.success).toBe(false);
+    });
   });
 
-  it('should update approval status successfully', async () => {
-    const mockApproval = {
-      id: 'apr1',
-      status: 'pending',
-      tenantId: 'tenant1',
-    };
-    const mockUpdatedApproval = {
-      ...mockApproval,
-      status: 'approved',
-    };
+  describe('POST /api/approvals', () => {
+    it('returns 401 without auth headers', async () => {
+      const request = createUnauthenticatedRequest('POST', 'http://localhost:3000/api/approvals');
+      const response = await POST(request);
+      const data = await response.json();
 
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.approvalRequest.findFirst).mockResolvedValue(mockApproval);
-    vi.mocked(prisma.approvalRequest.update).mockResolvedValue(mockUpdatedApproval);
-
-    const request = createRequest('PATCH', 'http://localhost:3000/api/approvals', {
-      id: 'apr1',
-      status: 'approved',
-      comment: 'Looks good!',
+      expect(response.status).toBe(401);
+      expect(data.success).toBe(false);
     });
-    const response = await PATCH(request);
-    const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
+    it('approves an approval successfully', async () => {
+      mockStepExecUpdateMany.mockResolvedValue({ count: 1 });
+      mockStepExecFindMany.mockResolvedValue([
+        { status: 'COMPLETED' },
+        { status: 'COMPLETED' },
+      ]);
+      mockExecutionUpdate.mockResolvedValue({});
+      mockStepExecFindFirst.mockResolvedValue(null);
+
+      const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/approvals', {
+        body: { action: 'approve', approvalId: 'exec-1', comment: 'Looks good' },
+      });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.data.newStatus).toBe('approved');
+    });
+
+    it('rejects an approval with reason', async () => {
+      mockStepExecUpdateMany.mockResolvedValue({ count: 1 });
+      mockExecutionUpdate.mockResolvedValue({});
+
+      const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/approvals', {
+        body: { action: 'reject', approvalId: 'exec-1', reason: 'Terms not acceptable' },
+      });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.data.newStatus).toBe('rejected');
+    });
+
+    it('returns 400 when rejecting without reason', async () => {
+      const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/approvals', {
+        body: { action: 'reject', approvalId: 'exec-1' },
+      });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.success).toBe(false);
+      expect(data.error.message).toContain('reason is required');
+    });
+
+    it('returns 400 for invalid action', async () => {
+      const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/approvals', {
+        body: { action: 'invalid', approvalId: 'exec-1' },
+      });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error.message).toContain('Invalid action');
+    });
+  });
+
+  describe('PATCH /api/approvals', () => {
+    it('returns 401 without auth headers', async () => {
+      const request = createUnauthenticatedRequest('PATCH', 'http://localhost:3000/api/approvals');
+      const response = await PATCH(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(data.success).toBe(false);
+    });
+
+    it('returns 400 when approvalId is missing', async () => {
+      const request = createAuthenticatedRequest('PATCH', 'http://localhost:3000/api/approvals', {
+        body: { updates: { priority: 'high' } },
+      });
+      const response = await PATCH(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error.message).toContain('Approval ID is required');
+    });
+
+    it('updates approval successfully', async () => {
+      const request = createAuthenticatedRequest('PATCH', 'http://localhost:3000/api/approvals', {
+        body: { approvalId: 'exec-1', updates: { priority: 'critical' } },
+      });
+      const response = await PATCH(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.message).toBe('Approval updated');
+    });
   });
 });

@@ -1,22 +1,23 @@
 /**
  * Unit Tests for Validation Schemas
  * Tests for lib/validation/schemas.ts
+ *
+ * Rewritten for Vitest (no @jest/globals).
+ * Fixed to match actual schema exports and field shapes.
  */
 
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from 'vitest';
 import {
   loginSchema,
   signupSchema,
   contractCreateSchema,
   rateCardCreateSchema,
-  rateCardEntrySchema,
+  roleRateSchema,
   tagCreateSchema,
   commentSchema,
   shareSchema,
   approvalRequestSchema,
-  settingsSchema,
   paginationSchema,
-  searchQuerySchema,
   fileUploadSchema,
 } from '@/lib/validation/schemas';
 
@@ -38,10 +39,10 @@ describe('Validation Schemas', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should reject short password', () => {
+    it('should reject empty password', () => {
       const result = loginSchema.safeParse({
         email: 'test@example.com',
-        password: 'short',
+        password: '',
       });
       expect(result.success).toBe(false);
     });
@@ -50,22 +51,22 @@ describe('Validation Schemas', () => {
   describe('signupSchema', () => {
     it('should validate correct signup data', () => {
       const result = signupSchema.safeParse({
+        name: 'John Doe',
         email: 'newuser@example.com',
         password: 'SecurePass123!',
         confirmPassword: 'SecurePass123!',
-        firstName: 'John',
-        lastName: 'Doe',
+        terms: true,
       });
       expect(result.success).toBe(true);
     });
 
     it('should reject mismatched passwords', () => {
       const result = signupSchema.safeParse({
+        name: 'John Doe',
         email: 'newuser@example.com',
         password: 'SecurePass123!',
         confirmPassword: 'DifferentPass456!',
-        firstName: 'John',
-        lastName: 'Doe',
+        terms: true,
       });
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -75,11 +76,22 @@ describe('Validation Schemas', () => {
 
     it('should reject weak password', () => {
       const result = signupSchema.safeParse({
+        name: 'John Doe',
         email: 'newuser@example.com',
         password: 'weakpass',
         confirmPassword: 'weakpass',
-        firstName: 'John',
-        lastName: 'Doe',
+        terms: true,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should reject when terms not accepted', () => {
+      const result = signupSchema.safeParse({
+        name: 'John Doe',
+        email: 'newuser@example.com',
+        password: 'SecurePass123!',
+        confirmPassword: 'SecurePass123!',
+        terms: false,
       });
       expect(result.success).toBe(false);
     });
@@ -89,27 +101,31 @@ describe('Validation Schemas', () => {
     it('should validate correct contract data', () => {
       const result = contractCreateSchema.safeParse({
         title: 'Service Agreement 2024',
-        vendor: 'Acme Corp',
-        status: 'draft',
-        type: 'service',
-        category: 'IT',
+        client: 'Acme Corp',
+        supplier: 'Tech Services Inc',
+        contractType: 'sow',
         value: 50000,
+        currency: 'USD',
         startDate: '2024-01-01',
         endDate: '2024-12-31',
       });
       expect(result.success).toBe(true);
     });
 
-    it('should allow optional fields', () => {
+    it('should require title, client, supplier, contractType', () => {
+      // Missing required fields
       const result = contractCreateSchema.safeParse({
         title: 'Basic Contract',
       });
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
     });
 
     it('should reject empty title', () => {
       const result = contractCreateSchema.safeParse({
         title: '',
+        client: 'Client',
+        supplier: 'Supplier',
+        contractType: 'msa',
       });
       expect(result.success).toBe(false);
     });
@@ -117,6 +133,9 @@ describe('Validation Schemas', () => {
     it('should reject very long title', () => {
       const result = contractCreateSchema.safeParse({
         title: 'A'.repeat(300),
+        client: 'Client',
+        supplier: 'Supplier',
+        contractType: 'msa',
       });
       expect(result.success).toBe(false);
     });
@@ -124,10 +143,26 @@ describe('Validation Schemas', () => {
     it('should reject end date before start date', () => {
       const result = contractCreateSchema.safeParse({
         title: 'Test Contract',
+        client: 'Client',
+        supplier: 'Supplier',
+        contractType: 'nda',
         startDate: '2024-12-31',
         endDate: '2024-01-01',
       });
       expect(result.success).toBe(false);
+    });
+
+    it('should validate contractType enum', () => {
+      const validTypes = ['msa', 'sow', 'nda', 'amendment', 'other'];
+      validTypes.forEach(contractType => {
+        const result = contractCreateSchema.safeParse({
+          title: 'Test',
+          client: 'Client',
+          supplier: 'Supplier',
+          contractType,
+        });
+        expect(result.success).toBe(true);
+      });
     });
   });
 
@@ -135,10 +170,14 @@ describe('Validation Schemas', () => {
     it('should validate correct rate card data', () => {
       const result = rateCardCreateSchema.safeParse({
         name: 'IT Services Rate Card',
-        vendor: 'Tech Provider',
+        supplierName: 'Tech Provider',
+        clientName: 'Acme Corp',
         currency: 'USD',
-        effectiveDate: '2024-01-01',
-        expirationDate: '2024-12-31',
+        validFrom: '2024-01-01',
+        validTo: '2024-12-31',
+        roles: [
+          { role: 'Senior Developer', dailyRate: 1200 },
+        ],
       });
       expect(result.success).toBe(true);
     });
@@ -146,47 +185,61 @@ describe('Validation Schemas', () => {
     it('should reject empty name', () => {
       const result = rateCardCreateSchema.safeParse({
         name: '',
+        supplierName: 'Supplier',
+        clientName: 'Client',
+        roles: [{ role: 'Dev', dailyRate: 100 }],
       });
       expect(result.success).toBe(false);
     });
 
-    it('should reject expiration before effective date', () => {
+    it('should reject validTo before validFrom', () => {
       const result = rateCardCreateSchema.safeParse({
         name: 'Test Rate Card',
-        effectiveDate: '2024-12-31',
-        expirationDate: '2024-01-01',
+        supplierName: 'Supplier',
+        clientName: 'Client',
+        validFrom: '2024-12-31',
+        validTo: '2024-01-01',
+        roles: [{ role: 'Dev', dailyRate: 100 }],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should require at least one role', () => {
+      const result = rateCardCreateSchema.safeParse({
+        name: 'Test',
+        supplierName: 'Supplier',
+        clientName: 'Client',
+        roles: [],
       });
       expect(result.success).toBe(false);
     });
   });
 
-  describe('rateCardEntrySchema', () => {
+  describe('roleRateSchema', () => {
     it('should validate correct entry data', () => {
-      const result = rateCardEntrySchema.safeParse({
-        roleTitle: 'Senior Developer',
-        hourlyRate: 150,
+      const result = roleRateSchema.safeParse({
+        role: 'Senior Developer',
         dailyRate: 1200,
-        monthlyRate: 24000,
-        currency: 'USD',
+        hourlyRate: 150,
         level: 'senior',
         location: 'Remote',
       });
       expect(result.success).toBe(true);
     });
 
-    it('should reject negative rates', () => {
-      const result = rateCardEntrySchema.safeParse({
-        roleTitle: 'Developer',
-        hourlyRate: -10,
+    it('should require role name and dailyRate', () => {
+      const result = roleRateSchema.safeParse({
+        role: 'Developer',
       });
       expect(result.success).toBe(false);
     });
 
-    it('should validate minimum fields', () => {
-      const result = rateCardEntrySchema.safeParse({
-        roleTitle: 'Developer',
+    it('should require positive dailyRate', () => {
+      const result = roleRateSchema.safeParse({
+        role: 'Developer',
+        dailyRate: -10,
       });
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
     });
   });
 
@@ -218,8 +271,6 @@ describe('Validation Schemas', () => {
     it('should validate correct comment data', () => {
       const result = commentSchema.safeParse({
         content: 'This is a helpful comment.',
-        resourceType: 'contract',
-        resourceId: 'contract-123',
       });
       expect(result.success).toBe(true);
     });
@@ -227,8 +278,6 @@ describe('Validation Schemas', () => {
     it('should reject empty content', () => {
       const result = commentSchema.safeParse({
         content: '',
-        resourceType: 'contract',
-        resourceId: 'contract-123',
       });
       expect(result.success).toBe(false);
     });
@@ -236,9 +285,8 @@ describe('Validation Schemas', () => {
     it('should allow optional parentId for threads', () => {
       const result = commentSchema.safeParse({
         content: 'Reply to comment',
-        resourceType: 'contract',
-        resourceId: 'contract-123',
-        parentId: 'comment-parent-1',
+        // parentId is a UUID
+        parentId: '550e8400-e29b-41d4-a716-446655440000',
       });
       expect(result.success).toBe(true);
     });
@@ -247,7 +295,7 @@ describe('Validation Schemas', () => {
   describe('shareSchema', () => {
     it('should validate correct share data', () => {
       const result = shareSchema.safeParse({
-        email: 'colleague@example.com',
+        emails: ['colleague@example.com'],
         permission: 'view',
         expiresAt: '2024-12-31T23:59:59Z',
       });
@@ -255,10 +303,10 @@ describe('Validation Schemas', () => {
     });
 
     it('should validate all permission types', () => {
-      const permissions = ['view', 'comment', 'edit', 'admin'];
+      const permissions = ['view', 'comment', 'edit'];
       permissions.forEach(permission => {
         const result = shareSchema.safeParse({
-          email: 'user@example.com',
+          emails: ['user@example.com'],
           permission,
         });
         expect(result.success).toBe(true);
@@ -267,8 +315,16 @@ describe('Validation Schemas', () => {
 
     it('should reject invalid permission', () => {
       const result = shareSchema.safeParse({
-        email: 'user@example.com',
+        emails: ['user@example.com'],
         permission: 'invalid',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('should require at least one email', () => {
+      const result = shareSchema.safeParse({
+        emails: [],
+        permission: 'view',
       });
       expect(result.success).toBe(false);
     });
@@ -277,10 +333,13 @@ describe('Validation Schemas', () => {
   describe('approvalRequestSchema', () => {
     it('should validate correct approval request', () => {
       const result = approvalRequestSchema.safeParse({
-        approvers: ['approver1@example.com', 'approver2@example.com'],
-        message: 'Please review and approve this contract.',
-        deadline: '2024-02-01T17:00:00Z',
-        requireAllApprovers: true,
+        approvers: [
+          { email: 'approver1@example.com' },
+          { email: 'approver2@example.com' },
+        ],
+        notes: 'Please review and approve this contract.',
+        dueDate: '2024-02-01T17:00:00Z',
+        urgency: 'high',
       });
       expect(result.success).toBe(true);
     });
@@ -288,49 +347,7 @@ describe('Validation Schemas', () => {
     it('should require at least one approver', () => {
       const result = approvalRequestSchema.safeParse({
         approvers: [],
-        message: 'Please review',
-      });
-      expect(result.success).toBe(false);
-    });
-  });
-
-  describe('settingsSchema', () => {
-    it('should validate complete settings', () => {
-      const result = settingsSchema.safeParse({
-        theme: 'dark',
-        language: 'en',
-        notifications: {
-          email: true,
-          push: true,
-          inApp: true,
-          digest: 'daily',
-        },
-        display: {
-          compactMode: false,
-          showPreviews: true,
-          timezone: 'UTC',
-          dateFormat: 'YYYY-MM-DD',
-          currency: 'USD',
-        },
-        privacy: {
-          profileVisibility: 'team',
-          activityVisibility: 'team',
-          showOnlineStatus: true,
-        },
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it('should allow partial settings', () => {
-      const result = settingsSchema.safeParse({
-        theme: 'light',
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it('should reject invalid theme', () => {
-      const result = settingsSchema.safeParse({
-        theme: 'rainbow',
+        notes: 'Please review',
       });
       expect(result.success).toBe(false);
     });
@@ -340,9 +357,7 @@ describe('Validation Schemas', () => {
     it('should validate correct pagination params', () => {
       const result = paginationSchema.safeParse({
         page: 1,
-        limit: 20,
-        sortBy: 'createdAt',
-        sortOrder: 'desc',
+        pageSize: 20,
       });
       expect(result.success).toBe(true);
     });
@@ -352,7 +367,7 @@ describe('Validation Schemas', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.page).toBe(1);
-        expect(result.data.limit).toBe(20);
+        expect(result.data.pageSize).toBe(20);
       }
     });
 
@@ -363,31 +378,9 @@ describe('Validation Schemas', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should reject limit greater than 100', () => {
+    it('should reject pageSize greater than 100', () => {
       const result = paginationSchema.safeParse({
-        limit: 200,
-      });
-      expect(result.success).toBe(false);
-    });
-  });
-
-  describe('searchQuerySchema', () => {
-    it('should validate search query', () => {
-      const result = searchQuerySchema.safeParse({
-        q: 'contract vendor services',
-        filters: {
-          status: 'active',
-          type: 'service',
-        },
-        facets: ['status', 'vendor'],
-        highlight: true,
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it('should reject empty query', () => {
-      const result = searchQuerySchema.safeParse({
-        q: '',
+        pageSize: 200,
       });
       expect(result.success).toBe(false);
     });
@@ -396,8 +389,8 @@ describe('Validation Schemas', () => {
   describe('fileUploadSchema', () => {
     it('should validate file upload with allowed type', () => {
       const result = fileUploadSchema.safeParse({
-        filename: 'contract.pdf',
-        mimeType: 'application/pdf',
+        name: 'contract.pdf',
+        type: 'application/pdf',
         size: 1024 * 1024, // 1MB
       });
       expect(result.success).toBe(true);
@@ -405,8 +398,8 @@ describe('Validation Schemas', () => {
 
     it('should reject file too large', () => {
       const result = fileUploadSchema.safeParse({
-        filename: 'huge-file.pdf',
-        mimeType: 'application/pdf',
+        name: 'huge-file.pdf',
+        type: 'application/pdf',
         size: 100 * 1024 * 1024, // 100MB
       });
       expect(result.success).toBe(false);
@@ -414,8 +407,8 @@ describe('Validation Schemas', () => {
 
     it('should reject disallowed mime type', () => {
       const result = fileUploadSchema.safeParse({
-        filename: 'script.exe',
-        mimeType: 'application/x-msdownload',
+        name: 'script.exe',
+        type: 'application/x-msdownload',
         size: 1024,
       });
       expect(result.success).toBe(false);

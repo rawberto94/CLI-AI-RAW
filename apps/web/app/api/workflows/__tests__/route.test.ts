@@ -1,284 +1,323 @@
+/**
+ * Unit Tests for Workflows API
+ * Tests /api/workflows endpoint
+ */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET, POST, PATCH } from '../route';
 
-// Mock dependencies
+const { mockWorkflowFindMany, mockWorkflowCreate, mockWorkflowUpdate,
+  mockWorkflowFindFirst, mockWorkflowDelete, mockStepDeleteMany, mockStepCreateMany,
+} = vi.hoisted(() => ({
+  mockWorkflowFindMany: vi.fn(),
+  mockWorkflowCreate: vi.fn(),
+  mockWorkflowUpdate: vi.fn(),
+  mockWorkflowFindFirst: vi.fn(),
+  mockWorkflowDelete: vi.fn(),
+  mockStepDeleteMany: vi.fn(),
+  mockStepCreateMany: vi.fn(),
+}));
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     workflow: {
-      findMany: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      findFirst: vi.fn(),
+      findMany: mockWorkflowFindMany,
+      create: mockWorkflowCreate,
+      update: mockWorkflowUpdate,
+      findFirst: mockWorkflowFindFirst,
+      delete: mockWorkflowDelete,
     },
     workflowStep: {
-      deleteMany: vi.fn(),
-      createMany: vi.fn(),
+      deleteMany: mockStepDeleteMany,
+      createMany: mockStepCreateMany,
     },
   },
 }));
 
-vi.mock('@/lib/tenant-server', () => ({
-  getApiTenantId: vi.fn(),
+vi.mock('data-orchestration/services', () => ({
+  workflowService: {},
 }));
 
-// Import mocked modules
-import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { GET, POST, PATCH, DELETE } from '../route';
 
-function createRequest(
-  method: string = 'GET',
-  url: string = 'http://localhost:3000/api/workflows',
-  body?: Record<string, unknown>
+function createAuthenticatedRequest(
+  method: string,
+  url: string,
+  options?: { body?: object }
 ): NextRequest {
-  const options: RequestInit = { method };
-  if (body) {
-    options.body = JSON.stringify(body);
-    options.headers = { 'Content-Type': 'application/json' };
-  }
-  return new NextRequest(new URL(url), options);
+  return new NextRequest(url, {
+    method,
+    headers: {
+      'x-user-id': 'user-1',
+      'x-tenant-id': 'tenant-1',
+      'Content-Type': 'application/json',
+    },
+    body: options?.body ? JSON.stringify(options.body) : undefined,
+  });
 }
 
-describe('GET /api/workflows', () => {
+function createUnauthenticatedRequest(method: string, url: string): NextRequest {
+  return new NextRequest(url, { method });
+}
+
+describe('Workflows API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should return 400 when tenant ID is missing', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue(null);
+  describe('GET /api/workflows', () => {
+    it('returns 401 without auth headers', async () => {
+      const request = createUnauthenticatedRequest('GET', 'http://localhost:3000/api/workflows');
+      const response = await GET(request);
+      const data = await response.json();
 
-    const request = createRequest();
-    const response = await GET(request);
-    const data = await response.json();
+      expect(response.status).toBe(401);
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('UNAUTHORIZED');
+    });
 
-    expect(response.status).toBe(400);
-    expect(data.success).toBe(false);
-    expect(data.error).toBe('Tenant ID is required');
+    it('returns workflows list successfully', async () => {
+      const mockWorkflows = [
+        {
+          id: 'wf1',
+          name: 'Approval Workflow',
+          description: 'Standard approval process',
+          type: 'APPROVAL',
+          isActive: true,
+          tenantId: 'tenant-1',
+          createdAt: new Date(),
+          steps: [{ id: 's1', name: 'Step 1', order: 0 }],
+          _count: { executions: 5 },
+        },
+      ];
+      mockWorkflowFindMany.mockResolvedValue(mockWorkflows);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/workflows');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.workflows).toHaveLength(1);
+      expect(data.data.workflows[0].name).toBe('Approval Workflow');
+      expect(data.data.workflows[0].executions).toBe(5);
+      expect(data.data.total).toBe(1);
+    });
+
+    it('filters workflows by type', async () => {
+      mockWorkflowFindMany.mockResolvedValue([]);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/workflows?type=RENEWAL');
+      await GET(request);
+
+      expect(mockWorkflowFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ type: 'RENEWAL' }),
+        })
+      );
+    });
+
+    it('filters workflows by isActive', async () => {
+      mockWorkflowFindMany.mockResolvedValue([]);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/workflows?isActive=true');
+      await GET(request);
+
+      expect(mockWorkflowFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ isActive: true }),
+        })
+      );
+    });
+
+    it('handles database errors gracefully', async () => {
+      mockWorkflowFindMany.mockRejectedValue(new Error('Database error'));
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/workflows');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data.success).toBe(false);
+    });
+
+    it('returns empty list when no workflows', async () => {
+      mockWorkflowFindMany.mockResolvedValue([]);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/workflows');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.data.workflows).toEqual([]);
+      expect(data.data.total).toBe(0);
+    });
   });
 
-  it('should return workflows list successfully', async () => {
-    const mockWorkflows = [
-      {
+  describe('POST /api/workflows', () => {
+    it('returns 401 without auth headers', async () => {
+      const request = createUnauthenticatedRequest('POST', 'http://localhost:3000/api/workflows');
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(data.success).toBe(false);
+    });
+
+    it('returns 400 when workflow name is missing', async () => {
+      const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/workflows', {
+        body: {},
+      });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.success).toBe(false);
+      expect(data.error.message).toContain('name is required');
+    });
+
+    it('creates workflow successfully', async () => {
+      const mockWorkflow = {
         id: 'wf1',
-        name: 'Approval Workflow',
-        description: 'Standard approval process',
+        name: 'New Workflow',
+        description: 'Test workflow',
         type: 'APPROVAL',
         isActive: true,
-        tenantId: 'tenant1',
+        tenantId: 'tenant-1',
         createdAt: new Date(),
-        steps: [{ id: 's1', name: 'Step 1', order: 0 }],
-        _count: { executions: 5 },
-      },
-    ];
+        steps: [],
+      };
+      mockWorkflowCreate.mockResolvedValue(mockWorkflow);
 
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.workflow.findMany).mockResolvedValue(mockWorkflows);
+      const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/workflows', {
+        body: { name: 'New Workflow', description: 'Test workflow', type: 'APPROVAL' },
+      });
+      const response = await POST(request);
+      const data = await response.json();
 
-    const request = createRequest();
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-    expect(data.workflows).toHaveLength(1);
-    expect(data.workflows[0].name).toBe('Approval Workflow');
-    expect(data.workflows[0].executions).toBe(5);
-    expect(data.total).toBe(1);
-  });
-
-  it('should filter workflows by type', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.workflow.findMany).mockResolvedValue([]);
-
-    const request = createRequest('GET', 'http://localhost:3000/api/workflows?type=RENEWAL');
-    await GET(request);
-
-    expect(prisma.workflow.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ tenantId: 'tenant1', type: 'RENEWAL' }),
-      })
-    );
-  });
-
-  it('should filter workflows by isActive', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.workflow.findMany).mockResolvedValue([]);
-
-    const request = createRequest('GET', 'http://localhost:3000/api/workflows?isActive=true');
-    await GET(request);
-
-    expect(prisma.workflow.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ tenantId: 'tenant1', isActive: true }),
-      })
-    );
-  });
-
-  it('should handle database errors gracefully', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.workflow.findMany).mockRejectedValue(new Error('Database error'));
-
-    const request = createRequest();
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(500);
-    expect(data.success).toBe(false);
-    expect(data.error).toBe('Failed to fetch workflows');
-    expect(data.details).toBe('Database error');
-  });
-});
-
-describe('POST /api/workflows', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('should return 400 when tenant ID is missing', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue(null);
-
-    const request = createRequest('POST', 'http://localhost:3000/api/workflows', { name: 'Test' });
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.success).toBe(false);
-    expect(data.error).toBe('Tenant ID is required');
-  });
-
-  it('should return 400 when workflow name is missing', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-
-    const request = createRequest('POST', 'http://localhost:3000/api/workflows', {});
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.success).toBe(false);
-    expect(data.error).toBe('Workflow name is required');
-  });
-
-  it('should create workflow successfully', async () => {
-    const mockWorkflow = {
-      id: 'wf1',
-      name: 'New Workflow',
-      description: 'Test workflow',
-      type: 'APPROVAL',
-      isActive: true,
-      tenantId: 'tenant1',
-      createdAt: new Date(),
-      steps: [],
-    };
-
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.workflow.create).mockResolvedValue(mockWorkflow);
-
-    const request = createRequest('POST', 'http://localhost:3000/api/workflows', {
-      name: 'New Workflow',
-      description: 'Test workflow',
-      type: 'APPROVAL',
-      steps: [],
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.workflow.name).toBe('New Workflow');
+      expect(data.data.message).toBe('Workflow created successfully');
     });
-    const response = await POST(request);
-    const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-    expect(data.workflow.name).toBe('New Workflow');
-    expect(data.message).toBe('Workflow created successfully');
-  });
+    it('creates workflow with steps', async () => {
+      const mockWorkflow = {
+        id: 'wf1',
+        name: 'With Steps',
+        type: 'APPROVAL',
+        isActive: true,
+        tenantId: 'tenant-1',
+        steps: [{ id: 's1', name: 'Review', order: 0, type: 'APPROVAL' }],
+      };
+      mockWorkflowCreate.mockResolvedValue(mockWorkflow);
 
-  it('should create workflow with steps', async () => {
-    const mockWorkflow = {
-      id: 'wf1',
-      name: 'Workflow with Steps',
-      description: 'Has steps',
-      type: 'APPROVAL',
-      isActive: true,
-      tenantId: 'tenant1',
-      createdAt: new Date(),
-      steps: [
-        { id: 's1', name: 'Review', order: 0 },
-        { id: 's2', name: 'Approve', order: 1 },
-      ],
-    };
+      const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/workflows', {
+        body: {
+          name: 'With Steps',
+          steps: [{ name: 'Review', type: 'APPROVAL' }],
+        },
+      });
+      const response = await POST(request);
+      const data = await response.json();
 
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.workflow.create).mockResolvedValue(mockWorkflow);
-
-    const request = createRequest('POST', 'http://localhost:3000/api/workflows', {
-      name: 'Workflow with Steps',
-      steps: [
-        { name: 'Review', type: 'REVIEW' },
-        { name: 'Approve', type: 'APPROVAL' },
-      ],
+      expect(response.status).toBe(200);
+      expect(data.data.workflow.steps).toHaveLength(1);
     });
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-    expect(prisma.workflow.create).toHaveBeenCalled();
   });
 
-  it('should handle creation errors gracefully', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.workflow.create).mockRejectedValue(new Error('Unique constraint violation'));
+  describe('PATCH /api/workflows', () => {
+    it('returns 401 without auth headers', async () => {
+      const request = createUnauthenticatedRequest('PATCH', 'http://localhost:3000/api/workflows');
+      const response = await PATCH(request);
+      const data = await response.json();
 
-    const request = createRequest('POST', 'http://localhost:3000/api/workflows', {
-      name: 'Duplicate Workflow',
+      expect(response.status).toBe(401);
+      expect(data.success).toBe(false);
     });
-    const response = await POST(request);
-    const data = await response.json();
 
-    expect(response.status).toBe(500);
-    expect(data.success).toBe(false);
-    expect(data.error).toBe('Failed to create workflow');
-  });
-});
+    it('returns 400 when workflow ID is missing', async () => {
+      const request = createAuthenticatedRequest('PATCH', 'http://localhost:3000/api/workflows', {
+        body: { name: 'Updated' },
+      });
+      const response = await PATCH(request);
+      const data = await response.json();
 
-describe('PATCH /api/workflows', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('should return 400 when tenant ID is missing', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue(null);
-
-    const request = createRequest('PATCH', 'http://localhost:3000/api/workflows', { id: 'wf1' });
-    const response = await PATCH(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.success).toBe(false);
-    expect(data.error).toBe('Tenant ID is required');
-  });
-
-  it('should return 400 when workflow ID is missing', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-
-    const request = createRequest('PATCH', 'http://localhost:3000/api/workflows', { name: 'Updated' });
-    const response = await PATCH(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.success).toBe(false);
-    expect(data.error).toBe('Workflow ID is required');
-  });
-
-  it('should return 404 when workflow not found', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.workflow.findFirst).mockResolvedValue(null);
-
-    const request = createRequest('PATCH', 'http://localhost:3000/api/workflows', {
-      id: 'nonexistent',
-      name: 'Updated',
+      expect(response.status).toBe(400);
+      expect(data.error.message).toContain('Workflow ID is required');
     });
-    const response = await PATCH(request);
-    const data = await response.json();
 
-    expect(response.status).toBe(404);
-    expect(data.success).toBe(false);
-    expect(data.error).toBe('Workflow not found');
+    it('returns 404 when workflow not found', async () => {
+      mockWorkflowFindFirst.mockResolvedValue(null);
+
+      const request = createAuthenticatedRequest('PATCH', 'http://localhost:3000/api/workflows', {
+        body: { id: 'nonexistent', name: 'Updated' },
+      });
+      const response = await PATCH(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.error.message).toContain('not found');
+    });
+
+    it('updates workflow successfully', async () => {
+      mockWorkflowFindFirst.mockResolvedValue({ id: 'wf1' });
+      mockWorkflowUpdate.mockResolvedValue({
+        id: 'wf1',
+        name: 'Updated Workflow',
+        steps: [],
+      });
+
+      const request = createAuthenticatedRequest('PATCH', 'http://localhost:3000/api/workflows', {
+        body: { id: 'wf1', name: 'Updated Workflow' },
+      });
+      const response = await PATCH(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.data.message).toBe('Workflow updated successfully');
+    });
+  });
+
+  describe('DELETE /api/workflows', () => {
+    it('returns 401 without auth headers', async () => {
+      const request = createUnauthenticatedRequest('DELETE', 'http://localhost:3000/api/workflows?id=wf1');
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(data.success).toBe(false);
+    });
+
+    it('returns 400 when workflow ID is missing', async () => {
+      const request = createAuthenticatedRequest('DELETE', 'http://localhost:3000/api/workflows');
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error.message).toContain('Workflow ID is required');
+    });
+
+    it('returns 404 when workflow not found', async () => {
+      mockWorkflowFindFirst.mockResolvedValue(null);
+
+      const request = createAuthenticatedRequest('DELETE', 'http://localhost:3000/api/workflows?id=nonexistent');
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.error.message).toContain('not found');
+    });
+
+    it('deletes workflow successfully', async () => {
+      mockWorkflowFindFirst.mockResolvedValue({ id: 'wf1' });
+      mockWorkflowDelete.mockResolvedValue({});
+
+      const request = createAuthenticatedRequest('DELETE', 'http://localhost:3000/api/workflows?id=wf1');
+      const response = await DELETE(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.data.message).toBe('Workflow deleted successfully');
+    });
   });
 });

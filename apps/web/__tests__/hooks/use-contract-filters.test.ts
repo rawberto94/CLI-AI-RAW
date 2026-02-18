@@ -2,438 +2,398 @@
  * Tests for useContractFilters hook
  * @see /hooks/use-contract-filters.ts
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
-import { useContractFilters, QUICK_PRESETS, RISK_LEVELS, VALUE_RANGES, createDefaultFilters } from '../../hooks/use-contract-filters';
+import { describe, it, expect } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import {
+  useContractFilters,
+  QUICK_PRESETS,
+  RISK_LEVELS,
+  VALUE_RANGES,
+  DATE_PRESETS,
+  CONTRACT_TYPES,
+} from '../../hooks/use-contract-filters';
+import type { Contract } from '../../hooks/use-queries';
 
-// Mock localStorage
-const localStorageMock = (() => {
-  let store: Record<string, string> = {};
+// Helper to create mock contracts
+function createContract(overrides: Partial<Contract> = {}): Contract {
   return {
-    getItem: vi.fn((key: string) => store[key] || null),
-    setItem: vi.fn((key: string, value: string) => {
-      store[key] = value;
-    }),
-    removeItem: vi.fn((key: string) => {
-      delete store[key];
-    }),
-    clear: vi.fn(() => {
-      store = {};
-    }),
+    id: 'c-1',
+    title: 'Test Contract',
+    status: 'active',
+    type: 'Service Agreement',
+    value: 50000,
+    riskScore: 45,
+    parties: { client: 'Acme Corp', supplier: 'Vendor Inc' },
+    createdAt: new Date().toISOString(),
+    expirationDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+    category: { id: 'cat-1', name: 'IT', color: '#000', icon: '💻', path: '/it' },
+    ...overrides,
   };
-})();
+}
 
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
-
-// Mock URL API
-const mockPushState = vi.fn();
-const mockReplaceState = vi.fn();
-Object.defineProperty(window, 'history', {
-  value: {
-    pushState: mockPushState,
-    replaceState: mockReplaceState,
-  },
-});
+function createContracts(): Contract[] {
+  return [
+    createContract({ id: 'c-1', title: 'Alpha Service', status: 'active', type: 'Service Agreement', value: 10000, riskScore: 20 }),
+    createContract({ id: 'c-2', title: 'Beta NDA', status: 'draft', type: 'Non-Disclosure Agreement', value: 5000, riskScore: 50 }),
+    createContract({ id: 'c-3', title: 'Gamma License', status: 'active', type: 'License Agreement', value: 200000, riskScore: 80 }),
+    createContract({ id: 'c-4', title: 'Delta SOW', status: 'expired', type: 'Statement of Work', value: 75000, riskScore: 10 }),
+    createContract({ id: 'c-5', title: 'Epsilon Consulting', status: 'active', type: 'Consulting Agreement', value: 0, riskScore: 95, category: null }),
+  ];
+}
 
 describe('useContractFilters', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    localStorageMock.clear();
-  });
-
   describe('initialization', () => {
-    it('should initialize with default filters', () => {
-      const { result } = renderHook(() => useContractFilters());
+    it('should initialize with default filter state', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
 
-      expect(result.current.filters.search).toBe('');
-      expect(result.current.filters.status).toEqual([]);
-      expect(result.current.filters.type).toEqual([]);
-      expect(result.current.filters.vendor).toEqual([]);
-      expect(result.current.filters.department).toEqual([]);
-      expect(result.current.filters.tags).toEqual([]);
-      expect(result.current.filters.riskLevel).toEqual([]);
-      expect(result.current.filters.dateRange).toEqual({ start: null, end: null });
-      expect(result.current.filters.valueRange).toEqual({ min: null, max: null });
-      expect(result.current.filters.expiringWithin).toBeNull();
-      expect(result.current.activeFiltersCount).toBe(0);
+      expect(result.current.state.searchQuery).toBe('');
+      expect(result.current.state.statusFilter).toBe('all');
+      expect(result.current.state.typeFilters).toEqual([]);
+      expect(result.current.state.riskFilters).toEqual([]);
+      expect(result.current.state.approvalFilters).toEqual([]);
+      expect(result.current.state.valueRangeFilter).toBeNull();
+      expect(result.current.state.dateRangeFilter).toBeNull();
+      expect(result.current.state.expirationFilters).toEqual([]);
+      expect(result.current.state.categoryFilter).toBeNull();
+      expect(result.current.state.advancedFilters).toEqual({});
+      expect(result.current.state.activePreset).toBeNull();
     });
 
-    it('should initialize with custom initial filters', () => {
-      const { result } = renderHook(() =>
-        useContractFilters({
-          initialFilters: {
-            status: ['active', 'pending'],
-            search: 'test query',
-          },
-        })
-      );
+    it('should return all contracts when no filters are active', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
 
-      expect(result.current.filters.status).toEqual(['active', 'pending']);
-      expect(result.current.filters.search).toBe('test query');
-      expect(result.current.activeFiltersCount).toBeGreaterThan(0);
-    });
-  });
-
-  describe('setFilter', () => {
-    it('should update a single filter value', () => {
-      const { result } = renderHook(() => useContractFilters());
-
-      act(() => {
-        result.current.setFilter('search', 'new search');
-      });
-
-      expect(result.current.filters.search).toBe('new search');
+      expect(result.current.filteredContracts).toHaveLength(5);
     });
 
-    it('should update array filters', () => {
-      const { result } = renderHook(() => useContractFilters());
+    it('should report no active filters initially', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
 
-      act(() => {
-        result.current.setFilter('status', ['active', 'expired']);
-      });
-
-      expect(result.current.filters.status).toEqual(['active', 'expired']);
-    });
-
-    it('should update date range filter', () => {
-      const { result } = renderHook(() => useContractFilters());
-
-      act(() => {
-        result.current.setFilter('dateRange', { start: '2024-01-01', end: '2024-12-31' });
-      });
-
-      expect(result.current.filters.dateRange).toEqual({ start: '2024-01-01', end: '2024-12-31' });
-    });
-
-    it('should update value range filter', () => {
-      const { result } = renderHook(() => useContractFilters());
-
-      act(() => {
-        result.current.setFilter('valueRange', { min: 1000, max: 50000 });
-      });
-
-      expect(result.current.filters.valueRange).toEqual({ min: 1000, max: 50000 });
+      expect(result.current.stats.hasActiveFilters).toBe(false);
+      expect(result.current.stats.activeFilterCount).toBe(0);
     });
   });
 
-  describe('setFilters', () => {
-    it('should update multiple filters at once', () => {
-      const { result } = renderHook(() => useContractFilters());
+  describe('search filter', () => {
+    it('should filter contracts by search query on title', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
 
       act(() => {
-        result.current.setFilters({
-          search: 'multi update',
-          status: ['active'],
-          vendor: ['Acme Corp'],
-        });
+        result.current.actions.setSearchQuery('Alpha');
       });
 
-      expect(result.current.filters.search).toBe('multi update');
-      expect(result.current.filters.status).toEqual(['active']);
-      expect(result.current.filters.vendor).toEqual(['Acme Corp']);
+      expect(result.current.filteredContracts).toHaveLength(1);
+      expect(result.current.filteredContracts[0]!.title).toBe('Alpha Service');
     });
 
-    it('should preserve existing filters when updating partial filters', () => {
-      const { result } = renderHook(() =>
-        useContractFilters({
-          initialFilters: {
-            status: ['active'],
-            type: ['subscription'],
-          },
-        })
-      );
+    it('should filter by client name in search', () => {
+      const contracts = [
+        createContract({ id: 'c-1', parties: { client: 'UniqueClient', supplier: 'Vendor' } }),
+        createContract({ id: 'c-2', parties: { client: 'Other', supplier: 'Other' } }),
+      ];
+      const { result } = renderHook(() => useContractFilters(contracts));
 
       act(() => {
-        result.current.setFilters({
-          search: 'preserve test',
-        });
+        result.current.actions.setSearchQuery('UniqueClient');
       });
 
-      expect(result.current.filters.search).toBe('preserve test');
-      expect(result.current.filters.status).toEqual(['active']);
-      expect(result.current.filters.type).toEqual(['subscription']);
+      expect(result.current.filteredContracts).toHaveLength(1);
+    });
+
+    it('should be case insensitive', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
+
+      act(() => {
+        result.current.actions.setSearchQuery('alpha');
+      });
+
+      expect(result.current.filteredContracts).toHaveLength(1);
     });
   });
 
-  describe('resetFilters', () => {
+  describe('status filter', () => {
+    it('should filter by status', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
+
+      act(() => {
+        result.current.actions.setStatusFilter('active');
+      });
+
+      expect(result.current.filteredContracts.every(c => c.status === 'active')).toBe(true);
+    });
+
+    it('should show all when status is "all"', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
+
+      act(() => {
+        result.current.actions.setStatusFilter('active');
+      });
+
+      act(() => {
+        result.current.actions.setStatusFilter('all');
+      });
+
+      expect(result.current.filteredContracts).toHaveLength(5);
+    });
+  });
+
+  describe('type filters', () => {
+    it('should filter by contract type', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
+
+      act(() => {
+        result.current.actions.setTypeFilters(['Service Agreement']);
+      });
+
+      expect(result.current.filteredContracts).toHaveLength(1);
+      expect(result.current.filteredContracts[0]!.type).toBe('Service Agreement');
+    });
+
+    it('should support multiple type filters', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
+
+      act(() => {
+        result.current.actions.setTypeFilters(['Service Agreement', 'Non-Disclosure Agreement']);
+      });
+
+      expect(result.current.filteredContracts).toHaveLength(2);
+    });
+  });
+
+  describe('risk filters', () => {
+    it('should filter by risk level', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
+
+      act(() => {
+        result.current.actions.setRiskFilters(['high']);
+      });
+
+      // riskScore >= 70 and < 100: c-3 (80) and c-5 (95)
+      expect(result.current.filteredContracts).toHaveLength(2);
+      expect(result.current.filteredContracts.every(c => (c.riskScore ?? 0) >= 70)).toBe(true);
+    });
+
+    it('should filter by low risk', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
+
+      act(() => {
+        result.current.actions.setRiskFilters(['low']);
+      });
+
+      // riskScore >= 0 and < 30: c-1 (20) and c-4 (10)
+      expect(result.current.filteredContracts).toHaveLength(2);
+    });
+  });
+
+  describe('clearAllFilters', () => {
     it('should reset all filters to defaults', () => {
-      const { result } = renderHook(() =>
-        useContractFilters({
-          initialFilters: {
-            search: 'initial search',
-            status: ['active'],
-            riskLevel: ['high'],
-          },
-        })
-      );
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
 
-      // First set some filters
       act(() => {
-        result.current.setFilters({
-          vendor: ['Test Vendor'],
-          expiringWithin: 30,
-        });
+        result.current.actions.setSearchQuery('test');
+        result.current.actions.setStatusFilter('active');
+        result.current.actions.setRiskFilters(['high']);
       });
 
-      // Then reset
       act(() => {
-        result.current.resetFilters();
+        result.current.actions.clearAllFilters();
       });
 
-      expect(result.current.filters.search).toBe('');
-      expect(result.current.filters.status).toEqual([]);
-      expect(result.current.filters.vendor).toEqual([]);
-      expect(result.current.filters.riskLevel).toEqual([]);
-      expect(result.current.filters.expiringWithin).toBeNull();
-      expect(result.current.activeFiltersCount).toBe(0);
+      expect(result.current.state.searchQuery).toBe('');
+      expect(result.current.state.statusFilter).toBe('all');
+      expect(result.current.state.riskFilters).toEqual([]);
+      expect(result.current.stats.hasActiveFilters).toBe(false);
+      expect(result.current.filteredContracts).toHaveLength(5);
     });
   });
 
-  describe('toggleFilterValue', () => {
-    it('should add a value to an array filter if not present', () => {
-      const { result } = renderHook(() => useContractFilters());
+  describe('stats', () => {
+    it('should compute filteredCount', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
+
+      expect(result.current.stats.filteredCount).toBe(5);
 
       act(() => {
-        result.current.toggleFilterValue('status', 'active');
+        result.current.actions.setStatusFilter('active');
       });
 
-      expect(result.current.filters.status).toContain('active');
+      expect(result.current.stats.filteredCount).toBe(3);
     });
 
-    it('should remove a value from an array filter if present', () => {
-      const { result } = renderHook(() =>
-        useContractFilters({
-          initialFilters: {
-            status: ['active', 'pending'],
-          },
-        })
-      );
+    it('should compute totalValue', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
 
-      act(() => {
-        result.current.toggleFilterValue('status', 'active');
-      });
-
-      expect(result.current.filters.status).not.toContain('active');
-      expect(result.current.filters.status).toContain('pending');
+      // 10000 + 5000 + 200000 + 75000 + 0 = 290000
+      expect(result.current.stats.totalValue).toBe(290000);
     });
 
-    it('should toggle multiple values', () => {
-      const { result } = renderHook(() => useContractFilters());
+    it('should compute highRiskCount', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
 
-      act(() => {
-        result.current.toggleFilterValue('riskLevel', 'high');
-      });
-      act(() => {
-        result.current.toggleFilterValue('riskLevel', 'medium');
-      });
-
-      expect(result.current.filters.riskLevel).toContain('high');
-      expect(result.current.filters.riskLevel).toContain('medium');
-
-      act(() => {
-        result.current.toggleFilterValue('riskLevel', 'high');
-      });
-
-      expect(result.current.filters.riskLevel).not.toContain('high');
-      expect(result.current.filters.riskLevel).toContain('medium');
-    });
-  });
-
-  describe('applyQuickPreset', () => {
-    it('should apply expiring-soon preset', () => {
-      const { result } = renderHook(() => useContractFilters());
-
-      act(() => {
-        result.current.applyQuickPreset('expiring-soon');
-      });
-
-      expect(result.current.filters.expiringWithin).toBe(30);
+      // riskScore >= 70: c-3 (80) and c-5 (95)
+      expect(result.current.stats.highRiskCount).toBe(2);
     });
 
-    it('should apply high-value preset', () => {
-      const { result } = renderHook(() => useContractFilters());
+    it('should compute uncategorizedCount', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
 
-      act(() => {
-        result.current.applyQuickPreset('high-value');
-      });
-
-      expect(result.current.filters.valueRange.min).toBe(100000);
+      // c-5 has category: null
+      expect(result.current.stats.uncategorizedCount).toBe(1);
+      expect(result.current.stats.categorizedCount).toBe(4);
     });
 
-    it('should apply high-risk preset', () => {
-      const { result } = renderHook(() => useContractFilters());
+    it('should track activeFilterCount', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
 
       act(() => {
-        result.current.applyQuickPreset('high-risk');
+        result.current.actions.setSearchQuery('test');
       });
 
-      expect(result.current.filters.riskLevel).toContain('high');
-    });
-
-    it('should apply active-only preset', () => {
-      const { result } = renderHook(() => useContractFilters());
+      expect(result.current.stats.activeFilterCount).toBe(1);
 
       act(() => {
-        result.current.applyQuickPreset('active-only');
+        result.current.actions.setStatusFilter('active');
       });
 
-      expect(result.current.filters.status).toContain('active');
-    });
-
-    it('should apply needs-review preset', () => {
-      const { result } = renderHook(() => useContractFilters());
-
-      act(() => {
-        result.current.applyQuickPreset('needs-review');
-      });
-
-      expect(result.current.filters.status).toContain('review');
+      expect(result.current.stats.activeFilterCount).toBe(2);
     });
   });
 
-  describe('activeFiltersCount', () => {
-    it('should count active filters correctly', () => {
-      const { result } = renderHook(() => useContractFilters());
-
-      expect(result.current.activeFiltersCount).toBe(0);
-
-      act(() => {
-        result.current.setFilter('status', ['active']);
-      });
-
-      expect(result.current.activeFiltersCount).toBe(1);
+  describe('presets', () => {
+    it('should apply a preset', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
 
       act(() => {
-        result.current.setFilter('vendor', ['Vendor A', 'Vendor B']);
+        result.current.actions.applyPreset('high-risk');
       });
 
-      expect(result.current.activeFiltersCount).toBe(2);
+      expect(result.current.state.activePreset).toBe('high-risk');
+      expect(result.current.state.riskFilters).toEqual(['high']);
+    });
+
+    it('should clear previous filters when applying a preset', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
 
       act(() => {
-        result.current.setFilter('expiringWithin', 30);
+        result.current.actions.setSearchQuery('test');
       });
-
-      expect(result.current.activeFiltersCount).toBe(3);
-    });
-
-    it('should not count search as an active filter', () => {
-      const { result } = renderHook(() => useContractFilters());
 
       act(() => {
-        result.current.setFilter('search', 'test search');
+        result.current.actions.applyPreset('active-only');
       });
 
-      // Search is typically not counted in active filters
-      expect(result.current.activeFiltersCount).toBe(0);
+      expect(result.current.state.searchQuery).toBe('');
+      expect(result.current.state.statusFilter).toBe('active');
     });
+  });
 
-    it('should count date range as one filter', () => {
-      const { result } = renderHook(() => useContractFilters());
+  describe('advanced filters', () => {
+    it('should filter by client name', () => {
+      const contracts = [
+        createContract({ id: 'c-1', parties: { client: 'Acme Corp', supplier: 'Vendor' } }),
+        createContract({ id: 'c-2', parties: { client: 'Beta Inc', supplier: 'Vendor' } }),
+      ];
+      const { result } = renderHook(() => useContractFilters(contracts));
 
       act(() => {
-        result.current.setFilter('dateRange', { start: '2024-01-01', end: '2024-12-31' });
+        result.current.actions.setAdvancedFilters({ clientName: 'Acme' });
       });
 
-      expect(result.current.activeFiltersCount).toBe(1);
+      expect(result.current.filteredContracts).toHaveLength(1);
+      expect(result.current.filteredContracts[0]!.parties?.client).toBe('Acme Corp');
     });
 
-    it('should count value range as one filter', () => {
-      const { result } = renderHook(() => useContractFilters());
+    it('should filter by min/max value', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
 
       act(() => {
-        result.current.setFilter('valueRange', { min: 1000, max: 50000 });
+        result.current.actions.setAdvancedFilters({ minValue: 10000, maxValue: 100000 });
       });
 
-      expect(result.current.activeFiltersCount).toBe(1);
+      // c-1 (10000), c-3 (200000 - excluded), c-4 (75000), c-2 (5000 - excluded), c-5 (0 - excluded)
+      expect(result.current.filteredContracts.every(c => (c.value ?? 0) >= 10000 && (c.value ?? 0) <= 100000)).toBe(true);
     });
   });
 
-  describe('sortContracts', () => {
-    const contracts = [
-      { id: '1', title: 'Contract A', value: 1000, status: 'active', lastUpdated: '2024-01-15' },
-      { id: '2', title: 'Contract B', value: 5000, status: 'expired', lastUpdated: '2024-03-20' },
-      { id: '3', title: 'Contract C', value: 2500, status: 'active', lastUpdated: '2024-02-10' },
-    ] as any[];
+  describe('combined filters', () => {
+    it('should combine multiple filters with AND logic', () => {
+      const contracts = createContracts();
+      const { result } = renderHook(() => useContractFilters(contracts));
 
-    it('should sort contracts by title ascending', () => {
-      const { result } = renderHook(() => useContractFilters());
+      act(() => {
+        result.current.actions.setStatusFilter('active');
+        result.current.actions.setRiskFilters(['high']);
+      });
 
-      const sorted = result.current.sortContracts(contracts, 'title', 'asc');
-
-      expect(sorted[0]?.title).toBe('Contract A');
-      expect(sorted[1]?.title).toBe('Contract B');
-      expect(sorted[2]?.title).toBe('Contract C');
-    });
-
-    it('should sort contracts by value descending', () => {
-      const { result } = renderHook(() => useContractFilters());
-
-      const sorted = result.current.sortContracts(contracts, 'value', 'desc');
-
-      expect(sorted[0]?.value).toBe(5000);
-      expect(sorted[1]?.value).toBe(2500);
-      expect(sorted[2]?.value).toBe(1000);
+      // active + high risk: c-3 (active, 80) and c-5 (active, 95)
+      expect(result.current.filteredContracts).toHaveLength(2);
     });
   });
-});
 
-describe('createDefaultFilters', () => {
-  it('should create default filter object', () => {
-    const defaults = createDefaultFilters();
+  describe('exported constants', () => {
+    it('should export RISK_LEVELS', () => {
+      expect(RISK_LEVELS).toBeDefined();
+      expect(RISK_LEVELS).toHaveLength(3);
+      expect(RISK_LEVELS.map(r => r.value)).toEqual(['low', 'medium', 'high']);
+    });
 
-    expect(defaults.search).toBe('');
-    expect(defaults.status).toEqual([]);
-    expect(defaults.type).toEqual([]);
-    expect(defaults.vendor).toEqual([]);
-    expect(defaults.dateRange).toEqual({ start: null, end: null });
-    expect(defaults.valueRange).toEqual({ min: null, max: null });
-    expect(defaults.expiringWithin).toBeNull();
-  });
-});
+    it('should export VALUE_RANGES', () => {
+      expect(VALUE_RANGES).toBeDefined();
+      expect(VALUE_RANGES.length).toBeGreaterThan(0);
+    });
 
-describe('QUICK_PRESETS', () => {
-  it('should export all expected presets', () => {
-    expect(QUICK_PRESETS).toBeDefined();
-    expect(Array.isArray(QUICK_PRESETS)).toBe(true);
-    
-    const presetIds = QUICK_PRESETS.map(p => p.id);
-    expect(presetIds).toContain('expiring-soon');
-    expect(presetIds).toContain('high-value');
-    expect(presetIds).toContain('high-risk');
-    expect(presetIds).toContain('active-only');
-    expect(presetIds).toContain('needs-review');
-  });
+    it('should export DATE_PRESETS', () => {
+      expect(DATE_PRESETS).toBeDefined();
+      expect(DATE_PRESETS.length).toBeGreaterThan(0);
+    });
 
-  it('should have valid filters for each preset', () => {
-    QUICK_PRESETS.forEach(preset => {
-      expect(preset.id).toBeDefined();
-      expect(preset.label).toBeDefined();
-      expect(preset.filters).toBeDefined();
-      expect(typeof preset.filters).toBe('object');
+    it('should export CONTRACT_TYPES', () => {
+      expect(CONTRACT_TYPES).toBeDefined();
+      expect(CONTRACT_TYPES).toContain('Service Agreement');
+    });
+
+    it('should export QUICK_PRESETS', () => {
+      expect(QUICK_PRESETS).toBeDefined();
+      expect(QUICK_PRESETS.length).toBeGreaterThan(0);
+      expect(QUICK_PRESETS.find(p => p.id === 'high-risk')).toBeDefined();
     });
   });
-});
 
-describe('RISK_LEVELS', () => {
-  it('should export risk level options', () => {
-    expect(RISK_LEVELS).toBeDefined();
-    expect(Array.isArray(RISK_LEVELS)).toBe(true);
-    expect(RISK_LEVELS.length).toBeGreaterThan(0);
-  });
-});
+  describe('empty / edge cases', () => {
+    it('should handle empty contracts array', () => {
+      const { result } = renderHook(() => useContractFilters([]));
 
-describe('VALUE_RANGES', () => {
-  it('should export value range options', () => {
-    expect(VALUE_RANGES).toBeDefined();
-    expect(Array.isArray(VALUE_RANGES)).toBe(true);
-    expect(VALUE_RANGES.length).toBeGreaterThan(0);
-  });
+      expect(result.current.filteredContracts).toHaveLength(0);
+      expect(result.current.stats.filteredCount).toBe(0);
+      expect(result.current.stats.totalValue).toBe(0);
+    });
 
-  it('should have valid min/max for each range', () => {
-    VALUE_RANGES.forEach(range => {
-      expect(range.label).toBeDefined();
-      expect(typeof range.label).toBe('string');
-      // min or max should be defined (or null for open-ended ranges)
+    it('should handle contracts with missing optional fields', () => {
+      const contracts = [
+        { id: 'c-min', title: 'Minimal', status: 'active' } as Contract,
+      ];
+      const { result } = renderHook(() => useContractFilters(contracts));
+
+      expect(result.current.filteredContracts).toHaveLength(1);
     });
   });
 });

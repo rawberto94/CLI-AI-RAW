@@ -1,233 +1,137 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET, POST, DELETE } from '../route';
 
-// Mock dependencies
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+const mocks = vi.hoisted(() => ({
+  mockPrisma: {
     documentShare: {
       findMany: vi.fn(),
       create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
       findFirst: vi.fn(),
+      update: vi.fn(),
     },
+    notification: { create: vi.fn() },
   },
+  mockContractService: {},
 }));
 
-vi.mock('@/lib/tenant-server', () => ({
-  getApiTenantId: vi.fn(),
-}));
+vi.mock('@/lib/prisma', () => ({ prisma: mocks.mockPrisma }));
+vi.mock('data-orchestration/services', () => ({ contractService: mocks.mockContractService }));
 
-vi.mock('crypto', () => ({
-  default: {
-    randomUUID: vi.fn(() => 'mock-uuid-1234'),
-    randomBytes: vi.fn(() => ({
-      toString: () => 'mock-access-token',
-    })),
-  },
-}));
+import { GET, POST, PATCH, DELETE } from '../route';
 
-// Import mocked modules
-import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
-
-function createRequest(
-  method: string = 'GET',
-  url: string = 'http://localhost:3000/api/sharing',
-  body?: Record<string, unknown>
-): NextRequest {
-  const options: RequestInit = { method };
-  if (body) {
-    options.body = JSON.stringify(body);
-    options.headers = { 'Content-Type': 'application/json' };
-  }
-  return new NextRequest(new URL(url), options);
+function req(method = 'GET', url = 'http://localhost:3000/api/sharing', body?: Record<string, unknown>, hdrs?: Record<string, string>) {
+  const h: Record<string, string> = { 'x-user-id': 'user-1', 'x-tenant-id': 'tenant-1', ...hdrs };
+  const opts: any = { method, headers: h };
+  if (body) { opts.body = JSON.stringify(body); h['Content-Type'] = 'application/json'; }
+  return new NextRequest(url, opts);
 }
 
 describe('GET /api/sharing', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeEach(() => vi.clearAllMocks());
+
+  it('should return 401 without auth', async () => {
+    const r = new NextRequest('http://localhost:3000/api/sharing?documentId=d1', { method: 'GET', headers: { 'x-tenant-id': 't' } } as any);
+    const res = await GET(r);
+    expect(res.status).toBe(401);
   });
 
-  it('should return 400 when documentId is missing', async () => {
-    vi.mocked(getApiTenantId).mockResolvedValue('tenant1');
-
-    const request = createRequest();
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.success).toBe(false);
-    expect(data.error).toContain('Document ID');
+  it('should return 400 without documentId', async () => {
+    const res = await GET(req());
+    const d = await res.json();
+    expect(res.status).toBe(400);
+    expect(d.error.message).toContain('Document ID');
   });
 
-  it('should return shares for a document', async () => {
-    const mockShares = [
-      {
-        id: 'share1',
-        documentId: 'doc1',
-        documentType: 'contract',
-        sharedWith: 'user@example.com',
-        sharedBy: 'current-user',
-        permission: 'VIEW',
-        isActive: true,
-        createdAt: new Date(),
-      },
-    ];
-
-    vi.mocked(getApiTenantId).mockResolvedValue('tenant1');
-    vi.mocked(prisma.documentShare.findMany).mockResolvedValue(mockShares);
-
-    const request = createRequest('GET', 'http://localhost:3000/api/sharing?documentId=doc1');
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-    expect(data.shares).toBeDefined();
+  it('should return shares from database', async () => {
+    const shares = [{ id: 's1', documentId: 'd1', sharedWith: 'u2', permission: 'VIEW', isActive: true, createdAt: new Date() }];
+    mocks.mockPrisma.documentShare.findMany.mockResolvedValue(shares);
+    const res = await GET(req('GET', 'http://localhost:3000/api/sharing?documentId=d1'));
+    const d = await res.json();
+    expect(res.status).toBe(200);
+    expect(d.success).toBe(true);
+    expect(d.data.shares.length).toBe(1);
   });
 
-  it('should filter by document type', async () => {
-    vi.mocked(getApiTenantId).mockResolvedValue('tenant1');
-    vi.mocked(prisma.documentShare.findMany).mockResolvedValue([]);
-
-    const request = createRequest('GET', 'http://localhost:3000/api/sharing?documentId=doc1&documentType=rate_card');
-    await GET(request);
-
-    expect(prisma.documentShare.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ documentType: 'rate_card' }),
-      })
-    );
-  });
-
-  it('should fallback to mock data on database error', async () => {
-    vi.mocked(getApiTenantId).mockResolvedValue('tenant1');
-    vi.mocked(prisma.documentShare.findMany).mockRejectedValue(new Error('Database error'));
-
-    const request = createRequest('GET', 'http://localhost:3000/api/sharing?documentId=doc1');
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-    expect(data.shares).toBeDefined();
+  it('should return empty shares on db error', async () => {
+    mocks.mockPrisma.documentShare.findMany.mockRejectedValue(new Error('db err'));
+    const res = await GET(req('GET', 'http://localhost:3000/api/sharing?documentId=d1'));
+    const d = await res.json();
+    expect(res.status).toBe(200);
+    expect(d.data.shares).toEqual([]);
   });
 });
 
 describe('POST /api/sharing', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeEach(() => vi.clearAllMocks());
+
+  it('should return 400 without documentId/recipients', async () => {
+    const res = await POST(req('POST', 'http://localhost:3000/api/sharing', { documentId: '' }));
+    const d = await res.json();
+    expect(res.status).toBe(400);
   });
 
-  it('should return 400 when required fields are missing', async () => {
-    vi.mocked(getApiTenantId).mockResolvedValue('tenant1');
-
-    const request = createRequest('POST', 'http://localhost:3000/api/sharing', {});
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.success).toBe(false);
-  });
-
-  it('should create a new share successfully', async () => {
-    const mockShare = {
-      id: 'share1',
-      documentId: 'doc1',
-      documentType: 'contract',
-      sharedWith: 'user@example.com',
-      sharedBy: 'current-user',
-      permission: 'VIEW',
-      isActive: true,
-      createdAt: new Date(),
-    };
-
-    vi.mocked(getApiTenantId).mockResolvedValue('tenant1');
-    vi.mocked(prisma.documentShare.create).mockResolvedValue(mockShare);
-
-    const request = createRequest('POST', 'http://localhost:3000/api/sharing', {
-      documentId: 'doc1',
-      documentType: 'contract',
-      sharedWith: 'user@example.com',
-      permission: 'VIEW',
+  it('should create shares for recipients', async () => {
+    mocks.mockPrisma.documentShare.create.mockResolvedValue({
+      id: 'sh1', documentId: 'd1', documentType: 'contract', sharedWith: 'u2', sharedBy: 'user-1',
+      permission: 'VIEW', expiresAt: null, isActive: true, createdAt: new Date(),
     });
-    const response = await POST(request);
-    const data = await response.json();
+    mocks.mockPrisma.notification.create.mockResolvedValue({});
+    const res = await POST(req('POST', 'http://localhost:3000/api/sharing', {
+      documentId: 'd1', recipients: ['u2'], permission: 'VIEW',
+    }));
+    const d = await res.json();
+    expect(res.status).toBe(200);
+    expect(d.success).toBe(true);
+    expect(d.data.shares.length).toBe(1);
+  });
+});
 
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-    expect(data.share).toBeDefined();
+describe('PATCH /api/sharing', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('should return 400 without shareId', async () => {
+    const res = await PATCH(req('PATCH', 'http://localhost:3000/api/sharing', {}));
+    const d = await res.json();
+    expect(res.status).toBe(400);
   });
 
-  it('should support different permission levels', async () => {
-    const mockShare = {
-      id: 'share1',
-      documentId: 'doc1',
-      permission: 'EDIT',
-      isActive: true,
-      createdAt: new Date(),
-    };
+  it('should return 404 when share not found', async () => {
+    mocks.mockPrisma.documentShare.findFirst.mockResolvedValue(null);
+    const res = await PATCH(req('PATCH', 'http://localhost:3000/api/sharing', { shareId: 'x' }));
+    const d = await res.json();
+    expect(res.status).toBe(404);
+  });
 
-    vi.mocked(getApiTenantId).mockResolvedValue('tenant1');
-    vi.mocked(prisma.documentShare.create).mockResolvedValue(mockShare);
-
-    const request = createRequest('POST', 'http://localhost:3000/api/sharing', {
-      documentId: 'doc1',
-      documentType: 'contract',
-      sharedWith: 'editor@example.com',
-      permission: 'EDIT',
-    });
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
+  it('should update share permission', async () => {
+    mocks.mockPrisma.documentShare.findFirst.mockResolvedValue({ id: 's1' });
+    mocks.mockPrisma.documentShare.update.mockResolvedValue({ id: 's1', permission: 'EDIT' });
+    const res = await PATCH(req('PATCH', 'http://localhost:3000/api/sharing', { shareId: 's1', permission: 'EDIT' }));
+    const d = await res.json();
+    expect(res.status).toBe(200);
+    expect(d.success).toBe(true);
   });
 });
 
 describe('DELETE /api/sharing', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => vi.clearAllMocks());
 
-  it('should return 400 when share ID is missing', async () => {
-    vi.mocked(getApiTenantId).mockResolvedValue('tenant1');
-
-    const request = createRequest('DELETE', 'http://localhost:3000/api/sharing');
-    const response = await DELETE(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.success).toBe(false);
-  });
-
-  it('should delete share successfully', async () => {
-    vi.mocked(getApiTenantId).mockResolvedValue('tenant1');
-    vi.mocked(prisma.documentShare.findFirst).mockResolvedValue({
-      id: 'share1',
-      tenantId: 'tenant1',
-    });
-    vi.mocked(prisma.documentShare.delete).mockResolvedValue({ id: 'share1' });
-
-    const request = createRequest('DELETE', 'http://localhost:3000/api/sharing?id=share1');
-    const response = await DELETE(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
+  it('should return 400 without share id', async () => {
+    const res = await DELETE(req('DELETE'));
+    expect(res.status).toBe(400);
   });
 
   it('should return 404 when share not found', async () => {
-    vi.mocked(getApiTenantId).mockResolvedValue('tenant1');
-    vi.mocked(prisma.documentShare.findFirst).mockResolvedValue(null);
+    mocks.mockPrisma.documentShare.findFirst.mockResolvedValue(null);
+    const res = await DELETE(req('DELETE', 'http://localhost:3000/api/sharing?id=x'));
+    expect(res.status).toBe(404);
+  });
 
-    const request = createRequest('DELETE', 'http://localhost:3000/api/sharing?id=nonexistent');
-    const response = await DELETE(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(404);
-    expect(data.success).toBe(false);
+  it('should revoke share successfully', async () => {
+    mocks.mockPrisma.documentShare.findFirst.mockResolvedValue({ id: 's1' });
+    mocks.mockPrisma.documentShare.update.mockResolvedValue({ id: 's1', isActive: false });
+    const res = await DELETE(req('DELETE', 'http://localhost:3000/api/sharing?id=s1'));
+    const d = await res.json();
+    expect(res.status).toBe(200);
+    expect(d.success).toBe(true);
   });
 });

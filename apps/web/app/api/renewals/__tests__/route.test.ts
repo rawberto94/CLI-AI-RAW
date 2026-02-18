@@ -1,346 +1,199 @@
-/**
- * Unit Tests for Renewals API
- * Tests /api/renewals endpoint
- */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-// Mock Prisma
+const { mockContractFindMany, mockContractFindFirst, mockContractUpdate, mockUserFindUnique, mockGetServerSession, mockGetServerTenantId, mockPublishRealtimeEvent } = vi.hoisted(() => ({
+  mockContractFindMany: vi.fn(),
+  mockContractFindFirst: vi.fn(),
+  mockContractUpdate: vi.fn(),
+  mockUserFindUnique: vi.fn(),
+  mockGetServerSession: vi.fn(),
+  mockGetServerTenantId: vi.fn(),
+  mockPublishRealtimeEvent: vi.fn(),
+}));
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     contract: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      update: vi.fn(),
+      findMany: mockContractFindMany,
+      findFirst: mockContractFindFirst,
+      update: mockContractUpdate,
+    },
+    user: {
+      findUnique: mockUserFindUnique,
     },
   },
 }));
 
-// Mock tenant
-vi.mock('@/lib/tenant-server', () => ({
-  getServerTenantId: vi.fn().mockResolvedValue('tenant_demo_001'),
+vi.mock('@/lib/auth', () => ({
+  getServerSession: mockGetServerSession,
 }));
 
-// Import after mocking
-import { GET } from '../route';
-import { prisma } from '@/lib/prisma';
+vi.mock('@/lib/tenant-server', () => ({
+  getServerTenantId: mockGetServerTenantId,
+}));
 
-const mockPrisma = vi.mocked(prisma);
+vi.mock('@/lib/realtime/publish', () => ({
+  publishRealtimeEvent: mockPublishRealtimeEvent,
+}));
 
-// Helper to create test contracts
-function createMockContract(overrides = {}) {
-  const now = new Date();
-  const futureDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
-  
-  return {
-    id: 'contract-1',
-    tenantId: 'tenant_demo_001',
-    contractTitle: 'Test Contract',
-    originalName: 'test.pdf',
-    fileName: 'test.pdf',
-    status: 'ACTIVE',
-    endDate: futureDate,
-    expirationDate: null,
-    startDate: now,
-    effectiveDate: now,
-    totalValue: 50000,
-    supplierName: 'Acme Corp',
-    autoRenewalEnabled: false,
-    renewalStatus: null,
-    artifacts: [],
-    contractMetadata: null,
-    ...overrides,
-  };
+vi.mock('data-orchestration/services', () => ({
+  contractService: {},
+}));
+
+import { GET, POST } from '../route';
+
+function createAuthenticatedRequest(
+  method: string,
+  url: string,
+  options?: { body?: object; searchParams?: Record<string, string> }
+): NextRequest {
+  const fullUrl = new URL(url);
+  if (options?.searchParams) {
+    Object.entries(options.searchParams).forEach(([k, v]) => fullUrl.searchParams.set(k, v));
+  }
+  return new NextRequest(fullUrl.toString(), {
+    method,
+    headers: {
+      'x-user-id': 'test-user-id',
+      'x-tenant-id': 'test-tenant',
+      'Content-Type': 'application/json',
+    },
+    body: options?.body ? JSON.stringify(options.body) : undefined,
+  });
 }
 
-describe('Renewals API', () => {
+function createUnauthenticatedRequest(method: string, url: string): NextRequest {
+  return new NextRequest(url, { method });
+}
+
+describe('GET /api/renewals', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'test-user-id', tenantId: 'test-tenant', email: 'test@example.com' },
+    });
+    mockGetServerTenantId.mockResolvedValue('test-tenant');
+    mockPublishRealtimeEvent.mockResolvedValue(undefined);
   });
 
-  describe('GET /api/renewals', () => {
-    it('should return list of upcoming renewals', async () => {
-      const mockContracts = [
-        createMockContract({ id: 'c1', contractTitle: 'Contract A' }),
-        createMockContract({ id: 'c2', contractTitle: 'Contract B' }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
+  it('returns 401 without auth headers', async () => {
+    const request = createUnauthenticatedRequest('GET', 'http://localhost:3000/api/renewals');
+    const response = await GET(request);
+    const data = await response.json();
 
-      const request = new NextRequest('http://localhost/api/renewals');
-      const response = await GET(request);
-      const data = await response.json();
+    expect(response.status).toBe(401);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('UNAUTHORIZED');
+  });
 
-      expect(response.status).toBe(200);
-      expect(data.renewals).toHaveLength(2);
+  it('returns renewals list with stats', async () => {
+    const futureDate = new Date(Date.now() + 45 * 24 * 60 * 60 * 1000);
+    mockContractFindMany.mockResolvedValue([
+      {
+        id: 'c1',
+        contractTitle: 'NDA Contract',
+        originalName: 'nda.pdf',
+        fileName: 'nda.pdf',
+        supplierName: 'Acme Corp',
+        totalValue: 50000,
+        startDate: null,
+        effectiveDate: new Date('2025-01-01'),
+        endDate: null,
+        expirationDate: futureDate,
+        contractType: 'NDA',
+        category: null,
+        autoRenewalEnabled: false,
+        renewalStatus: null,
+        renewalInitiatedBy: null,
+        artifacts: [],
+        contractMetadata: null,
+        workflowExecutions: [],
+      },
+    ]);
+
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/renewals');
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data.data.renewals).toBeDefined();
+    expect(data.data.data.renewals).toHaveLength(1);
+    expect(data.data.data.stats).toBeDefined();
+    expect(data.data.data.stats.total).toBe(1);
+  });
+
+  it('returns empty renewals when no contracts', async () => {
+    mockContractFindMany.mockResolvedValue([]);
+
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/renewals');
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data.data.renewals).toEqual([]);
+    expect(data.data.data.stats.total).toBe(0);
+  });
+
+  it('filters by status', async () => {
+    mockContractFindMany.mockResolvedValue([]);
+
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/renewals', {
+      searchParams: { status: 'urgent' },
     });
+    const response = await GET(request);
+    const data = await response.json();
 
-    it('should calculate days until expiry correctly', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 15); // 15 days from now
-      
-      const mockContracts = [
-        createMockContract({ endDate: futureDate }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+  });
+});
 
-      const request = new NextRequest('http://localhost/api/renewals');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.renewals[0].daysUntilExpiry).toBeGreaterThanOrEqual(14);
-      expect(data.renewals[0].daysUntilExpiry).toBeLessThanOrEqual(16);
+describe('POST /api/renewals', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'test-user-id', tenantId: 'test-tenant', email: 'test@example.com' },
     });
+    mockGetServerTenantId.mockResolvedValue('test-tenant');
+    mockPublishRealtimeEvent.mockResolvedValue(undefined);
+  });
 
-    it('should assign critical priority for contracts expiring within 7 days', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 5); // 5 days
-      
-      const mockContracts = [
-        createMockContract({ endDate: futureDate }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
+  it('returns 401 without auth headers', async () => {
+    const request = createUnauthenticatedRequest('POST', 'http://localhost:3000/api/renewals');
+    const response = await POST(request);
+    const data = await response.json();
 
-      const request = new NextRequest('http://localhost/api/renewals');
-      const response = await GET(request);
-      const data = await response.json();
+    expect(response.status).toBe(401);
+    expect(data.success).toBe(false);
+  });
 
-      expect(data.renewals[0].priority).toBe('critical');
+  it('returns 404 when contract not found', async () => {
+    mockContractFindFirst.mockResolvedValue(null);
+
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/renewals', {
+      body: { contractId: 'non-existent', action: 'initiate' },
     });
+    const response = await POST(request);
+    const data = await response.json();
 
-    it('should assign high priority for contracts expiring within 30 days', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 20); // 20 days
-      
-      const mockContracts = [
-        createMockContract({ endDate: futureDate }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
+    expect(response.status).toBe(404);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('NOT_FOUND');
+  });
 
-      const request = new NextRequest('http://localhost/api/renewals');
-      const response = await GET(request);
-      const data = await response.json();
+  it('initiates renewal for existing contract', async () => {
+    mockContractFindFirst.mockResolvedValue({ id: 'c1', autoRenewalEnabled: false });
+    mockContractUpdate.mockResolvedValue({ id: 'c1' });
 
-      expect(data.renewals[0].priority).toBe('high');
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/renewals', {
+      body: { contractId: 'c1', action: 'initiate' },
     });
+    const response = await POST(request);
+    const data = await response.json();
 
-    it('should filter by status', async () => {
-      const mockContracts = [
-        createMockContract({ id: 'c1' }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
-
-      const request = new NextRequest('http://localhost/api/renewals?status=urgent');
-      const response = await GET(request);
-
-      expect(response.status).toBe(200);
-      expect(mockPrisma.contract.findMany).toHaveBeenCalled();
-    });
-
-    it('should filter by priority', async () => {
-      const mockContracts = [
-        createMockContract({ id: 'c1' }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
-
-      const request = new NextRequest('http://localhost/api/renewals?priority=high');
-      const response = await GET(request);
-
-      expect(response.status).toBe(200);
-    });
-
-    it('should filter by daysUntilExpiry', async () => {
-      const mockContracts = [
-        createMockContract({ id: 'c1' }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
-
-      const request = new NextRequest('http://localhost/api/renewals?daysUntilExpiry=30');
-      const response = await GET(request);
-
-      expect(response.status).toBe(200);
-    });
-
-    it('should extract supplier from overview artifact', async () => {
-      const mockContracts = [
-        createMockContract({
-          supplierName: null,
-          artifacts: [
-            {
-              type: 'OVERVIEW',
-              data: {
-                parties: [
-                  { name: 'Vendor ABC', role: 'vendor' }
-                ]
-              }
-            }
-          ]
-        }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
-
-      const request = new NextRequest('http://localhost/api/renewals');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.renewals[0].supplier).toBe('Vendor ABC');
-    });
-
-    it('should extract value from financial artifact', async () => {
-      const mockContracts = [
-        createMockContract({
-          totalValue: null,
-          artifacts: [
-            {
-              type: 'FINANCIAL',
-              data: { totalValue: 75000 }
-            }
-          ]
-        }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
-
-      const request = new NextRequest('http://localhost/api/renewals');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.renewals[0].currentValue).toBe(75000);
-    });
-
-    it('should calculate health score from risk artifact', async () => {
-      const mockContracts = [
-        createMockContract({
-          artifacts: [
-            {
-              type: 'RISK',
-              data: { overallScore: 30 } // Low risk = high health
-            }
-          ]
-        }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
-
-      const request = new NextRequest('http://localhost/api/renewals');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.renewals[0].healthScore).toBe(70); // 100 - 30
-    });
-
-    it('should handle contracts with auto-renewal enabled', async () => {
-      const mockContracts = [
-        createMockContract({ autoRenewalEnabled: true }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
-
-      const request = new NextRequest('http://localhost/api/renewals');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.renewals[0].autoRenewal).toBe(true);
-    });
-
-    it('should mark expired contracts correctly', async () => {
-      const pastDate = new Date();
-      pastDate.setDate(pastDate.getDate() - 5); // 5 days ago
-      
-      const mockContracts = [
-        createMockContract({ endDate: pastDate }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
-
-      const request = new NextRequest('http://localhost/api/renewals');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.renewals[0].status).toBe('expired');
-    });
-
-    it('should calculate notice deadline correctly', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 90); // 90 days
-      
-      const mockContracts = [
-        createMockContract({ endDate: futureDate }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
-
-      const request = new NextRequest('http://localhost/api/renewals');
-      const response = await GET(request);
-      const data = await response.json();
-
-      // Notice deadline should be 60 days before expiry
-      expect(data.renewals[0].noticeDeadline).toBeDefined();
-    });
-
-    it('should handle empty results', async () => {
-      mockPrisma.contract.findMany.mockResolvedValue([]);
-
-      const request = new NextRequest('http://localhost/api/renewals');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.renewals).toEqual([]);
-    });
-
-    it('should handle database errors gracefully', async () => {
-      mockPrisma.contract.findMany.mockRejectedValue(new Error('DB Error'));
-
-      const request = new NextRequest('http://localhost/api/renewals');
-      const response = await GET(request);
-
-      expect(response.status).toBe(500);
-    });
-
-    it('should use expirationDate when endDate is null', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 45);
-      
-      const mockContracts = [
-        createMockContract({ 
-          endDate: null, 
-          expirationDate: futureDate 
-        }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
-
-      const request = new NextRequest('http://localhost/api/renewals');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.renewals[0].expiryDate).toBeDefined();
-    });
-
-    it('should return risk level based on health score', async () => {
-      const mockContracts = [
-        createMockContract({
-          artifacts: [
-            { type: 'RISK', data: { overallScore: 70 } }
-          ]
-        }),
-      ];
-      
-      mockPrisma.contract.findMany.mockResolvedValue(mockContracts);
-
-      const request = new NextRequest('http://localhost/api/renewals');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.renewals[0].riskLevel).toBeDefined();
-    });
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
   });
 });

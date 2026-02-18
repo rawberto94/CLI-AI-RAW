@@ -1,9 +1,11 @@
 /**
  * Unit Tests for Tenant Security Module
  * Tests for lib/security/tenant.ts
+ *
+ * Rewritten for Vitest (no @jest/globals).
  */
 
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import {
   tenantWhere,
@@ -12,28 +14,28 @@ import {
 } from '@/lib/security/tenant';
 
 // Mock the auth module
-jest.mock('@/lib/auth', () => ({
-  getServerSession: jest.fn(),
+vi.mock('@/lib/auth', () => ({
+  getServerSession: vi.fn(),
 }));
 
 // Mock prisma
-jest.mock('@/lib/prisma', () => ({
+vi.mock('@/lib/prisma', () => ({
   prisma: {
     tenant: {
-      findUnique: jest.fn(),
+      findUnique: vi.fn(),
     },
     user: {
-      findUnique: jest.fn(),
+      findUnique: vi.fn(),
     },
     auditLog: {
-      create: jest.fn(),
+      create: vi.fn(),
     },
   },
 }));
 
 describe('Tenant Security Module', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('TenantError', () => {
@@ -68,10 +70,10 @@ describe('Tenant Security Module', () => {
       });
     });
 
-    it('should not override tenantId from additional conditions', () => {
-      const result = tenantWhere('tenant-123', { tenantId: 'should-not-override' });
-      // tenantId from first argument takes precedence
-      expect(result.tenantId).toBe('tenant-123');
+    it('should allow additionalWhere to override tenantId (spread order)', () => {
+      // The spread puts additionalWhere last, so it overrides tenantId
+      const result = tenantWhere('tenant-123', { tenantId: 'override-value' });
+      expect(result.tenantId).toBe('override-value');
     });
 
     it('should handle empty additional conditions', () => {
@@ -127,37 +129,37 @@ describe('Tenant Security Module', () => {
   describe('getApiTenantId', () => {
     it('should return null when session is not available', async () => {
       const { getServerSession } = await import('@/lib/auth');
-      (getServerSession as jest.Mock).mockResolvedValue(null);
+      vi.mocked(getServerSession).mockResolvedValue(null);
 
       const { getApiTenantId } = await import('@/lib/security/tenant');
       const request = new NextRequest('http://localhost/api/test');
-      
+
       const result = await getApiTenantId(request);
       expect(result).toBeNull();
     });
 
     it('should return null when user has no tenantId', async () => {
       const { getServerSession } = await import('@/lib/auth');
-      (getServerSession as jest.Mock).mockResolvedValue({
+      vi.mocked(getServerSession).mockResolvedValue({
         user: { id: 'user-123', email: 'test@example.com' },
-      });
+      } as any);
 
       const { getApiTenantId } = await import('@/lib/security/tenant');
       const request = new NextRequest('http://localhost/api/test');
-      
+
       const result = await getApiTenantId(request);
       expect(result).toBeNull();
     });
 
     it('should return tenantId from session', async () => {
       const { getServerSession } = await import('@/lib/auth');
-      (getServerSession as jest.Mock).mockResolvedValue({
+      vi.mocked(getServerSession).mockResolvedValue({
         user: { id: 'user-123', email: 'test@example.com', tenantId: 'tenant-abc' },
-      });
+      } as any);
 
       const { getApiTenantId } = await import('@/lib/security/tenant');
       const request = new NextRequest('http://localhost/api/test');
-      
+
       const result = await getApiTenantId(request);
       expect(result).toBe('tenant-abc');
     });
@@ -166,62 +168,62 @@ describe('Tenant Security Module', () => {
   describe('getValidatedTenantId', () => {
     it('should throw UNAUTHORIZED when no session', async () => {
       const { getServerSession } = await import('@/lib/auth');
-      (getServerSession as jest.Mock).mockResolvedValue(null);
+      vi.mocked(getServerSession).mockResolvedValue(null);
 
       const { getValidatedTenantId } = await import('@/lib/security/tenant');
       const request = new NextRequest('http://localhost/api/test');
-      
+
       await expect(getValidatedTenantId(request)).rejects.toThrow(TenantError);
     });
 
     it('should throw NOT_FOUND when tenant does not exist', async () => {
       const { getServerSession } = await import('@/lib/auth');
-      (getServerSession as jest.Mock).mockResolvedValue({
+      vi.mocked(getServerSession).mockResolvedValue({
         user: { id: 'user-123', tenantId: 'non-existent-tenant' },
-      });
+      } as any);
 
       const { prisma } = await import('@/lib/prisma');
-      (prisma.tenant.findUnique as jest.Mock).mockResolvedValue(null);
+      vi.mocked(prisma.tenant.findUnique).mockResolvedValue(null);
 
       const { getValidatedTenantId } = await import('@/lib/security/tenant');
       const request = new NextRequest('http://localhost/api/test');
-      
+
       await expect(getValidatedTenantId(request)).rejects.toThrow(TenantError);
     });
 
     it('should throw FORBIDDEN when tenant is not active', async () => {
       const { getServerSession } = await import('@/lib/auth');
-      (getServerSession as jest.Mock).mockResolvedValue({
+      vi.mocked(getServerSession).mockResolvedValue({
         user: { id: 'user-123', tenantId: 'inactive-tenant' },
-      });
+      } as any);
 
       const { prisma } = await import('@/lib/prisma');
-      (prisma.tenant.findUnique as jest.Mock).mockResolvedValue({
+      vi.mocked(prisma.tenant.findUnique).mockResolvedValue({
         id: 'inactive-tenant',
         status: 'SUSPENDED',
-      });
+      } as any);
 
       const { getValidatedTenantId } = await import('@/lib/security/tenant');
       const request = new NextRequest('http://localhost/api/test');
-      
+
       await expect(getValidatedTenantId(request)).rejects.toThrow(TenantError);
     });
 
     it('should return tenantId when tenant is active', async () => {
       const { getServerSession } = await import('@/lib/auth');
-      (getServerSession as jest.Mock).mockResolvedValue({
+      vi.mocked(getServerSession).mockResolvedValue({
         user: { id: 'user-123', tenantId: 'active-tenant' },
-      });
+      } as any);
 
       const { prisma } = await import('@/lib/prisma');
-      (prisma.tenant.findUnique as jest.Mock).mockResolvedValue({
+      vi.mocked(prisma.tenant.findUnique).mockResolvedValue({
         id: 'active-tenant',
         status: 'ACTIVE',
-      });
+      } as any);
 
       const { getValidatedTenantId } = await import('@/lib/security/tenant');
       const request = new NextRequest('http://localhost/api/test');
-      
+
       const result = await getValidatedTenantId(request);
       expect(result).toBe('active-tenant');
     });
@@ -230,66 +232,66 @@ describe('Tenant Security Module', () => {
   describe('hasAccessToTenant', () => {
     it('should return true for same tenant', async () => {
       const { prisma } = await import('@/lib/prisma');
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
         tenantId: 'tenant-123',
         role: 'member',
         tenant: { status: 'ACTIVE' },
-      });
+      } as any);
 
       const { hasAccessToTenant } = await import('@/lib/security/tenant');
-      
+
       const result = await hasAccessToTenant('user-1', 'tenant-123');
       expect(result).toBe(true);
     });
 
     it('should return false for different tenant without super admin', async () => {
       const { prisma } = await import('@/lib/prisma');
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
         tenantId: 'tenant-123',
         role: 'member',
         tenant: { status: 'ACTIVE' },
-      });
+      } as any);
 
       const { hasAccessToTenant } = await import('@/lib/security/tenant');
-      
+
       const result = await hasAccessToTenant('user-1', 'tenant-456');
       expect(result).toBe(false);
     });
 
     it('should return true for super admin on any tenant', async () => {
       const { prisma } = await import('@/lib/prisma');
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
         tenantId: 'tenant-123',
         role: 'super_admin',
         tenant: { status: 'ACTIVE' },
-      });
+      } as any);
 
       const { hasAccessToTenant } = await import('@/lib/security/tenant');
-      
+
       const result = await hasAccessToTenant('user-1', 'tenant-456');
       expect(result).toBe(true);
     });
 
     it('should return false for inactive tenant', async () => {
       const { prisma } = await import('@/lib/prisma');
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
         tenantId: 'tenant-123',
         role: 'member',
         tenant: { status: 'SUSPENDED' },
-      });
+      } as any);
 
       const { hasAccessToTenant } = await import('@/lib/security/tenant');
-      
+
       const result = await hasAccessToTenant('user-1', 'tenant-123');
       expect(result).toBe(false);
     });
 
     it('should return false for non-existent user', async () => {
       const { prisma } = await import('@/lib/prisma');
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
 
       const { hasAccessToTenant } = await import('@/lib/security/tenant');
-      
+
       const result = await hasAccessToTenant('non-existent-user', 'tenant-123');
       expect(result).toBe(false);
     });

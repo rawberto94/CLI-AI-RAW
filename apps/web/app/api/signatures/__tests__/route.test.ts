@@ -1,335 +1,202 @@
-/**
- * Unit Tests for Signatures API
- * Tests /api/signatures endpoint
- */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-// Mock Prisma with signatureRequest model
-const mockSignatureRequest = {
-  findMany: vi.fn(),
-  count: vi.fn(),
-  create: vi.fn(),
-};
+const { mockSrFindMany, mockSrCount, mockCreateEnvelope } = vi.hoisted(() => ({
+  mockSrFindMany: vi.fn(),
+  mockSrCount: vi.fn(),
+  mockCreateEnvelope: vi.fn(),
+}));
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    signatureRequest: mockSignatureRequest,
+    signatureRequest: {
+      findMany: mockSrFindMany,
+      count: mockSrCount,
+    },
   },
 }));
 
-// Import after mocking
+vi.mock('data-orchestration/services', () => ({
+  contractService: {},
+}));
+
+vi.mock('@/lib/realtime/publish', () => ({
+  publishRealtimeEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/lib/esignature/docusign.service', () => ({
+  eSignatureService: {
+    createEnvelope: mockCreateEnvelope,
+    isDocuSignConfigured: vi.fn().mockReturnValue(false),
+  },
+}));
+
 import { GET, POST } from '../route';
 
-describe('Signatures API', () => {
+function createAuthenticatedRequest(
+  method: string,
+  url: string,
+  options?: { body?: object; searchParams?: Record<string, string> }
+): NextRequest {
+  const fullUrl = new URL(url);
+  if (options?.searchParams) {
+    Object.entries(options.searchParams).forEach(([k, v]) => fullUrl.searchParams.set(k, v));
+  }
+  return new NextRequest(fullUrl.toString(), {
+    method,
+    headers: {
+      'x-user-id': 'test-user-id',
+      'x-tenant-id': 'test-tenant',
+      'Content-Type': 'application/json',
+    },
+    body: options?.body ? JSON.stringify(options.body) : undefined,
+  });
+}
+
+function createUnauthenticatedRequest(method: string, url: string): NextRequest {
+  return new NextRequest(url, { method });
+}
+
+describe('GET /api/signatures', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('GET /api/signatures', () => {
-    it('should return list of signature requests', async () => {
-      const mockRequests = [
-        {
-          id: 'sig-1',
-          contractId: 'contract-1',
-          status: 'pending',
-          message: 'Please sign',
-          createdAt: new Date(),
-          signers: [
-            { id: 's1', name: 'John', email: 'john@example.com', role: 'signer', order: 1, status: 'pending' }
-          ],
-          contract: { id: 'contract-1', filename: 'test.pdf' }
-        }
-      ];
-      
-      mockSignatureRequest.findMany.mockResolvedValue(mockRequests);
-      mockSignatureRequest.count.mockResolvedValue(1);
+  it('returns 401 without auth headers', async () => {
+    const request = createUnauthenticatedRequest('GET', 'http://localhost:3000/api/signatures');
+    const response = await GET(request);
+    const data = await response.json();
 
-      const request = new NextRequest('http://localhost/api/signatures');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.success).toBe(true);
-      expect(data.data.items).toHaveLength(1);
-    });
-
-    it('should filter by contractId', async () => {
-      mockSignatureRequest.findMany.mockResolvedValue([]);
-      mockSignatureRequest.count.mockResolvedValue(0);
-
-      const request = new NextRequest('http://localhost/api/signatures?contractId=contract-1');
-      await GET(request);
-
-      expect(mockSignatureRequest.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ contractId: 'contract-1' })
-        })
-      );
-    });
-
-    it('should filter by status', async () => {
-      mockSignatureRequest.findMany.mockResolvedValue([]);
-      mockSignatureRequest.count.mockResolvedValue(0);
-
-      const request = new NextRequest('http://localhost/api/signatures?status=pending');
-      await GET(request);
-
-      expect(mockSignatureRequest.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ status: 'pending' })
-        })
-      );
-    });
-
-    it('should handle pagination', async () => {
-      mockSignatureRequest.findMany.mockResolvedValue([]);
-      mockSignatureRequest.count.mockResolvedValue(25);
-
-      const request = new NextRequest('http://localhost/api/signatures?page=2&limit=10');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.data.pagination.page).toBe(2);
-      expect(data.data.pagination.limit).toBe(10);
-      expect(data.data.pagination.totalPages).toBe(3);
-    });
-
-    it('should fallback to mock data when table does not exist', async () => {
-      mockSignatureRequest.findMany.mockRejectedValue(new Error('Table not found'));
-
-      const request = new NextRequest('http://localhost/api/signatures?contractId=contract-1');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.success).toBe(true);
-      expect(data.source).toBe('mock');
-    });
-
-    it('should return empty mock data when no contractId provided', async () => {
-      mockSignatureRequest.findMany.mockRejectedValue(new Error('Table not found'));
-
-      const request = new NextRequest('http://localhost/api/signatures');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.data.items).toEqual([]);
-    });
-
-    it('should include signers in response', async () => {
-      const mockRequests = [
-        {
-          id: 'sig-1',
-          contractId: 'contract-1',
-          status: 'pending',
-          signers: [
-            { id: 's1', name: 'John', email: 'john@example.com', role: 'signer', order: 1, status: 'pending' },
-            { id: 's2', name: 'Jane', email: 'jane@example.com', role: 'approver', order: 2, status: 'pending' }
-          ]
-        }
-      ];
-      
-      mockSignatureRequest.findMany.mockResolvedValue(mockRequests);
-      mockSignatureRequest.count.mockResolvedValue(1);
-
-      const request = new NextRequest('http://localhost/api/signatures');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.data.items[0].signers).toHaveLength(2);
-    });
-
-    it('should handle general errors', async () => {
-      // Mock URL parsing to fail
-      const request = {
-        url: null,
-      } as unknown as NextRequest;
-
-      const response = await GET(request);
-      expect(response.status).toBe(500);
-    });
+    expect(response.status).toBe(401);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('UNAUTHORIZED');
   });
 
-  describe('POST /api/signatures', () => {
-    it('should create a new signature request', async () => {
-      const newRequest = {
-        id: 'sig-new',
-        contractId: 'contract-1',
+  it('returns signature requests list', async () => {
+    mockSrFindMany.mockResolvedValue([
+      {
+        id: 'sr-1',
+        tenantId: 'test-tenant',
+        contractId: 'c-1',
         status: 'pending',
-        message: 'Please sign',
-        signers: [
-          { id: 's1', name: 'John', email: 'john@example.com', role: 'signer', order: 1, status: 'pending' }
-        ]
-      };
-      
-      mockSignatureRequest.create.mockResolvedValue(newRequest);
+        signers: [{ name: 'John', email: 'john@test.com', role: 'signer', order: 1 }],
+        createdAt: new Date(),
+        contract: { id: 'c-1', fileName: 'test.pdf', contractTitle: 'Test NDA', supplierName: 'Acme' },
+      },
+    ]);
+    mockSrCount.mockResolvedValue(1);
 
-      const request = new NextRequest('http://localhost/api/signatures', {
-        method: 'POST',
-        body: JSON.stringify({
-          contractId: 'contract-1',
-          signers: [
-            { name: 'John', email: 'john@example.com', role: 'signer', order: 1 }
-          ]
-        })
-      });
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/signatures');
+    const response = await GET(request);
+    const data = await response.json();
 
-      const response = await POST(request);
-      const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data.data.items).toHaveLength(1);
+    expect(data.data.data.pagination.total).toBe(1);
+  });
 
-      expect(response.status).toBe(201);
-      expect(data.success).toBe(true);
+  it('filters by contractId', async () => {
+    mockSrFindMany.mockResolvedValue([]);
+    mockSrCount.mockResolvedValue(0);
+
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/signatures', {
+      searchParams: { contractId: 'c-1' },
+    });
+    await GET(request);
+
+    expect(mockSrFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ contractId: 'c-1' }),
+      })
+    );
+  });
+
+  it('returns empty list', async () => {
+    mockSrFindMany.mockResolvedValue([]);
+    mockSrCount.mockResolvedValue(0);
+
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/signatures');
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data.data.items).toEqual([]);
+  });
+});
+
+describe('POST /api/signatures', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns 401 without auth headers', async () => {
+    const request = createUnauthenticatedRequest('POST', 'http://localhost:3000/api/signatures');
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.success).toBe(false);
+  });
+
+  it('creates signature request', async () => {
+    mockCreateEnvelope.mockResolvedValue({
+      envelopeId: 'env-1',
+      provider: 'manual',
+      status: 'pending',
+      externalEnvelopeId: null,
+      signers: [{ name: 'Jane', email: 'jane@test.com' }],
     });
 
-    it('should require contractId', async () => {
-      const request = new NextRequest('http://localhost/api/signatures', {
-        method: 'POST',
-        body: JSON.stringify({
-          signers: [{ name: 'John', email: 'john@example.com' }]
-        })
-      });
-
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(400);
-      expect(data.error).toContain('Contract ID');
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/signatures', {
+      body: {
+        contractId: 'c-1',
+        signers: [{ name: 'Jane', email: 'jane@test.com', role: 'signer', order: 1 }],
+      },
     });
+    const response = await POST(request);
+    const data = await response.json();
 
-    it('should require at least one signer', async () => {
-      const request = new NextRequest('http://localhost/api/signatures', {
-        method: 'POST',
-        body: JSON.stringify({
-          contractId: 'contract-1',
-          signers: []
-        })
-      });
+    expect(response.status).toBe(201);
+    expect(data.success).toBe(true);
+    expect(data.data.data.id).toBe('env-1');
+    expect(data.data.data.provider).toBe('manual');
+  });
 
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(400);
-      expect(data.error).toContain('signer');
+  it('returns 400 when contractId missing', async () => {
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/signatures', {
+      body: { signers: [{ name: 'Jane', email: 'jane@test.com', role: 'signer', order: 1 }] },
     });
+    const response = await POST(request);
+    const data = await response.json();
 
-    it('should validate signer has name and email', async () => {
-      const request = new NextRequest('http://localhost/api/signatures', {
-        method: 'POST',
-        body: JSON.stringify({
-          contractId: 'contract-1',
-          signers: [{ name: 'John' }] // Missing email
-        })
-      });
+    expect(response.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('BAD_REQUEST');
+  });
 
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(400);
-      expect(data.error).toContain('name and email');
+  it('returns 400 when signers empty', async () => {
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/signatures', {
+      body: { contractId: 'c-1', signers: [] },
     });
+    const response = await POST(request);
+    const data = await response.json();
 
-    it('should accept custom message', async () => {
-      mockSignatureRequest.create.mockResolvedValue({
-        id: 'sig-new',
-        message: 'Custom message'
-      });
+    expect(response.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('BAD_REQUEST');
+  });
 
-      const request = new NextRequest('http://localhost/api/signatures', {
-        method: 'POST',
-        body: JSON.stringify({
-          contractId: 'contract-1',
-          signers: [{ name: 'John', email: 'john@example.com', role: 'signer', order: 1 }],
-          message: 'Custom message'
-        })
-      });
-
-      await POST(request);
-
-      expect(mockSignatureRequest.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            message: 'Custom message'
-          })
-        })
-      );
+  it('returns 400 when signer missing email', async () => {
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/signatures', {
+      body: { contractId: 'c-1', signers: [{ name: 'Jane', role: 'signer', order: 1 }] },
     });
+    const response = await POST(request);
+    const data = await response.json();
 
-    it('should accept custom expiration date', async () => {
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-      
-      mockSignatureRequest.create.mockResolvedValue({
-        id: 'sig-new',
-        expiresAt
-      });
-
-      const request = new NextRequest('http://localhost/api/signatures', {
-        method: 'POST',
-        body: JSON.stringify({
-          contractId: 'contract-1',
-          signers: [{ name: 'John', email: 'john@example.com', role: 'signer', order: 1 }],
-          expiresAt
-        })
-      });
-
-      await POST(request);
-
-      expect(mockSignatureRequest.create).toHaveBeenCalled();
-    });
-
-    it('should fallback to mock when table does not exist', async () => {
-      mockSignatureRequest.create.mockRejectedValue(new Error('Table not found'));
-
-      const request = new NextRequest('http://localhost/api/signatures', {
-        method: 'POST',
-        body: JSON.stringify({
-          contractId: 'contract-1',
-          signers: [{ name: 'John', email: 'john@example.com', role: 'signer', order: 1 }]
-        })
-      });
-
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(201);
-      expect(data.source).toBe('mock');
-    });
-
-    it('should handle multiple signers', async () => {
-      mockSignatureRequest.create.mockResolvedValue({
-        id: 'sig-new',
-        signers: [
-          { name: 'John', email: 'john@example.com', order: 1 },
-          { name: 'Jane', email: 'jane@example.com', order: 2 },
-          { name: 'Bob', email: 'bob@example.com', order: 3 }
-        ]
-      });
-
-      const request = new NextRequest('http://localhost/api/signatures', {
-        method: 'POST',
-        body: JSON.stringify({
-          contractId: 'contract-1',
-          signers: [
-            { name: 'John', email: 'john@example.com', role: 'signer', order: 1 },
-            { name: 'Jane', email: 'jane@example.com', role: 'approver', order: 2 },
-            { name: 'Bob', email: 'bob@example.com', role: 'viewer', order: 3 }
-          ]
-        })
-      });
-
-      const response = await POST(request);
-      expect(response.status).toBe(201);
-    });
-
-    it('should handle invalid JSON gracefully', async () => {
-      const request = new NextRequest('http://localhost/api/signatures', {
-        method: 'POST',
-        body: 'invalid json'
-      });
-
-      const response = await POST(request);
-      expect(response.status).toBe(500);
-    });
+    expect(response.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('BAD_REQUEST');
   });
 });

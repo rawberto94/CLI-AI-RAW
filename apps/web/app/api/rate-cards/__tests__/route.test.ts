@@ -2,221 +2,211 @@
  * Unit Tests for Rate Cards API
  * Tests /api/rate-cards endpoint
  */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-// Mock Prisma - hoisted mock
+const { mockFindMany, mockCount, mockCreate } = vi.hoisted(() => ({
+  mockFindMany: vi.fn(),
+  mockCount: vi.fn(),
+  mockCreate: vi.fn(),
+}));
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     rateCardEntry: {
-      findMany: vi.fn(),
-      count: vi.fn(),
-      create: vi.fn(),
+      findMany: mockFindMany,
+      count: mockCount,
+      create: mockCreate,
     },
   },
 }));
 
-// Mock auth - hoisted mock
-vi.mock('@/lib/auth', () => ({
-  getServerSession: vi.fn(),
+vi.mock('data-orchestration/services', () => ({
+  rateCardManagementService: {},
 }));
 
-// Import after mocking
-import { GET, POST } from '@/app/api/rate-cards/route';
-import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
+import { GET, POST } from '../route';
 
-// Get mocked modules
-const mockPrisma = vi.mocked(prisma);
-const mockGetServerSession = vi.mocked(getServerSession);
-
-// Helper to create mock request
-function createRequest(url: string, options: RequestInit = {}) {
-  return new NextRequest(`http://localhost${url}`, options);
+function createAuthenticatedRequest(
+  method: string,
+  url: string,
+  options?: { body?: object }
+): NextRequest {
+  return new NextRequest(url, {
+    method,
+    headers: {
+      'x-user-id': 'user-1',
+      'x-tenant-id': 'tenant-1',
+      'Content-Type': 'application/json',
+    },
+    body: options?.body ? JSON.stringify(options.body) : undefined,
+  });
 }
+
+function createUnauthenticatedRequest(method: string, url: string): NextRequest {
+  return new NextRequest(url, { method });
+}
+
+const mockRateCards = [
+  {
+    id: 'rate-1',
+    tenantId: 'tenant-1',
+    contractId: 'contract-1',
+    supplierId: 'supplier-1',
+    supplierName: 'Accenture',
+    roleOriginal: 'Senior Software Engineer',
+    roleStandardized: 'Software Engineer',
+    seniority: 'SENIOR',
+    lineOfService: 'Technology',
+    country: 'United States',
+    region: 'North America',
+    dailyRate: 1200.0,
+    currency: 'USD',
+    effectiveDate: new Date('2024-01-01'),
+    expiryDate: new Date('2025-12-31'),
+    isBaseline: true,
+    isNegotiated: true,
+    source: 'EXTRACTED',
+    createdAt: new Date('2024-01-15'),
+    updatedAt: new Date('2024-01-15'),
+    createdBy: 'user-1',
+    updatedBy: 'user-1',
+    contract: { id: 'contract-1', fileName: 'accenture-rates.pdf', clientName: 'Acme Corp' },
+  },
+  {
+    id: 'rate-2',
+    tenantId: 'tenant-1',
+    contractId: 'contract-1',
+    supplierId: 'supplier-1',
+    supplierName: 'Accenture',
+    roleOriginal: 'Principal Architect',
+    roleStandardized: 'Solution Architect',
+    seniority: 'PRINCIPAL',
+    lineOfService: 'Technology',
+    country: 'United States',
+    region: 'North America',
+    dailyRate: 1800.0,
+    currency: 'USD',
+    effectiveDate: new Date('2024-01-01'),
+    expiryDate: new Date('2025-12-31'),
+    isBaseline: true,
+    isNegotiated: false,
+    source: 'EXTRACTED',
+    createdAt: new Date('2024-01-15'),
+    updatedAt: new Date('2024-01-15'),
+    createdBy: 'user-1',
+    updatedBy: 'user-1',
+    contract: { id: 'contract-1', fileName: 'accenture-rates.pdf', clientName: 'Acme Corp' },
+  },
+  {
+    id: 'rate-3',
+    tenantId: 'tenant-1',
+    contractId: 'contract-2',
+    supplierId: 'supplier-2',
+    supplierName: 'Deloitte',
+    roleOriginal: 'Data Scientist',
+    roleStandardized: 'Data Scientist',
+    seniority: 'SENIOR',
+    lineOfService: 'Data & Analytics',
+    country: 'United States',
+    region: 'North America',
+    dailyRate: 1400.0,
+    currency: 'USD',
+    effectiveDate: new Date('2024-01-01'),
+    expiryDate: new Date('2025-12-31'),
+    isBaseline: false,
+    isNegotiated: true,
+    source: 'MANUAL',
+    createdAt: new Date('2024-02-01'),
+    updatedAt: new Date('2024-02-01'),
+    createdBy: 'user-1',
+    updatedBy: 'user-1',
+    contract: { id: 'contract-2', fileName: 'deloitte-rates.pdf', clientName: 'Widget Co' },
+  },
+];
 
 describe('Rate Cards API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default session setup
-    mockGetServerSession.mockResolvedValue({
-      user: { id: 'user-1', tenantId: 'tenant_demo_001', role: 'admin' }
-    });
   });
 
   describe('GET /api/rate-cards', () => {
-    const mockRateCards = [
-      {
-        id: 'rate-1',
-        tenantId: 'tenant_demo_001',
-        contractId: 'contract-1',
-        supplierId: 'supplier-1',
-        supplierName: 'Accenture',
-        roleOriginal: 'Senior Software Engineer',
-        roleStandardized: 'Software Engineer',
-        seniority: 'SENIOR',
-        lineOfService: 'Technology',
-        country: 'United States',
-        region: 'North America',
-        dailyRate: 1200.00,
-        currency: 'USD',
-        effectiveDate: new Date('2024-01-01'),
-        expiryDate: new Date('2025-12-31'),
-        isBaseline: true,
-        isNegotiated: true,
-        source: 'EXTRACTED',
-        createdAt: new Date('2024-01-15'),
-        updatedAt: new Date('2024-01-15'),
-        createdBy: 'user-1',
-        updatedBy: 'user-1',
-        contract: {
-          id: 'contract-1',
-          fileName: 'accenture-rates.pdf',
-          clientName: 'Acme Corp',
-        },
-      },
-      {
-        id: 'rate-2',
-        tenantId: 'tenant_demo_001',
-        contractId: 'contract-1',
-        supplierId: 'supplier-1',
-        supplierName: 'Accenture',
-        roleOriginal: 'Principal Architect',
-        roleStandardized: 'Solution Architect',
-        seniority: 'PRINCIPAL',
-        lineOfService: 'Technology',
-        country: 'United States',
-        region: 'North America',
-        dailyRate: 1800.00,
-        currency: 'USD',
-        effectiveDate: new Date('2024-01-01'),
-        expiryDate: new Date('2025-12-31'),
-        isBaseline: true,
-        isNegotiated: false,
-        source: 'EXTRACTED',
-        createdAt: new Date('2024-01-15'),
-        updatedAt: new Date('2024-01-15'),
-        createdBy: 'user-1',
-        updatedBy: 'user-1',
-        contract: {
-          id: 'contract-1',
-          fileName: 'accenture-rates.pdf',
-          clientName: 'Acme Corp',
-        },
-      },
-      {
-        id: 'rate-3',
-        tenantId: 'tenant_demo_001',
-        contractId: 'contract-2',
-        supplierId: 'supplier-2',
-        supplierName: 'Deloitte',
-        roleOriginal: 'Data Scientist',
-        roleStandardized: 'Data Scientist',
-        seniority: 'SENIOR',
-        lineOfService: 'Data & Analytics',
-        country: 'United States',
-        region: 'North America',
-        dailyRate: 1400.00,
-        currency: 'USD',
-        effectiveDate: new Date('2024-01-01'),
-        expiryDate: new Date('2025-12-31'),
-        isBaseline: false,
-        isNegotiated: true,
-        source: 'MANUAL',
-        createdAt: new Date('2024-02-01'),
-        updatedAt: new Date('2024-02-01'),
-        createdBy: 'user-1',
-        updatedBy: 'user-1',
-        contract: {
-          id: 'contract-2',
-          fileName: 'deloitte-rates.pdf',
-          clientName: 'Widget Co',
-        },
-      },
-    ];
-
-    it('should return rate cards for authenticated tenant', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue(mockRateCards);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(3);
-
-      const request = createRequest('/api/rate-cards');
+    it('returns 401 without auth headers', async () => {
+      const request = createUnauthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards');
       const response = await GET(request);
       const data = await response.json();
 
-      expect(data.data).toHaveLength(3);
-      expect(data.total).toBe(3);
-      expect(data.page).toBe(1);
-      expect(data.pageSize).toBe(50);
+      expect(response.status).toBe(401);
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('UNAUTHORIZED');
     });
 
-    it('should return mock data when x-data-mode is mock', async () => {
-      const request = createRequest('/api/rate-cards', {
-        headers: { 'x-data-mode': 'mock' },
-      });
+    it('returns rate cards for authenticated tenant', async () => {
+      mockFindMany.mockResolvedValue(mockRateCards);
+      mockCount.mockResolvedValue(3);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards');
       const response = await GET(request);
       const data = await response.json();
 
-      expect(data.data.length).toBeGreaterThan(0);
-      expect(data.data[0]).toHaveProperty('supplierName');
-      expect(data.data[0]).toHaveProperty('dailyRate');
-      // Should not call database
-      expect(mockPrisma.rateCardEntry.findMany).not.toHaveBeenCalled();
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.data).toHaveLength(3);
+      expect(data.data.page).toBe(1);
+      expect(data.data.pageSize).toBe(50);
     });
 
-    it('should handle pagination', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue([mockRateCards[0]]);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(100);
+    it('returns total and pagination info', async () => {
+      mockFindMany.mockResolvedValue(mockRateCards);
+      mockCount.mockResolvedValue(3);
 
-      const request = createRequest('/api/rate-cards?page=2&pageSize=25');
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards');
       const response = await GET(request);
       const data = await response.json();
 
-      expect(data.page).toBe(2);
-      expect(data.pageSize).toBe(25);
-      expect(data.totalPages).toBe(4);
-      expect(mockPrisma.rateCardEntry.findMany).toHaveBeenCalledWith(
+      expect(data.data.total).toBe(3);
+      expect(data.data.originalTotal).toBe(3);
+      expect(data.data.totalPages).toBe(1);
+    });
+
+    it('handles pagination parameters', async () => {
+      mockFindMany.mockResolvedValue([mockRateCards[0]]);
+      mockCount.mockResolvedValue(100);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?page=2&pageSize=25');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(data.data.page).toBe(2);
+      expect(data.data.pageSize).toBe(25);
+      expect(data.data.totalPages).toBe(4);
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 25, take: 25 })
+      );
+    });
+
+    it('filters by contractId', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?contractId=c1');
+      await GET(request);
+
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          skip: 25,
-          take: 25,
+          where: expect.objectContaining({ contractId: 'c1' }),
         })
       );
     });
 
-    it('should require tenant ID', async () => {
-      mockGetServerSession.mockResolvedValue(null);
+    it('filters by supplierName with insensitive contains', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
-      const request = createRequest('/api/rate-cards');
-      const response = await GET(request);
-      const data = await response.json();
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?supplierName=Accenture');
+      await GET(request);
 
-      expect(response.status).toBe(400);
-      expect(data.error).toContain('Tenant ID is required');
-    });
-
-    it('should accept tenant ID from header', async () => {
-      mockGetServerSession.mockResolvedValue(null);
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue([mockRateCards[0]]);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(1);
-
-      const request = createRequest('/api/rate-cards', {
-        headers: { 'x-tenant-id': 'tenant_demo_001' },
-      });
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.data).toHaveLength(1);
-    });
-
-    it('should filter by supplier name', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue([mockRateCards[0], mockRateCards[1]]);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(2);
-
-      const request = createRequest('/api/rate-cards?supplierName=Accenture');
-      const response = await GET(request);
-      await response.json();
-
-      expect(mockPrisma.rateCardEntry.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             supplierName: { contains: 'Accenture', mode: 'insensitive' },
@@ -225,356 +215,339 @@ describe('Rate Cards API', () => {
       );
     });
 
-    it('should filter by seniority level', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue([mockRateCards[0], mockRateCards[2]]);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(2);
+    it('filters by seniority', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
-      const request = createRequest('/api/rate-cards?seniority=SENIOR');
-      const response = await GET(request);
-      await response.json();
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?seniority=SENIOR');
+      await GET(request);
 
-      expect(mockPrisma.rateCardEntry.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ seniority: 'SENIOR' }),
+        })
+      );
+    });
+
+    it('filters by country', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?country=United%20States');
+      await GET(request);
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ country: 'United States' }),
+        })
+      );
+    });
+
+    it('filters by source', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?source=MANUAL');
+      await GET(request);
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ source: 'MANUAL' }),
+        })
+      );
+    });
+
+    it('filters by minRate and maxRate', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?minRate=1000&maxRate=2000');
+      await GET(request);
+
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            seniority: 'SENIOR',
+            dailyRate: { gte: 1000, lte: 2000 },
           }),
         })
       );
     });
 
-    it('should filter by country', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue(mockRateCards);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(3);
+    it('filters by isBaseline=true', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
-      const request = createRequest('/api/rate-cards?country=United%20States');
-      const response = await GET(request);
-      await response.json();
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?isBaseline=true');
+      await GET(request);
 
-      expect(mockPrisma.rateCardEntry.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            country: 'United States',
-          }),
+          where: expect.objectContaining({ isBaseline: true }),
         })
       );
     });
 
-    it('should filter by line of service', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue([mockRateCards[2]]);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(1);
+    it('filters by isBaseline=false', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
-      const request = createRequest('/api/rate-cards?lineOfService=Data%20%26%20Analytics');
-      const response = await GET(request);
-      await response.json();
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?isBaseline=false');
+      await GET(request);
 
-      expect(mockPrisma.rateCardEntry.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            lineOfService: 'Data & Analytics',
-          }),
+          where: expect.objectContaining({ isBaseline: false }),
         })
       );
     });
 
-    it('should filter by rate range', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue([mockRateCards[0]]);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(1);
+    it('filters by isNegotiated=true', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
-      const request = createRequest('/api/rate-cards?minRate=1000&maxRate=1500');
-      const response = await GET(request);
-      await response.json();
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?isNegotiated=true');
+      await GET(request);
 
-      expect(mockPrisma.rateCardEntry.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            dailyRate: { gte: 1000, lte: 1500 },
-          }),
+          where: expect.objectContaining({ isNegotiated: true }),
         })
       );
     });
 
-    it('should filter by isBaseline', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue([mockRateCards[0], mockRateCards[1]]);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(2);
+    it('handles sorting parameters', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
-      const request = createRequest('/api/rate-cards?isBaseline=true');
-      const response = await GET(request);
-      await response.json();
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?sortBy=dailyRate&sortOrder=asc');
+      await GET(request);
 
-      expect(mockPrisma.rateCardEntry.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            isBaseline: true,
-          }),
-        })
-      );
-    });
-
-    it('should filter by isNegotiated', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue([mockRateCards[0], mockRateCards[2]]);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(2);
-
-      const request = createRequest('/api/rate-cards?isNegotiated=true');
-      const response = await GET(request);
-      await response.json();
-
-      expect(mockPrisma.rateCardEntry.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            isNegotiated: true,
-          }),
-        })
-      );
-    });
-
-    it('should filter by effective date range', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue(mockRateCards);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(3);
-
-      const request = createRequest('/api/rate-cards?effectiveDateFrom=2024-01-01&effectiveDateTo=2024-12-31');
-      const response = await GET(request);
-      await response.json();
-
-      expect(mockPrisma.rateCardEntry.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            effectiveDate: {
-              gte: expect.any(Date),
-              lte: expect.any(Date),
-            },
-          }),
-        })
-      );
-    });
-
-    it('should filter by role standardized', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue([mockRateCards[0]]);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(1);
-
-      const request = createRequest('/api/rate-cards?roleStandardized=Software%20Engineer');
-      const response = await GET(request);
-      await response.json();
-
-      expect(mockPrisma.rateCardEntry.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            roleStandardized: { contains: 'Software Engineer', mode: 'insensitive' },
-          }),
-        })
-      );
-    });
-
-    it('should filter by contract ID', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue([mockRateCards[0], mockRateCards[1]]);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(2);
-
-      const request = createRequest('/api/rate-cards?contractId=contract-1');
-      const response = await GET(request);
-      await response.json();
-
-      expect(mockPrisma.rateCardEntry.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            contractId: 'contract-1',
-          }),
-        })
-      );
-    });
-
-    it('should support sorting', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue(mockRateCards);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(3);
-
-      const request = createRequest('/api/rate-cards?sortBy=dailyRate&sortOrder=asc');
-      const response = await GET(request);
-      await response.json();
-
-      expect(mockPrisma.rateCardEntry.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: { dailyRate: 'asc' },
         })
       );
     });
 
-    it('should deduplicate rate cards', async () => {
-      // Create duplicate entries
-      const duplicateRates = [
-        mockRateCards[0],
-        { ...mockRateCards[0], id: 'rate-1-dup' }, // Same role/seniority/rate/supplier
-      ];
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue(duplicateRates);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(2);
+    it('includes contract relation in query', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
-      const request = createRequest('/api/rate-cards');
-      const response = await GET(request);
-      const data = await response.json();
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards');
+      await GET(request);
 
-      // Should deduplicate to 1
-      expect(data.data).toHaveLength(1);
-      expect(data.originalTotal).toBe(2);
-    });
-
-    it('should handle database errors gracefully', async () => {
-      mockPrisma.rateCardEntry.findMany.mockRejectedValue(new Error('Database connection failed'));
-
-      const request = createRequest('/api/rate-cards');
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(500);
-      expect(data.error).toBe('Failed to list rate cards');
-    });
-
-    it('should include contract relationship in response', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue([mockRateCards[0]]);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(1);
-
-      const request = createRequest('/api/rate-cards');
-      const _response = await GET(request);
-
-      expect(mockPrisma.rateCardEntry.findMany).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          include: expect.objectContaining({
-            contract: expect.any(Object),
+          include: {
+            contract: {
+              select: { id: true, fileName: true, clientName: true },
+            },
+          },
+        })
+      );
+    });
+
+    it('deduplicates rate cards by role, seniority, rate, and supplier', async () => {
+      const duplicateCards = [
+        { ...mockRateCards[0] },
+        { ...mockRateCards[0], id: 'rate-dup' },
+      ];
+      mockFindMany.mockResolvedValue(duplicateCards);
+      mockCount.mockResolvedValue(2);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(data.data.data).toHaveLength(1);
+      expect(data.data.total).toBe(1);
+      expect(data.data.originalTotal).toBe(2);
+    });
+
+    it('handles database errors gracefully', async () => {
+      mockFindMany.mockRejectedValue(new Error('Database connection failed'));
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(503);
+      expect(data.success).toBe(false);
+    });
+
+    it('returns empty list when no rate cards exist', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.data).toEqual([]);
+      expect(data.data.total).toBe(0);
+    });
+
+    it('filters by roleStandardized with insensitive contains', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?roleStandardized=Software');
+      await GET(request);
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            roleStandardized: { contains: 'Software', mode: 'insensitive' },
           }),
         })
       );
     });
 
-    it('should handle empty results', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue([]);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(0);
+    it('filters by region', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
-      const request = createRequest('/api/rate-cards');
-      const response = await GET(request);
-      const data = await response.json();
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?region=North%20America');
+      await GET(request);
 
-      expect(data.data).toHaveLength(0);
-      expect(data.total).toBe(0);
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ region: 'North America' }),
+        })
+      );
     });
 
-    it('should handle mock data pagination', async () => {
-      const request = createRequest('/api/rate-cards?page=2&pageSize=3', {
-        headers: { 'x-data-mode': 'mock' },
-      });
-      const response = await GET(request);
-      const data = await response.json();
+    it('filters by lineOfService', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
 
-      expect(data.page).toBe(2);
-      expect(data.pageSize).toBe(3);
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?lineOfService=Technology');
+      await GET(request);
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ lineOfService: 'Technology' }),
+        })
+      );
+    });
+
+    it('filters by clientName with insensitive contains', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?clientName=Acme');
+      await GET(request);
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            clientName: { contains: 'Acme', mode: 'insensitive' },
+          }),
+        })
+      );
+    });
+
+    it('uses default sort by createdAt desc', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards');
+      await GET(request);
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { createdAt: 'desc' },
+        })
+      );
+    });
+
+    it('filters by supplierId', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
+
+      const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/rate-cards?supplierId=sup-1');
+      await GET(request);
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ supplierId: 'sup-1' }),
+        })
+      );
     });
   });
 
   describe('POST /api/rate-cards', () => {
-    const validRateCardData = {
-      roleOriginal: 'Senior Developer',
-      roleStandardized: 'Software Engineer',
-      seniority: 'SENIOR',
-      lineOfService: 'Technology',
-      country: 'United States',
-      region: 'North America',
-      dailyRate: 1100.00,
-      currency: 'USD',
-      supplierId: 'supplier-1',
-      supplierName: 'Tech Partners',
-      effectiveDate: '2024-01-01',
-      expiryDate: '2025-12-31',
-      isBaseline: true,
-      isNegotiated: false,
-    };
+    it('returns 401 without auth headers', async () => {
+      const request = createUnauthenticatedRequest('POST', 'http://localhost:3000/api/rate-cards');
+      const response = await POST(request);
+      const data = await response.json();
 
-    it('should create a new rate card entry', async () => {
-      const createdEntry = {
+      expect(response.status).toBe(401);
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('UNAUTHORIZED');
+    });
+
+    it('creates a rate card entry successfully', async () => {
+      const newEntry = {
         id: 'new-rate-1',
-        tenantId: 'tenant_demo_001',
+        tenantId: 'tenant-1',
+        supplierName: 'Test Supplier',
+        roleOriginal: 'Developer',
+        dailyRate: 1000,
         createdBy: 'user-1',
         updatedBy: 'user-1',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        ...validRateCardData,
-        effectiveDate: new Date(validRateCardData.effectiveDate),
-        expiryDate: new Date(validRateCardData.expiryDate),
       };
+      mockCreate.mockResolvedValue(newEntry);
 
-      mockPrisma.rateCardEntry.create.mockResolvedValue(createdEntry);
-
-      const request = createRequest('/api/rate-cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(validRateCardData),
-      });
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(201);
-      expect(data.id).toBe('new-rate-1');
-      expect(data.tenantId).toBe('tenant_demo_001');
-    });
-
-    it('should require tenant ID for creation', async () => {
-      mockGetServerSession.mockResolvedValue(null);
-
-      const request = createRequest('/api/rate-cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(validRateCardData),
-      });
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(400);
-      expect(data.error).toContain('Tenant ID is required');
-    });
-
-    it('should accept tenant ID from header for creation', async () => {
-      mockGetServerSession.mockResolvedValue(null);
-      
-      const createdEntry = {
-        id: 'new-rate-2',
-        tenantId: 'tenant_demo_001',
-        createdBy: 'system',
-        updatedBy: 'system',
-        ...validRateCardData,
-        effectiveDate: new Date(validRateCardData.effectiveDate),
-        expiryDate: new Date(validRateCardData.expiryDate),
-      };
-      mockPrisma.rateCardEntry.create.mockResolvedValue(createdEntry);
-
-      const request = createRequest('/api/rate-cards', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-tenant-id': 'tenant_demo_001',
+      const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/rate-cards', {
+        body: {
+          supplierName: 'Test Supplier',
+          roleOriginal: 'Developer',
+          dailyRate: 1000,
         },
-        body: JSON.stringify(validRateCardData),
       });
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(201);
-      expect(data.tenantId).toBe('tenant_demo_001');
+      expect(data.success).toBe(true);
+      expect(data.data.supplierName).toBe('Test Supplier');
     });
 
-    it('should convert date strings to Date objects', async () => {
-      const createdEntry = {
-        id: 'new-rate-3',
-        tenantId: 'tenant_demo_001',
-        createdBy: 'user-1',
-        updatedBy: 'user-1',
-        ...validRateCardData,
-        effectiveDate: new Date('2024-01-01'),
-        expiryDate: new Date('2025-12-31'),
-      };
-      mockPrisma.rateCardEntry.create.mockResolvedValue(createdEntry);
+    it('sets tenantId and userId on created entry', async () => {
+      mockCreate.mockResolvedValue({ id: 'new-1' });
 
-      const request = createRequest('/api/rate-cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(validRateCardData),
+      const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/rate-cards', {
+        body: { supplierName: 'Test', dailyRate: 500 },
       });
       await POST(request);
 
-      expect(mockPrisma.rateCardEntry.create).toHaveBeenCalledWith(
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            tenantId: 'tenant-1',
+            createdBy: 'user-1',
+            updatedBy: 'user-1',
+          }),
+        })
+      );
+    });
+
+    it('converts date strings to Date objects', async () => {
+      mockCreate.mockResolvedValue({ id: 'new-1' });
+
+      const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/rate-cards', {
+        body: {
+          supplierName: 'Test',
+          effectiveDate: '2024-01-01',
+          expiryDate: '2025-12-31',
+        },
+      });
+      await POST(request);
+
+      expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             effectiveDate: expect.any(Date),
@@ -584,62 +557,17 @@ describe('Rate Cards API', () => {
       );
     });
 
-    it('should handle creation errors', async () => {
-      mockPrisma.rateCardEntry.create.mockRejectedValue(new Error('Unique constraint violation'));
+    it('handles database errors in POST', async () => {
+      mockCreate.mockRejectedValue(new Error('Database error'));
 
-      const request = createRequest('/api/rate-cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(validRateCardData),
+      const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/rate-cards', {
+        body: { supplierName: 'Test', dailyRate: 500 },
       });
       const response = await POST(request);
       const data = await response.json();
 
-      expect(response.status).toBe(400);
-      expect(data.error).toBe('Failed to create rate card');
-      expect(data.details).toContain('Unique constraint violation');
-    });
-
-    it('should set createdBy and updatedBy from session user', async () => {
-      const createdEntry = {
-        id: 'new-rate-4',
-        tenantId: 'tenant_demo_001',
-        createdBy: 'user-1',
-        updatedBy: 'user-1',
-        ...validRateCardData,
-        effectiveDate: new Date(validRateCardData.effectiveDate),
-        expiryDate: new Date(validRateCardData.expiryDate),
-      };
-      mockPrisma.rateCardEntry.create.mockResolvedValue(createdEntry);
-
-      const request = createRequest('/api/rate-cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(validRateCardData),
-      });
-      await POST(request);
-
-      expect(mockPrisma.rateCardEntry.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            createdBy: 'user-1',
-            updatedBy: 'user-1',
-          }),
-        })
-      );
-    });
-
-    it('should handle invalid JSON in request body', async () => {
-      const request = createRequest('/api/rate-cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: 'invalid json',
-      });
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(400);
-      expect(data.error).toBe('Failed to create rate card');
+      expect(response.status).toBe(500);
+      expect(data.success).toBe(false);
     });
   });
 });

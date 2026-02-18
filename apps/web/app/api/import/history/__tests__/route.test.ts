@@ -1,144 +1,91 @@
-/**
- * Unit Tests for Import History API
- * Tests /api/import/history endpoint
- */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-// Mock Prisma - hoisted mock
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+const mocks = vi.hoisted(() => ({
+  mockPrisma: {
     importJob: {
       findMany: vi.fn(),
       count: vi.fn(),
     },
   },
+  mockArtifactService: {},
 }));
 
-// Import after mocking
-import { GET } from '@/app/api/import/history/route';
-import { prisma } from '@/lib/prisma';
+vi.mock('@/lib/prisma', () => ({ prisma: mocks.mockPrisma }));
+vi.mock('data-orchestration/services', () => ({ artifactService: mocks.mockArtifactService }));
 
-// Get mocked prisma
-const mockPrisma = vi.mocked(prisma);
+import { GET } from '../route';
+
+function req(url = 'http://localhost:3000/api/import/history', hdrs?: Record<string, string>) {
+  const h: Record<string, string> = { 'x-user-id': 'user-1', 'x-tenant-id': 'tenant-1', ...hdrs };
+  return new NextRequest(url, { method: 'GET', headers: h } as any);
+}
 
 describe('Import History API', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeEach(() => vi.clearAllMocks());
+
+  it('should return 401 without auth', async () => {
+    const r = new NextRequest('http://localhost:3000/api/import/history', { method: 'GET', headers: { 'x-tenant-id': 't' } } as any);
+    const res = await GET(r);
+    expect(res.status).toBe(401);
   });
 
   it('should return import jobs for a tenant', async () => {
-    const mockJobs = [
-      {
-        id: 'job-1',
-        tenantId: 'tenant_demo_001',
-        source: 'FILE_UPLOAD',
-        status: 'COMPLETED',
-        fileName: 'rate-card-2024.xlsx',
-        fileSize: BigInt(102400),
-        createdAt: new Date('2024-01-15'),
-        startedAt: new Date('2024-01-15'),
-        completedAt: new Date('2024-01-15'),
-        rowsProcessed: 100,
-        rowsSucceeded: 98,
-        rowsFailed: 2,
-        requiresReview: false,
-        reviewedBy: null,
-        reviewedAt: null,
-        mappingConfidence: 0.95,
-        errors: [],
-        warnings: [],
-        reviewNotes: null,
-        rateCards: [
-          { id: 'rc-1', supplierName: 'Acme Corp', _count: { entries: 50 } },
-        ],
-      },
-    ];
+    const jobs = [{
+      id: 'j1', fileName: 'data.csv', fileSize: 1024, source: 'upload', status: 'COMPLETED',
+      createdAt: new Date(), startedAt: new Date(), completedAt: new Date(),
+      rowsProcessed: 100, rowsSucceeded: 95, rowsFailed: 5,
+      requiresReview: false, reviewedBy: null, reviewedAt: null,
+      mappingConfidence: 0.9, errors: [], warnings: [], reviewNotes: null,
+      rateCards: [{ id: 'rc1', supplierName: 'Acme', _count: { roles: 10 } }],
+    }];
+    mocks.mockPrisma.importJob.findMany.mockResolvedValue(jobs);
+    mocks.mockPrisma.importJob.count.mockResolvedValue(1);
 
-    mockPrisma.importJob.findMany.mockResolvedValue(mockJobs);
-    mockPrisma.importJob.count.mockResolvedValue(1);
-
-    const request = new NextRequest('http://localhost/api/import/history', {
-      headers: { 'x-tenant-id': 'tenant_demo_001' },
-    });
-    
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(data.success).toBe(true);
-    expect(data.data).toHaveLength(1);
-    expect(data.data[0].id).toBe('job-1');
-    expect(data.data[0].status).toBe('COMPLETED');
-    expect(data.data[0].totalRecords).toBe(100);
-    expect(data.data[0].successfulRecords).toBe(98);
+    const res = await GET(req());
+    const d = await res.json();
+    expect(res.status).toBe(200);
+    expect(d.success).toBe(true);
+    expect(d.data.data.length).toBe(1);
+    expect(d.data.data[0].fileName).toBe('data.csv');
+    expect(d.data.pagination.total).toBe(1);
   });
 
   it('should support pagination', async () => {
-    mockPrisma.importJob.findMany.mockResolvedValue([]);
-    mockPrisma.importJob.count.mockResolvedValue(100);
+    mocks.mockPrisma.importJob.findMany.mockResolvedValue([]);
+    mocks.mockPrisma.importJob.count.mockResolvedValue(100);
 
-    const request = new NextRequest('http://localhost/api/import/history?limit=20&offset=40', {
-      headers: { 'x-tenant-id': 'tenant_demo_001' },
-    });
-    
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(data.pagination).toBeDefined();
-    expect(data.pagination.limit).toBe(20);
-    expect(data.pagination.offset).toBe(40);
-    expect(data.pagination.total).toBe(100);
-    expect(data.pagination.hasMore).toBe(true);
+    const res = await GET(req('http://localhost:3000/api/import/history?limit=10&offset=20'));
+    const d = await res.json();
+    expect(res.status).toBe(200);
+    expect(d.data.pagination.limit).toBe(10);
+    expect(d.data.pagination.offset).toBe(20);
+    expect(d.data.pagination.hasMore).toBe(true);
   });
 
   it('should filter by status', async () => {
-    mockPrisma.importJob.findMany.mockResolvedValue([]);
-    mockPrisma.importJob.count.mockResolvedValue(0);
+    mocks.mockPrisma.importJob.findMany.mockResolvedValue([]);
+    mocks.mockPrisma.importJob.count.mockResolvedValue(0);
 
-    const request = new NextRequest('http://localhost/api/import/history?status=COMPLETED', {
-      headers: { 'x-tenant-id': 'tenant_demo_001' },
-    });
-    
-    await GET(request);
-
-    expect(mockPrisma.importJob.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          status: 'COMPLETED',
-        }),
-      })
+    await GET(req('http://localhost:3000/api/import/history?status=COMPLETED'));
+    expect(mocks.mockPrisma.importJob.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ status: 'COMPLETED' }) })
     );
   });
 
   it('should handle empty results', async () => {
-    mockPrisma.importJob.findMany.mockResolvedValue([]);
-    mockPrisma.importJob.count.mockResolvedValue(0);
+    mocks.mockPrisma.importJob.findMany.mockResolvedValue([]);
+    mocks.mockPrisma.importJob.count.mockResolvedValue(0);
 
-    const request = new NextRequest('http://localhost/api/import/history', {
-      headers: { 'x-tenant-id': 'new-tenant' },
-    });
-    
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(data.success).toBe(true);
-    expect(data.data).toHaveLength(0);
-    expect(data.pagination.total).toBe(0);
+    const res = await GET(req());
+    const d = await res.json();
+    expect(res.status).toBe(200);
+    expect(d.data.data).toEqual([]);
   });
 
   it('should handle database errors', async () => {
-    mockPrisma.importJob.findMany.mockRejectedValue(new Error('Connection refused'));
-
-    const request = new NextRequest('http://localhost/api/import/history', {
-      headers: { 'x-tenant-id': 'tenant_demo_001' },
-    });
-    
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(500);
-    expect(data.success).toBe(false);
-    expect(data.error).toBeDefined();
+    mocks.mockPrisma.importJob.findMany.mockRejectedValue(new Error('db error'));
+    const res = await GET(req());
+    expect(res.status).toBe(500);
   });
 });

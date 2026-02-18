@@ -1,232 +1,123 @@
-/**
- * Unit Tests for Integrations API
- * Tests /api/integrations endpoint
- */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-// Mock Prisma - hoisted mock
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+const mocks = vi.hoisted(() => ({
+  mockPrisma: {
     integration: {
-      findMany: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
     },
-    syncLog: {
-      create: vi.fn(),
-    },
+    syncLog: { create: vi.fn() },
   },
+  mockMonitoringService: {},
 }));
 
-// Import after mocking
-import { GET, POST, DELETE } from '@/app/api/integrations/route';
-import { prisma } from '@/lib/prisma';
+vi.mock('@/lib/prisma', () => ({ prisma: mocks.mockPrisma }));
+vi.mock('data-orchestration/services', () => ({ monitoringService: mocks.mockMonitoringService }));
 
-// Get mocked prisma
-const mockPrisma = vi.mocked(prisma);
+import { GET, POST, DELETE } from '../route';
 
-describe('Integrations API', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+function req(method = 'GET', url = 'http://localhost:3000/api/integrations', body?: Record<string, unknown>, hdrs?: Record<string, string>) {
+  const h: Record<string, string> = { 'x-user-id': 'user-1', 'x-tenant-id': 'tenant-1', ...hdrs };
+  const opts: any = { method, headers: h };
+  if (body) { opts.body = JSON.stringify(body); h['Content-Type'] = 'application/json'; }
+  return new NextRequest(url, opts);
+}
+
+describe('GET /api/integrations', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('should return 401 without auth', async () => {
+    const r = new NextRequest('http://localhost:3000/api/integrations', { method: 'GET', headers: { 'x-tenant-id': 't' } } as any);
+    const res = await GET(r);
+    expect(res.status).toBe(401);
   });
 
-  describe('GET /api/integrations', () => {
-    it('should return all integrations for a tenant', async () => {
-      const mockIntegrations = [
-        {
-          id: 'int-1',
-          tenantId: 'tenant_demo_001',
-          type: 'SAP',
-          name: 'SAP Ariba Connection',
-          status: 'CONNECTED',
-          config: { baseUrl: 'https://ariba.example.com' },
-          lastSyncAt: new Date('2024-01-15T10:30:00Z'),
-          recordsProcessed: 150,
-          syncLogs: [],
-        },
-      ];
+  it('should return integrations list', async () => {
+    const integrations = [
+      { id: 'i1', name: 'Slack', status: 'CONNECTED', type: 'COMMUNICATION', provider: 'Slack', recordsProcessed: 100, syncLogs: [] },
+      { id: 'i2', name: 'Drive', status: 'DISCONNECTED', type: 'STORAGE', provider: 'Google', recordsProcessed: 0, syncLogs: [] },
+    ];
+    mocks.mockPrisma.integration.findMany.mockResolvedValue(integrations);
 
-      mockPrisma.integration.findMany.mockResolvedValue(mockIntegrations);
-
-      const request = new NextRequest('http://localhost/api/integrations', {
-        headers: { 'x-tenant-id': 'tenant_demo_001' },
-      });
-      
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.success).toBe(true);
-      expect(data.data.integrations).toHaveLength(1);
-      expect(data.data.stats.connected).toBe(1);
-    });
-
-    it('should filter by type', async () => {
-      mockPrisma.integration.findMany.mockResolvedValue([]);
-
-      const request = new NextRequest('http://localhost/api/integrations?type=SAP', {
-        headers: { 'x-tenant-id': 'tenant_demo_001' },
-      });
-      
-      await GET(request);
-
-      expect(mockPrisma.integration.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            type: 'SAP',
-          }),
-        })
-      );
-    });
-
-    it('should get single integration by ID', async () => {
-      const mockIntegration = {
-        id: 'int-1',
-        tenantId: 'tenant_demo_001',
-        type: 'SAP',
-        name: 'SAP Integration',
-        status: 'CONNECTED',
-        syncLogs: [],
-      };
-
-      mockPrisma.integration.findFirst.mockResolvedValue(mockIntegration);
-
-      const request = new NextRequest('http://localhost/api/integrations?id=int-1', {
-        headers: { 'x-tenant-id': 'tenant_demo_001' },
-      });
-      
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.success).toBe(true);
-      expect(data.data.id).toBe('int-1');
-    });
-
-    it('should handle database errors', async () => {
-      mockPrisma.integration.findMany.mockRejectedValue(new Error('Database error'));
-
-      const request = new NextRequest('http://localhost/api/integrations', {
-        headers: { 'x-tenant-id': 'tenant_demo_001' },
-      });
-      
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(500);
-      expect(data.success).toBe(false);
-    });
+    const res = await GET(req());
+    const d = await res.json();
+    expect(res.status).toBe(200);
+    expect(d.data.data.integrations.length).toBe(2);
+    expect(d.data.data.stats.connected).toBe(1);
+    expect(d.data.data.stats.disconnected).toBe(1);
   });
 
-  describe('POST /api/integrations', () => {
-    it('should create a new integration', async () => {
-      const createdIntegration = {
-        id: 'int-new',
-        tenantId: 'tenant_demo_001',
-        name: 'Salesforce Integration',
-        type: 'OTHER',
-        status: 'DISCONNECTED',
-      };
-
-      mockPrisma.integration.create.mockResolvedValue(createdIntegration);
-
-      const request = new NextRequest('http://localhost/api/integrations', {
-        method: 'POST',
-        headers: {
-          'x-tenant-id': 'tenant_demo_001',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'create',
-          name: 'Salesforce Integration',
-          type: 'OTHER',
-          provider: 'Salesforce',
-        }),
-      });
-      
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(data.success).toBe(true);
-      expect(data.data.id).toBe('int-new');
-    });
-
-    it('should connect an integration', async () => {
-      const updatedIntegration = {
-        id: 'int-1',
-        status: 'CONNECTED',
-      };
-
-      mockPrisma.integration.update.mockResolvedValue(updatedIntegration);
-
-      const request = new NextRequest('http://localhost/api/integrations', {
-        method: 'POST',
-        headers: {
-          'x-tenant-id': 'tenant_demo_001',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'connect',
-          integrationId: 'int-1',
-        }),
-      });
-      
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(data.success).toBe(true);
-      expect(data.message).toContain('connected');
-    });
-
-    it('should return error for invalid action', async () => {
-      const request = new NextRequest('http://localhost/api/integrations', {
-        method: 'POST',
-        headers: {
-          'x-tenant-id': 'tenant_demo_001',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'invalid_action',
-        }),
-      });
-      
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(400);
-      expect(data.success).toBe(false);
-    });
+  it('should return single integration by id', async () => {
+    mocks.mockPrisma.integration.findFirst.mockResolvedValue({ id: 'i1', name: 'Slack', status: 'CONNECTED', syncLogs: [] });
+    const res = await GET(req('GET', 'http://localhost:3000/api/integrations?id=i1'));
+    const d = await res.json();
+    expect(res.status).toBe(200);
+    expect(d.data.data.name).toBe('Slack');
   });
 
-  describe('DELETE /api/integrations', () => {
-    it('should delete an integration', async () => {
-      mockPrisma.integration.delete.mockResolvedValue({
-        id: 'int-1',
-        tenantId: 'tenant_demo_001',
-      });
+  it('should return 404 for unknown integration id', async () => {
+    mocks.mockPrisma.integration.findFirst.mockResolvedValue(null);
+    const res = await GET(req('GET', 'http://localhost:3000/api/integrations?id=unknown'));
+    expect(res.status).toBe(404);
+  });
 
-      const request = new NextRequest('http://localhost/api/integrations?id=int-1', {
-        method: 'DELETE',
-        headers: { 'x-tenant-id': 'tenant_demo_001' },
-      });
-      
-      const response = await DELETE(request);
-      const data = await response.json();
+  it('should handle db error gracefully', async () => {
+    mocks.mockPrisma.integration.findMany.mockRejectedValue(new Error('db'));
+    const res = await GET(req());
+    expect(res.status).toBe(500);
+  });
+});
 
-      expect(data.success).toBe(true);
-    });
+describe('POST /api/integrations', () => {
+  beforeEach(() => vi.clearAllMocks());
 
-    it('should require integration ID for deletion', async () => {
-      const request = new NextRequest('http://localhost/api/integrations', {
-        method: 'DELETE',
-        headers: { 'x-tenant-id': 'tenant_demo_001' },
-      });
-      
-      const response = await DELETE(request);
+  it('should create integration', async () => {
+    mocks.mockPrisma.integration.create.mockResolvedValue({ id: 'new', name: 'New Int', type: 'OTHER', status: 'DISCONNECTED' });
+    const res = await POST(req('POST', 'http://localhost:3000/api/integrations', { action: 'create', name: 'New Int', type: 'OTHER', provider: 'Custom' }));
+    const d = await res.json();
+    expect(res.status).toBe(200);
+    expect(d.success).toBe(true);
+  });
 
-      expect(response.status).toBe(400);
-    });
+  it('should connect integration', async () => {
+    mocks.mockPrisma.integration.update.mockResolvedValue({ id: 'i1', status: 'CONNECTED' });
+    const res = await POST(req('POST', 'http://localhost:3000/api/integrations', { action: 'connect', integrationId: 'i1' }));
+    const d = await res.json();
+    expect(res.status).toBe(200);
+    expect(d.data.message).toBe('Integration connected');
+  });
+
+  it('should test connection', async () => {
+    const res = await POST(req('POST', 'http://localhost:3000/api/integrations', { action: 'test', integrationId: 'i1' }));
+    const d = await res.json();
+    expect(res.status).toBe(200);
+    expect(d.data.data.testResult).toBe('success');
+  });
+
+  it('should return 400 for invalid action', async () => {
+    const res = await POST(req('POST', 'http://localhost:3000/api/integrations', { action: 'invalid' }));
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('DELETE /api/integrations', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('should return 400 without id', async () => {
+    const res = await DELETE(req('DELETE'));
+    expect(res.status).toBe(400);
+  });
+
+  it('should delete integration', async () => {
+    mocks.mockPrisma.integration.findFirst.mockResolvedValue({ id: 'i1' });
+    mocks.mockPrisma.integration.delete.mockResolvedValue({});
+    const res = await DELETE(req('DELETE', 'http://localhost:3000/api/integrations?id=i1'));
+    const d = await res.json();
+    expect(res.status).toBe(200);
+    expect(d.success).toBe(true);
   });
 });

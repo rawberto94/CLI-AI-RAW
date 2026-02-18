@@ -62,6 +62,8 @@ export default defineConfig({
       '@/lib': path.resolve(__dirname, './lib'),
       '@/app': path.resolve(__dirname, './app'),
       '@/components': path.resolve(__dirname, './components'),
+      'data-orchestration': path.resolve(__dirname, '../../packages/data-orchestration/src'),
+      'schemas': path.resolve(__dirname, '../../packages/schemas/src'),
     },
   },
 });

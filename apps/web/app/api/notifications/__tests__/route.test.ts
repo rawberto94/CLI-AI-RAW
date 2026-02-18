@@ -1,232 +1,254 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET, POST, PATCH } from '../route';
 
-// Mock dependencies
+const { mockFindMany, mockCount, mockCreateMany, mockUpdateMany,
+  mockGetServerSession, mockPublishRealtimeEvent, mockGetRecent, mockGetUnreadCount,
+} = vi.hoisted(() => ({
+  mockFindMany: vi.fn(),
+  mockCount: vi.fn(),
+  mockCreateMany: vi.fn(),
+  mockUpdateMany: vi.fn(),
+  mockGetServerSession: vi.fn(),
+  mockPublishRealtimeEvent: vi.fn(),
+  mockGetRecent: vi.fn(),
+  mockGetUnreadCount: vi.fn(),
+}));
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     notification: {
-      findMany: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      updateMany: vi.fn(),
-      count: vi.fn(),
+      findMany: mockFindMany,
+      count: mockCount,
+      createMany: mockCreateMany,
+      updateMany: mockUpdateMany,
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
     },
   },
 }));
 
-vi.mock('@/lib/tenant-server', () => ({
-  getApiTenantId: vi.fn(),
+vi.mock('@/lib/auth', () => ({
+  getServerSession: mockGetServerSession,
 }));
 
-// Import mocked modules
-import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
+vi.mock('@/lib/realtime/publish', () => ({
+  publishRealtimeEvent: mockPublishRealtimeEvent,
+}));
 
-function createRequest(
-  method: string = 'GET',
-  url: string = 'http://localhost:3000/api/notifications',
-  body?: Record<string, unknown>,
-  headers?: Record<string, string>
+vi.mock('data-orchestration/services', () => ({
+  notificationService: {},
+}));
+
+vi.mock('@/lib/notifications/notification-engine', () => ({
+  notificationBuffer: {
+    getRecent: mockGetRecent,
+    getUnreadCount: mockGetUnreadCount,
+  },
+}));
+
+import { GET, POST, PATCH } from '../route';
+
+function createAuthenticatedRequest(
+  method: string,
+  url: string,
+  options?: { body?: object; searchParams?: Record<string, string> }
 ): NextRequest {
-  const options: RequestInit = { 
+  const fullUrl = new URL(url);
+  if (options?.searchParams) {
+    Object.entries(options.searchParams).forEach(([k, v]) => fullUrl.searchParams.set(k, v));
+  }
+  return new NextRequest(fullUrl.toString(), {
     method,
     headers: {
-      'x-user-id': 'user1',
-      ...(headers || {}),
+      'x-user-id': 'test-user-id',
+      'x-tenant-id': 'test-tenant',
+      'Content-Type': 'application/json',
     },
-  };
-  if (body) {
-    options.body = JSON.stringify(body);
-    (options.headers as Record<string, string>)['Content-Type'] = 'application/json';
-  }
-  return new NextRequest(new URL(url), options);
+    body: options?.body ? JSON.stringify(options.body) : undefined,
+  });
 }
+
+function createUnauthenticatedRequest(method: string, url: string): NextRequest {
+  return new NextRequest(url, { method });
+}
+
+beforeEach(() => {
+  mockGetServerSession.mockResolvedValue({
+    user: { id: 'test-user-id', tenantId: 'test-tenant', email: 'test@example.com' },
+  });
+  mockPublishRealtimeEvent.mockResolvedValue(undefined);
+  mockGetRecent.mockReturnValue([]);
+  mockGetUnreadCount.mockReturnValue(0);
+});
 
 describe('GET /api/notifications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'test-user-id', tenantId: 'test-tenant', email: 'test@example.com' },
+    });
+    mockPublishRealtimeEvent.mockResolvedValue(undefined);
+    mockGetRecent.mockReturnValue([]);
+    mockGetUnreadCount.mockReturnValue(0);
   });
 
-  it('should return 400 when tenant ID is missing', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue(null);
-
-    const request = createRequest();
+  it('returns 401 without auth headers', async () => {
+    const request = createUnauthenticatedRequest('GET', 'http://localhost:3000/api/notifications');
     const response = await GET(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(401);
     expect(data.success).toBe(false);
+    expect(data.error.code).toBe('UNAUTHORIZED');
   });
 
-  it('should return notifications list for authenticated user', async () => {
-    const mockNotifications = [
-      {
-        id: 'n1',
-        tenantId: 'tenant1',
-        userId: 'user1',
-        type: 'APPROVAL_REQUEST',
-        title: 'New Approval',
-        message: 'Contract needs approval',
-        isRead: false,
-        createdAt: new Date(),
-      },
+  it('returns notifications list', async () => {
+    const notifications = [
+      { id: 'n1', type: 'SYSTEM', title: 'Test', message: 'Test msg', isRead: false, createdAt: new Date() },
     ];
+    mockFindMany.mockResolvedValue(notifications);
+    mockCount.mockResolvedValue(1);
 
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.notification.findMany).mockResolvedValue(mockNotifications);
-    vi.mocked(prisma.notification.count).mockResolvedValue(5);
-
-    const request = createRequest();
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/notifications');
     const response = await GET(request);
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.notifications).toBeDefined();
+    expect(data.data.notifications).toHaveLength(1);
+    expect(data.data.unreadCount).toBe(1);
+    expect(data.data.source).toBe('database');
   });
 
-  it('should filter notifications by read status', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.notification.findMany).mockResolvedValue([]);
-    vi.mocked(prisma.notification.count).mockResolvedValue(0);
+  it('filters unread notifications', async () => {
+    mockFindMany.mockResolvedValue([]);
+    mockCount.mockResolvedValue(0);
 
-    const request = createRequest('GET', 'http://localhost:3000/api/notifications?isRead=false');
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/notifications', {
+      searchParams: { unread: 'true' },
+    });
     await GET(request);
 
-    expect(prisma.notification.findMany).toHaveBeenCalledWith(
+    expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ isRead: false }),
       })
     );
   });
 
-  it('should filter notifications by type', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.notification.findMany).mockResolvedValue([]);
-    vi.mocked(prisma.notification.count).mockResolvedValue(0);
+  it('returns empty list when no notifications', async () => {
+    mockFindMany.mockResolvedValue([]);
+    mockCount.mockResolvedValue(0);
 
-    const request = createRequest('GET', 'http://localhost:3000/api/notifications?type=APPROVAL_REQUEST');
-    await GET(request);
-
-    expect(prisma.notification.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ type: 'APPROVAL_REQUEST' }),
-      })
-    );
-  });
-
-  it('should handle database errors and return mock data', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.notification.findMany).mockRejectedValue(new Error('Database error'));
-
-    const request = createRequest();
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/notifications');
     const response = await GET(request);
     const data = await response.json();
 
-    // Should fallback to mock data
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.notifications).toBeDefined();
+    expect(data.data.notifications).toEqual([]);
+    expect(data.data.total).toBe(0);
   });
 });
 
 describe('POST /api/notifications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'test-user-id', tenantId: 'test-tenant', email: 'test@example.com' },
+    });
+    mockPublishRealtimeEvent.mockResolvedValue(undefined);
+    mockGetRecent.mockReturnValue([]);
+    mockGetUnreadCount.mockReturnValue(0);
   });
 
-  it('should return 400 when tenant ID is missing', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue(null);
-
-    const request = createRequest('POST', 'http://localhost:3000/api/notifications', {
-      userId: 'user1',
-      type: 'SYSTEM',
-      title: 'Test',
-      message: 'Test message',
-    });
+  it('returns 401 without auth headers', async () => {
+    const request = createUnauthenticatedRequest('POST', 'http://localhost:3000/api/notifications');
     const response = await POST(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(401);
     expect(data.success).toBe(false);
   });
 
-  it('should create notification successfully', async () => {
-    const mockNotification = {
-      id: 'n1',
-      tenantId: 'tenant1',
-      userId: 'user1',
-      type: 'SYSTEM',
-      title: 'Test Notification',
-      message: 'This is a test',
-      isRead: false,
-      createdAt: new Date(),
-    };
+  it('creates notification', async () => {
+    mockCreateMany.mockResolvedValue({ count: 1 });
 
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.notification.create).mockResolvedValue(mockNotification);
-
-    const request = createRequest('POST', 'http://localhost:3000/api/notifications', {
-      userId: 'user1',
-      type: 'SYSTEM',
-      title: 'Test Notification',
-      message: 'This is a test',
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/notifications', {
+      body: {
+        userId: 'user-1',
+        title: 'New notification',
+        message: 'Something happened',
+        type: 'SYSTEM',
+      },
     });
     const response = await POST(request);
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.notification).toBeDefined();
+    expect(data.data.count).toBe(1);
+  });
+
+  it('returns 400 when title missing', async () => {
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/notifications', {
+      body: { message: 'test' },
+    });
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 when no recipients', async () => {
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/notifications', {
+      body: { title: 'Test', message: 'Msg' },
+    });
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('VALIDATION_ERROR');
   });
 });
 
 describe('PATCH /api/notifications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it('should return 400 when tenant ID is missing', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue(null);
-
-    const request = createRequest('PATCH', 'http://localhost:3000/api/notifications', {
-      ids: ['n1'],
-      isRead: true,
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'test-user-id', tenantId: 'test-tenant', email: 'test@example.com' },
     });
-    const response = await PATCH(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.success).toBe(false);
+    mockPublishRealtimeEvent.mockResolvedValue(undefined);
   });
 
-  it('should mark notifications as read', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.notification.updateMany).mockResolvedValue({ count: 3 });
+  it('marks all as read', async () => {
+    mockUpdateMany.mockResolvedValue({ count: 3 });
 
-    const request = createRequest('PATCH', 'http://localhost:3000/api/notifications', {
-      ids: ['n1', 'n2', 'n3'],
-      isRead: true,
+    const request = createAuthenticatedRequest('PATCH', 'http://localhost:3000/api/notifications', {
+      body: { markAllRead: true },
     });
     const response = await PATCH(request);
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
+    expect(data.data.count).toBe(3);
   });
 
-  it('should mark all notifications as read when markAllRead is true', async () => {
-    vi.mocked(getApiTenantId).mockReturnValue('tenant1');
-    vi.mocked(prisma.notification.updateMany).mockResolvedValue({ count: 10 });
+  it('marks specific notifications as read', async () => {
+    mockUpdateMany.mockResolvedValue({ count: 2 });
 
-    const request = createRequest('PATCH', 'http://localhost:3000/api/notifications', {
-      markAllRead: true,
+    const request = createAuthenticatedRequest('PATCH', 'http://localhost:3000/api/notifications', {
+      body: { notificationIds: ['n1', 'n2'] },
     });
     const response = await PATCH(request);
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
+    expect(data.data.count).toBe(2);
   });
 });

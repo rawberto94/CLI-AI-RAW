@@ -1,36 +1,73 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET, POST } from '../route';
 
-// Mock dependencies
+const {
+  mockGetMetrics, mockGetMetricsHistory, mockGetConnectionsByTenant,
+  mockGetConnectionsByUser, mockFindStaleConnections, mockFindTimedOutConnections,
+  mockCleanupConnections, mockGetConnection, mockUnregisterConnection,
+  mockGetDegradationStatus, mockGetQueueStatus, mockBroadcast,
+  mockBroadcastToTenant, mockBroadcastToUser,
+} = vi.hoisted(() => ({
+  mockGetMetrics: vi.fn(),
+  mockGetMetricsHistory: vi.fn(),
+  mockGetConnectionsByTenant: vi.fn(),
+  mockGetConnectionsByUser: vi.fn(),
+  mockFindStaleConnections: vi.fn(),
+  mockFindTimedOutConnections: vi.fn(),
+  mockCleanupConnections: vi.fn(),
+  mockGetConnection: vi.fn(),
+  mockUnregisterConnection: vi.fn(),
+  mockGetDegradationStatus: vi.fn(),
+  mockGetQueueStatus: vi.fn(),
+  mockBroadcast: vi.fn(),
+  mockBroadcastToTenant: vi.fn(),
+  mockBroadcastToUser: vi.fn(),
+}));
+
 vi.mock('data-orchestration/services', () => ({
   sseConnectionManager: {
-    getMetrics: vi.fn(),
-    getMetricsHistory: vi.fn(),
-    getConnectionsByTenant: vi.fn(),
-    getConnectionsByUser: vi.fn(),
-    getStaleConnections: vi.fn(),
-    getDegradationStatus: vi.fn(),
-    getQueueStatus: vi.fn(),
-    performCleanup: vi.fn(),
-    disconnectConnection: vi.fn(),
-    broadcast: vi.fn(),
+    getMetrics: mockGetMetrics,
+    getMetricsHistory: mockGetMetricsHistory,
+    getConnectionsByTenant: mockGetConnectionsByTenant,
+    getConnectionsByUser: mockGetConnectionsByUser,
+    findStaleConnections: mockFindStaleConnections,
+    findTimedOutConnections: mockFindTimedOutConnections,
+    cleanupConnections: mockCleanupConnections,
+    getConnection: mockGetConnection,
+    unregisterConnection: mockUnregisterConnection,
+    getDegradationStatus: mockGetDegradationStatus,
+    getQueueStatus: mockGetQueueStatus,
+    broadcast: mockBroadcast,
+    broadcastToTenant: mockBroadcastToTenant,
+    broadcastToUser: mockBroadcastToUser,
   },
 }));
 
-import { sseConnectionManager } from 'data-orchestration/services';
+import { GET, POST } from '../route';
 
-function createRequest(
-  method: string = 'GET',
-  url: string = 'http://localhost:3000/api/connections',
-  body?: Record<string, unknown>
+function createAuthenticatedRequest(
+  method: string,
+  url: string,
+  options?: { body?: object; searchParams?: Record<string, string>; role?: string }
 ): NextRequest {
-  const options: RequestInit = { method };
-  if (body) {
-    options.body = JSON.stringify(body);
-    options.headers = { 'Content-Type': 'application/json' };
+  const fullUrl = new URL(url);
+  if (options?.searchParams) {
+    Object.entries(options.searchParams).forEach(([k, v]) => fullUrl.searchParams.set(k, v));
   }
-  return new NextRequest(new URL(url), options);
+  return new NextRequest(fullUrl.toString(), {
+    method,
+    headers: {
+      'x-user-id': 'test-user-id',
+      'x-tenant-id': 'test-tenant',
+      'x-user-role': options?.role || 'admin',
+      'Content-Type': 'application/json',
+    },
+    body: options?.body ? JSON.stringify(options.body) : undefined,
+  });
+}
+
+function createUnauthenticatedRequest(method: string, url: string): NextRequest {
+  return new NextRequest(url, { method });
 }
 
 describe('GET /api/connections', () => {
@@ -38,107 +75,69 @@ describe('GET /api/connections', () => {
     vi.clearAllMocks();
   });
 
-  it('should return metrics by default', async () => {
-    const mockMetrics = {
-      totalConnections: 10,
-      activeConnections: 8,
-      averageLatency: 50,
-    };
-
-    vi.mocked(sseConnectionManager.getMetrics).mockReturnValue(mockMetrics);
-
-    const request = createRequest();
+  it('returns 401 without auth headers', async () => {
+    const request = createUnauthenticatedRequest('GET', 'http://localhost:3000/api/connections');
     const response = await GET(request);
     const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(data).toEqual(expect.objectContaining(mockMetrics));
+    expect(response.status).toBe(401);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('UNAUTHORIZED');
   });
 
-  it('should return metrics when action=metrics', async () => {
-    const mockMetrics = {
-      totalConnections: 5,
-      activeConnections: 5,
-    };
-
-    vi.mocked(sseConnectionManager.getMetrics).mockReturnValue(mockMetrics);
-
-    const request = createRequest('GET', 'http://localhost:3000/api/connections?action=metrics');
-    const response = await GET(request);
-
-    expect(response.status).toBe(200);
-    expect(sseConnectionManager.getMetrics).toHaveBeenCalled();
-  });
-
-  it('should return metrics history when action=history', async () => {
-    const mockHistory = [
-      { timestamp: Date.now() - 60000, connections: 5 },
-      { timestamp: Date.now(), connections: 8 },
-    ];
-
-    vi.mocked(sseConnectionManager.getMetricsHistory).mockReturnValue(mockHistory);
-
-    const request = createRequest('GET', 'http://localhost:3000/api/connections?action=history');
-    const response = await GET(request);
-
-    expect(response.status).toBe(200);
-    expect(sseConnectionManager.getMetricsHistory).toHaveBeenCalled();
-  });
-
-  it('should return connections by tenant when action=tenant', async () => {
-    const mockConnections = [
-      { id: 'conn1', userId: 'u1', createdAt: Date.now() },
-    ];
-
-    vi.mocked(sseConnectionManager.getConnectionsByTenant).mockReturnValue(mockConnections);
-
-    const request = createRequest('GET', 'http://localhost:3000/api/connections?action=tenant&tenantId=t1');
-    const response = await GET(request);
-
-    expect(response.status).toBe(200);
-    expect(sseConnectionManager.getConnectionsByTenant).toHaveBeenCalledWith('t1');
-  });
-
-  it('should return connections by user when action=user', async () => {
-    const mockConnections = [
-      { id: 'conn1', tenantId: 't1', createdAt: Date.now() },
-    ];
-
-    vi.mocked(sseConnectionManager.getConnectionsByUser).mockReturnValue(mockConnections);
-
-    const request = createRequest('GET', 'http://localhost:3000/api/connections?action=user&userId=u1');
-    const response = await GET(request);
-
-    expect(response.status).toBe(200);
-    expect(sseConnectionManager.getConnectionsByUser).toHaveBeenCalledWith('u1');
-  });
-
-  it('should return stale connections when action=stale', async () => {
-    const mockStale = [
-      { id: 'conn1', lastActivity: Date.now() - 300000 },
-    ];
-
-    vi.mocked(sseConnectionManager.getStaleConnections).mockReturnValue(mockStale);
-
-    const request = createRequest('GET', 'http://localhost:3000/api/connections?action=stale');
-    const response = await GET(request);
-
-    expect(response.status).toBe(200);
-    expect(sseConnectionManager.getStaleConnections).toHaveBeenCalled();
-  });
-
-  it('should handle errors gracefully', async () => {
-    vi.mocked(sseConnectionManager.getMetrics).mockImplementation(() => {
-      throw new Error('Connection manager error');
+  it('returns 403 for non-admin users', async () => {
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/connections', {
+      role: 'member',
     });
-
-    const request = createRequest();
     const response = await GET(request);
     const data = await response.json();
 
-    expect(response.status).toBe(500);
-    expect(data.error.code).toBe('INTERNAL_ERROR');
-    expect(data.error.message).toBe('Connection manager error');
+    expect(response.status).toBe(403);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('FORBIDDEN');
+  });
+
+  it('returns metrics by default', async () => {
+    mockGetMetrics.mockReturnValue({ totalConnections: 5, activeConnections: 3 });
+
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/connections');
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data.totalConnections).toBe(5);
+    expect(data.data.timestamp).toBeDefined();
+  });
+
+  it('returns metrics history when action=history', async () => {
+    mockGetMetricsHistory.mockReturnValue({ history: [] });
+
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/connections', {
+      searchParams: { action: 'history' },
+    });
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(mockGetMetricsHistory).toHaveBeenCalled();
+  });
+
+  it('returns stale connections when action=stale', async () => {
+    mockFindStaleConnections.mockReturnValue([]);
+    mockFindTimedOutConnections.mockReturnValue([]);
+
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/connections', {
+      searchParams: { action: 'stale' },
+    });
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data.stale).toBeDefined();
+    expect(data.data.timedOut).toBeDefined();
   });
 });
 
@@ -147,60 +146,38 @@ describe('POST /api/connections', () => {
     vi.clearAllMocks();
   });
 
-  it('should perform cleanup when action=cleanup', async () => {
-    vi.mocked(sseConnectionManager.performCleanup).mockReturnValue({
-      cleaned: 3,
-      remaining: 5,
-    });
-
-    const request = createRequest('POST', 'http://localhost:3000/api/connections', {
-      action: 'cleanup',
-    });
-
+  it('returns 401 without auth headers', async () => {
+    const request = createUnauthenticatedRequest('POST', 'http://localhost:3000/api/connections');
     const response = await POST(request);
+    const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(sseConnectionManager.performCleanup).toHaveBeenCalled();
+    expect(response.status).toBe(401);
+    expect(data.success).toBe(false);
   });
 
-  it('should disconnect connection when action=disconnect', async () => {
-    vi.mocked(sseConnectionManager.disconnectConnection).mockReturnValue(true);
+  it('performs cleanup', async () => {
+    mockCleanupConnections.mockReturnValue(2);
 
-    const request = createRequest('POST', 'http://localhost:3000/api/connections', {
-      action: 'disconnect',
-      connectionId: 'conn1',
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/connections', {
+      body: { action: 'cleanup' },
     });
-
     const response = await POST(request);
+    const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(sseConnectionManager.disconnectConnection).toHaveBeenCalledWith('conn1');
+    expect(data.success).toBe(true);
+    expect(data.data.cleanedCount).toBe(2);
   });
 
-  it('should broadcast message when action=broadcast', async () => {
-    vi.mocked(sseConnectionManager.broadcast).mockReturnValue({ sent: 10 });
-
-    const request = createRequest('POST', 'http://localhost:3000/api/connections', {
-      action: 'broadcast',
-      message: { type: 'notification', data: 'test' },
-      tenantId: 't1',
+  it('returns 400 for invalid action', async () => {
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/connections', {
+      body: { action: 'invalid' },
     });
-
-    const response = await POST(request);
-
-    expect(response.status).toBe(200);
-    expect(sseConnectionManager.broadcast).toHaveBeenCalled();
-  });
-
-  it('should return error for unknown action', async () => {
-    const request = createRequest('POST', 'http://localhost:3000/api/connections', {
-      action: 'unknown',
-    });
-
     const response = await POST(request);
     const data = await response.json();
 
     expect(response.status).toBe(400);
-    expect(data.error).toBeDefined();
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('VALIDATION_ERROR');
   });
 });

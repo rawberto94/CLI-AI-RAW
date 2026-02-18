@@ -2,460 +2,280 @@
  * Tests for usePagination hook
  * @see /hooks/use-pagination.ts
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { usePagination, PAGE_SIZE_OPTIONS } from '../../hooks/use-pagination';
+import { usePagination, DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from '../../hooks/use-pagination';
 
 describe('usePagination', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  const createItems = (count: number) => Array.from({ length: count }, (_, i) => i);
 
   describe('initialization', () => {
-    it('should initialize with default values', () => {
-      const { result } = renderHook(() => usePagination({ totalItems: 100 }));
+    it('should initialize with default page size', () => {
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items));
 
-      expect(result.current.pagination.currentPage).toBe(1);
-      expect(result.current.pagination.pageSize).toBe(20);
-      expect(result.current.pagination.totalItems).toBe(100);
-      expect(result.current.pagination.totalPages).toBe(5);
+      expect(result.current.state.currentPage).toBe(1);
+      expect(result.current.state.pageSize).toBe(DEFAULT_PAGE_SIZE);
+      expect(result.current.state.totalItems).toBe(100);
+      expect(result.current.state.totalPages).toBe(Math.ceil(100 / DEFAULT_PAGE_SIZE));
     });
 
     it('should initialize with custom page size', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPageSize: 10,
-        })
-      );
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items, 10));
 
-      expect(result.current.pagination.pageSize).toBe(10);
-      expect(result.current.pagination.totalPages).toBe(10);
+      expect(result.current.state.pageSize).toBe(10);
+      expect(result.current.state.totalPages).toBe(10);
     });
 
-    it('should initialize with custom initial page', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPage: 3,
-        })
-      );
+    it('should return first page of paginated items', () => {
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items, 10));
 
-      expect(result.current.pagination.currentPage).toBe(3);
+      expect(result.current.paginatedItems).toHaveLength(10);
+      expect(result.current.paginatedItems).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     });
 
+    it('should handle empty items array', () => {
+      const { result } = renderHook(() => usePagination([], 10));
+
+      expect(result.current.state.totalItems).toBe(0);
+      expect(result.current.state.totalPages).toBe(1);
+      expect(result.current.paginatedItems).toHaveLength(0);
+    });
+
+    it('should export PAGE_SIZE_OPTIONS', () => {
+      expect(PAGE_SIZE_OPTIONS).toEqual([10, 25, 50, 100]);
+    });
+  });
+
+  describe('info', () => {
     it('should calculate correct start and end indices', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPageSize: 20,
-          initialPage: 1,
-        })
-      );
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items, 10));
 
-      expect(result.current.pagination.startIndex).toBe(0);
-      expect(result.current.pagination.endIndex).toBe(20);
+      expect(result.current.info.startIndex).toBe(0);
+      expect(result.current.info.endIndex).toBe(10);
+    });
+
+    it('should report first page flags correctly', () => {
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items, 10));
+
+      expect(result.current.info.isFirstPage).toBe(true);
+      expect(result.current.info.isLastPage).toBe(false);
+      expect(result.current.info.hasNextPage).toBe(true);
+      expect(result.current.info.hasPrevPage).toBe(false);
+    });
+
+    it('should generate page numbers', () => {
+      const items = createItems(30);
+      const { result } = renderHook(() => usePagination(items, 10));
+
+      expect(result.current.info.pageNumbers).toEqual([1, 2, 3]);
     });
   });
 
-  describe('goToPage', () => {
+  describe('actions.goToPage / actions.setPage', () => {
     it('should navigate to a specific page', () => {
-      const { result } = renderHook(() => usePagination({ totalItems: 100 }));
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items, 10));
 
       act(() => {
-        result.current.goToPage(3);
+        result.current.actions.goToPage(3);
       });
 
-      expect(result.current.pagination.currentPage).toBe(3);
+      expect(result.current.state.currentPage).toBe(3);
+      expect(result.current.paginatedItems).toEqual([20, 21, 22, 23, 24, 25, 26, 27, 28, 29]);
     });
 
-    it('should not navigate to page below 1', () => {
-      const { result } = renderHook(() => usePagination({ totalItems: 100 }));
+    it('should clamp page to valid range (below 1)', () => {
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items, 10));
 
       act(() => {
-        result.current.goToPage(0);
+        result.current.actions.goToPage(0);
       });
 
-      expect(result.current.pagination.currentPage).toBe(1);
+      expect(result.current.state.currentPage).toBe(1);
 
       act(() => {
-        result.current.goToPage(-5);
+        result.current.actions.goToPage(-5);
       });
 
-      expect(result.current.pagination.currentPage).toBe(1);
+      expect(result.current.state.currentPage).toBe(1);
     });
 
-    it('should not navigate to page above total pages', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPageSize: 20,
-        })
-      );
+    it('should clamp page to valid range (above total)', () => {
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items, 10));
 
       act(() => {
-        result.current.goToPage(10);
+        result.current.actions.goToPage(100);
       });
 
-      expect(result.current.pagination.currentPage).toBe(5); // Max is 5
+      expect(result.current.state.currentPage).toBe(10);
     });
   });
 
-  describe('nextPage', () => {
+  describe('actions.nextPage / actions.prevPage', () => {
     it('should navigate to next page', () => {
-      const { result } = renderHook(() => usePagination({ totalItems: 100 }));
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items, 10));
 
       act(() => {
-        result.current.nextPage();
+        result.current.actions.nextPage();
       });
 
-      expect(result.current.pagination.currentPage).toBe(2);
+      expect(result.current.state.currentPage).toBe(2);
     });
 
-    it('should not navigate past last page', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPageSize: 20,
-          initialPage: 5,
-        })
-      );
+    it('should not go past last page', () => {
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items, 10));
 
       act(() => {
-        result.current.nextPage();
+        result.current.actions.goToPage(10);
       });
 
-      expect(result.current.pagination.currentPage).toBe(5);
-    });
-  });
+      act(() => {
+        result.current.actions.nextPage();
+      });
 
-  describe('previousPage', () => {
+      expect(result.current.state.currentPage).toBe(10);
+    });
+
     it('should navigate to previous page', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPage: 3,
-        })
-      );
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items, 10));
 
       act(() => {
-        result.current.previousPage();
+        result.current.actions.goToPage(5);
       });
 
-      expect(result.current.pagination.currentPage).toBe(2);
+      act(() => {
+        result.current.actions.prevPage();
+      });
+
+      expect(result.current.state.currentPage).toBe(4);
     });
 
-    it('should not navigate before first page', () => {
-      const { result } = renderHook(() => usePagination({ totalItems: 100 }));
+    it('should not go before first page', () => {
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items, 10));
 
       act(() => {
-        result.current.previousPage();
+        result.current.actions.prevPage();
       });
 
-      expect(result.current.pagination.currentPage).toBe(1);
+      expect(result.current.state.currentPage).toBe(1);
     });
   });
 
-  describe('goToFirst', () => {
+  describe('actions.firstPage / actions.lastPage', () => {
     it('should navigate to first page', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPage: 4,
-        })
-      );
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items, 10));
 
       act(() => {
-        result.current.goToFirst();
+        result.current.actions.goToPage(5);
       });
 
-      expect(result.current.pagination.currentPage).toBe(1);
-    });
-  });
+      act(() => {
+        result.current.actions.firstPage();
+      });
 
-  describe('goToLast', () => {
+      expect(result.current.state.currentPage).toBe(1);
+    });
+
     it('should navigate to last page', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPageSize: 20,
-        })
-      );
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items, 10));
 
       act(() => {
-        result.current.goToLast();
+        result.current.actions.lastPage();
       });
 
-      expect(result.current.pagination.currentPage).toBe(5);
+      expect(result.current.state.currentPage).toBe(10);
+      expect(result.current.info.isLastPage).toBe(true);
     });
   });
 
-  describe('setPageSize', () => {
-    it('should update page size', () => {
-      const { result } = renderHook(() => usePagination({ totalItems: 100 }));
+  describe('actions.setPageSize', () => {
+    it('should change page size and reset to page 1', () => {
+      const items = createItems(100);
+      const { result } = renderHook(() => usePagination(items, 10));
 
       act(() => {
-        result.current.setPageSize(10);
-      });
-
-      expect(result.current.pagination.pageSize).toBe(10);
-      expect(result.current.pagination.totalPages).toBe(10);
-    });
-
-    it('should reset to page 1 when page size changes', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPage: 3,
-        })
-      );
-
-      act(() => {
-        result.current.setPageSize(10);
-      });
-
-      expect(result.current.pagination.currentPage).toBe(1);
-    });
-
-    it('should recalculate total pages', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPageSize: 20,
-        })
-      );
-
-      expect(result.current.pagination.totalPages).toBe(5);
-
-      act(() => {
-        result.current.setPageSize(50);
-      });
-
-      expect(result.current.pagination.totalPages).toBe(2);
-    });
-  });
-
-  describe('setTotalItems', () => {
-    it('should update total items', () => {
-      const { result } = renderHook(() => usePagination({ totalItems: 100 }));
-
-      act(() => {
-        result.current.setTotalItems(200);
-      });
-
-      expect(result.current.pagination.totalItems).toBe(200);
-      expect(result.current.pagination.totalPages).toBe(10);
-    });
-
-    it('should adjust current page if it exceeds new total pages', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPageSize: 20,
-          initialPage: 5,
-        })
-      );
-
-      act(() => {
-        result.current.setTotalItems(50);
-      });
-
-      expect(result.current.pagination.totalPages).toBe(3);
-      expect(result.current.pagination.currentPage).toBe(3); // Adjusted to max
-    });
-  });
-
-  describe('hasNextPage / hasPreviousPage', () => {
-    it('should indicate when there is a next page', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPageSize: 20,
-          initialPage: 1,
-        })
-      );
-
-      expect(result.current.pagination.hasNextPage).toBe(true);
-    });
-
-    it('should indicate when there is no next page', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPageSize: 20,
-          initialPage: 5,
-        })
-      );
-
-      expect(result.current.pagination.hasNextPage).toBe(false);
-    });
-
-    it('should indicate when there is a previous page', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPage: 3,
-        })
-      );
-
-      expect(result.current.pagination.hasPreviousPage).toBe(true);
-    });
-
-    it('should indicate when there is no previous page', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPage: 1,
-        })
-      );
-
-      expect(result.current.pagination.hasPreviousPage).toBe(false);
-    });
-  });
-
-  describe('start and end indices', () => {
-    it('should calculate correct indices for first page', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPageSize: 20,
-          initialPage: 1,
-        })
-      );
-
-      expect(result.current.pagination.startIndex).toBe(0);
-      expect(result.current.pagination.endIndex).toBe(20);
-    });
-
-    it('should calculate correct indices for middle page', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPageSize: 20,
-          initialPage: 3,
-        })
-      );
-
-      expect(result.current.pagination.startIndex).toBe(40);
-      expect(result.current.pagination.endIndex).toBe(60);
-    });
-
-    it('should calculate correct indices for last page with partial items', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 95,
-          initialPageSize: 20,
-          initialPage: 5,
-        })
-      );
-
-      expect(result.current.pagination.startIndex).toBe(80);
-      expect(result.current.pagination.endIndex).toBe(95);
-    });
-  });
-
-  describe('paginateItems', () => {
-    const items = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: `Item ${i + 1}` }));
-
-    it('should return correct slice of items', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 50,
-          initialPageSize: 10,
-          initialPage: 1,
-        })
-      );
-
-      const paginated = result.current.paginateItems(items);
-
-      expect(paginated).toHaveLength(10);
-      expect(paginated[0]?.id).toBe(1);
-      expect(paginated[9]?.id).toBe(10);
-    });
-
-    it('should return correct slice for page 3', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 50,
-          initialPageSize: 10,
-          initialPage: 3,
-        })
-      );
-
-      const paginated = result.current.paginateItems(items);
-
-      expect(paginated).toHaveLength(10);
-      expect(paginated[0]?.id).toBe(21);
-      expect(paginated[9]?.id).toBe(30);
-    });
-
-    it('should handle last page with partial items', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 45,
-          initialPageSize: 10,
-          initialPage: 5,
-        })
-      );
-
-      const partialItems = items.slice(0, 45);
-      const paginated = result.current.paginateItems(partialItems);
-
-      expect(paginated).toHaveLength(5);
-      expect(paginated[0]?.id).toBe(41);
-      expect(paginated[4]?.id).toBe(45);
-    });
-
-    it('should handle empty array', () => {
-      const { result } = renderHook(() => usePagination({ totalItems: 0 }));
-
-      const paginated = result.current.paginateItems([]);
-
-      expect(paginated).toEqual([]);
-    });
-  });
-
-  describe('resetPagination', () => {
-    it('should reset to initial state', () => {
-      const { result } = renderHook(() =>
-        usePagination({
-          totalItems: 100,
-          initialPageSize: 20,
-          initialPage: 1,
-        })
-      );
-
-      act(() => {
-        result.current.goToPage(4);
-        result.current.setPageSize(50);
+        result.current.actions.goToPage(5);
       });
 
       act(() => {
-        result.current.resetPagination();
+        result.current.actions.setPageSize(25);
       });
 
-      expect(result.current.pagination.currentPage).toBe(1);
-      expect(result.current.pagination.pageSize).toBe(20);
+      expect(result.current.state.pageSize).toBe(25);
+      expect(result.current.state.currentPage).toBe(1);
+      expect(result.current.state.totalPages).toBe(4);
+      expect(result.current.paginatedItems).toHaveLength(25);
     });
   });
-});
 
-describe('PAGE_SIZE_OPTIONS', () => {
-  it('should export page size options', () => {
-    expect(PAGE_SIZE_OPTIONS).toBeDefined();
-    expect(Array.isArray(PAGE_SIZE_OPTIONS)).toBe(true);
-    expect(PAGE_SIZE_OPTIONS.length).toBeGreaterThan(0);
-  });
+  describe('edge cases', () => {
+    it('should handle items fewer than page size', () => {
+      const items = createItems(3);
+      const { result } = renderHook(() => usePagination(items, 10));
 
-  it('should contain common page sizes', () => {
-    expect(PAGE_SIZE_OPTIONS).toContain(10);
-    expect(PAGE_SIZE_OPTIONS).toContain(20);
-    expect(PAGE_SIZE_OPTIONS).toContain(50);
-  });
+      expect(result.current.state.totalPages).toBe(1);
+      expect(result.current.paginatedItems).toHaveLength(3);
+      expect(result.current.info.isFirstPage).toBe(true);
+      expect(result.current.info.isLastPage).toBe(true);
+    });
 
-  it('should be sorted in ascending order', () => {
-    for (let i = 1; i < PAGE_SIZE_OPTIONS.length; i++) {
-      expect(PAGE_SIZE_OPTIONS[i]! > PAGE_SIZE_OPTIONS[i - 1]!).toBe(true);
-    }
+    it('should handle last page with fewer items', () => {
+      const items = createItems(25);
+      const { result } = renderHook(() => usePagination(items, 10));
+
+      act(() => {
+        result.current.actions.lastPage();
+      });
+
+      expect(result.current.state.currentPage).toBe(3);
+      expect(result.current.paginatedItems).toHaveLength(5);
+      expect(result.current.info.endIndex).toBe(25);
+    });
+
+    it('should adjust current page when items shrink', () => {
+      const { result, rerender } = renderHook(
+        ({ items }) => usePagination(items, 10),
+        { initialProps: { items: createItems(100) } }
+      );
+
+      act(() => {
+        result.current.actions.goToPage(10);
+      });
+
+      expect(result.current.state.currentPage).toBe(10);
+
+      // Shrink items - page 10 no longer exists
+      rerender({ items: createItems(20) });
+
+      expect(result.current.state.currentPage).toBe(2);
+      expect(result.current.state.totalPages).toBe(2);
+    });
+
+    it('should update info flags on last page', () => {
+      const items = createItems(20);
+      const { result } = renderHook(() => usePagination(items, 10));
+
+      act(() => {
+        result.current.actions.lastPage();
+      });
+
+      expect(result.current.info.isLastPage).toBe(true);
+      expect(result.current.info.hasNextPage).toBe(false);
+      expect(result.current.info.hasPrevPage).toBe(true);
+      expect(result.current.info.isFirstPage).toBe(false);
+    });
   });
 });

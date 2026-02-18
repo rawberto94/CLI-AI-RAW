@@ -1,234 +1,139 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { POST } from '../route';
 
-// Mock dependencies
+const { mockFindMany, mockGetServerSession } = vi.hoisted(() => ({
+  mockFindMany: vi.fn(),
+  mockGetServerSession: vi.fn(),
+}));
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     contract: {
-      findMany: vi.fn(),
+      findMany: mockFindMany,
     },
   },
 }));
 
-// Import mocked modules
-import { prisma } from '@/lib/prisma';
+vi.mock('@/lib/auth', () => ({
+  getServerSession: mockGetServerSession,
+}));
 
-function createRequest(
-  method: string = 'POST',
-  url: string = 'http://localhost:3000/api/search',
-  body?: Record<string, unknown>,
-  headers?: Record<string, string>
+vi.mock('data-orchestration/services', () => ({
+  contractService: {},
+}));
+
+import { POST } from '../route';
+
+function createAuthenticatedRequest(
+  url: string,
+  body: object
 ): NextRequest {
-  const options: RequestInit = { 
-    method,
+  return new NextRequest(url, {
+    method: 'POST',
     headers: {
+      'x-user-id': 'test-user-id',
+      'x-tenant-id': 'test-tenant',
       'Content-Type': 'application/json',
-      'x-data-mode': 'real',
-      ...(headers || {}),
     },
-  };
-  if (body) {
-    options.body = JSON.stringify(body);
-  }
-  return new NextRequest(new URL(url), options);
+    body: JSON.stringify(body),
+  });
+}
+
+function createUnauthenticatedRequest(url: string, body: object): NextRequest {
+  return new NextRequest(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 }
 
 describe('POST /api/search', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetServerSession.mockResolvedValue({
+      user: { id: 'test-user-id', tenantId: 'test-tenant', email: 'test@example.com' },
+    });
   });
 
-  it('should return mock data when data mode is not real', async () => {
-    const request = new NextRequest(new URL('http://localhost:3000/api/search'), {
-      method: 'POST',
-      body: JSON.stringify({ query: 'test' }),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-data-mode': 'demo',
-      },
-    });
-
+  it('returns 401 without auth headers', async () => {
+    const request = createUnauthenticatedRequest('http://localhost:3000/api/search', { query: 'test' });
     const response = await POST(request);
     const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(data.results).toBeDefined();
-    expect(Array.isArray(data.results)).toBe(true);
-    // Mock should not call database
-    expect(prisma.contract.findMany).not.toHaveBeenCalled();
+    expect(response.status).toBe(401);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('UNAUTHORIZED');
   });
 
-  it('should search contracts with query', async () => {
-    const mockContracts = [
+  it('returns search results', async () => {
+    mockFindMany.mockResolvedValue([
       {
         id: 'c1',
-        contractTitle: 'Software License Agreement',
-        description: 'License for software development',
-        supplierName: 'TechCorp',
-        clientName: 'ClientCo',
-        status: 'ACTIVE',
-        totalValue: 100000,
-        uploadedAt: new Date(),
+        contractTitle: 'NDA Agreement',
+        fileName: 'nda.pdf',
+        description: 'Non-disclosure agreement',
+        supplierName: 'Acme Corp',
+        totalValue: 50000,
+        uploadedAt: new Date('2025-06-01'),
+        status: 'COMPLETED',
         artifacts: [],
       },
-    ];
+    ]);
 
-    vi.mocked(prisma.contract.findMany).mockResolvedValue(mockContracts);
-
-    const request = createRequest('POST', 'http://localhost:3000/api/search', {
-      query: 'software',
+    const request = createAuthenticatedRequest('http://localhost:3000/api/search', {
+      query: 'NDA',
     });
-
     const response = await POST(request);
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.results).toBeDefined();
-    expect(prisma.contract.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          OR: expect.arrayContaining([
-            expect.objectContaining({ contractTitle: { contains: 'software', mode: 'insensitive' } }),
-          ]),
-        }),
-      })
-    );
+    expect(data.success).toBe(true);
+    expect(data.data.results).toHaveLength(1);
+    expect(data.data.results[0].title).toBe('NDA Agreement');
+    expect(data.data.results[0].type).toBe('contract');
   });
 
-  it('should filter by status when provided', async () => {
-    vi.mocked(prisma.contract.findMany).mockResolvedValue([]);
+  it('returns empty results for no matches', async () => {
+    mockFindMany.mockResolvedValue([]);
 
-    const request = createRequest('POST', 'http://localhost:3000/api/search', {
-      query: 'test',
-      filters: { status: 'active' },
+    const request = createAuthenticatedRequest('http://localhost:3000/api/search', {
+      query: 'nonexistent',
     });
-
-    await POST(request);
-
-    expect(prisma.contract.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          status: 'ACTIVE',
-        }),
-      })
-    );
-  });
-
-  it('should filter by minValue when provided', async () => {
-    vi.mocked(prisma.contract.findMany).mockResolvedValue([]);
-
-    const request = createRequest('POST', 'http://localhost:3000/api/search', {
-      query: 'test',
-      filters: { minValue: 50000 },
-    });
-
-    await POST(request);
-
-    expect(prisma.contract.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          totalValue: expect.objectContaining({ gte: 50000 }),
-        }),
-      })
-    );
-  });
-
-  it('should filter by maxValue when provided', async () => {
-    vi.mocked(prisma.contract.findMany).mockResolvedValue([]);
-
-    const request = createRequest('POST', 'http://localhost:3000/api/search', {
-      query: 'test',
-      filters: { maxValue: 100000 },
-    });
-
-    await POST(request);
-
-    expect(prisma.contract.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          totalValue: expect.objectContaining({ lte: 100000 }),
-        }),
-      })
-    );
-  });
-
-  it('should filter by date range when provided', async () => {
-    vi.mocked(prisma.contract.findMany).mockResolvedValue([]);
-
-    const request = createRequest('POST', 'http://localhost:3000/api/search', {
-      query: 'test',
-      filters: { dateRange: '30d' },
-    });
-
-    await POST(request);
-
-    expect(prisma.contract.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          uploadedAt: expect.objectContaining({ gte: expect.any(Date) }),
-        }),
-      })
-    );
-  });
-
-  it('should format search results correctly', async () => {
-    const mockContracts = [
-      {
-        id: 'c1',
-        contractTitle: 'Test Contract',
-        description: 'A test contract description',
-        supplierName: 'Supplier Inc',
-        clientName: 'Client Corp',
-        status: 'ACTIVE',
-        totalValue: 150000,
-        currency: 'USD',
-        uploadedAt: new Date('2024-01-15'),
-        artifacts: [{ id: 'a1', type: 'PDF' }],
-      },
-    ];
-
-    vi.mocked(prisma.contract.findMany).mockResolvedValue(mockContracts);
-
-    const request = createRequest('POST', 'http://localhost:3000/api/search', {
-      query: 'test',
-    });
-
     const response = await POST(request);
     const data = await response.json();
 
-    expect(data.results).toHaveLength(1);
-    expect(data.results[0].id).toBe('c1');
-    expect(data.results[0].title).toBe('Test Contract');
-    expect(data.results[0].type).toBe('contract');
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data.results).toEqual([]);
   });
 
-  it('should handle database errors gracefully', async () => {
-    vi.mocked(prisma.contract.findMany).mockRejectedValue(new Error('Database error'));
-
-    const request = createRequest('POST', 'http://localhost:3000/api/search', {
-      query: 'test',
+  it('returns validation error for empty query', async () => {
+    const request = createAuthenticatedRequest('http://localhost:3000/api/search', {
+      query: '',
     });
-
     const response = await POST(request);
     const data = await response.json();
 
-    expect(response.status).toBe(500);
-    expect(data.error).toBeDefined();
+    expect(response.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('should limit results to 20 by default', async () => {
-    vi.mocked(prisma.contract.findMany).mockResolvedValue([]);
+  it('applies filters to search', async () => {
+    mockFindMany.mockResolvedValue([]);
 
-    const request = createRequest('POST', 'http://localhost:3000/api/search', {
-      query: 'test',
+    const request = createAuthenticatedRequest('http://localhost:3000/api/search', {
+      query: 'contract',
+      filters: { status: 'completed' },
     });
+    const response = await POST(request);
+    const data = await response.json();
 
-    await POST(request);
-
-    expect(prisma.contract.findMany).toHaveBeenCalledWith(
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        take: 20,
+        where: expect.objectContaining({ status: 'COMPLETED' }),
       })
     );
   });

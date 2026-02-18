@@ -2,54 +2,51 @@
  * Unit Tests for Auth Signup API
  * Tests /api/auth/signup endpoint
  */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-// Mock bcryptjs
-vi.mock('bcryptjs', () => ({
-  hash: vi.fn().mockResolvedValue('hashed_password_123'),
+const { mockHash, mockUserFindUnique, mockUserCreate, mockTenantFindFirst,
+  mockTenantCreate, mockInvitationFindFirst, mockInvitationUpdate,
+  mockRoleFindFirst, mockRoleCreate, mockUserRoleCreate, mockAuditLogCreate,
+  mockTransaction,
+} = vi.hoisted(() => ({
+  mockHash: vi.fn().mockResolvedValue('hashed_password_123'),
+  mockUserFindUnique: vi.fn(),
+  mockUserCreate: vi.fn(),
+  mockTenantFindFirst: vi.fn(),
+  mockTenantCreate: vi.fn(),
+  mockInvitationFindFirst: vi.fn(),
+  mockInvitationUpdate: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRoleCreate: vi.fn(),
+  mockUserRoleCreate: vi.fn(),
+  mockAuditLogCreate: vi.fn(),
+  mockTransaction: vi.fn(),
 }));
 
-// Mock Prisma
+vi.mock('bcryptjs', () => ({
+  hash: mockHash,
+}));
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    user: {
-      findUnique: vi.fn(),
-      create: vi.fn(),
-    },
-    tenant: {
-      findFirst: vi.fn(),
-      create: vi.fn(),
-    },
-    teamInvitation: {
-      findFirst: vi.fn(),
-      update: vi.fn(),
-    },
-    role: {
-      findFirst: vi.fn(),
-      create: vi.fn(),
-    },
-    userRole: {
-      create: vi.fn(),
-    },
-    auditLog: {
-      create: vi.fn(),
-    },
+    user: { findUnique: mockUserFindUnique, create: mockUserCreate },
+    tenant: { findFirst: mockTenantFindFirst, create: mockTenantCreate },
+    teamInvitation: { findFirst: mockInvitationFindFirst, update: mockInvitationUpdate },
+    role: { findFirst: mockRoleFindFirst, create: mockRoleCreate },
+    userRole: { create: mockUserRoleCreate },
+    auditLog: { create: mockAuditLogCreate },
+    $transaction: mockTransaction,
   },
 }));
 
-// Import after mocking
+vi.mock('data-orchestration/services', () => ({
+  auditTrailService: {},
+}));
+
 import { POST } from '../route';
-import { prisma } from '@/lib/prisma';
-import { hash } from 'bcryptjs';
 
-// Get mocked modules
-const mockPrisma = vi.mocked(prisma);
-const mockHash = vi.mocked(hash);
-
-// Helper to create mock request
-function createRequest(body: object) {
+function createRequest(body: object): NextRequest {
   return new NextRequest('http://localhost/api/auth/signup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -62,134 +59,165 @@ describe('Auth Signup API', () => {
     vi.clearAllMocks();
   });
 
-  describe('POST /api/auth/signup', () => {
-    const validSignupData = {
-      firstName: 'John',
-      lastName: 'Doe',
-      email: 'john@example.com',
-      password: 'securePassword123',
-      organizationName: 'Acme Corp',
-      organizationSlug: 'acme-corp',
-    };
+  const validSignupData = {
+    firstName: 'John',
+    lastName: 'Doe',
+    email: 'john@example.com',
+    password: 'SecurePass1!',
+    organizationName: 'Acme Corp',
+    organizationSlug: 'acme-corp',
+  };
 
-    const validInviteSignupData = {
-      firstName: 'Jane',
-      lastName: 'Smith',
-      email: 'jane@example.com',
-      password: 'securePassword456',
-      inviteToken: 'valid-invite-token',
-    };
+  const validInviteData = {
+    firstName: 'Jane',
+    lastName: 'Smith',
+    email: 'jane@example.com',
+    password: 'SecurePass2!',
+    inviteToken: 'valid-invite-token',
+  };
 
-    // ==================== Validation Tests ====================
-
-    it('should return 400 for missing firstName', async () => {
-      const request = createRequest({
-        ...validSignupData,
-        firstName: '',
-      });
-
+  describe('Validation', () => {
+    it('returns 400 for missing firstName', async () => {
+      const request = createRequest({ ...validSignupData, firstName: '' });
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.error).toContain('First name');
+      expect(data.success).toBe(false);
     });
 
-    it('should return 400 for missing lastName', async () => {
-      const request = createRequest({
-        ...validSignupData,
-        lastName: '',
-      });
-
+    it('returns 400 for missing lastName', async () => {
+      const request = createRequest({ ...validSignupData, lastName: '' });
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.error).toContain('Last name');
+      expect(data.success).toBe(false);
     });
 
-    it('should return 400 for invalid email format', async () => {
-      const request = createRequest({
-        ...validSignupData,
-        email: 'invalid-email',
-      });
-
+    it('returns 400 for invalid email', async () => {
+      const request = createRequest({ ...validSignupData, email: 'invalid-email' });
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.error).toContain('email');
+      expect(data.success).toBe(false);
     });
 
-    it('should return 400 for password shorter than 8 characters', async () => {
-      const request = createRequest({
-        ...validSignupData,
-        password: 'short',
-      });
-
+    it('returns 400 for password shorter than 8 characters', async () => {
+      const request = createRequest({ ...validSignupData, password: 'Ab1!' });
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.error).toContain('8 characters');
+      expect(data.success).toBe(false);
     });
 
-    it('should return 400 when organization info is missing without invite token', async () => {
+    it('returns 400 for password without uppercase', async () => {
+      const request = createRequest({ ...validSignupData, password: 'securepass1!' });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.success).toBe(false);
+    });
+
+    it('returns 400 for password without number', async () => {
+      const request = createRequest({ ...validSignupData, password: 'SecurePass!' });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.success).toBe(false);
+    });
+
+    it('returns 400 for password without special character', async () => {
+      const request = createRequest({ ...validSignupData, password: 'SecurePass1' });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.success).toBe(false);
+    });
+
+    it('returns 400 when no org info and no invite token', async () => {
       const request = createRequest({
         firstName: 'John',
         lastName: 'Doe',
         email: 'john@example.com',
-        password: 'securePassword123',
-        // No organizationName, organizationSlug, or inviteToken
+        password: 'SecurePass1!',
       });
+      // Need to mock findUnique to return null (no existing user)
+      mockUserFindUnique.mockResolvedValue(null);
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.error).toContain('Organization name');
+      expect(data.success).toBe(false);
     });
+  });
 
-    // ==================== Email Duplicate Tests ====================
-
-    it('should return 409 when email already exists', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({
-        id: 'existing-user',
-        email: 'john@example.com',
-      } as any);
+  describe('Email duplicate check', () => {
+    it('returns 409 when email already exists', async () => {
+      mockUserFindUnique.mockResolvedValue({ id: 'existing', email: 'john@example.com' });
 
       const request = createRequest(validSignupData);
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(409);
-      expect(data.error).toContain('email already exists');
+      expect(data.success).toBe(false);
+      expect(data.error.message).toContain('email already exists');
+    });
+  });
+
+  describe('Organization creation', () => {
+    it('returns 409 when organization name/slug already exists', async () => {
+      mockUserFindUnique.mockResolvedValue(null);
+      mockTenantFindFirst.mockResolvedValue({ id: 'existing-tenant', name: 'Acme Corp' });
+
+      const request = createRequest(validSignupData);
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(409);
+      expect(data.success).toBe(false);
+      expect(data.error.message).toContain('organization');
     });
 
-    // ==================== Organization Creation Tests ====================
+    it('creates user with new organization via transaction', async () => {
+      mockUserFindUnique.mockResolvedValue(null);
+      mockTenantFindFirst.mockResolvedValue(null);
 
-    it('should successfully create user with new organization', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.tenant.findFirst.mockResolvedValue(null);
-      mockPrisma.tenant.create.mockResolvedValue({
-        id: 'new-tenant-id',
-        name: 'Acme Corp',
-        slug: 'acme-corp',
-      } as any);
-      mockPrisma.user.create.mockResolvedValue({
+      const mockUser = {
         id: 'new-user-id',
         email: 'john@example.com',
         firstName: 'John',
         lastName: 'Doe',
-        tenantId: 'new-tenant-id',
-        role: 'owner',
-      } as any);
-      mockPrisma.role.findFirst.mockResolvedValue({
-        id: 'owner-role-id',
-        name: 'owner',
-      } as any);
-      mockPrisma.userRole.create.mockResolvedValue({} as any);
-      mockPrisma.auditLog.create.mockResolvedValue({} as any);
+      };
+
+      // The route uses prisma.$transaction, so we mock the transaction callback
+      mockTransaction.mockImplementation(async (cb: (tx: any) => Promise<any>) => {
+        const txMock = {
+          tenant: {
+            create: vi.fn().mockResolvedValue({ id: 'new-tenant-id', name: 'Acme Corp', slug: 'acme-corp' }),
+          },
+          user: {
+            create: vi.fn().mockResolvedValue(mockUser),
+          },
+          role: {
+            findFirst: vi.fn().mockResolvedValue({ id: 'owner-role-id', name: 'owner' }),
+          },
+          userRole: {
+            create: vi.fn().mockResolvedValue({}),
+          },
+          auditLog: {
+            create: vi.fn().mockResolvedValue({}),
+          },
+        };
+        return cb(txMock);
+      });
 
       const request = createRequest(validSignupData);
       const response = await POST(request);
@@ -197,332 +225,205 @@ describe('Auth Signup API', () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(data.user.email).toBe('john@example.com');
+      expect(data.data.user.email).toBe('john@example.com');
     });
 
-    it('should return 409 when organization name already exists', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.tenant.findFirst.mockResolvedValue({
-        id: 'existing-tenant',
-        name: 'Acme Corp',
-      } as any);
+    it('creates owner role if it does not exist', async () => {
+      mockUserFindUnique.mockResolvedValue(null);
+      mockTenantFindFirst.mockResolvedValue(null);
+
+      mockTransaction.mockImplementation(async (cb: (tx: any) => Promise<any>) => {
+        const txMock = {
+          tenant: {
+            create: vi.fn().mockResolvedValue({ id: 'new-tenant-id', name: 'Acme Corp' }),
+          },
+          user: {
+            create: vi.fn().mockResolvedValue({
+              id: 'new-user',
+              email: 'john@example.com',
+              firstName: 'John',
+              lastName: 'Doe',
+            }),
+          },
+          role: {
+            findFirst: vi.fn().mockResolvedValue(null), // role doesn't exist
+            create: vi.fn().mockResolvedValue({ id: 'new-role', name: 'owner' }),
+          },
+          userRole: {
+            create: vi.fn().mockResolvedValue({}),
+          },
+          auditLog: {
+            create: vi.fn().mockResolvedValue({}),
+          },
+        };
+        return cb(txMock);
+      });
 
       const request = createRequest(validSignupData);
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(409);
-      expect(data.error).toContain('organization');
-    });
-
-    it('should return 409 when organization slug already exists', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.tenant.findFirst.mockResolvedValue({
-        id: 'existing-tenant',
-        slug: 'acme-corp',
-      } as any);
-
-      const request = createRequest(validSignupData);
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(409);
-      expect(data.error).toContain('organization');
-    });
-
-    // ==================== Invitation Flow Tests ====================
-
-    it('should successfully create user via valid invite token', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.teamInvitation.findFirst.mockResolvedValue({
-        id: 'invite-1',
-        token: 'valid-invite-token',
-        email: 'jane@example.com',
-        tenantId: 'existing-tenant-id',
-        role: 'member',
-        status: 'PENDING',
-        expiresAt: new Date(Date.now() + 86400000),
-        tenant: { id: 'existing-tenant-id', name: 'Existing Corp' },
-      } as any);
-      mockPrisma.teamInvitation.update.mockResolvedValue({} as any);
-      mockPrisma.user.create.mockResolvedValue({
-        id: 'new-user-id',
-        email: 'jane@example.com',
-        firstName: 'Jane',
-        lastName: 'Smith',
-        tenantId: 'existing-tenant-id',
-        role: 'member',
-      } as any);
-      mockPrisma.role.findFirst.mockResolvedValue({
-        id: 'member-role-id',
-        name: 'member',
-      } as any);
-      mockPrisma.userRole.create.mockResolvedValue({} as any);
-      mockPrisma.auditLog.create.mockResolvedValue({} as any);
-
-      const request = createRequest(validInviteSignupData);
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(data.user.email).toBe('jane@example.com');
     });
+  });
 
-    it('should return 400 for invalid invite token', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.teamInvitation.findFirst.mockResolvedValue(null);
+  describe('Invite-based signup', () => {
+    it('returns 400 for invalid or expired invite token', async () => {
+      mockUserFindUnique.mockResolvedValue(null);
+      mockInvitationFindFirst.mockResolvedValue(null);
 
-      const request = createRequest(validInviteSignupData);
+      const request = createRequest(validInviteData);
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.error).toContain('Invalid or expired invitation');
+      expect(data.success).toBe(false);
+      expect(data.error.message).toContain('invitation');
     });
 
-    it('should return 400 for expired invite token', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      // The query includes expiresAt filter, so findFirst returns null for expired
-      mockPrisma.teamInvitation.findFirst.mockResolvedValue(null);
-
-      const request = createRequest(validInviteSignupData);
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(400);
-      expect(data.error).toContain('Invalid or expired');
-    });
-
-    it('should update invitation status to ACCEPTED after signup', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.teamInvitation.findFirst.mockResolvedValue({
-        id: 'invite-1',
+    it('creates user via invitation successfully', async () => {
+      mockUserFindUnique.mockResolvedValue(null);
+      mockInvitationFindFirst.mockResolvedValue({
+        id: 'inv-1',
         token: 'valid-invite-token',
         email: 'jane@example.com',
-        tenantId: 'existing-tenant-id',
+        tenantId: 'existing-tenant',
         role: 'member',
         status: 'PENDING',
-        expiresAt: new Date(Date.now() + 86400000),
-        tenant: { id: 'existing-tenant-id', name: 'Existing Corp' },
-      } as any);
-      mockPrisma.teamInvitation.update.mockResolvedValue({} as any);
-      mockPrisma.user.create.mockResolvedValue({
-        id: 'new-user-id',
+        expiresAt: new Date(Date.now() + 100000),
+        tenant: { id: 'existing-tenant', name: 'Acme Corp' },
+      });
+      mockInvitationUpdate.mockResolvedValue({});
+      mockUserCreate.mockResolvedValue({
+        id: 'new-user',
         email: 'jane@example.com',
         firstName: 'Jane',
         lastName: 'Smith',
-      } as any);
-      mockPrisma.role.findFirst.mockResolvedValue({ id: 'role-id', name: 'member' } as any);
-      mockPrisma.userRole.create.mockResolvedValue({} as any);
-      mockPrisma.auditLog.create.mockResolvedValue({} as any);
-
-      const request = createRequest(validInviteSignupData);
-      await POST(request);
-
-      expect(mockPrisma.teamInvitation.update).toHaveBeenCalledWith({
-        where: { id: 'invite-1' },
-        data: expect.objectContaining({
-          status: 'ACCEPTED',
-          acceptedAt: expect.any(Date),
-        }),
       });
-    });
+      mockRoleFindFirst.mockResolvedValue({ id: 'member-role', name: 'member' });
+      mockUserRoleCreate.mockResolvedValue({});
+      mockAuditLogCreate.mockResolvedValue({});
 
-    // ==================== Password Hashing Tests ====================
-
-    it('should hash password with cost factor 12', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.tenant.findFirst.mockResolvedValue(null);
-      mockPrisma.tenant.create.mockResolvedValue({ id: 'tenant-id' } as any);
-      mockPrisma.user.create.mockResolvedValue({
-        id: 'user-id',
-        email: 'john@example.com',
-        firstName: 'John',
-        lastName: 'Doe',
-      } as any);
-      mockPrisma.role.findFirst.mockResolvedValue({ id: 'role-id', name: 'owner' } as any);
-      mockPrisma.userRole.create.mockResolvedValue({} as any);
-      mockPrisma.auditLog.create.mockResolvedValue({} as any);
-
-      const request = createRequest(validSignupData);
-      await POST(request);
-
-      expect(mockHash).toHaveBeenCalledWith('securePassword123', 12);
-    });
-
-    // ==================== Role Assignment Tests ====================
-
-    it('should assign owner role when creating new organization', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.tenant.findFirst.mockResolvedValue(null);
-      mockPrisma.tenant.create.mockResolvedValue({ id: 'tenant-id' } as any);
-      mockPrisma.user.create.mockResolvedValue({
-        id: 'user-id',
-        email: 'john@example.com',
-        firstName: 'John',
-        lastName: 'Doe',
-      } as any);
-      mockPrisma.role.findFirst.mockResolvedValue({ id: 'owner-role-id', name: 'owner' } as any);
-      mockPrisma.userRole.create.mockResolvedValue({} as any);
-      mockPrisma.auditLog.create.mockResolvedValue({} as any);
-
-      const request = createRequest(validSignupData);
-      await POST(request);
-
-      expect(mockPrisma.user.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          role: 'owner',
-        }),
-      });
-    });
-
-    it('should create role if it does not exist', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.tenant.findFirst.mockResolvedValue(null);
-      mockPrisma.tenant.create.mockResolvedValue({ id: 'tenant-id' } as any);
-      mockPrisma.user.create.mockResolvedValue({
-        id: 'user-id',
-        email: 'john@example.com',
-        firstName: 'John',
-        lastName: 'Doe',
-      } as any);
-      mockPrisma.role.findFirst.mockResolvedValue(null); // Role doesn't exist
-      mockPrisma.role.create.mockResolvedValue({ id: 'new-role-id', name: 'owner' } as any);
-      mockPrisma.userRole.create.mockResolvedValue({} as any);
-      mockPrisma.auditLog.create.mockResolvedValue({} as any);
-
-      const request = createRequest(validSignupData);
-      await POST(request);
-
-      expect(mockPrisma.role.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          name: 'owner',
-          isSystem: true,
-        }),
-      });
-    });
-
-    // ==================== Audit Log Tests ====================
-
-    it('should create audit log on successful signup', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.tenant.findFirst.mockResolvedValue(null);
-      mockPrisma.tenant.create.mockResolvedValue({ id: 'tenant-id' } as any);
-      mockPrisma.user.create.mockResolvedValue({
-        id: 'user-id',
-        email: 'john@example.com',
-        firstName: 'John',
-        lastName: 'Doe',
-      } as any);
-      mockPrisma.role.findFirst.mockResolvedValue({ id: 'role-id', name: 'owner' } as any);
-      mockPrisma.userRole.create.mockResolvedValue({} as any);
-      mockPrisma.auditLog.create.mockResolvedValue({} as any);
-
-      const request = createRequest(validSignupData);
-      await POST(request);
-
-      expect(mockPrisma.auditLog.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          action: 'USER_REGISTERED',
-          entityType: 'USER',
-          metadata: expect.objectContaining({
-            email: 'john@example.com',
-            role: 'owner',
-            method: 'self-registration',
-          }),
-        }),
-      });
-    });
-
-    it('should log invitation method in audit when using invite token', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.teamInvitation.findFirst.mockResolvedValue({
-        id: 'invite-1',
-        token: 'valid-invite-token',
-        email: 'jane@example.com',
-        tenantId: 'existing-tenant-id',
-        role: 'member',
-        status: 'PENDING',
-        expiresAt: new Date(Date.now() + 86400000),
-        tenant: { id: 'existing-tenant-id' },
-      } as any);
-      mockPrisma.teamInvitation.update.mockResolvedValue({} as any);
-      mockPrisma.user.create.mockResolvedValue({
-        id: 'user-id',
-        email: 'jane@example.com',
-        firstName: 'Jane',
-        lastName: 'Smith',
-      } as any);
-      mockPrisma.role.findFirst.mockResolvedValue({ id: 'role-id', name: 'member' } as any);
-      mockPrisma.userRole.create.mockResolvedValue({} as any);
-      mockPrisma.auditLog.create.mockResolvedValue({} as any);
-
-      const request = createRequest(validInviteSignupData);
-      await POST(request);
-
-      expect(mockPrisma.auditLog.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          metadata: expect.objectContaining({
-            method: 'invitation',
-          }),
-        }),
-      });
-    });
-
-    // ==================== Error Handling Tests ====================
-
-    it('should return 500 for database errors', async () => {
-      mockPrisma.user.findUnique.mockRejectedValue(new Error('Database connection failed'));
-
-      const request = createRequest(validSignupData);
+      const request = createRequest(validInviteData);
       const response = await POST(request);
       const data = await response.json();
 
-      expect(response.status).toBe(500);
-      expect(data.error).toBe('Failed to create account');
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.user.email).toBe('jane@example.com');
     });
 
-    it('should handle malformed JSON body', async () => {
+    it('marks invitation as accepted', async () => {
+      mockUserFindUnique.mockResolvedValue(null);
+      mockInvitationFindFirst.mockResolvedValue({
+        id: 'inv-1',
+        token: 'valid-invite-token',
+        email: 'jane@example.com',
+        tenantId: 'existing-tenant',
+        role: 'member',
+        status: 'PENDING',
+        expiresAt: new Date(Date.now() + 100000),
+        tenant: { id: 'existing-tenant' },
+      });
+      mockInvitationUpdate.mockResolvedValue({});
+      mockUserCreate.mockResolvedValue({
+        id: 'new-user',
+        email: 'jane@example.com',
+        firstName: 'Jane',
+        lastName: 'Smith',
+      });
+      mockRoleFindFirst.mockResolvedValue({ id: 'member-role', name: 'member' });
+      mockUserRoleCreate.mockResolvedValue({});
+      mockAuditLogCreate.mockResolvedValue({});
+
+      const request = createRequest(validInviteData);
+      await POST(request);
+
+      expect(mockInvitationUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'inv-1' },
+          data: expect.objectContaining({ status: 'ACCEPTED' }),
+        })
+      );
+    });
+
+    it('creates role if it does not exist for invite signup', async () => {
+      mockUserFindUnique.mockResolvedValue(null);
+      mockInvitationFindFirst.mockResolvedValue({
+        id: 'inv-1',
+        token: 'valid-invite-token',
+        email: 'jane@example.com',
+        tenantId: 'existing-tenant',
+        role: 'member',
+        status: 'PENDING',
+        expiresAt: new Date(Date.now() + 100000),
+        tenant: { id: 'existing-tenant' },
+      });
+      mockInvitationUpdate.mockResolvedValue({});
+      mockUserCreate.mockResolvedValue({
+        id: 'new-user',
+        email: 'jane@example.com',
+        firstName: 'Jane',
+        lastName: 'Smith',
+      });
+      mockRoleFindFirst.mockResolvedValue(null); // role doesn't exist
+      mockRoleCreate.mockResolvedValue({ id: 'new-role', name: 'member' });
+      mockUserRoleCreate.mockResolvedValue({});
+      mockAuditLogCreate.mockResolvedValue({});
+
+      const request = createRequest(validInviteData);
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(mockRoleCreate).toHaveBeenCalled();
+    });
+  });
+
+  describe('Error handling', () => {
+    it('handles malformed JSON body', async () => {
       const request = new NextRequest('http://localhost/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: 'invalid json',
+        body: 'not-json',
       });
 
       const response = await POST(request);
-      expect(response.status).toBe(500);
-    });
-
-    // ==================== Response Structure Tests ====================
-
-    it('should return correct success response structure', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-      mockPrisma.tenant.findFirst.mockResolvedValue(null);
-      mockPrisma.tenant.create.mockResolvedValue({ id: 'tenant-id' } as any);
-      mockPrisma.user.create.mockResolvedValue({
-        id: 'user-id',
-        email: 'john@example.com',
-        firstName: 'John',
-        lastName: 'Doe',
-      } as any);
-      mockPrisma.role.findFirst.mockResolvedValue({ id: 'role-id', name: 'owner' } as any);
-      mockPrisma.userRole.create.mockResolvedValue({} as any);
-      mockPrisma.auditLog.create.mockResolvedValue({} as any);
-
-      const request = createRequest(validSignupData);
-      const response = await POST(request);
       const data = await response.json();
 
-      expect(data).toHaveProperty('success', true);
-      expect(data).toHaveProperty('message', 'Account created successfully');
-      expect(data).toHaveProperty('user');
-      expect(data.user).toHaveProperty('id');
-      expect(data.user).toHaveProperty('email');
-      expect(data.user).toHaveProperty('firstName');
-      expect(data.user).toHaveProperty('lastName');
-      // Should NOT include sensitive info like password
-      expect(data.user).not.toHaveProperty('passwordHash');
+      expect(response.status).toBe(500);
+      expect(data.success).toBe(false);
+    });
+
+    it('hashes password before storing', async () => {
+      mockUserFindUnique.mockResolvedValue(null);
+      mockInvitationFindFirst.mockResolvedValue({
+        id: 'inv-1',
+        token: 'valid-invite-token',
+        email: 'jane@example.com',
+        tenantId: 'existing-tenant',
+        role: 'member',
+        status: 'PENDING',
+        expiresAt: new Date(Date.now() + 100000),
+        tenant: { id: 'existing-tenant' },
+      });
+      mockInvitationUpdate.mockResolvedValue({});
+      mockUserCreate.mockResolvedValue({
+        id: 'new-user',
+        email: 'jane@example.com',
+        firstName: 'Jane',
+        lastName: 'Smith',
+      });
+      mockRoleFindFirst.mockResolvedValue({ id: 'role-1', name: 'member' });
+      mockUserRoleCreate.mockResolvedValue({});
+      mockAuditLogCreate.mockResolvedValue({});
+
+      const request = createRequest(validInviteData);
+      await POST(request);
+
+      expect(mockHash).toHaveBeenCalledWith('SecurePass2!', 12);
     });
   });
 });

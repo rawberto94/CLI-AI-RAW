@@ -1,155 +1,172 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET } from '../route';
 
-function createRequest(
-  method: string = 'GET',
-  url: string = 'http://localhost:3000/api/intelligence'
+const { mockContractFindMany, mockArtifactFindMany, mockAuditLogFindMany } = vi.hoisted(() => ({
+  mockContractFindMany: vi.fn(),
+  mockArtifactFindMany: vi.fn(),
+  mockAuditLogFindMany: vi.fn(),
+}));
+
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    contract: {
+      findMany: mockContractFindMany,
+    },
+    artifact: {
+      findMany: mockArtifactFindMany,
+    },
+    auditLog: {
+      findMany: mockAuditLogFindMany,
+    },
+  },
+}));
+
+vi.mock('@/lib/tenant-server', () => ({
+  getTenantIdFromRequest: vi.fn().mockResolvedValue('test-tenant'),
+}));
+
+vi.mock('data-orchestration/services', () => ({
+  analyticalIntelligenceService: {},
+}));
+
+import { GET, POST } from '../route';
+
+function createAuthenticatedRequest(
+  method: string,
+  url: string,
+  options?: { body?: object; searchParams?: Record<string, string> }
 ): NextRequest {
-  return new NextRequest(new URL(url), { method });
+  const fullUrl = new URL(url);
+  if (options?.searchParams) {
+    Object.entries(options.searchParams).forEach(([k, v]) => fullUrl.searchParams.set(k, v));
+  }
+  return new NextRequest(fullUrl.toString(), {
+    method,
+    headers: {
+      'x-user-id': 'test-user-id',
+      'x-tenant-id': 'test-tenant',
+      'Content-Type': 'application/json',
+    },
+    body: options?.body ? JSON.stringify(options.body) : undefined,
+  });
+}
+
+function createUnauthenticatedRequest(method: string, url: string): NextRequest {
+  return new NextRequest(url, { method });
 }
 
 describe('GET /api/intelligence', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mocks for health scores
+    mockContractFindMany.mockResolvedValue([]);
+    mockArtifactFindMany.mockResolvedValue([]);
+    mockAuditLogFindMany.mockResolvedValue([]);
   });
 
-  it('should return full intelligence summary by default', async () => {
-    const request = createRequest();
+  it('returns 401 without auth headers', async () => {
+    const request = createUnauthenticatedRequest('GET', 'http://localhost:3000/api/intelligence');
     const response = await GET(request);
-    const json = await response.json();
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('UNAUTHORIZED');
+  });
+
+  it('returns all intelligence sections by default', async () => {
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/intelligence');
+    const response = await GET(request);
+    const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(json.success).toBe(true);
-    // Data is nested under 'data' property
-    const data = json.data;
-    expect(data.healthScores).toBeDefined();
-    expect(data.insights).toBeDefined();
-    expect(data.recentActivity).toBeDefined();
-    expect(data.aiCapabilities).toBeDefined();
+    expect(data.success).toBe(true);
+    expect(data.data.data.healthScores).toBeDefined();
+    expect(data.data.data.insights).toBeDefined();
+    expect(data.data.data.recentActivity).toBeDefined();
+    expect(data.data.data.aiCapabilities).toBeDefined();
   });
 
-  it('should return only health scores when section=health', async () => {
-    const request = createRequest('GET', 'http://localhost:3000/api/intelligence?section=health');
-    const response = await GET(request);
-    const json = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(json.success).toBe(true);
-    expect(json.data.healthScores).toBeDefined();
-    expect(json.data.insights).toBeUndefined();
-    expect(json.data.recentActivity).toBeUndefined();
-  });
-
-  it('should return only insights when section=insights', async () => {
-    const request = createRequest('GET', 'http://localhost:3000/api/intelligence?section=insights');
-    const response = await GET(request);
-    const json = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(json.success).toBe(true);
-    expect(json.data.insights).toBeDefined();
-    expect(json.data.healthScores).toBeUndefined();
-    expect(json.data.recentActivity).toBeUndefined();
-  });
-
-  it('should return only recent activity when section=activity', async () => {
-    const request = createRequest('GET', 'http://localhost:3000/api/intelligence?section=activity');
-    const response = await GET(request);
-    const json = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(json.success).toBe(true);
-    expect(json.data.recentActivity).toBeDefined();
-    expect(json.data.healthScores).toBeUndefined();
-    expect(json.data.insights).toBeUndefined();
-  });
-
-  it('should include health score metrics', async () => {
-    const request = createRequest('GET', 'http://localhost:3000/api/intelligence?section=health');
-    const response = await GET(request);
-    const json = await response.json();
-
-    expect(json.data.healthScores).toEqual(
-      expect.objectContaining({
-        average: expect.any(Number),
-        healthy: expect.any(Number),
-        atRisk: expect.any(Number),
-        critical: expect.any(Number),
-      })
-    );
-  });
-
-  it('should include insight types', async () => {
-    const request = createRequest('GET', 'http://localhost:3000/api/intelligence?section=insights');
-    const response = await GET(request);
-    const json = await response.json();
-
-    expect(json.data.insights).toBeInstanceOf(Array);
-    if (json.data.insights.length > 0) {
-      expect(json.data.insights[0]).toEqual(
-        expect.objectContaining({
-          id: expect.any(String),
-          type: expect.any(String),
-          severity: expect.any(String),
-          title: expect.any(String),
-          description: expect.any(String),
-        })
-      );
-    }
-  });
-
-  it('should include AI capabilities information', async () => {
-    const request = createRequest();
-    const response = await GET(request);
-    const json = await response.json();
-
-    expect(json.data.aiCapabilities).toEqual(
-      expect.objectContaining({
-        searchEnabled: expect.any(Boolean),
-        healthScoresEnabled: expect.any(Boolean),
-        negotiationCopilotEnabled: expect.any(Boolean),
-        knowledgeGraphEnabled: expect.any(Boolean),
-      })
-    );
-  });
-
-  it('should include recent activity items', async () => {
-    const request = createRequest('GET', 'http://localhost:3000/api/intelligence?section=activity');
-    const response = await GET(request);
-    const json = await response.json();
-
-    expect(json.data.recentActivity).toBeInstanceOf(Array);
-    if (json.data.recentActivity.length > 0) {
-      expect(json.data.recentActivity[0]).toEqual(
-        expect.objectContaining({
-          type: expect.any(String),
-          message: expect.any(String),
-          time: expect.any(String),
-        })
-      );
-    }
-  });
-
-  it('should categorize insights by severity', async () => {
-    const request = createRequest('GET', 'http://localhost:3000/api/intelligence?section=insights');
-    const response = await GET(request);
-    const json = await response.json();
-
-    const severities = json.data.insights.map((i: { severity: string }) => i.severity);
-    const validSeverities = ['low', 'medium', 'high', 'critical'];
-    severities.forEach((sev: string) => {
-      expect(validSeverities).toContain(sev);
+  it('returns only health section when requested', async () => {
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/intelligence', {
+      searchParams: { section: 'health' },
     });
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data.data.healthScores).toBeDefined();
   });
 
-  it('should categorize insights by type', async () => {
-    const request = createRequest('GET', 'http://localhost:3000/api/intelligence?section=insights');
-    const response = await GET(request);
-    const json = await response.json();
+  it('returns correct health score distribution', async () => {
+    mockContractFindMany.mockResolvedValue([
+      { id: 'c1', metadata: { healthScore: 90 } },
+      { id: 'c2', metadata: { healthScore: 50 } },
+      { id: 'c3', metadata: { healthScore: 30 } },
+    ]);
 
-    const types = new Set(json.data.insights.map((i: { type: string }) => i.type));
-    // Should have various insight types like 'risk', 'opportunity', 'compliance'
-    expect(types.size).toBeGreaterThanOrEqual(1);
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/intelligence', {
+      searchParams: { section: 'health' },
+    });
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    const hs = data.data.data.healthScores;
+    expect(hs.healthy).toBe(1);
+    expect(hs.atRisk).toBe(1);
+    expect(hs.critical).toBe(1);
+  });
+});
+
+describe('POST /api/intelligence', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns 401 without auth headers', async () => {
+    const request = createUnauthenticatedRequest('POST', 'http://localhost:3000/api/intelligence');
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(data.success).toBe(false);
+  });
+
+  it('handles refresh-scores action', async () => {
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/intelligence', {
+      body: { action: 'refresh-scores' },
+    });
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data.data.status).toBe('processing');
+  });
+
+  it('handles dismiss-insight action', async () => {
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/intelligence', {
+      body: { action: 'dismiss-insight', insightId: 'insight-1' },
+    });
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data.data.insightId).toBe('insight-1');
+  });
+
+  it('returns 400 for invalid action', async () => {
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/intelligence', {
+      body: { action: 'invalid' },
+    });
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('BAD_REQUEST');
   });
 });

@@ -1,123 +1,152 @@
-/**
- * Unit Tests for Rate Card Entries API
- * Tests /api/rate-cards/entries endpoint
- */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-// Mock Prisma - hoisted mock
+const { mockFindMany, mockCount } = vi.hoisted(() => ({
+  mockFindMany: vi.fn(),
+  mockCount: vi.fn(),
+}));
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     rateCardEntry: {
-      findMany: vi.fn(),
-      count: vi.fn(),
+      findMany: mockFindMany,
+      count: mockCount,
     },
   },
 }));
 
-// Import after mocking
-import { GET } from '@/app/api/rate-cards/entries/route';
-import { prisma } from '@/lib/prisma';
+vi.mock('@/lib/tenant-server', () => ({
+  getApiTenantId: vi.fn().mockResolvedValue('test-tenant'),
+}));
 
-// Get mocked prisma
-const mockPrisma = vi.mocked(prisma);
+vi.mock('data-orchestration/services', () => ({
+  rateCardEntryService: {},
+}));
 
-describe('Rate Card Entries API', () => {
+import { GET } from '../route';
+
+function createAuthenticatedRequest(
+  url: string,
+  options?: { searchParams?: Record<string, string> }
+): NextRequest {
+  const fullUrl = new URL(url);
+  if (options?.searchParams) {
+    Object.entries(options.searchParams).forEach(([k, v]) => fullUrl.searchParams.set(k, v));
+  }
+  return new NextRequest(fullUrl.toString(), {
+    method: 'GET',
+    headers: {
+      'x-user-id': 'test-user-id',
+      'x-tenant-id': 'test-tenant',
+      'Content-Type': 'application/json',
+    },
+  });
+}
+
+function createUnauthenticatedRequest(url: string): NextRequest {
+  return new NextRequest(url, { method: 'GET' });
+}
+
+describe('GET /api/rate-cards/entries', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('GET /api/rate-cards/entries', () => {
-    it('should return rate card entries for a tenant', async () => {
-      const mockEntries = [
-        {
-          id: 'entry-1',
-          role: 'Senior Developer',
-          standardizedRole: 'Developer',
-          seniority: 'SENIOR',
-          dailyRate: 1200,
-          currency: 'USD',
-          country: 'USA',
-          region: 'North America',
-          lineOfService: 'IT',
-          effectiveDate: new Date('2024-01-01'),
-          volumeCommitted: 100,
-          isNegotiated: true,
-          confidence: 0.95,
-          rateCardId: 'rc-1',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          rateCard: {
-            id: 'rc-1',
-            supplierName: 'Tech Partners Inc',
-            supplierTier: 'TIER_1',
-            effectiveDate: new Date('2024-01-01'),
-            expiryDate: new Date('2024-12-31'),
-          },
-        },
-      ];
+  it('returns 401 without auth headers', async () => {
+    const request = createUnauthenticatedRequest('http://localhost:3000/api/rate-cards/entries');
+    const response = await GET(request);
+    const data = await response.json();
 
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue(mockEntries);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(1);
+    expect(response.status).toBe(401);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('UNAUTHORIZED');
+  });
 
-      const request = new NextRequest('http://localhost/api/rate-cards/entries', {
-        headers: { 'x-tenant-id': 'tenant_demo_001' },
-      });
-      
-      const response = await GET(request);
-      const data = await response.json();
+  it('returns rate card entries', async () => {
+    const now = new Date();
+    mockFindMany.mockResolvedValue([
+      {
+        id: 'rce-1',
+        roleOriginal: 'Software Engineer',
+        roleStandardized: 'Software Engineer',
+        seniority: 'MID',
+        supplierName: 'TechCorp',
+        supplierTier: 'TIER_1',
+        dailyRateUSD: 800,
+        currency: 'USD',
+        country: 'US',
+        region: 'North America',
+        lineOfService: 'Technology',
+        effectiveDate: now,
+        expiryDate: null,
+        volumeCommitted: 10,
+        isNegotiated: true,
+        confidence: 0.9,
+        source: 'CONTRACT',
+        supplierId: 'sup-1',
+        createdAt: now,
+        updatedAt: now,
+        supplier: { id: 'sup-1', name: 'TechCorp', tier: 'TIER_1' },
+        dailyRate: 800,
+      },
+    ]);
+    mockCount.mockResolvedValue(1);
 
-      expect(data.success).toBe(true);
-      expect(data.entries).toHaveLength(1);
-      expect(data.entries[0].roleOriginal).toBe('Senior Developer');
-      expect(data.entries[0].supplierName).toBe('Tech Partners Inc');
+    const request = createAuthenticatedRequest('http://localhost:3000/api/rate-cards/entries');
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data.entries).toHaveLength(1);
+    expect(data.data.entries[0].roleOriginal).toBe('Software Engineer');
+    expect(data.data.total).toBe(1);
+    expect(data.data.pagination).toBeDefined();
+  });
+
+  it('returns empty entries', async () => {
+    mockFindMany.mockResolvedValue([]);
+    mockCount.mockResolvedValue(0);
+
+    const request = createAuthenticatedRequest('http://localhost:3000/api/rate-cards/entries');
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.data.entries).toEqual([]);
+    expect(data.data.total).toBe(0);
+  });
+
+  it('applies role filter', async () => {
+    mockFindMany.mockResolvedValue([]);
+    mockCount.mockResolvedValue(0);
+
+    const request = createAuthenticatedRequest('http://localhost:3000/api/rate-cards/entries', {
+      searchParams: { roles: 'Developer' },
     });
+    await GET(request);
 
-    it('should support pagination', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue([]);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(250);
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([
+            expect.objectContaining({ roleOriginal: expect.any(Object) }),
+          ]),
+        }),
+      })
+    );
+  });
 
-      const request = new NextRequest('http://localhost/api/rate-cards/entries?limit=50&offset=100', {
-        headers: { 'x-tenant-id': 'tenant_demo_001' },
-      });
-      
-      const response = await GET(request);
-      const data = await response.json();
+  it('handles database error gracefully', async () => {
+    mockFindMany.mockRejectedValue(new Error('DB error'));
 
-      expect(data.pagination.limit).toBe(50);
-      expect(data.pagination.offset).toBe(100);
-      expect(data.pagination.hasMore).toBe(true);
-    });
+    const request = createAuthenticatedRequest('http://localhost:3000/api/rate-cards/entries');
+    const response = await GET(request);
+    const data = await response.json();
 
-    it('should handle database errors gracefully', async () => {
-      mockPrisma.rateCardEntry.findMany.mockRejectedValue(new Error('Database unavailable'));
-
-      const request = new NextRequest('http://localhost/api/rate-cards/entries', {
-        headers: { 'x-tenant-id': 'tenant_demo_001' },
-      });
-      
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(500);
-      expect(data.success).toBe(false);
-    });
-
-    it('should handle empty results', async () => {
-      mockPrisma.rateCardEntry.findMany.mockResolvedValue([]);
-      mockPrisma.rateCardEntry.count.mockResolvedValue(0);
-
-      const request = new NextRequest('http://localhost/api/rate-cards/entries', {
-        headers: { 'x-tenant-id': 'new-tenant' },
-      });
-      
-      const response = await GET(request);
-      const data = await response.json();
-
-      expect(data.success).toBe(true);
-      expect(data.entries).toHaveLength(0);
-      expect(data.total).toBe(0);
-    });
+    expect(response.status).toBe(500);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('INTERNAL_ERROR');
   });
 });

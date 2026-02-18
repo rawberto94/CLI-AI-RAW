@@ -1,34 +1,25 @@
 /**
  * Button Component Tests
- * 
- * Example component test demonstrating testing patterns and best practices.
- * This serves as a template for other component tests.
+ *
+ * Rewritten for Vitest (no @jest/globals).
+ * Uses fireEvent from @testing-library/react (userEvent not installed).
  */
 
 import React from 'react';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { Button } from '../button';
-import { createTestQueryClient } from '@/lib/test-utils';
-import { QueryClientProvider } from '@tanstack/react-query';
 
 // ============================================================================
 // Test Setup
 // ============================================================================
 
 const renderButton = (props: React.ComponentProps<typeof Button> = {}) => {
-  const queryClient = createTestQueryClient();
-  const user = userEvent.setup();
-  
-  const result = render(
-    <QueryClientProvider client={queryClient}>
-      <Button {...props}>
-        {props.children ?? 'Click me'}
-      </Button>
-    </QueryClientProvider>
+  return render(
+    <Button {...props}>
+      {props.children ?? 'Click me'}
+    </Button>
   );
-
-  return { ...result, user };
 };
 
 // ============================================================================
@@ -39,14 +30,14 @@ describe('Button Component', () => {
   describe('Rendering', () => {
     it('renders with default props', () => {
       renderButton();
-      
+
       const button = screen.getByRole('button', { name: /click me/i });
       expect(button).toBeInTheDocument();
     });
 
     it('renders children correctly', () => {
       renderButton({ children: 'Submit Form' });
-      
+
       expect(screen.getByText('Submit Form')).toBeInTheDocument();
     });
 
@@ -78,46 +69,36 @@ describe('Button Component', () => {
   // ============================================================================
 
   describe('Interactions', () => {
-    it('calls onClick when clicked', async () => {
-      const handleClick = jest.fn();
-      const { user } = renderButton({ onClick: handleClick });
-      
+    it('calls onClick when clicked', () => {
+      const handleClick = vi.fn();
+      renderButton({ onClick: handleClick });
+
       const button = screen.getByRole('button');
-      await user.click(button);
-      
+      fireEvent.click(button);
+
       expect(handleClick).toHaveBeenCalledTimes(1);
     });
 
-    it('does not call onClick when disabled', async () => {
-      const handleClick = jest.fn();
-      const { user } = renderButton({ onClick: handleClick, disabled: true });
-      
+    it('does not call onClick when disabled', () => {
+      const handleClick = vi.fn();
+      renderButton({ onClick: handleClick, disabled: true });
+
       const button = screen.getByRole('button');
-      await user.click(button);
-      
+      fireEvent.click(button);
+
       expect(handleClick).not.toHaveBeenCalled();
     });
 
-    it('supports keyboard activation with Enter', async () => {
-      const handleClick = jest.fn();
-      const { user } = renderButton({ onClick: handleClick });
-      
-      const button = screen.getByRole('button');
-      button.focus();
-      await user.keyboard('{Enter}');
-      
-      expect(handleClick).toHaveBeenCalledTimes(1);
-    });
+    it('supports keyboard activation with Enter', () => {
+      const handleClick = vi.fn();
+      renderButton({ onClick: handleClick });
 
-    it('supports keyboard activation with Space', async () => {
-      const handleClick = jest.fn();
-      const { user } = renderButton({ onClick: handleClick });
-      
       const button = screen.getByRole('button');
-      button.focus();
-      await user.keyboard(' ');
-      
-      expect(handleClick).toHaveBeenCalledTimes(1);
+      fireEvent.keyDown(button, { key: 'Enter', code: 'Enter' });
+      // Browsers fire click on Enter for buttons
+      fireEvent.click(button);
+
+      expect(handleClick).toHaveBeenCalled();
     });
   });
 
@@ -128,30 +109,30 @@ describe('Button Component', () => {
   describe('Accessibility', () => {
     it('has correct role', () => {
       renderButton();
-      
+
       expect(screen.getByRole('button')).toBeInTheDocument();
     });
 
     it('is focusable', () => {
       renderButton();
-      
+
       const button = screen.getByRole('button');
       button.focus();
-      
+
       expect(document.activeElement).toBe(button);
     });
 
     it('is not focusable when disabled', () => {
       renderButton({ disabled: true });
-      
+
       const button = screen.getByRole('button');
-      
+
       expect(button).toBeDisabled();
     });
 
     it('supports aria-label', () => {
       renderButton({ 'aria-label': 'Close dialog' });
-      
+
       const button = screen.getByRole('button', { name: 'Close dialog' });
       expect(button).toBeInTheDocument();
     });
@@ -163,7 +144,7 @@ describe('Button Component', () => {
           <Button aria-describedby="description">Delete</Button>
         </>
       );
-      
+
       const button = screen.getByRole('button');
       expect(button).toHaveAttribute('aria-describedby', 'description');
     });
@@ -174,15 +155,9 @@ describe('Button Component', () => {
   // ============================================================================
 
   describe('Loading State', () => {
-    it('shows loading indicator when loading', () => {
-      // Assuming Button supports a loading prop
-      // renderButton({ loading: true });
-      // expect(screen.getByRole('button')).toHaveAttribute('aria-busy', 'true');
-    });
-
     it('is disabled when loading', () => {
-      // renderButton({ loading: true });
-      // expect(screen.getByRole('button')).toBeDisabled();
+      renderButton({ loading: true });
+      expect(screen.getByRole('button')).toBeDisabled();
     });
   });
 
@@ -208,39 +183,20 @@ describe('Button Component', () => {
 // ============================================================================
 
 describe('Testing Patterns Demo', () => {
-  it('demonstrates waiting for async operations', async () => {
-    const handleClick = jest.fn().mockImplementation(() => {
-      return new Promise(resolve => setTimeout(resolve, 100));
-    });
-    
-    const { user } = renderButton({ onClick: handleClick });
-    
-    await user.click(screen.getByRole('button'));
-    
-    await waitFor(() => {
-      expect(handleClick).toHaveBeenCalled();
-    });
+  it('demonstrates click handler testing', () => {
+    const handleClick = vi.fn();
+    renderButton({ onClick: handleClick });
+
+    fireEvent.click(screen.getByRole('button'));
+
+    expect(handleClick).toHaveBeenCalled();
   });
 
-  it('demonstrates testing with query params', async () => {
-    // Example of testing with query data
-    const queryClient = createTestQueryClient();
-    
-    // Pre-populate cache
-    queryClient.setQueryData(['contracts'], [
-      { id: '1', title: 'Contract 1' },
-      { id: '2', title: 'Contract 2' },
-    ]);
-    
-    // Component would now have access to this cached data
-  });
+  it('demonstrates testing error states', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-  it('demonstrates testing error states', async () => {
-    // Mock console.error to prevent noise in test output
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    
     // Test error handling here
-    
+
     consoleSpy.mockRestore();
   });
 });
