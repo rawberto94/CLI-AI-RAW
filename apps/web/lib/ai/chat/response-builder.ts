@@ -152,7 +152,8 @@ ${intentEntities?.questionType ? `Question type: ${intentEntities.questionType}`
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages,
       temperature: 0.3,
-      max_tokens: 2000 });
+      max_tokens: 2000,
+    }, { signal: AbortSignal.timeout(30_000) });
 
     const responseContent = completion.choices[0]?.message?.content || 'I apologize, but I could not generate a response.';
 

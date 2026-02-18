@@ -360,7 +360,9 @@ async function vectorSearch(
       : Prisma.empty;
     
     // Use halfvec pre-filter when available (50% less memory, ~30% faster)
-    // Falls back to full-precision embedding when embeddingHalf is NULL
+    // FIX: Use consistent column for both score computation and ORDER BY.
+    // Previously, score was computed from "embedding" but ORDER BY used "embeddingHalf",
+    // which could produce different orderings due to half-precision approximation errors.
     const results = await prisma.$queryRaw<VectorResult[]>`
       SELECT 
         ce."contractId",
@@ -370,7 +372,7 @@ async function vectorSearch(
       FROM "ContractEmbedding" ce
       ${joinClause}
       ${whereClause}
-      ORDER BY ce."embeddingHalf" <=> ${vectorQuery}::halfvec, score DESC
+      ORDER BY ce."embedding" <=> ${vectorQuery}::vector ASC
       LIMIT ${k}
     `;
     

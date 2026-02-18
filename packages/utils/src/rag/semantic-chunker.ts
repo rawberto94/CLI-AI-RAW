@@ -84,6 +84,11 @@ export function semanticChunk(
     LIST_PATTERN.lastIndex = 0;
     TABLE_PATTERN.lastIndex = 0;
 
+    // FIX: Use a tracked offset instead of indexOf, which can return -1
+    // or match the wrong occurrence for duplicate content.
+    const sectionStart = text.indexOf(section);
+    const safeSectionStart = sectionStart >= 0 ? sectionStart : 0;
+
     // If section is small enough, keep as single chunk
     if (section.length <= maxChunkSize) {
       chunks.push({
@@ -93,8 +98,8 @@ export function semanticChunk(
           section: heading,
           heading,
           chunkType,
-          startChar: text.indexOf(section),
-          endChar: text.indexOf(section) + section.length,
+          startChar: safeSectionStart,
+          endChar: safeSectionStart + section.length,
           wordCount: section.split(/\s+/).length,
         },
       });
@@ -104,7 +109,7 @@ export function semanticChunk(
     // Split large sections by paragraphs
     const paragraphs = section.split(/\n\n+/);
     let currentChunk = '';
-    let chunkStartChar = text.indexOf(section);
+    let chunkStartChar = safeSectionStart;
 
     for (const para of paragraphs) {
       if (!para.trim()) continue;
@@ -128,11 +133,14 @@ export function semanticChunk(
         });
 
         // Start new chunk with overlap
+        // FIX: Always use offset arithmetic instead of indexOf.
+        // The overlap-assembled chunk (overlapText + '\n\n' + para) won't exist
+        // verbatim in the original text, so indexOf returns -1 (truthy!).
+        // Also, indexOf returning 0 was wrongly treated as falsy by the || operator.
+        const prevChunkLen = currentChunk.length;
         const overlapText = currentChunk.slice(-overlap);
         currentChunk = overlapText + '\n\n' + para;
-        chunkStartChar =
-          text.indexOf(currentChunk) ||
-          chunkStartChar + currentChunk.length - overlap;
+        chunkStartChar = chunkStartChar + prevChunkLen - overlap;
       } else {
         currentChunk += (currentChunk ? '\n\n' : '') + para;
       }

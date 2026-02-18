@@ -50,12 +50,17 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     }
 
     // ─── Role-based write protection (matches stream route) ─────────
-    const WRITE_ACTIONS = new Set([
-      'start_workflow', 'approve_workflow', 'reject_workflow',
-      'create_contract', 'update_contract', 'delete_contract',
-    ]);
+    // FIX: Check intent-based actions, not exact message match (old check was dead code)
+    const WRITE_ACTION_PATTERNS = [
+      /\b(start|begin|kick\s*off|launch|initiate)\b.*\b(workflow|approval|review)\b/i,
+      /\b(approve|reject|decline)\b.*\b(workflow|contract|step)\b/i,
+      /\b(create|draft|add|new)\b.*\b(contract|agreement)\b/i,
+      /\b(update|edit|modify|change)\b.*\b(contract|agreement)\b/i,
+      /\b(delete|remove|cancel)\b.*\b(contract|agreement|workflow)\b/i,
+    ];
     const lowerMsg = message.toLowerCase();
-    if (userRole === 'VIEWER' && WRITE_ACTIONS.has(lowerMsg)) {
+    const isWriteAction = WRITE_ACTION_PATTERNS.some(p => p.test(lowerMsg));
+    if (userRole === 'VIEWER' && isWriteAction) {
       return createErrorResponse(ctx, 'FORBIDDEN', 'Your role does not allow write operations via chat. Contact an admin to upgrade your permissions.', 403);
     }
 
@@ -308,9 +313,11 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     // ============================================
     // FLEXIBLE SEARCH FOR UNSTRUCTURED QUERIES
     // When user asks about something specific by name
+    // FIX: Only run this if detectIntent() didn't already classify as 'search'
+    // to avoid duplicate search results in additionalContext.
     // ============================================
     const searchMatch = message.match(/(?:find|search|show|get|about|tell me about)\s+(?:the\s+)?(?:contract\s+)?(?:with|for|called|named)?\s*["\']?([^"'\n]+?)["\']?(?:\s+contract)?$/i);
-    if (searchMatch && !contractId && intent.type !== 'list') {
+    if (searchMatch && !contractId && intent.type !== 'list' && intent.type !== 'search') {
       const searchTerm = searchMatch[1]?.trim();
       if (searchTerm && searchTerm.length > 2) {
         const searchResults = await searchContractsFlexible(searchTerm, tenantId, 5);

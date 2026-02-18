@@ -616,7 +616,28 @@ ${memoryContext}`;
                 break;
               }
             } catch (error) {
-              console.warn(`[Stream v2] ${config.provider}/${config.model} failed:`, error);
+              const errMsg = error instanceof Error ? error.message : String(error);
+              console.warn(`[Stream v2] ${config.provider}/${config.model} failed:`, errMsg);
+              
+              // FIX: Fail-fast on quota/auth errors — no point trying other models
+              // with the same API key. Prevents cascading 30s timeouts.
+              const isQuotaOrAuthError = errMsg.includes('429') || 
+                errMsg.includes('quota') || 
+                errMsg.includes('billing') ||
+                errMsg.includes('401') ||
+                errMsg.includes('authentication');
+              if (isQuotaOrAuthError) {
+                // Skip remaining models from the same provider
+                const failedProvider = config.provider;
+                // Send error event to client immediately
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'error',
+                  error: `AI service temporarily unavailable (${failedProvider} rate limit). Please try again later.`,
+                  done: true,
+                })}\n\n`));
+                controller.close();
+                return;
+              }
               continue;
             }
           }
