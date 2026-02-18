@@ -46,6 +46,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Either contractId or text is required', 400);
   }
 
+  // P0: Input length validation — cap before truncation to avoid multi-MB JSON parse memory pressure
+  if (contractText.length > 200_000) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract text exceeds maximum length of 200000 characters', 400);
+  }
+
   const truncatedText = contractText.slice(0, 12000);
 
   const focusInstruction = focus
@@ -85,7 +90,7 @@ Return JSON with these fields (include only those found):
           content: `Extract data from this contract:\n\n${truncatedText}`,
         },
       ],
-    });
+    }, { signal: AbortSignal.timeout(30_000) });
 
     const content = response.choices[0]?.message?.content || '{}';
     const extraction = JSON.parse(content);

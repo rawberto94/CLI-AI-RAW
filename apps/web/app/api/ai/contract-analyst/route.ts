@@ -155,6 +155,11 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID and query are required', 400);
     }
 
+    // P0: Input length validation
+    if (typeof query === 'string' && query.length > 50_000) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Query exceeds maximum length of 50000 characters', 400);
+    }
+
     // Verify user has access to this contract
     const contract = await prisma.contract.findFirst({
       where: {
@@ -261,7 +266,7 @@ ${contractContext || 'No specific contract content available. Please provide a g
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages,
       temperature: 0.3, // Lower temperature for more factual responses
-      max_tokens: 1500 });
+      max_tokens: 1500 }, { signal: AbortSignal.timeout(30_000) });
 
     const answer = completion.choices[0]?.message?.content || 'Unable to generate response.';
 

@@ -23,6 +23,11 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Either contractId or contractText is required', 400);
     }
 
+    // P0: Input length validation
+    if (typeof contractText === 'string' && contractText.length > 200_000) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract text exceeds maximum length of 200000 characters', 400);
+    }
+
     // Dynamic import to avoid build issues
     const services = await import('data-orchestration/services');
     const summarizationService = (services as any).aiContractSummarizationService;

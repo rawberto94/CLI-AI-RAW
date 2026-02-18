@@ -303,7 +303,7 @@ async function generateHyDE(query: string, openai: OpenAI): Promise<string | nul
       ],
       temperature: 0.5,
       max_tokens: 200,
-    });
+    }, { signal: AbortSignal.timeout(10_000) });
 
     return response.choices[0]?.message?.content || null;
   } catch {
@@ -332,7 +332,7 @@ Focus on:
       ],
       temperature: 0.7,
       max_tokens: 300,
-    });
+    }, { signal: AbortSignal.timeout(10_000) });
 
     let content = response.choices[0]?.message?.content || '[]';
     content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();

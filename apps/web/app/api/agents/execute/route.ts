@@ -9,10 +9,16 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
-    const { agentName, contractId, tenantId, context } = body;
+    const { agentName, contractId, context } = body;
+    // P0-FIX: Always use the authenticated tenant — never trust body.tenantId
+    const tenantId = ctx.tenantId;
 
-    if (!agentName || !contractId || !tenantId) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'agentName, contractId, and tenantId are required', 400);
+    if (!agentName || !contractId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'agentName and contractId are required', 400);
+    }
+
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant context is required', 401);
     }
 
     // Get agent from registry

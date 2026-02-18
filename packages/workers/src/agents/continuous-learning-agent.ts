@@ -21,6 +21,11 @@ export class ContinuousLearningAgent extends BaseAgent {
   version = '1.0.0';
   capabilities = ['learning', 'pattern-recognition', 'prompt-optimization'];
 
+  // P0-FIX: Cap pattern accumulation to prevent unbounded prompt growth
+  private static readonly MIN_PATTERNS_FOR_UPDATE = 5;
+  private static readonly MAX_PATTERNS_PER_UPDATE = 20;
+  private static readonly MAX_IMPROVEMENT_CHARS = 4000;
+
   async execute(input: AgentInput): Promise<AgentOutput> {
     const { artifact, userCorrections, contractType } = input.context;
 
@@ -33,11 +38,13 @@ export class ContinuousLearningAgent extends BaseAgent {
     const actions: AgentAction[] = [];
 
     // If enough patterns detected, update prompts
-    if (patterns.length >= 5) {
+    // P0-FIX: Cap the number of patterns to prevent unbounded prompt growth
+    const cappedPatterns = patterns.slice(0, ContinuousLearningAgent.MAX_PATTERNS_PER_UPDATE);
+    if (cappedPatterns.length >= ContinuousLearningAgent.MIN_PATTERNS_FOR_UPDATE) {
       actions.push({
         id: `update-prompts-${Date.now()}`,
         type: 'update-metadata',
-        description: `Update extraction prompts based on ${patterns.length} learned patterns`,
+        description: `Update extraction prompts based on ${cappedPatterns.length} learned patterns (capped at ${ContinuousLearningAgent.MAX_PATTERNS_PER_UPDATE})`,
         priority: 'medium',
         automated: true,
         targetEntity: {
@@ -45,14 +52,14 @@ export class ContinuousLearningAgent extends BaseAgent {
           id: input.contractId,
         },
         payload: {
-          patterns,
-          improvements: patterns.map(p => ({
+          patterns: cappedPatterns,
+          improvements: cappedPatterns.map(p => ({
             field: p.field,
             commonMistake: p.commonMistake,
             correctPattern: p.correctPattern,
           })),
         },
-        estimatedImpact: `Reduce similar errors by ${(patterns.length * 10)}%`,
+        estimatedImpact: `Reduce similar errors by ${Math.min(cappedPatterns.length * 10, 80)}%`,
       });
     }
 
@@ -218,14 +225,22 @@ export class ContinuousLearningAgent extends BaseAgent {
     contractType: string,
     patterns: CorrectionPattern[]
   ): Promise<void> {
+    // P0-FIX: Cap patterns and total improvement text length
+    const cappedPatterns = patterns.slice(0, ContinuousLearningAgent.MAX_PATTERNS_PER_UPDATE);
+
     // Generate improvements section
-    const improvements = patterns.map(pattern => {
-      return (
+    let improvements = '';
+    for (const pattern of cappedPatterns) {
+      const line =
         `⚠️ IMPORTANT: When extracting "${pattern.field}", avoid: "${pattern.commonMistake}". ` +
         `The correct pattern is: "${pattern.correctPattern}". ` +
-        `(Learned from ${pattern.occurrences} user corrections with ${(pattern.confidence * 100).toFixed(0)}% confidence)`
-      );
-    }).join('\n');
+        `(Learned from ${pattern.occurrences} user corrections with ${(pattern.confidence * 100).toFixed(0)}% confidence)\n`;
+      if (improvements.length + line.length > ContinuousLearningAgent.MAX_IMPROVEMENT_CHARS) {
+        logger.warn({ artifactType, contractType, patternCount: cappedPatterns.length }, '📈 Prompt improvement text capped at max length');
+        break;
+      }
+      improvements += line;
+    }
 
     logger.info({
       artifactType,

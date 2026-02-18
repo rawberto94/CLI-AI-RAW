@@ -106,7 +106,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       ],
       temperature: 0.3,
       max_tokens: 2000,
-      response_format: { type: 'json_object' } });
+      response_format: { type: 'json_object' } }, { signal: AbortSignal.timeout(30_000) });
 
     const responseContent = completion.choices[0]?.message?.content || '{}';
     

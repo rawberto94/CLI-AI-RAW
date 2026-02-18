@@ -264,7 +264,8 @@ describe('Contract AI Analyst API', () => {
             expect.objectContaining({ role: 'user', content: 'What are the payment terms?' }),
             expect.objectContaining({ role: 'assistant', content: 'The payment terms are Net 30.' }),
           ]),
-        })
+        }),
+        expect.any(Object),
       );
     });
 

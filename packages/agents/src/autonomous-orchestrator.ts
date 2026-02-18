@@ -384,6 +384,11 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
   private maxConcurrentGoals: number = 3;
   private planningTimeout: number = 30000; // 30 seconds
   private stepTimeout: number = 60000; // 60 seconds
+
+  // P0-FIX: Memory leak prevention — cap map sizes
+  private static readonly MAX_GOALS = 500;
+  private static readonly MAX_NOTIFICATIONS_PER_TENANT = 100;
+  private static readonly STALE_GOAL_TTL_MS = 60 * 60 * 1000; // 1 hour
   
   constructor() {
     super();
@@ -392,6 +397,50 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
     this.hydrateFromDB().catch(() => {});
     // Start the cron scheduler for trigger evaluation
     this.startCronScheduler();
+  }
+
+  /**
+   * P0-FIX: Evict stale completed/failed goals and trim notification lists
+   * to prevent unbounded memory growth in long-running processes.
+   */
+  private evictStaleEntries(): void {
+    const now = Date.now();
+    const terminalStatuses = new Set(['completed', 'failed', 'cancelled']);
+
+    // Evict completed/failed/cancelled goals older than TTL
+    for (const [goalId, goal] of this.goals) {
+      if (terminalStatuses.has(goal.status)) {
+        const age = now - goal.updatedAt.getTime();
+        if (age > AutonomousAgentOrchestrator.STALE_GOAL_TTL_MS) {
+          this.goals.delete(goalId);
+          this.goalTokenUsage.delete(goalId);
+        }
+      }
+    }
+
+    // Hard cap: if still over MAX_GOALS, remove oldest terminal goals first
+    if (this.goals.size > AutonomousAgentOrchestrator.MAX_GOALS) {
+      const sortedTerminal = [...this.goals.entries()]
+        .filter(([, g]) => terminalStatuses.has(g.status))
+        .sort(([, a], [, b]) => a.updatedAt.getTime() - b.updatedAt.getTime());
+      
+      while (this.goals.size > AutonomousAgentOrchestrator.MAX_GOALS && sortedTerminal.length > 0) {
+        const [id] = sortedTerminal.shift()!;
+        this.goals.delete(id);
+        this.goalTokenUsage.delete(id);
+      }
+    }
+
+    // Trim notifications per tenant
+    for (const [tenantId, notifications] of this.notifications) {
+      if (notifications.length > AutonomousAgentOrchestrator.MAX_NOTIFICATIONS_PER_TENANT) {
+        // Keep only the most recent notifications
+        this.notifications.set(
+          tenantId,
+          notifications.slice(-AutonomousAgentOrchestrator.MAX_NOTIFICATIONS_PER_TENANT)
+        );
+      }
+    }
   }
 
   /**
@@ -772,6 +821,9 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
       updatedAt: new Date(),
       metadata: options.metadata
     };
+    
+    // P0-FIX: Evict stale entries before adding new goals to prevent memory leaks
+    this.evictStaleEntries();
     
     this.goals.set(goal.id, goal);
     this.executionQueue.push(goal);
@@ -1776,11 +1828,10 @@ Perform this analysis step and return the result as JSON.`,
           throw new Error(`Goal ${goalId} was rejected by human reviewer`);
         }
       } catch (error: any) {
-        // If prisma query fails (table not available), fall back to timed approval
+        // P0-FIX: If DB is unavailable, FAIL CLOSED — do NOT auto-approve
         if (error?.code === 'P2021' || error?.code === 'P2010') {
-          this.emit('goal:approval_fallback', { goalId, reason: 'DB not available' });
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          return;
+          this.emit('goal:approval_fallback', { goalId, reason: 'DB not available — failing closed' });
+          throw new Error(`Cannot verify approval for goal ${goalId} — database unavailable. Failing closed for safety.`);
         }
         // Re-throw rejection errors
         if (error?.message?.includes('rejected')) throw error;

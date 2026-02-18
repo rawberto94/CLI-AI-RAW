@@ -194,6 +194,19 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
     });
   }
 
+  // P0: Input length validation — prevent cost DoS via oversized messages
+  const MAX_MESSAGE_LENGTH = 50_000;
+  const MAX_HISTORY_ITEMS = 20;
+  if (typeof message === 'string' && message.length > MAX_MESSAGE_LENGTH) {
+    return new NextResponse(JSON.stringify({ error: `Message exceeds maximum length of ${MAX_MESSAGE_LENGTH} characters` }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  if (Array.isArray(conversationHistory) && conversationHistory.length > MAX_HISTORY_ITEMS) {
+    conversationHistory.length = MAX_HISTORY_ITEMS;
+  }
+
   if (!process.env.OPENAI_API_KEY) {
     return new NextResponse(JSON.stringify({ error: 'OpenAI API key not configured' }), {
       status: 500,
@@ -503,7 +516,7 @@ ${memoryContext}`;
                   temperature: 0.3,
                   max_tokens: 2000,
                   stream: true,
-                });
+                }, { signal: AbortSignal.timeout(30_000) });
 
                 usedModel = config.model;
                 usedProvider = 'openai';
@@ -582,7 +595,7 @@ ${memoryContext}`;
                   max_tokens: 2000,
                   system: finalSystemPrompt,
                   messages: anthropicMessages,
-                });
+                }, { signal: AbortSignal.timeout(30_000) });
 
                 usedModel = config.model;
                 usedProvider = 'anthropic';
@@ -829,9 +842,13 @@ ${memoryContext}`;
 
         controller.close();
       } catch (error) {
+        // P0: Sanitize error — never leak internal details (API keys, DB schema, etc.)
+        const safeMessage = error instanceof Error && error.name === 'AbortError'
+          ? 'Request timed out. Please try again.'
+          : 'An error occurred while processing your request.';
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'error',
-          error: error instanceof Error ? error.message : 'Stream interrupted',
+          error: safeMessage,
           done: true,
         })}\n\n`));
         controller.close();

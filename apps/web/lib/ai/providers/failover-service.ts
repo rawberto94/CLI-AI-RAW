@@ -232,7 +232,7 @@ export class AIFailoverService {
       messages,
       max_tokens: request.maxTokens ?? 4096,
       temperature: request.temperature ?? 0.7,
-    });
+    }, { signal: AbortSignal.timeout(30_000) });
 
     const choice = response.choices[0];
     const inputTokens = response.usage?.prompt_tokens ?? 0;

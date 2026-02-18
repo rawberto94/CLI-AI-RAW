@@ -129,7 +129,7 @@ Be strict but fair. Legal context matters — a termination clause IS relevant t
             content: `Query: "${query}"\n\nRetrieved chunks:\n${chunkTexts}`,
           },
         ],
-      });
+      }, { signal: AbortSignal.timeout(15_000) });
 
       const text = response.choices[0]?.message?.content || '';
       const lines = text.split('\n').filter(l => l.trim());
@@ -218,7 +218,7 @@ ${irrelevantChunks.slice(0, 3).map(c => `- ${c.slice(0, 200)}`).join('\n')}
 Reformulate the query to get better results:`,
         },
       ],
-    });
+    }, { signal: AbortSignal.timeout(10_000) });
 
     const reformulated = response.choices[0]?.message?.content?.trim();
     return reformulated || originalQuery;

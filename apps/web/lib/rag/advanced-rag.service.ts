@@ -202,7 +202,7 @@ Example output: "Either party may terminate this Agreement by providing sixty (6
       ],
       temperature: 0.5,
       max_tokens: 200,
-    });
+    }, { signal: AbortSignal.timeout(10_000) });
 
     return response.choices[0]?.message?.content || null;
   } catch {
@@ -258,7 +258,7 @@ Return ONLY a JSON array of strings, no explanation.
       ],
       temperature: 0.7,
       max_tokens: 300,
-    });
+    }, { signal: AbortSignal.timeout(10_000) });
     
     let content = response.choices[0]?.message?.content || '[]';
     // Strip markdown code blocks if present

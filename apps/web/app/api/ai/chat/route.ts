@@ -40,6 +40,15 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Message is required', 400);
     }
 
+    // P0: Input length validation — prevent cost DoS via oversized messages
+    const MAX_MESSAGE_LENGTH = 50_000;
+    if (typeof message === 'string' && message.length > MAX_MESSAGE_LENGTH) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Message exceeds maximum length of ${MAX_MESSAGE_LENGTH} characters`, 400);
+    }
+    if (Array.isArray(conversationHistory) && conversationHistory.length > 20) {
+      conversationHistory.length = 20;
+    }
+
     // ─── Role-based write protection (matches stream route) ─────────
     const WRITE_ACTIONS = new Set([
       'start_workflow', 'approve_workflow', 'reject_workflow',
