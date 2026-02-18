@@ -160,7 +160,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       return {
         id: l.id,
         action: l.action,
-        entity: l.entityType,
+        entity: l.entityType || 'unknown',
         user: l.userId || 'system',
         time,
         status: 'completed',

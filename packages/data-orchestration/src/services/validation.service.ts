@@ -191,7 +191,7 @@ export class ValidationService {
    * Validate pagination parameters
    */
   validatePagination(data: unknown): ValidationResult<z.infer<typeof PaginationSchema>> {
-    return this.validate(data, PaginationSchema);
+    return this.validate(data, PaginationSchema) as any;
   }
 
   // =========================================================================

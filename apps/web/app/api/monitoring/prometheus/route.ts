@@ -5,7 +5,7 @@
  * @endpoint GET /api/monitoring/prometheus
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { monitoringService } from 'data-orchestration/services';

@@ -254,6 +254,6 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
       responseTime: `${Date.now() - startTime}ms`,
     }
   };
-  await setCached(cacheKey, data, 60);
+  await setCached(cacheKey, data, { ttl: 60 });
   return createSuccessResponse(ctx, data);
 });

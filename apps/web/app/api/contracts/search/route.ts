@@ -124,7 +124,7 @@ async function performRealSearch(
     limit,
     sortBy: "createdAt",
     sortOrder: "desc",
-  });
+  } as any);
 
   if (!result.success || !result.data) {
     return {
@@ -167,7 +167,7 @@ async function performRealSearch(
     _count?: { childContracts?: number };
   }
 
-  const results: HybridSearchResult[] = (contracts as ContractResult[]).map((contract: ContractResult, index: number) => {
+  const results = (contracts as ContractResult[]).map((contract: ContractResult, index: number) => {
     const scoreBase = 0.92 - index * 0.05;
     const score = Math.max(0.4, Math.min(0.95, scoreBase));
     const keywordScore = mode === "semantic" ? score * 0.6 : score;
@@ -223,7 +223,7 @@ async function performRealSearch(
   });
 
   return {
-    results,
+    results: results as HybridSearchResult[],
     total: totalCount,
     query,
     executionTime: Math.round(80 + Math.random() * 120),

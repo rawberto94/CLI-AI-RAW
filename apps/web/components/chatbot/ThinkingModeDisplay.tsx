@@ -156,14 +156,14 @@ const ToolCallDisplay: React.FC<{
                 </pre>
               </div>
             )}
-            {toolOutput && (
+            {toolOutput ? (
               <div>
                 <span className="text-gray-500 dark:text-slate-400">Output:</span>
                 <pre className="mt-1 p-1 bg-gray-100 dark:bg-gray-800 rounded overflow-x-auto max-h-32">
                   {typeof toolOutput === 'string' ? toolOutput : JSON.stringify(toolOutput, null, 2)}
                 </pre>
               </div>
-            )}
+            ) : null}
           </motion.div>
         )}
       </AnimatePresence>

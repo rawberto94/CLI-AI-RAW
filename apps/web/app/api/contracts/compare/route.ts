@@ -268,8 +268,8 @@ async function compareContractsEnhanced(contract1: ContractWithMetadata, contrac
   }
 
   // Expiration risk analysis
-  const days1 = getDaysUntil(contract1.expirationDate);
-  const days2 = getDaysUntil(contract2.expirationDate);
+  const days1 = getDaysUntil(contract1.expirationDate ?? null);
+  const days2 = getDaysUntil(contract2.expirationDate ?? null);
   
   if (days1 && days1 <= 90) {
     keyInsights.push(`⚠️ ${contract1.supplierName} contract expires in ${days1} days`);

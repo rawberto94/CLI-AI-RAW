@@ -12,7 +12,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
     if (clauseId) {
       // Get version history for a specific clause
-      const versions = await prisma.clauseVersion.findMany({
+      const versions = await (prisma as any).clauseVersion.findMany({
         where: { clauseId, clause: { tenantId: ctx.tenantId } },
         orderBy: { version: 'desc' },
         include: { createdByUser: { select: { name: true, email: true } } },
@@ -21,13 +21,13 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     // Get all clause library entries with latest version
-    const clauses = await prisma.clauseLibrary.findMany({
+    const clauses = await (prisma as any).clauseLibrary.findMany({
       where: { tenantId: ctx.tenantId },
       orderBy: { updatedAt: 'desc' },
       include: {
         _count: { select: { versions: true } },
         versions: { take: 1, orderBy: { version: 'desc' }, select: { version: true, createdAt: true } },
-      },
+      } as any,
     });
 
     return createSuccessResponse(ctx, { clauses });
@@ -42,14 +42,14 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const { prisma } = await import('@/lib/prisma');
 
     // Create a new version
-    const latestVersion = await prisma.clauseVersion.findFirst({
+    const latestVersion = await (prisma as any).clauseVersion.findFirst({
       where: { clauseId: body.clauseId },
       orderBy: { version: 'desc' },
     });
 
     const newVersion = (latestVersion?.version || 0) + 1;
 
-    const version = await prisma.clauseVersion.create({
+    const version = await (prisma as any).clauseVersion.create({
       data: {
         clauseId: body.clauseId,
         version: newVersion,
@@ -63,7 +63,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     // Update the clause library entry with new text
     await prisma.clauseLibrary.update({
       where: { id: body.clauseId },
-      data: { text: body.text, updatedAt: new Date() },
+      data: { content: body.text, updatedAt: new Date() },
     });
 
     return createSuccessResponse(ctx, { version });

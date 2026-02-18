@@ -235,7 +235,15 @@ export class NegotiationAssistantEnhancedService {
     });
 
     // Analyze rate changes over time
-    const rateChanges = [];
+    const rateChanges: Array<{
+      role: string | null;
+      supplier: string;
+      previousRate: number;
+      currentRate: number;
+      change: number;
+      changePercent: number;
+      timespan: number;
+    }> = [];
     for (let i = 1; i < rateCards.length; i++) {
       const current = rateCards[i - 1];
       const previous = rateCards[i];

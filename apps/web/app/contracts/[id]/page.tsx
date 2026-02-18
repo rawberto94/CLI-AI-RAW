@@ -292,7 +292,7 @@ export default function ContractDetailPage() {
   } = useSplitPaneResize({ initialRatio: 45, minRatio: 20, maxRatio: 75 })
 
   // Use the custom hook for metadata derivation
-  const { metadata, riskInfo, complianceInfo, isProcessing, overviewData, financialData } = useContractMetadata(contract)
+  const { metadata, riskInfo, complianceInfo, isProcessing, overviewData, financialData } = useContractMetadata(contract as any)
 
   // ============ KEYBOARD SHORTCUTS ============
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
@@ -1346,12 +1346,12 @@ export default function ContractDetailPage() {
                     contractId={params.id as string}
                     onUpdate={loadContract}
                     fields={[
-                      { name: 'supplierName', label: 'Supplier', value: metadata.external_parties?.find(p => p.role?.toLowerCase() === 'supplier' || p.role?.toLowerCase() === 'vendor')?.legalName || contract?.supplierName, confidence: extractionConfidence, source: 'ai' },
-                      { name: 'clientName', label: 'Client', value: metadata.external_parties?.find(p => p.role?.toLowerCase() === 'client' || p.role?.toLowerCase() === 'buyer')?.legalName || contract?.clientName, confidence: extractionConfidence, source: 'ai' },
-                      { name: 'totalValue', label: 'Total Value', value: metadata.tcv_amount ?? contract?.totalValue, confidence: extractionConfidence, source: 'ai' },
-                      { name: 'effectiveDate', label: 'Effective Date', value: metadata.start_date || contract?.effectiveDate, confidence: extractionConfidence, source: 'ai' },
-                      { name: 'expirationDate', label: 'Expiration Date', value: metadata.end_date || contract?.expirationDate, confidence: extractionConfidence, source: 'ai' },
-                      { name: 'contractType', label: 'Contract Type', value: metadata.contract_type || contract?.contractType, confidence: extractionConfidence, source: 'ai' },
+                      { name: 'supplierName', label: 'Supplier', value: metadata.external_parties?.find(p => p.role?.toLowerCase() === 'supplier' || p.role?.toLowerCase() === 'vendor')?.legalName || contract?.supplierName, confidence: extractionConfidence ?? 0, source: 'ai' },
+                      { name: 'clientName', label: 'Client', value: metadata.external_parties?.find(p => p.role?.toLowerCase() === 'client' || p.role?.toLowerCase() === 'buyer')?.legalName || contract?.clientName, confidence: extractionConfidence ?? 0, source: 'ai' },
+                      { name: 'totalValue', label: 'Total Value', value: metadata.tcv_amount ?? contract?.totalValue, confidence: extractionConfidence ?? 0, source: 'ai' },
+                      { name: 'effectiveDate', label: 'Effective Date', value: metadata.start_date || contract?.effectiveDate, confidence: extractionConfidence ?? 0, source: 'ai' },
+                      { name: 'expirationDate', label: 'Expiration Date', value: metadata.end_date || contract?.expirationDate, confidence: extractionConfidence ?? 0, source: 'ai' },
+                      { name: 'contractType', label: 'Contract Type', value: metadata.contract_type || contract?.contractType, confidence: extractionConfidence ?? 0, source: 'ai' },
                     ].filter(f => f.value !== null && f.value !== undefined)}
                   />
                 </TabsContent>

@@ -47,13 +47,13 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
   // Check for orphaned data
   const orphanedEmbeddings = await prisma.embedding.count({
     where: {
-      contract: null,
+      contractId: undefined,
     },
   });
 
   const orphanedArtifacts = await prisma.artifact.count({
     where: {
-      contract: null,
+      contractId: undefined,
     },
   });
 

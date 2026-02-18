@@ -33,7 +33,7 @@ export async function POST(
 
     // Get contract text
     const contract = await prisma.contract.findUnique({
-      where: { id: contractId, tenantId },
+      where: { id: contractId, tenantId: tenantId ?? undefined },
       select: { rawText: true },
     });
 

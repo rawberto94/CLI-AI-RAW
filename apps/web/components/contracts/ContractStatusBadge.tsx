@@ -293,7 +293,7 @@ export function ContractStatusDot({
 
   return (
     <div className={cn('inline-flex items-center gap-2', className)}>
-      <div className={cn('h-2 w-2 rounded-full', dotColors[status.toUpperCase()])} />
+      <div className={cn('h-2 w-2 rounded-full', dotColors[status?.toUpperCase() ?? ''])} />
       <span className="text-xs text-slate-600">{config.label}</span>
     </div>
   );

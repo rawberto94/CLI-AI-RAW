@@ -241,14 +241,14 @@ export const SmartInsightsPanel = memo(function SmartInsightsPanel({
               {/* Days to Expiry */}
               <div className={cn(
                 "flex flex-col items-center p-2 rounded-lg",
-                daysToExpiry === null ? 'bg-slate-50 dark:bg-slate-800' :
+                daysToExpiry == null ? 'bg-slate-50 dark:bg-slate-800' :
                 daysToExpiry <= 30 ? 'bg-red-50 dark:bg-red-950/30' :
                 daysToExpiry <= 90 ? 'bg-amber-50 dark:bg-amber-950/30' :
                 'bg-violet-50 dark:bg-violet-950/30'
               )}>
                 <Clock className={cn(
                   "h-4 w-4 mb-1",
-                  daysToExpiry === null ? 'text-slate-400' :
+                  daysToExpiry == null ? 'text-slate-400' :
                   daysToExpiry <= 30 ? 'text-red-500' :
                   daysToExpiry <= 90 ? 'text-amber-500' :
                   'text-violet-500'

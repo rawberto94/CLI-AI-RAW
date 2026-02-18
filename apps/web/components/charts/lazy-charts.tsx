@@ -17,6 +17,17 @@
 
 import dynamic from 'next/dynamic';
 import type { ComponentType } from 'react';
+import type {
+  LineProps,
+  AreaProps,
+  BarProps,
+  PieProps,
+  XAxisProps,
+  YAxisProps,
+  TooltipProps,
+  LegendProps,
+  ReferenceLineProps,
+} from 'recharts';
 
 // Skeleton loader for charts
 export function ChartSkeleton({ height = 300 }: { height?: number }) {
@@ -60,8 +71,8 @@ export const LazyLineChart = dynamic(
 );
 
 // Lazy Line component
-export const LazyLine = dynamic(
-  () => import('recharts').then((mod) => mod.Line),
+export const LazyLine = dynamic<LineProps>(
+  () => import('recharts').then((mod) => ({ default: mod.Line as ComponentType<LineProps> })),
   { ssr: false }
 );
 
@@ -75,8 +86,8 @@ export const LazyAreaChart = dynamic(
 );
 
 // Lazy Area component
-export const LazyArea = dynamic(
-  () => import('recharts').then((mod) => mod.Area),
+export const LazyArea = dynamic<AreaProps>(
+  () => import('recharts').then((mod) => ({ default: mod.Area as ComponentType<AreaProps> })),
   { ssr: false }
 );
 
@@ -90,8 +101,8 @@ export const LazyBarChart = dynamic(
 );
 
 // Lazy Bar component
-export const LazyBar = dynamic(
-  () => import('recharts').then((mod) => mod.Bar),
+export const LazyBar = dynamic<BarProps>(
+  () => import('recharts').then((mod) => ({ default: mod.Bar as ComponentType<BarProps> })),
   { ssr: false }
 );
 
@@ -105,8 +116,8 @@ export const LazyPieChart = dynamic(
 );
 
 // Lazy Pie component
-export const LazyPie = dynamic(
-  () => import('recharts').then((mod) => mod.Pie),
+export const LazyPie = dynamic<PieProps>(
+  () => import('recharts').then((mod) => ({ default: mod.Pie as ComponentType<PieProps> })),
   { ssr: false }
 );
 
@@ -129,13 +140,13 @@ export const LazyRadarChart = dynamic(
 );
 
 // Common recharts components (lazy loaded)
-export const LazyXAxis = dynamic(
-  () => import('recharts').then((mod) => mod.XAxis),
+export const LazyXAxis = dynamic<XAxisProps>(
+  () => import('recharts').then((mod) => ({ default: mod.XAxis as ComponentType<XAxisProps> })),
   { ssr: false }
 );
 
-export const LazyYAxis = dynamic(
-  () => import('recharts').then((mod) => mod.YAxis),
+export const LazyYAxis = dynamic<YAxisProps>(
+  () => import('recharts').then((mod) => ({ default: mod.YAxis as ComponentType<YAxisProps> })),
   { ssr: false }
 );
 
@@ -144,13 +155,13 @@ export const LazyCartesianGrid = dynamic(
   { ssr: false }
 );
 
-export const LazyTooltip = dynamic(
-  () => import('recharts').then((mod) => mod.Tooltip),
+export const LazyTooltip = dynamic<TooltipProps<number | string, string>>(
+  () => import('recharts').then((mod) => ({ default: mod.Tooltip as ComponentType<TooltipProps<number | string, string>> })),
   { ssr: false }
 );
 
-export const LazyLegend = dynamic(
-  () => import('recharts').then((mod) => mod.Legend),
+export const LazyLegend = dynamic<LegendProps>(
+  () => import('recharts').then((mod) => ({ default: mod.Legend as ComponentType<LegendProps> })),
   { ssr: false }
 );
 
@@ -159,8 +170,8 @@ export const LazyCell = dynamic(
   { ssr: false }
 );
 
-export const LazyReferenceLine = dynamic(
-  () => import('recharts').then((mod) => mod.ReferenceLine),
+export const LazyReferenceLine = dynamic<ReferenceLineProps>(
+  () => import('recharts').then((mod) => ({ default: mod.ReferenceLine as ComponentType<ReferenceLineProps> })),
   { ssr: false }
 );
 

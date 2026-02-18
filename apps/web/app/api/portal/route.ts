@@ -82,28 +82,26 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const negotiations = await prisma.contractActivity.findMany({
       where: {
         action: { in: ['NEGOTIATION_PROPOSAL', 'PORTAL_MESSAGE'] },
-        contract: {
-          supplierName: supplierName !== 'Unknown Supplier' ? supplierName : undefined,
-        },
+        contractId: supplierName !== 'Unknown Supplier'
+          ? { in: contracts.map(c => c.id) }
+          : undefined,
       },
-      include: {
-        contract: {
-          select: { id: true, contractTitle: true, fileName: true, status: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { timestamp: 'desc' },
       take: 20,
     });
 
-    const negotiationRounds = negotiations.map(n => ({
-      id: n.id,
-      contractId: n.contractId,
-      contractName: n.contract.contractTitle || n.contract.fileName || 'Untitled',
-      type: n.action,
-      description: n.description,
-      metadata: n.metadata,
-      createdAt: n.createdAt.toISOString(),
-    }));
+    const negotiationRounds = negotiations.map(n => {
+      const relatedContract = contracts.find(c => c.id === n.contractId);
+      return {
+        id: n.id,
+        contractId: n.contractId,
+        contractName: relatedContract?.contractTitle || relatedContract?.fileName || 'Untitled',
+        type: n.action,
+        description: n.details,
+        metadata: n.metadata,
+        createdAt: n.timestamp.toISOString(),
+      };
+    });
 
     const portalData = {
       supplier: {
@@ -211,8 +209,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           contractId,
           tenantId: ctx.tenantId,
           userId: ctx.userId,
+          type: 'comment',
           action: 'PORTAL_MESSAGE',
-          description: message,
+          details: message,
           metadata: { source: 'portal', timestamp: new Date().toISOString() },
         },
       });
@@ -257,8 +256,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           contractId,
           tenantId: ctx.tenantId,
           userId: ctx.userId,
+          type: 'workflow',
           action: 'NEGOTIATION_PROPOSAL',
-          description: proposal.summary || 'New negotiation proposal submitted',
+          details: proposal.summary || 'New negotiation proposal submitted',
           metadata: {
             source: 'portal',
             proposalId: `prop-${Date.now()}`,
@@ -272,7 +272,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       // Update contract status to show it's in negotiation
       await prisma.contract.update({
         where: { id: contractId },
-        data: { status: 'NEGOTIATION' },
+        data: { status: 'PENDING' },
       });
     }
     return createSuccessResponse(ctx, {

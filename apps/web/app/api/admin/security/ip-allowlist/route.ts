@@ -197,7 +197,7 @@ export const DELETE = withAuthApiHandler(async (request, ctx) => {
  * Used by middleware for request filtering
  */
 export async function checkIPAllowed(ip: string, tenantId: string): Promise<{ allowed: boolean; reason?: string }> {
-  const ctx = getApiContext(ip);
+  const ctx = getApiContext(ip as any);
   try {
     const settings = await prisma.tenantSecuritySettings.findUnique({
       where: { tenantId },

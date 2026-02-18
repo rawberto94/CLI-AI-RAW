@@ -133,7 +133,7 @@ export async function generateNegotiationPlaybook(params: {
   const contextHint = negotiationContext ? `\nNegotiation context: ${negotiationContext}` : '';
 
   const { object: playbook } = await generateObject({
-    model: openai('gpt-4o'),
+    model: openai('gpt-4o') as any,
     schema: NegotiationPlaybookSchema,
     system: PLAYBOOK_SYSTEM_PROMPT,
     prompt: `Generate a negotiation playbook for this ${contractType || 'contract'}.${roleHint}${contextHint}${portfolioBenchmark}
@@ -177,7 +177,7 @@ export async function generateRedlineSuggestion(params: {
   const { clauseText, clauseType, contractType, objective } = params;
 
   const { object: redline } = await generateObject({
-    model: openai('gpt-4o-mini'),
+    model: openai('gpt-4o-mini') as any,
     schema: RedlineSuggestionSchema,
     system: `You are an expert contract editor. Generate specific, word-for-word redline suggestions that improve the clause for our side while remaining commercially reasonable. The suggested text should be a complete replacement that could be sent to the counterparty.`,
     prompt: `Generate a redline suggestion for this ${clauseType || 'clause'} from a ${contractType || 'contract'}.
@@ -226,7 +226,7 @@ export async function streamNegotiationAdvice(params: {
     : '';
 
   const stream = streamText({
-    model: openai('gpt-4o'),
+    model: openai('gpt-4o') as any,
     system: `You are a real-time negotiation advisor embedded in a contract management platform. Your role is to help the user navigate active negotiations with practical, specific advice.
 
 Be concise and actionable. Use bullet points. Reference specific contract terms when relevant.${playbookContext}`,
@@ -275,14 +275,13 @@ export async function generateAndStorePlaybook(params: {
   // Store as artifact
   await prisma.artifact.upsert({
     where: {
-      contractId_tenantId_type: {
+      contractId_type: {
         contractId,
-        tenantId,
-        type: 'NEGOTIATION_PLAYBOOK',
+        type: 'NEGOTIATION_PLAYBOOK' as any,
       },
     },
     update: {
-      content: {
+      data: {
         playbook,
         generatedAt: new Date().toISOString(),
         ourRole,
@@ -293,8 +292,8 @@ export async function generateAndStorePlaybook(params: {
     create: {
       contractId,
       tenantId,
-      type: 'NEGOTIATION_PLAYBOOK',
-      content: {
+      type: 'NEGOTIATION_PLAYBOOK' as any,
+      data: {
         playbook,
         generatedAt: new Date().toISOString(),
         ourRole,

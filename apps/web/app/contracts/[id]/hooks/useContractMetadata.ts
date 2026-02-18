@@ -67,6 +67,9 @@ interface ContractData {
   supplierName?: string | null
   description?: string | null
   totalValue?: number | string | null
+  metadata?: any
+  overview?: any
+  financial?: any
 }
 
 /**

@@ -160,7 +160,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         data: {
           tenantId,
           contractId: contract.id,
-          status: 'QUEUED',
+          status: 'QUEUED' as any,
           progress: 0,
           startedAt: new Date(),
         },

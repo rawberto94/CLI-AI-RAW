@@ -492,7 +492,7 @@ export function AIAnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {metrics.endpointBreakdown.map((endpoint) => (
+              {metrics.endpointBreakdown?.map((endpoint) => (
                 <div key={endpoint.endpoint} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <code className="text-sm bg-slate-100 px-2 py-1 rounded">
@@ -528,7 +528,7 @@ export function AIAnalyticsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {metrics.errors.map((error) => (
+              {metrics.errors?.map((error) => (
                 <div
                   key={error.type}
                   className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"

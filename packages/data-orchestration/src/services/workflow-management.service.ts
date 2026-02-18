@@ -740,7 +740,7 @@ export class WorkflowManagementService extends EventEmitter {
           : undefined
       })),
       startedAt: execution.startedAt,
-      blockedBy: currentStepExec?.assignedTo
+      blockedBy: currentStepExec?.assignedTo ?? undefined
     };
   }
 

@@ -115,7 +115,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     }
 
     // Get procurement category if provided
-    let procurementCategoryId = null;
+    let procurementCategoryId: string | null = null;
     if (categoryL1 && categoryL2) {
       const category = await prisma.procurementCategory.findFirst({
         where: {

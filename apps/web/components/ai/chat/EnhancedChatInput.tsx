@@ -129,6 +129,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
   useEffect(() => {
     if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
       const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognitionAPI) return;
       recognitionRef.current = new SpeechRecognitionAPI();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;

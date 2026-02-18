@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    logger.error({ error }, 'DocuSign webhook processing failed');
+    logger.error('DocuSign webhook processing failed: ' + String(error));
     return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
   }
 }

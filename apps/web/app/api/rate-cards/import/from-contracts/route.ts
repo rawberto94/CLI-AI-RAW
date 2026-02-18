@@ -97,7 +97,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
               'PRINCIPAL': 'PRINCIPAL',
               'PARTNER': 'PARTNER',
             };
-            const seniority = seniorityMap[rate.seniority?.toUpperCase()] || 'MID';
+            const seniority = seniorityMap[rate.seniority?.toUpperCase() ?? ''] || 'MID';
             
             // Map supplier tier to valid enum value
             const tierMap: Record<string, 'BIG_4' | 'TIER_2' | 'BOUTIQUE' | 'OFFSHORE'> = {
@@ -106,15 +106,15 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
               'BOUTIQUE': 'BOUTIQUE',
               'OFFSHORE': 'OFFSHORE',
             };
-            const supplierTier = tierMap[rate.supplierTier?.toUpperCase()] || 'TIER_2';
+            const supplierTier = tierMap[rate.supplierTier?.toUpperCase() ?? ''] || 'TIER_2';
             
             // Create rate card entry
             const rateCardEntry = await prisma.rateCardEntry.create({
               data: {
                 tenantId,
                 contractId: contract.id,
-                roleOriginal: rate.roleOriginal || rate.role || rate.position,
-                roleStandardized: rate.roleStandardized || rate.role || rate.position,
+                roleOriginal: rate.roleOriginal || rate.role || rate.position || '',
+                roleStandardized: rate.roleStandardized || rate.role || rate.position || '',
                 roleCategory: rate.roleCategory || rate.category || 'Professional Services',
                 seniority,
                 dailyRate: rate.dailyRate || rate.rate || 0,

@@ -86,7 +86,7 @@ export class AIGovernanceService {
     if (modelName) {
       conditions.push(Prisma.sql`model_name = ${modelName}`);
     }
-    const where = Prisma.join(conditions, Prisma.sql` AND `);
+    const where = Prisma.join(conditions, ' AND ');
 
     return prisma.$queryRaw`
       SELECT * FROM drift_metrics WHERE ${where} ORDER BY measured_at DESC
@@ -122,7 +122,7 @@ export class AIGovernanceService {
     const trainingRecords = corrections.map(c => ({
       input: c.originalValue,
       output: c.correctedValue,
-      field: c.field,
+      field: (c as any).field,
       contractId: c.contractId,
       confidence: c.confidence,
     }));

@@ -199,7 +199,7 @@ export class PredictiveAnalyticsService {
     const isAccelerating = Math.abs(acceleration) > 0.01; // Threshold for significance
 
     // Project future rates
-    const projectedRates = [];
+    const projectedRates: Array<{ date: Date; rate: number }> = [];
     for (let i = 1; i <= 12; i++) {
       const projectedRate = trendLine.intercept + (trendLine.slope * (historicalData.length + i));
       projectedRates.push({

@@ -21,6 +21,7 @@
  */
 
 import type { SearchResult, SearchOptions } from './advanced-rag.service';
+import type RedisType from 'ioredis';
 
 // ============================================================================
 // Types
@@ -82,7 +83,7 @@ class SemanticCacheStore {
     redisConnected: false,
   };
   private latencySavings: number[] = [];
-  private redis: import('ioredis').default | null = null;
+  private redis: InstanceType<typeof RedisType> | null = null;
   private redisReady = false;
 
   constructor(config: Partial<SemanticCacheConfig> = {}) {
@@ -114,7 +115,7 @@ class SemanticCacheStore {
     }
   }
 
-  private getRedis(): import('ioredis').default | null {
+  private getRedis(): typeof this.redis {
     return this.redisReady ? this.redis : null;
   }
 
@@ -447,7 +448,8 @@ export function resetSemanticCache(): void {
   instance = null;
 }
 
-export { SemanticCacheStore, SemanticCacheConfig, CacheStats, cosineSimilarity };
+export { SemanticCacheStore, cosineSimilarity };
+export type { SemanticCacheConfig, CacheStats };
 
 export default {
   getSemanticCache,

@@ -19,6 +19,7 @@ import {
 import { KeyTermBadge } from '@/components/contracts/detail/KeyTermBadge'
 
 interface Party {
+  id?: string
   legalName: string
   role?: string
   legalForm?: string
@@ -26,6 +27,7 @@ interface Party {
 }
 
 interface Risk {
+  id?: string
   category: string
   description: string
   level?: string
@@ -86,7 +88,7 @@ const ExecutiveSummary = memo(function ExecutiveSummary({
             </p>
             <div className="flex flex-wrap gap-1.5">
               {keyTerms.map((term, i) => (
-                <KeyTermBadge key={typeof term === 'string' ? term : (term.name || term.label || `term-${i}`)} term={term} />
+                <KeyTermBadge key={typeof term === 'string' ? term : ((term as Record<string, string>).name || (term as Record<string, string>).label || `term-${i}`)} term={term} />
               ))}
             </div>
           </div>

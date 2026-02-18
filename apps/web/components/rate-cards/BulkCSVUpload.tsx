@@ -79,7 +79,7 @@ export function BulkCSVUpload({ onSuccess, tenantId = 'demo' }: BulkCSVUploadPro
     const headerLine = lines[0];
     if (!headerLine) return [];
     const headers = headerLine.split(',').map(h => h.trim());
-    const data = [];
+    const data: any[] = [];
 
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i];

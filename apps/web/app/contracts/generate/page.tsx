@@ -246,6 +246,7 @@ export default function GenerateContractPage() {
       // No templates available
       setTemplates([])
     }
+  }
 
   const selectTemplate = async (template: Template) => {
     const hydrated = await hydrateTemplateVariables(template)

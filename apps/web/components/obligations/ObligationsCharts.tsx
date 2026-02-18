@@ -431,7 +431,7 @@ export function ObligationsOwnerChart({ metrics, height = 200 }: MetricsChartPro
 
 // Helper to generate sample timeline data
 function generateSampleTimeline() {
-  const data = [];
+  const data: Array<{ date: string; completed: number; created: number; overdue: number }> = [];
   const now = new Date();
   for (let i = 6; i >= 0; i--) {
     const date = new Date(now);

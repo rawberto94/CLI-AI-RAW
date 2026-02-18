@@ -61,7 +61,7 @@ export function BaselineCSVImport() {
     const headerLine = lines[0];
     if (!headerLine) throw new Error('No header line found');
     const headers = headerLine.split(',').map(h => h.trim());
-    const baselines = [];
+    const baselines: any[] = [];
 
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i];

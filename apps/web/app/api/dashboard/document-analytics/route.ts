@@ -269,6 +269,6 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       .slice(0, 5)
       .map(([type, count]) => ({ type, count, percentage: (count / totalDocuments) * 100 })),
   };
-  await setCached(cacheKey, data, 300);
+  await setCached(cacheKey, data, { ttl: 300 });
   return createSuccessResponse(ctx, data);
 });

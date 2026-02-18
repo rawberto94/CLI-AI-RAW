@@ -6,7 +6,7 @@
  * Now includes automatic RAG re-indexing when critical fields are updated
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 import { contractService } from 'data-orchestration/services';

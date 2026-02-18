@@ -9,7 +9,7 @@
  * 2. Client source (SharePoint, Google Drive, etc.) - on-demand fetch
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';

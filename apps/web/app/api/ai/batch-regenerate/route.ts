@@ -462,7 +462,7 @@ export const PATCH = withAuthApiHandler(async (request, ctx) => {
 
     // Perform rollback by restoring previous versions
     const results = (job.result as unknown as BatchJobResult[] | null) || [];
-    const rollbackResults = [];
+    const rollbackResults: { contractId: string; artifactType: string; rolledBackTo: number | undefined }[] = [];
 
     for (const r of results.filter(r => r.status === 'success' && r.previousVersion)) {
       // Find artifact to rollback

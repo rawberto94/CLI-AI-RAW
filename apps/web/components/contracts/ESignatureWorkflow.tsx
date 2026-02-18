@@ -695,7 +695,7 @@ export default function ESignatureWorkflow({ contractId, contractTitle, classNam
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Role</Label>
-                <Select value={newSigner.role || 'signer'} onValueChange={(v) => setNewSigner(p => ({ ...p, role: v }))}>
+                <Select value={newSigner.role || 'signer'} onValueChange={(v) => setNewSigner(p => ({ ...p, role: v }) as any)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -709,7 +709,7 @@ export default function ESignatureWorkflow({ contractId, contractTitle, classNam
               </div>
               <div>
                 <Label>Authentication</Label>
-                <Select value={newSigner.authMethod || 'email'} onValueChange={(v) => setNewSigner(p => ({ ...p, authMethod: v }))}>
+                <Select value={newSigner.authMethod || 'email'} onValueChange={(v) => setNewSigner(p => ({ ...p, authMethod: v }) as any)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

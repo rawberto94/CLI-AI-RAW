@@ -7,7 +7,7 @@
  * useful for long contracts where users want to see progress.
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { prisma } from '@/lib/prisma';
 import { analyticalIntelligenceService } from 'data-orchestration/services';
@@ -27,14 +27,14 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     const { contractId, analysisType = 'full' } = body;
 
     if (!contractId) {
-      return new Response(
+      return new NextResponse(
         JSON.stringify({ error: 'contractId is required' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     if (!process.env.OPENAI_API_KEY) {
-      return new Response(
+      return new NextResponse(
         JSON.stringify({ error: 'OpenAI API key not configured' }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
@@ -50,21 +50,21 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         tenantId: true } });
 
     if (!contract) {
-      return new Response(
+      return new NextResponse(
         JSON.stringify({ error: 'Contract not found' }),
         { status: 404, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    if (contract.tenantId !== tenantId) {
-      return new Response(
+    if (contract.tenantId !== ctx.tenantId) {
+      return new NextResponse(
         JSON.stringify({ error: 'Access denied' }),
         { status: 403, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     if (!contract.rawText) {
-      return new Response(
+      return new NextResponse(
         JSON.stringify({ error: 'Contract has no text content to analyze' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
@@ -181,14 +181,14 @@ Output your analysis in the following markdown format:
         }
       } });
 
-    return new Response(readableStream, {
+    return new NextResponse(readableStream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
         'X-Accel-Buffering': 'no' } });
   } catch (error) {
-    return new Response(
+    return new NextResponse(
       JSON.stringify({
         error: error instanceof Error ? error.message : 'Analysis failed' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

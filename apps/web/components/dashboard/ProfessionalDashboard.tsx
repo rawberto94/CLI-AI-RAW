@@ -52,15 +52,15 @@ import {
 } from '@/hooks/use-queries';
 
 // New Dashboard Widgets
-import { RecentActivityWidget } from './RecentActivityWidget';
-import { FavoriteContractsWidget } from './FavoriteContractsWidget';
-import { UpcomingRenewalsWidget } from './UpcomingRenewalsWidget';
-import { AIInsightsSummaryWidget } from './AIInsightsSummaryWidget';
-import { ContractNotificationsWidget } from './ContractNotificationsWidget';
+import { RecentActivityWidget, type ActivityItem } from './RecentActivityWidget';
+import { FavoriteContractsWidget, type FavoriteContract } from './FavoriteContractsWidget';
+import { UpcomingRenewalsWidget, type RenewalContract } from './UpcomingRenewalsWidget';
+import { AIInsightsSummaryWidget, type AIInsight, type AIMetrics } from './AIInsightsSummaryWidget';
+import { ContractNotificationsWidget, type ContractNotification } from './ContractNotificationsWidget';
 import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
-import { SavingsTrackerWidget } from './SavingsTrackerWidget';
-import { TeamActivityWidget } from './TeamActivityWidget';
-import { IntegrationStatusWidget } from './IntegrationStatusWidget';
+import { SavingsTrackerWidget, type SavingsData } from './SavingsTrackerWidget';
+import { TeamActivityWidget, type TeamActivity, type TeamMember } from './TeamActivityWidget';
+import { IntegrationStatusWidget, type Integration } from './IntegrationStatusWidget';
 import {
   LineChart,
   Line,
@@ -755,19 +755,19 @@ export function ProfessionalDashboard() {
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('30d');
   
   // Widget data (fetched from API)
-  const [favoriteContracts, setFavoriteContracts] = useState<Record<string, unknown>[]>([]);
-  const [recentActivity, setRecentActivity] = useState<Record<string, unknown>[]>([]);
+  const [favoriteContracts, setFavoriteContracts] = useState<FavoriteContract[]>([]);
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   // Fetch renewals from API
-  const [upcomingRenewals, setUpcomingRenewals] = useState<Record<string, unknown>[]>([]);
-  const [aiInsights, setAiInsights] = useState<Record<string, unknown>[]>([]);
-  const [aiMetrics, setAiMetrics] = useState<Record<string, unknown> | null>(null);
-  const [notifications, setNotifications] = useState<Record<string, unknown>[]>([]);
+  const [upcomingRenewals, setUpcomingRenewals] = useState<RenewalContract[]>([]);
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
+  const [aiMetrics, setAiMetrics] = useState<AIMetrics | undefined>(undefined);
+  const [notifications, setNotifications] = useState<ContractNotification[]>([]);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   
   // New widget data
-  const [savingsData, setSavingsData] = useState<Record<string, unknown> | null>(null);
-  const [teamData, setTeamData] = useState<{ activities: Record<string, unknown>[]; members: Record<string, unknown>[] }>({ activities: [], members: [] });
-  const [integrations, setIntegrations] = useState<Record<string, unknown>[]>([]);
+  const [savingsData, setSavingsData] = useState<SavingsData | null>(null);
+  const [teamData, setTeamData] = useState<{ activities: TeamActivity[]; members: TeamMember[] }>({ activities: [], members: [] });
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
 
   // Fetch all widget data from APIs
   useEffect(() => {
@@ -1365,12 +1365,14 @@ export function ProfessionalDashboard() {
 
       {/* Savings, Team & Integrations Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <SavingsTrackerWidget
-          data={savingsData}
-          period="quarter"
-          onViewDetails={() => router.push('/analytics/savings')}
-          onOpportunityClick={(opp) => opp.contractId && router.push(`/contracts/${opp.contractId}`)}
-        />
+        {savingsData && (
+          <SavingsTrackerWidget
+            data={savingsData}
+            period="quarter"
+            onViewDetails={() => router.push('/analytics/savings')}
+            onOpportunityClick={(opp) => opp.contractId && router.push(`/contracts/${opp.contractId}`)}
+          />
+        )}
         <TeamActivityWidget
           activities={teamData.activities}
           teamMembers={teamData.members}

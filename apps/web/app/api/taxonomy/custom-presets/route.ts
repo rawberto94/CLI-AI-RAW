@@ -11,7 +11,7 @@
  * - Shared between tenants (if marked as shared)
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
@@ -209,7 +209,7 @@ async function savePreset(
   ctx: AuthenticatedApiContext,
   tenantId: string,
   body: unknown
-): Promise<Response> {
+): Promise<NextResponse> {
   // Validate input
   const validation = SavePresetSchema.safeParse(body);
   if (!validation.success) {
@@ -287,7 +287,7 @@ async function applyPreset(
   ctx: AuthenticatedApiContext,
   tenantId: string,
   body: unknown
-): Promise<Response> {
+): Promise<NextResponse> {
   // Validate input
   const validation = ApplyPresetSchema.safeParse(body);
   if (!validation.success) {

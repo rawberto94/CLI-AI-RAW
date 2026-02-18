@@ -286,7 +286,7 @@ function sampleContent(text: string, maxTokens: number, model: string): string {
   const tokensPerSample = Math.floor((maxTokens - 50) / samples.length);
   
   const truncatedSamples = samples.map(p => 
-    truncateFromTail(p, tokensPerSample, model).content.replace('... [truncated]', '')
+    truncateFromTail(p, tokensPerSample, model).replace('... [truncated]', '')
   );
   
   return truncatedSamples.join('\n\n[...]\n\n') + '\n\n[content sampled]';

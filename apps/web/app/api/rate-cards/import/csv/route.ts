@@ -58,7 +58,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
       try {
         // Required field validation
-        const errors = [];
+        const errors: string[] = [];
         
         if (!row.roleStandardized) errors.push('roleStandardized is required');
         if (!row.seniority) errors.push('seniority is required');

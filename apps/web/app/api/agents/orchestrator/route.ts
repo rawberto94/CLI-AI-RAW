@@ -5,7 +5,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getAutonomousOrchestrator, AgentGoalStatus } from '@repo/agents';
+import { getAutonomousOrchestrator, AgentGoalStatus, type AgentGoalPriority, type TriggerType, type TriggerCondition, type GoalTemplate } from '@repo/agents';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { z } from 'zod';
 import { broadcastSSE } from '@/app/api/agents/sse/route';
@@ -40,6 +40,7 @@ if (!_escalationListenerAttached) {
     sendHITLApprovalNotification({
       goalId: payload.goalId,
       goalTitle: payload.message,
+      goalType: 'autonomous',
       requiredApprovals: payload.additionalRoles,
       riskLevel: payload.urgency === 'critical' ? 'critical' : 'high',
       tenantId: '*', // escalation targets all tenant admins
@@ -159,7 +160,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         }
         
         const goal = await orchestrator.createGoal(tenantId, type, description, {
-          priority,
+          priority: priority as AgentGoalPriority | undefined,
           metadata,
           trigger: {
             type: 'user_request',
@@ -196,10 +197,10 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         const trigger = orchestrator.registerTrigger({
           tenantId,
           name,
-          type: triggerType,
+          type: triggerType as TriggerType,
           enabled,
-          condition,
-          goalTemplate
+          condition: condition as unknown as TriggerCondition,
+          goalTemplate: goalTemplate as unknown as GoalTemplate
         });
         
         return createSuccessResponse(ctx, {

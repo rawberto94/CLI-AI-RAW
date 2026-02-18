@@ -1,4 +1,4 @@
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Push notification sending service.
@@ -110,10 +110,9 @@ export async function createNotificationWithPush(
       title: notification.title,
       message: notification.message,
       type: notification.type as any,
-      priority: (notification.priority || 'NORMAL') as any,
       actionUrl: notification.actionUrl,
       metadata: notification.metadata || {},
-    },
+    } as any,
   });
 
   // Send push notification

@@ -6,7 +6,7 @@
  * to intelligently categorize contracts into the tenant's taxonomy.
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { categorizeContract } from "@/lib/categorization-service";
 import { prisma } from "@/lib/prisma";
 import { contractService } from 'data-orchestration/services';
@@ -86,7 +86,7 @@ export async function POST(
         message: `Contract categorized as "${result.category}" with ${result.confidence}% confidence`,
       });
     } else {
-      return createErrorResponse(ctx, 'BAD_REQUEST', result.error, 400);
+      return createErrorResponse(ctx, 'BAD_REQUEST', result.error ?? 'Categorization failed', 400);
     }
   } catch (error: unknown) {
     return handleApiError(ctx, error);

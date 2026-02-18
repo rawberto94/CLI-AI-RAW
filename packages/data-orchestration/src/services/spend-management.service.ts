@@ -29,7 +29,7 @@ export class SpendManagementService {
     if (filters.status) { conditions.push(Prisma.sql`status = ${filters.status}`); }
     if (filters.contractId) { conditions.push(Prisma.sql`contract_id = ${filters.contractId}`); }
 
-    const where = Prisma.join(conditions, Prisma.sql` AND `);
+    const where = Prisma.join(conditions, ' AND ');
     const items = await prisma.$queryRaw`
       SELECT * FROM purchase_orders WHERE ${where} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}
     `;
@@ -58,7 +58,7 @@ export class SpendManagementService {
     if (filters.matchStatus) { conditions.push(Prisma.sql`match_status = ${filters.matchStatus}`); }
     if (filters.contractId) { conditions.push(Prisma.sql`contract_id = ${filters.contractId}`); }
 
-    const where = Prisma.join(conditions, Prisma.sql` AND `);
+    const where = Prisma.join(conditions, ' AND ');
     return prisma.$queryRaw`
       SELECT * FROM invoices WHERE ${where} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}
     `;
@@ -122,9 +122,9 @@ export class SpendManagementService {
     // Check against rate card entries for the contract
     const rateCards = await prisma.rateCardEntry.findMany({
       where: { tenantId, contractId },
-    });
+    }) as any[];
 
-    const match = rateCards.find(rc =>
+    const match = rateCards.find((rc: any) =>
       rc.roleTitle?.toLowerCase() === roleOrCategory.toLowerCase() ||
       rc.category?.toLowerCase() === roleOrCategory.toLowerCase()
     );

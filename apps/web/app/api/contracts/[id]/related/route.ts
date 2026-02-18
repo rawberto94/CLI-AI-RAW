@@ -3,6 +3,7 @@
  * GET /api/contracts/[id]/related - Get related contracts based on various criteria
  */
 
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from '@/lib/tenant-server';
@@ -11,7 +12,7 @@ import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, creat
 export const runtime = 'nodejs';
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(request);
@@ -146,7 +147,7 @@ export async function GET(
     // 3. Get same-client contracts (if we have a client)
     const effectiveClientName = clientName || currentContract.clientName;
     if (effectiveClientName && relatedContracts.length < limit) {
-      const clientWhereConditions = [];
+      const clientWhereConditions: Array<{ clientId?: string; clientName?: { contains: string; mode: "insensitive" } }> = [];
       if (currentContract.clientId) {
         clientWhereConditions.push({ clientId: currentContract.clientId });
       }

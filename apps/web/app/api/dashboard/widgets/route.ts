@@ -35,7 +35,7 @@ async function getApprovalsStats(tenantId: string) {
     where: {
       tenantId,
       isDeleted: false,
-      status: { in: ['PENDING_REVIEW', 'PENDING_APPROVAL'] },
+      status: 'PENDING',
     },
     select: {
       id: true,
@@ -76,14 +76,14 @@ async function getRenewalsStats(tenantId: string) {
       tenantId,
       isDeleted: false,
       expirationDate: { gte: now, lte: ninetyDaysOut },
-      status: { notIn: ['EXPIRED', 'TERMINATED'] },
+      status: { notIn: ['EXPIRED', 'CANCELLED'] },
     },
     select: {
       id: true,
       contractTitle: true,
       expirationDate: true,
       totalValue: true,
-      autoRenewal: true,
+      autoRenewalEnabled: true,
       status: true,
     },
     orderBy: { expirationDate: 'asc' },
@@ -95,36 +95,39 @@ async function getRenewalsStats(tenantId: string) {
     total: expiringContracts.length,
     urgentCount: expiringContracts.filter(c => c.expirationDate && c.expirationDate < new Date(Date.now() + 7 * 86400000)).length,
     expiringThisMonth: expiringContracts.filter(c => c.expirationDate && c.expirationDate <= thisMonthEnd).length,
-    autoRenewalCount: expiringContracts.filter(c => c.autoRenewal).length,
+    autoRenewalCount: expiringContracts.filter(c => c.autoRenewalEnabled).length,
     totalValue: expiringContracts.reduce((sum, c) => sum + (c.totalValue ? Number(c.totalValue) : 0), 0),
     recentItems: expiringContracts.slice(0, 5).map(c => ({
       id: c.id,
       contractName: c.contractTitle || 'Untitled Contract',
       daysUntil: c.expirationDate ? Math.ceil((c.expirationDate.getTime() - now.getTime()) / 86400000) : null,
       value: c.totalValue ? Number(c.totalValue) : null,
-      autoRenewal: c.autoRenewal ?? false,
+      autoRenewal: c.autoRenewalEnabled ?? false,
       status: c.expirationDate && c.expirationDate < new Date(Date.now() + 7 * 86400000) ? 'urgent' : 'pending-review',
     })),
   };
 }
 
 async function getIntelligenceStats(tenantId: string) {
-  const contracts = await prisma.contract.findMany({
-    where: { tenantId, isDeleted: false },
-    select: { riskScore: true },
-  });
+  const [totalContracts, metadata] = await Promise.all([
+    prisma.contract.count({ where: { tenantId, isDeleted: false } }),
+    prisma.contractMetadata.findMany({
+      where: { tenantId },
+      select: { riskScore: true },
+    }),
+  ]);
 
-  const withScore = contracts.filter(c => c.riskScore !== null && c.riskScore !== undefined);
+  const withScore = metadata.filter(m => m.riskScore !== null && m.riskScore !== undefined);
   const avgScore = withScore.length > 0
-    ? Math.round(withScore.reduce((sum, c) => sum + Number(c.riskScore), 0) / withScore.length)
+    ? Math.round(withScore.reduce((sum, m) => sum + Number(m.riskScore), 0) / withScore.length)
     : null;
 
   return {
     avgScore,
-    healthy: withScore.filter(c => Number(c.riskScore) >= 70).length,
-    atRisk: withScore.filter(c => Number(c.riskScore) >= 40 && Number(c.riskScore) < 70).length,
-    critical: withScore.filter(c => Number(c.riskScore) < 40).length,
-    totalContracts: contracts.length,
+    healthy: withScore.filter(m => Number(m.riskScore) >= 70).length,
+    atRisk: withScore.filter(m => Number(m.riskScore) >= 40 && Number(m.riskScore) < 70).length,
+    critical: withScore.filter(m => Number(m.riskScore) < 40).length,
+    totalContracts,
     scoredContracts: withScore.length,
     recentInsights: [], // Populated from insights table when available
   };
@@ -133,7 +136,7 @@ async function getIntelligenceStats(tenantId: string) {
 async function getGovernanceStats(tenantId: string) {
   const [totalContracts, pendingReviewCount] = await Promise.all([
     prisma.contract.count({ where: { tenantId, isDeleted: false } }),
-    prisma.contract.count({ where: { tenantId, isDeleted: false, status: { in: ['PENDING_REVIEW', 'PENDING_APPROVAL'] } } }),
+    prisma.contract.count({ where: { tenantId, isDeleted: false, status: 'PENDING' } }),
   ]);
 
   return {

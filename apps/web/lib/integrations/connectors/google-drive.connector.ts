@@ -142,7 +142,7 @@ export class GoogleDriveConnector implements IContractSourceConnector, IOAuthCon
         name: file.name,
         path: `/${file.name}`,
         isFolder,
-        size: file.size ? parseInt(file.size.toString(), 10) : undefined,
+        size: file.size ? parseInt(file.size.toString(), 10) : 0,
         mimeType: file.mimeType,
         modifiedAt: file.modifiedTime ? new Date(file.modifiedTime) : undefined,
         createdAt: file.createdTime ? new Date(file.createdTime) : undefined,

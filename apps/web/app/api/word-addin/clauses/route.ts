@@ -9,7 +9,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
   try {
-    const ctx = await getAuthenticatedApiContext(req);
+    const ctx = getAuthenticatedApiContext(req);
     if (!ctx) {
       return NextResponse.json(
         { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
@@ -24,7 +24,6 @@ export async function GET(req: NextRequest) {
 
     const where: Record<string, unknown> = {
       tenantId: ctx.tenantId,
-      isActive: true,
     };
 
     if (category) {
@@ -37,30 +36,30 @@ export async function GET(req: NextRequest) {
 
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
+        { title: { contains: search, mode: 'insensitive' } },
         { content: { contains: search, mode: 'insensitive' } },
-        { tags: { hasSome: [search] } },
+        { plainText: { contains: search, mode: 'insensitive' } },
       ];
     }
 
-    const clauses = await prisma.clause.findMany({
+    const clauses = await prisma.clauseLibrary.findMany({
       where,
       orderBy: [
         { isStandard: 'desc' },
         { usageCount: 'desc' },
-        { name: 'asc' },
+        { title: 'asc' },
       ],
       select: {
         id: true,
         name: true,
+        title: true,
         category: true,
         content: true,
         riskLevel: true,
         isStandard: true,
-        guidance: true,
         tags: true,
         usageCount: true,
-        alternatives: true,
+        alternativeText: true,
       },
     });
 
@@ -68,12 +67,12 @@ export async function GET(req: NextRequest) {
     const transformed = clauses.map((c) => ({
       id: c.id,
       name: c.name,
+      title: c.title,
       category: c.category || 'General',
       content: c.content,
       riskLevel: c.riskLevel || 'LOW',
       isStandard: c.isStandard || false,
-      alternatives: Array.isArray(c.alternatives) ? c.alternatives : [],
-      guidance: c.guidance || '',
+      alternatives: c.alternativeText ? [c.alternativeText] : [],
       tags: Array.isArray(c.tags) ? c.tags : [],
       usageCount: c.usageCount || 0,
     }));
@@ -90,7 +89,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const ctx = await getAuthenticatedApiContext(req);
+    const ctx = getAuthenticatedApiContext(req);
     if (!ctx) {
       return NextResponse.json(
         { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
@@ -99,27 +98,33 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, category, content, riskLevel, isStandard, guidance, tags } = body;
+    const { name, title, category, content, riskLevel, isStandard, tags } = body;
 
-    if (!name || !content) {
+    if (!title || !content) {
       return NextResponse.json(
-        { error: { code: 'VALIDATION_ERROR', message: 'Clause name and content are required' } },
+        { error: { code: 'VALIDATION_ERROR', message: 'Clause title and content are required' } },
         { status: 400 }
       );
     }
 
-    const clause = await prisma.clause.create({
+    // Generate unique name from title if not provided
+    const clauseName = name || title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '')
+      .slice(0, 50);
+
+    const clause = await prisma.clauseLibrary.create({
       data: {
         tenantId: ctx.tenantId,
-        name,
+        name: `${clauseName}_${Date.now()}`,
+        title,
         category: category || 'General',
         content,
         riskLevel: riskLevel || 'LOW',
         isStandard: isStandard || false,
-        guidance: guidance || '',
         tags: tags || [],
         usageCount: 0,
-        isActive: true,
         createdBy: ctx.userId || 'word-addin',
       },
     });
@@ -129,11 +134,11 @@ export async function POST(req: NextRequest) {
       data: {
         id: clause.id,
         name: clause.name,
+        title: clause.title,
         category: clause.category,
         content: clause.content,
         riskLevel: clause.riskLevel,
         isStandard: clause.isStandard,
-        guidance: clause.guidance,
         tags: clause.tags,
         usageCount: clause.usageCount,
       },

@@ -52,21 +52,21 @@ export async function POST(req: NextRequest) {
     // Fetch selected clauses
     let clauses: Array<{ id: string; name: string; content: string }> = [];
     if (selectedClauses && selectedClauses.length > 0) {
-      clauses = await prisma.clause.findMany({
+      const rawClauses = await prisma.clause.findMany({
         where: {
           id: { in: selectedClauses },
-          tenantId: ctx.tenantId,
         },
         select: {
           id: true,
-          name: true,
-          content: true,
+          category: true,
+          text: true,
         },
       });
+      clauses = rawClauses.map(c => ({ id: c.id, name: c.category, content: c.text }));
     }
 
     // Generate contract content
-    const content = generateContractContent(template, variables, clauses, format);
+    const content = generateContractContent({ content: template.structure, name: template.name }, variables, clauses, format);
 
     // Create draft record
     const draft = await prisma.contractDraft.create({

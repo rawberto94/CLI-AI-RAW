@@ -8,6 +8,7 @@
  * - Consistent error handling
  */
 
+import { NextRequest } from 'next/server';
 import { unlink } from "fs/promises";
 import { prisma } from "@/lib/prisma";
 import { existsSync } from "fs";
@@ -133,7 +134,7 @@ export const runtime = "nodejs";
 
 // Get contract details and processing status
 export async function GET(
-  req: Request,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(req);
@@ -219,7 +220,17 @@ export async function GET(
     });
 
     // Fetch taxonomy category details if contract has a category assigned
-    let categoryInfo = null;
+    let categoryInfo: {
+      id: string;
+      name: string;
+      color: string;
+      icon: string;
+      level: number;
+      path: string;
+      parent: { id: string; name: string; color: string; icon: string } | null;
+      l1: string | null;
+      l2: string | null;
+    } | null = null;
     if (contract?.contractCategoryId) {
       const category = await prisma.taxonomyCategory.findUnique({
         where: { id: contract.contractCategoryId },
@@ -589,7 +600,7 @@ export async function GET(
       linkedAt: contract.linkedAt?.toISOString(),
       
       // Contract Type & AI Classification
-      contractType: contract.contractType || null,
+      // contractType already set above from DB
       contractSubtype: contract.contractSubtype || null,
       classificationConf: contract.classificationConf || null,
       classificationMeta: contract.classificationMeta || null,
@@ -674,7 +685,7 @@ function mapContractStatus(status: string): string {
 
 // Update contract metadata
 export async function PUT(
-  req: Request,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(req);
@@ -769,7 +780,7 @@ export async function PUT(
 
 // Delete contract with cascade safety
 export async function DELETE(
-  req: Request,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(req);
@@ -794,7 +805,7 @@ export async function DELETE(
     const result = await safeDeleteContract(contractId, tenantId);
 
     if (!result.success) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', result.error, 400);
+      return createErrorResponse(ctx, 'BAD_REQUEST', result.error || 'Delete failed', 400);
     }
 
     // Invalidate semantic cache for this contract (chatbot won't reference deleted contract)
@@ -827,10 +838,10 @@ export async function DELETE(
 }
 
 function generateProcessingInsights(contractData: ContractDataForInsights) {
-  const insights = [];
+  const insights: Array<{ type: string; title: string; description: string; icon: string; color: string }> = [];
 
   // Processing performance insight
-  if (contractData.processing.completedAt) {
+  if (contractData.processing.completedAt && contractData.processing.startTime) {
     const duration =
       new Date(contractData.processing.completedAt).getTime() -
       new Date(contractData.processing.startTime).getTime();

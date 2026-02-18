@@ -95,7 +95,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
         content.slice(snippetStart, snippetEnd) +
         (snippetEnd < content.length ? '…' : '');
 
-      const metadata = (msg.metadata && typeof msg.metadata === 'object') ? msg.metadata as Record<string, unknown> : {};
+      const sourcesData = (msg.sources && typeof msg.sources === 'object') ? msg.sources as Record<string, unknown> : {};
 
       return {
         message: {
@@ -105,10 +105,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
           content: content.length > 300 ? content.slice(0, 300) + '…' : content,
           timestamp: msg.createdAt.toISOString(),
           metadata: {
-            model: (metadata.model as string) || undefined,
-            tokens: (metadata.tokensUsed as number) || undefined,
-            contractId: (metadata.contractId as string) || undefined,
-            contractName: (metadata.contractName as string) || undefined,
+            model: msg.model || undefined,
+            tokens: msg.tokensUsed || undefined,
+            contractId: (sourcesData.contractId as string) || undefined,
+            contractName: (sourcesData.contractName as string) || undefined,
           },
         },
         conversationTitle: msg.conversation?.title || 'Untitled',

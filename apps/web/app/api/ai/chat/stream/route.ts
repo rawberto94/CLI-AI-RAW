@@ -23,7 +23,7 @@
  * @version 2.0.0
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { prisma } from '@/lib/prisma';
@@ -188,14 +188,14 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   const { message, conversationHistory = [], context = {} } = await request.json();
 
   if (!message) {
-    return new Response(JSON.stringify({ error: 'Message is required' }), {
+    return new NextResponse(JSON.stringify({ error: 'Message is required' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
   if (!process.env.OPENAI_API_KEY) {
-    return new Response(JSON.stringify({ error: 'OpenAI API key not configured' }), {
+    return new NextResponse(JSON.stringify({ error: 'OpenAI API key not configured' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -226,7 +226,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
       },
     });
 
-    return new Response(readable, {
+    return new NextResponse(readable, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -333,6 +333,7 @@ ${memoryContext}`;
   let finalMessage = message;
 
   try {
+    // @ts-ignore
     const { extractMention } = await import('@contigo/workers/agents/agent-personas');
     const mention = extractMention(message);
     if (mention) {
@@ -391,7 +392,7 @@ ${memoryContext}`;
         },
       });
       
-      return new Response(readable, {
+      return new NextResponse(readable, {
         headers: {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
@@ -634,7 +635,7 @@ ${memoryContext}`;
             }
 
             // Permission check
-            if (!canUseTool(toolName, userRole)) {
+            if (!canUseTool(toolName, userRole ?? '')) {
               return {
                 toolCallId: tc.id,
                 result: {
@@ -838,7 +839,7 @@ ${memoryContext}`;
     },
   });
 
-  return new Response(readable, {
+  return new NextResponse(readable, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',

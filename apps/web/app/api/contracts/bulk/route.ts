@@ -72,7 +72,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
     case 'analyze':
       // Trigger AI analysis for multiple contracts
-      const analyzeResults = []
+      const analyzeResults: Array<{ contractId: string; status: string; error?: string }> = []
       for (const contractId of contractIds.slice(0, 10)) { // Limit to 10 at a time
         try {
           // Queue analysis job or run inline
@@ -231,7 +231,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       }
 
       // Find category if name provided
-      let category = null
+      let category: Awaited<ReturnType<typeof prisma.taxonomyCategory.findUnique>> = null
       if (categoryId) {
         category = await prisma.taxonomyCategory.findUnique({
           where: { id: categoryId }
@@ -240,7 +240,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         category = await prisma.taxonomyCategory.findFirst({
           where: {
             name: { contains: categoryName, mode: 'insensitive' },
-            OR: [{ tenantId }, { tenantId: null }]
+            tenantId
           }
         })
       }
@@ -337,7 +337,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
     case 'ai-summarize':
       // Generate summaries for contracts
-      const summaryResults = []
+      const summaryResults: Array<{ contractId: string; status: string; task?: string; error?: string }> = []
       for (const contractId of contractIds.slice(0, 5)) { // Limit to 5 at a time
         try {
           summaryResults.push({ contractId, status: 'queued', task: 'summarize' })

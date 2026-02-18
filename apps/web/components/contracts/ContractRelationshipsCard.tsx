@@ -226,7 +226,7 @@ function ContractLinkCard({
           )}
           {(isChild ? childContract.relationshipType : relationshipType) && (
             <Badge variant="secondary" className="text-xs bg-violet-100 text-violet-700 border-violet-200">
-              {getRelationshipLabel(isChild ? childContract.relationshipType : relationshipType)}
+              {getRelationshipLabel((isChild ? childContract.relationshipType : relationshipType) ?? null)}
             </Badge>
           )}
           <Badge className={cn("text-xs", getStatusColor(contract.status))}>

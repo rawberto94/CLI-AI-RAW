@@ -315,7 +315,7 @@ export const EnhancedContractPreviewPanel = memo(function EnhancedContractPrevie
                   derivedValues?.isExpired ? "text-red-600" :
                   derivedValues?.isExpiringSoon ? "text-amber-600" : "text-slate-900"
                 )}>
-                  {derivedValues?.daysRemaining !== null
+                  {derivedValues?.daysRemaining != null
                     ? derivedValues.isExpired
                       ? `${Math.abs(derivedValues.daysRemaining)} days ago`
                       : `${derivedValues.daysRemaining} days`

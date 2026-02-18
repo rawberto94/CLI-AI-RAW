@@ -57,8 +57,8 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
     GROUP BY ud."departmentId"
   `.catch(() => []);
 
-  const contractCountMap = new Map(
-    (contractsByDepartment || []).map(c => [c.departmentId, Number(c.count)])
+  const contractCountMap = new Map<string, number>(
+    (contractsByDepartment || []).map(c => [c.departmentId, Number(c.count)] as [string, number])
   );
 
   // Merge standard and custom departments
@@ -226,7 +226,7 @@ export async function getContractsByDepartmentAccess(
   userId: string,
   tenantId: string
 ): Promise<{ departmentIds: string[]; contractFilter: any }> {
-  const ctx = getApiContext(userId);
+  const ctx = getApiContext(userId as any);
   // Get user's departments
   const userDepartments = await prisma.userDepartment.findMany({
     where: { userId },

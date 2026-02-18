@@ -71,7 +71,7 @@ export function ModernArtifactViewer({ artifacts, contractId, initialTab = 'over
   }
 
   const getAvailableArtifacts = () => {
-    const available = []
+    const available: { key: string; label: string; icon: React.ForwardRefExoticComponent<Omit<import('lucide-react').LucideProps, 'ref'> & React.RefAttributes<SVGSVGElement>>; color: string }[] = []
     if (artifacts.overview) available.push({ key: 'overview', label: 'Overview', icon: FileText, color: 'blue' })
     if (artifacts.clauses) available.push({ key: 'clauses', label: 'Clauses', icon: Scale, color: 'purple' })
     if (artifacts.financial) available.push({ key: 'financial', label: 'Financial', icon: DollarSign, color: 'green' })

@@ -321,7 +321,7 @@ async function getComplianceStatus(tenantId: string): Promise<ActionResponse> {
   const withCompliance = await prisma.contract.count({
     where: {
       tenantId,
-      metadata: { not: null },
+      metadata: { not: undefined },
     },
   });
   

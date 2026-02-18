@@ -222,7 +222,7 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard({
 
   const handleRefresh = () => fetchAnalytics();
 
-  const totalContracts = statusDistribution.reduce((sum, s) => sum + s.count, 0);
+  const computedTotalContracts = statusDistribution.reduce((sum, s) => sum + s.count, 0);
   const maxBar = Math.max(...timeSeriesData.map(d => d.contracts));
 
   return (
@@ -342,14 +342,14 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard({
                   <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div
                       className={cn('h-full rounded-full transition-all', status.color)}
-                      style={{ width: `${(status.count / totalContracts) * 100}%` }}
+                      style={{ width: `${(status.count / computedTotalContracts) * 100}%` }}
                     />
                   </div>
                 </div>
               ))}
             </div>
             <div className="mt-4 pt-4 border-t flex items-center justify-between">
-              <span className="text-sm text-slate-500">Total: {totalContracts} contracts</span>
+              <span className="text-sm text-slate-500">Total: {computedTotalContracts} contracts</span>
               <Button variant="link" size="sm" className="p-0 h-auto">
                 View all <ArrowRight className="h-3 w-3 ml-1" />
               </Button>

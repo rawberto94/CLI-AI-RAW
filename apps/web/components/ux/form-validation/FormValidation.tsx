@@ -212,7 +212,7 @@ export const FieldWrapper = memo(function FieldWrapper({
         <p className="text-xs text-gray-500 dark:text-gray-400">{hint}</p>
       )}
       {children}
-      <InlineFeedback feedback={feedback} />
+      <InlineFeedback feedback={feedback ?? null} />
     </div>
   );
 });

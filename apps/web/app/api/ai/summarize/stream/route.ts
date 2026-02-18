@@ -6,7 +6,7 @@
  * Provides real-time streaming summaries for immediate user feedback.
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { prisma } from '@/lib/prisma';
 import { aiContractSummarizationService } from 'data-orchestration/services';
@@ -55,14 +55,14 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     const { contractId, contractText, level = 'executive' } = body;
 
     if (!contractId && !contractText) {
-      return new Response(
+      return new NextResponse(
         JSON.stringify({ error: 'Either contractId or contractText is required' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     if (!process.env.OPENAI_API_KEY) {
-      return new Response(
+      return new NextResponse(
         JSON.stringify({ error: 'OpenAI API key not configured' }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
@@ -78,14 +78,14 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         select: { rawText: true, fileName: true, tenantId: true } });
       
       if (!contract) {
-        return new Response(
+        return new NextResponse(
           JSON.stringify({ error: 'Contract not found' }),
           { status: 404, headers: { 'Content-Type': 'application/json' } }
         );
       }
 
-      if (contract.tenantId !== tenantId) {
-        return new Response(
+      if (contract.tenantId !== ctx.tenantId) {
+        return new NextResponse(
           JSON.stringify({ error: 'Access denied' }),
           { status: 403, headers: { 'Content-Type': 'application/json' } }
         );
@@ -96,7 +96,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     }
 
     if (!text) {
-      return new Response(
+      return new NextResponse(
         JSON.stringify({ error: 'Contract text not found' }),
         { status: 404, headers: { 'Content-Type': 'application/json' } }
       );
@@ -184,14 +184,14 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         }
       } });
 
-    return new Response(readableStream, {
+    return new NextResponse(readableStream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
         'X-Accel-Buffering': 'no' } });
   } catch (error) {
-    return new Response(
+    return new NextResponse(
       JSON.stringify({
         error: error instanceof Error ? error.message : 'Summarization failed' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

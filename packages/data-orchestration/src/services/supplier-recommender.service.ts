@@ -319,7 +319,7 @@ export class SupplierRecommenderService {
       conditions.push(Prisma.sql`e.line_of_service = ${lineOfService}`);
     }
 
-    const where = Prisma.join(conditions, Prisma.sql` AND `);
+    const where = Prisma.join(conditions, ' AND ');
 
     const suppliers = await prisma.$queryRaw<Array<{ id: string; name: string }>>`
       SELECT DISTINCT s.id, s.name

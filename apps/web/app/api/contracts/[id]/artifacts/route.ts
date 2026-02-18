@@ -37,7 +37,7 @@ export async function GET(
     );
 
     if (!result.success) {
-      return createErrorResponse(ctx, 'INTERNAL_ERROR', result.error?.message, 500);
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', result.error?.message ?? 'Unknown error', 500);
     }
 
     const responseTime = Date.now() - startTime;
@@ -51,7 +51,7 @@ export async function GET(
 
     // Transform artifacts for UI compatibility
     const artifactsData = result.data ?? [];
-    const transformedArtifacts = artifactsData.map((artifact: ArtifactData) => {
+    const transformedArtifacts = (artifactsData as ArtifactData[]).map((artifact: ArtifactData) => {
         const artifactData = (artifact.data as Record<string, unknown>) || {};
         return {
           id: artifact.id,

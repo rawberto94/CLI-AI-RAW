@@ -8,7 +8,7 @@
  * - Re-extraction of low-confidence fields
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import cors from '@/lib/security/cors';
 import type { Prisma } from '@prisma/client';
 import { 

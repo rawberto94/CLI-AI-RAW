@@ -96,6 +96,13 @@ function mapApiComment(c: any): Comment {
   };
 }
 
+const currentUser: User = {
+  id: 'user-1',
+  name: 'Current User',
+  email: 'user@company.com',
+  role: 'Analyst',
+};
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _legacyDemoData = [
   {

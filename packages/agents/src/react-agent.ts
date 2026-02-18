@@ -300,7 +300,7 @@ const BUILT_IN_TOOLS: ReActTool[] = [
       }
 
       // Try to identify the main contract value
-      let mainValue = null;
+      let mainValue: { value: string; context: string } | null = null;
       for (const amount of amounts) {
         if (/total|contract value|aggregate|not to exceed|maximum/i.test(amount.context)) {
           mainValue = amount;

@@ -28,6 +28,9 @@ export async function POST(
   }
   try {
     const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
+    }
 
     const tenantId = session.user.tenantId;
     if (!tenantId) {
@@ -114,7 +117,7 @@ export async function POST(
     });
 
     if (!result.success) {
-      return createErrorResponse(ctx, 'INTERNAL_ERROR', result.error, 500);
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', result.error ?? 'Sync failed', 500);
     }
 
     // Update template with sync info
@@ -160,6 +163,9 @@ export async function GET(
   }
   try {
     const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
+    }
 
     const tenantId = session.user.tenantId;
     if (!tenantId) {

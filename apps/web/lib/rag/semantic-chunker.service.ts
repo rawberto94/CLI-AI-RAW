@@ -50,7 +50,7 @@ const openai = new OpenAI({
  */
 export async function semanticChunk(
   text: string,
-  options: ChunkingOptions = {}
+  options: CoreChunkingOptions = {}
 ): Promise<SemanticChunk[]> {
   const {
     maxChunkSize = 1500,
@@ -58,7 +58,7 @@ export async function semanticChunk(
     overlap = 100,
     preserveStructure = true,
     extractMetadata = true,
-  } = options;
+  } = options as any;
 
   // Step 1: Identify document structure
   const sections = identifySections(text);
@@ -384,7 +384,7 @@ export function recursiveChunk(
   const separator = separators[0];
   if (!separator) {
     // Last resort: split by characters
-    const chunks = [];
+    const chunks: string[] = [];
     for (let i = 0; i < text.length; i += maxSize) {
       chunks.push(text.slice(i, i + maxSize));
     }

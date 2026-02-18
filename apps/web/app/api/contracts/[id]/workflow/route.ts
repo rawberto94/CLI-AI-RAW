@@ -66,7 +66,7 @@ export async function GET(
     });
 
     // If no workflow execution, return null workflow
-    let workflowData = null;
+    let workflowData: any = null;
     if (execution?.workflow) {
       workflowData = {
         id: execution.workflow.id,

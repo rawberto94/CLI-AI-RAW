@@ -43,7 +43,12 @@ export async function POST(
       return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
-    const contract = contractResult.data;
+    // The data-orchestration Contract type is missing some Prisma fields (metadata, extended statuses).
+    // Cast to include them since the actual DB row has these fields.
+    const contract = contractResult.data as typeof contractResult.data & {
+      metadata?: Record<string, unknown>;
+      status: string;
+    };
 
     // Prepare update data
     const updateData: any = {};
@@ -72,7 +77,8 @@ export async function POST(
         markedAsExistingAt: new Date().toISOString(),
       };
       // If status is DRAFT, change to ACTIVE (existing contracts should be active)
-      if (contract.status === 'DRAFT') {
+      // The Prisma ContractStatus enum includes DRAFT, but the Zod schema is narrower
+      if ((contract.status as string) === 'DRAFT') {
         updateData.status = 'ACTIVE';
       }
     }
@@ -87,18 +93,28 @@ export async function POST(
 
     // Update contract via service layer
     const updateResult = await contractService.updateContract(contractId, tenantId!, updateData);
-    const updatedContract = updateResult.data;
+
+    if (!updateResult.success || !updateResult.data) {
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update contract', 500);
+    }
+
+    const updatedContract = updateResult.data as typeof updateResult.data & {
+      metadata?: Record<string, unknown>;
+      status: string;
+    };
 
     // Determine new lifecycle and workflow requirement
     const lifecycle = getContractLifecycle(updatedContract);
     const needsApproval = requiresApprovalWorkflow(updatedContract);
 
     // Queue RAG re-indexing when lifecycle/status changes
-    await queueRAGReindex({
-      contractId,
-      tenantId: tenantId || undefined,
-      reason: 'lifecycle/status updated',
-    });
+    if (tenantId) {
+      await queueRAGReindex({
+        contractId,
+        tenantId,
+        reason: 'lifecycle/status updated',
+      });
+    }
 
     return createSuccessResponse(ctx, {
       success: true,

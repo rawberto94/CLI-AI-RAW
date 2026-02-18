@@ -24,10 +24,6 @@ export async function GET(
     const clause = await prisma.clause.findFirst({
       where: {
         id,
-        tenantId: ctx.tenantId,
-      },
-      select: {
-        alternatives: true,
       },
     });
 
@@ -39,8 +35,9 @@ export async function GET(
     }
 
     // Parse alternatives if stored as JSON
-    const alternatives = Array.isArray(clause.alternatives)
-      ? clause.alternatives
+    const clauseData = clause as Record<string, unknown>;
+    const alternatives = Array.isArray(clauseData.alternatives)
+      ? clauseData.alternatives
       : [];
 
     return NextResponse.json({ success: true, data: alternatives });

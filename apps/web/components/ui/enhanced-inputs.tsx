@@ -283,7 +283,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           onSearch(localValue as string);
         }, debounce);
 
-        return () => clearTimeout(timeoutRef.current);
+        return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
       }
     }, [localValue, debounce, onSearch]);
 

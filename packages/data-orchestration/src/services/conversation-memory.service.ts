@@ -140,7 +140,7 @@ class ConversationMemoryService {
           conversationId: dbConv.id,
           userId: dbConv.userId,
           tenantId: dbConv.tenantId,
-          messages: dbConv.messages as ConversationMessage[],
+          messages: dbConv.messages as unknown as ConversationMessage[],
           state: dbConv.state as ConversationContext['state'],
           createdAt: dbConv.createdAt,
           updatedAt: dbConv.updatedAt,

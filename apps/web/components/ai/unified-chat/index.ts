@@ -10,12 +10,13 @@
  */
 
 // Main chatbot
-export { UnifiedChatbot, default } from './UnifiedChatbot';
-export type { 
-  ChatMessage, 
-  Conversation, 
-  ChatSettings,
-} from './UnifiedChatbot';
+// TODO: Module './UnifiedChatbot' does not exist
+// export { UnifiedChatbot, default } from './UnifiedChatbot';
+// export type { 
+//   ChatMessage, 
+//   Conversation, 
+//   ChatSettings,
+// } from './UnifiedChatbot';
 
 // Streaming handler
 export { useStreamingHandler } from './useStreamingHandler';

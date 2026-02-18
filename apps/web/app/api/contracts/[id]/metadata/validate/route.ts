@@ -5,7 +5,7 @@
  * Returns confidence scores and suggestions for each field.
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import cors from '@/lib/security/cors';
 import OpenAI from 'openai';
 import { getApiTenantId } from '@/lib/tenant-server';

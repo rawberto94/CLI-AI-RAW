@@ -30,8 +30,8 @@ const BulkApprovalSchema = z.object({
 // GET - Fetch approval queue items
 // =============================================================================
 
-export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  const { searchParams } = new URL(req.url);
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { searchParams } = new URL(request.url);
   const status = searchParams.get('status') || 'pending';
   const category = searchParams.get('category');
   const priority = searchParams.get('priority');
@@ -201,9 +201,9 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
 // POST - Take action on an approval item
 // =============================================================================
 
-export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  const body = await req.json();
-  const { searchParams } = new URL(req.url);
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { searchParams } = new URL(request.url);
   const itemId = searchParams.get('itemId');
 
   // Handle bulk actions

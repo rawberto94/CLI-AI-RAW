@@ -237,7 +237,7 @@ async function createAndEnqueueGoal(
         backoff: { type: 'exponential', delay: 30000 },
         removeOnComplete: { count: 100 },
         removeOnFail: { count: 50 },
-      }
+      } as any
     );
 
     logger.info({ tenantId, goalType: trigger.goalType, goalId: goal.id }, 'Autonomous goal created and enqueued');
@@ -373,7 +373,7 @@ export async function registerAutonomousTriggers(): Promise<void> {
           jobId: `autonomous-${trigger.goalType}`,
           removeOnComplete: { count: 50 },
           removeOnFail: { count: 20 },
-        }
+        } as any
       );
 
       logger.info({ trigger: trigger.name, cron: trigger.cronExpression }, '⏰ Registered repeatable job');

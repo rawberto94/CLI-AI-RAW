@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { useArtifactStream } from '@/hooks/useArtifactStream';
+import { useArtifactStream, type ArtifactUpdate } from '@/hooks/useArtifactStream';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -105,9 +105,9 @@ export function RealtimeArtifactViewer({
   onContractNotFound
 }: RealtimeArtifactViewerProps) {
   const {
-    artifacts,
+    artifacts: streamArtifacts,
     isConnected,
-    isComplete,
+    isComplete: streamIsComplete,
     contractStatus,
     processingStage,
     error,
@@ -135,6 +135,13 @@ export function RealtimeArtifactViewer({
       onContractNotFound();
     }
   }, [contractNotFound, onContractNotFound]);
+
+  const [polledArtifacts, setArtifacts] = useState<ArtifactUpdate[]>([]);
+  const [polledIsComplete, setIsComplete] = useState(false);
+
+  // Merge: prefer polled data when available (SSE failed), otherwise use stream data
+  const artifacts = polledArtifacts.length > 0 ? polledArtifacts : streamArtifacts;
+  const isComplete = polledIsComplete || streamIsComplete;
 
   const [animatingArtifacts, setAnimatingArtifacts] = useState<Set<string>>(new Set());
   const [retryingArtifacts, setRetryingArtifacts] = useState<Set<string>>(new Set());

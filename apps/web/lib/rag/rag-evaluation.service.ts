@@ -68,7 +68,7 @@ export async function evaluateRAGResponse(params: {
     .join('\n\n');
 
   const { object: evalResult } = await generateObject({
-    model: openai('gpt-4o-mini'),
+    model: openai('gpt-4o-mini') as any,
     schema: EvalResultSchema,
     system: `You are a RAG system quality evaluator. Assess retrieval and answer quality objectively.
 
@@ -179,7 +179,7 @@ export async function runBatchEvaluation(params: {
       const chunks = searchResults.map((r) => ({
         content: r.text || '',
         score: r.score,
-        metadata: r.metadata,
+        metadata: r.metadata as unknown as Record<string, unknown>,
       }));
 
       if (chunks.length === 0) {
@@ -274,7 +274,7 @@ export async function runBatchEvaluation(params: {
   // Store evaluation results
   try {
     await prisma.contractMetadata.upsert({
-      where: { contractId_tenantId: { contractId: 'system-rag-eval', tenantId } },
+      where: { contractId: 'system-rag-eval' },
       update: {
         systemFields: {
           lastEvaluation: summary,

@@ -384,12 +384,14 @@ function MobileSidebar({
   isOpen, 
   onClose, 
   pathname,
-  resetTutorial 
+  resetTutorial,
+  enhancedNavigationGroups 
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   pathname: string;
   resetTutorial: () => void;
+  enhancedNavigationGroups: NavGroup[];
 }) {
   // Close on escape key
   useEffect(() => {
@@ -805,6 +807,7 @@ export function Sidebar() {
         onClose={() => setMobileMenuOpen(false)}
         pathname={pathname}
         resetTutorial={resetTutorial}
+        enhancedNavigationGroups={enhancedNavigationGroups}
       />
     </aside>
   );

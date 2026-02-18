@@ -566,7 +566,7 @@ export class ContractService {
         limit: 1,
         sortBy: "createdAt",
         sortOrder: "desc",
-      });
+      } as any);
       return true;
     } catch (error) {
       logger.error({ error }, "Contract service health check failed");

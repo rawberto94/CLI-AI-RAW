@@ -99,7 +99,7 @@ const PartiesSection = memo(function PartiesSection({
           displayParties.map((party, idx) => {
             const isClient = ['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role || '')
             return (
-              <div key={party.id || party.legalName || `party-${idx}`} className="flex items-center gap-2">
+              <div key={(party as any).id || party.legalName || `party-${idx}`} className="flex items-center gap-2">
                 <div className={cn(
                   "w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0",
                   isClient ? "bg-violet-100" : "bg-violet-100"

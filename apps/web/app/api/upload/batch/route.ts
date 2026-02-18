@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server'
 import { API_BASE_URL } from "@/lib/config"
 import { getErrorMessage, isUploadedFile } from "@/lib/types/common"
 import { getServerSession } from '@/lib/auth'
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic"
 export const revalidate = 0
 export const maxDuration = 300
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const ctx = getAuthenticatedApiContext(req);
   if (!ctx) {
     return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400)
     }
 
-    const results = []
+    const results: Array<{ name: string; error?: string; docId?: string; status: string }> = []
     
     // Process files sequentially using the working single upload endpoint
     for (const item of items) {

@@ -517,7 +517,7 @@ export default function GoalDetailPage() {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="ml-9 mt-1 p-3 rounded-lg bg-muted/30 text-sm space-y-2">
-                      {step.input && (
+                      {!!step.input && (
                         <div>
                           <p className="text-muted-foreground text-xs">Input:</p>
                           <pre className="text-xs overflow-auto max-h-32 bg-muted p-2 rounded">
@@ -525,7 +525,7 @@ export default function GoalDetailPage() {
                           </pre>
                         </div>
                       )}
-                      {step.output && (
+                      {!!step.output && (
                         <div>
                           <p className="text-muted-foreground text-xs">Output:</p>
                           <pre className="text-xs overflow-auto max-h-32 bg-muted p-2 rounded">

@@ -47,7 +47,7 @@ export async function GET(
       const pollInterval = setInterval(async () => {
         try {
           const processingJob = await prisma.processingJob.findFirst({
-            where: { tenantId, contractId },
+            where: { tenantId: tenantId ?? undefined, contractId },
             orderBy: { createdAt: 'desc' },
             select: {
               status: true,
@@ -73,7 +73,7 @@ export async function GET(
 
           // Get artifacts count
           const artifactsCount = await prisma.artifact.count({
-            where: { contractId, tenantId, validationStatus: 'valid' },
+            where: { contractId, tenantId: tenantId ?? undefined, validationStatus: 'valid' },
           });
 
           const progress = {

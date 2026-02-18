@@ -191,7 +191,6 @@ export class ContinuousLearningAgent extends BaseAgent {
 
         patterns.push({
           field: group.fieldName,
-          contractType: group.contractType || contractType,
           commonMistake,
           correctPattern,
           occurrences: group._count.id,
@@ -312,9 +311,9 @@ export class ContinuousLearningAgent extends BaseAgent {
         const correct = correctMap.get(s.fieldName) || 0;
         return {
           field: s.fieldName,
-          accuracy: total > 0 ? correct / total : 0,
+          accuracy: total > 0 ? Number(correct) / Number(total) : 0,
           totalExtractions: total,
-          corrections: total - correct,
+          corrections: Number(total) - Number(correct),
         };
       });
     } catch (error) {

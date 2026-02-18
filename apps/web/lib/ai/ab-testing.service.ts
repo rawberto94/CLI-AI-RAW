@@ -345,7 +345,7 @@ export class AIModelABTestingService {
       const { Mistral } = await import('@mistralai/mistralai');
       const mistral = new Mistral({ apiKey: process.env.MISTRAL_API_KEY || '' });
 
-      const messages = [];
+      const messages: Array<{ role: 'system' | 'user'; content: string }> = [];
       if (systemPrompt || config.systemPrompt) {
         messages.push({ role: 'system' as const, content: systemPrompt || config.systemPrompt || '' });
       }

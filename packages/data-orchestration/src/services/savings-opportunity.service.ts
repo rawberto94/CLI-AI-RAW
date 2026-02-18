@@ -334,7 +334,7 @@ export class SavingsOpportunityService {
       savingsPercentage: parseFloat(opportunity.savingsPercentage.toString()),
       confidence: parseFloat(opportunity.confidence.toString()),
       benchmarkData: opportunity.rateCardEntry.benchmarkSnapshots[0] || null,
-    };
+    } as OpportunityDetails;
   }
 
   /**

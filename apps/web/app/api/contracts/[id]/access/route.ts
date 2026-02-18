@@ -239,7 +239,7 @@ export async function POST(
           usersToNotify.map((user) => {
             const template = emailTemplates.contractAccessGranted({
               recipientName: user.firstName || user.email,
-              contractTitle: (contract as any).title || (contract as any).contractTitle || 'Untitled Contract',
+              contractTitle: (contractResult.data as any).title || (contractResult.data as any).contractTitle || 'Untitled Contract',
               accessLevel,
               grantedBy: granterName,
               expiresAt: expiresAt ? new Date(expiresAt).toLocaleDateString() : undefined,

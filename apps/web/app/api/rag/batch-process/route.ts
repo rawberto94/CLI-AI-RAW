@@ -34,10 +34,10 @@ const BATCH_TTL_SECONDS = 86400; // 24 hours
 /** In-memory fallback when Redis is unavailable */
 const memoryBatchStatus = new Map<string, BatchStatusEntry>();
 
-let _redis: import('ioredis').default | null = null;
+let _redis: any = null;
 let _redisReady = false;
 
-async function getBatchRedis(): Promise<import('ioredis').default | null> {
+async function getBatchRedis(): Promise<any> {
   if (_redisReady) return _redis;
   if (_redis === null && process.env.REDIS_URL) {
     try {

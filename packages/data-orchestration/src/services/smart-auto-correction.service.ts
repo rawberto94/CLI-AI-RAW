@@ -214,7 +214,7 @@ export class SmartAutoCorrectionService {
               };
               
               corrections.push(correction);
-              currentValue = corrected.value;
+              currentValue = corrected.value as typeof currentValue;
               totalConfidenceAdjustment += rule.confidenceImpact;
               
               // Add to review suggestions if low confidence

@@ -7,7 +7,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext, getAuthenticatedApiContext, type AuthenticatedApiContext } from '@/lib/api-middleware';
 import { notificationService } from 'data-orchestration/services';
 
 // Validation schemas
@@ -97,7 +97,10 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
  * Update user's notification preferences
  */
 export async function PUT(req: NextRequest) {
-  const ctx = getApiContext(req);
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401);
+  }
   try {
     const body = await req.json();
     const validated = preferencesSchema.parse(body);

@@ -458,8 +458,8 @@ export const ContractKnowledgeGraph: React.FC = () => {
             label: n.label,
             data: n.metadata || {},
             connections: [],
-            size: n.weight > 3 ? 'large' : n.weight > 1 ? 'medium' : 'small',
-            status: n.metadata?.risk === 'CRITICAL' ? 'critical' : n.metadata?.risk === 'HIGH' ? 'warning' : 'active',
+            size: (n.weight as number) > 3 ? 'large' : (n.weight as number) > 1 ? 'medium' : 'small',
+            status: (n.metadata as any)?.risk === 'CRITICAL' ? 'critical' : (n.metadata as any)?.risk === 'HIGH' ? 'warning' : 'active',
           }));
           // Build connections from edges
           const apiEdges: GraphEdge[] = (json.data.edges || []).map((e: Record<string, unknown>, i: number) => ({
@@ -467,7 +467,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
             source: e.source,
             target: e.target,
             type: e.type === 'party_to' ? 'supplies' : e.type === 'has_risk' ? 'relates' : e.type === 'parent_of' ? 'depends' : 'relates',
-            strength: e.weight ? Math.min(e.weight / 3, 1) : 0.5,
+            strength: e.weight ? Math.min((e.weight as number) / 3, 1) : 0.5,
             label: e.label,
           }));
           // Populate connections

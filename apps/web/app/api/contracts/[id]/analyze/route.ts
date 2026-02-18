@@ -113,7 +113,7 @@ export async function POST(
 // GET - Get Available Templates
 // ============================================================================
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });

@@ -6,6 +6,7 @@
 import { DetectedIntent, ActionResponse, ChatContext } from '../types';
 import { prisma } from '@/lib/prisma';
 import { addActivityLogEntry } from '@/lib/activity-log';
+import type { TaxonomyCategory } from '@prisma/client';
 
 export async function handleTaxonomyActions(
   intent: DetectedIntent,
@@ -23,7 +24,7 @@ export async function handleTaxonomyActions(
         return await browseTaxonomy(tenantId, entities.category);
 
       case 'categorize_contract':
-        return await categorizeContract(entities.contractId || currentContractId, entities, tenantId, userId);
+        return await categorizeContract(entities.contractId || currentContractId, entities, tenantId, userId ?? '');
 
       case 'category_details':
         return await getCategoryDetails(entities.category, tenantId);
@@ -32,7 +33,7 @@ export async function handleTaxonomyActions(
         return await suggestCategory(entities.contractId || currentContractId, tenantId);
 
       case 'update_category':
-        return await updateCategory(entities.contractId || currentContractId, entities, tenantId, userId);
+        return await updateCategory(entities.contractId || currentContractId, entities, tenantId, userId ?? '');
 
       case 'category_stats':
         return await getCategoryStats(tenantId);
@@ -162,12 +163,12 @@ async function categorizeContract(
   }
 
   // Find category by name from entities
-  let category = null;
+  let category: TaxonomyCategory | null = null;
   if (entities.category) {
     category = await prisma.taxonomyCategory.findFirst({
       where: {
         name: { contains: entities.category, mode: 'insensitive' },
-        OR: [{ tenantId }, { tenantId: null }],
+        tenantId,
       },
     });
   }
@@ -176,7 +177,7 @@ async function categorizeContract(
     // Suggest categories
     const suggestions = await prisma.taxonomyCategory.findMany({
       where: {
-        OR: [{ tenantId }, { tenantId: null }],
+        tenantId,
         level: 2, // L2 categories
       },
       take: 10,
@@ -355,7 +356,7 @@ async function updateCategory(
 async function getCategoryStats(tenantId: string): Promise<ActionResponse> {
   const stats = await prisma.taxonomyCategory.findMany({
     where: {
-      OR: [{ tenantId }, { tenantId: null }],
+      tenantId,
       level: 1, // L1 categories
     },
     include: {

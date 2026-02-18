@@ -515,7 +515,7 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
 
   /**
    * Minimal cron expression matcher: "min hour dom month dow"
-   * Supports * (any), specific numbers, and */n (every n).
+   * Supports * (any), specific numbers, and star-slash-n (every n).
    */
   private cronExpressionMatches(cron: string, date: Date): boolean {
     const parts = cron.trim().split(/\s+/);

@@ -187,7 +187,7 @@ export async function predictRenewal(params: {
     where: { id: contractId, tenantId },
     select: {
       id: true,
-      title: true,
+      contractTitle: true,
       rawText: true,
       status: true,
       totalValue: true,
@@ -206,7 +206,7 @@ export async function predictRenewal(params: {
     where: {
       tenantId,
       supplierName: contract.supplierName,
-      status: { in: ['ACTIVE', 'EXPIRED', 'TERMINATED'] },
+      status: { in: ['ACTIVE', 'EXPIRED', 'CANCELLED'] },
     },
     select: { id: true, status: true, totalValue: true, endDate: true, startDate: true },
     orderBy: { createdAt: 'desc' },
@@ -224,7 +224,7 @@ export async function predictRenewal(params: {
     : '';
 
   const contractContext = `
-Contract: ${contract.title}
+Contract: ${contract.contractTitle}
 Type: ${contract.contractType || 'Unknown'}
 Supplier: ${contract.supplierName || 'Unknown'}
 Value: $${contract.totalValue || 'N/A'}
@@ -237,7 +237,7 @@ Contract text (first 20k chars):
 ${(contract.rawText || '').slice(0, 20_000)}`;
 
   const { object: prediction } = await generateObject({
-    model: openai('gpt-4o-mini'),
+    model: openai('gpt-4o-mini') as any,
     schema: RenewalPredictionSchema,
     system: `You are a contract intelligence analyst predicting renewal outcomes. Base predictions on:
 1. Contract terms (auto-renewal, notice periods, termination clauses)
@@ -287,7 +287,7 @@ Expiring Soon (next 90 days):
 ${data.expiringContracts.map((c: any) => `- ${c.title} ($${Number(c.totalValue).toFixed(0)}) expires ${c.endDate.toISOString().split('T')[0]}`).join('\n') || 'None'}`;
 
   const { object: forecast } = await generateObject({
-    model: openai('gpt-4o-mini'),
+    model: openai('gpt-4o-mini') as any,
     schema: CostForecastSchema,
     system: `You are a financial analyst specializing in contract portfolio cost forecasting. Generate realistic projections based on historical trends and upcoming renewals. Include confidence intervals and identify cost drivers.`,
     prompt: `Generate a ${forecastMonths}-month cost forecast for this contract portfolio:\n${dataContext}`,
@@ -334,7 +334,7 @@ ${data.expiringContracts.length} contracts expiring in next 90 days ($${
 } total value)`;
 
   const { object: health } = await generateObject({
-    model: openai('gpt-4o-mini'),
+    model: openai('gpt-4o-mini') as any,
     schema: PortfolioHealthSchema,
     system: `You are a contract portfolio health analyst. Evaluate overall portfolio health (0-100), predict trends, and provide actionable recommendations. Focus on risk distribution, upcoming actions, and concrete improvement steps.`,
     prompt: `Evaluate and forecast portfolio health:\n${dataContext}`,

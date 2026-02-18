@@ -94,11 +94,11 @@ function calculateHealthScore(contract: ContractWithArtifacts): number {
   let score = 80; // Base score
   
   // Adjust based on artifacts
-  if (contract.artifacts?.length > 0) {
+  if ((contract.artifacts?.length ?? 0) > 0) {
     score += 5;
     
     // Check risk artifact
-    const riskArtifact = contract.artifacts.find((a: ContractArtifact) => a.type === 'RISK');
+    const riskArtifact = contract.artifacts!.find((a: ContractArtifact) => a.type === 'RISK');
     if (riskArtifact?.data) {
       const riskData = riskArtifact.data as RiskArtifactData;
       if (riskData.overallScore !== undefined) {
@@ -215,9 +215,9 @@ export async function GET(request: NextRequest) {
           (we: { status: string; stepExecutions?: Array<{ assignedTo?: string | null; status: string }> }) => 
             we.status === 'IN_PROGRESS' || we.status === 'PENDING'
         );
-        if (activeExecution?.stepExecutions?.length > 0) {
+        if ((activeExecution?.stepExecutions?.length ?? 0) > 0) {
           // Find current step with assigned user
-          const currentStep = activeExecution.stepExecutions.find(
+          const currentStep = activeExecution!.stepExecutions!.find(
             (se: { assignedTo?: string | null; status: string }) => 
               se.assignedTo && (se.status === 'PENDING' || se.status === 'IN_PROGRESS')
           );
@@ -375,6 +375,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    const { contractId, renewalId, action, renewalData } = body;
     const tenantId = await getServerTenantId();
 
     // Extract contract ID from renewal ID if needed
@@ -544,6 +545,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
+    const { contractId, renewalId, updates } = body;
     const tenantId = await getServerTenantId();
 
     const actualContractId = contractId || renewalId?.replace('renewal-', '');

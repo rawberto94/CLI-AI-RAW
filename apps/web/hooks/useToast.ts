@@ -76,8 +76,7 @@ export function useToast() {
   ) => {
     return toast.promise(
       promiseOrFn,
-      messages,
-      options,
+      { ...messages, ...options },
     );
   };
 

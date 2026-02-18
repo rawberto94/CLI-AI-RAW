@@ -3,7 +3,7 @@
  * Export contracts in various formats
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
@@ -133,7 +133,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       const ws = XLSX.utils.json_to_sheet(data, { header: config.includeFields });
       XLSX.utils.book_append_sheet(wb, ws, 'Contracts');
       const xlsxBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-      return new Response(xlsxBuffer, {
+      return new NextResponse(xlsxBuffer, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           'Content-Disposition': `attachment; filename="contracts-export-${Date.now()}.xlsx"`,

@@ -3,7 +3,7 @@
  * Provides Server-Sent Events (SSE) for real-time extraction progress updates
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Dynamic import to avoid build-time resolution issues
@@ -30,7 +30,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     if (sessionId) {
       const sseStream = streamingService.createSSEStream(sessionId);
       
-      return new Response(sseStream, {
+      return new NextResponse(sseStream, {
         headers: {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',

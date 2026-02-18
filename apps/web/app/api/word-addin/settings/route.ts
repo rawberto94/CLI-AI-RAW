@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const settings = await prisma.userSettings.findFirst({
+    const settings = await (prisma as any).userSettings.findFirst({
       where: {
         userId: ctx.userId,
         tenantId: ctx.tenantId,
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     // Get or create user settings
-    const settings = await prisma.userSettings.findFirst({
+    const settings = await (prisma as any).userSettings.findFirst({
       where: {
         userId: ctx.userId,
         tenantId: ctx.tenantId,
@@ -63,12 +63,12 @@ export async function POST(req: NextRequest) {
     };
 
     if (settings) {
-      await prisma.userSettings.update({
+      await (prisma as any).userSettings.update({
         where: { id: settings.id },
         data: { preferences: updatedPrefs },
       });
     } else {
-      await prisma.userSettings.create({
+      await (prisma as any).userSettings.create({
         data: {
           userId: ctx.userId || 'unknown',
           tenantId: ctx.tenantId,

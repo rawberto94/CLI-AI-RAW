@@ -50,7 +50,7 @@ export async function GET(
       // Return basic info from contract record if no artifact
       const today = new Date();
       const expirationDate = contract.expirationDate;
-      let daysUntilExpiry = null;
+      let daysUntilExpiry: number | null = null;
 
       if (expirationDate) {
         daysUntilExpiry = Math.ceil(
@@ -73,8 +73,8 @@ export async function GET(
     const today = new Date();
 
     // Calculate days until key dates
-    let daysUntilTermEnd = null;
-    let daysUntilOptOut = null;
+    let daysUntilTermEnd: number | null = null;
+    let daysUntilOptOut: number | null = null;
 
     if (data.currentTermEnd) {
       daysUntilTermEnd = Math.ceil(
@@ -89,7 +89,7 @@ export async function GET(
     }
 
     // Generate alerts based on dates
-    const alerts = [];
+    const alerts: { type: string; message: string; date: any }[] = [];
 
     if (daysUntilOptOut !== null && daysUntilOptOut > 0 && daysUntilOptOut <= 30) {
       alerts.push({

@@ -112,7 +112,7 @@ export async function GET(
         },
       });
 
-      return new Response(pdfBytes, {
+      return new Response(pdfBytes as unknown as BodyInit, {
         headers: {
           'Content-Type': 'application/pdf',
           'Content-Disposition': `attachment; filename="${exportName}.pdf"`,
@@ -139,7 +139,7 @@ export async function GET(
         },
       });
 
-      return new Response(docxBytes, {
+      return new Response(docxBytes as unknown as BodyInit, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           'Content-Disposition': `attachment; filename="${exportName}.docx"`,

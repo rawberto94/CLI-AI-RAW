@@ -3,31 +3,26 @@
  * Centralized exports for all enhanced UI components
  */
 
-// Enhanced Status Badge
-export { 
-  EnhancedStatusBadge, 
-  type StatusType 
-} from './ui/enhanced-status-badge';
+// Enhanced Status Badge (module not yet created)
+// export { 
+//   EnhancedStatusBadge, 
+//   type StatusType 
+// } from './ui/enhanced-status-badge';
 
 // Enhanced Skeletons
 export {
   Skeleton,
   KPICardSkeleton,
-  ContractCardSkeleton,
   ContractListSkeleton,
-  TableRowSkeleton,
   TableSkeleton,
   DashboardSkeleton,
   ContractDetailSkeleton,
-  SearchResultsSkeleton,
-  NotificationSkeleton
-} from './ui/enhanced-skeletons';
+} from './ui/skeletons';
 
 // Empty States
 export {
   EmptyState,
-  CompactEmptyState
-} from './ui/empty-state';
+} from './shared/EmptyState';
 
 // Progress Indicators
 export {
@@ -60,7 +55,7 @@ export {
 export {
   CommandPalette,
   useCommandPalette
-} from './command-palette/CommandPalette';
+} from './command/CommandPalette';
 
 // Notifications
 export {

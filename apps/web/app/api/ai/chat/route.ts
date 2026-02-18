@@ -55,7 +55,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     // ============================================
     let conversationId = providedConversationId;
     let resolvedMessage = message;
-    let referenceResolutions = [];
+    let referenceResolutions: Array<{ type: string; originalText: string; resolvedValue: string; confidence: number }> = [];
 
     // Get or create conversation
     if (!conversationId) {
@@ -94,15 +94,15 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     const suggestedActions: { label: string; action: string }[] = []; // Store action buttons
     
     // Helper to format contracts for preview cards - declare before use
-    const formatContractForPreview = (c: { id?: string; contractTitle?: string; name?: string; supplierName?: string; status?: string; totalValue?: number | string | { toString(): string }; value?: number | string; expirationDate?: string | Date; contractType?: string; type?: string }) => {
-      const expiry = c.expirationDate ? new Date(c.expirationDate) : null;
+    const formatContractForPreview = (c: { id?: string | null; contractTitle?: string | null; title?: string | null; name?: string | null; supplierName?: string | null; supplier?: string | null; status?: string | null; totalValue?: number | string | { toString(): string } | null; value?: number | string | null; expirationDate?: string | Date | null; contractType?: string | null; type?: string | null; fileName?: string | null; [key: string]: unknown }) => {
+      const expiry = c.expirationDate ? new Date(c.expirationDate as string | Date) : null;
       const daysUntilExpiry = expiry ? Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
       
       return {
-        id: c.id,
-        name: c.contractTitle || c.name || 'Untitled Contract',
-        supplier: c.supplierName,
-        status: c.status,
+        id: c.id ?? undefined,
+        name: c.contractTitle || c.title || c.name || 'Untitled Contract',
+        supplier: c.supplierName || c.supplier || undefined,
+        status: c.status ?? undefined,
         value: Number(c.totalValue || c.value || 0),
         expirationDate: expiry ? expiry.toISOString() : null,
         daysUntilExpiry: daysUntilExpiry,
@@ -182,13 +182,13 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         contractPreviews = [{
           id: intel.contract.id,
           name: intel.contract.title,
-          supplier: intel.contract.supplier,
-          status: intel.contract.status,
+          supplier: intel.contract.supplier ?? undefined,
+          status: intel.contract.status ?? undefined,
           value: intel.contract.value,
           expirationDate: intel.contract.expirationDate ? new Date(intel.contract.expirationDate).toISOString() : null,
           daysUntilExpiry: intel.contract.daysUntilExpiry,
           riskLevel: intel.risks.level?.toLowerCase() || 'medium',
-          type: intel.contract.type }];
+          type: intel.contract.type ?? undefined }];
 
         // Build comprehensive context from artifacts
         additionalContext += `\n\n**📄 CURRENT CONTRACT INTELLIGENCE:**\n`;
@@ -970,7 +970,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           }
           additionalContext += `\n- Current: [${hierarchy.contractTitle}](/contracts/${hierarchy.id}) (${hierarchy.status}, Value: $${Number(hierarchy.totalValue || 0).toLocaleString()})`;
           if (hierarchy.childContracts && hierarchy.childContracts.length > 0) {
-            additionalContext += `\n- Children (${hierarchy.childContracts.length}):\n${hierarchy.childContracts.map((c: { contractTitle?: string; id?: string; contractType?: string; status?: string }) => 
+            additionalContext += `\n- Children (${hierarchy.childContracts.length}):\n${hierarchy.childContracts.map((c) => 
               `  - [${c.contractTitle}](/contracts/${c.id}) (${c.contractType}, ${c.status})`
             ).join('\n')}`;
           }
@@ -1051,7 +1051,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         additionalContext += `\n- High Risk: ${riskData.highRiskCount} contracts`;
         additionalContext += `\n- Auto-Renewal Enabled: ${riskData.autoRenewalCount} contracts`;
         if (riskData.contracts.length > 0) {
-          additionalContext += `\n\nContracts Requiring Attention:\n${riskData.contracts.slice(0, 8).map((c: { contractTitle?: string; id?: string; expirationRisk?: string; daysUntilExpiry?: number; supplierName?: string; autoRenewalEnabled?: boolean }, i: number) => 
+          additionalContext += `\n\nContracts Requiring Attention:\n${riskData.contracts.slice(0, 8).map((c, i) => 
             `${i + 1}. [📄 ${c.contractTitle}](/contracts/${c.id})\n   - Risk Level: ${c.expirationRisk || 'HIGH'} | Days Until Expiry: ${c.daysUntilExpiry || 'N/A'}\n   - Supplier: ${c.supplierName} | Auto-Renew: ${c.autoRenewalEnabled ? 'Yes' : 'No'}`
           ).join('\n')}`;
         }
@@ -1065,7 +1065,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         additionalContext += `\n- Compliant: ${complianceData.compliantCount} (${compliancePercent}%)`;
         additionalContext += `\n- Issues Found: ${complianceData.issueCount}`;
         if (complianceData.contracts.length > 0) {
-          additionalContext += `\n\nContracts with Issues:\n${complianceData.contracts.slice(0, 5).map((c: { contractTitle?: string; id?: string; complianceScore?: number; issueCount?: number }) => 
+          additionalContext += `\n\nContracts with Issues:\n${complianceData.contracts.slice(0, 5).map((c) => 
             `- [📄 ${c.contractTitle}](/contracts/${c.id}) (Score: ${c.complianceScore}%, Issues: ${c.issueCount})`
           ).join('\n')}`;
         }
@@ -1104,12 +1104,12 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         }
       } else if (intent.action === 'auto_renewals') {
         const riskData = await getRiskAssessment(tenantId);
-        const autoRenewalContracts = riskData.contracts.filter((c: { autoRenewalEnabled?: boolean }) => c.autoRenewalEnabled);
+        const autoRenewalContracts = riskData.contracts.filter((c) => c.autoRenewalEnabled);
         additionalContext += `\n\n**Auto-Renewal Contracts:**`;
         additionalContext += `\n- Total with Auto-Renewal: ${riskData.autoRenewalCount}`;
-        additionalContext += `\n- Renewing in 90 Days: ${autoRenewalContracts.filter((c: { daysUntilExpiry?: number }) => c.daysUntilExpiry && c.daysUntilExpiry <= 90).length}`;
+        additionalContext += `\n- Renewing in 90 Days: ${autoRenewalContracts.filter((c) => c.daysUntilExpiry && c.daysUntilExpiry <= 90).length}`;
         if (autoRenewalContracts.length > 0) {
-          additionalContext += `\n\nContracts:\n${autoRenewalContracts.slice(0, 8).map((c: { contractTitle?: string; supplierName?: string; expirationDate?: string | Date }) => 
+          additionalContext += `\n\nContracts:\n${autoRenewalContracts.slice(0, 8).map((c) => 
             `- ${c.contractTitle} (Supplier: ${c.supplierName}, Renews: ${c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A'})`
           ).join('\n')}`;
         }
@@ -1258,8 +1258,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
             fetch(`${healthUrl}/resilience`, { signal: AbortSignal.timeout(5000) }),
           ]);
           
-          let healthData = null;
-          let resilienceData = null;
+          let healthData: { status?: string; uptime?: number; workers?: { running?: number; total?: number }; queues?: { activeJobs?: number; waitingJobs?: number; failedJobs?: number } } | null = null;
+          let resilienceData: { circuitBreakers?: Record<string, { state: string; totalRequests: number; totalFailures: number }> } | null = null;
           
           if (healthRes.status === 'fulfilled' && healthRes.value.ok) {
             healthData = await healthRes.value.json();
@@ -1271,7 +1271,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           if (healthData) {
             additionalContext += `\n\n**System Health Status:**`;
             additionalContext += `\n- Overall Status: ${healthData.status === 'healthy' ? '✅ Healthy' : healthData.status === 'degraded' ? '⚠️ Degraded' : '❌ Unhealthy'}`;
-            additionalContext += `\n- Uptime: ${Math.floor(healthData.uptime / 3600)}h ${Math.floor((healthData.uptime % 3600) / 60)}m`;
+            additionalContext += `\n- Uptime: ${Math.floor((healthData.uptime ?? 0) / 3600)}h ${Math.floor(((healthData.uptime ?? 0) % 3600) / 60)}m`;
             additionalContext += `\n- Workers: ${healthData.workers?.running || 0}/${healthData.workers?.total || 0} running`;
             additionalContext += `\n- Active Jobs: ${healthData.queues?.activeJobs || 0}`;
             additionalContext += `\n- Waiting Jobs: ${healthData.queues?.waitingJobs || 0}`;

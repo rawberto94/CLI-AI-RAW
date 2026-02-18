@@ -69,12 +69,12 @@ export function EnhancedTooltip({
   };
 
   const handleMouseLeave = () => {
-    clearTimeout(timeoutRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setIsVisible(false);
   };
 
   useEffect(() => {
-    return () => clearTimeout(timeoutRef.current);
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
   }, []);
 
   if (disabled) return children;

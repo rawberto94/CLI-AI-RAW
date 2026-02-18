@@ -102,7 +102,8 @@ export const PATCH = withAuthApiHandler(async (request, ctx) => {
       case 'acknowledge':
         updatedAlert = await supplierAlertService.acknowledgeAlert(
           alertId,
-          ctx.userId
+          ctx.userId,
+          ctx.tenantId
         );
         break;
 
@@ -116,14 +117,16 @@ export const PATCH = withAuthApiHandler(async (request, ctx) => {
           resolvedAt: new Date(),
           resolution: resolution.description,
           actionTaken: resolution.actionTaken,
-          notes: resolution.notes
+          notes: resolution.notes,
+          tenantId: ctx.tenantId
         });
         break;
 
       case 'dismiss':
         updatedAlert = await supplierAlertService.dismissAlert(
           alertId,
-          ctx.userId
+          ctx.userId,
+          ctx.tenantId
         );
         break;
 

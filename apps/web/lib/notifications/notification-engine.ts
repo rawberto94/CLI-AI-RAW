@@ -221,7 +221,7 @@ export async function sendNotification(payload: NotificationPayload): Promise<No
 
   // Persist to database (best-effort)
   try {
-    await prisma.agentNotification.create({
+    await (prisma as any).notification.create({
       data: {
         id,
         tenantId: payload.tenantId,

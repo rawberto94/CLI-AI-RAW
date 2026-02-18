@@ -7,6 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { prisma } from '@/lib/prisma';
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const contractId = request.nextUrl.searchParams.get('contractId');
@@ -17,26 +18,26 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   const tenantId = ctx.tenantId;
 
   try {
-    const artifact = await ctx.prisma.artifact.findUnique({
+    const artifact = await prisma.artifact.findUnique({
       where: {
         contractId_tenantId_type: {
           contractId,
           tenantId,
           type: 'INTELLIGENCE_BRIEF',
         },
-      },
-    });
+      } as any,
+    }) as any;
 
     if (!artifact) {
       return createSuccessResponse(ctx, { brief: null, status: 'not_generated' });
     }
 
     return createSuccessResponse(ctx, {
-      brief: (artifact.content as any)?.brief || null,
-      comparisons: (artifact.content as any)?.comparisons || [],
-      generatedAt: (artifact.content as any)?.generatedAt || null,
-      model: (artifact.content as any)?.model || null,
-      processingTime: (artifact.content as any)?.processingTime || null,
+      brief: artifact?.content?.brief || null,
+      comparisons: artifact?.content?.comparisons || [],
+      generatedAt: artifact?.content?.generatedAt || null,
+      model: artifact?.content?.model || null,
+      processingTime: artifact?.content?.processingTime || null,
       status: 'ready',
     });
   } catch (error) {

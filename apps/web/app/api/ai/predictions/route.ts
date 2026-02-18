@@ -166,7 +166,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'contracts array is required with at least one contract', 400);
         }
 
-        const results = [];
+        const results: Array<{ contractId: string; success: boolean; predictions?: any; error?: string }> = [];
         for (const contract of contracts) {
           try {
             const predictions = await predictionEngine.generatePredictions(
@@ -191,7 +191,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         break;
 
       case 'update-features':
-        const { contractId: updateContractId, features } = data;
+        const { contractId: updateContractId, contractFeatures: features } = data;
 
         if (!updateContractId || !features) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId and features are required', 400);

@@ -278,7 +278,7 @@ export class IntelligentSearchAgent extends BaseAgent {
         }
       }
 
-      const whereClause = Prisma.join(intentConditions, Prisma.sql` AND `);
+      const whereClause = Prisma.join(intentConditions, ' AND ');
 
       // Strategy 1: Full-text search on Contract.searchableText + rawText
       const ftsQuery = query.replace(/[^a-zA-Z0-9\s]/g, ' ').trim().split(/\s+/).filter(Boolean).join(' & ');

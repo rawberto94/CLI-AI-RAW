@@ -4,6 +4,7 @@
  * DELETE /api/contracts/[id]/hierarchy - Unlink from parent contract
  */
 
+import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from "@/lib/tenant-server";
@@ -15,7 +16,7 @@ export const runtime = "nodejs";
 
 // Link contract to a parent
 export async function PUT(
-  req: Request,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(req);
@@ -104,7 +105,7 @@ export async function PUT(
     // Queue RAG re-indexing when hierarchy changes
     await queueRAGReindex({
       contractId,
-      tenantId: tenantId || undefined,
+      tenantId: tenantId ?? '',
       reason: 'hierarchy relationship linked',
     });
     
@@ -135,7 +136,7 @@ export async function PUT(
 
 // Unlink contract from parent
 export async function DELETE(
-  req: Request,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(req);
@@ -159,7 +160,7 @@ export async function DELETE(
       return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
     
-    if (!contract.parentContractId) {
+    if (!(contract as any).parentContractId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract is not linked to a parent', 400);
     }
     
@@ -171,6 +172,10 @@ export async function DELETE(
       linkedAt: null,
     } as any);
     const updatedContract = updateResult.data;
+
+    if (!updatedContract) {
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update contract', 500);
+    }
 
     await publishRealtimeEvent({
       event: "contract:updated",
@@ -185,7 +190,7 @@ export async function DELETE(
     // Queue RAG re-indexing when hierarchy changes
     await queueRAGReindex({
       contractId,
-      tenantId: tenantId || undefined,
+      tenantId: tenantId ?? '',
       reason: 'hierarchy relationship unlinked',
     });
     
@@ -206,7 +211,7 @@ export async function DELETE(
 
 // GET - Get hierarchy information
 export async function GET(
-  req: Request,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(req);

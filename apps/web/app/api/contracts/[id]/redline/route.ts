@@ -6,9 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import prisma from '@repo/db';
+import { getServerSession } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import { getSessionTenantId } from '@/lib/tenant-server';
 import { getAuthenticatedApiContext } from '@/lib/api-middleware';
 
@@ -25,13 +24,13 @@ export async function GET(
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
   }
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
-    const tenantId = getSessionTenantId(session);
+    const tenantId = getSessionTenantId(session as any);
 
     const contract = await prisma.contract.findFirst({
       where: { id, tenantId, isDeleted: false },
@@ -89,13 +88,13 @@ export async function POST(
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
   }
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
-    const tenantId = getSessionTenantId(session);
+    const tenantId = getSessionTenantId(session as any);
 
     const body = await request.json();
     const {

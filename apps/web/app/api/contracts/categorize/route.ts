@@ -7,7 +7,7 @@
  * ✅ Multi-tenant taxonomy isolation
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import cors from "@/lib/security/cors";
 import {
   categorizeContract,

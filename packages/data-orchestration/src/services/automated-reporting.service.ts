@@ -192,7 +192,7 @@ export class AutomatedReportingService {
 
     const supplierData = await Promise.all(
       suppliers.map(async (supplier) => {
-        let scorecard = null;
+        let scorecard: any = null;
         try {
           scorecard = await supplierBenchmarkService.calculateSupplierBenchmark({
             supplierId: supplier.id,

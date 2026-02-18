@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const service = new baselineManagementService(prisma);
     const result = await service.bulkCompareAgainstBaselines(tenantId, {
       minVariancePercentage,
-      baselineTypes,
+      baselineTypes: baselineTypes as any,
       categoryL1,
       categoryL2,
     });

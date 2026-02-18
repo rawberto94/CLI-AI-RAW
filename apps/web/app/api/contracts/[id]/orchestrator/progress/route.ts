@@ -24,7 +24,7 @@ export async function GET(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   const contractId = params.id;
-  const tenantId = await getApiTenantId(request);
+  const tenantId = await getApiTenantId(request) ?? undefined;
 
   try {
     // Get contract with type

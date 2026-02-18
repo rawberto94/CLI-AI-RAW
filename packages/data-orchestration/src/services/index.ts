@@ -590,7 +590,7 @@ export {
   type GenerationLanguage,
   type GenerationRequest,
   type ContractVariables,
-  type GenerationOptions,
+  type GenerationOptions as ContractGenerationOptions,
   type GeneratedContract,
   type GeneratedClause,
   type ExtractedVariables,

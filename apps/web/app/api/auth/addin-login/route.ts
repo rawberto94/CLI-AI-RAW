@@ -29,15 +29,11 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
       include: {
-        tenants: {
-          include: {
-            tenant: true,
-          },
-        },
+        tenant: true,
       },
     });
 
-    if (!user || !user.password) {
+    if (!user || !user.passwordHash) {
       return NextResponse.json(
         { error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } },
         { status: 401 }
@@ -45,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify password
-    const isValid = await compare(password, user.password);
+    const isValid = await compare(password, user.passwordHash);
     if (!isValid) {
       return NextResponse.json(
         { error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } },
@@ -54,7 +50,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get primary tenant
-    const primaryTenant = user.tenants[0]?.tenant;
+    const primaryTenant = user.tenant;
     if (!primaryTenant) {
       return NextResponse.json(
         { error: { code: 'NO_TENANT', message: 'User has no associated tenant' } },
@@ -70,7 +66,7 @@ export async function POST(req: NextRequest) {
         tenantId: primaryTenant.id,
         source: source || 'word-addin',
       },
-      JWT_SECRET,
+      JWT_SECRET as string,
       { expiresIn: '7d' }
     );
 
@@ -95,7 +91,7 @@ export async function POST(req: NextRequest) {
         tenantId: primaryTenant.id,
         user: {
           id: user.id,
-          name: user.name,
+          name: user.firstName ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}` : user.email,
           email: user.email,
         },
       },

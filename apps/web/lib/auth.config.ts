@@ -30,7 +30,7 @@ declare module "next-auth" {
   }
 }
 
-declare module "next-auth/jwt" {
+declare module "@auth/core/jwt" {
   interface JWT {
     id?: string;
     tenantId?: string;
@@ -62,8 +62,8 @@ export const authConfig = {
         session.user.tenantId = token.tenantId as string;
         session.user.role = token.role as string;
         session.user.provider = token.provider as string;
-        session.user.mfaRequired = token.mfaRequired ?? false;
-        session.user.mfaVerified = token.mfaVerified ?? true;
+        session.user.mfaRequired = (token.mfaRequired as boolean | undefined) ?? false;
+        session.user.mfaVerified = (token.mfaVerified as boolean | undefined) ?? true;
       }
       return session;
     },

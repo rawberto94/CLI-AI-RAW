@@ -47,17 +47,16 @@ export async function GET(
     }
 
     // Get current category details
-    let currentCategory = null;
-    if (contract.contractCategoryId) {
-      currentCategory = await prisma.taxonomyCategory.findUnique({
-        where: { id: contract.contractCategoryId },
-        include: {
-          parent: {
-            select: { id: true, name: true, color: true, icon: true },
+    const currentCategory = contract.contractCategoryId
+      ? await prisma.taxonomyCategory.findUnique({
+          where: { id: contract.contractCategoryId },
+          include: {
+            parent: {
+              select: { id: true, name: true, color: true, icon: true },
+            },
           },
-        },
-      });
-    }
+        })
+      : null;
 
     // Get pending/suggested categorization from metadata
     const meta = (contract.metadata as any) || {};
@@ -147,23 +146,24 @@ export async function PUT(
     }
 
     // Get the new category details
-    let newCategory = null;
+    const newCategory = categoryId
+      ? await prisma.taxonomyCategory.findUnique({
+          where: { id: categoryId },
+          include: {
+            parent: { select: { id: true, name: true } },
+          },
+        })
+      : null;
+
+    if (categoryId && !newCategory) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Category not found', 404);
+    }
+
+    // Determine L1/L2 names
     let newL1Name: string | null = null;
     let newL2Name: string | null = null;
 
-    if (categoryId) {
-      newCategory = await prisma.taxonomyCategory.findUnique({
-        where: { id: categoryId },
-        include: {
-          parent: { select: { id: true, name: true } },
-        },
-      });
-
-      if (!newCategory) {
-        return createErrorResponse(ctx, 'NOT_FOUND', 'Category not found', 404);
-      }
-
-      // Determine L1/L2 names
+    if (newCategory) {
       if (newCategory.level === 0) {
         newL1Name = newCategory.name;
         newL2Name = null;

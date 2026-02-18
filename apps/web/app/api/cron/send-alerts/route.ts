@@ -3,7 +3,7 @@ import { withCronHandler, createSuccessResponse, getApiContext} from '@/lib/api-
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { AdvancedNotificationService, NotificationPayload } from '@/lib/notifications/notification.service';
-import { notificationService } from 'data-orchestration/services';
+import { notificationService as dataOrchNotificationService } from 'data-orchestration/services';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

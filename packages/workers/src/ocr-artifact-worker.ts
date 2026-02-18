@@ -3106,7 +3106,7 @@ async function callOpenAIForArtifact(
   prompt: string,
   systemPrompt: string,
   type: string
-): Promise<{ success: boolean; data?: Record<string, any>; error?: string }> {
+): Promise<{ success: boolean; data?: Record<string, any>; error?: string; tokensUsed?: number; promptTokens?: number; completionTokens?: number; model?: string }> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return { success: false, error: 'OPENAI_API_KEY not configured' };

@@ -179,11 +179,11 @@ export async function generateSmartComparison(params: {
   const [contract1, contract2] = await Promise.all([
     prisma.contract.findUnique({
       where: { id: contractId1, tenantId },
-      select: { id: true, title: true, rawText: true, contractType: true, totalValue: true },
+      select: { id: true, contractTitle: true, rawText: true, contractType: true, totalValue: true },
     }),
     prisma.contract.findUnique({
       where: { id: contractId2, tenantId },
-      select: { id: true, title: true, rawText: true, contractType: true, totalValue: true },
+      select: { id: true, contractTitle: true, rawText: true, contractType: true, totalValue: true },
     }),
   ]);
 
@@ -209,15 +209,15 @@ export async function generateSmartComparison(params: {
   const text2 = contract2.rawText.slice(0, maxChars);
 
   const { object: report } = await generateObject({
-    model: openai('gpt-4o-mini'),
+    model: openai('gpt-4o-mini') as any,
     schema: ComparisonReportSchema,
     system: COMPARISON_SYSTEM_PROMPT,
     prompt: `Compare these two contracts:
 
-CONTRACT 1: "${contract1.title || 'Contract A'}" (${contract1.contractType || 'Unknown type'}, Value: ${contract1.totalValue || 'N/A'})
+CONTRACT 1: "${contract1.contractTitle || 'Contract A'}" (${contract1.contractType || 'Unknown type'}, Value: ${contract1.totalValue || 'N/A'})
 ${text1}
 
-CONTRACT 2: "${contract2.title || 'Contract B'}" (${contract2.contractType || 'Unknown type'}, Value: ${contract2.totalValue || 'N/A'})
+CONTRACT 2: "${contract2.contractTitle || 'Contract B'}" (${contract2.contractType || 'Unknown type'}, Value: ${contract2.totalValue || 'N/A'})
 ${text2}
 
 CLAUSE ALIGNMENT (sections matched by semantic similarity):
@@ -234,8 +234,8 @@ Generate a comprehensive comparison report with clause-level analysis, risk diff
       data: {
         contractId: contractId1,
         tenantId,
-        type: 'CONTRACT_COMPARISON',
-        content: {
+        type: 'CONTRACT_COMPARISON' as any,
+        data: {
           report,
           comparedWith: contractId2,
           generatedAt: new Date().toISOString(),

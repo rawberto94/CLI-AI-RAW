@@ -1,7 +1,7 @@
 // Minimal RAG utilities: chunking, embedding via OpenAI, and retrieval via Prisma with pgvector.
 
 let db: unknown = null;
-function getDB(): unknown {
+function getDB(): any {
   if (db) return db;
   try {
     const mod = require('clients-db');
@@ -53,7 +53,7 @@ export async function embedChunks(docId: string, tenantId: string, chunks: Chunk
   }
   
   // The OpenAI client in this repo exposes chat only; call embeddings via openai SDK directly if available
-  let openai: unknown = null;
+  let openai: any = null;
   try {
     const OpenAISDK = require('openai').OpenAI;
     openai = new OpenAISDK({ apiKey });

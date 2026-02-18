@@ -312,7 +312,7 @@ export async function getContractContext(contractId: string): Promise<string> {
 
     // Add last updated timestamp
     const latestArtifact = contract.artifacts?.reduce((latest: { updatedAt?: Date } | null, a: { updatedAt?: Date }) => 
-      !latest || (a.updatedAt && a.updatedAt > latest.updatedAt) ? a : latest, null);
+      !latest || (a.updatedAt && a.updatedAt > (latest.updatedAt ?? new Date(0))) ? a : latest, null);
     if (latestArtifact?.updatedAt) {
       context += `\n---\n*Artifacts last updated: ${latestArtifact.updatedAt.toLocaleString()}*\n`;
     }

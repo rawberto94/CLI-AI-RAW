@@ -104,7 +104,7 @@ class ChunkGraph {
   private adjacency: Map<string, ChunkEdge[]> = new Map();
   private contractNodes: Map<string, Set<string>> = new Map(); // contractId → nodeIds
 
-  private redis: import('ioredis').default | null = null;
+  private redis: InstanceType<typeof import('ioredis').default> | null = null;
   private redisReady = false;
 
   constructor() {
@@ -132,7 +132,7 @@ class ChunkGraph {
     }
   }
 
-  private getRedis(): import('ioredis').default | null {
+  private getRedis(): InstanceType<typeof import('ioredis').default> | null {
     return this.redisReady ? this.redis : null;
   }
 
@@ -551,7 +551,7 @@ export function expandWithGraphContext(
 ): SearchResult[] {
   // Map search results to chunk IDs
   const seedIds = searchResults
-    .map(r => `${r.contractId}:${r.section || 'unknown'}`)
+    .map(r => `${r.contractId}:${r.metadata?.section || 'unknown'}`)
     .filter(id => graph.getNode(id) !== undefined);
 
   // Also try matching by chunk text prefix
@@ -560,7 +560,7 @@ export function expandWithGraphContext(
     const contractPrefix = `${result.contractId}:`;
     for (const [nodeId, node] of getNodeEntries(graph)) {
       if (nodeId.startsWith(contractPrefix) && 
-          node.chunkText.slice(0, 80) === result.chunkText.slice(0, 80)) {
+          node.chunkText.slice(0, 80) === result.text.slice(0, 80)) {
         if (!seedIds.includes(nodeId)) seedIds.push(nodeId);
         break;
       }
@@ -574,16 +574,24 @@ export function expandWithGraphContext(
   // Convert related chunks to SearchResult format
   const relatedResults: SearchResult[] = related.map(r => ({
     contractId: r.chunk.contractId,
-    chunkText: r.chunk.chunkText,
-    section: r.chunk.section,
-    similarity: r.weight * 0.5, // Reduced score since these are supplementary
+    contractName: '',
+    chunkIndex: r.chunk.chunkIndex,
+    text: r.chunk.chunkText,
+    score: r.weight * 0.5, // Reduced score since these are supplementary
     matchType: 'graph_expansion' as const,
+    metadata: {
+      section: r.chunk.section,
+      chunkType: 'clause' as const,
+      startChar: 0,
+      endChar: 0,
+      wordCount: r.chunk.chunkText.split(/\s+/).length,
+    },
   }));
 
   // Append graph-expanded results, deduplicating
-  const existingTexts = new Set(searchResults.map(r => r.chunkText.slice(0, 80)));
+  const existingTexts = new Set(searchResults.map(r => r.text.slice(0, 80)));
   const newResults = relatedResults.filter(
-    r => !existingTexts.has(r.chunkText.slice(0, 80))
+    r => !existingTexts.has(r.text.slice(0, 80))
   );
 
   return [...searchResults, ...newResults];
@@ -629,7 +637,8 @@ export function resetChunkGraph(): void {
   graphInstance = null;
 }
 
-export { ChunkGraph, ChunkNode, ChunkEdge, EdgeType, GraphTraversalOptions, RelatedChunk };
+export { ChunkGraph };
+export type { ChunkNode, ChunkEdge, EdgeType, GraphTraversalOptions, RelatedChunk };
 export { LEGAL_CONCEPT_GROUPS };
 
 export default {

@@ -173,7 +173,7 @@ Generate the Intelligence Brief with all required fields. Be specific to THIS co
   }, 'Generating intelligence brief');
 
   const { object: brief } = await generateObject({
-    model: openai(modelId),
+    model: openai(modelId) as any,
     schema: IntelligenceBriefSchema,
     system: BRIEF_SYSTEM_PROMPT,
     prompt: userPrompt,
@@ -282,7 +282,7 @@ export async function runIntelligencePipeline(params: {
       where: { id: contractId, tenantId },
       select: {
         id: true,
-        title: true,
+        contractTitle: true,
         rawText: true,
         contractType: true,
         metadata: true,
@@ -314,14 +314,13 @@ export async function runIntelligencePipeline(params: {
     // 4. Store as artifact
     await prisma.artifact.upsert({
       where: {
-        contractId_tenantId_type: {
+        contractId_type: {
           contractId,
-          tenantId,
-          type: 'INTELLIGENCE_BRIEF',
+          type: 'INTELLIGENCE_BRIEF' as any,
         },
       },
       update: {
-        content: {
+        data: {
           brief,
           comparisons,
           generatedAt: new Date().toISOString(),
@@ -333,8 +332,8 @@ export async function runIntelligencePipeline(params: {
       create: {
         contractId,
         tenantId,
-        type: 'INTELLIGENCE_BRIEF',
-        content: {
+        type: 'INTELLIGENCE_BRIEF' as any,
+        data: {
           brief,
           comparisons,
           generatedAt: new Date().toISOString(),

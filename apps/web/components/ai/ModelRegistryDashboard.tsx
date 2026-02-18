@@ -481,8 +481,8 @@ export function ModelRegistryDashboard({ tenantId, className }: ModelRegistryDas
             currentVersion: (m.currentVersion as string) || '1.0',
             versions: ((m.versions as ModelVersion[]) || []).map(v => ({
               ...v,
-              releaseDate: new Date((v as Record<string, unknown>).releaseDate as string || Date.now()),
-              performance: (v as Record<string, unknown>).performance as ModelPerformance || {
+              releaseDate: new Date((v as unknown as Record<string, unknown>).releaseDate as string || Date.now()),
+              performance: (v as unknown as Record<string, unknown>).performance as ModelPerformance || {
                 totalRequests: 0, successRate: 0, avgLatencyMs: 0,
                 avgTokensPerRequest: 0, costPer1kTokens: 0, qualityScore: 0, userSatisfaction: 0,
               },

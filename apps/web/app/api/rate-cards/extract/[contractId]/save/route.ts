@@ -51,7 +51,7 @@ try {    const tenantId = ctx.tenantId;
     const userId = ctx.userId;
     const { contractId } = params;
 
-    const body: SaveRateCardRequest = await _request.json();
+    const body: SaveRateCardRequest = await request.json();
 
     // Validate contract exists
     const contract = await prisma.contract.findFirst({
@@ -120,8 +120,8 @@ try {    const tenantId = ctx.tenantId;
     };
 
     // Save each rate card
-    const savedRateCards = [];
-    const errors = [];
+    const savedRateCards: Array<{ id: string; [key: string]: unknown }> = [];
+    const errors: Array<{ role: string; error: string }> = [];
 
     for (const rate of body.rates) {
       try {
@@ -199,7 +199,7 @@ try {    const tenantId = ctx.tenantId;
     if (savedRateCards.length > 0) {
       Promise.all(
         savedRateCards.map((rc) =>
-          fetch(`${_request.nextUrl.origin}/api/rate-cards/${rc.id}/benchmark`, {
+          fetch(`${request.nextUrl.origin}/api/rate-cards/${rc.id}/benchmark`, {
             method: 'POST',
             headers: {
               'x-tenant-id': tenantId,

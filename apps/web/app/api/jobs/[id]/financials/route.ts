@@ -1,10 +1,11 @@
+import { NextRequest } from 'next/server'
 import { getJob, patchJobResult } from "@/lib/jobs"
 import type { RoleRow } from "@/lib/jobs"
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const runtime = "nodejs"
 
-export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
+export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const ctx = getAuthenticatedApiContext(req);
   if (!ctx) {
     return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });

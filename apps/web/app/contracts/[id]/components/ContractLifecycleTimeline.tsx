@@ -315,17 +315,17 @@ const TimelineEventCard = memo(function TimelineEventCard({
         {/* Metadata badges */}
         {event.metadata && Object.keys(event.metadata).length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-2">
-            {event.metadata.status && (
+            {!!event.metadata.status && (
               <Badge variant="secondary" className="text-[10px]">
                 {String(event.metadata.status)}
               </Badge>
             )}
-            {event.metadata.version && (
+            {!!event.metadata.version && (
               <Badge variant="outline" className="text-[10px]">
                 v{String(event.metadata.version)}
               </Badge>
             )}
-            {event.metadata.signatory && (
+            {!!event.metadata.signatory && (
               <Badge variant="outline" className="text-[10px]">
                 <FileSignature className="h-2.5 w-2.5 mr-1" />
                 {String(event.metadata.signatory)}

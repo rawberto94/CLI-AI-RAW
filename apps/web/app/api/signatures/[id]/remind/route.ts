@@ -5,7 +5,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '
 // POST /api/signatures/[id]/remind - Send reminder to signer
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const tenantId = ctx.tenantId;
-  const workflowId = ctx.params?.id as string;
+  const workflowId = (ctx as any).params?.id as string;
 
   if (!workflowId) {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Signature request ID is required', 400);

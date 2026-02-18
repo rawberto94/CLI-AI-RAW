@@ -535,7 +535,7 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
       tenantId,
       contractId,
       step: 'rag.indexing',
-      status: isQuotaError ? 'partial' : 'failed',
+      status: (isQuotaError ? 'partial' : 'failed') as any,
       progress: 100,
       currentStep: 'rag.indexing',
       error: isQuotaError ? `Chunks stored without vectors (${errorMessage})` : errorMessage,

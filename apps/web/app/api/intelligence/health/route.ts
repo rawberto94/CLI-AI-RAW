@@ -24,8 +24,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
       id: true,
       contractTitle: true,
       fileName: true,
-      counterparty: true,
-      vendor: true,
+      supplierName: true,
       status: true,
       expirationDate: true,
       expirationRisk: true,
@@ -56,7 +55,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
     return {
       contractId: c.id,
       contractName: c.contractTitle || c.fileName || 'Untitled',
-      supplierName: c.counterparty || c.vendor || 'Unknown',
+      supplierName: c.supplierName || 'Unknown',
       overallScore: healthScore,
       previousScore,
       trend: healthScore > previousScore ? 'improving' : healthScore < previousScore ? 'declining' : 'stable',
@@ -117,11 +116,13 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   for (const c of contracts) {
     try {
       const health = await calculateContractHealth(c.id);
+      const existing = await prisma.contract.findUnique({ where: { id: c.id }, select: { metadata: true } });
+      const existingMeta = (existing?.metadata && typeof existing.metadata === 'object' && !Array.isArray(existing.metadata) ? existing.metadata : {}) as Record<string, unknown>;
       await prisma.contract.update({
         where: { id: c.id },
         data: {
           metadata: {
-            ...(await prisma.contract.findUnique({ where: { id: c.id }, select: { metadata: true } }).then(r => (r?.metadata || {}) as Record<string, unknown>)),
+            ...existingMeta,
             healthScore: health.overallScore,
             previousHealthScore: health.overallScore,
             healthGrade: health.grade,

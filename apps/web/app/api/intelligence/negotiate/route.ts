@@ -47,14 +47,14 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     where: {
       tenantId,
       ...(contractId ? { id: contractId } : {}),
-      status: { in: ['NEGOTIATING', 'REVIEW', 'PENDING', 'IN_REVIEW'] },
+      status: { in: ['ACTIVE', 'PENDING', 'DRAFT'] },
     },
     orderBy: { updatedAt: 'desc' },
     take: 20,
     select: {
       id: true,
       contractTitle: true,
-      counterparty: true,
+      supplierName: true,
       metadata: true,
       contractType: true,
       totalValue: true,
@@ -75,7 +75,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
 
     // If we have recorded clause changes, map them
     for (const change of clauseChanges) {
-      const analysisStr = change.analysis || `Clause change in ${c.contractTitle || 'contract'} with ${c.counterparty || 'counterparty'}`;
+      const analysisStr = change.analysis || `Clause change in ${c.contractTitle || 'contract'} with ${c.supplierName || 'counterparty'}`;
       redlines.push({
         id: `${c.id}-${change.id || redlines.length}`,
         type: change.type || 'modification',
@@ -101,7 +101,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     // If no recorded changes, generate a summary redline for the contract
     if (clauseChanges.length === 0) {
       const riskLevel = c.expirationRisk === 'CRITICAL' ? 'critical' : c.expirationRisk === 'HIGH' ? 'high' : 'medium';
-      const summaryText = `Contract with ${c.counterparty || 'counterparty'} is in review. Value: $${c.totalValue || 0}`;
+      const summaryText = `Contract with ${c.supplierName || 'counterparty'} is in review. Value: $${c.totalValue || 0}`;
       redlines.push({
         id: c.id,
         type: 'modification',
@@ -145,10 +145,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   if (contractId) {
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
-      select: { contractTitle: true, counterparty: true, contractType: true, totalValue: true, metadata: true },
+      select: { contractTitle: true, supplierName: true, contractType: true, totalValue: true, metadata: true },
     });
     if (contract) {
-      contractContext = `\n\nContract: "${contract.contractTitle}"\nCounterparty: ${contract.counterparty}\nType: ${contract.contractType}\nValue: $${contract.totalValue}`;
+      contractContext = `\n\nContract: "${contract.contractTitle}"\nCounterparty: ${contract.supplierName}\nType: ${contract.contractType}\nValue: $${contract.totalValue}`;
     }
   }
 

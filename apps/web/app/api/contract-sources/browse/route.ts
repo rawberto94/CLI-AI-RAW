@@ -55,7 +55,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     filePatterns: source.filePatterns,
   });
 
-  await connector.disconnect();
+  await connector.disconnect?.();
 
   return createSuccessResponse(ctx, {
     success: true,

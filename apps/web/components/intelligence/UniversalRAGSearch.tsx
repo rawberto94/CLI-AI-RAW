@@ -426,7 +426,7 @@ export const UniversalRAGSearch: React.FC = () => {
       if (json.success && json.results?.length > 0) {
         results = json.results.map((r: Record<string, unknown>, idx: number) => ({
           id: `result-${idx}`,
-          type: detectResultType(r.text),
+          type: detectResultType(r.text as string),
           title: r.contractName || 'Contract Match',
           excerpt: r.text,
           relevanceScore: r.score || 0.8,

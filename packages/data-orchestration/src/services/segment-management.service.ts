@@ -294,7 +294,7 @@ export class SegmentManagementService {
         userId,
         name: newName || `${original.name} (Copy)`,
         description: original.description,
-        filters: original.filters,
+        filters: original.filters as unknown as import('@prisma/client/runtime/library').InputJsonValue,
         shared: false,
         usageCount: 0,
       },

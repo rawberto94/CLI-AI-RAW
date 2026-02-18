@@ -8,6 +8,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import type { ContractStatus as PrismaContractStatus, Prisma } from '@prisma/client';
 import type { SignatureStatusType, DocumentClassificationType } from './types';
 
 // ============================================================================
@@ -16,19 +17,20 @@ import type { SignatureStatusType, DocumentClassificationType } from './types';
 
 interface ContractSearchResult {
   id: string;
-  contractTitle?: string;
-  supplierName?: string;
-  status?: string;
-  totalValue?: number;
-  expirationDate?: Date;
+  contractTitle?: string | null;
+  supplierName?: string | null;
+  status?: string | PrismaContractStatus;
+  totalValue?: number | Prisma.Decimal | null;
+  expirationDate?: Date | null;
   uploadedAt?: Date;
+  [key: string]: unknown;
 }
 
 interface ContractWithMetadata extends ContractSearchResult {
-  signatureStatus?: string;
+  signatureStatus?: string | null;
   signatureRequiredFlag?: boolean;
-  documentClassification?: string;
-  documentClassificationWarning?: string;
+  documentClassification?: string | null;
+  documentClassificationWarning?: string | null;
 }
 
 interface ContractIntelligence extends ContractWithMetadata {
@@ -155,7 +157,7 @@ export async function listContractsByStatus(
   tenantId: string
 ): Promise<ContractSearchResult[]> {
   try {
-    const validStatus = status.toUpperCase();
+    const validStatus = status.toUpperCase() as PrismaContractStatus;
     const contracts = await prisma.contract.findMany({
       where: {
         tenantId,

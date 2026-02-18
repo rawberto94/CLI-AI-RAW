@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ObligationStatus, ObligationPriority, Prisma } from '@prisma/client';
 import { getServerSession } from '@/lib/auth';
@@ -31,13 +32,16 @@ const priorityMap: Record<string, ObligationPriority> = {
  * GET /api/obligations/v2/[id]
  * Get a specific obligation
  */
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
     const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
+    }
 
     const { id } = await params;
 
@@ -98,13 +102,16 @@ export async function GET(request: Request, { params }: RouteParams) {
  * PATCH /api/obligations/v2/[id]
  * Update an obligation
  */
-export async function PATCH(request: Request, { params }: RouteParams) {
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
     const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
+    }
 
     const { id } = await params;
     const body = await request.json();
@@ -212,13 +219,16 @@ export async function PATCH(request: Request, { params }: RouteParams) {
  * DELETE /api/obligations/v2/[id]
  * Delete an obligation
  */
-export async function DELETE(request: Request, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
     const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
+    }
 
     const { id } = await params;
 

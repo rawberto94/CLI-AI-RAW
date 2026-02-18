@@ -97,7 +97,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {    const tenant
                   name: data.supplierName,
                   legalName: data.supplierName,
                   tier: (data.supplierTier || 'TIER_2') as 'BIG_4' | 'TIER_2' | 'BOUTIQUE' | 'OFFSHORE',
-                  country: data.supplierCountry || data.country,
+                  country: data.supplierCountry || data.country || '',
                   region: data.region || 'Americas',
                 },
               });
@@ -152,8 +152,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {    const tenant
                 dailyRateCHF: converted.chf,
 
                 // Geography
-                country: data.country,
-                region: data.region,
+                country: data.country || '',
+                region: data.region || '',
                 city: data.city || null,
                 remoteAllowed: false,
 

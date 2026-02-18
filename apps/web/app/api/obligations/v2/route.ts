@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
 import { aiObligationTrackerService } from 'data-orchestration/services';
@@ -356,8 +357,8 @@ async function handleBulkCreate(
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'obligations array is required', 400);
   }
 
-  const created = [];
-  const errors = [];
+  const created: any[] = [];
+  const errors: any[] = [];
 
   for (const obl of obligations) {
     try {
@@ -461,7 +462,7 @@ async function handleExtraction(
   );
 
   // Save to database
-  const created = [];
+  const created: any[] = [];
   for (const obl of extractedObligations.obligations) {
     const newObligation = await prisma.obligation.create({
       data: {

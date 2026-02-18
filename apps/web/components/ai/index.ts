@@ -2,9 +2,11 @@
 // Enterprise AI dashboards and visualization components
 
 // Chat & Interaction
-export { default as ChatAssistant } from './ChatAssistant';
+// TODO: Module './ChatAssistant' does not exist
+// export { default as ChatAssistant } from './ChatAssistant';
 export { FloatingAIBubble } from './FloatingAIBubble';
-export { default as ProfessionalChatbot } from './ProfessionalChatbot';
+// TODO: Module './ProfessionalChatbot' does not exist
+// export { default as ProfessionalChatbot } from './ProfessionalChatbot';
 
 // Extraction & Insights
 export { default as ExtractionConfidenceHeatmap } from './ExtractionConfidenceHeatmap';

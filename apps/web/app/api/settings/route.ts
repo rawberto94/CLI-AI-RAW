@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 /**
  * GET /api/settings — Retrieve tenant/user settings
@@ -52,7 +52,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
       });
 
       if (tenantSettings?.customFields && typeof tenantSettings.customFields === 'object') {
-        settings = deepMerge(DEFAULT_SETTINGS, tenantSettings.customFields as Record<string, unknown>);
+        settings = deepMerge(DEFAULT_SETTINGS, tenantSettings.customFields as Record<string, unknown>) as typeof DEFAULT_SETTINGS;
       }
     }
 
@@ -60,16 +60,16 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     if (ctx.userId) {
       const user = await prisma.user.findUnique({
         where: { id: ctx.userId },
-        select: { name: true, email: true, role: true, image: true },
+        select: { firstName: true, lastName: true, email: true, role: true, avatar: true },
       });
 
       return createSuccessResponse(ctx, {
         settings,
         user: user ? {
-          name: user.name,
+          name: user.firstName ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}` : user.email,
           email: user.email,
           role: user.role,
-          avatar: user.image,
+          avatar: user.avatar,
         } : null,
       });
     }

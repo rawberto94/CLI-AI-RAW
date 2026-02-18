@@ -79,7 +79,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
-    if (contract.tenantId !== tenantId) {
+    if (contract.tenantId !== ctx.tenantId) {
       return createErrorResponse(ctx, 'FORBIDDEN', 'Access denied', 403);
     }
 

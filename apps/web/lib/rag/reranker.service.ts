@@ -69,7 +69,7 @@ export async function cohereRerank(
     const response = await cohere.v2.rerank({
       model: 'rerank-v3.5',
       query,
-      documents: documents.map(text => ({ text })),
+      documents: documents,
       topN: topK,
     });
 
@@ -104,7 +104,7 @@ export async function crossEncoderRerank(
 
   // For small sets, score all; for larger sets, use batching
   const batchSize = 10;
-  const batches = [];
+  const batches: { index: number; text: string }[][] = [];
   
   for (let i = 0; i < documents.length; i += batchSize) {
     batches.push(documents.slice(i, i + batchSize).map((text, idx) => ({

@@ -7,7 +7,7 @@
  * It extracts text from the contract file and generates AI-powered artifacts.
  */
 
-import { PrismaClient, ArtifactType } from 'clients-db';
+import { PrismaClient, ArtifactType } from '@prisma/client';
 import fs from 'fs/promises';
 import path from 'path';
 import pino from 'pino';
@@ -1108,7 +1108,7 @@ export async function generateRealArtifacts(
       if (metadata.endDate) updateData.endDate = new Date(metadata.endDate);
       if (metadata.totalValue) updateData.totalValue = metadata.totalValue;
       if (metadata.currency) updateData.currency = metadata.currency;
-      if (metadata.parties?.length > 0) {
+      if (metadata.parties && metadata.parties.length > 0) {
         // Extract first party as client, second as supplier
         if (metadata.parties[0]) updateData.clientName = metadata.parties[0];
         if (metadata.parties[1]) updateData.supplierName = metadata.parties[1];

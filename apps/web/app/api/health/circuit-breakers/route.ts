@@ -16,9 +16,9 @@ export async function GET(_request: NextRequest) {
     
     // Summarize health
     const entries = Object.entries(stats);
-    const openCount = entries.filter(([, s]) => s.state === 'open').length;
-    const halfOpenCount = entries.filter(([, s]) => s.state === 'half-open').length;
-    const closedCount = entries.filter(([, s]) => s.state === 'closed').length;
+    const openCount = entries.filter(([, s]) => s.state === 'OPEN').length;
+    const halfOpenCount = entries.filter(([, s]) => s.state === 'HALF_OPEN').length;
+    const closedCount = entries.filter(([, s]) => s.state === 'CLOSED').length;
     
     const overallHealth = openCount > 0 ? 'degraded' : halfOpenCount > 0 ? 'recovering' : 'healthy';
 

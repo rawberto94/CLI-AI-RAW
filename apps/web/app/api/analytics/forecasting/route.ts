@@ -12,7 +12,14 @@ function getMonthString(date: Date): string {
 // Generate forecast data from contracts
 async function generateForecastData(tenantId: string, months: number) {
   const now = new Date();
-  const forecastData = [];
+  const forecastData: Array<{
+    month: string;
+    renewalValue: number;
+    newContractValue: number;
+    terminationValue: number;
+    netChange: number;
+    cumulative: number;
+  }> = [];
   let cumulative = 0;
 
   // Get all active contracts
@@ -127,7 +134,17 @@ async function generateScenarios(tenantId: string, currentValue: number) {
 
 // Discover optimization opportunities
 async function discoverOpportunities(tenantId: string) {
-  const opportunities = [];
+  const opportunities: Array<{
+    id: string;
+    type: string;
+    title: string;
+    description: string;
+    contracts: string[];
+    potentialSavings: number;
+    effort: string;
+    timeframe: string;
+    confidence: number;
+  }> = [];
 
   // Find expiring contracts
   const expiringContracts = await prisma.contract.findMany({
@@ -264,6 +281,6 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       source: 'database',
     },
   };
-  await setCached(cacheKey, responseData, 600);
+  await setCached(cacheKey, responseData, { ttl: 600 });
   return createSuccessResponse(ctx, responseData);
 });

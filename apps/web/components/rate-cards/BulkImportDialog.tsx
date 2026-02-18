@@ -70,7 +70,7 @@ Global IT Partners,Mid-Level Developer,MID,600,GBP,GB,"JavaScript,Vue,PostgreSQL
     const lines = text.split('\n');
     const headers = lines[0].split(',').map((h) => h.trim());
 
-    const records = [];
+    const records: any[] = [];
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;

@@ -217,7 +217,7 @@ export function RenewalsCalendar({ renewals, onSelect, selectedId }: RenewalsCal
     const currentMonth = currentDate.getMonth();
     const quarterStart = Math.floor(currentMonth / 3) * 3;
     
-    const months = [];
+    const months: { month: number; name: string; renewals: RenewalContract[]; totalValue: number }[] = [];
     for (let i = 0; i < 3; i++) {
       const month = quarterStart + i;
       const monthRenewals = renewals.filter(r => {

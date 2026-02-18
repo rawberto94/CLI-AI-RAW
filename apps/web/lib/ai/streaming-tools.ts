@@ -558,7 +558,7 @@ async function executeListExpiring(args: Record<string, unknown>, tenantId: stri
       tenantId,
       expirationDate: { lte: expirationDate, gte: new Date() },
       status: 'ACTIVE',
-      ...(args.supplier && { supplierName: { contains: args.supplier as string, mode: 'insensitive' as const } }),
+      ...(args.supplier ? { supplierName: { contains: args.supplier as string, mode: 'insensitive' as const } } : {}),
     },
     orderBy: { expirationDate: 'asc' },
     take: 20,
@@ -713,15 +713,12 @@ async function executeStartWorkflow(args: Record<string, unknown>, tenantId: str
   if (!contract) return { toolName: 'start_workflow', success: false, data: null, error: 'Contract not found', executionTimeMs: Date.now() - start };
 
   // Find workflow template
-  let workflow = null;
-  if (args.workflowId) {
-    workflow = await prisma.workflow.findFirst({ where: { id: args.workflowId as string, tenantId, isActive: true }, include: { steps: { orderBy: { order: 'asc' } } } });
-  } else if (args.workflowType) {
-    workflow = await prisma.workflow.findFirst({ where: { tenantId, type: args.workflowType as string, isActive: true }, include: { steps: { orderBy: { order: 'asc' } } } });
-  } else {
-    // Default: first active workflow
-    workflow = await prisma.workflow.findFirst({ where: { tenantId, isActive: true }, include: { steps: { orderBy: { order: 'asc' } } } });
-  }
+  const workflowWhere = args.workflowId
+    ? { id: args.workflowId as string, tenantId, isActive: true }
+    : args.workflowType
+      ? { tenantId, type: args.workflowType as string, isActive: true }
+      : { tenantId, isActive: true };
+  const workflow = await prisma.workflow.findFirst({ where: workflowWhere, include: { steps: { orderBy: { order: 'asc' } } } });
 
   if (!workflow) {
     const available = await prisma.workflow.findMany({ where: { tenantId, isActive: true }, select: { id: true, name: true, type: true } });
@@ -781,7 +778,7 @@ async function executeListWorkflows(args: Record<string, unknown>, tenantId: str
     success: true,
     data: {
       templates: workflows.map(w => ({ id: w.id, name: w.name, type: w.type, stepCount: w.steps.length, executionCount: w._count.executions, steps: w.steps.map(s => s.name) })),
-      ...(args.includeExecutions && { activeExecutions }),
+      ...(args.includeExecutions ? { activeExecutions } : {}),
     },
     executionTimeMs: Date.now() - start,
     suggestedActions: [{ label: '⚙️ Workflow Settings', action: 'navigate:/settings/workflows' }],
@@ -796,14 +793,14 @@ async function executeGetPendingApprovals(tenantId: string, userId: string, star
     include: {
       workflow: { select: { name: true, type: true } },
       contract: { select: { id: true, contractTitle: true, supplierName: true, totalValue: true } },
-      stepExecutions: { where: { status: 'PENDING' }, include: { step: { select: { name: true, assigneeId: true } } } },
+      stepExecutions: { where: { status: 'PENDING' }, include: { step: { select: { name: true, assignedUser: true } } } },
     },
     orderBy: { startedAt: 'desc' },
   });
 
   // Filter to ones assigned to this user or unassigned
   const pending = executions.filter(e =>
-    e.stepExecutions.some(se => !se.step.assigneeId || se.step.assigneeId === userId)
+    e.stepExecutions.some(se => !se.step.assignedUser || se.step.assignedUser === userId)
   );
 
   return {
@@ -847,7 +844,7 @@ async function executeApproveReject(args: Record<string, unknown>, tenantId: str
   const stepExec = execution.stepExecutions[0];
   await prisma.workflowStepExecution.update({
     where: { id: stepExec.id },
-    data: { status: decision === 'approve' ? 'COMPLETED' : 'REJECTED', completedAt: new Date(), completedBy: userId, comment },
+    data: { status: decision === 'approve' ? 'COMPLETED' : 'REJECTED', completedAt: new Date(), completedBy: userId, result: comment ? { comment } : undefined },
   });
 
   if (decision === 'reject') {
@@ -1124,6 +1121,9 @@ async function executeCreateContract(args: Record<string, unknown>, tenantId: st
       expirationDate: args.expirationDate ? new Date(args.expirationDate as string) : undefined,
       status: 'DRAFT',
       uploadedBy: userId,
+      mimeType: 'application/pdf',
+      fileName: `contract-${Date.now()}.pdf`,
+      fileSize: BigInt(0),
     },
   });
 

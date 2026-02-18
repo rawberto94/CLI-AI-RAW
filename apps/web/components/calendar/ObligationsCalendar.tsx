@@ -186,14 +186,14 @@ export function ObligationsCalendar({ obligations, onStatusUpdate, onComplete }:
   const selectedDateObligations = selectedDate ? getObligationsForDate(selectedDate) : [];
 
   // Get week view data
-  const weekData = useMemo(() => {
+  const weekData = useMemo<Date[]>(() => {
     if (viewMode !== 'week') return [];
     
     const startOfWeek = new Date(currentDate);
     const day = startOfWeek.getDay();
     startOfWeek.setDate(startOfWeek.getDate() - day);
     
-    const days = [];
+    const days: Date[] = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date(startOfWeek);
       date.setDate(startOfWeek.getDate() + i);

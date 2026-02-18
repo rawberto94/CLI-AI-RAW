@@ -617,25 +617,25 @@ export function StepConfigEditor({ step, open, onClose, onSave }: StepConfigEdit
               <div className="space-y-3">
                 <Label>Notification Channels</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  {[
+                  {([
                     { value: 'email', label: 'Email', icon: Mail },
                     { value: 'inApp', label: 'In-App', icon: Bell },
                     { value: 'slack', label: 'Slack', icon: MessageSquare },
                     { value: 'teams', label: 'Teams', icon: MessageSquare },
-                  ].map((channel) => (
+                  ] as const).map((channel) => (
                     <button
                       key={channel.value}
                       onClick={() => {
-                        const channels = config.notifications.channels.includes(channel.value as string)
+                        const channels = config.notifications.channels.includes(channel.value)
                           ? config.notifications.channels.filter((c) => c !== channel.value)
-                          : [...config.notifications.channels, channel.value as string];
+                          : [...config.notifications.channels, channel.value];
                         updateConfig({
                           notifications: { ...config.notifications, channels },
                         });
                       }}
                       className={cn(
                         'flex items-center gap-2 p-3 rounded-lg border-2 transition-all',
-                        config.notifications.channels.includes(channel.value as string)
+                        config.notifications.channels.includes(channel.value)
                           ? 'bg-violet-50 border-indigo-300'
                           : 'bg-white border-slate-200 hover:border-slate-300'
                       )}

@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 // POST /api/clauses/[id]/favorite - Toggle favorite status
-export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext & { params: Promise<{ id: string }> }) => {
   const tenantId = ctx.tenantId;
-  const clauseId = ctx.params?.id as string;
+  const { id: clauseId } = await ctx.params;
 
   if (!clauseId) {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Clause ID is required', 400);
@@ -22,13 +22,13 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     return createErrorResponse(ctx, 'NOT_FOUND', 'Clause not found', 404);
   }
 
-  // Update favorite status via metadata field
-  const currentMetadata = (clause.metadata as Record<string, unknown>) || {};
+  // Update favorite status via tags field
+  const currentTags = (clause.tags && typeof clause.tags === 'object') ? clause.tags as Record<string, unknown> : {};
   await prisma.clauseLibrary.update({
     where: { id: clause.id },
     data: {
-      metadata: {
-        ...currentMetadata,
+      tags: {
+        ...currentTags,
         isFavorite: !!isFavorite,
         favoritedAt: isFavorite ? new Date().toISOString() : null,
       },

@@ -9,7 +9,7 @@
  * ✅ Safe deletion with child handling
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 import { publishRealtimeEvent } from "@/lib/realtime/publish";

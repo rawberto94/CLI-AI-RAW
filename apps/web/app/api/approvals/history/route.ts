@@ -117,11 +117,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         metadata: {
           value: contract?.totalValue ? Number(contract.totalValue) : undefined,
           supplier: contract?.supplierName || undefined,
-          ...(result?.delegated && {
+          ...(result?.delegated ? {
             previousAssignee: step.assignedTo,
             newAssignee: result.delegateTo as string,
-          }),
-          ...(result?.reason && { reason: result.reason as string }),
+          } : {}),
+          ...(result?.reason ? { reason: result.reason as string } : {}),
         },
       };
     });

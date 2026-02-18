@@ -326,8 +326,8 @@ export function handleApiError(
  * Wrapper for API route handlers with standardized error handling.
  * Forwards Next.js route context (params) for dynamic routes.
  */
-export function withApiHandler<T>(
-  handler: (request: NextRequest, context: ApiContext) => Promise<NextResponse<T>>
+export function withApiHandler(
+  handler: (request: NextRequest, context: ApiContext) => Promise<NextResponse>
 ) {
   return async (request: NextRequest, routeContext?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
     const context = getApiContext(request);
@@ -351,8 +351,8 @@ export function withApiHandler<T>(
  * Uses middleware-injected headers (x-user-id, x-tenant-id) for identity.
  * Forwards Next.js route context (params) for dynamic routes.
  */
-export function withAuthApiHandler<T>(
-  handler: (request: NextRequest, context: AuthenticatedApiContext) => Promise<NextResponse<T>>
+export function withAuthApiHandler(
+  handler: (request: NextRequest, context: AuthenticatedApiContext) => Promise<NextResponse>
 ) {
   return async (request: NextRequest, routeContext?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
     const context = getAuthenticatedApiContext(request);
@@ -381,8 +381,8 @@ export function withAuthApiHandler<T>(
  * Wrapper for cron/internal route handlers.
  * Validates CRON_SECRET or INTERNAL_API_SECRET from Authorization header.
  */
-export function withCronHandler<T>(
-  handler: (request: NextRequest, context: ApiContext) => Promise<NextResponse<T>>
+export function withCronHandler(
+  handler: (request: NextRequest, context: ApiContext) => Promise<NextResponse>
 ) {
   return async (request: NextRequest): Promise<NextResponse> => {
     const context = getApiContext(request);

@@ -687,7 +687,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
   
   // Determine which module actions to show based on action title
   const getActionLinks = () => {
-    const links = [];
+    const links: Array<{ href: string; label: string; icon: React.ComponentType<{ className?: string }> }> = [];
     const title = item.title.toLowerCase();
     
     if (title.includes('renewal') || title.includes('termination')) {
@@ -900,19 +900,22 @@ export const ContractHealthScore: React.FC = () => {
         const res = await fetch('/api/intelligence/health');
         const json = await res.json();
         if (json.success && json.data?.contracts?.length > 0) {
-          const mapped = json.data.contracts.map((item: Record<string, unknown>) => ({
+          const mapped = json.data.contracts.map((item: Record<string, unknown>) => {
+            const score = Number(item.overallScore || item.healthScore || 75);
+            return {
             contractId: item.contractId || item.id,
             contractName: item.contractName || item.name || 'Unknown Contract',
             supplierName: item.supplierName || item.counterparty || item.vendor || 'Unknown',
-            overallScore: item.overallScore || item.healthScore || 75,
-            previousScore: item.previousScore || (item.overallScore || item.healthScore || 75) - 5 || 70,
+            overallScore: score,
+            previousScore: Number(item.previousScore || score - 5 || 70),
             trend: item.trend || 'stable',
-            status: (item.overallScore || item.healthScore || 75) >= 70 ? 'healthy' : (item.overallScore || item.healthScore || 75) >= 50 ? 'at-risk' : 'critical',
+            status: score >= 70 ? 'healthy' : score >= 50 ? 'at-risk' : 'critical',
             factors: Array.isArray(item.factors) ? item.factors : [],
             lastAssessed: item.lastAssessed || new Date().toISOString(),
             nextReview: item.nextReview || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
             actionItems: Array.isArray(item.actionItems) ? item.actionItems : [],
-          }));
+          }});
+
           setHealthData(mapped);
           setSelectedContract(mapped[0] ?? null);
         }

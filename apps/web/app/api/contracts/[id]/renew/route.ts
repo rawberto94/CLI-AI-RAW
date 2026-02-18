@@ -9,6 +9,7 @@
  * - Original contract marked with renewalStatus: 'COMPLETED'
  */
 
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { z } from 'zod';
@@ -33,7 +34,7 @@ const renewalRequestSchema = z.object({
 });
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(request);
@@ -182,7 +183,7 @@ export async function POST(
           tags: originalContract.tags,
           jurisdiction: originalContract.jurisdiction,
         }),
-      },
+      } as any,
       include: {
         client: { select: { id: true, name: true } },
         supplier: { select: { id: true, name: true } },
@@ -313,7 +314,7 @@ export async function POST(
  * Returns all contracts in the renewal chain (predecessors and successors)
  */
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(request);

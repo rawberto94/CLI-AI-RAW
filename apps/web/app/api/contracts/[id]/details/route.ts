@@ -60,7 +60,7 @@ export async function GET(
     });
 
     // Fetch cost savings opportunities
-    let costSavings = null;
+    let costSavings: any = null;
     try {
       const opportunities = await prisma.costSavingsOpportunity.findMany({
         where: {

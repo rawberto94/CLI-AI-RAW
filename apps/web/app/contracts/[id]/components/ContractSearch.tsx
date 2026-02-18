@@ -225,7 +225,7 @@ export const ContractSearch = memo(function ContractSearch({
                       <div className="divide-y divide-slate-100">
                         {results.map((result, idx) => (
                           <button
-                            key={result.id || `${result.page}-${result.section || ''}-${idx}`}
+                            key={(result as any).id || `${result.page}-${result.section || ''}-${idx}`}
                             onClick={() => handleResultClick(result)}
                             className={cn(
                               "w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors",

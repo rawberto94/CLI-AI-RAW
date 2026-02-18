@@ -44,7 +44,7 @@ try {
     );
 
     // Analyze historical trends
-    let trends = null;
+    let trends: Awaited<ReturnType<ReturnType<typeof getTrendAnalyzer>['analyzeSupplierTrends']>> | null = null;
     try {
       trends = await getTrendAnalyzer().analyzeSupplierTrends(
         supplierId,
@@ -56,7 +56,7 @@ try {
     }
 
     // Get alternative supplier recommendations if requested
-    let alternatives = null;
+    let alternatives: Awaited<ReturnType<typeof supplierRecommenderService.recommendAlternatives>> | null = null;
     if (includeRecommendations) {
       try {
         alternatives = await supplierRecommenderService.recommendAlternatives({
@@ -71,7 +71,7 @@ try {
     }
 
     // Detect above-market rate increases
-    let rateIncreaseAnalysis = null;
+    let rateIncreaseAnalysis: Awaited<ReturnType<ReturnType<typeof getTrendAnalyzer>['detectAboveMarketIncreases']>> | null = null;
     if (includeAlerts) {
       try {
         rateIncreaseAnalysis = await getTrendAnalyzer().detectAboveMarketIncreases(

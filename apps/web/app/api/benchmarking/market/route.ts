@@ -29,9 +29,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   const criteria: BenchmarkCohortCriteria = {
     roleStandardized,
-    seniority: searchParams.get('seniority') || undefined,
-    country: searchParams.get('country') || undefined,
-    lineOfService: searchParams.get('lineOfService') || undefined,
+    seniority: searchParams.get('seniority') ?? '',
+    country: searchParams.get('country') ?? '',
+    lineOfService: searchParams.get('lineOfService') ?? '',
   };
 
   const intelligence = await benchmarkingEngine.calculateMarketIntelligence(criteria);

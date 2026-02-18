@@ -5,7 +5,7 @@
 
 'use client';
 
-import { memo, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import {
   CheckCircle2,
   XCircle,

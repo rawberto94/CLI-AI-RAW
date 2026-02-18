@@ -167,12 +167,14 @@ class TemplateEngine {
       }
 
       // Parse template content
-      const templateContent = template.content as TemplateContent;
+      const templateContent = template.structure as unknown as TemplateContent;
       
       // Validate required variables
+      const meta = template.metadata as Record<string, unknown> | null;
+      const templateVars = (meta?.variables ?? []) as TemplateVariable[];
       const validationResult = this.validateVariables(
         templateContent.sections,
-        template.variables as TemplateVariable[],
+        templateVars,
         variables
       );
       
@@ -265,11 +267,10 @@ class TemplateEngine {
     });
   }
 
-  private async fetchClause(clauseId: string, tenantId: string) {
+  private async fetchClause(clauseId: string, _tenantId: string) {
     return prisma.clause.findFirst({
       where: {
         id: clauseId,
-        tenantId,
       },
     });
   }
@@ -370,7 +371,7 @@ class TemplateEngine {
     if (section.clauseId) {
       const clause = await this.fetchClause(section.clauseId, tenantId);
       if (clause) {
-        sectionContent = clause.content;
+        sectionContent = clause.text;
         clausesUsed.push(section.clauseId);
       }
     }
@@ -508,15 +509,18 @@ class TemplateEngine {
     if (comparisonMatch) {
       const [, varName, operator, compareValue] = comparisonMatch;
       const value = this.getNestedValue(variables, varName);
-      let compareWith: unknown = compareValue.trim();
+      const compareStr = compareValue.trim();
+      let compareWith: string | number | boolean;
       
       // Parse comparison value
-      if (compareWith === 'true') compareWith = true;
-      else if (compareWith === 'false') compareWith = false;
-      else if (compareWith.startsWith('"') && compareWith.endsWith('"')) {
-        compareWith = compareWith.slice(1, -1);
-      } else if (!isNaN(Number(compareWith))) {
-        compareWith = Number(compareWith);
+      if (compareStr === 'true') compareWith = true;
+      else if (compareStr === 'false') compareWith = false;
+      else if (compareStr.startsWith('"') && compareStr.endsWith('"')) {
+        compareWith = compareStr.slice(1, -1);
+      } else if (!isNaN(Number(compareStr))) {
+        compareWith = Number(compareStr);
+      } else {
+        compareWith = compareStr;
       }
 
       switch (operator) {

@@ -91,7 +91,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       confidence: 0.95,
     },
   };
-  await setCached(cacheKey, responseData, 300);
+  await setCached(cacheKey, responseData, { ttl: 300 });
   return createSuccessResponse(ctx, responseData);
 });
 

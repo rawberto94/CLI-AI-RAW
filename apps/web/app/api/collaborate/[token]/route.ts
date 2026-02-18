@@ -30,10 +30,7 @@ export async function GET(
       where: {
         accessToken: token,
         status: { in: ['INVITED', 'ACTIVE'] },
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } },
-        ],
+        expiresAt: { gt: new Date() },
       },
       include: {
         contractAccess: {
@@ -146,10 +143,7 @@ export async function POST(
       where: {
         accessToken: token,
         status: 'ACTIVE',
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } },
-        ],
+        expiresAt: { gt: new Date() },
       },
       select: {
         id: true,

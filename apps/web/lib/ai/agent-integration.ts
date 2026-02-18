@@ -8,7 +8,7 @@
  * @version 1.0.0
  */
 
-import { ReActAgent, type ReActContext, type ReActResult, type ReActConfig } from '@repo/agents';
+import { ReActAgent, type ReActContext, type ReActResult, type ReActConfig, type ReActTool } from '@repo/agents';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import pino from 'pino';
@@ -182,12 +182,16 @@ export function shouldUseAgent(query: string): AgentDecision {
 // Singleton agent instance
 let agentInstance: ReActAgent | null = null;
 
+// Track config and tool count locally since ReActAgent doesn't expose getters
+let agentConfig: Partial<ReActConfig> = {};
+let agentToolCount = 0;
+
 /**
  * Get or create the ReAct agent instance
  */
 async function getAgent(): Promise<ReActAgent> {
   if (!agentInstance) {
-    const config: Partial<ReActConfig> = {
+    agentConfig = {
       maxIterations: 6,
       temperature: 0.3, // Lower temperature for factual contract queries
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
@@ -195,10 +199,10 @@ async function getAgent(): Promise<ReActAgent> {
       confidenceThreshold: 0.7,
     };
     
-    agentInstance = new ReActAgent(config);
-    
-    // Register additional contract-specific tools
-    await registerContractTools(agentInstance);
+    // Build contract-specific tools to pass to the agent constructor
+    const contractTools = buildContractTools();
+    agentToolCount = contractTools.length;
+    agentInstance = new ReActAgent(agentConfig, contractTools);
     
     logger.info('ReAct agent initialized with custom contract tools');
   }
@@ -207,11 +211,13 @@ async function getAgent(): Promise<ReActAgent> {
 }
 
 /**
- * Register contract-specific tools with the agent
+ * Build contract-specific tools for the agent
  */
-async function registerContractTools(agent: ReActAgent): Promise<void> {
+function buildContractTools(): ReActTool[] {
+  const tools: ReActTool[] = [];
+
   // Tool: Search contracts in database
-  agent.registerTool({
+  tools.push({
     name: 'search_database_contracts',
     description: 'Search for contracts in the database by name, supplier, status, or value range',
     parameters: z.object({
@@ -285,7 +291,7 @@ async function registerContractTools(agent: ReActAgent): Promise<void> {
   });
 
   // Tool: Get contract artifacts
-  agent.registerTool({
+  tools.push({
     name: 'get_contract_artifacts',
     description: 'Get extracted artifacts (obligations, clauses, parties, financial terms) from a specific contract',
     parameters: z.object({
@@ -310,7 +316,7 @@ async function registerContractTools(agent: ReActAgent): Promise<void> {
         
         let artifacts = contract.artifacts;
         if (params.artifactTypes?.length) {
-          artifacts = artifacts.filter(a => params.artifactTypes!.includes(a.artifactType));
+          artifacts = artifacts.filter(a => params.artifactTypes!.includes(a.type));
         }
         
         return {
@@ -318,9 +324,9 @@ async function registerContractTools(agent: ReActAgent): Promise<void> {
           data: {
             contractTitle: contract.contractTitle,
             artifacts: artifacts.map(a => ({
-              type: a.artifactType,
-              name: a.name,
-              value: a.extractedValue,
+              type: a.type,
+              name: a.title,
+              value: a.data,
               confidence: a.confidence,
             })),
             count: artifacts.length,
@@ -337,7 +343,7 @@ async function registerContractTools(agent: ReActAgent): Promise<void> {
   });
 
   // Tool: Analyze risk across contracts
-  agent.registerTool({
+  tools.push({
     name: 'analyze_portfolio_risk',
     description: 'Analyze risk factors across the entire contract portfolio or filtered subset',
     parameters: z.object({
@@ -361,7 +367,7 @@ async function registerContractTools(agent: ReActAgent): Promise<void> {
             status: true,
             totalValue: true,
             expirationDate: true,
-            riskScore: true,
+            expirationRisk: true,
           },
         });
         
@@ -377,7 +383,7 @@ async function registerContractTools(agent: ReActAgent): Promise<void> {
         );
         
         const highRisk = contracts.filter(c => 
-          c.riskScore && c.riskScore > 0.7
+          c.expirationRisk && ['HIGH', 'CRITICAL'].includes(c.expirationRisk)
         );
         
         const totalValue = contracts.reduce(
@@ -419,6 +425,8 @@ async function registerContractTools(agent: ReActAgent): Promise<void> {
       }
     },
   });
+
+  return tools;
 }
 
 /**
@@ -458,7 +466,7 @@ export async function executeWithAgent(
     logger.info({ goal: query.query, tenantId: query.tenantId }, 'Starting ReAct agent execution');
     
     // Execute the agent
-    const result: ReActResult = await agent.execute(context);
+    const result: ReActResult = await agent.run(context);
     
     logger.info({ 
       success: result.success, 
@@ -537,8 +545,8 @@ export function getAgentStatus(): {
   
   return {
     initialized: true,
-    toolCount: agentInstance.getToolCount?.() || 0,
-    config: agentInstance.getConfig?.() || {},
+    toolCount: agentToolCount,
+    config: agentConfig,
   };
 }
 

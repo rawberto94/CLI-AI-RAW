@@ -22,6 +22,9 @@ export async function PUT(
   }
   try {
     const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
+    }
     const { id: userId } = await params;
 
     const currentUser = await prisma.user.findUnique({

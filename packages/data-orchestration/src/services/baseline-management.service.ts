@@ -320,7 +320,14 @@ export class BaselineManagementService {
       where: baselineWhere,
     });
 
-    const comparisons = [];
+    const comparisons: Array<{
+      entryId: string;
+      resourceType: string;
+      lineOfService: string;
+      actualRate: number;
+      comparisons: BaselineComparisonResult[];
+      maxSavings: number;
+    }> = [];
     let totalSavingsOpportunity = 0;
 
     for (const entry of entries) {

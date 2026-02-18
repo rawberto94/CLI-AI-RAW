@@ -6,7 +6,7 @@
  * contextual answers with source citations.
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hybridSearch, type SearchFilters } from '@/lib/rag/advanced-rag.service';
 import OpenAI from 'openai';
@@ -308,7 +308,7 @@ ${contractContext || 'No specific contract content available. Please provide a g
 // ============================================================================
 
 export const GET = withAuthApiHandler(async (_request, ctx) => {
-  return new Response(JSON.stringify({
+  return new NextResponse(JSON.stringify({
     endpoint: '/api/ai/contract-analyst',
     method: 'POST',
     description: 'AI-powered contract analysis endpoint. Submit a query about a specific contract.',

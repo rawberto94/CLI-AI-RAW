@@ -44,10 +44,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   if (body.templateId) {
     const template = await prisma.contractTemplate.findFirst({
       where: { id: body.templateId, tenantId },
-      select: { name: true, content: true, category: true },
+      select: { name: true, clauses: true, category: true },
     });
     if (template) {
-      templateContent = `\n\nBase Template (${template.name}):\n${typeof template.content === 'string' ? template.content.slice(0, 4000) : ''}`;
+      templateContent = `\n\nBase Template (${template.name}):\n${typeof template.clauses === 'string' ? template.clauses.slice(0, 4000) : JSON.stringify(template.clauses).slice(0, 4000)}`;
     }
   }
 

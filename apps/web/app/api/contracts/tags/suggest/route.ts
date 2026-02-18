@@ -37,7 +37,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
   // Extract and count unique tags
   const tagCounts = new Map<string, number>();
   for (const contract of existingTags) {
-    for (const tag of contract.tags || []) {
+    for (const tag of (contract.tags as string[]) || []) {
       if (tag.toLowerCase().includes(normalizedQuery)) {
         tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
       }

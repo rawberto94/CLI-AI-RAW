@@ -77,7 +77,7 @@ export class AlertManagementService {
   /**
    * List alert rules
    */
-  async listAlertRules(tenantId: string, userId?: string) {
+  async listAlertRules(tenantId: string, userId?: string): Promise<AlertRule[]> {
     // Fetch rules from database
     // For now, return empty array
     return [];

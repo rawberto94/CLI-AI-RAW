@@ -47,6 +47,6 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     upcomingRenewals: upcomingContracts,
     artifactsProcessed: artifacts
   };
-  await setCached(cacheKey, data, 60);
+  await setCached(cacheKey, data, { ttl: 60 });
   return createSuccessResponse(ctx, data);
 });

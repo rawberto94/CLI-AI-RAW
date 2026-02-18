@@ -87,7 +87,6 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     }
 
     return createSuccessResponse(ctx, {
-      success: true,
       ...results,
     });
   });

@@ -36,8 +36,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
         id: true,
         contractTitle: true,
         supplierName: true,
-        counterparty: true,
-        vendor: true,
+        clientName: true,
         totalValue: true,
         annualValue: true,
         effectiveDate: true,
@@ -45,14 +44,28 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
         status: true,
         contractType: true,
         autoRenewalEnabled: true,
-        department: true,
-        healthScore: true,
-        riskScore: true,
-        complianceScore: true,
+        contractMetadata: {
+          select: {
+            riskScore: true,
+            department: true,
+          },
+        },
       },
       take: 200,
       orderBy: { updatedAt: 'desc' },
     });
+
+    // Fetch health scores for the contracts
+    const contractIds = contracts.map(c => c.id);
+    const healthScores = await prisma.contractHealthScore.findMany({
+      where: { contractId: { in: contractIds } },
+      select: {
+        contractId: true,
+        overallScore: true,
+        complianceScore: true,
+      },
+    });
+    const healthScoreMap = new Map(healthScores.map(h => [h.contractId, h]));
 
     const now = new Date();
     const risks: RiskItem[] = [];
@@ -60,7 +73,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
 
     for (const contract of contracts) {
       const name = contract.contractTitle || 'Untitled Contract';
-      const supplier = contract.supplierName || contract.counterparty || contract.vendor || 'Unknown';
+      const supplier = contract.supplierName || contract.clientName || 'Unknown';
       const expDate = contract.expirationDate ? new Date(contract.expirationDate) : null;
       const daysToExpiry = expDate ? Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
@@ -91,7 +104,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       }
 
       // Health risks
-      const healthScore = typeof contract.healthScore === 'number' ? contract.healthScore : null;
+      const healthData = healthScoreMap.get(contract.id);
+      const healthScore = healthData ? healthData.overallScore : null;
       if (healthScore !== null && healthScore < 60) {
         const severity = healthScore < 30 ? 'critical' : healthScore < 45 ? 'high' : 'medium';
         risks.push({
@@ -108,7 +122,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
           recommendedAction: 'Review contract health factors and address data gaps or compliance issues',
           factors: [
             `Health score: ${healthScore}/100`,
-            ...(contract.department ? [`Department: ${contract.department}`] : []),
+            ...(contract.contractMetadata?.department ? [`Department: ${contract.contractMetadata.department}`] : []),
           ],
         });
       }
@@ -137,7 +151,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       }
 
       // Compliance risks
-      const complianceScore = typeof contract.complianceScore === 'number' ? contract.complianceScore : null;
+      const complianceScore = healthData ? healthData.complianceScore : null;
       if (complianceScore !== null && complianceScore < 50) {
         risks.push({
           id: `risk-${++riskIdCounter}`,

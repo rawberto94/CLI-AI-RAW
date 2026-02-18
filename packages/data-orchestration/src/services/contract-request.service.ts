@@ -89,7 +89,7 @@ export class ContractRequestService {
       conditions.push(Prisma.sql`urgency = ${filters.urgency}`);
     }
 
-    const where = Prisma.join(conditions, Prisma.sql` AND `);
+    const where = Prisma.join(conditions, ' AND ');
 
     const items = await prisma.$queryRaw`
       SELECT * FROM contract_requests WHERE ${where} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}
@@ -135,7 +135,7 @@ export class ContractRequestService {
       setClauses.push(Prisma.sql`contract_id = ${extras.contractId}`);
     }
 
-    const setClause = Prisma.join(setClauses, Prisma.sql`, `);
+    const setClause = Prisma.join(setClauses, ', ');
 
     const result = await prisma.$queryRaw`
       UPDATE contract_requests SET ${setClause} WHERE id = ${id} AND tenant_id = ${tenantId} RETURNING *

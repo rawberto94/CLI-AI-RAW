@@ -496,7 +496,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
   // Generate sample sparkline data
   const generateSparkline = (trend: number): number[] => {
     const base = 50;
-    const data = [];
+    const data: number[] = [];
     for (let i = 0; i < 7; i++) {
       const variance = (Math.random() - 0.5) * 20;
       const trendValue = (trend / 100) * i * 5;

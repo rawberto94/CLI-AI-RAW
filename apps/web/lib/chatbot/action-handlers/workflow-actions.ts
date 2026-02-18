@@ -6,6 +6,7 @@
 import { DetectedIntent, ActionResponse, ChatContext } from '../types';
 import { prisma } from '@/lib/prisma';
 import { addActivityLogEntry } from '@/lib/activity-log';
+import type { Workflow, WorkflowStep } from '@prisma/client';
 
 export async function handleWorkflowActions(
   intent: DetectedIntent,
@@ -14,6 +15,10 @@ export async function handleWorkflowActions(
   const { action, entities } = intent;
   const { tenantId, userId, currentContractId } = context;
   const contractId = currentContractId; // Alias for backward compatibility
+
+  if (!userId) {
+    return { success: false, message: 'User authentication required for workflow actions' };
+  }
 
   try {
     switch (action) {
@@ -85,7 +90,7 @@ async function startWorkflow(
   }
 
   // Find or determine workflow template
-  let workflow = null;
+  let workflow: (Workflow & { steps: WorkflowStep[] }) | null = null;
   if (workflowId) {
     workflow = await prisma.workflow.findFirst({
       where: { id: workflowId, tenantId, isActive: true },

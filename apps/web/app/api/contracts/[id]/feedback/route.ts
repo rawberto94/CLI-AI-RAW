@@ -9,7 +9,7 @@
  * 3. Enabling AI prompt improvements based on patterns
  */
 
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth'
 import { getSessionTenantId } from '@/lib/tenant-server'
 import { prisma } from '@/lib/prisma'

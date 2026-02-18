@@ -29,40 +29,21 @@ import { getAccountLockout } from "@/lib/security/account-lockout";
 import { auditLog, AuditAction } from "@/lib/security/audit";
 
 // ============================================================================
-// NextAuth Module Augmentation (L17 fix — replaces `as any` casts)
+// Auth JWT type (L17 fix — replaces `as any` casts)
+// User & Session augmentation lives in types/next-auth.d.ts
+// Local interface used because @auth/core/jwt module augmentation does not
+// propagate through pnpm symlinks with moduleResolution: "bundler".
 // ============================================================================
 
-declare module "next-auth" {
-  interface User {
-    tenantId?: string;
-    role?: string;
-    mfaRequired?: boolean;
-  }
-  interface Session {
-    user: {
-      id: string;
-      email: string;
-      name?: string;
-      image?: string;
-      tenantId: string;
-      role: string;
-      provider?: string;
-      mfaRequired: boolean;
-      mfaVerified: boolean;
-    };
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    id?: string;
-    tenantId?: string;
-    role?: string;
-    provider?: string;
-    mfaRequired?: boolean;
-    mfaVerified?: boolean;
-    lastValidated?: number;
-  }
+interface AuthJWT {
+  id?: string;
+  tenantId?: string;
+  role?: string;
+  provider?: string;
+  mfaRequired?: boolean;
+  mfaVerified?: boolean;
+  lastValidated?: number;
+  [key: string]: unknown;
 }
 
 // ============================================================================
@@ -355,7 +336,8 @@ export const authOptions: NextAuthConfig = {
 
       return true;
     },
-    async jwt({ token, user, account, trigger, session }) {
+    async jwt({ token: rawToken, user, account, trigger, session }) {
+      const token = rawToken as AuthJWT;
       // Initial sign in
       if (user) {
         token.id = user.id;
@@ -382,13 +364,13 @@ export const authOptions: NextAuthConfig = {
         if (timeSinceValidation > TOKEN_REFRESH_INTERVAL) {
           try {
             const dbUser = await prisma.user.findUnique({
-              where: { id: token.id as string },
+              where: { id: token.id },
               select: { id: true, tenantId: true, role: true, status: true, mfaEnabled: true },
             });
 
             if (!dbUser || dbUser.status !== "ACTIVE") {
               // User deactivated/deleted — invalidate token
-              return {} as typeof token;
+              return {} as typeof rawToken;
             }
 
             // Refresh token data from DB
@@ -403,9 +385,10 @@ export const authOptions: NextAuthConfig = {
         }
       }
 
-      return token;
+      return token as typeof rawToken;
     },
-    async session({ session, token }) {
+    async session({ session, token: rawToken }) {
+      const token = rawToken as AuthJWT;
       if (token) {
         session.user.id = token.id as string;
         session.user.tenantId = token.tenantId as string;

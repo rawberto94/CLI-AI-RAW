@@ -43,11 +43,11 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
       id: true,
       contractTitle: true,
       fileName: true,
-      counterparty: true,
-      vendor: true,
+      supplierName: true,
+      clientName: true,
       status: true,
       contractType: true,
-      documentType: true,
+      category: true,
       totalValue: true,
       expirationRisk: true,
       metadata: true,
@@ -78,7 +78,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
     });
 
     // Supplier node + edge
-    const supplier = c.counterparty || c.vendor;
+    const supplier = c.supplierName || c.clientName;
     if (supplier) {
       const normalizedSupplier = supplier.trim().toLowerCase();
       if (!supplierMap.has(normalizedSupplier)) {
@@ -104,7 +104,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
     }
 
     // Category node + edge
-    const category = c.contractType || c.documentType;
+    const category = c.contractType || c.category;
     if (category) {
       const normalizedCat = category.trim().toLowerCase();
       if (!categoryMap.has(normalizedCat)) {

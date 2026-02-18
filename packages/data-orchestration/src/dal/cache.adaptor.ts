@@ -4,7 +4,7 @@ import { createLogger } from "../utils/logger";
 const logger = createLogger("cache-adaptor");
 
 export class CacheAdaptor {
-  private client: Redis;
+  private client: InstanceType<typeof Redis>;
   private static instance: CacheAdaptor;
 
   private constructor(redisUrl: string) {
@@ -96,7 +96,7 @@ export class CacheAdaptor {
   }
 
   // Get raw client for advanced operations
-  getClient(): Redis {
+  getClient(): InstanceType<typeof Redis> {
     return this.client;
   }
 }

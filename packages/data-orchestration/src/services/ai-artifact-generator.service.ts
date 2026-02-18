@@ -497,7 +497,7 @@ export class AIArtifactGeneratorService {
       // Auto-fix if needed
       let finalData = result;
       if (!validation.valid && validation.canAutoFix) {
-        const fixResult = await artifactValidationService.autoFix(result, validation.issues);
+        const fixResult = await artifactValidationService.autoFix(result, validation.issues || []);
         if (fixResult.fixed) {
           finalData = fixResult.artifact;
           logger.info(
@@ -1748,6 +1748,11 @@ export class AIArtifactGeneratorService {
       RATES: `Extract rate card information from this contract and return as JSON with fields: rateCards (array), roles (array), locations (array).`,
       COMPLIANCE: `Extract compliance information from this contract and return as JSON with fields: regulations (array), complianceRequirements (array), certifications (array).`,
       RISK: `Analyze risks in this contract and return as JSON with fields: overallScore (0-100), riskFactors (array of {category, severity, description}), recommendations (array).`,
+      OBLIGATIONS: `Extract obligations from this contract and return as JSON with fields: obligations (array of {party, description, deadline, type}).`,
+      RENEWAL: `Extract renewal terms from this contract and return as JSON with fields: renewalType, renewalDate, noticePeriod, autoRenewal, conditions (array).`,
+      NEGOTIATION_POINTS: `Identify negotiation points in this contract and return as JSON with fields: points (array of {clause, issue, suggestion, priority}).`,
+      AMENDMENTS: `Extract amendment information from this contract and return as JSON with fields: amendments (array of {date, description, parties, changes}).`,
+      CONTACTS: `Extract contact information from this contract and return as JSON with fields: contacts (array of {name, role, organization, email, phone}).`,
     };
 
     return `${prompts[artifactType]}\n\nContract text:\n${contractText.substring(0, 10000)}`;

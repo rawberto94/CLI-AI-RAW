@@ -170,7 +170,7 @@ async function compareClauses(
     if (!acc[type]) acc[type] = [];
     acc[type].push({
       contractId: clause.contractId,
-      contractTitle: clause.contract.contractTitle,
+      contractTitle: clause.contract.contractTitle ?? '',
       supplier: clause.contract.supplierName,
       content: clause.text?.slice(0, 500),
       fullContent: clause.text,

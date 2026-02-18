@@ -60,7 +60,7 @@ function transformActivity(dbActivity: any): ActivityResponse {
     userName: metadata?.userName,
     userEmail: metadata?.userEmail,
     userAvatar: metadata?.userAvatar,
-    metadata: metadata,
+    metadata: metadata ?? undefined,
     timestamp: dbActivity.timestamp.toISOString(),
     contractId: dbActivity.contractId,
     contractName: metadata?.contractName,
@@ -196,7 +196,7 @@ export async function logActivity(
     metadata?: Record<string, any>;
   }
 ): Promise<void> {
-  const ctx = getApiContext(type);
+  const ctx = getApiContext(type as any);
   try {
     if (!options.tenantId) {
       console.error('[logActivity] tenantId is required');

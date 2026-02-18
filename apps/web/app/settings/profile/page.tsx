@@ -498,7 +498,7 @@ export default function ProfileSettingsPage() {
                   <Switch
                     checked={user.twoFactorEnabled}
                     onCheckedChange={(checked) =>
-                      setUser((prev) => ({ ...prev, twoFactorEnabled: checked }))
+                      setUser((prev) => ({ ...prev, twoFactorEnabled: checked }) as any)
                     }
                   />
                 </div>
@@ -520,7 +520,7 @@ export default function ProfileSettingsPage() {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Last login</span>
-                    <span>{user.lastLogin.toLocaleString()}</span>
+                    <span>{user.lastLogin?.toLocaleString() ?? ''}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Account created</span>

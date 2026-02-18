@@ -12,9 +12,9 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 
 // Using singleton prisma instance from @/lib/prisma
 
-export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const tenantId = await getServerTenantId();
-  const body = await req.json();
+  const body = await request.json();
 
   const { baselines, updateExisting = true, autoApprove = false } = body;
 

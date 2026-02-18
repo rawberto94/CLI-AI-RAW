@@ -13,7 +13,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     if (type === 'overview') {
       // Get compliance summary across all active contracts vs rate cards
       const contracts = await prisma.contract.findMany({
-        where: { tenantId: ctx.tenantId, status: { in: ['ACTIVE', 'IN_REVIEW'] } },
+        where: { tenantId: ctx.tenantId, status: { in: ['ACTIVE', 'PENDING'] } },
         select: {
           id: true,
           contractTitle: true,
@@ -21,13 +21,12 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
           totalValue: true,
           currency: true,
           metadata: true,
-          extractedData: true,
         },
       });
 
       const rateCards = await prisma.rateCard.findMany({
         where: { tenantId: ctx.tenantId },
-        select: { id: true, name: true, data: true, metadata: true },
+        select: { id: true, supplierName: true, dataQuality: true, roles: { select: { standardizedRole: true, roleCategory: true, hourlyRate: true, seniorityLevel: true } } },
       });
 
       // Compute compliance metrics
@@ -37,8 +36,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       const violations: any[] = [];
 
       for (const contract of contracts) {
-        const extracted = (contract.extractedData as any) || {};
-        const contractRates = extracted.rates || extracted.pricing || [];
+        const meta = (contract.metadata as any) || {};
+        const contractRates = meta.rates || meta.pricing || [];
 
         if (!Array.isArray(contractRates) || contractRates.length === 0) {
           unmatched++;
@@ -49,9 +48,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         for (const rate of contractRates) {
           // Find matching rate card
           for (const rc of rateCards) {
-            const rcData = (rc.data as any) || {};
-            const baselineRates = rcData.rates || rcData.items || [];
-            if (!Array.isArray(baselineRates)) continue;
+            const baselineRates = rc.roles.map((r: any) => ({ role: r.standardizedRole, category: r.roleCategory, rate: Number(r.hourlyRate) }));
+            if (!Array.isArray(baselineRates) || baselineRates.length === 0) continue;
 
             const match = baselineRates.find((br: any) =>
               br.role?.toLowerCase() === rate.role?.toLowerCase() ||
@@ -68,7 +66,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
                   contractTitle: contract.contractTitle,
                   supplierName: contract.supplierName,
                   rateCardId: rc.id,
-                  rateCardName: rc.name,
+                  rateCardName: rc.supplierName,
                   role: rate.role || rate.category || rate.description,
                   contractRate: rate.amount,
                   baselineRate: match.rate,
@@ -103,7 +101,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       // Group rate compliance by supplier
       const contracts = await prisma.contract.findMany({
         where: { tenantId: ctx.tenantId, status: 'ACTIVE', supplierName: { not: null } },
-        select: { id: true, supplierName: true, totalValue: true, extractedData: true },
+        select: { id: true, supplierName: true, totalValue: true },
       });
 
       const supplierMap: Record<string, { contracts: number; totalValue: number; supplierName: string }> = {};

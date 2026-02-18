@@ -143,7 +143,7 @@ export interface SearchResult {
   chunkIndex: number;
   text: string;
   score: number;
-  matchType: 'semantic' | 'keyword' | 'hybrid';
+  matchType: 'semantic' | 'keyword' | 'hybrid' | 'graph_expansion';
   metadata: ChunkMetadata;
   highlights?: string[];
 }
@@ -873,7 +873,6 @@ export async function hybridSearch(
             section: '',
             matchType: r.matchType,
           })),
-          k,
         );
         if (expanded.length > 0) {
           finalResults = expanded.map(e => ({
@@ -1164,7 +1163,7 @@ export async function processContractWithSemanticChunking(
     );
     contextualizedChunks = chunks.map((chunk, i) => ({
       ...chunk,
-      text: contextualized[i]?.text || chunk.text,
+      text: contextualized[i]?.contextualizedText || chunk.text,
     }));
   } catch (ctxErr) {
     console.warn('[RAG] Contextual retrieval skipped:', ctxErr);

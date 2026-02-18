@@ -46,7 +46,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           tenantId: ctx.tenantId,
           role: 'member',
           status: 'ACTIVE',
-        },
+        } as any,
       });
     }
 

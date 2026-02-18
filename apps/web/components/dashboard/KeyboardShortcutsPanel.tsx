@@ -400,7 +400,7 @@ export function useKeyboardShortcuts(
 
       // Build key representation
       const key = e.key.toLowerCase();
-      const modifiers = [];
+      const modifiers: string[] = [];
       if (e.metaKey || e.ctrlKey) modifiers.push('⌘');
       if (e.shiftKey) modifiers.push('⇧');
       if (e.altKey) modifiers.push('⌥');

@@ -536,7 +536,7 @@ class AnalyticsService {
         where: { tenantId, status: 'ACTIVE', expirationRisk: 'MEDIUM' },
       }),
       prisma.contract.count({
-        where: { tenantId, status: 'ACTIVE', expirationRisk: { in: ['LOW', null] } },
+        where: { tenantId, status: 'ACTIVE', OR: [{ expirationRisk: 'LOW' }, { expirationRisk: null }] },
       }),
     ]);
 
@@ -788,7 +788,7 @@ class AnalyticsService {
     // Simplified - would calculate actual trend
 
     // Contract types
-    const contractTypes = [...new Set(contracts.map((c) => c.contractType).filter(Boolean))];
+    const contractTypes = [...new Set(contracts.map((c) => c.contractType).filter((t): t is string => Boolean(t)))];
 
     return {
       supplier: supplierName,

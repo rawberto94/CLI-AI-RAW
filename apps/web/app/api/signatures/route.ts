@@ -118,7 +118,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       email: s.email,
       role: s.role || 'signer',
       order: s.order ?? i + 1,
-    })),
+    })) as any,
     message,
     expiresInDays: expiryDays,
     provider: provider === 'hellosign' ? 'manual' : provider as 'docusign' | 'adobe_sign' | 'manual',

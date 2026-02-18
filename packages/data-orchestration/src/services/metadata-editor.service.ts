@@ -336,7 +336,7 @@ export class MetadataEditorService {
       }
 
       // Get popular tags from similar contracts
-      const similarTags = await this.getSimilarContractTags(tenantId, contract.contractType);
+      const similarTags = await this.getSimilarContractTags(tenantId, contract.contractType ?? undefined);
       suggestions.push(...similarTags);
 
       // Sort by score and return top 10

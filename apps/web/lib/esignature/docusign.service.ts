@@ -126,7 +126,7 @@ async function getDocuSignAccessToken(): Promise<string> {
 
   if (!response.ok) {
     const error = await response.text();
-    logger.error({ error }, 'DocuSign OAuth token request failed');
+    logger.error('DocuSign OAuth token request failed', undefined, { errorData: error });
     throw new Error(`DocuSign auth failed: ${response.status} ${error}`);
   }
 
@@ -161,7 +161,7 @@ async function createDocuSignEnvelope(params: CreateEnvelopeParams): Promise<Env
   // Get contract file content for the envelope document
   const contract = await prisma.contract.findUnique({
     where: { id: params.contractId },
-    select: { id: true, fileName: true, contractTitle: true, rawContent: true },
+    select: { id: true, fileName: true, contractTitle: true, rawText: true },
   });
 
   if (!contract) {
@@ -175,7 +175,7 @@ async function createDocuSignEnvelope(params: CreateEnvelopeParams): Promise<Env
     status: 'sent',
     documents: [
       {
-        documentBase64: Buffer.from(contract.rawContent || `Contract: ${contract.contractTitle || contract.fileName}`).toString('base64'),
+        documentBase64: Buffer.from(contract.rawText || `Contract: ${contract.contractTitle || contract.fileName}`).toString('base64'),
         name: contract.fileName || 'contract.pdf',
         fileExtension: contract.fileName?.split('.').pop() || 'pdf',
         documentId: '1',
@@ -235,7 +235,7 @@ async function createDocuSignEnvelope(params: CreateEnvelopeParams): Promise<Env
 
   if (!response.ok) {
     const error = await response.text();
-    logger.error({ error, status: response.status }, 'DocuSign envelope creation failed');
+    logger.error('DocuSign envelope creation failed', undefined, { errorData: error, status: response.status });
     throw new Error(`DocuSign envelope creation failed: ${response.status}`);
   }
 
@@ -315,8 +315,8 @@ export async function createSignatureEnvelope(params: CreateEnvelopeParams): Pro
   const useDocuSign = params.provider === 'docusign' && isDocuSignConfigured();
 
   logger.info(
-    { contractId: params.contractId, provider: useDocuSign ? 'docusign' : 'internal', signerCount: params.signers.length },
-    'Creating signature envelope'
+    'Creating signature envelope',
+    { contractId: params.contractId, provider: useDocuSign ? 'docusign' : 'internal', signerCount: params.signers.length }
   );
 
   let result: EnvelopeResult;
@@ -337,7 +337,7 @@ export async function createSignatureEnvelope(params: CreateEnvelopeParams): Pro
       contractId: params.contractId,
       provider: result.provider,
       status: result.status,
-      externalEnvelopeId: result.externalEnvelopeId || null,
+      externalId: result.externalEnvelopeId || null,
       message: params.message || 'Please review and sign this contract',
       createdBy: params.userId,
       expiresAt: new Date(Date.now() + (params.expiresInDays || 14) * 86400000),
@@ -365,13 +365,13 @@ export async function syncEnvelopeStatus(signatureRequestId: string): Promise<Si
     where: { id: signatureRequestId },
   });
 
-  if (!request || request.provider !== 'docusign' || !request.externalEnvelopeId) {
+  if (!request || request.provider !== 'docusign' || !request.externalId) {
     return [];
   }
 
   if (!isDocuSignConfigured()) return [];
 
-  const response = await docusignFetch(`/envelopes/${request.externalEnvelopeId}/recipients`);
+  const response = await docusignFetch(`/envelopes/${request.externalId}/recipients`);
   if (!response.ok) return [];
 
   const data = await response.json();
@@ -427,16 +427,16 @@ export async function handleDocuSignWebhook(payload: Record<string, unknown>): P
   if (!envelopeId) return;
 
   const request = await prisma.signatureRequest.findFirst({
-    where: { externalEnvelopeId: envelopeId },
+    where: { externalId: envelopeId },
   });
 
   if (!request) {
-    logger.warn({ envelopeId }, 'DocuSign webhook: no matching signature request');
+    logger.warn('DocuSign webhook: no matching signature request', { envelopeId: envelopeId as string });
     return;
   }
 
   await syncEnvelopeStatus(request.id);
-  logger.info({ envelopeId, signatureRequestId: request.id }, 'DocuSign webhook processed');
+  logger.info('DocuSign webhook processed', { envelopeId: envelopeId as string, signatureRequestId: request.id });
 }
 
 export const eSignatureService = {

@@ -89,8 +89,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
     case 'import-batch': {
       const accessToken = await getValidAccessToken(tenantId);
-      const results = [];
-      const errors = [];
+      const results: Array<{ contractId: string; fileName: string }> = [];
+      const errors: Array<{ fileId: any; error: string }> = [];
 
       for (const id of fileIds || []) {
         try {

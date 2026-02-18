@@ -291,7 +291,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
             type: trace?.agentType || 'custom',
             title: trace?.goal || 'Agent trace',
             description: `Agent: ${trace?.agentName || 'unknown'} | Session: ${trace?.sessionId || 'none'}`,
-            status: 'IN_PROGRESS',
+            status: 'IN_PROGRESS' as any,
             context: {
               agentId: trace?.agentId,
               agentName: trace?.agentName,

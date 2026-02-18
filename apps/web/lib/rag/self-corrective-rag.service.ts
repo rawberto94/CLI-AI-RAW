@@ -98,7 +98,7 @@ export async function gradeChunks(
 
   for (const batch of batches) {
     const chunkTexts = batch.map((c, i) =>
-      `[Chunk ${i + 1}]\n${c.chunkText.slice(0, 500)}`
+      `[Chunk ${i + 1}]\n${c.text.slice(0, 500)}`
     ).join('\n\n');
 
     try {
@@ -297,7 +297,7 @@ export async function selfCorrectiveRetrieval(
 
   // Step 3: Low confidence — try reformulation if we have a search function
   if (searchFn && cfg.maxRetries > 0) {
-    const irrelevantTexts = irrelevant.map(g => g.chunk.chunkText);
+    const irrelevantTexts = irrelevant.map(g => g.chunk.text);
     const reformulatedQuery = await reformulateQuery(query, irrelevantTexts);
 
     if (reformulatedQuery !== query) {
@@ -353,7 +353,7 @@ export async function selfCorrectiveRetrieval(
 function deduplicateChunks(chunks: SearchResult[]): SearchResult[] {
   const seen = new Set<string>();
   return chunks.filter(chunk => {
-    const key = chunk.chunkText.slice(0, 100);
+    const key = chunk.text.slice(0, 100);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

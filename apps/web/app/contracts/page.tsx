@@ -646,7 +646,7 @@ export default function ContractsPage() {
     const message = `Applied ${filterCount} filter${filterCount === 1 ? '' : 's'}`;
     
     // Show info about additional filters that aren't in FilterState
-    const additionalFilters = [];
+    const additionalFilters: string[] = [];
     if (supplierFilter) additionalFilters.push(`Supplier: ${supplierFilter}`);
     if (clientFilter) additionalFilters.push(`Client: ${clientFilter}`);
     if (jurisdictionFilter) additionalFilters.push(`Jurisdiction: ${jurisdictionFilter}`);
@@ -1194,9 +1194,9 @@ export default function ContractsPage() {
       keyTerms: [],
       tags: [],
       // Include hierarchy info
-      parentContractId: contract.parentContractId,
-      parentContract: contract.parentContract,
-      childContracts: contract.childContracts,
+      parentContractId: contract.parentContractId ?? undefined,
+      parentContract: contract.parentContract ? { ...contract.parentContract, contractType: contract.parentContract.contractType ?? undefined } : undefined,
+      childContracts: contract.childContracts?.map(c => ({ ...c, contractType: c.contractType ?? undefined })),
       hasHierarchy: contract.hasHierarchy,
     } satisfies EnhancedContract));
   }, [paginatedContracts, favoriteContracts]);

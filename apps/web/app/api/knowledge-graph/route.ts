@@ -165,7 +165,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract IDs array required', 400);
       }
 
-      const results = [];
+      const results: Array<{ contractId: any; entities: any[]; count: number }> = [];
 
       for (const cid of contractIds) {
         try {

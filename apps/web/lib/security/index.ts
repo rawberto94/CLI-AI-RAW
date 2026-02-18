@@ -7,20 +7,21 @@
  */
 
 // Rate Limiter
-export {
-  RateLimiter,
-  SlidingWindowRateLimiter,
-  MemoryStore,
-  RedisStore,
-  rateLimiters,
-  getClientIP,
-  rateLimitResponse,
-  withRateLimit,
-  type RateLimitConfig,
-  type RateLimitResult,
-  type RateLimitStore,
-  type RedisClient,
-} from './rate-limiter';
+// TODO: Module './rate-limiter' does not exist
+// export {
+//   RateLimiter,
+//   SlidingWindowRateLimiter,
+//   MemoryStore,
+//   RedisStore,
+//   rateLimiters,
+//   getClientIP,
+//   rateLimitResponse,
+//   withRateLimit,
+//   type RateLimitConfig,
+//   type RateLimitResult,
+//   type RateLimitStore,
+//   type RedisClient,
+// } from './rate-limiter';
 
 // Input Sanitization
 export {

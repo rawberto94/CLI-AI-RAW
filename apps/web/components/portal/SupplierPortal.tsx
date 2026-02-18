@@ -330,7 +330,7 @@ export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPor
             ...c,
             type: 'Contract',
             startDate: new Date().toISOString().split('T')[0],
-            endDate: c.expiryDate || new Date().toISOString().split('T')[0],
+            endDate: (c as any).expiryDate || new Date().toISOString().split('T')[0],
             lastUpdated: 'Recently',
             pendingItems: c.actionRequired ? 1 : 0,
           })),

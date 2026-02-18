@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     // ── Cache stats ───────────────────────────────────────────────────────
     let cacheStats: Record<string, unknown> = {};
     try {
-      cacheStats = getSemanticCache().getStats();
+      cacheStats = getSemanticCache().getStats() as unknown as Record<string, unknown>;
     } catch {
       cacheStats = { error: 'Cache unavailable' };
     }

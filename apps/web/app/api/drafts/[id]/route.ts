@@ -88,6 +88,9 @@ export async function PATCH(
   }
   try {
     const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
+    }
 
     const tenantId = await getApiTenantId(request);
     const { id } = await params;

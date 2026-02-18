@@ -229,7 +229,7 @@ class ResourceMonitorService extends EventEmitter {
     const alerts: ResourceAlert[] = [];
 
     // Memory alerts
-    if (metrics.memory.heapUtilization >= this.config.thresholds.memoryCritical) {
+    if (metrics.memory.heapUtilization >= (this.config.thresholds.memoryCritical ?? 90)) {
       alerts.push({
         type: 'memory',
         severity: 'critical',
@@ -237,7 +237,7 @@ class ResourceMonitorService extends EventEmitter {
         metrics: { memory: metrics.memory },
         timestamp: new Date(),
       });
-    } else if (metrics.memory.heapUtilization >= this.config.thresholds.memoryWarning) {
+    } else if (metrics.memory.heapUtilization >= (this.config.thresholds.memoryWarning ?? 80)) {
       alerts.push({
         type: 'memory',
         severity: 'warning',
@@ -248,7 +248,7 @@ class ResourceMonitorService extends EventEmitter {
     }
 
     // CPU alerts
-    if (metrics.cpu.usage >= this.config.thresholds.cpuCritical) {
+    if (metrics.cpu.usage >= (this.config.thresholds.cpuCritical ?? 85)) {
       alerts.push({
         type: 'cpu',
         severity: 'critical',
@@ -256,7 +256,7 @@ class ResourceMonitorService extends EventEmitter {
         metrics: { cpu: metrics.cpu },
         timestamp: new Date(),
       });
-    } else if (metrics.cpu.usage >= this.config.thresholds.cpuWarning) {
+    } else if (metrics.cpu.usage >= (this.config.thresholds.cpuWarning ?? 70)) {
       alerts.push({
         type: 'cpu',
         severity: 'warning',
@@ -268,7 +268,7 @@ class ResourceMonitorService extends EventEmitter {
 
     // Connection alerts
     const connectionUtilization = sseConnectionManager.getDegradationStatus().currentLoad;
-    if (connectionUtilization >= this.config.thresholds.connectionsCritical) {
+    if (connectionUtilization >= (this.config.thresholds.connectionsCritical ?? 95)) {
       alerts.push({
         type: 'connections',
         severity: 'critical',
@@ -276,7 +276,7 @@ class ResourceMonitorService extends EventEmitter {
         metrics: { connections: metrics.connections },
         timestamp: new Date(),
       });
-    } else if (connectionUtilization >= this.config.thresholds.connectionsWarning) {
+    } else if (connectionUtilization >= (this.config.thresholds.connectionsWarning ?? 80)) {
       alerts.push({
         type: 'connections',
         severity: 'warning',

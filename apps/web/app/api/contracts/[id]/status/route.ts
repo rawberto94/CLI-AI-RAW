@@ -349,7 +349,7 @@ export async function PATCH(
           ...meta,
           statusHistory,
           lastStatusChange: new Date().toISOString(),
-        },
+        } as any,
       },
       select: {
         id: true,

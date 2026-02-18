@@ -736,6 +736,7 @@ export function FloatingAIBubble() {
   useEffect(() => {
     if (typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
       const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognitionAPI) return;
       recognitionRef.current = new SpeechRecognitionAPI();
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = true;
@@ -829,6 +830,9 @@ export function FloatingAIBubble() {
     URL.revokeObjectURL(url);
   }, [messages]);
 
+  // Forward ref for handleSendMessage (declared below due to hook ordering)
+  const sendMsgRef = useRef<(content?: string) => void>(() => {});
+
   // Handle action button clicks — routes all action types from response-builder
   const handleAction = useCallback((action: string) => {
     // Handle dynamic contract-specific actions (e.g., "view-contract:abc-123")
@@ -860,35 +864,35 @@ export function FloatingAIBubble() {
       // Chat-driven actions — re-send as a message to the AI
       case "set-reminder":
       case "set-reminders":
-        handleSendMessage("Set a reminder for upcoming renewals");
+        sendMsgRef.current("Set a reminder for upcoming renewals");
         break;
       case "start-renewal":
-        handleSendMessage("Start the renewal process for expiring contracts");
+        sendMsgRef.current("Start the renewal process for expiring contracts");
         break;
       case "notify-stakeholders":
-        handleSendMessage("Notify relevant stakeholders about upcoming contract renewals");
+        sendMsgRef.current("Notify relevant stakeholders about upcoming contract renewals");
         break;
       case "deep-analysis":
-        handleSendMessage("Perform a deep analysis on the contracts we just discussed");
+        sendMsgRef.current("Perform a deep analysis on the contracts we just discussed");
         break;
       case "generate-report":
-        handleSendMessage("Generate a detailed report on this analysis");
+        sendMsgRef.current("Generate a detailed report on this analysis");
         break;
       case "refine-search":
-        handleSendMessage("Help me refine my search with more specific criteria");
+        sendMsgRef.current("Help me refine my search with more specific criteria");
         break;
       case "export-list":
-        handleSendMessage("Export the list of contracts we just discussed");
+        sendMsgRef.current("Export the list of contracts we just discussed");
         break;
 
       default:
         // Unknown action — try sending it as a natural language query
         if (action) {
-          handleSendMessage(action.replace(/-/g, " "));
+          sendMsgRef.current(action.replace(/-/g, " "));
         }
         break;
     }
-  }, [router, handleSendMessage]);
+  }, [router]);
 
   // Constants for request handling
   const REQUEST_TIMEOUT_MS = 60000; // 60 seconds
@@ -1350,6 +1354,9 @@ export function FloatingAIBubble() {
     }
     
   }, [input, isLoading, conversationContext, isOpen, playSound, messages, cancelCurrentRequest]);
+
+  // Keep forward ref in sync for handleAction
+  sendMsgRef.current = handleSendMessage;
 
   // Update conversation context
   const updateContext = (query: string) => {
@@ -2704,11 +2711,11 @@ export function FloatingAIBubble() {
         <AIFeedbackDialog
           open={showFeedbackDialog}
           onOpenChange={setShowFeedbackDialog}
-          messageId={feedbackMessageId || undefined}
+          messageId={feedbackMessageId || ''}
           messageContent={
             feedbackMessageId 
-              ? messages.find(m => m.id === feedbackMessageId)?.content 
-              : undefined
+              ? messages.find(m => m.id === feedbackMessageId)?.content ?? ''
+              : ''
           }
           conversationId={persistence.conversationId || undefined}
           onFeedbackSubmitted={() => {

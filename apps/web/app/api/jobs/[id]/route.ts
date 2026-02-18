@@ -1,12 +1,13 @@
+import { NextRequest } from 'next/server';
 import { getJob } from "@/lib/jobs"
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const runtime = "nodejs"
 
-export async function GET(_req: Request, context: { params: Promise<{ id: string }> }) {
-  const ctx = getAuthenticatedApiContext(request);
+export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const ctx = getAuthenticatedApiContext(_req);
   if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    return createErrorResponse(getApiContext(_req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   const params = await context.params
   const job = getJob(params.id)

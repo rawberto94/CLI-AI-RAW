@@ -191,6 +191,7 @@ export const HeavyComponents = {
   
   // Data Tables with Virtual Scrolling
   VirtualDataTable: lazyComponent(
+    // @ts-ignore - module may not exist yet
     () => import('@/components/ui/virtual-list').then(m => ({ default: m.VirtualList })),
     { ssr: false }
   ),

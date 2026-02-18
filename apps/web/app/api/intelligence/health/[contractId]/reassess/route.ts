@@ -60,9 +60,9 @@ export const POST = withAuthApiHandler(
       return NextResponse.json({
         success: true,
         data: {
-          contractId,
           contractName: contract.contractTitle || 'Untitled',
           ...health,
+          contractId,
           reassessedAt: new Date().toISOString(),
         },
       });

@@ -357,7 +357,7 @@ export const oauthProviders: Record<string, OAuthProvider> = {
 // =====================
 
 export function getIntegrationProviders() {
-  const providers = [];
+  const providers: OAuthConfig<any>[] = [];
   
   if (process.env.DOCUSIGN_CLIENT_ID) {
     providers.push(DocuSignProvider);

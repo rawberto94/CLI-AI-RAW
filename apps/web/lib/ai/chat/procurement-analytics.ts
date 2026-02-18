@@ -294,7 +294,7 @@ export async function getComplianceStatus(tenantId: string, supplierName?: strin
         totalValue: true } });
 
     const contractsWithIssues = contracts.filter(c => {
-      const issues = [];
+      const issues: string[] = [];
       if (!c.expirationDate) issues.push('missing_expiration');
       if (!c.noticePeriodDays) issues.push('missing_notice_period');
       return issues.length > 0;

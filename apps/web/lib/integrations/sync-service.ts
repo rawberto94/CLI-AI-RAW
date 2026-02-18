@@ -183,7 +183,7 @@ class ContractSourceSyncService {
       },
     });
 
-    await connector.disconnect();
+    await connector.disconnect?.();
 
     return result;
   }
@@ -270,7 +270,7 @@ class ContractSourceSyncService {
         credentials: source.credentials as unknown as ConnectorCredentials,
       };
 
-      if (syncMode === SyncMode.DELTA && connector.supportsDeltaSync() && connector.getDeltaChanges) {
+      if (syncMode === SyncMode.DELTA && connector.supportsDeltaSync?.() && connector.getDeltaChanges) {
         // Delta sync
         newSyncCursor = await this.performDeltaSync(
           sourceConfig as ContractSourceConfig & { syncCursor: string | null },
@@ -290,7 +290,7 @@ class ContractSourceSyncService {
       }
 
       // Disconnect
-      await connector.disconnect();
+      await connector.disconnect?.();
 
       // Update sync record
       const duration = Date.now() - startTime;
@@ -458,9 +458,10 @@ class ContractSourceSyncService {
 
     const result = await connector.getDeltaChanges(source.syncCursor || undefined);
 
-    progress.filesFound = result.changes.length;
+    const changes = result.changes ?? [];
+    progress.filesFound = changes.length;
 
-    for (const change of result.changes) {
+    for (const change of changes) {
       if (job?.cancel) break;
 
       progress.currentFile = change.file.name;
@@ -566,7 +567,8 @@ class ContractSourceSyncService {
     try {
       // Download file
       const downloaded = await connector.downloadFile(file.id);
-      progress.bytesTransferred += downloaded.size;
+      const downloadedSize = downloaded.size ?? 0;
+      progress.bytesTransferred += downloadedSize;
 
       // Upload to local storage
       const storagePath = `uploads/${source.tenantId}/synced/${source.id}/${Date.now()}-${file.name}`;
@@ -579,7 +581,7 @@ class ContractSourceSyncService {
           fileName: file.name,
           originalName: file.name,
           mimeType: downloaded.mimeType,
-          fileSize: BigInt(downloaded.size),
+          fileSize: BigInt(downloadedSize),
           status: source.autoProcess ? 'PENDING' : 'UPLOADED',
           storagePath,
           storageProvider: 'local',

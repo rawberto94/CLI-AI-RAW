@@ -278,7 +278,7 @@ export class MultiPassGeneratorService {
 
     // Auto-fix issues
     if (!validation.valid && validation.canAutoFix) {
-      const fixResult = await artifactValidationService.autoFix(pass2Data, validation.issues);
+      const fixResult = await artifactValidationService.autoFix(pass2Data, validation.issues ?? []);
       if (fixResult.fixed) {
         finalData = fixResult.artifact;
         improvements.push(`Auto-fixed ${fixResult.changes.length} issues`);

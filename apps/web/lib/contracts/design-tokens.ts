@@ -239,21 +239,21 @@ export const contractTokens = {
   progress: {
     height: '8px',
     borderRadius: borderRadius.full,
-    backgroundColor: colors.gray[200],
+    backgroundColor: colors.neutral[200],
   },
 }
 
 // Export utility functions
 export const getStatusColor = (status: string) => {
-  return statusColors[status as keyof typeof statusColors] || colors.gray[400]
+  return statusColors[status as keyof typeof statusColors] || colors.neutral[400]
 }
 
 export const getRiskColor = (risk: string) => {
-  return riskColors[risk as keyof typeof riskColors] || colors.gray[400]
+  return riskColors[risk as keyof typeof riskColors] || colors.neutral[400]
 }
 
 export const getContrastColor = (backgroundColor: string) => {
   // Simple contrast calculation - in production, use a proper contrast library
   const isDark = backgroundColor.includes('800') || backgroundColor.includes('900')
-  return isDark ? colors.gray[50] : colors.gray[900]
+  return isDark ? colors.neutral[50] : colors.neutral[900]
 }

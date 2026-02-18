@@ -116,6 +116,6 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       needsAttention: nonContractCount + unsignedCount,
     },
   };
-  await setCached(cacheKey, data, 300);
+  await setCached(cacheKey, data, { ttl: 300 });
   return createSuccessResponse(ctx, data);
 });

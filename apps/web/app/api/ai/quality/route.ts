@@ -3,7 +3,7 @@
  * Analytics and metrics for AI extraction quality monitoring
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Dynamic import to avoid build-time resolution issues
@@ -27,7 +27,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     // Export as CSV
     if (format === 'csv') {
       const csv = qualityService.exportToCsv(tenantId, period);
-      return new Response(csv, {
+      return new NextResponse(csv, {
         headers: {
           'Content-Type': 'text/csv',
           'Content-Disposition': `attachment; filename="quality-report-${period}.csv"` } });
