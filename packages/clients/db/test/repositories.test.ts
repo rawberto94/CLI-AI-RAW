@@ -53,6 +53,71 @@ const mockPrismaClient = {
     aggregate: vi.fn(),
     upsert: vi.fn(),
   },
+  importJob: {
+    create: vi.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  rateCard: {
+    create: vi.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  roleRate: {
+    create: vi.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  mappingTemplate: {
+    create: vi.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  contractArtifact: {
+    create: vi.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    deleteMany: vi.fn(),
+    count: vi.fn(),
+  },
+  clause: {
+    create: vi.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  processingJob: {
+    create: vi.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  party: {
+    create: vi.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
   userRole: {
     create: vi.fn(),
     delete: vi.fn(),
@@ -388,6 +453,14 @@ describe('Repository Layer', () => {
       mockPrismaClient.contract.count.mockResolvedValue(1);
       mockPrismaClient.user.count.mockResolvedValue(1);
       mockPrismaClient.artifact.count.mockResolvedValue(1);
+      mockPrismaClient.importJob.count.mockResolvedValue(1);
+      mockPrismaClient.rateCard.count.mockResolvedValue(1);
+      mockPrismaClient.roleRate.count.mockResolvedValue(1);
+      mockPrismaClient.mappingTemplate.count.mockResolvedValue(1);
+      mockPrismaClient.contractArtifact.count.mockResolvedValue(1);
+      mockPrismaClient.clause.count.mockResolvedValue(1);
+      mockPrismaClient.processingJob.count.mockResolvedValue(1);
+      mockPrismaClient.party.count.mockResolvedValue(1);
 
       const health = await repositoryManager.healthCheck();
 
@@ -397,6 +470,14 @@ describe('Repository Layer', () => {
         contracts: true,
         users: true,
         artifacts: true,
+        importJobs: true,
+        rateCards: true,
+        roleRates: true,
+        mappingTemplates: true,
+        contractArtifacts: true,
+        clauses: true,
+        processingJobs: true,
+        parties: true,
       });
     });
 
@@ -412,6 +493,10 @@ describe('Repository Layer', () => {
         .mockResolvedValueOnce(3); // processing contracts
       mockPrismaClient.user.count.mockResolvedValueOnce(25); // total users
       mockPrismaClient.artifact.count.mockResolvedValueOnce(100); // total artifacts
+      mockPrismaClient.importJob.count.mockResolvedValueOnce(10); // total import jobs
+      mockPrismaClient.rateCard.count.mockResolvedValueOnce(8); // total rate cards
+      mockPrismaClient.roleRate.count.mockResolvedValueOnce(20); // total role rates
+      mockPrismaClient.mappingTemplate.count.mockResolvedValueOnce(3); // total mapping templates
 
       const stats = await repositoryManager.getStats();
 
@@ -422,6 +507,10 @@ describe('Repository Layer', () => {
         totalArtifacts: 100,
         activeTenantsCount: 4,
         processingContractsCount: 3,
+        totalImportJobs: 10,
+        totalRateCards: 8,
+        totalRoleRates: 20,
+        totalMappingTemplates: 3,
       });
     });
 

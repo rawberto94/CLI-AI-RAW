@@ -24,12 +24,12 @@ vi.mock('clients-db', () => ({
   })),
 }));
 
-// Mock the cache
+// Mock the cache — get must return the written value so the read/write check passes
 vi.mock('../../src/services/multi-level-cache.service', () => ({
   multiLevelCache: {
-    set: vi.fn(),
-    get: vi.fn(),
-    delete: vi.fn(),
+    set: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockImplementation(async () => ({ timestamp: Date.now(), test: true })),
+    delete: vi.fn().mockResolvedValue(undefined),
     getStats: vi.fn(() => ({
       l1Size: 10,
       l2Connected: true,
@@ -39,19 +39,31 @@ vi.mock('../../src/services/multi-level-cache.service', () => ({
   },
 }));
 
-// Mock event bus
-vi.mock('../../src/events/event-bus', () => ({
-  eventBus: {
-    on: vi.fn(),
-    off: vi.fn(),
-    emit: vi.fn(),
-    listenerCount: vi.fn(() => 5),
-    getMaxListeners: vi.fn(() => 100),
-  },
-  Events: {
-    CONTRACT_CREATED: 'contract:created',
-  },
-}));
+// Mock event bus — on/emit must wire up so the health check listener fires
+vi.mock('../../src/events/event-bus', () => {
+  const listeners = new Map<string, ((...args: unknown[]) => void)[]>();
+  return {
+    eventBus: {
+      on: vi.fn((event: string, fn: (...args: unknown[]) => void) => {
+        if (!listeners.has(event)) listeners.set(event, []);
+        listeners.get(event)!.push(fn);
+      }),
+      off: vi.fn((event: string, fn: (...args: unknown[]) => void) => {
+        const arr = listeners.get(event) || [];
+        const idx = arr.indexOf(fn);
+        if (idx >= 0) arr.splice(idx, 1);
+      }),
+      emit: vi.fn((event: string, data: unknown) => {
+        (listeners.get(event) || []).forEach(fn => fn(data));
+      }),
+      listenerCount: vi.fn(() => 5),
+      getMaxListeners: vi.fn(() => 100),
+    },
+    Events: {
+      CONTRACT_CREATED: 'contract:created',
+    },
+  };
+});
 
 describe('HealthCheckService', () => {
   let service: HealthCheckService;

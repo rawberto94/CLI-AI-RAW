@@ -18,7 +18,7 @@ describe('InputValidationService', () => {
 
       const data = { name: 'John', age: 30 };
 
-      const result = service.validate(data, schema);
+      const result = service.validate(schema, data);
 
       expect(result.success).toBe(true);
       expect(result.data).toEqual(data);
@@ -33,7 +33,7 @@ describe('InputValidationService', () => {
 
       const data = { name: 'John', age: 'thirty' };
 
-      const result = service.validate(data, schema);
+      const result = service.validate(schema, data);
 
       expect(result.success).toBe(false);
       expect(result.errors).toBeDefined();
@@ -55,7 +55,7 @@ describe('InputValidationService', () => {
         },
       };
 
-      const result = service.validate(validData, schema);
+      const result = service.validate(schema, validData);
 
       expect(result.success).toBe(true);
     });
@@ -67,7 +67,7 @@ describe('InputValidationService', () => {
 
       const data = { tags: ['tag1', 'tag2', 'tag3'] };
 
-      const result = service.validate(data, schema);
+      const result = service.validate(schema, data);
 
       expect(result.success).toBe(true);
       expect(result.data?.tags).toHaveLength(3);

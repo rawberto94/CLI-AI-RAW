@@ -153,9 +153,9 @@ describe('EnhancedSearchIndexationService', () => {
 
       expect(result.searchableFields).toBeGreaterThan(10);
       expect(result.confidence).toBeGreaterThan(0.8);
-      expect(mockDatabaseManager.prisma.$executeRaw).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO contract_search_index')
-      );
+      const executeRawCalls = (mockDatabaseManager.prisma.$executeRaw as Mock).mock.calls;
+      expect(executeRawCalls.length).toBeGreaterThan(0);
+      expect(executeRawCalls[0][0].join('')).toContain('INSERT INTO contract_search_index');
     });
 
     it('should handle missing contract gracefully', async () => {
@@ -192,12 +192,13 @@ describe('EnhancedSearchIndexationService', () => {
       await service.indexContract('contract-123');
 
       // Verify that the search index was created with comprehensive content
-      expect(mockDatabaseManager.prisma.$executeRaw).toHaveBeenCalledWith(
-        expect.stringContaining('to_tsvector'),
-        expect.stringContaining('Professional Services Agreement'),
-        expect.any(String), // search text containing all extracted content
-        expect.stringContaining('tenant-456')
-      );
+      const executeRawCalls = (mockDatabaseManager.prisma.$executeRaw as Mock).mock.calls;
+      expect(executeRawCalls.length).toBeGreaterThan(0);
+      // args[0]=TemplateStringsArray, args[1]=contractId, args[2]=searchText, args[3]=metadata, args[4]=tenantId
+      expect(executeRawCalls[0][0].join('')).toContain('to_tsvector');
+      expect(executeRawCalls[0][2]).toContain('Professional Services Agreement');
+      expect(typeof executeRawCalls[0][3]).toBe('string');
+      expect(executeRawCalls[0][4]).toBe('tenant-456');
     });
 
     it('should calculate confidence score from artifact data', async () => {
@@ -212,7 +213,8 @@ describe('EnhancedSearchIndexationService', () => {
 
       // Verify metadata includes the highest risk level
       const executeRawCall = (mockDatabaseManager.prisma.$executeRaw as Mock).mock.calls[0];
-      const metadataString = executeRawCall[2];
+      // args[0]=TemplateStringsArray, args[1]=contractId, args[2]=searchText, args[3]=metadata JSON
+      const metadataString = executeRawCall[3];
       const metadata = JSON.parse(metadataString);
       
       expect(metadata.riskLevel).toBe('high');
@@ -379,10 +381,11 @@ describe('EnhancedSearchIndexationService', () => {
     it('should build correct WHERE clause with filters', async () => {
       await service.searchContracts(mockSearchQuery);
 
-      expect(mockDatabaseManager.prisma.$queryRaw).toHaveBeenCalledWith(
-        expect.stringContaining("csi.metadata->>'contractType' = 'Professional Services'"),
-        expect.stringContaining("csi.metadata->>'riskLevel' = 'high'")
-      );
+      const queryRawCalls = (mockDatabaseManager.prisma.$queryRaw as Mock).mock.calls;
+      expect(queryRawCalls.length).toBeGreaterThan(0);
+      // args[5] = whereClause string from buildSearchWhereClause
+      expect(queryRawCalls[0][5]).toContain("csi.metadata->>'contractType' = 'Professional Services'");
+      expect(queryRawCalls[0][5]).toContain("csi.metadata->>'riskLevel' = 'high'");
     });
 
     it('should handle search without filters', async () => {
@@ -393,9 +396,10 @@ describe('EnhancedSearchIndexationService', () => {
 
       await service.searchContracts(queryWithoutFilters);
 
-      expect(mockDatabaseManager.prisma.$queryRaw).toHaveBeenCalledWith(
-        expect.not.stringContaining("csi.metadata->>'contractType'")
-      );
+      const queryRawCalls = (mockDatabaseManager.prisma.$queryRaw as Mock).mock.calls;
+      expect(queryRawCalls.length).toBeGreaterThan(0);
+      // args[5] = whereClause string — should be empty when no filters
+      expect(queryRawCalls[0][5]).not.toContain("csi.metadata->>'contractType'");
     });
 
     it('should handle search with party filters', async () => {
@@ -409,10 +413,11 @@ describe('EnhancedSearchIndexationService', () => {
 
       await service.searchContracts(queryWithParties);
 
-      expect(mockDatabaseManager.prisma.$queryRaw).toHaveBeenCalledWith(
-        expect.stringContaining("csi.metadata->'parties' ? 'Company A'"),
-        expect.stringContaining("csi.metadata->'parties' ? 'Company B'")
-      );
+      const queryRawCalls = (mockDatabaseManager.prisma.$queryRaw as Mock).mock.calls;
+      expect(queryRawCalls.length).toBeGreaterThan(0);
+      // args[5] = whereClause string
+      expect(queryRawCalls[0][5]).toContain("csi.metadata->'parties' ? 'Company A'");
+      expect(queryRawCalls[0][5]).toContain("csi.metadata->'parties' ? 'Company B'");
     });
 
     it('should handle search with date range filters', async () => {
@@ -429,9 +434,10 @@ describe('EnhancedSearchIndexationService', () => {
 
       await service.searchContracts(queryWithDateRange);
 
-      expect(mockDatabaseManager.prisma.$queryRaw).toHaveBeenCalledWith(
-        expect.stringContaining('c.created_at BETWEEN')
-      );
+      const queryRawCalls = (mockDatabaseManager.prisma.$queryRaw as Mock).mock.calls;
+      expect(queryRawCalls.length).toBeGreaterThan(0);
+      // args[5] = whereClause string
+      expect(queryRawCalls[0][5]).toContain('c.created_at BETWEEN');
     });
 
     it('should apply default limit and offset', async () => {
@@ -442,10 +448,11 @@ describe('EnhancedSearchIndexationService', () => {
 
       await service.searchContracts(queryWithoutPagination);
 
-      expect(mockDatabaseManager.prisma.$queryRaw).toHaveBeenCalledWith(
-        expect.stringContaining('LIMIT 20'),
-        expect.stringContaining('OFFSET 0')
-      );
+      const queryRawCalls = (mockDatabaseManager.prisma.$queryRaw as Mock).mock.calls;
+      expect(queryRawCalls.length).toBeGreaterThan(0);
+      // args[6] = limit, args[7] = offset (interpolated values from tagged template)
+      expect(queryRawCalls[0][6]).toBe(20);
+      expect(queryRawCalls[0][7]).toBe(0);
     });
 
     it('should handle search errors gracefully', async () => {
@@ -584,10 +591,10 @@ describe('EnhancedSearchIndexationService', () => {
 
       await service.removeFromIndex('contract-123');
 
-      expect(mockDatabaseManager.prisma.$executeRaw).toHaveBeenCalledWith(
-        expect.stringContaining('DELETE FROM contract_search_index'),
-        'contract-123'
-      );
+      const executeRawCalls = (mockDatabaseManager.prisma.$executeRaw as Mock).mock.calls;
+      expect(executeRawCalls.length).toBeGreaterThan(0);
+      expect(executeRawCalls[0][0].join('')).toContain('DELETE FROM contract_search_index');
+      expect(executeRawCalls[0][1]).toBe('contract-123');
     });
 
     it('should handle removal errors', async () => {
@@ -623,8 +630,9 @@ describe('EnhancedSearchIndexationService', () => {
 
       expect(result.indexed).toBe(true);
       // Verify that the search index includes the ingestion content
+      // args[0]=TemplateStringsArray, args[1]=contractId, args[2]=searchText
       const executeCall = (mockDatabaseManager.prisma.$executeRaw as Mock).mock.calls[0];
-      expect(executeCall[1]).toContain('This is the contract content');
+      expect(executeCall[2]).toContain('This is the contract content');
     });
 
     it('should correctly determine risk levels', async () => {
@@ -654,8 +662,9 @@ describe('EnhancedSearchIndexationService', () => {
       await service.indexContract('contract-123');
 
       // Verify that the highest risk level (critical) is used
+      // args[0]=TemplateStringsArray, args[1]=contractId, args[2]=searchText, args[3]=metadata JSON
       const executeCall = (mockDatabaseManager.prisma.$executeRaw as Mock).mock.calls[0];
-      const metadata = JSON.parse(executeCall[2]);
+      const metadata = JSON.parse(executeCall[3]);
       expect(metadata.riskLevel).toBe('critical');
     });
 
@@ -691,12 +700,13 @@ describe('EnhancedSearchIndexationService', () => {
       expect(result.confidence).toBe(95);
       
       // Verify financial data is included in search content
+      // args[0]=TemplateStringsArray, args[1]=contractId, args[2]=searchText, args[3]=metadata JSON
       const executeCall = (mockDatabaseManager.prisma.$executeRaw as Mock).mock.calls[0];
-      const searchText = executeCall[1];
+      const searchText = executeCall[2];
       expect(searchText).toContain('Monthly fee');
       expect(searchText).toContain('$10,000');
       
-      const metadata = JSON.parse(executeCall[2]);
+      const metadata = JSON.parse(executeCall[3]);
       expect(metadata.totalValue).toBe('$125,000');
     });
   });

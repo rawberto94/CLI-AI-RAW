@@ -1481,12 +1481,12 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     let suggestedActions: { label: string; action: string }[] = [];
     
     // Categorize error and provide specific recovery options
-    if (errorMessage.includes('rate limit') || errorCode === 'rate_limit_exceeded') {
-      userFriendlyMessage = '⏳ I\'m receiving too many requests right now.';
+    if (errorMessage.includes('429') || errorMessage.includes('quota') || errorMessage.includes('billing') || errorMessage.includes('rate limit') || errorCode === 'rate_limit_exceeded') {
+      userFriendlyMessage = '⏳ AI service quota exceeded or rate-limited.';
       recoverySuggestions = [
-        'Wait a few seconds and try again',
-        'Try a simpler question',
-        'Break complex questions into smaller parts',
+        'Your OpenAI API key may have exceeded its spending limit — check your billing at platform.openai.com',
+        'Wait a few minutes and try again',
+        'Contact your administrator to increase the API quota',
       ];
       suggestedActions = [
         { label: '🔄 Retry', action: 'retry' },

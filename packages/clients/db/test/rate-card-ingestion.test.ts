@@ -18,7 +18,7 @@ describe('Rate Card Ingestion Repositories', () => {
 
   beforeAll(async () => {
     dbManager = new DatabaseManager();
-    await dbManager.connect();
+    await dbManager.initialize();
 
     importJobRepo = new ImportJobRepository(dbManager);
     rateCardRepo = new RateCardRepository(dbManager);

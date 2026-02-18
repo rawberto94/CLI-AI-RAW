@@ -841,6 +841,7 @@ export async function hybridSearch(
             matchType: r.matchType,
           })) as any,
           { maxHops: 1, maxRelated: 3, minWeight: 0.4 },
+          tenantId,
         );
         
         // Add graph-expanded results (they come with lower scores)
