@@ -135,7 +135,7 @@ export async function parallelMultiQueryRAG(
     const embeddingsResponse = await openai.embeddings.create({
       model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small',
       input: allQueries,
-    });
+    }, { signal: AbortSignal.timeout(10_000) });
 
     const queryEmbeddings = embeddingsResponse.data.map(d => d.embedding);
 

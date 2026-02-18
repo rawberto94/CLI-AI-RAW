@@ -4,17 +4,14 @@ import { baselineManagementService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const GET = withAuthApiHandler(async (request, ctx) => {
-    // Mock user for now - in production, get from session
-    const mockTenantId = 'tenant-1';
-
     const baselineService = new baselineManagementService(prisma);
 
     // Get baseline statistics
-    const stats = await baselineService.getBaselineStatistics(mockTenantId);
+    const stats = await baselineService.getBaselineStatistics(ctx.tenantId);
 
     // Get rates exceeding baselines
     const exceedingRates = await baselineService.bulkCompareAgainstBaselines(
-      mockTenantId,
+      ctx.tenantId,
       { minVariancePercentage: 0 }
     );
 

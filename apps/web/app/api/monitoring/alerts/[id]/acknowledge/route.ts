@@ -1,28 +1,29 @@
 import { NextRequest } from 'next/server';
 import { alertingService } from 'data-orchestration/services';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 /**
  * POST /api/monitoring/alerts/[id]/acknowledge
- * Acknowledge an alert
+ * Acknowledge an alert (requires authentication)
  */
-export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-  const ctx = getApiContext(request);
-  try {
-    const alertId = params.id;
-    const success = alertingService.acknowledgeAlert(alertId);
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const params = await (ctx as any).params;
+  const alertId = params?.id;
 
-    if (!success) {
-      return createErrorResponse(ctx, 'NOT_FOUND', 'Alert not found', 404);
-    }
-
-    return createSuccessResponse(ctx, {
-      success: true,
-      alertId,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    return handleApiError(ctx, error);
+  if (!alertId) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Alert ID is required', 400);
   }
-}
+
+  const success = alertingService.acknowledgeAlert(alertId);
+
+  if (!success) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Alert not found', 404);
+  }
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    alertId,
+    acknowledgedBy: ctx.userId,
+    timestamp: new Date().toISOString(),
+  });
+});

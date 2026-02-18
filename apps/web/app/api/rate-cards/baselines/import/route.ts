@@ -4,9 +4,6 @@ import { baselineManagementService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
-    // Mock user for now - in production, get from session
-    const mockTenantId = 'tenant-1';
-
     const body = await request.json();
     const { baselines, options } = body;
 
@@ -17,7 +14,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     const baselineService = new baselineManagementService(prisma);
 
     const result = await baselineService.importBaselines(
-      mockTenantId,
+      ctx.tenantId,
       baselines,
       {
         updateExisting: options?.updateExisting ?? true,
