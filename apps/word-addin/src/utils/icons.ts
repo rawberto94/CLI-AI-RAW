@@ -45,6 +45,8 @@ import {
   TextBulletListSquareRegular as _TextBulletListSquareRegular,
   TextGrammarArrowLeftRegular as _TextGrammarArrowLeftRegular,
   WarningRegular as _WarningRegular,
+  DocumentSearchRegular as _DocumentSearchRegular,
+  BotSparkleRegular as _BotSparkleRegular,
 } from '@fluentui/react-icons';
 
 /** React 19-compatible icon component type */
@@ -86,3 +88,5 @@ export const SparkleRegular = ic(_SparkleRegular);
 export const TextBulletListSquareRegular = ic(_TextBulletListSquareRegular);
 export const TextGrammarArrowLeftRegular = ic(_TextGrammarArrowLeftRegular);
 export const WarningRegular = ic(_WarningRegular);
+export const DocumentSearchRegular = ic(_DocumentSearchRegular);
+export const BotSparkleRegular = ic(_BotSparkleRegular);

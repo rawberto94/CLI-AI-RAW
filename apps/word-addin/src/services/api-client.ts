@@ -129,6 +129,37 @@ export interface GenerateContractResponse {
   draftId: string;
 }
 
+/** Full-document AI review result */
+export interface DocumentReview {
+  /** Overall completeness (0-100) */
+  completenessScore: number;
+  /** Auto-detected contract type */
+  detectedType: string;
+  /** Structural analysis */
+  structure: {
+    sectionsFound: string[];
+    missingRecommended: string[];
+  };
+  /** Risk flags across the entire document */
+  risks: Array<{
+    text: string;
+    risk: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    explanation: string;
+    suggestion: string;
+    section?: string;
+  }>;
+  /** Improvement suggestions */
+  suggestions: Array<{
+    id: string;
+    section: string;
+    text: string;
+    explanation: string;
+    type: 'missing-clause' | 'improvement' | 'ambiguity' | 'compliance';
+  }>;
+  /** Executive summary */
+  summary: string;
+}
+
 // ============================================================================
 // API CLIENT
 // ============================================================================
@@ -446,6 +477,22 @@ class ContigoApiClient {
 
   async getAIAssist(request: AIAssistRequest): Promise<ApiResponse<AIAssistResponse>> {
     return this.request('/word-addin/ai/assist', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  /**
+   * Full-document AI review — analyzes the entire document for risks,
+   * missing sections, completeness, and structural issues.
+   */
+  async reviewDocument(request: {
+    documentText: string;
+    headings: Array<{ text: string; level: number }>;
+    contractType?: string;
+    wordCount: number;
+  }): Promise<ApiResponse<DocumentReview>> {
+    return this.request('/word-addin/ai/review', {
       method: 'POST',
       body: JSON.stringify(request),
     });

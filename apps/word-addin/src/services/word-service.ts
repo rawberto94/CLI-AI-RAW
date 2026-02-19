@@ -387,6 +387,40 @@ class WordService {
   }
 
   /**
+   * Get full document body text (for AI full-document analysis)
+   */
+  async getDocumentBody(): Promise<string> {
+    return Word.run(async (context) => {
+      const body = context.document.body;
+      body.load('text');
+      await context.sync();
+      return body.text;
+    });
+  }
+
+  /**
+   * Get document headings for structure analysis
+   */
+  async getDocumentHeadings(): Promise<Array<{ text: string; level: number }>> {
+    return Word.run(async (context) => {
+      const paragraphs = context.document.body.paragraphs;
+      paragraphs.load(['text', 'styleBuiltIn']);
+      await context.sync();
+
+      const headings: Array<{ text: string; level: number }> = [];
+      for (const para of paragraphs.items) {
+        const style = para.styleBuiltIn;
+        if (style === 'Heading1') headings.push({ text: para.text, level: 1 });
+        else if (style === 'Heading2') headings.push({ text: para.text, level: 2 });
+        else if (style === 'Heading3') headings.push({ text: para.text, level: 3 });
+        else if (style === 'Heading4') headings.push({ text: para.text, level: 4 });
+        else if (style === 'Title') headings.push({ text: para.text, level: 0 });
+      }
+      return headings;
+    });
+  }
+
+  /**
    * Get document as base64 for saving to ConTigo
    */
   async getDocumentAsBase64(): Promise<string> {
