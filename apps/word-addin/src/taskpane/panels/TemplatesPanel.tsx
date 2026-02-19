@@ -48,7 +48,8 @@ import {
   CopyRegular,
   FolderRegular,
   MoreHorizontalRegular,
-} from '@fluentui/react-icons';
+  PersonRegular,
+} from '../../utils/icons';
 import { apiClient, Template, TemplateVariable } from '../../services/api-client';
 import { wordService } from '../../services/word-service';
 
@@ -480,7 +481,7 @@ export const TemplatesPanel: React.FC = () => {
                   <DocumentRegular fontSize={36} />
                 </CardPreview>
                 <CardHeader
-                  header={<Body2 weight="semibold">{template.name}</Body2>}
+                  header={<Body2 style={{ fontWeight: 600 }}>{template.name}</Body2>}
                   description={<Caption1>{template.description || 'No description'}</Caption1>}
                 />
               </div>
@@ -656,6 +657,16 @@ function renderVariableInput(
   if (variable.type === 'currency') {
     return (
       <Input type="number" contentBefore={<span>$</span>} placeholder={variable.placeholder || '0.00'} value={value} onChange={(_, data) => onChange(variable.name, data.value)} />
+    );
+  }
+  if (variable.type === 'party') {
+    return (
+      <Input
+        contentBefore={<PersonRegular />}
+        placeholder={variable.placeholder || 'Full name or company'}
+        value={value}
+        onChange={(_, data) => onChange(variable.name, data.value)}
+      />
     );
   }
   return (

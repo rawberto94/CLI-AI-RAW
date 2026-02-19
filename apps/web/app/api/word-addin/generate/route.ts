@@ -200,16 +200,70 @@ ${content}
 }
 
 function convertToOoxml(content: string): string {
-  // Basic OOXML structure - in production would use a proper OOXML library
-  // For now, return HTML that Word can import
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  // Split content into paragraphs and generate proper OOXML structure
+  const paragraphs = content.split(/\n{2,}/).filter(Boolean);
+
+  const ooxmlParagraphs = paragraphs
+    .map((para) => {
+      const trimmed = para.trim();
+
+      // Detect heading lines (plain-format sections use "## Heading" syntax)
+      const headingMatch = trimmed.match(/^(#{1,6})\s+(.+)/);
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        const text = headingMatch[2];
+        return `    <w:p>
+      <w:pPr><w:pStyle w:val="Heading${level}"/></w:pPr>
+      <w:r><w:t>${escapeXml(text)}</w:t></w:r>
+    </w:p>`;
+      }
+
+      // Detect HTML headings from HTML-format sections
+      const htmlHeadingMatch = trimmed.match(/^<h([1-6])[^>]*>(.+?)<\/h\1>/i);
+      if (htmlHeadingMatch) {
+        const level = htmlHeadingMatch[1];
+        const text = htmlHeadingMatch[2].replace(/<[^>]+>/g, '');
+        return `    <w:p>
+      <w:pPr><w:pStyle w:val="Heading${level}"/></w:pPr>
+      <w:r><w:t>${escapeXml(text)}</w:t></w:r>
+    </w:p>`;
+      }
+
+      // Strip HTML <p> tags if present and split into lines
+      const cleaned = trimmed
+        .replace(/<p[^>]*>/gi, '')
+        .replace(/<\/p>/gi, '\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .trim();
+
+      // Each line becomes a Word paragraph
+      return cleaned
+        .split('\n')
+        .filter(Boolean)
+        .map(
+          (line) => `    <w:p>
+      <w:r><w:t xml:space="preserve">${escapeXml(line.trim())}</w:t></w:r>
+    </w:p>`,
+        )
+        .join('\n');
+    })
+    .join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
+            xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+            xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"
+            mc:Ignorable="w14">
   <w:body>
-    <w:p>
-      <w:r>
-        <w:t>${escapeXml(content)}</w:t>
-      </w:r>
-    </w:p>
+${ooxmlParagraphs}
+    <w:sectPr>
+      <w:pgSz w:w="12240" w:h="15840"/>
+      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"
+               w:header="720" w:footer="720" w:gutter="0"/>
+    </w:sectPr>
   </w:body>
 </w:document>`;
 }

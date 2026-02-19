@@ -60,7 +60,7 @@ class WordService {
           range = selection.paragraphs.getLast().getRange('After');
           break;
         case 'paragraph-before':
-          range = selection.paragraphs.getFirst().getRange('Before');
+          range = selection.paragraphs.getFirst().getRange('Start');
           break;
         default:
           range = selection;
@@ -132,7 +132,7 @@ class WordService {
 
       // Insert title
       const titlePara = body.insertParagraph(template.title, Word.InsertLocation.start);
-      titlePara.styleBuiltIn = Word.Style.title;
+      titlePara.styleBuiltIn = Word.BuiltInStyleName.title;
 
       // Insert sections
       for (const section of template.sections) {
@@ -142,20 +142,20 @@ class WordService {
 
         // Insert content
         const contentPara = body.insertParagraph(section.content, Word.InsertLocation.end);
-        contentPara.styleBuiltIn = Word.Style.normal;
+        contentPara.styleBuiltIn = Word.BuiltInStyleName.normal;
       }
 
       await context.sync();
     });
   }
 
-  private getHeadingStyle(level: number): Word.Style {
+  private getHeadingStyle(level: number): Word.BuiltInStyleName {
     switch (level) {
-      case 1: return Word.Style.heading1;
-      case 2: return Word.Style.heading2;
-      case 3: return Word.Style.heading3;
-      case 4: return Word.Style.heading4;
-      default: return Word.Style.heading1;
+      case 1: return Word.BuiltInStyleName.heading1;
+      case 2: return Word.BuiltInStyleName.heading2;
+      case 3: return Word.BuiltInStyleName.heading3;
+      case 4: return Word.BuiltInStyleName.heading4;
+      default: return Word.BuiltInStyleName.heading1;
     }
   }
 
@@ -238,15 +238,13 @@ class WordService {
       const wordCount = body.text.split(/\s+/).filter(Boolean).length;
       const paragraphCount = paragraphs.items.length;
 
-      // Page count requires loading document properties
-      const docProps = context.document.properties;
-      docProps.load('revision'); // Just to trigger a sync
-      await context.sync();
+      // Estimate page count (~250 words per page, standard single-spaced)
+      const estimatedPages = Math.max(1, Math.ceil(wordCount / 250));
 
       return {
         wordCount,
         paragraphCount,
-        pageCount: 1, // Approximate - Word API doesn't directly expose page count
+        pageCount: estimatedPages,
       };
     });
   }
@@ -307,7 +305,7 @@ class WordService {
       headerRow.shadingColor = '#E0E0E0';
 
       // Apply table style
-      table.styleBuiltIn = Word.Style.tableGrid;
+      table.styleBuiltIn = Word.BuiltInStyleName.tableGrid;
 
       await context.sync();
     });
@@ -315,12 +313,14 @@ class WordService {
 
   /**
    * Track changes enable/disable
+   * Uses Word API changeTrackingMode (requires WordApi 1.4+)
    */
   async setTrackChanges(enabled: boolean): Promise<void> {
     return Word.run(async (context) => {
-      context.document.properties.load('revision'); // Placeholder
+      context.document.changeTrackingMode = enabled
+        ? Word.ChangeTrackingMode.trackAll
+        : Word.ChangeTrackingMode.off;
       await context.sync();
-      // Note: Track changes API may be limited
     });
   }
 

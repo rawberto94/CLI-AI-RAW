@@ -32,7 +32,7 @@ import {
   ErrorCircleRegular,
   ArrowDownloadRegular,
   CopyRegular,
-} from '@fluentui/react-icons';
+} from '../../utils/icons';
 import { apiClient, AIAssistResponse } from '../../services/api-client';
 import { wordService } from '../../services/word-service';
 
@@ -255,7 +255,7 @@ export const AIAssistPanel: React.FC = () => {
       {/* Context Input */}
       <div className={styles.section}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Body2 weight="semibold">Context / Selected Text</Body2>
+          <Body2 style={{ fontWeight: 600 }}>Context / Selected Text</Body2>
           <Button
             appearance="subtle"
             size="small"
@@ -288,7 +288,7 @@ export const AIAssistPanel: React.FC = () => {
 
       {/* Action Buttons */}
       <div className={styles.section}>
-        <Body2 weight="semibold">What would you like to do?</Body2>
+        <Body2 style={{ fontWeight: 600 }}>What would you like to do?</Body2>
         <div className={styles.actionButtons}>
           {AI_ACTIONS.map((action) => (
             <Tooltip
@@ -342,7 +342,7 @@ export const AIAssistPanel: React.FC = () => {
           {/* Risk flags */}
           {result.riskFlags && result.riskFlags.length > 0 && (
             <div className={styles.section}>
-              <Body2 weight="semibold">Risk Flags</Body2>
+              <Body2 style={{ fontWeight: 600 }}>Risk Flags</Body2>
               {result.riskFlags.map((risk, index) => (
                 <div
                   key={index}
@@ -357,11 +357,11 @@ export const AIAssistPanel: React.FC = () => {
                       {risk.risk}
                     </Badge>
                   </div>
-                  <Body1 weight="semibold">{risk.text}</Body1>
+                  <Body1 style={{ fontWeight: 600 }}>{risk.text}</Body1>
                   <Body2>{risk.explanation}</Body2>
                   {risk.suggestion && (
                     <div style={{ marginTop: 8 }}>
-                      <Body2 weight="semibold">Suggestion:</Body2>
+                      <Body2 style={{ fontWeight: 600 }}>Suggestion:</Body2>
                       <Body2>{risk.suggestion}</Body2>
                     </div>
                   )}
@@ -373,7 +373,7 @@ export const AIAssistPanel: React.FC = () => {
           {/* Suggestions */}
           {result.suggestions && result.suggestions.length > 0 && (
             <div className={styles.section}>
-              <Body2 weight="semibold">Suggestions</Body2>
+              <Body2 style={{ fontWeight: 600 }}>Suggestions</Body2>
               {result.suggestions.map((suggestion) => (
                 <div key={suggestion.id} className={styles.suggestionCard}>
                   <div className={styles.suggestionHeader}>

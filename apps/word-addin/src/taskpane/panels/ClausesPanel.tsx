@@ -3,8 +3,8 @@
  */
 
 import * as React from 'react';
-import { useState, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useCallback, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   makeStyles,
   tokens,
@@ -33,6 +33,9 @@ import {
   DialogBody,
   DialogContent,
   DialogActions,
+  Field,
+  Textarea,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   SearchRegular,
@@ -44,7 +47,7 @@ import {
   CheckmarkCircleRegular,
   MoreHorizontalRegular,
   ArrowSwapRegular,
-} from '@fluentui/react-icons';
+} from '../../utils/icons';
 import { apiClient, Clause, ClauseAlternative } from '../../services/api-client';
 import { wordService } from '../../services/word-service';
 
@@ -184,27 +187,68 @@ const getRiskColor = (level: string): 'success' | 'warning' | 'danger' | 'inform
 
 export const ClausesPanel: React.FC = () => {
   const styles = useStyles();
-  
+  const queryClient = useQueryClient();
+
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState('');
   const [riskLevel, setRiskLevel] = useState('');
   const [selectedClause, setSelectedClause] = useState<Clause | null>(null);
   const [showAlternatives, setShowAlternatives] = useState(false);
   const [alternatives, setAlternatives] = useState<ClauseAlternative[]>([]);
+  const [alternativesError, setAlternativesError] = useState<string | null>(null);
   const [isInserting, setIsInserting] = useState(false);
   const [insertSuccess, setInsertSuccess] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  // Create dialog state
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newCategory, setNewCategory] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [newRiskLevel, setNewRiskLevel] = useState<string>('LOW');
+  const [newTags, setNewTags] = useState('');
+
+  // Debounced search
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(value), 300);
+  }, []);
 
   // Fetch clauses
   const { data: clauses, isLoading, error: fetchError } = useQuery({
-    queryKey: ['clauses', category, riskLevel, search],
+    queryKey: ['clauses', category, riskLevel, debouncedSearch],
     queryFn: async () => {
       const result = await apiClient.getClauses({
         category: category || undefined,
         riskLevel: riskLevel || undefined,
-        search: search || undefined,
+        search: debouncedSearch || undefined,
       });
       if (result.success) return result.data;
       throw new Error(result.error?.message || 'Failed to fetch clauses');
+    },
+  });
+
+  // Create clause mutation
+  const createMutation = useMutation({
+    mutationFn: async (data: { name: string; category: string; content: string; riskLevel: string; tags: string[] }) => {
+      const result = await apiClient.createClause({
+        name: data.name,
+        category: data.category,
+        content: data.content,
+        riskLevel: data.riskLevel as Clause['riskLevel'],
+        isStandard: false,
+        tags: data.tags,
+      });
+      if (!result.success) throw new Error(result.error?.message || 'Create failed');
+      return result.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clauses'] });
+      setShowCreate(false);
+      setNewName(''); setNewCategory(''); setNewContent(''); setNewRiskLevel('LOW'); setNewTags('');
     },
   });
 
@@ -227,16 +271,47 @@ export const ClausesPanel: React.FC = () => {
     }
   }, []);
 
+  // Copy clause to clipboard
+  const handleCopyClause = useCallback(async (clause: Clause) => {
+    try {
+      await navigator.clipboard.writeText(clause.content);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch {
+      console.error('Failed to copy to clipboard');
+    }
+  }, []);
+
   // View alternatives
   const handleViewAlternatives = useCallback(async (clause: Clause) => {
     setSelectedClause(clause);
     setShowAlternatives(true);
-    
-    const result = await apiClient.getClauseAlternatives(clause.id);
-    if (result.success && result.data) {
-      setAlternatives(result.data);
+    setAlternativesError(null);
+    setAlternatives([]);
+
+    try {
+      const result = await apiClient.getClauseAlternatives(clause.id);
+      if (result.success && result.data) {
+        setAlternatives(result.data);
+      } else {
+        setAlternativesError(result.error?.message || 'Failed to load alternatives');
+      }
+    } catch (err) {
+      setAlternativesError(err instanceof Error ? err.message : 'Failed to load alternatives');
     }
   }, []);
+
+  // Open create dialog
+  const openCreateDialog = useCallback(() => {
+    setShowCreate(true);
+    setNewName(''); setNewCategory(category || ''); setNewContent(''); setNewRiskLevel('LOW'); setNewTags('');
+  }, [category]);
+
+  const handleCreateClause = useCallback(() => {
+    if (!newName.trim() || !newContent.trim()) return;
+    const tags = newTags.split(',').map(t => t.trim()).filter(Boolean);
+    createMutation.mutate({ name: newName, category: newCategory || 'other', content: newContent, riskLevel: newRiskLevel, tags });
+  }, [newName, newContent, newCategory, newRiskLevel, newTags, createMutation]);
 
   // Render loading state
   if (isLoading) {
@@ -252,9 +327,11 @@ export const ClausesPanel: React.FC = () => {
       {/* Header */}
       <div className={styles.header}>
         <Title2>Clause Library</Title2>
-        <Button icon={<AddRegular />} appearance="subtle">
-          New
-        </Button>
+        <Tooltip content="Create a new clause" relationship="label">
+          <Button icon={<AddRegular />} appearance="primary" size="small" onClick={openCreateDialog}>
+            New
+          </Button>
+        </Tooltip>
       </div>
 
       {/* Filters */}
@@ -264,7 +341,7 @@ export const ClausesPanel: React.FC = () => {
           contentBefore={<SearchRegular />}
           placeholder="Search clauses..."
           value={search}
-          onChange={(e, data) => setSearch(data.value)}
+          onChange={(_, data) => handleSearchChange(data.value)}
         />
         <Select
           value={category}
@@ -292,6 +369,12 @@ export const ClausesPanel: React.FC = () => {
       {insertSuccess && (
         <MessageBar intent="success">
           <MessageBarBody>Clause inserted successfully!</MessageBarBody>
+        </MessageBar>
+      )}
+
+      {copySuccess && (
+        <MessageBar intent="success">
+          <MessageBarBody>Copied to clipboard!</MessageBarBody>
         </MessageBar>
       )}
 
@@ -331,7 +414,7 @@ export const ClausesPanel: React.FC = () => {
 
                 {clause.guidance && (
                   <div className={styles.guidance}>
-                    <Body2 weight="semibold">Usage Guidance:</Body2>
+                    <Body2 style={{ fontWeight: 600 }}>Usage Guidance:</Body2>
                     <Body1>{clause.guidance}</Body1>
                   </div>
                 )}
@@ -371,9 +454,7 @@ export const ClausesPanel: React.FC = () => {
                     </MenuTrigger>
                     <MenuPopover>
                       <MenuList>
-                        <MenuItem>Copy to clipboard</MenuItem>
-                        <MenuItem>View history</MenuItem>
-                        <MenuItem>Report issue</MenuItem>
+                        <MenuItem onClick={() => handleCopyClause(clause)}>Copy to clipboard</MenuItem>
                       </MenuList>
                     </MenuPopover>
                   </Menu>
@@ -400,11 +481,21 @@ export const ClausesPanel: React.FC = () => {
               Alternative Clauses: {selectedClause?.name}
             </DialogTitle>
             <DialogContent>
+              {alternativesError && (
+                <MessageBar intent="error" style={{ marginBottom: 12 }}>
+                  <MessageBarBody>{alternativesError}</MessageBarBody>
+                </MessageBar>
+              )}
+              {alternatives.length === 0 && !alternativesError && (
+                <div className={styles.loading}>
+                  <Spinner label="Loading alternatives..." />
+                </div>
+              )}
               <div className={styles.alternativeList}>
                 {alternatives.map((alt) => (
                   <div key={alt.id} className={styles.alternativeItem}>
                     <div className={styles.clauseHeader}>
-                      <Body1 weight="semibold">{alt.name}</Body1>
+                      <Body1 style={{ fontWeight: 600 }}>{alt.name}</Body1>
                       <Badge
                         appearance="filled"
                         color={getRiskColor(alt.riskLevel)}
@@ -434,6 +525,53 @@ export const ClausesPanel: React.FC = () => {
             <DialogActions>
               <Button onClick={() => setShowAlternatives(false)}>
                 Close
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* ====== Create Clause Dialog ====== */}
+      <Dialog open={showCreate} onOpenChange={(_, data) => { if (!data.open) setShowCreate(false); }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>New Clause</DialogTitle>
+            <DialogContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <Field label="Name" required>
+                  <Input value={newName} onChange={(_, data) => setNewName(data.value)} placeholder="e.g. Limitation of Liability" />
+                </Field>
+                <Field label="Category">
+                  <Select value={newCategory} onChange={(_, data) => setNewCategory(data.value)}>
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat.value} value={cat.value}>{cat.label}</option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Risk Level">
+                  <Select value={newRiskLevel} onChange={(_, data) => setNewRiskLevel(data.value)}>
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HIGH">High</option>
+                    <option value="CRITICAL">Critical</option>
+                  </Select>
+                </Field>
+                <Field label="Content" required>
+                  <Textarea value={newContent} onChange={(_, data) => setNewContent(data.value)} placeholder="Clause text..." rows={6} />
+                </Field>
+                <Field label="Tags" hint="Comma-separated">
+                  <Input value={newTags} onChange={(_, data) => setNewTags(data.value)} placeholder="e.g. liability, indemnification" />
+                </Field>
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setShowCreate(false)}>Cancel</Button>
+              <Button
+                appearance="primary"
+                onClick={handleCreateClause}
+                disabled={!newName.trim() || !newContent.trim() || createMutation.isPending}
+              >
+                {createMutation.isPending ? <Spinner size="tiny" /> : 'Create Clause'}
               </Button>
             </DialogActions>
           </DialogBody>

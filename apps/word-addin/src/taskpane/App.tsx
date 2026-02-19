@@ -23,7 +23,7 @@ import {
   PersonRegular,
   SettingsRegular,
   NoteRegular,
-} from '@fluentui/react-icons';
+} from '../utils/icons';
 import { TemplatesPanel } from './panels/TemplatesPanel';
 import { ClausesPanel } from './panels/ClausesPanel';
 import { AIAssistPanel } from './panels/AIAssistPanel';

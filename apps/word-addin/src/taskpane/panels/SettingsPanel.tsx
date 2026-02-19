@@ -31,7 +31,7 @@ import {
   SignOutRegular,
   InfoRegular,
   CheckmarkCircleRegular,
-} from '@fluentui/react-icons';
+} from '../../utils/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../../services/api-client';
 
@@ -72,15 +72,15 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusMedium,
   },
   userAvatar: {
-    width: 48,
-    height: 48,
+    width: '48px',
+    height: '48px',
     borderRadius: '50%',
     backgroundColor: tokens.colorBrandBackground,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     color: tokens.colorNeutralForegroundOnBrand,
-    fontSize: 20,
+    fontSize: '20px',
   },
   userDetails: {
     display: 'flex',
@@ -183,7 +183,7 @@ export const SettingsPanel: React.FC = () => {
       
       // Also sync to backend if connected
       if (connectionStatus === 'connected') {
-        await apiClient.saveUserSettings(settings);
+        await apiClient.saveUserSettings({ ...settings } as Record<string, unknown>);
       }
       
       setSaved(true);
@@ -234,7 +234,7 @@ export const SettingsPanel: React.FC = () => {
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <PersonRegular />
-          <Body1 weight="semibold">Account</Body1>
+          <Body1 style={{ fontWeight: 600 }}>Account</Body1>
         </div>
         
         <div className={styles.userInfo}>
@@ -242,7 +242,7 @@ export const SettingsPanel: React.FC = () => {
             {getInitials(user?.name || 'User')}
           </div>
           <div className={styles.userDetails}>
-            <Body1 weight="semibold">{user?.name || 'Guest User'}</Body1>
+            <Body1 style={{ fontWeight: 600 }}>{user?.name || 'Guest User'}</Body1>
             <Body2>{user?.email || 'Not signed in'}</Body2>
             {user?.tenantId && (
               <Badge appearance="outline" size="small">
@@ -266,7 +266,7 @@ export const SettingsPanel: React.FC = () => {
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <KeyRegular />
-          <Body1 weight="semibold">Connection</Body1>
+          <Body1 style={{ fontWeight: 600 }}>Connection</Body1>
         </div>
 
         <div className={styles.connectionStatus}>
@@ -303,7 +303,7 @@ export const SettingsPanel: React.FC = () => {
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <DocumentRegular />
-          <Body1 weight="semibold">Document</Body1>
+          <Body1 style={{ fontWeight: 600 }}>Document</Body1>
         </div>
 
         <div className={styles.settingRow}>
@@ -343,7 +343,7 @@ export const SettingsPanel: React.FC = () => {
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <SettingsRegular />
-          <Body1 weight="semibold">AI Assistance</Body1>
+          <Body1 style={{ fontWeight: 600 }}>AI Assistance</Body1>
         </div>
 
         <Field label="AI Model">
@@ -372,7 +372,7 @@ export const SettingsPanel: React.FC = () => {
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <ColorRegular />
-          <Body1 weight="semibold">Display</Body1>
+          <Body1 style={{ fontWeight: 600 }}>Display</Body1>
         </div>
 
         <Field label="Theme">

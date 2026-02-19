@@ -17,6 +17,7 @@ import {
   CardHeader,
   Spinner,
   Input,
+  Field,
   Badge,
   Dialog,
   DialogSurface,
@@ -26,6 +27,7 @@ import {
   DialogContent,
   MessageBar,
   MessageBarBody,
+  Tooltip,
   Menu,
   MenuTrigger,
   MenuList,
@@ -39,7 +41,8 @@ import {
   DeleteRegular,
   MoreHorizontalRegular,
   DocumentRegular,
-} from '@fluentui/react-icons';
+  SaveRegular,
+} from '../../utils/icons';
 import { apiClient } from '../../services/api-client';
 import { wordService } from '../../services/word-service';
 
@@ -108,6 +111,10 @@ export const DraftsPanel: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<Draft | null>(null);
   const [loadingDraftId, setLoadingDraftId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showSave, setShowSave] = useState(false);
+  const [saveTitle, setSaveTitle] = useState('');
 
   // Fetch drafts (using the templates/generate-created drafts)
   const { data: drafts, isLoading } = useQuery({
@@ -166,6 +173,31 @@ export const DraftsPanel: React.FC = () => {
     }
   }, []);
 
+  // Save current document as a new draft
+  const handleSaveCurrentDoc = useCallback(async () => {
+    if (!saveTitle.trim()) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      const html = await wordService.getDocumentAsBase64(); // gets OOXML base64
+      const result = await apiClient.saveContractDraft({
+        title: saveTitle,
+        content: html,
+        variables: {},
+      });
+      if (!result.success) throw new Error(result.error?.message || 'Save failed');
+      queryClient.invalidateQueries({ queryKey: ['addin-drafts'] });
+      setSaveSuccess(true);
+      setShowSave(false);
+      setSaveTitle('');
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save draft');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [saveTitle, queryClient]);
+
   const statusColor = (status: string): 'brand' | 'success' | 'warning' | 'informative' => {
     switch (status) {
       case 'completed': return 'success';
@@ -183,7 +215,18 @@ export const DraftsPanel: React.FC = () => {
     <div className={styles.root}>
       <div className={styles.header}>
         <Title2>Drafts</Title2>
+        <Tooltip content="Save current document as a draft" relationship="label">
+          <Button icon={<SaveRegular />} appearance="primary" size="small" onClick={() => setShowSave(true)}>
+            Save Doc
+          </Button>
+        </Tooltip>
       </div>
+
+      {saveSuccess && (
+        <MessageBar intent="success">
+          <MessageBarBody>Document saved as draft!</MessageBarBody>
+        </MessageBar>
+      )}
 
       <Input
         className={styles.searchInput}
@@ -209,7 +252,7 @@ export const DraftsPanel: React.FC = () => {
               <div className={styles.cardRow}>
                 <CardHeader
                   image={<NoteRegular fontSize={24} />}
-                  header={<Body2 weight="semibold">{draft.title}</Body2>}
+                  header={<Body2 style={{ fontWeight: 600 }}>{draft.title}</Body2>}
                   description={
                     <Caption1>
                       {new Date(draft.updatedAt).toLocaleDateString()} &bull;{' '}
@@ -272,6 +315,34 @@ export const DraftsPanel: React.FC = () => {
                 disabled={deleteMutation.isPending}
               >
                 {deleteMutation.isPending ? <Spinner size="tiny" /> : 'Delete'}
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* Save Current Document Dialog */}
+      <Dialog open={showSave} onOpenChange={(_, data) => { if (!data.open) setShowSave(false); }}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Save Current Document as Draft</DialogTitle>
+            <DialogContent>
+              <Field label="Draft Title" required>
+                <Input
+                  value={saveTitle}
+                  onChange={(_, data) => setSaveTitle(data.value)}
+                  placeholder="e.g. NDA - Acme Corp v2"
+                />
+              </Field>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={() => setShowSave(false)}>Cancel</Button>
+              <Button
+                appearance="primary"
+                onClick={handleSaveCurrentDoc}
+                disabled={!saveTitle.trim() || isSaving}
+              >
+                {isSaving ? <Spinner size="tiny" /> : 'Save Draft'}
               </Button>
             </DialogActions>
           </DialogBody>

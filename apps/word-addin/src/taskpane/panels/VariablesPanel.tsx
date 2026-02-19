@@ -31,7 +31,7 @@ import {
   CalendarRegular,
   MoneyRegular,
   DocumentRegular,
-} from '@fluentui/react-icons';
+} from '../../utils/icons';
 import { wordService, Variable } from '../../services/word-service';
 import { apiClient } from '../../services/api-client';
 
@@ -235,7 +235,7 @@ export const VariablesPanel: React.FC = () => {
   const handleSavePartyDefaults = useCallback(async () => {
     const info = savePartyType === 'buyer' ? buyerInfo : sellerInfo;
     try {
-      await apiClient.savePartyDefaults(savePartyType, info);
+      await apiClient.savePartyDefaults(savePartyType, { ...info } as Record<string, string>);
       setShowSaveParty(false);
     } catch (err) {
       console.error('Failed to save party defaults:', err);
@@ -264,7 +264,8 @@ export const VariablesPanel: React.FC = () => {
   // Initial scan
   useEffect(() => {
     handleScanDocument();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleScanDocument]);
 
   return (
     <div className={styles.root}>
@@ -284,17 +285,17 @@ export const VariablesPanel: React.FC = () => {
       <div className={styles.stats}>
         <div className={styles.stat}>
           <Body2>Found</Body2>
-          <Body1 weight="semibold">{variables.length}</Body1>
+          <Body1 style={{ fontWeight: 600 }}>{variables.length}</Body1>
         </div>
         <div className={styles.stat}>
           <Body2>Filled</Body2>
-          <Body1 weight="semibold">
+          <Body1 style={{ fontWeight: 600 }}>
             {variables.filter((v) => v.value).length}
           </Body1>
         </div>
         <div className={styles.stat}>
           <Body2>Remaining</Body2>
-          <Body1 weight="semibold">
+          <Body1 style={{ fontWeight: 600 }}>
             {variables.filter((v) => !v.value).length}
           </Body1>
         </div>
@@ -318,12 +319,12 @@ export const VariablesPanel: React.FC = () => {
 
       {/* Party Information */}
       <div className={styles.partySection}>
-        <Body2 weight="semibold">Quick Fill - Party Information</Body2>
+        <Body2 style={{ fontWeight: 600 }}>Quick Fill - Party Information</Body2>
         
         {/* Buyer */}
         <div className={styles.partyCard}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Body1 weight="semibold">Buyer / Client</Body1>
+            <Body1 style={{ fontWeight: 600 }}>Buyer / Client</Body1>
             <div>
               <Button
                 size="small"
@@ -379,7 +380,7 @@ export const VariablesPanel: React.FC = () => {
         {/* Seller */}
         <div className={styles.partyCard}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Body1 weight="semibold">Seller / Vendor</Body1>
+            <Body1 style={{ fontWeight: 600 }}>Seller / Vendor</Body1>
             <div>
               <Button
                 size="small"
@@ -436,7 +437,7 @@ export const VariablesPanel: React.FC = () => {
       <Divider />
 
       {/* Variables List */}
-      <Body2 weight="semibold">Document Variables</Body2>
+      <Body2 style={{ fontWeight: 600 }}>Document Variables</Body2>
       
       {isScanning ? (
         <div className={styles.loading}>
@@ -449,7 +450,7 @@ export const VariablesPanel: React.FC = () => {
               <div className={styles.variableHeader}>
                 <div className={styles.variableName}>
                   {getVariableIcon(variable.name)}
-                  <Body1 weight="semibold">{variable.name}</Body1>
+                  <Body1 style={{ fontWeight: 600 }}>{variable.name}</Body1>
                 </div>
                 <Badge
                   appearance={variable.value ? 'filled' : 'outline'}

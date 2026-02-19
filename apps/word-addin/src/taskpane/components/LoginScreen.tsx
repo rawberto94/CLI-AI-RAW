@@ -20,14 +20,10 @@ import {
   Link,
   Divider,
 } from '@fluentui/react-components';
-import { LockClosedRegular, PersonRegular } from '@fluentui/react-icons';
-import type { FluentIcon } from '@fluentui/react-icons';
+import { LockClosedRegular, PersonRegular } from '../../utils/icons';
 import { useAuth } from '../contexts/AuthContext';
 
-/** Wrapper to satisfy strict JSX typing for FluentIcon components */
-function renderIcon(Icon: FluentIcon) {
-  return React.createElement(Icon as React.ComponentType) as React.ReactElement;
-}
+
 
 const useStyles = makeStyles({
   root: {
@@ -165,7 +161,7 @@ export const LoginScreen: React.FC = () => {
             type="email"
             value={email}
             onChange={(e, data) => setEmail(data.value)}
-            contentBefore={renderIcon(PersonRegular)}
+            contentBefore={<PersonRegular />}
             placeholder="your@email.com"
             disabled={anyLoading}
           />
@@ -176,7 +172,7 @@ export const LoginScreen: React.FC = () => {
             type="password"
             value={password}
             onChange={(e, data) => setPassword(data.value)}
-            contentBefore={renderIcon(LockClosedRegular)}
+            contentBefore={<LockClosedRegular />}
             placeholder="••••••••"
             disabled={anyLoading}
           />
