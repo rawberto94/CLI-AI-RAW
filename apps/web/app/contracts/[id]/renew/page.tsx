@@ -147,6 +147,9 @@ export default function ContractRenewalPage() {
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<RenewalTemplate | null>(null);
   
+  // Approval workflow
+  const [submitForApproval, setSubmitForApproval] = useState(false);
+  
   // Load templates for renewal
   useEffect(() => {
     async function loadTemplates() {
@@ -346,10 +349,15 @@ export default function ContractRenewalPage() {
       
       const result = await response.json();
       const payload = result.data ?? result;
-      toast.success('Renewal contract created successfully!');
+      const newContractId = payload.renewal?.id || payload.id;
       
-      // Navigate to the new contract
-      router.push(`/contracts/${payload.renewal?.id || payload.id}`);
+      if (submitForApproval) {
+        toast.success('Renewal created — redirecting to approval submission...');
+        router.push(`/contracts/${newContractId}?submitApproval=true`);
+      } else {
+        toast.success('Renewal contract created successfully!');
+        router.push(`/contracts/${newContractId}`);
+      }
       
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create renewal');
@@ -500,7 +508,14 @@ export default function ContractRenewalPage() {
               <PreviewStep draft={draft} original={originalContract} />
             )}
             {currentStep === 4 && (
-              <ConfirmStep draft={draft} original={originalContract} onConfirm={handleCreateRenewal} saving={saving} />
+              <ConfirmStep
+                draft={draft}
+                original={originalContract}
+                onConfirm={handleCreateRenewal}
+                saving={saving}
+                submitForApproval={submitForApproval}
+                onSubmitForApprovalChange={setSubmitForApproval}
+              />
             )}
           </motion.div>
         </AnimatePresence>
@@ -2036,13 +2051,16 @@ function ConfirmStep({
   original,
   onConfirm,
   saving,
+  submitForApproval,
+  onSubmitForApprovalChange,
 }: { 
   draft: RenewalDraft; 
   original: OriginalContract;
   onConfirm: () => void;
   saving: boolean;
+  submitForApproval: boolean;
+  onSubmitForApprovalChange: (v: boolean) => void;
 }) {
-  const [submitForApproval, setSubmitForApproval] = useState(false);
   
   return (
     <div className="space-y-6">
@@ -2100,7 +2118,7 @@ function ConfirmStep({
               </div>
               <Switch 
                 checked={submitForApproval}
-                onCheckedChange={setSubmitForApproval}
+                onCheckedChange={onSubmitForApprovalChange}
               />
             </div>
           </div>

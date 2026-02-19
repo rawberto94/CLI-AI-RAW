@@ -11,33 +11,23 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  ChevronRight,
-  Filter,
   Search,
-  MoreHorizontal,
   FileText,
   Building2,
-  DollarSign,
   TrendingUp,
   TrendingDown,
-  ArrowRight,
   Zap,
   Bell,
   Mail,
   Play,
-  Pause,
-  Settings,
   Download,
-  BarChart3,
   Eye,
   Edit,
   Loader2,
   SendHorizonal,
   GitBranch,
-  UserCheck,
   ClipboardCheck,
 } from 'lucide-react';
-import { useDataMode } from '@/contexts/DataModeContext';
 import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal';
 import { useCrossModuleInvalidation } from '@/hooks/use-queries';
 import { RenewalsCalendar } from '@/components/calendar/RenewalsCalendar';
@@ -337,7 +327,6 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
 // ============================================================================
 
 export const RenewalManager: React.FC = () => {
-  const { isMockData } = useDataMode();
   const crossModule = useCrossModuleInvalidation();
   const [renewals, setRenewals] = useState<RenewalContract[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -526,11 +515,17 @@ export const RenewalManager: React.FC = () => {
             <p className="text-sm text-slate-500 mt-1">Track and manage upcoming contract renewals</p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="px-3 py-2 bg-white/80 backdrop-blur-sm text-slate-700 rounded-xl border border-slate-200/50 hover:bg-white hover:shadow-md transition-all duration-200 font-medium flex items-center gap-2">
+            <button
+              onClick={() => toast.info('Export coming soon')}
+              className="px-3 py-2 bg-white/80 backdrop-blur-sm text-slate-700 rounded-xl border border-slate-200/50 hover:bg-white hover:shadow-md transition-all duration-200 font-medium flex items-center gap-2"
+            >
               <Download className="w-4 h-4" />
               Export
             </button>
-            <button className="px-3 py-2 bg-white/80 backdrop-blur-sm text-slate-700 rounded-xl border border-slate-200/50 hover:bg-white hover:shadow-md transition-all duration-200 font-medium flex items-center gap-2">
+            <button
+              onClick={() => toast.info('Notification preferences coming soon')}
+              className="px-3 py-2 bg-white/80 backdrop-blur-sm text-slate-700 rounded-xl border border-slate-200/50 hover:bg-white hover:shadow-md transition-all duration-200 font-medium flex items-center gap-2"
+            >
               <Bell className="w-4 h-4" />
               Notifications
             </button>
@@ -681,11 +676,17 @@ export const RenewalManager: React.FC = () => {
               <ClipboardCheck className="w-4 h-4" />
               View Approvals
             </Link>
-            <button className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium flex items-center gap-2">
+            <button
+              onClick={() => toast.info('Bulk reminders coming soon')}
+              className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium flex items-center gap-2"
+            >
               <Mail className="w-4 h-4" />
               Send Reminders
             </button>
-            <button className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors font-medium flex items-center gap-2">
+            <button
+              onClick={() => toast.info('Bulk actions coming soon')}
+              className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors font-medium flex items-center gap-2"
+            >
               <Zap className="w-4 h-4" />
               Bulk Actions
             </button>
@@ -724,7 +725,7 @@ export const RenewalManager: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
             >
-              <div className="bg-gradient-to-r from-violet-50 to-violet-50 px-6 py-4 border-b border-green-100">
+              <div className="bg-gradient-to-r from-green-50 to-violet-50 px-6 py-4 border-b border-green-100">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-green-500 rounded-lg">
                     <Play className="w-5 h-5 text-white" />
