@@ -51,7 +51,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDataMode } from "@/contexts/DataModeContext";
-import { useContracts, useContractStats, useCrossModuleInvalidation, type Contract } from "@/hooks/use-queries";
+import { useContracts, useContractStats, useCrossModuleInvalidation, useTaxonomyCategories, type Contract } from "@/hooks/use-queries";
 import { useContractsPageFilters } from "@/hooks/use-contracts-page-filters";
 import { useContractsPageActions } from "@/hooks/use-contracts-page-actions";
 import { toast } from "sonner";
@@ -71,7 +71,6 @@ import { ContractsPageHeader } from "@/components/contracts/ContractsPageHeader"
 import { StateOfTheArtSearch } from "@/components/contracts/StateOfTheArtSearch";
 import { ScrollToTopButton } from "@/components/fab";
 import { cn } from "@/lib/utils";
-import { getTenantId } from "@/lib/tenant";
 
 // Extracted sub-components
 import { AnimatedCounter } from "@/components/contracts/AnimatedCounter";
@@ -94,9 +93,6 @@ import {
 export default function ContractsPage() {
   const router = useRouter();
   const { dataMode } = useDataMode();
-  
-  // Get tenant context for API calls
-  const tenantId = getTenantId();
 
   // Preserve list scroll position when navigating to contract details and back
   useEffect(() => {
@@ -127,12 +123,10 @@ export default function ContractsPage() {
   const {
     searchQuery, setSearchQuery,
     filterState, setFilterState,
-    approvalFilters, setApprovalFilters,
     valueRangeFilter, setValueRangeFilter,
     dateRangeFilter, setDateRangeFilter,
     expirationFilters, setExpirationFilters,
     signatureFilters, documentTypeFilters,
-    activePreset, advancedFilters, setAdvancedFilters,
     currentPage, setCurrentPage, pageSize, setPageSize,
     sortField, setSortField, sortDirection, setSortDirection,
     statusFilter, typeFilters, riskFilters, supplierFilters, categoryFilter,
@@ -144,9 +138,6 @@ export default function ContractsPage() {
 
   // UI toggle state (not part of filter logic)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-
-  // Category metadata state
-  const [categories, setCategories] = useState<Array<{id: string; name: string; color: string; icon: string; contractCount?: number}>>([]);
 
   // View mode: 'compact' for table-like rows, 'cards' for detailed cards
   const [viewMode, setViewMode] = useState<'compact' | 'cards'>('compact');
@@ -169,6 +160,9 @@ export default function ContractsPage() {
   
   const crossModule = useCrossModuleInvalidation();
   const queryClient = useQueryClient();
+  
+  // Fetch categories for filters (cached by React Query)
+  const { data: categories = [] } = useTaxonomyCategories();
 
   const {
     selectedContracts, setSelectedContracts, toggleSelect,
@@ -187,24 +181,6 @@ export default function ContractsPage() {
   } = useContractsPageActions({ dataMode, refetch, refetchStats, crossModule, queryClient });
 
   const contracts: Contract[] = contractsData?.contracts || [];
-  
-  // Fetch categories for filter
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch('/api/taxonomy', {
-          headers: { 'x-tenant-id': getTenantId() }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setCategories(data.data || []);
-        }
-      } catch {
-        // Error handled silently
-      }
-    };
-    fetchCategories();
-  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -249,7 +225,7 @@ export default function ContractsPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [refetch, router]);
+  }, [router, setSelectedContracts, setSearchQuery, setViewMode]);
 
   // Derive dynamic filter options from actual contract data
   const availableSuppliers = useMemo(() => {
@@ -304,10 +280,7 @@ export default function ContractsPage() {
       });
 
       // Approval status filter  
-      const matchesApproval = approvalFilters.length === 0 || approvalFilters.some(approval => {
-        const contractApprovalStatus = contract.approvalStatus || 'none';
-        return contractApprovalStatus === approval;
-      });
+      const matchesApproval = true; // No approval filter UI currently exposed
       
       // Date range filter (preset-based + filterState date picker)
       const matchesDateRange = (!dateRangeFilter || (() => {
@@ -357,12 +330,10 @@ export default function ContractsPage() {
       const matchesDocumentType = documentTypeFilters.length === 0 || 
         documentTypeFilters.includes(contract.documentClassification || 'contract');
 
-      // Advanced filters (text-based client/supplier name + min/max value)
-      const matchesAdvanced = 
-        (!advancedFilters.clientName || contract.parties?.client?.toLowerCase().includes(advancedFilters.clientName.toLowerCase())) &&
-        (!advancedFilters.supplierName || contract.parties?.supplier?.toLowerCase().includes(advancedFilters.supplierName.toLowerCase())) &&
-        (!advancedFilters.minValue || (contract.value && contract.value >= advancedFilters.minValue)) &&
-        (!advancedFilters.maxValue || (contract.value && contract.value <= advancedFilters.maxValue));
+      // Advanced text filters (client/supplier name + min/max value)
+      // These are controlled by the AdvancedFilterPanel via filterState.
+      // The legacy advancedFilters object is no longer used.
+      const matchesAdvanced = true;
 
       // Category filter (consolidated — filterState.categories is the single source,
       // 'uncategorized' is a special value meaning "no category assigned")
@@ -403,7 +374,7 @@ export default function ContractsPage() {
       return matchesDocumentRole && matchesRisk && matchesApproval && matchesDateRange && matchesExpiration && matchesHasDeadline && matchesIsExpiring && matchesSignature && matchesDocumentType && matchesAdvanced && matchesCategory && matchesCurrency && matchesJurisdiction && matchesPaymentTerms;
     });
      
-  }, [contracts, approvalFilters, dateRangeFilter, expirationFilters, signatureFilters, documentTypeFilters, advancedFilters, filterState]);
+  }, [contracts, dateRangeFilter, expirationFilters, signatureFilters, documentTypeFilters, filterState]);
 
   // Sort filtered contracts
   const sortedContracts = useMemo(() => {
