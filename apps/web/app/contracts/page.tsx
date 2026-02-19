@@ -1,21 +1,8 @@
 /**
- * Enhanced Contracts List Page v2.0
- * Premium UI/UX with Hero Dashboard, Smart Filters, Preview Panel
- * Integrated filters, bulk selection, cross-module actions
- * Preserves RAG and chatbot data flows
- * 
- * v2.1 - Live Updates & Enhanced UI
- * - Real-time auto-refresh with configurable intervals
- * - Visual pulse indicators for live data
- * - Animated stat counters
- * - Skeleton loading states
- * - Processing contracts live progress tracking
- * 
- * Note: This file contains features in active development. Some variables
- * are defined for future use and are intentionally preserved.
+ * Contracts List Page
+ * Clean, focused UI with hero dashboard, smart filters, and preview panel.
+ * Server-side pagination/filtering with client-side supplementary filters.
  */
-
-
 
 "use client";
 
@@ -26,9 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
-import { AdvancedSearchModal } from "@/components/contracts/AdvancedSearchModal";
 import { AdvancedFilterPanel } from "@/components/contracts/AdvancedFilterPanel";
-import { DragDropFilterBuilder } from "@/components/contracts/DragDropFilterBuilder";
 import { ActiveFilterChips } from "@/components/contracts/ActiveFilterChips";
 import { SavedSearchPresets } from "@/components/contracts/SavedSearchPresets";
 import {
@@ -45,13 +30,11 @@ import {
 } from "@/components/ui/tooltip";
 import {
   CheckCircle,
-  AlertTriangle,
   Loader2,
   Filter,
   Download,
   Trash2,
   Share2,
-  Brain,
   X,
   LayoutGrid,
   LayoutList,
@@ -59,19 +42,13 @@ import {
   ChevronDown,
   ArrowUp,
   ArrowDown,
-  Sparkles,
-  Tag,
   FileDown,
   FileSpreadsheet,
   ChevronLeft,
   ChevronsLeft,
   ChevronsRight,
-  FileBarChart,
-  Database,
   ArrowLeftRight,
-  Wand2,
 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDataMode } from "@/contexts/DataModeContext";
@@ -83,7 +60,7 @@ import { toast } from "sonner";
 // Lazy load heavy components for better performance
 import { LazyContractPreviewPanel } from "@/components/lazy";
 
-// Enhanced UI Components
+// UI Components
 import { ContractsHeroDashboard, type ContractStats } from "@/components/contracts/ContractsHeroDashboard";
 import { EnhancedContractCard, type EnhancedContract } from "@/components/contracts/EnhancedContractCard";
 import { type ExtendedContract } from "@/components/contracts/ContractPreviewPanel";
@@ -91,10 +68,8 @@ import { MobileFiltersSheet } from "@/components/contracts/MobileContractViews";
 import { NoContracts, NoResults } from "@/components/contracts/EmptyStates";
 import { ShareDialog } from "@/components/collaboration/ShareDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { AIReportModal } from "@/components/contracts/AIReportModal";
 import { ContractsPageHeader } from "@/components/contracts/ContractsPageHeader";
 import { StateOfTheArtSearch } from "@/components/contracts/StateOfTheArtSearch";
-import { CommandPaletteSearch } from "@/components/contracts/CommandPaletteSearch";
 import { ScrollToTopButton } from "@/components/fab";
 import { cn } from "@/lib/utils";
 import { getTenantId } from "@/lib/tenant";
@@ -121,9 +96,8 @@ export default function ContractsPage() {
   const router = useRouter();
   const { dataMode } = useDataMode();
   
-  // Get tenant/user context for API calls
+  // Get tenant context for API calls
   const tenantId = getTenantId();
-  const userId = 'system'; // Default user for bulk operations
 
   // Preserve list scroll position when navigating to contract details and back
   useEffect(() => {
@@ -174,10 +148,7 @@ export default function ContractsPage() {
   } = useContractsPageFilters();
 
   // UI toggle state (not part of filter logic)
-  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
-  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [showVisualBuilder, setShowVisualBuilder] = useState(false);
 
   // Category metadata state
   const [categories, setCategories] = useState<Array<{id: string; name: string; color: string; icon: string; contractCount?: number}>>([]);
@@ -190,36 +161,14 @@ export default function ContractsPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [favoriteContracts, setFavoriteContracts] = useState<Set<string>>(new Set());
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [isLiveUpdatesEnabled] = useState(false);
-  const [newContractsCount, setNewContractsCount] = useState(0);
 
-  // Use React Query for data fetching with caching and live updates
+  // Use React Query for data fetching with caching
   const { 
     data: contractsData, 
     isLoading: loading, 
     isFetching: isRefetching,
     refetch,
-  } = useContracts(serverParams, {
-    pollingEnabled: isLiveUpdatesEnabled,
-    pollingInterval: 15000,
-    onNewContract: (count) => {
-      setNewContractsCount(prev => prev + count);
-      toast.success(`${count} new contract${count > 1 ? 's' : ''} added`, {
-        icon: <Sparkles className="h-4 w-4 text-slate-600" />,
-        action: {
-          label: 'View',
-          onClick: () => {
-            setSortField('createdAt');
-            setSortDirection('desc');
-            setCurrentPage(1);
-          }
-        }
-      });
-    },
-    onUpdate: () => {
-      setNewContractsCount(0);
-    }
-  });
+  } = useContracts(serverParams);
   
   // Fetch real-time stats from the database (always accurate)
   const { data: dbStats, refetch: refetchStats } = useContractStats();
@@ -267,18 +216,6 @@ export default function ContractsPage() {
     fetchCategories();
   }, []);
 
-  // Command palette keyboard shortcut (⌘K / Ctrl+K)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setShowCommandPalette(prev => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-  
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -771,7 +708,6 @@ export default function ContractsPage() {
         <div className="min-h-screen bg-slate-50">
           <ContractsPageHeader
             onRefresh={() => refetch()}
-            onAdvancedSearch={() => setShowAdvancedSearch(true)}
             isRefreshing={true}
           />
           <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6 space-y-5">
@@ -809,7 +745,6 @@ export default function ContractsPage() {
               <div className="animate-pulse flex gap-2">
                 <div className="h-8 w-20 bg-slate-200 rounded" />
                 <div className="h-8 w-20 bg-slate-200 rounded" />
-                <div className="h-8 w-28 bg-slate-200 rounded" />
               </div>
             </div>
             
@@ -821,16 +756,6 @@ export default function ContractsPage() {
                 ))}
               </div>
             </Card>
-            
-            {/* Loading indicator overlay */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="fixed bottom-6 right-6 bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-3 border border-slate-200"
-            >
-              <Loader2 className="h-4 w-4 animate-spin text-slate-600" />
-              <span className="text-sm text-slate-600">Loading contracts...</span>
-            </motion.div>
           </div>
         </div>
       </TooltipProvider>
@@ -839,53 +764,14 @@ export default function ContractsPage() {
 
   return (
     <TooltipProvider>
-    {/* Command Palette for Quick Search (⌘K) */}
-    <CommandPaletteSearch
-      isOpen={showCommandPalette}
-      onClose={() => setShowCommandPalette(false)}
-      onSearch={(query) => {
-        setSearchQuery(query);
-        setShowCommandPalette(false);
-      }}
-      onAISearch={(query) => {
-        window.dispatchEvent(new CustomEvent('openAIChatbot', {
-          detail: { autoMessage: query ? `Search for contracts matching: ${query}` : 'Help me find contracts' }
-        }));
-        setShowCommandPalette(false);
-      }}
-      onFilterChange={(filter, value) => {
-        if (filter === 'risk') setRiskFilters([value]);
-        if (filter === 'status') setStatusFilter(value);
-        if (filter === 'expiration') setExpirationFilters([value]);
-      }}
-      onNavigate={(contractId) => pushToContract(contractId)}
-      recentContracts={contracts.slice(0, 5).map(c => ({ id: c.id, title: c.filename || c.title || 'Untitled' }))}
-      onUploadClick={() => router.push('/upload')}
-      onExportClick={() => handleExportFiltered('csv')}
-    />
-    
     <div className="min-h-screen bg-slate-50">
       <ContractsPageHeader
         onRefresh={() => refetch()}
-        onAdvancedSearch={() => setShowAdvancedSearch(true)}
         isRefreshing={isRefetching && !loading}
         onQuickUploadComplete={(contractIds) => {
           refetch();
           toast.success(`${contractIds.length} contract${contractIds.length > 1 ? 's' : ''} uploaded`);
         }}
-        extraActions={
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button asChild variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm">
-                <Link href="/import/external-database">
-                  <Database className="h-4 w-4 mr-2" />
-                  Import from DB
-                </Link>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Import contracts from external database</TooltipContent>
-          </Tooltip>
-        }
       />
       
       <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-3 space-y-2.5">
@@ -925,7 +811,7 @@ export default function ContractsPage() {
                       </Button>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      {/* Standard actions */}
+                      {/* Export */}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -940,52 +826,6 @@ export default function ContractsPage() {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Export selected contracts</TooltipContent>
-                      </Tooltip>
-                      
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
-                            onClick={() => performBulkAction('analyze')}
-                            disabled={isProcessingBulk}
-                          >
-                            <Brain className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline ml-1.5 text-xs font-medium">Analyze</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Run AI analysis on selected</TooltipContent>
-                      </Tooltip>
-                      
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="sm"
-                            className="bg-slate-800 hover:bg-slate-700 text-white border-0 h-8 px-3 rounded-lg transition-colors"
-                            onClick={() => setAiReportModalOpen(true)}
-                            disabled={isProcessingBulk}
-                          >
-                            <FileBarChart className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline ml-1.5 text-xs font-medium">Report</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Generate AI report</TooltipContent>
-                      </Tooltip>
-                      
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="sm"
-                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
-                            onClick={handleBulkCategorize}
-                            disabled={isProcessingBulk || isBulkCategorizing}
-                          >
-                            {isBulkCategorizing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Tag className="h-3.5 w-3.5" />}
-                            <span className="hidden sm:inline ml-1.5 text-xs font-medium">Categorize</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Auto-categorize with AI</TooltipContent>
                       </Tooltip>
                       
                       {selectedContracts.size === 2 && (
@@ -1049,7 +889,7 @@ export default function ContractsPage() {
           )}
         </AnimatePresence>
 
-        {/* Compact Hero Dashboard */}
+        {/* Hero Dashboard */}
         <ContractsHeroDashboard
           stats={heroStats}
           onUploadClick={() => router.push('/upload')}
@@ -1062,9 +902,6 @@ export default function ContractsPage() {
               toast.info('Select exactly 2 contracts to compare');
             }
           }}
-          onAskAIClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot', {
-            detail: { autoMessage: 'Help me find and analyze my contracts' }
-          }))}
         />
 
         {/* State of the Art Search & Filters */}
@@ -1091,9 +928,6 @@ export default function ContractsPage() {
             suppliers={Array.from(new Set(contracts?.map(c => c.parties?.supplier).filter(Boolean) || [])).sort() as string[]}
             categories={categories.map(cat => ({ id: cat.id, name: cat.name, color: cat.color }))}
             onClearFilters={clearFilters}
-            onAISearchClick={(query) => window.dispatchEvent(new CustomEvent('openAIChatbot', {
-              detail: { autoMessage: query ? `Search for contracts matching: ${query}` : 'Help me find contracts' }
-            }))}
             activeFilterCount={activeFilterCount}
             totalResults={contractsData?.total ?? 0}
             isLoading={isRefetching}
@@ -1140,18 +974,6 @@ export default function ContractsPage() {
           )}
         </AnimatePresence>
         
-        {/* Visual Filter Builder Modal */}
-        {showVisualBuilder && (
-          <DragDropFilterBuilder
-            onApply={(groups, logic) => { handleVisualBuilderApply(groups, logic); setShowVisualBuilder(false); }}
-            onClose={() => setShowVisualBuilder(false)}
-            initialGroups={[]}
-            availableSuppliers={availableSuppliers}
-            availableClients={availableClients}
-            availableContractTypes={availableContractTypes}
-          />
-        )}
-
         {/* Advanced Filter Controls */}
         <div className="flex items-center justify-end gap-2">
           {/* Active Filter Chips - only shows when filters are active */}
@@ -1171,23 +993,6 @@ export default function ContractsPage() {
             currentQuery={searchQuery}
             onLoadPreset={handleLoadPreset}
           />
-          
-          {/* Visual Filter Builder Button */}
-          <Button
-              variant={showVisualBuilder ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowVisualBuilder(true)}
-              className={cn(
-                "transition-all duration-200 h-8 text-xs font-medium",
-                showVisualBuilder 
-                  ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-800" 
-                  : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
-              )}
-            >
-              <Wand2 className="h-3.5 w-3.5 mr-1.5" />
-              <span className="hidden sm:inline">Visual Builder</span>
-              <span className="sm:hidden">Builder</span>
-            </Button>
           
           {/* Advanced Filter Button */}
           <Button
@@ -1344,105 +1149,8 @@ export default function ContractsPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            {/* Keyboard Shortcuts Hint */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => {
-                    // Dispatch keyboard shortcut help event
-                    window.dispatchEvent(new CustomEvent('openKeyboardShortcuts'));
-                  }}
-                  className="h-8 w-8 flex items-center justify-center border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors text-slate-400 hover:text-slate-600"
-                >
-                  <kbd className="text-[10px] font-mono font-bold">?</kbd>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Keyboard shortcuts</TooltipContent>
-            </Tooltip>
           </div>
         </div>
-
-        {/* Selection Count & Quick Pagination Bar */}
-        {(selectedContracts.size > 0 || totalPages > 1) && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between bg-white border border-slate-200/80 rounded-xl px-5 py-3 shadow-sm"
-          >
-            {/* Selection info */}
-            <div className="flex items-center gap-3">
-              {selectedContracts.size > 0 ? (
-                <div className="flex items-center gap-3">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg border border-slate-200"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="text-sm font-bold">{selectedContracts.size}</span>
-                    <span className="text-xs font-medium">selected</span>
-                  </motion.div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedContracts(new Set())}
-                    className="h-8 text-xs text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
-                  >
-                    <X className="h-3.5 w-3.5 mr-1" />
-                    Clear
-                  </Button>
-                  <div className="w-px h-4 bg-slate-300" />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleBulkDeleteClick}
-                    disabled={isProcessingBulk}
-                    className="h-8 text-xs text-red-600 hover:text-white hover:bg-red-600 rounded-lg gap-1"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Delete
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <span className="font-medium">Page {currentPage}</span>
-                  <span className="text-slate-400">of</span>
-                  <span className="font-medium">{totalPages}</span>
-                </div>
-              )}
-            </div>
-            
-            {/* Quick pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="h-8 w-8 p-0 rounded-lg border-slate-200 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <div className="px-3 py-1 bg-slate-100 rounded-lg">
-                  <span className="text-sm font-medium text-slate-700 tabular-nums">
-                    {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, contractsData?.total ?? 0)}
-                  </span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="h-8 w-8 p-0 rounded-lg border-slate-200 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </motion.div>
-        )}
 
         {/* Contracts List */}
         <div data-tour="contracts">
@@ -1466,14 +1174,6 @@ export default function ContractsPage() {
                   ) : (
                     <NoContracts
                       onUpload={() => router.push('/upload')}
-                      additionalActions={(
-                        <Button variant="outline" asChild className="gap-2">
-                          <Link href="/import/external-database" className="gap-2">
-                            <Database className="h-4 w-4" />
-                            Import from DB
-                          </Link>
-                        </Button>
-                      )}
                     />
                   )}
                 </CardContent>
@@ -1581,14 +1281,6 @@ export default function ContractsPage() {
                     onClick={() => handlePreview(originalContract)}
                     onQuickAction={(action) => {
                       switch (action) {
-                        case 'ai':
-                          window.dispatchEvent(new CustomEvent('openAIChatbot', {
-                            detail: { 
-                              autoMessage: `Tell me about this contract: ${contract.title || 'Unknown'} - ${contract.parties?.find(p => p.role === 'vendor')?.name || 'Unknown supplier'}`,
-                              contractId: contract.id
-                            }
-                          }));
-                          break;
                         case 'preview':
                           handlePreview(originalContract);
                           break;
@@ -1724,19 +1416,6 @@ export default function ContractsPage() {
         )}
       </div>
       
-      {/* Advanced Search Modal */}
-      <AdvancedSearchModal
-        open={showAdvancedSearch}
-        onOpenChange={setShowAdvancedSearch}
-        onSearch={(filters) => {
-          setAdvancedFilters(filters);
-          if (filters.query) {
-            setSearchQuery(filters.query);
-          }
-        }}
-        initialFilters={advancedFilters}
-      />
-      
       {/* Share Dialog */}
       {shareContractId && (
         <ShareDialog
@@ -1765,17 +1444,6 @@ export default function ContractsPage() {
           onSuccess={handleApprovalSuccess}
         />
       )} */}
-      
-      {/* AI Report Modal */}
-      <AIReportModal
-        isOpen={aiReportModalOpen}
-        onClose={() => setAiReportModalOpen(false)}
-        contractIds={Array.from(selectedContracts)}
-        contractNames={contracts
-          .filter(c => selectedContracts.has(c.id))
-          .map(c => c.title || c.filename || 'Untitled')
-        }
-      />
       
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
@@ -1812,18 +1480,6 @@ export default function ContractsPage() {
         isLoading={isProcessingBulk}
       />
       
-      {/* Bulk Analyze Confirmation Dialog */}
-      <ConfirmDialog
-        open={bulkAnalyzeDialogOpen}
-        onOpenChange={setBulkAnalyzeDialogOpen}
-        title="Analyze Multiple Contracts with AI"
-        description={`You are about to send ${selectedContracts.size} contracts for AI analysis. This may take a few minutes depending on the contract complexity. Continue?`}
-        variant="default"
-        confirmLabel="Start Analysis"
-        onConfirm={handleConfirmBulkAction}
-        isLoading={isProcessingBulk}
-      />
-      
       {/* Bulk Share Confirmation Dialog */}
       <ConfirmDialog
         open={bulkShareDialogOpen}
@@ -1855,12 +1511,6 @@ export default function ContractsPage() {
           const contract = contracts.find(c => c.id === id);
           if (contract) handleDeleteClick(id, contract.title || 'Contract');
         }}
-        onAskAI={() => window.dispatchEvent(new CustomEvent('openAIChatbot', {
-          detail: {
-            autoMessage: previewContract ? `Tell me about this contract: ${previewContract.filename || 'Unknown'}` : 'Help me analyze contracts',
-            contractId: previewContract?.id
-          }
-        }))}
       />
 
       {/* Mobile Filters Sheet */}

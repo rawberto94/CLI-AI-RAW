@@ -95,7 +95,7 @@ interface StateOfTheArtSearchProps {
   suppliers: string[];
   categories: { id: string; name: string; color: string }[];
   onClearFilters: () => void;
-  onAISearchClick: (query: string) => void;
+  onAISearchClick?: (query: string) => void;
   activeFilterCount: number;
   totalResults: number;
   isLoading?: boolean;
@@ -836,7 +836,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
   const handleAISearch = useCallback(
     (query: string) => {
       saveToHistory(query);
-      onAISearchClick(query);
+      onAISearchClick?.(query);
     },
     [saveToHistory, onAISearchClick]
   );

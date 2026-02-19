@@ -50,7 +50,7 @@ import { cn } from "@/lib/utils";
 
 export interface ContractsPageHeaderProps {
   onRefresh: () => void;
-  onAdvancedSearch: () => void;
+  onAdvancedSearch?: () => void;
   showTaxonomyLink?: boolean;
   extraActions?: React.ReactNode;
   isRefreshing?: boolean;
@@ -164,6 +164,7 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
               </TooltipContent>
             </Tooltip>
             
+            {onAdvancedSearch && (
             <Button 
               variant="outline" 
               size="sm"
@@ -173,6 +174,7 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
               <SlidersHorizontal className="h-4 w-4 mr-2" />
               Advanced
             </Button>
+            )}
             
             {showTaxonomyLink && (
               <Button 
