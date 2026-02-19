@@ -36,17 +36,27 @@ export async function getAIClient(): Promise<AIClient> {
   let client: AIClient;
 
   if (openaiUsable) {
-    // Try OpenAI first
+    // Try OpenAI — probe with a tiny request to verify the key isn't exhausted
     try {
       const openai = new OpenAI({ apiKey: openaiKey }) as AIClient;
       openai.model = preferredModel || 'gpt-4o-mini';
       openai.provider = 'openai';
 
-      // Quick validation — list models to verify the key isn't exhausted
-      // (We skip the actual call; if it fails at usage time we'll catch it.)
+      // Lightweight probe: short completion to confirm quota
+      await openai.chat.completions.create({
+        model: openai.model,
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 1,
+      });
+
       client = openai;
-    } catch {
-      // Fall through to Mistral
+      console.log('[AI] OpenAI key verified — quota OK');
+    } catch (err: unknown) {
+      const status = (err as { status?: number }).status;
+      const code = (err as { code?: string }).code;
+      console.warn(
+        `[AI] OpenAI key failed (status=${status}, code=${code}). Falling back to Mistral.`
+      );
       client = null as unknown as AIClient;
     }
   } else {
