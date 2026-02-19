@@ -11,6 +11,13 @@ import {
   FileText,
   Tag,
   XCircle,
+  Shield,
+  Building2,
+  UserCircle,
+  MapPin,
+  CreditCard,
+  FileStack,
+  Coins,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -41,6 +48,13 @@ export function ActiveFilterChips({
     filters.valueRange.max < 1000000 ||
     filters.hasDeadline !== null ||
     filters.isExpiring !== null ||
+    (filters.riskLevels?.length ?? 0) > 0 ||
+    (filters.suppliers?.length ?? 0) > 0 ||
+    (filters.clients?.length ?? 0) > 0 ||
+    (filters.contractTypes?.length ?? 0) > 0 ||
+    (filters.currencies?.length ?? 0) > 0 ||
+    (filters.jurisdictions?.length ?? 0) > 0 ||
+    (filters.paymentTerms?.length ?? 0) > 0 ||
     searchQuery;
 
   if (!hasActiveFilters) return null;
@@ -130,6 +144,83 @@ export function ActiveFilterChips({
           color="red"
         />
       )}
+
+      {/* Risk Level Chips */}
+      {filters.riskLevels?.map(risk => (
+        <FilterChip
+          key={`risk-${risk}`}
+          icon={<Shield className="h-3 w-3" />}
+          label={`Risk: ${risk}`}
+          onRemove={() => onClearFilter('riskLevels', risk)}
+          color="orange"
+        />
+      ))}
+
+      {/* Supplier Chips */}
+      {filters.suppliers?.map(supplier => (
+        <FilterChip
+          key={`supplier-${supplier}`}
+          icon={<Building2 className="h-3 w-3" />}
+          label={`Supplier: ${supplier}`}
+          onRemove={() => onClearFilter('suppliers', supplier)}
+          color="blue"
+        />
+      ))}
+
+      {/* Client Chips */}
+      {filters.clients?.map(client => (
+        <FilterChip
+          key={`client-${client}`}
+          icon={<UserCircle className="h-3 w-3" />}
+          label={`Client: ${client}`}
+          onRemove={() => onClearFilter('clients', client)}
+          color="purple"
+        />
+      ))}
+
+      {/* Contract Type Chips */}
+      {filters.contractTypes?.map(type => (
+        <FilterChip
+          key={`type-${type}`}
+          icon={<FileStack className="h-3 w-3" />}
+          label={`Type: ${type}`}
+          onRemove={() => onClearFilter('contractTypes', type)}
+          color="indigo"
+        />
+      ))}
+
+      {/* Currency Chips */}
+      {filters.currencies?.map(currency => (
+        <FilterChip
+          key={`currency-${currency}`}
+          icon={<Coins className="h-3 w-3" />}
+          label={`Currency: ${currency}`}
+          onRemove={() => onClearFilter('currencies', currency)}
+          color="green"
+        />
+      ))}
+
+      {/* Jurisdiction Chips */}
+      {filters.jurisdictions?.map(jur => (
+        <FilterChip
+          key={`jur-${jur}`}
+          icon={<MapPin className="h-3 w-3" />}
+          label={`Jurisdiction: ${jur}`}
+          onRemove={() => onClearFilter('jurisdictions', jur)}
+          color="orange"
+        />
+      ))}
+
+      {/* Payment Terms Chips */}
+      {filters.paymentTerms?.map(pt => (
+        <FilterChip
+          key={`pt-${pt}`}
+          icon={<CreditCard className="h-3 w-3" />}
+          label={`Payment: ${pt}`}
+          onRemove={() => onClearFilter('paymentTerms', pt)}
+          color="green"
+        />
+      ))}
 
       {/* Clear All Button */}
       <Button

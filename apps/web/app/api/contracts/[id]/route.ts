@@ -754,6 +754,22 @@ export async function PUT(
         ...(updates.priority !== undefined && { priority: updates.priority }),
       };
     }
+    
+    // Handle taxonomy category assignment
+    if (updates.categoryId !== undefined) {
+      prismaUpdates.contractCategoryId = updates.categoryId || null;
+    }
+    
+    // Handle reminder settings in metadata
+    if (updates.reminder_enabled !== undefined || updates.reminder_days_before_end !== undefined) {
+      const existingMetadata = (existingContract.metadata as JsonRecord) || {};
+      prismaUpdates.metadata = {
+        ...existingMetadata,
+        ...(prismaUpdates.metadata || {}),
+        ...(updates.reminder_enabled !== undefined && { reminder_enabled: updates.reminder_enabled }),
+        ...(updates.reminder_days_before_end !== undefined && { reminder_days_before_end: updates.reminder_days_before_end }),
+      };
+    }
 
     // Update contract in database
     const updatedContract = await prisma.contract.update({
@@ -776,6 +792,14 @@ export async function PUT(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
+}
+
+// PATCH delegates to PUT for partial updates
+export async function PATCH(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return PUT(req, context);
 }
 
 // Delete contract with cascade safety

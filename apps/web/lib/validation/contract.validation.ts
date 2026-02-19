@@ -130,6 +130,17 @@ export const contractUpdateSchema = z.object({
   // Renewal fields
   autoRenewalEnabled: z.boolean().optional(),
   noticePeriodDays: z.coerce.number().int().positive().max(365).optional(),
+  
+  // Category assignment (taxonomy)
+  categoryId: z.string().max(100).optional(),
+  
+  // Reminder settings
+  reminder_enabled: z.boolean().optional(),
+  reminder_days_before_end: z.coerce.number().int().min(1).max(365).optional(),
+  
+  // Client/Supplier IDs
+  clientId: z.string().optional(),
+  supplierId: z.string().optional(),
 }).refine(
   (data) => {
     if (data.startDate && data.endDate) {

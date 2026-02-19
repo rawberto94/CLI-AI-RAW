@@ -46,6 +46,14 @@ export interface FilterState {
   categories: string[];
   hasDeadline: boolean | null;
   isExpiring: boolean | null;
+  // Extended metadata filters (from visual builder)
+  riskLevels: string[];
+  suppliers: string[];
+  clients: string[];
+  contractTypes: string[];
+  currencies: string[];
+  jurisdictions: string[];
+  paymentTerms: string[];
 }
 
 interface AdvancedFilterPanelProps {
@@ -119,6 +127,13 @@ export function AdvancedFilterPanel({
       categories: [],
       hasDeadline: null,
       isExpiring: null,
+      riskLevels: [],
+      suppliers: [],
+      clients: [],
+      contractTypes: [],
+      currencies: [],
+      jurisdictions: [],
+      paymentTerms: [],
     };
     setLocalFilters(reset);
     onChange(reset);
@@ -131,7 +146,14 @@ export function AdvancedFilterPanel({
     (localFilters.dateRange.from || localFilters.dateRange.to ? 1 : 0) +
     (localFilters.valueRange.min > 0 || localFilters.valueRange.max < 1000000 ? 1 : 0) +
     (localFilters.hasDeadline !== null ? 1 : 0) +
-    (localFilters.isExpiring !== null ? 1 : 0);
+    (localFilters.isExpiring !== null ? 1 : 0) +
+    (localFilters.riskLevels?.length || 0) +
+    (localFilters.suppliers?.length || 0) +
+    (localFilters.clients?.length || 0) +
+    (localFilters.contractTypes?.length || 0) +
+    (localFilters.currencies?.length || 0) +
+    (localFilters.jurisdictions?.length || 0) +
+    (localFilters.paymentTerms?.length || 0);
 
   return (
     <Card className="border-2 shadow-xl">

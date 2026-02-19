@@ -1961,7 +1961,7 @@ export function EnhancedContractMetadataSection({
   const handleAIExtraction = async () => {
     setIsExtractingAI(true);
     try {
-      const response = await fetch(`/api/contracts/${contractId}/extract`, {
+      const response = await fetch(`/api/contracts/${contractId}/extract-metadata`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

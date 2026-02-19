@@ -185,6 +185,13 @@ export default function ContractsPage() {
     categories: [],
     hasDeadline: null,
     isExpiring: null,
+    riskLevels: [],
+    suppliers: [],
+    clients: [],
+    contractTypes: [],
+    currencies: [],
+    jurisdictions: [],
+    paymentTerms: [],
   });
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showVisualBuilder, setShowVisualBuilder] = useState(false);
@@ -513,17 +520,37 @@ export default function ContractsPage() {
       categories: [],
       hasDeadline: null,
       isExpiring: null,
+      riskLevels: [],
+      suppliers: [],
+      clients: [],
+      contractTypes: [],
+      currencies: [],
+      jurisdictions: [],
+      paymentTerms: [],
     });
   }, []);
 
   // Advanced filter handlers
-  const handleClearFilter = useCallback((filterKey: keyof FilterState) => {
+  const handleClearFilter = useCallback((filterKey: keyof FilterState, value?: any) => {
     setFilterState(prev => {
       switch (filterKey) {
         case 'statuses':
         case 'documentRoles':
         case 'categories':
+        case 'riskLevels':
+        case 'suppliers':
+        case 'clients':
+        case 'contractTypes':
+        case 'currencies':
+        case 'jurisdictions':
+        case 'paymentTerms': {
+          const arr = prev[filterKey] as string[];
+          if (value !== undefined) {
+            // Remove specific value from array
+            return { ...prev, [filterKey]: arr.filter(v => v !== value) };
+          }
           return { ...prev, [filterKey]: [] };
+        }
         case 'dateRange':
           return { ...prev, dateRange: {} };
         case 'valueRange':
@@ -561,17 +588,16 @@ export default function ContractsPage() {
       categories: [],
       hasDeadline: null,
       isExpiring: null,
+      riskLevels: [],
+      suppliers: [],
+      clients: [],
+      contractTypes: [],
+      currencies: [],
+      jurisdictions: [],
+      paymentTerms: [],
     };
     
-    // Track additional filters (these would need to be added to FilterState interface)
-    let supplierFilter: string | null = null;
-    let clientFilter: string | null = null;
-    let jurisdictionFilter: string | null = null;
-    let paymentTermsFilter: string | null = null;
-    let contractTypeFilter: string | null = null;
-    let currencyFilter: string | null = null;
-    
-    // Process all filter groups (currently just merging all filters)
+    // Process all filter groups (currently merging all filters)
     // In a more sophisticated implementation, you'd preserve AND/OR logic
     groups.forEach(group => {
       group.filters.forEach(filter => {
@@ -614,26 +640,40 @@ export default function ContractsPage() {
           case 'expiration':
             newFilterState.isExpiring = true;
             break;
+          case 'risk':
+            if (filter.value && !newFilterState.riskLevels.includes(filter.value)) {
+              newFilterState.riskLevels.push(filter.value);
+            }
+            break;
           case 'supplier':
-            supplierFilter = filter.value;
+            if (filter.value && !newFilterState.suppliers.includes(filter.value)) {
+              newFilterState.suppliers.push(filter.value);
+            }
             break;
           case 'client':
-            clientFilter = filter.value;
+            if (filter.value && !newFilterState.clients.includes(filter.value)) {
+              newFilterState.clients.push(filter.value);
+            }
             break;
           case 'jurisdiction':
-            jurisdictionFilter = filter.value;
+            if (filter.value && !newFilterState.jurisdictions.includes(filter.value)) {
+              newFilterState.jurisdictions.push(filter.value);
+            }
             break;
           case 'payment':
-            paymentTermsFilter = filter.value;
+            if (filter.value && !newFilterState.paymentTerms.includes(filter.value)) {
+              newFilterState.paymentTerms.push(filter.value);
+            }
             break;
           case 'contractType':
-            contractTypeFilter = filter.value;
+            if (filter.value && !newFilterState.contractTypes.includes(filter.value)) {
+              newFilterState.contractTypes.push(filter.value);
+            }
             break;
           case 'currency':
-            currencyFilter = filter.value;
-            break;
-          case 'risk':
-            // Risk would need additional state handling
+            if (filter.value && !newFilterState.currencies.includes(filter.value)) {
+              newFilterState.currencies.push(filter.value);
+            }
             break;
         }
       });
@@ -643,22 +683,7 @@ export default function ContractsPage() {
     setShowVisualBuilder(false);
     
     const filterCount = groups.reduce((acc, g) => acc + g.filters.length, 0);
-    const message = `Applied ${filterCount} filter${filterCount === 1 ? '' : 's'}`;
-    
-    // Show info about additional filters that aren't in FilterState
-    const additionalFilters: string[] = [];
-    if (supplierFilter) additionalFilters.push(`Supplier: ${supplierFilter}`);
-    if (clientFilter) additionalFilters.push(`Client: ${clientFilter}`);
-    if (jurisdictionFilter) additionalFilters.push(`Jurisdiction: ${jurisdictionFilter}`);
-    if (paymentTermsFilter) additionalFilters.push(`Payment: ${paymentTermsFilter}`);
-    if (contractTypeFilter) additionalFilters.push(`Type: ${contractTypeFilter}`);
-    if (currencyFilter) additionalFilters.push(`Currency: ${currencyFilter}`);
-    
-    if (additionalFilters.length > 0) {
-      toast.info(`${message}. Note: ${additionalFilters.join(', ')} would require backend support.`);
-    } else {
-      toast.success(message);
-    }
+    toast.success(`Applied ${filterCount} filter${filterCount === 1 ? '' : 's'} from visual builder`);
   }, []);
   
   // Apply quick preset
@@ -996,7 +1021,66 @@ export default function ContractsPage() {
         (categoryFilter === 'uncategorized' ? !contract.category : contract.category?.id === categoryFilter)) &&
         (filterState.categories.length === 0 || (contract.category && filterState.categories.includes(contract.category.id)));
 
-      return matchesSearch && matchesStatus && matchesDocumentRole && matchesType && matchesRisk && matchesApproval && matchesValueRange && matchesDateRange && matchesExpiration && matchesHasDeadline && matchesIsExpiring && matchesSupplier && matchesSignature && matchesDocumentType && matchesAdvanced && matchesCategory;
+      // Visual builder: risk level filter (from filterState.riskLevels)
+      const matchesFilterStateRisk = !filterState.riskLevels?.length || filterState.riskLevels.some(risk => {
+        const riskLower = risk.toLowerCase();
+        if (contract.riskScore === undefined || contract.riskScore === null) return false;
+        switch (riskLower) {
+          case 'low': return contract.riskScore >= 0 && contract.riskScore < 30;
+          case 'medium': return contract.riskScore >= 30 && contract.riskScore < 70;
+          case 'high': return contract.riskScore >= 70 && contract.riskScore < 90;
+          case 'critical': return contract.riskScore >= 90;
+          default: return false;
+        }
+      });
+
+      // Visual builder: supplier filter (case-insensitive partial match)
+      const matchesFilterStateSupplier = !filterState.suppliers?.length ||
+        filterState.suppliers.some(s =>
+          contract.parties?.supplier?.toLowerCase().includes(s.toLowerCase())
+        );
+
+      // Visual builder: client filter (case-insensitive partial match)
+      const matchesFilterStateClient = !filterState.clients?.length ||
+        filterState.clients.some(c =>
+          contract.parties?.client?.toLowerCase().includes(c.toLowerCase())
+        );
+
+      // Visual builder: contract type filter (case-insensitive partial match)
+      const matchesFilterStateContractType = !filterState.contractTypes?.length ||
+        filterState.contractTypes.some(t =>
+          contract.type?.toLowerCase().includes(t.toLowerCase())
+        );
+
+      // Visual builder: currency filter (search title + type for currency mentions)
+      const matchesFilterStateCurrency = !filterState.currencies?.length ||
+        filterState.currencies.some(cur => {
+          const curLower = cur.toLowerCase();
+          return (
+            contract.title?.toLowerCase().includes(curLower) ||
+            contract.type?.toLowerCase().includes(curLower)
+          );
+        });
+
+      // Visual builder: jurisdiction filter (search title + parties for jurisdiction mentions)
+      const matchesFilterStateJurisdiction = !filterState.jurisdictions?.length ||
+        filterState.jurisdictions.some(jur => {
+          const jurLower = jur.toLowerCase();
+          return (
+            contract.title?.toLowerCase().includes(jurLower) ||
+            contract.parties?.client?.toLowerCase().includes(jurLower) ||
+            contract.parties?.supplier?.toLowerCase().includes(jurLower)
+          );
+        });
+
+      // Visual builder: payment terms filter (search title for payment terms mentions)
+      const matchesFilterStatePaymentTerms = !filterState.paymentTerms?.length ||
+        filterState.paymentTerms.some(pt => {
+          const ptLower = pt.toLowerCase();
+          return contract.title?.toLowerCase().includes(ptLower);
+        });
+
+      return matchesSearch && matchesStatus && matchesDocumentRole && matchesType && matchesRisk && matchesApproval && matchesValueRange && matchesDateRange && matchesExpiration && matchesHasDeadline && matchesIsExpiring && matchesSupplier && matchesSignature && matchesDocumentType && matchesAdvanced && matchesCategory && matchesFilterStateRisk && matchesFilterStateSupplier && matchesFilterStateClient && matchesFilterStateContractType && matchesFilterStateCurrency && matchesFilterStateJurisdiction && matchesFilterStatePaymentTerms;
     });
      
   }, [contracts, searchQuery, statusFilter, typeFilters, riskFilters, approvalFilters, valueRangeFilter, dateRangeFilter, expirationFilters, supplierFilters, signatureFilters, documentTypeFilters, advancedFilters, categoryFilter, filterState]);
