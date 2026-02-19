@@ -1,5 +1,6 @@
 /**
  * Login Screen for Word Add-in
+ * Supports ConTigo email/password or Microsoft Office SSO.
  */
 
 import * as React from 'react';
@@ -9,6 +10,7 @@ import {
   tokens,
   Title1,
   Body1,
+  Caption1,
   Input,
   Button,
   Field,
@@ -16,9 +18,16 @@ import {
   MessageBar,
   MessageBarBody,
   Link,
+  Divider,
 } from '@fluentui/react-components';
 import { LockClosedRegular, PersonRegular } from '@fluentui/react-icons';
+import type { FluentIcon } from '@fluentui/react-icons';
 import { useAuth } from '../contexts/AuthContext';
+
+/** Wrapper to satisfy strict JSX typing for FluentIcon components */
+function renderIcon(Icon: FluentIcon) {
+  return React.createElement(Icon as React.ComponentType) as React.ReactElement;
+}
 
 const useStyles = makeStyles({
   root: {
@@ -49,6 +58,23 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: tokens.spacingVerticalXS,
   },
+  divider: {
+    width: '100%',
+    maxWidth: '300px',
+    marginTop: tokens.spacingVerticalM,
+    marginBottom: tokens.spacingVerticalM,
+  },
+  ssoSection: {
+    width: '100%',
+    maxWidth: '300px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+    alignItems: 'center',
+  },
+  ssoButton: {
+    width: '100%',
+  },
   footer: {
     marginTop: tokens.spacingVerticalXL,
     textAlign: 'center',
@@ -57,21 +83,41 @@ const useStyles = makeStyles({
 
 export const LoginScreen: React.FC = () => {
   const styles = useStyles();
-  const { login, isLoading } = useAuth();
-  
+  const { login, loginWithMicrosoft, ssoAvailable, isLoading } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [ssoLoading, setSsoLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
+
     const result = await login(email, password);
     if (!result.success) {
       setError(result.error || 'Login failed');
     }
   };
+
+  const handleMicrosoftSSO = async () => {
+    setError(null);
+    setSsoLoading(true);
+    try {
+      const result = await loginWithMicrosoft();
+      if (!result.success) {
+        if (result.needsConsent) {
+          setError('Your admin needs to consent to ConTigo for your organisation. Contact your IT administrator.');
+        } else {
+          setError(result.error || 'Microsoft sign-in failed. Try email/password below.');
+        }
+      }
+    } finally {
+      setSsoLoading(false);
+    }
+  };
+
+  const anyLoading = isLoading || ssoLoading;
 
   return (
     <div className={styles.root}>
@@ -81,21 +127,47 @@ export const LoginScreen: React.FC = () => {
         <Body1>Contract Generation</Body1>
       </div>
 
-      <form className={styles.form} onSubmit={handleSubmit}>
-        {error && (
+      {error && (
+        <div style={{ width: '100%', maxWidth: '300px', marginBottom: tokens.spacingVerticalM }}>
           <MessageBar intent="error">
             <MessageBarBody>{error}</MessageBarBody>
           </MessageBar>
-        )}
+        </div>
+      )}
 
+      {/* Microsoft SSO — shown when running inside Office */}
+      {ssoAvailable && (
+        <div className={styles.ssoSection}>
+          <Button
+            appearance="primary"
+            size="large"
+            className={styles.ssoButton}
+            disabled={anyLoading}
+            onClick={handleMicrosoftSSO}
+            icon={ssoLoading ? <Spinner size="tiny" /> : undefined}
+          >
+            {ssoLoading ? 'Signing in...' : 'Sign in with Microsoft'}
+          </Button>
+          <Caption1>Use your Microsoft 365 account</Caption1>
+        </div>
+      )}
+
+      {ssoAvailable && (
+        <div className={styles.divider}>
+          <Divider>or sign in with email</Divider>
+        </div>
+      )}
+
+      {/* Email/password form */}
+      <form className={styles.form} onSubmit={handleSubmit}>
         <Field label="Email" required className={styles.field}>
           <Input
             type="email"
             value={email}
             onChange={(e, data) => setEmail(data.value)}
-            contentBefore={<PersonRegular />}
+            contentBefore={renderIcon(PersonRegular)}
             placeholder="your@email.com"
-            disabled={isLoading}
+            disabled={anyLoading}
           />
         </Field>
 
@@ -104,18 +176,18 @@ export const LoginScreen: React.FC = () => {
             type="password"
             value={password}
             onChange={(e, data) => setPassword(data.value)}
-            contentBefore={<LockClosedRegular />}
+            contentBefore={renderIcon(LockClosedRegular)}
             placeholder="••••••••"
-            disabled={isLoading}
+            disabled={anyLoading}
           />
         </Field>
 
         <Button
           type="submit"
-          appearance="primary"
-          disabled={isLoading || !email || !password}
+          appearance={ssoAvailable ? 'secondary' : 'primary'}
+          disabled={anyLoading || !email || !password}
         >
-          {isLoading ? <Spinner size="tiny" /> : 'Sign In'}
+          {isLoading ? <Spinner size="tiny" /> : 'Sign In with Email'}
         </Button>
       </form>
 

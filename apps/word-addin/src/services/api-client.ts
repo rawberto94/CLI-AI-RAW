@@ -3,7 +3,9 @@
  * Handles all communication with the ConTigo backend
  */
 
-const API_BASE_URL = process.env.CONTIGO_API_URL || 'https://contigo.app/api';
+declare const CONTIGO_API_URL: string | undefined;
+
+const API_BASE_URL = (typeof CONTIGO_API_URL !== 'undefined' ? CONTIGO_API_URL : null) || 'https://contigo.app/api';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -205,6 +207,13 @@ class ContigoApiClient {
 
   async validateToken(): Promise<ApiResponse<{ valid: boolean }>> {
     return this.request('/auth/validate');
+  }
+
+  async exchangeOfficeToken(officeToken: string): Promise<ApiResponse<{ token: string; tenantId: string; user: { id: string; email: string; name: string } }>> {
+    return this.request('/auth/sso/office', {
+      method: 'POST',
+      body: JSON.stringify({ officeToken }),
+    });
   }
 
   // ============================================================================

@@ -38,6 +38,21 @@
 
   <!-- Version Overrides for Office 2016+ -->
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+
+    <!-- SSO: Web Application Info for Microsoft Identity -->
+    <WebApplicationInfo>
+      <!-- Replace with your Azure AD Application (client) ID -->
+      <Id>$AZURE_AD_CLIENT_ID</Id>
+      <!-- Application ID URI registered in Azure AD: api://{addin-domain}/{client-id} -->
+      <Resource>api://localhost:3006/$AZURE_AD_CLIENT_ID</Resource>
+      <Scopes>
+        <Scope>openid</Scope>
+        <Scope>profile</Scope>
+        <Scope>email</Scope>
+        <Scope>User.Read</Scope>
+      </Scopes>
+    </WebApplicationInfo>
+
     <Hosts>
       <Host xsi:type="Document">
         <DesktopFormFactor>
