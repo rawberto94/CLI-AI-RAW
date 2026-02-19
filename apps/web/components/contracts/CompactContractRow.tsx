@@ -292,7 +292,7 @@ export const CompactContractRow = memo(function CompactContractRow({
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 rounded-lg hover:bg-slate-100 opacity-40 group-hover:opacity-100 focus:opacity-100 transition-colors"
+              className="h-8 w-8 p-0 rounded-lg hover:bg-slate-100 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-150"
               onClick={() => {}}
             >
               <MoreHorizontal className="h-4 w-4 text-slate-400 group-hover:text-slate-600" />

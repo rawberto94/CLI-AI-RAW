@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -210,7 +211,7 @@ function getStatusConfig(status?: EnhancedContract["status"]): StatusConfig {
       dotColor: "bg-red-400",
     },
     terminated: {
-      color: "bg-gray-100 text-gray-700 border-gray-200",
+      color: "bg-slate-100 text-slate-700 border-slate-200",
       icon: XCircle,
       label: "Terminated",
       dotColor: "bg-gray-400",
@@ -274,10 +275,10 @@ const PartyAvatar = memo(function PartyAvatar({ party, size = "md" }: PartyAvata
   };
 
   const roleColors = {
-    client: "bg-violet-100 text-violet-700 ring-violet-200",
-    vendor: "bg-violet-100 text-violet-700 ring-violet-200",
-    partner: "bg-violet-100 text-violet-700 ring-violet-200",
-    other: "bg-gray-100 text-gray-700 ring-gray-200",
+    client: "bg-blue-100 text-blue-700 ring-blue-200",
+    vendor: "bg-emerald-100 text-emerald-700 ring-emerald-200",
+    partner: "bg-amber-100 text-amber-700 ring-amber-200",
+    other: "bg-slate-100 text-slate-700 ring-slate-200",
   };
 
   if (party.logo) {
@@ -433,7 +434,7 @@ const ExpiryBadge = memo(function ExpiryBadge({ endDate, status }: ExpiryBadgePr
   }
 
   const colors = {
-    default: "bg-gray-100 text-gray-700",
+    default: "bg-slate-100 text-slate-700",
     warning: "bg-amber-100 text-amber-700",
     danger: "bg-red-100 text-red-700 ring-1 ring-red-300",
     success: "bg-emerald-100 text-emerald-700",
@@ -545,7 +546,7 @@ const HierarchyBadge = memo(function HierarchyBadge({ contract }: HierarchyBadge
           <span
             className={cn(
               "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium",
-              hasParent ? "bg-violet-100 text-violet-700" : "bg-violet-100 text-violet-700"
+              hasParent ? "bg-sky-100 text-sky-700" : "bg-indigo-100 text-indigo-700"
             )}
           >
             {hasParent ? (
@@ -598,12 +599,12 @@ const CompletenessBar = memo(function CompletenessBar({ percentage }: Completene
         <span className="text-muted-foreground">Completeness</span>
         <span className="font-medium">{percentage}%</span>
       </div>
-      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
         <motion.div
           className={cn(
             "h-full rounded-full",
             percentage >= 80
-              ? "bg-violet-500"
+              ? "bg-emerald-500"
               : percentage >= 50
               ? "bg-amber-500"
               : "bg-red-500"
@@ -802,11 +803,10 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
         }}
         transition={{ duration: 0.2 }}
       >
-        <input
-          type="checkbox"
+        <Checkbox
           checked={isSelected}
-          onChange={handleCheckboxChange}
-          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer accent-primary"
+          onCheckedChange={(checked) => onSelect?.(contract.id, !!checked)}
+          className="border-slate-300 h-4 w-4 data-[state=checked]:bg-slate-800 data-[state=checked]:border-slate-800"
           aria-label={`Select ${contract.title || contract.filename || 'contract'}`}
         />
       </motion.div>
@@ -838,11 +838,11 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
       </div>
 
       {/* Main Content */}
-      <div className={cn("space-y-3", isHovered || isSelected ? "pl-6" : "")}>
+      <div className="space-y-3 pl-6">
         {/* Header Row: Title + Status */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 line-clamp-1 group-hover:text-primary transition-colors duration-200">
+            <h3 className="font-semibold text-slate-900 line-clamp-1 group-hover:text-primary transition-colors duration-200">
               {contract.title}
             </h3>
             <p className="text-sm text-muted-foreground">{contract.type}</p>
@@ -892,7 +892,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
         {/* Info Row: Value, Date, Expiry, Hierarchy, Signature */}
         <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm">
           {contract.value !== undefined && (
-            <div className="flex items-center gap-1.5 text-gray-700">
+            <div className="flex items-center gap-1.5 text-slate-700">
               <div className="p-1 rounded-md bg-violet-50">
                 <DollarSign className="w-3.5 h-3.5 text-violet-600" />
               </div>
@@ -902,7 +902,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
             </div>
           )}
           {contract.endDate && (
-            <div className="flex items-center gap-1.5 text-gray-600">
+            <div className="flex items-center gap-1.5 text-slate-600">
               <div className="p-1 rounded-md bg-violet-50">
                 <Calendar className="w-3.5 h-3.5 text-violet-600" />
               </div>
@@ -1237,7 +1237,7 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
       </div>
 
       {/* Date */}
-      <div className="hidden md:block w-24 text-sm text-gray-600 shrink-0">
+      <div className="hidden md:block w-24 text-sm text-slate-600 shrink-0">
         {contract.endDate ? format(parseISO(contract.endDate), "MMM d, yyyy") : "-"}
       </div>
 

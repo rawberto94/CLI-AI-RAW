@@ -642,7 +642,7 @@ export default function ContractsPage() {
         }}
       />
       
-      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-3 space-y-2.5">
+      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6 space-y-5">
 
         {/* Bulk Actions Bar — sticky so it's always visible when scrolling */}
         <AnimatePresence>
@@ -1238,9 +1238,9 @@ export default function ContractsPage() {
                             key={pageNum}
                             onClick={() => setCurrentPage(pageNum)}
                             className={cn(
-                              "min-w-[34px] h-8 text-sm font-medium rounded-lg transition-colors",
+                              "min-w-[34px] h-8 text-sm font-medium rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1",
                               currentPage === pageNum
-                                ? 'bg-slate-800 text-white'
+                                ? 'bg-slate-800 text-white shadow-sm'
                                 : 'border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700'
                             )}
                             aria-label={`Page ${pageNum}`}

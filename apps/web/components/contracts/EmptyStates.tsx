@@ -111,14 +111,14 @@ export const NoContracts = memo(function NoContracts({
         {/* Animated rings */}
         <div className="absolute inset-0 flex items-center justify-center">
           <motion.div
-            className="w-32 h-32 rounded-full border-2 border-violet-100"
+            className="w-32 h-32 rounded-full border-2 border-slate-200"
             animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           />
         </div>
         <div className="absolute inset-0 flex items-center justify-center">
           <motion.div
-            className="w-24 h-24 rounded-full border-2 border-indigo-100"
+            className="w-24 h-24 rounded-full border-2 border-slate-300"
             animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0, 0.3] }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
           />
@@ -234,7 +234,7 @@ export const NoResults = memo(function NoResults({
         </div>
         
         {/* Icon container */}
-        <div className="relative w-18 h-18 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center p-5 shadow-inner">
+        <div className="relative w-[4.5rem] h-[4.5rem] rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center p-5 shadow-inner">
           {searchTerm ? (
             <Search className="h-8 w-8 text-slate-400" />
           ) : (
@@ -280,7 +280,7 @@ export const NoResults = memo(function NoResults({
           <Button 
             variant="outline" 
             onClick={onClearSearch}
-            className="gap-2 border-2 hover:border-violet-300 hover:bg-violet-50"
+            className="gap-2 border-2 hover:border-slate-300 hover:bg-slate-50"
           >
             <Search className="h-4 w-4" />
             Clear search
@@ -290,7 +290,7 @@ export const NoResults = memo(function NoResults({
           <Button 
             variant="outline" 
             onClick={onClearFilters}
-            className="gap-2 border-2 hover:border-violet-300 hover:bg-violet-50"
+            className="gap-2 border-2 hover:border-slate-300 hover:bg-slate-50"
           >
             <Filter className="h-4 w-4" />
             Clear all filters
@@ -409,8 +409,7 @@ export const LoadingState = memo(function LoadingState({
       <div className="relative mb-6">
         {/* Outer rotating ring */}
         <motion.div
-          className="w-20 h-20 rounded-full border-4 border-slate-100"
-          style={{ borderTopColor: '#3b82f6', borderRightColor: '#8b5cf6' }}
+          className="w-20 h-20 rounded-full border-4 border-slate-100 border-t-blue-500 border-r-violet-500"
           animate={{ rotate: 360 }}
           transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
         />
