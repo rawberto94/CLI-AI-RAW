@@ -906,6 +906,29 @@ export function useRenewalIntelligence() {
   });
 }
 
+/**
+ * Fetch raw renewals list (used by RenewalManager).
+ * React Query ensures cross-module invalidation actually triggers a refetch.
+ */
+export function useRenewals() {
+  return useQuery({
+    queryKey: ['renewals'],
+    queryFn: async () => {
+      const tenantId = getTenantId();
+      const res = await fetch('/api/renewals', {
+        headers: { 'x-tenant-id': tenantId },
+      });
+      const json = await res.json();
+      const renewalData =
+        json.data?.renewals || json.data?.contracts || [];
+      if (!json.success) return [];
+      return renewalData;
+    },
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
 // =====================
 // Optimistic Updates Helper
 // =====================
@@ -969,7 +992,8 @@ export function useCrossModuleInvalidation() {
     onApprovalComplete: (contractId?: string) => {
       queryClient.invalidateQueries({ queryKey: ['approvals'] });
       queryClient.invalidateQueries({ queryKey: ['approval-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       if (contractId) {
         queryClient.invalidateQueries({ queryKey: queryKeys.contracts.detail(contractId) });
         queryClient.invalidateQueries({ queryKey: ['contract-health', contractId] });
@@ -988,7 +1012,8 @@ export function useCrossModuleInvalidation() {
         refetchType: 'all',
       });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['renewals'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.dashboard() });
       if (contractId) {
         queryClient.invalidateQueries({ queryKey: ['contract-rate-cards', contractId] });
@@ -1004,7 +1029,7 @@ export function useCrossModuleInvalidation() {
     onRateCardChange: (contractId?: string) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.rateCards.all });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
       if (contractId) {
         queryClient.invalidateQueries({ queryKey: ['contract-rate-cards', contractId] });
       }
@@ -1018,7 +1043,7 @@ export function useCrossModuleInvalidation() {
       queryClient.invalidateQueries({ queryKey: ['renewal-intelligence'] });
       queryClient.invalidateQueries({ queryKey: ['renewals'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
       if (contractId) {
         queryClient.invalidateQueries({ queryKey: queryKeys.contracts.detail(contractId) });
       }
@@ -1040,7 +1065,7 @@ export function useCrossModuleInvalidation() {
     onTemplateChange: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.templates.all });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
     },
     
     /**
@@ -1052,7 +1077,7 @@ export function useCrossModuleInvalidation() {
       queryClient.invalidateQueries({ queryKey: ['categories'] }); // Legacy key
       queryClient.invalidateQueries({ queryKey: queryKeys.contracts.all }); // Contracts may show category
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
     },
     
     /**

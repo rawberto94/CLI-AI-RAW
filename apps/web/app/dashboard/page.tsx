@@ -173,9 +173,9 @@ export default function DashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: fetchDashboardData,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (previously cacheTime)
-    refetchOnWindowFocus: false,
+    staleTime: 30_000, // 30 seconds – keep in sync with contract-stats
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   const dashboardData = data?.stats || null;

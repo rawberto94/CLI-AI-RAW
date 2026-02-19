@@ -87,6 +87,7 @@ import {
   formatCurrency,
   formatDate,
 } from "@/lib/contracts/filter-constants";
+import { applyContractFilters } from "@/lib/contracts/apply-filters";
 
 
 
@@ -254,127 +255,44 @@ export default function ContractsPage() {
     return Array.from(types).filter(Boolean).sort();
   }, [contracts]);
 
-  // Client-side filters for dimensions not supported by the server API.
-  // Server handles: search, status, contractType, supplier, client, value range.
-  const filteredContracts = useMemo(() => {
-    if (!Array.isArray(contracts)) return [];
-    
-    const now = new Date();
-    
-    return contracts.filter((contract) => {
-      // Document role filter
-      const matchesDocumentRole = filterState.documentRoles.length === 0 || 
-        filterState.documentRoles.includes(contract.documentRole || '');
-
-      // Risk level filter (consolidated — filterState.riskLevels is the single source)
-      const matchesRisk = !filterState.riskLevels?.length || filterState.riskLevels.some(risk => {
-        const riskLower = risk.toLowerCase();
-        if (contract.riskScore === undefined || contract.riskScore === null) return false;
-        switch (riskLower) {
-          case 'low': return contract.riskScore >= 0 && contract.riskScore < 30;
-          case 'medium': return contract.riskScore >= 30 && contract.riskScore < 70;
-          case 'high': return contract.riskScore >= 70 && contract.riskScore < 90;
-          case 'critical': return contract.riskScore >= 90;
-          default: return false;
-        }
-      });
-
-      // Approval status filter  
-      const matchesApproval = true; // No approval filter UI currently exposed
-      
-      // Date range filter (preset-based + filterState date picker)
-      const matchesDateRange = (!dateRangeFilter || (() => {
-        const preset = DATE_PRESETS.find(p => p.value === dateRangeFilter);
-        if (!preset || !contract.createdAt) return false;
-        const createdDate = new Date(contract.createdAt);
-        const cutoffDate = new Date(now.getTime() - preset.days * 24 * 60 * 60 * 1000);
-        return createdDate >= cutoffDate;
-      })()) && (!filterState.dateRange.from || !contract.createdAt || new Date(contract.createdAt) >= filterState.dateRange.from) &&
-        (!filterState.dateRange.to || !contract.createdAt || new Date(contract.createdAt) <= filterState.dateRange.to);
-      
-      // Expiration filter
-      const matchesExpiration = expirationFilters.length === 0 || expirationFilters.some(exp => {
-        if (!contract.expirationDate && exp === 'no-expiry') return true;
-        if (!contract.expirationDate) return false;
-        
-        const expirationDate = new Date(contract.expirationDate);
-        const daysUntilExpiry = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        
-        switch (exp) {
-          case 'expired': return daysUntilExpiry < 0;
-          case 'expiring-7': return daysUntilExpiry >= 0 && daysUntilExpiry <= 7;
-          case 'expiring-30': return daysUntilExpiry >= 0 && daysUntilExpiry <= 30;
-          case 'expiring-90': return daysUntilExpiry >= 0 && daysUntilExpiry <= 90;
-          default: return true;
-        }
-      });
-
-      // Has deadline filter
-      const matchesHasDeadline = filterState.hasDeadline === null || 
-        (filterState.hasDeadline ? !!contract.expirationDate : !contract.expirationDate);
-
-      // Is expiring filter
-      const matchesIsExpiring = filterState.isExpiring === null || (() => {
-        if (!filterState.isExpiring) return true;
-        if (!contract.expirationDate) return false;
-        const expirationDate = new Date(contract.expirationDate);
-        const daysUntilExpiry = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        return daysUntilExpiry >= 0 && daysUntilExpiry <= 30;
-      })();
-
-      // Signature status filter
-      const matchesSignature = signatureFilters.length === 0 || 
-        signatureFilters.includes(contract.signatureStatus || 'unknown');
-
-      // Document type/classification filter
-      const matchesDocumentType = documentTypeFilters.length === 0 || 
-        documentTypeFilters.includes(contract.documentClassification || 'contract');
-
-      // Advanced text filters (client/supplier name + min/max value)
-      // These are controlled by the AdvancedFilterPanel via filterState.
-      // The legacy advancedFilters object is no longer used.
-      const matchesAdvanced = true;
-
-      // Category filter (consolidated — filterState.categories is the single source,
-      // 'uncategorized' is a special value meaning "no category assigned")
-      const matchesCategory = filterState.categories.length === 0 || filterState.categories.some(cat =>
-        cat === 'uncategorized' ? !contract.category : contract.category?.id === cat
-      );
-
-      // Currency filter (uses actual contract.currency field with title fallback)
-      const matchesCurrency = !filterState.currencies?.length ||
-        filterState.currencies.some(cur => {
-          const curLower = cur.toLowerCase();
-          return (
-            contract.currency?.toLowerCase() === curLower ||
-            contract.title?.toLowerCase().includes(curLower)
-          );
-        });
-
-      // Jurisdiction filter (uses actual contract.jurisdiction field with title fallback)
-      const matchesJurisdiction = !filterState.jurisdictions?.length ||
-        filterState.jurisdictions.some(jur => {
-          const jurLower = jur.toLowerCase();
-          return (
-            contract.jurisdiction?.toLowerCase().includes(jurLower) ||
-            contract.title?.toLowerCase().includes(jurLower)
-          );
-        });
-
-      // Payment terms filter (uses actual contract.paymentTerms field with title fallback)
-      const matchesPaymentTerms = !filterState.paymentTerms?.length ||
-        filterState.paymentTerms.some(pt => {
-          const ptLower = pt.toLowerCase();
-          return (
-            contract.paymentTerms?.toLowerCase().includes(ptLower) ||
-            contract.title?.toLowerCase().includes(ptLower)
-          );
-        });
-
-      return matchesDocumentRole && matchesRisk && matchesApproval && matchesDateRange && matchesExpiration && matchesHasDeadline && matchesIsExpiring && matchesSignature && matchesDocumentType && matchesAdvanced && matchesCategory && matchesCurrency && matchesJurisdiction && matchesPaymentTerms;
+  const availableCurrencies = useMemo(() => {
+    const currencies = new Set<string>();
+    contracts.forEach(c => {
+      if (c.currency) currencies.add(c.currency);
     });
-     
-  }, [contracts, dateRangeFilter, expirationFilters, signatureFilters, documentTypeFilters, filterState]);
+    return Array.from(currencies).filter(Boolean).sort();
+  }, [contracts]);
+
+  const availableJurisdictions = useMemo(() => {
+    const jurisdictions = new Set<string>();
+    contracts.forEach(c => {
+      if (c.jurisdiction) jurisdictions.add(c.jurisdiction);
+    });
+    return Array.from(jurisdictions).filter(Boolean).sort();
+  }, [contracts]);
+
+  const availablePaymentTerms = useMemo(() => {
+    const terms = new Set<string>();
+    contracts.forEach(c => {
+      if (c.paymentTerms) terms.add(c.paymentTerms);
+    });
+    return Array.from(terms).filter(Boolean).sort();
+  }, [contracts]);
+
+  // Single unified filter – all dimensions in one pure function.
+  const filteredContracts = useMemo(
+    () =>
+      applyContractFilters(contracts, {
+        searchQuery,
+        filterState,
+        dateRangePreset: dateRangeFilter,
+        expirationFilters,
+        signatureFilters,
+        documentTypeFilters,
+        valueRangePreset: valueRangeFilter,
+      }),
+    [contracts, searchQuery, filterState, dateRangeFilter, expirationFilters, signatureFilters, documentTypeFilters, valueRangeFilter],
+  );
 
   // Sort filtered contracts
   const sortedContracts = useMemo(() => {
@@ -917,6 +835,9 @@ export default function ContractsPage() {
                 availableSuppliers={availableSuppliers}
                 availableClients={availableClients}
                 availableContractTypes={availableContractTypes}
+                availableCurrencies={availableCurrencies}
+                availableJurisdictions={availableJurisdictions}
+                availablePaymentTerms={availablePaymentTerms}
               />
             </motion.div>
           )}

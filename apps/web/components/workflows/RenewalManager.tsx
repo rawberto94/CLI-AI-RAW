@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -29,7 +29,7 @@ import {
   ClipboardCheck,
 } from 'lucide-react';
 import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal';
-import { useCrossModuleInvalidation } from '@/hooks/use-queries';
+import { useCrossModuleInvalidation, useRenewals } from '@/hooks/use-queries';
 import { RenewalsCalendar } from '@/components/calendar/RenewalsCalendar';
 
 // ============================================================================
@@ -328,12 +328,37 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
 
 export const RenewalManager: React.FC = () => {
   const crossModule = useCrossModuleInvalidation();
-  const [renewals, setRenewals] = useState<RenewalContract[]>([]);
+  const { data: rawRenewals = [], isLoading: loading } = useRenewals();
+
+  // Map API data to RenewalContract shape
+  const renewals: RenewalContract[] = useMemo(() => {
+    return rawRenewals.map((item: any) => ({
+      id: item.id || item.contractId,
+      contractId: item.contractId || item.id?.replace('renewal-', '') || item.id,
+      contractName: item.contractName || item.name || 'Unknown Contract',
+      supplierName: item.supplier || item.counterparty || item.vendor || 'Unknown',
+      currentValue: item.currentValue || item.contractValue || item.value || 0,
+      projectedValue: item.projectedValue || item.currentValue || item.contractValue || 0,
+      renewalDate: item.expiryDate || item.endDate || item.renewalDate,
+      autoRenewal: item.autoRenewal ?? false,
+      noticeDeadline: item.noticeDeadline,
+      status: item.status || 'upcoming',
+      renewalType: item.autoRenewal ? 'auto' : 'manual',
+      healthScore: item.healthScore || 75,
+      daysUntilRenewal: item.daysUntilExpiry ?? item.daysUntilRenewal ?? Math.max(0, Math.round((new Date(item.expiryDate || item.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
+      lastRenewalDate: item.lastRenewalDate,
+      renewalHistory: item.history || [],
+      recommendation: item.recommendation || (item.daysUntilExpiry <= 30 ? 'review' : 'renew'),
+      risks: item.risks || (item.riskLevel === 'high' || item.riskLevel === 'critical' ? ['High risk score'] : []),
+      savings: item.savings,
+      assignee: item.assignedTo,
+    }));
+  }, [rawRenewals]);
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'urgent' | 'auto-renew' | 'action-needed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [view, setView] = useState<'list' | 'calendar' | 'timeline'>('list');
-  const [loading, setLoading] = useState(true);
   
   // Approval modal state
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
@@ -367,14 +392,7 @@ export const RenewalManager: React.FC = () => {
   
   const handleConfirmInitiateRenewal = () => {
     if (selectedRenewalForInitiate) {
-      // Update renewal status and auto-submit for approval
-      setRenewals(prev => prev.map(r => 
-        r.id === selectedRenewalForInitiate.id 
-          ? { ...r, status: 'in-progress' as const }
-          : r
-      ));
-      
-      // Invalidate related caches
+      // Invalidate related caches – the server updates the status
       crossModule.onRenewalChange(selectedRenewalForInitiate.contractId);
       
       toast.success('Renewal initiated', {
@@ -391,14 +409,7 @@ export const RenewalManager: React.FC = () => {
   
   const handleApprovalSubmit = () => {
     if (renewalForApproval) {
-      // Update the renewal status locally
-      setRenewals(prev => prev.map(r => 
-        r.id === renewalForApproval.id 
-          ? { ...r, approvalStatus: 'pending' as const, approvalProgress: 0 }
-          : r
-      ));
-      
-      // Invalidate approvals and related caches
+      // Invalidate approvals and related caches — server persists the change
       crossModule.onRenewalChange(renewalForApproval.contractId);
       
       toast.success('Renewal submitted for approval', {
@@ -409,48 +420,7 @@ export const RenewalManager: React.FC = () => {
     setRenewalForApproval(null);
   };
 
-  // Fetch renewals from API - always use real data
-  useEffect(() => {
-    async function fetchRenewals() {
-      try {
-        const res = await fetch('/api/renewals');
-        const json = await res.json();
-        // Support both old format (data.contracts) and new format (data.renewals)
-        const renewalData = json.data?.renewals || json.data?.contracts || [];
-        if (json.success) {
-          const mapped = renewalData.map((item: any) => ({
-            id: item.id || item.contractId,
-            contractId: item.contractId || item.id?.replace('renewal-', '') || item.id,
-            contractName: item.contractName || item.name || 'Unknown Contract',
-            supplierName: item.supplier || item.counterparty || item.vendor || 'Unknown',
-            currentValue: item.currentValue || item.contractValue || item.value || 0,
-            projectedValue: item.projectedValue || item.currentValue || item.contractValue || 0,
-            renewalDate: item.expiryDate || item.endDate || item.renewalDate,
-            autoRenewal: item.autoRenewal ?? false,
-            noticeDeadline: item.noticeDeadline,
-            status: item.status || 'upcoming',
-            renewalType: item.autoRenewal ? 'auto' : 'manual',
-            healthScore: item.healthScore || 75,
-            daysUntilRenewal: item.daysUntilExpiry ?? item.daysUntilRenewal ?? Math.max(0, Math.round((new Date(item.expiryDate || item.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
-            lastRenewalDate: item.lastRenewalDate,
-            renewalHistory: item.history || [],
-            recommendation: item.recommendation || (item.daysUntilExpiry <= 30 ? 'review' : 'renew'),
-            risks: item.risks || (item.riskLevel === 'high' || item.riskLevel === 'critical' ? ['High risk score'] : []),
-            savings: item.savings,
-            assignee: item.assignedTo,
-          }));
-          setRenewals(mapped);
-        } else {
-          setRenewals([]); // No data available
-        }
-      } catch {
-        setRenewals([]); // Error state - empty data
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchRenewals();
-  }, []);
+  // Fetch renewals from API via React Query (useRenewals hook above)
 
   const selectedRenewal = renewals.find(r => r.id === selectedId);
 

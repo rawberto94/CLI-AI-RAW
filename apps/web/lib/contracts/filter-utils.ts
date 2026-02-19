@@ -1,3 +1,7 @@
+/**
+ * @deprecated – Use `applyContractFilters` from `@/lib/contracts/apply-filters` instead.
+ * This file is retained only for legacy component compatibility and will be removed.
+ */
 import { Contract } from './contracts-data-service'
 import { FilterOptions } from '@/components/contracts/ContractFiltersPanel'
 

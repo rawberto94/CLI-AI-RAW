@@ -72,6 +72,9 @@ interface AdvancedFilterPanelProps {
   availableSuppliers?: string[];
   availableClients?: string[];
   availableContractTypes?: string[];
+  availableCurrencies?: string[];
+  availableJurisdictions?: string[];
+  availablePaymentTerms?: string[];
 }
 
 const STATUS_OPTIONS = [
@@ -99,6 +102,9 @@ export function AdvancedFilterPanel({
   availableSuppliers = [],
   availableClients = [],
   availableContractTypes = [],
+  availableCurrencies = [],
+  availableJurisdictions = [],
+  availablePaymentTerms = [],
 }: AdvancedFilterPanelProps) {
   const [localFilters, setLocalFilters] = useState<FilterState>(filters);
 
@@ -550,6 +556,104 @@ export function AdvancedFilterPanel({
                   +{availableClients.length - 12} more
                 </Badge>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Currency Filter */}
+        {availableCurrencies.length > 0 && (
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold flex items-center gap-2">
+              <Coins className="h-4 w-4 text-emerald-600" />
+              Currency
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {availableCurrencies.map(currency => {
+                const isSelected = (localFilters.currencies ?? []).includes(currency);
+                return (
+                  <Badge
+                    key={currency}
+                    variant={isSelected ? 'default' : 'outline'}
+                    className={cn(
+                      'cursor-pointer transition-all',
+                      isSelected
+                        ? 'bg-emerald-500 hover:bg-emerald-600'
+                        : 'hover:border-emerald-300'
+                    )}
+                    onClick={() => toggleArrayFilter('currencies', currency)}
+                  >
+                    {currency}
+                    {isSelected && <X className="ml-1 h-3 w-3" />}
+                  </Badge>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Jurisdiction Filter */}
+        {availableJurisdictions.length > 0 && (
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-orange-600" />
+              Jurisdiction
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {availableJurisdictions.slice(0, 12).map(jur => {
+                const isSelected = (localFilters.jurisdictions ?? []).includes(jur);
+                return (
+                  <Badge
+                    key={jur}
+                    variant={isSelected ? 'default' : 'outline'}
+                    className={cn(
+                      'cursor-pointer transition-all',
+                      isSelected
+                        ? 'bg-orange-500 hover:bg-orange-600'
+                        : 'hover:border-orange-300'
+                    )}
+                    onClick={() => toggleArrayFilter('jurisdictions', jur)}
+                  >
+                    {jur}
+                    {isSelected && <X className="ml-1 h-3 w-3" />}
+                  </Badge>
+                );
+              })}
+              {availableJurisdictions.length > 12 && (
+                <Badge variant="outline" className="text-slate-400">
+                  +{availableJurisdictions.length - 12} more
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Payment Terms Filter */}
+        {availablePaymentTerms.length > 0 && (
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-teal-600" />
+              Payment Terms
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {availablePaymentTerms.map(pt => {
+                const isSelected = (localFilters.paymentTerms ?? []).includes(pt);
+                return (
+                  <Badge
+                    key={pt}
+                    variant={isSelected ? 'default' : 'outline'}
+                    className={cn(
+                      'cursor-pointer transition-all',
+                      isSelected
+                        ? 'bg-teal-500 hover:bg-teal-600'
+                        : 'hover:border-teal-300'
+                    )}
+                    onClick={() => toggleArrayFilter('paymentTerms', pt)}
+                  >
+                    {pt}
+                    {isSelected && <X className="ml-1 h-3 w-3" />}
+                  </Badge>
+                );
+              })}
             </div>
           </div>
         )}

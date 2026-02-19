@@ -1,4 +1,7 @@
 /**
+ * @deprecated – Use `applyContractFilters` from `@/lib/contracts/apply-filters` instead.
+ * This file is retained only for legacy component compatibility and will be removed.
+ *
  * Filter utilities for contract components
  * Handles filter logic, validation, and state management
  */
