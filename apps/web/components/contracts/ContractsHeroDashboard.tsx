@@ -88,15 +88,15 @@ function Sparkline({
   className?: string;
 }) {
   const colorClasses = {
-    blue: 'stroke-violet-500',
-    green: 'stroke-violet-500',
+    blue: 'stroke-blue-500',
+    green: 'stroke-emerald-500',
     red: 'stroke-red-500',
     amber: 'stroke-amber-500',
   };
 
   const fillClasses = {
-    blue: 'fill-violet-500/10',
-    green: 'fill-violet-500/10',
+    blue: 'fill-blue-500/10',
+    green: 'fill-emerald-500/10',
     red: 'fill-red-500/10',
     amber: 'fill-amber-500/10',
   };
@@ -232,16 +232,16 @@ const StatCard = memo(function StatCard({
 }: StatCardProps) {
   const colorStyles = {
     blue: {
-      bg: 'bg-gradient-to-br from-violet-500 to-purple-600',
-      light: 'bg-violet-50',
-      text: 'text-violet-600',
-      ring: 'ring-violet-500/20',
+      bg: 'bg-gradient-to-br from-blue-500 to-indigo-600',
+      light: 'bg-blue-50',
+      text: 'text-blue-600',
+      ring: 'ring-blue-500/20',
     },
     green: {
-      bg: 'bg-gradient-to-br from-violet-500 to-violet-600',
-      light: 'bg-violet-50',
-      text: 'text-violet-600',
-      ring: 'ring-violet-500/20',
+      bg: 'bg-gradient-to-br from-emerald-500 to-green-600',
+      light: 'bg-emerald-50',
+      text: 'text-emerald-600',
+      ring: 'ring-emerald-500/20',
     },
     amber: {
       bg: 'bg-gradient-to-br from-amber-500 to-amber-600',
@@ -262,10 +262,10 @@ const StatCard = memo(function StatCard({
       ring: 'ring-violet-500/20',
     },
     cyan: {
-      bg: 'bg-gradient-to-br from-violet-500 to-purple-600',
-      light: 'bg-violet-50',
-      text: 'text-violet-600',
-      ring: 'ring-violet-500/20',
+      bg: 'bg-gradient-to-br from-cyan-500 to-teal-600',
+      light: 'bg-cyan-50',
+      text: 'text-cyan-600',
+      ring: 'ring-cyan-500/20',
     },
   };
 
@@ -300,7 +300,7 @@ const StatCard = memo(function StatCard({
           {trend !== undefined && (
             <div className={cn(
               "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full",
-              trend >= 0 ? "bg-violet-50 text-violet-600" : "bg-red-50 text-red-600"
+              trend >= 0 ? `${styles.light} ${styles.text}` : "bg-red-50 text-red-600"
             )}>
               {trend >= 0 ? (
                 <TrendingUp className="h-3 w-3" />
@@ -440,9 +440,9 @@ const QuickAction = memo(function QuickAction({
   href,
 }: QuickActionProps) {
   const colorStyles = {
-    blue: 'bg-violet-600 hover:bg-violet-700 shadow-violet-500/25',
+    blue: 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/25',
     purple: 'bg-violet-600 hover:bg-violet-700 shadow-violet-500/25',
-    cyan: 'bg-violet-600 hover:bg-violet-700 shadow-violet-500/25',
+    cyan: 'bg-cyan-600 hover:bg-cyan-700 shadow-cyan-500/25',
   };
 
   const content = (
@@ -575,7 +575,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
                 Contract Portfolio
               </h1>
             </div>
-            <p className="text-slate-300 text-xs md:text-sm">,
+            <p className="text-slate-300 text-xs md:text-sm">
               Real-time overview of your {stats.totalContracts?.toLocaleString() || 0} contracts worth {formatCurrency(stats.totalValue ?? 0)}
             </p>
           </motion.div>
@@ -622,22 +622,22 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
             data-testid="stat-total"
-            className="group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-md border border-white/10 p-3 md:p-4 hover:bg-white/15 hover:border-white/20 transition-all duration-300 cursor-pointer hover:scale-[1.02]"
+            className="group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-md border border-white/10 p-3 md:p-4 hover:bg-white/15 hover:border-white/20 transition-all duration-300"
           >
             {/* Background glow effect */}
-            <div className="absolute -inset-px bg-gradient-to-r from-violet-500/20 via-transparent to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute -inset-px bg-gradient-to-r from-blue-500/20 via-transparent to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="absolute top-0 right-0 w-32 h-32 opacity-5 group-hover:opacity-10 transition-opacity">
               <FileText className="w-full h-full text-white" />
             </div>
             <div className="relative">
               <div className="flex items-start justify-between mb-3">
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
                   <FileText className="h-5 w-5 text-white" />
                 </div>
                 {(stats.trends?.contracts ?? 0) !== 0 && (
                   <div className={cn(
                     "flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm",
-                    (stats.trends?.contracts ?? 0) >= 0 ? "bg-violet-500/20 text-violet-300" : "bg-red-500/20 text-red-300"
+                    (stats.trends?.contracts ?? 0) >= 0 ? "bg-blue-500/20 text-blue-300" : "bg-red-500/20 text-red-300"
                   )}>
                     {(stats.trends?.contracts ?? 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {Math.abs(stats.trends?.contracts ?? 0)}%
@@ -663,22 +663,22 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 }}
             data-testid="stat-value"
-            className="group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-md border border-white/10 p-3 md:p-4 hover:bg-white/15 hover:border-white/20 transition-all duration-300 cursor-pointer hover:scale-[1.02]"
+            className="group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-md border border-white/10 p-3 md:p-4 hover:bg-white/15 hover:border-white/20 transition-all duration-300"
           >
             {/* Background glow effect */}
-            <div className="absolute -inset-px bg-gradient-to-r from-violet-500/20 via-transparent to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute -inset-px bg-gradient-to-r from-emerald-500/20 via-transparent to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="absolute top-0 right-0 w-32 h-32 opacity-5 group-hover:opacity-10 transition-opacity">
               <DollarSign className="w-full h-full text-white" />
             </div>
             <div className="relative">
               <div className="flex items-start justify-between mb-3">
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 shadow-lg shadow-violet-500/30">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/30">
                   <DollarSign className="h-5 w-5 text-white" />
                 </div>
                 {(stats.trends?.value ?? 0) !== 0 && (
                   <div className={cn(
                     "flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm",
-                    (stats.trends?.value ?? 0) >= 0 ? "bg-violet-500/20 text-violet-300" : "bg-red-500/20 text-red-300"
+                    (stats.trends?.value ?? 0) >= 0 ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"
                   )}>
                     {(stats.trends?.value ?? 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {Math.abs(stats.trends?.value ?? 0)}%
@@ -707,12 +707,12 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.4 }}
             data-testid="stat-risk"
-            className="group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-md border border-white/10 p-3 md:p-4 hover:bg-white/15 hover:border-white/20 transition-all duration-300 cursor-pointer hover:scale-[1.02]"
+            className="group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-md border border-white/10 p-3 md:p-4 hover:bg-white/15 hover:border-white/20 transition-all duration-300"
           >
             {/* Background glow effect based on risk level */}
             <div className={cn(
               "absolute -inset-px rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500",
-              (stats.avgRiskScore ?? 0) < 30 ? "bg-gradient-to-r from-violet-500/20 via-transparent to-transparent" :
+              (stats.avgRiskScore ?? 0) < 30 ? "bg-gradient-to-r from-emerald-500/20 via-transparent to-transparent" :
               (stats.avgRiskScore ?? 0) < 70 ? "bg-gradient-to-r from-amber-500/20 via-transparent to-transparent" :
               "bg-gradient-to-r from-red-500/20 via-transparent to-transparent"
             )} />
@@ -723,7 +723,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
               <div className="flex items-start justify-between mb-3">
                 <div className={cn(
                   "p-2.5 rounded-xl shadow-lg backdrop-blur-sm",
-                  (stats.avgRiskScore ?? 0) < 30 ? "bg-gradient-to-br from-violet-500 to-violet-600 shadow-violet-500/30" : 
+                  (stats.avgRiskScore ?? 0) < 30 ? "bg-gradient-to-br from-emerald-500 to-green-600 shadow-emerald-500/30" : 
                   (stats.avgRiskScore ?? 0) < 70 ? "bg-gradient-to-br from-amber-500 to-amber-600 shadow-amber-500/30" : 
                   "bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/30"
                 )}>
@@ -736,7 +736,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
               <p className="text-sm text-slate-200 mt-1 font-medium">Avg Risk Score</p>
               <p className={cn(
                 "text-xs font-medium",
-                (stats.avgRiskScore ?? 0) < 30 ? "text-violet-400" : (stats.avgRiskScore ?? 0) < 70 ? "text-amber-400" : "text-red-400"
+                (stats.avgRiskScore ?? 0) < 30 ? "text-emerald-400" : (stats.avgRiskScore ?? 0) < 70 ? "text-amber-400" : "text-red-400"
               )}>
                 {(stats.avgRiskScore ?? 0) < 30 ? 'Low risk portfolio' : (stats.avgRiskScore ?? 0) < 70 ? 'Moderate risk' : 'High risk - attention needed'}
               </p>
@@ -749,16 +749,16 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.5 }}
             data-testid="stat-active"
-            className="group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-md border border-white/10 p-3 md:p-4 hover:bg-white/15 hover:border-white/20 transition-all duration-300 cursor-pointer hover:scale-[1.02]"
+            className="group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-md border border-white/10 p-3 md:p-4 hover:bg-white/15 hover:border-white/20 transition-all duration-300"
           >
             {/* Background glow effect */}
-            <div className="absolute -inset-px bg-gradient-to-r from-violet-500/20 via-transparent to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute -inset-px bg-gradient-to-r from-cyan-500/20 via-transparent to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="absolute top-0 right-0 w-32 h-32 opacity-5 group-hover:opacity-10 transition-opacity">
               <Zap className="w-full h-full text-white" />
             </div>
             <div className="relative">
               <div className="flex items-start justify-between mb-3">
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 shadow-lg shadow-cyan-500/30">
                   <Zap className="h-5 w-5 text-white" />
                 </div>
                 {(stats.recentlyAdded ?? 0) > 0 && (

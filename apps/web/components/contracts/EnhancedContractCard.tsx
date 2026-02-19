@@ -198,10 +198,10 @@ function getStatusConfig(status?: EnhancedContract["status"]): StatusConfig {
       dotColor: "bg-amber-400",
     },
     active: {
-      color: "bg-violet-50 text-violet-700 border-violet-200",
+      color: "bg-emerald-50 text-emerald-700 border-emerald-200",
       icon: CheckCircle2,
       label: "Active",
-      dotColor: "bg-violet-400",
+      dotColor: "bg-emerald-400",
     },
     expired: {
       color: "bg-red-50 text-red-700 border-red-200",
@@ -216,22 +216,22 @@ function getStatusConfig(status?: EnhancedContract["status"]): StatusConfig {
       dotColor: "bg-gray-400",
     },
     renewal: {
-      color: "bg-violet-50 text-violet-700 border-violet-200",
+      color: "bg-blue-50 text-blue-700 border-blue-200",
       icon: AlertCircle,
       label: "Up for Renewal",
-      dotColor: "bg-violet-400",
+      dotColor: "bg-blue-400",
     },
     processing: {
-      color: "bg-violet-50 text-violet-700 border-violet-200",
+      color: "bg-cyan-50 text-cyan-700 border-cyan-200",
       icon: Clock,
       label: "Processing",
-      dotColor: "bg-violet-400",
+      dotColor: "bg-cyan-400",
     },
     completed: {
-      color: "bg-violet-50 text-violet-700 border-violet-200",
+      color: "bg-emerald-50 text-emerald-700 border-emerald-200",
       icon: CheckCircle2,
       label: "Completed",
-      dotColor: "bg-violet-400",
+      dotColor: "bg-emerald-400",
     },
     failed: {
       color: "bg-red-50 text-red-700 border-red-200",
@@ -435,8 +435,8 @@ const ExpiryBadge = memo(function ExpiryBadge({ endDate, status }: ExpiryBadgePr
   const colors = {
     default: "bg-gray-100 text-gray-700",
     warning: "bg-amber-100 text-amber-700",
-    danger: "bg-red-100 text-red-700 animate-pulse",
-    success: "bg-violet-100 text-violet-700",
+    danger: "bg-red-100 text-red-700 ring-1 ring-red-300",
+    success: "bg-emerald-100 text-emerald-700",
   };
 
   return (
@@ -466,7 +466,7 @@ const SignatureBadge = memo(function SignatureBadge({ signatureStatus, signature
 
   const configs = {
     signed: {
-      color: "bg-violet-100 text-violet-700",
+      color: "bg-emerald-100 text-emerald-700",
       icon: CheckCircle2,
       label: "Signed",
     },
@@ -476,7 +476,7 @@ const SignatureBadge = memo(function SignatureBadge({ signatureStatus, signature
       label: "Partial",
     },
     unsigned: {
-      color: signatureRequiredFlag ? "bg-red-100 text-red-700 animate-pulse" : "bg-red-100 text-red-700",
+      color: signatureRequiredFlag ? "bg-red-100 text-red-700 ring-1 ring-red-300" : "bg-red-100 text-red-700",
       icon: FileSignature,
       label: "Unsigned",
     },
@@ -1244,7 +1244,7 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
       {/* Status */}
       <div className="w-32 shrink-0">
         <Badge variant="outline" className={cn("text-xs border shadow-sm transition-shadow hover:shadow-md", statusConfig.color)}>
-          <span className={cn("w-2 h-2 rounded-full mr-1.5 animate-pulse", statusConfig.dotColor)} />
+          <span className={cn("w-2 h-2 rounded-full mr-1.5", statusConfig.dotColor)} />
           {statusConfig.label}
         </Badge>
       </div>

@@ -471,14 +471,14 @@ const FilterChip = memo(function FilterChip({
       badge: 'bg-gradient-to-r from-violet-500 to-purple-500',
     },
     blue: {
-      active: 'bg-violet-100 border-violet-300 text-violet-700 shadow-sm shadow-violet-200/50 dark:bg-violet-950/50 dark:border-violet-700 dark:text-violet-300',
-      inactive: 'hover:bg-violet-50 hover:border-violet-200 dark:hover:bg-violet-950/30',
-      badge: 'bg-gradient-to-r from-violet-500 to-purple-500',
+      active: 'bg-blue-100 border-blue-300 text-blue-700 shadow-sm shadow-blue-200/50 dark:bg-blue-950/50 dark:border-blue-700 dark:text-blue-300',
+      inactive: 'hover:bg-blue-50 hover:border-blue-200 dark:hover:bg-blue-950/30',
+      badge: 'bg-gradient-to-r from-blue-500 to-indigo-500',
     },
     emerald: {
-      active: 'bg-violet-100 border-violet-300 text-violet-700 shadow-sm shadow-violet-200/50 dark:bg-violet-950/50 dark:border-violet-700 dark:text-violet-300',
-      inactive: 'hover:bg-violet-50 hover:border-violet-200 dark:hover:bg-violet-950/30',
-      badge: 'bg-gradient-to-r from-violet-500 to-violet-500',
+      active: 'bg-emerald-100 border-emerald-300 text-emerald-700 shadow-sm shadow-emerald-200/50 dark:bg-emerald-950/50 dark:border-emerald-700 dark:text-emerald-300',
+      inactive: 'hover:bg-emerald-50 hover:border-emerald-200 dark:hover:bg-emerald-950/30',
+      badge: 'bg-gradient-to-r from-emerald-500 to-green-500',
     },
     amber: {
       active: 'bg-amber-100 border-amber-300 text-amber-700 shadow-sm shadow-amber-200/50 dark:bg-amber-950/50 dark:border-amber-700 dark:text-amber-300',
@@ -491,9 +491,9 @@ const FilterChip = memo(function FilterChip({
       badge: 'bg-gradient-to-r from-red-500 to-rose-500',
     },
     teal: {
-      active: 'bg-violet-100 border-violet-300 text-violet-700 shadow-sm shadow-violet-200/50 dark:bg-violet-950/50 dark:border-violet-700 dark:text-violet-300',
-      inactive: 'hover:bg-violet-50 hover:border-violet-200 dark:hover:bg-violet-950/30',
-      badge: 'bg-gradient-to-r from-violet-500 to-purple-500',
+      active: 'bg-teal-100 border-teal-300 text-teal-700 shadow-sm shadow-teal-200/50 dark:bg-teal-950/50 dark:border-teal-700 dark:text-teal-300',
+      inactive: 'hover:bg-teal-50 hover:border-teal-200 dark:hover:bg-teal-950/30',
+      badge: 'bg-gradient-to-r from-teal-500 to-cyan-500',
     },
     slate: {
       active: 'bg-slate-200 border-slate-400 text-slate-700 shadow-sm shadow-slate-200/50 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300',
@@ -967,28 +967,44 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400 min-w-[60px]">Status</span>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {STATUS_OPTIONS.map((status) => (
+                  {STATUS_OPTIONS.map((status) => {
+                    const activeClasses: Record<string, string> = {
+                      slate: 'bg-slate-100 text-slate-700 dark:bg-slate-950/50 dark:text-slate-300 ring-2 ring-slate-500/30',
+                      violet: 'bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 ring-2 ring-violet-500/30',
+                      blue: 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 ring-2 ring-blue-500/30',
+                      amber: 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 ring-2 ring-amber-500/30',
+                      red: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300 ring-2 ring-red-500/30',
+                      emerald: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 ring-2 ring-emerald-500/30',
+                    };
+
+                    const dotClasses: Record<string, string> = {
+                      slate: 'bg-slate-400',
+                      violet: 'bg-violet-500',
+                      blue: 'bg-blue-500',
+                      amber: 'bg-amber-500',
+                      red: 'bg-red-500',
+                      emerald: 'bg-emerald-500',
+                    };
+
+                    return (
                     <button
                       key={status.id}
                       onClick={() => onStatusChange(status.value)}
                       className={cn(
                         "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
                         statusFilter === status.value
-                          ? `bg-${status.color}-100 text-${status.color}-700 dark:bg-${status.color}-950/50 dark:text-${status.color}-300 ring-2 ring-${status.color}-500/30`
+                          ? activeClasses[status.color] || activeClasses.slate
                           : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
                       )}
                     >
                       <span className={cn(
                         "w-2 h-2 rounded-full",
-                        status.color === 'slate' && "bg-slate-400",
-                        status.color === 'emerald' && "bg-violet-500",
-                        status.color === 'blue' && "bg-violet-500",
-                        status.color === 'amber' && "bg-amber-500",
-                        status.color === 'red' && "bg-red-500"
+                        dotClasses[status.color] || 'bg-slate-400'
                       )} />
                       {status.label}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
