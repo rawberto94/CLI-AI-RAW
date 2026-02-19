@@ -318,7 +318,16 @@ export function useContracts(
       if (filters) {
         Object.entries(filters).forEach(([key, value]) => {
           if (value !== undefined && value !== null && value !== '') {
-            params.set(key, String(value));
+            if (Array.isArray(value)) {
+              // Multi-value params: append each so API can read via getAll()
+              value.forEach(v => {
+                if (v !== undefined && v !== null && v !== '') {
+                  params.append(key, String(v));
+                }
+              });
+            } else {
+              params.set(key, String(value));
+            }
           }
         });
       }

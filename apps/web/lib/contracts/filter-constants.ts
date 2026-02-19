@@ -24,6 +24,16 @@ export const SORT_OPTIONS: { value: SortField; label: string }[] = [
   { value: 'status', label: 'Status' },
 ];
 
+/** Map client SortField names to the API's expected sort field names */
+export function mapSortFieldToApi(field: SortField): string {
+  switch (field) {
+    case 'title': return 'contractTitle';
+    case 'value': return 'totalValue';
+    case 'status': return 'createdAt'; // status not sortable on API
+    default: return field;
+  }
+}
+
 // ============ FILTER CONFIGURATION ============
 export const CONTRACT_TYPES = [
   "Service Agreement",

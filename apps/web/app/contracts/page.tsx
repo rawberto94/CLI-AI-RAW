@@ -26,11 +26,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
-import { AdvancedSearchModal, type AdvancedSearchFilters } from "@/components/contracts/AdvancedSearchModal";
-import { AdvancedFilterPanel, type FilterState } from "@/components/contracts/AdvancedFilterPanel";
+import { AdvancedSearchModal } from "@/components/contracts/AdvancedSearchModal";
+import { AdvancedFilterPanel } from "@/components/contracts/AdvancedFilterPanel";
 import { DragDropFilterBuilder } from "@/components/contracts/DragDropFilterBuilder";
 import { ActiveFilterChips } from "@/components/contracts/ActiveFilterChips";
-import { SavedSearchPresets, type SavedSearch } from "@/components/contracts/SavedSearchPresets";
+import { SavedSearchPresets } from "@/components/contracts/SavedSearchPresets";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,7 +75,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDataMode } from "@/contexts/DataModeContext";
-import { useContracts, useContractStats, useCrossModuleInvalidation, queryKeys, type Contract } from "@/hooks/use-queries";
+import { useContracts, useContractStats, useCrossModuleInvalidation, type Contract } from "@/hooks/use-queries";
+import { useContractsPageFilters } from "@/hooks/use-contracts-page-filters";
+import { useContractsPageActions } from "@/hooks/use-contracts-page-actions";
 import { toast } from "sonner";
 
 // Lazy load heavy components for better performance
@@ -107,11 +109,8 @@ import { CompactContractRow } from "@/components/contracts/CompactContractRow";
 import {
   type SortField,
   type SortDirection,
-  VALUE_RANGES,
-  DATE_PRESETS,
-  EXPIRATION_FILTERS,
-  QUICK_PRESETS,
   PAGE_SIZE_OPTIONS,
+  DATE_PRESETS,
   formatCurrency,
   formatDate,
 } from "@/lib/contracts/filter-constants";
@@ -151,124 +150,46 @@ export default function ContractsPage() {
     router.push(`/contracts/${id}`, { scroll: true });
   };
   
-  // Search and filter state
-  const [searchQuery, setSearchQuery] = useState("");
-  // NOTE: statusFilter, typeFilters, riskFilters, supplierFilters, categoryFilter
-  // are now DERIVED from filterState (see below) to eliminate the dual-filter-system.
-  const [approvalFilters, setApprovalFilters] = useState<string[]>([]);
-  const [valueRangeFilter, setValueRangeFilter] = useState<string | null>(null);
-  const [dateRangeFilter, setDateRangeFilter] = useState<string | null>(null);
-  const [expirationFilters, setExpirationFilters] = useState<string[]>([]);
-  const [signatureFilters, setSignatureFilters] = useState<string[]>([]);
-  const [documentTypeFilters, setDocumentTypeFilters] = useState<string[]>([]);
-  const [activePreset, setActivePreset] = useState<string | null>(null);
-  const [advancedFilters, setAdvancedFilters] = useState<AdvancedSearchFilters>({});
+  // ── Extracted hooks ──────────────────────────────────────────────────
+  const {
+    searchQuery, setSearchQuery,
+    filterState, setFilterState,
+    approvalFilters, setApprovalFilters,
+    valueRangeFilter, setValueRangeFilter,
+    dateRangeFilter, setDateRangeFilter,
+    expirationFilters, setExpirationFilters,
+    signatureFilters, documentTypeFilters,
+    activePreset, advancedFilters, setAdvancedFilters,
+    savedFilters, filterName, setFilterName,
+    showSaveFilterModal, setShowSaveFilterModal,
+    currentPage, setCurrentPage, pageSize, setPageSize,
+    sortField, setSortField, sortDirection, setSortDirection,
+    statusFilter, typeFilters, riskFilters, supplierFilters, categoryFilter,
+    setStatusFilter, setTypeFilters, setRiskFilters, setSupplierFilters, setCategoryFilter,
+    serverParams,
+    hasActiveFilters, activeFilterCount,
+    clearFilters, handleClearFilter, handleLoadPreset,
+    handleVisualBuilderApply, applyPreset,
+    handleSaveFilter, handleLoadFilter,
+  } = useContractsPageFilters();
+
+  // UI toggle state (not part of filter logic)
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  
-  // New Advanced Filter State
-  const [filterState, setFilterState] = useState<FilterState>({
-    statuses: [],
-    documentRoles: [],
-    dateRange: {},
-    valueRange: { min: 0, max: 1000000 },
-    categories: [],
-    hasDeadline: null,
-    isExpiring: null,
-    riskLevels: [],
-    suppliers: [],
-    clients: [],
-    contractTypes: [],
-    currencies: [],
-    jurisdictions: [],
-    paymentTerms: [],
-  });
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showVisualBuilder, setShowVisualBuilder] = useState(false);
-  
-  // ── Consolidated filter accessors ──────────────────────────────────
-  // These 5 filters previously had their own useState, creating a dual
-  // source of truth with FilterState.  Now they are DERIVED from
-  // filterState so the AdvancedFilterPanel, Visual Builder, search bar,
-  // mobile sheet, and filter chips all share a single source of truth.
-  const statusFilter = filterState.statuses.length > 0 ? filterState.statuses[0] : 'all';
-  const typeFilters = filterState.contractTypes ?? [];
-  const riskFilters = filterState.riskLevels ?? [];
-  const supplierFilters = filterState.suppliers ?? [];
-  const categoryFilter = filterState.categories.length > 0 ? filterState.categories[0] : null;
-
-  // Setter callbacks that forward to filterState (backward-compatible
-  // with existing consumer components like StateOfTheArtSearch)
-  const setStatusFilter = useCallback((val: string) => {
-    setFilterState(prev => ({ ...prev, statuses: val === 'all' ? [] : [val] }));
-  }, []);
-  const setTypeFilters = useCallback((vals: string[]) => {
-    setFilterState(prev => ({ ...prev, contractTypes: vals }));
-  }, []);
-  const setRiskFilters = useCallback((vals: string[]) => {
-    setFilterState(prev => ({ ...prev, riskLevels: vals }));
-  }, []);
-  const setSupplierFilters = useCallback((vals: string[]) => {
-    setFilterState(prev => ({ ...prev, suppliers: vals }));
-  }, []);
-  const setCategoryFilter = useCallback((cat: string | null) => {
-    setFilterState(prev => ({ ...prev, categories: cat ? [cat] : [] }));
-  }, []);
 
   // Category metadata state
   const [categories, setCategories] = useState<Array<{id: string; name: string; color: string; icon: string; contractCount?: number}>>([]);
-  const [isBulkCategorizing, setIsBulkCategorizing] = useState(false);
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  
-  // Saved filters
-  const [savedFilters, setSavedFilters] = useState<Array<{id: string; name: string; filters: any}>>([]);
-  const [showSaveFilterModal, setShowSaveFilterModal] = useState(false);
-  const [filterName, setFilterName] = useState('');
-  
+
   // View mode: 'compact' for table-like rows, 'cards' for detailed cards
   const [viewMode, setViewMode] = useState<'compact' | 'cards'>('compact');
-  
-  // Sorting state
-  const [sortField, setSortField] = useState<SortField>('createdAt');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  
-  // Bulk selection state
-  const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
-  const [isProcessingBulk, setIsProcessingBulk] = useState(false);
-  
-  // Share dialog state
-  const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [shareContractId, setShareContractId] = useState<string | null>(null);
-  const [shareContractTitle, setShareContractTitle] = useState<string>("");
-  
-  // Approval modal state
-  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
-  const [approvalContractId, setApprovalContractId] = useState<string | null>(null);
-  const [approvalContractTitle, setApprovalContractTitle] = useState<string>("");
-  
-  // AI Report modal state
-  const [aiReportModalOpen, setAiReportModalOpen] = useState(false);
-  
-  // Delete confirmation dialog state
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [contractToDelete, setContractToDelete] = useState<{ id: string; title: string } | null>(null);
-  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
-  
-  // Bulk action confirmation dialogs
-  const [bulkExportDialogOpen, setBulkExportDialogOpen] = useState(false);
-  const [bulkAnalyzeDialogOpen, setBulkAnalyzeDialogOpen] = useState(false);
-  const [bulkShareDialogOpen, setBulkShareDialogOpen] = useState(false);
-  const [pendingBulkAction, setPendingBulkAction] = useState<'export' | 'analyze' | 'share' | null>(null);
 
   // Enhanced UI state
   const [previewContract, setPreviewContract] = useState<ExtendedContract | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [favoriteContracts, setFavoriteContracts] = useState<Set<string>>(new Set());
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  // Live update state (controlled internally; UI toggle deferred to future)
   const [isLiveUpdatesEnabled] = useState(false);
   const [newContractsCount, setNewContractsCount] = useState(0);
 
@@ -278,16 +199,9 @@ export default function ContractsPage() {
     isLoading: loading, 
     isFetching: isRefetching,
     refetch,
-  } = useContracts({
-    status: statusFilter === 'all' ? undefined : statusFilter,
-    page: currentPage,
-    limit: pageSize,
-    sortBy: sortField,
-    sortOrder: sortDirection,
-    search: searchQuery || undefined,
-  }, {
+  } = useContracts(serverParams, {
     pollingEnabled: isLiveUpdatesEnabled,
-    pollingInterval: 15000, // 15 seconds
+    pollingInterval: 15000,
     onNewContract: (count) => {
       setNewContractsCount(prev => prev + count);
       toast.success(`${count} new contract${count > 1 ? 's' : ''} added`, {
@@ -303,7 +217,6 @@ export default function ContractsPage() {
       });
     },
     onUpdate: () => {
-      // Subtle indication that data was refreshed
       setNewContractsCount(0);
     }
   });
@@ -314,7 +227,26 @@ export default function ContractsPage() {
   const crossModule = useCrossModuleInvalidation();
   const queryClient = useQueryClient();
 
-  
+  const {
+    selectedContracts, setSelectedContracts, toggleSelect,
+    isProcessingBulk, isBulkCategorizing,
+    performBulkAction, handleBulkCategorize,
+    handleDownload, handleShare,
+    handleRequestApproval, handleApprovalSuccess,
+    handleDeleteClick, handleConfirmDelete,
+    handleBulkDeleteClick, handleConfirmBulkDelete,
+    handleBulkActionWithConfirmation, handleConfirmBulkAction,
+    shareDialogOpen, setShareDialogOpen, shareContractId, setShareContractId, shareContractTitle,
+    approvalModalOpen, setApprovalModalOpen, approvalContractId, setApprovalContractId, approvalContractTitle, setApprovalContractTitle,
+    aiReportModalOpen, setAiReportModalOpen,
+    deleteDialogOpen, setDeleteDialogOpen, contractToDelete,
+    bulkDeleteDialogOpen, setBulkDeleteDialogOpen,
+    bulkExportDialogOpen, setBulkExportDialogOpen,
+    bulkAnalyzeDialogOpen, setBulkAnalyzeDialogOpen,
+    bulkShareDialogOpen, setBulkShareDialogOpen,
+    pendingBulkAction,
+  } = useContractsPageActions({ dataMode, refetch, refetchStats, crossModule, queryClient });
+
   const contracts: Contract[] = contractsData?.contracts || [];
   
   // Fetch categories for filter
@@ -346,52 +278,6 @@ export default function ContractsPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-  
-  // Bulk categorize selected contracts
-  const handleBulkCategorize = async () => {
-    if (selectedContracts.size === 0) {
-      toast.warning('No contracts selected');
-      return;
-    }
-    
-    setIsBulkCategorizing(true);
-    try {
-      const response = await fetch('/api/contracts/categorize', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-tenant-id': getTenantId()
-        },
-        body: JSON.stringify({
-          contractIds: Array.from(selectedContracts),
-          force: false
-        })
-      });
-      
-      if (!response.ok) throw new Error('Categorization failed');
-      
-      const data = await response.json();
-      const results = data.data?.results || [];
-      const successCount = results.filter((r: any) => r.success && r.category).length;
-      const failedCount = results.filter((r: any) => !r.success || !r.category).length;
-      
-      if (successCount > 0 && failedCount === 0) {
-        toast.success(`Categorized ${successCount} contract${successCount > 1 ? 's' : ''}`);
-      } else if (successCount > 0) {
-        toast.success(`Categorized ${successCount} of ${selectedContracts.size} contracts. ${failedCount} could not be auto-categorized.`);
-      } else if (results[0]?.error?.includes('No taxonomy categories')) {
-        toast.error('No categories defined. Go to Settings → Taxonomy to set up categories.', { duration: 5000 });
-      } else {
-        toast.warning('AI could not categorize the selected contracts. Try setting up keywords in your taxonomy.');
-      }
-      refetch();
-      setSelectedContracts(new Set());
-    } catch {
-      toast.error('Failed to categorize contracts');
-    } finally {
-      setIsBulkCategorizing(false);
-    }
-  };
   
   // Keyboard shortcuts
   useEffect(() => {
@@ -444,449 +330,6 @@ export default function ContractsPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [refetch, router]);
-  
-  // Toggle selection for a single contract
-  const toggleSelect = useCallback((contractId: string) => {
-    setSelectedContracts(prev => {
-      const next = new Set(prev);
-      if (next.has(contractId)) {
-        next.delete(contractId);
-      } else {
-        next.add(contractId);
-      }
-      return next;
-    });
-  }, []);
-
-  // Bulk operations
-  const performBulkAction = useCallback(async (action: 'export' | 'analyze' | 'delete' | 'share') => {
-    if (selectedContracts.size === 0) return;
-    
-    setIsProcessingBulk(true);
-    try {
-      const response = await fetch('/api/contracts/bulk', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-data-mode': dataMode,
-          'x-tenant-id': getTenantId(),
-        },
-        body: JSON.stringify({
-          operation: action,
-          contractIds: Array.from(selectedContracts),
-        }),
-      });
-
-      if (!response.ok) throw new Error('Operation failed');
-      
-      await response.json();
-      toast.success(`Successfully ${action}ed ${selectedContracts.size} contracts`);
-      
-      if (action === 'delete') {
-        refetch();
-      }
-      
-      setSelectedContracts(new Set());
-    } catch {
-      toast.error(`Failed to ${action} contracts`);
-    } finally {
-      setIsProcessingBulk(false);
-    }
-  }, [selectedContracts, dataMode, refetch]);
-
-  // Clear all filters  (single source of truth: filterState for the 5
-  // consolidated filters; remaining standalone vars cleared explicitly)
-  const clearFilters = useCallback(() => {
-    setSearchQuery("");
-    setApprovalFilters([]);
-    setValueRangeFilter(null);
-    setDateRangeFilter(null);
-    setExpirationFilters([]);
-    setSignatureFilters([]);
-    setDocumentTypeFilters([]);
-    setActivePreset(null);
-    setAdvancedFilters({});
-    setFilterState({
-      statuses: [],
-      documentRoles: [],
-      dateRange: {},
-      valueRange: { min: 0, max: 1000000 },
-      categories: [],
-      hasDeadline: null,
-      isExpiring: null,
-      riskLevels: [],
-      suppliers: [],
-      clients: [],
-      contractTypes: [],
-      currencies: [],
-      jurisdictions: [],
-      paymentTerms: [],
-    });
-  }, []);
-
-  // Advanced filter handlers
-  const handleClearFilter = useCallback((filterKey: keyof FilterState, value?: any) => {
-    setFilterState(prev => {
-      switch (filterKey) {
-        case 'statuses':
-        case 'documentRoles':
-        case 'categories':
-        case 'riskLevels':
-        case 'suppliers':
-        case 'clients':
-        case 'contractTypes':
-        case 'currencies':
-        case 'jurisdictions':
-        case 'paymentTerms': {
-          const arr = prev[filterKey] as string[];
-          if (value !== undefined) {
-            // Remove specific value from array
-            return { ...prev, [filterKey]: arr.filter(v => v !== value) };
-          }
-          return { ...prev, [filterKey]: [] };
-        }
-        case 'dateRange':
-          return { ...prev, dateRange: {} };
-        case 'valueRange':
-          return { ...prev, valueRange: { min: 0, max: 1000000 } };
-        case 'hasDeadline':
-        case 'isExpiring':
-          return { ...prev, [filterKey]: null };
-        default:
-          return prev;
-      }
-    });
-  }, []);
-
-  const handleLoadPreset = useCallback((search: SavedSearch) => {
-    setSearchQuery(search.query);
-    setFilterState(search.filters);
-  }, []);
-  
-  // Handle visual builder apply
-  const handleVisualBuilderApply = useCallback((groups: Array<{
-    id: string;
-    logic: 'AND' | 'OR';
-    filters: Array<{
-      type: 'status' | 'date' | 'value' | 'risk' | 'category' | 'role' | 'expiration' | 'supplier' | 'client' | 'jurisdiction' | 'payment' | 'contractType' | 'currency';
-      operator: string;
-      value: any;
-    }>;
-  }>, _interGroupLogic?: 'AND' | 'OR') => {
-    // Convert visual builder format to FilterState
-    const newFilterState: FilterState = {
-      statuses: [],
-      documentRoles: [],
-      dateRange: {},
-      valueRange: { min: 0, max: 1000000 },
-      categories: [],
-      hasDeadline: null,
-      isExpiring: null,
-      riskLevels: [],
-      suppliers: [],
-      clients: [],
-      contractTypes: [],
-      currencies: [],
-      jurisdictions: [],
-      paymentTerms: [],
-    };
-    
-    // Process all filter groups (currently merging all filters)
-    // In a more sophisticated implementation, you'd preserve AND/OR logic
-    groups.forEach(group => {
-      group.filters.forEach(filter => {
-        switch (filter.type) {
-          case 'status':
-            if (filter.value && !newFilterState.statuses.includes(filter.value)) {
-              newFilterState.statuses.push(filter.value);
-            }
-            break;
-          case 'role':
-            if (filter.value && !newFilterState.documentRoles.includes(filter.value)) {
-              newFilterState.documentRoles.push(filter.value);
-            }
-            break;
-          case 'category':
-            if (filter.value && !newFilterState.categories.includes(filter.value)) {
-              newFilterState.categories.push(filter.value);
-            }
-            break;
-          case 'date':
-            if (filter.operator === 'between' && Array.isArray(filter.value) && filter.value.length === 2) {
-              newFilterState.dateRange = {
-                from: filter.value[0],
-                to: filter.value[1],
-              };
-            }
-            break;
-          case 'value':
-            if (filter.operator === 'between' && Array.isArray(filter.value) && filter.value.length === 2) {
-              newFilterState.valueRange = {
-                min: filter.value[0],
-                max: filter.value[1],
-              };
-            } else if (filter.operator === 'greater' && typeof filter.value === 'number') {
-              newFilterState.valueRange.min = filter.value;
-            } else if (filter.operator === 'less' && typeof filter.value === 'number') {
-              newFilterState.valueRange.max = filter.value;
-            }
-            break;
-          case 'expiration':
-            newFilterState.isExpiring = true;
-            break;
-          case 'risk':
-            if (filter.value && !newFilterState.riskLevels.includes(filter.value)) {
-              newFilterState.riskLevels.push(filter.value);
-            }
-            break;
-          case 'supplier':
-            if (filter.value && !newFilterState.suppliers.includes(filter.value)) {
-              newFilterState.suppliers.push(filter.value);
-            }
-            break;
-          case 'client':
-            if (filter.value && !newFilterState.clients.includes(filter.value)) {
-              newFilterState.clients.push(filter.value);
-            }
-            break;
-          case 'jurisdiction':
-            if (filter.value && !newFilterState.jurisdictions.includes(filter.value)) {
-              newFilterState.jurisdictions.push(filter.value);
-            }
-            break;
-          case 'payment':
-            if (filter.value && !newFilterState.paymentTerms.includes(filter.value)) {
-              newFilterState.paymentTerms.push(filter.value);
-            }
-            break;
-          case 'contractType':
-            if (filter.value && !newFilterState.contractTypes.includes(filter.value)) {
-              newFilterState.contractTypes.push(filter.value);
-            }
-            break;
-          case 'currency':
-            if (filter.value && !newFilterState.currencies.includes(filter.value)) {
-              newFilterState.currencies.push(filter.value);
-            }
-            break;
-        }
-      });
-    });
-    
-    setFilterState(newFilterState);
-    setShowVisualBuilder(false);
-    
-    const filterCount = groups.reduce((acc, g) => acc + g.filters.length, 0);
-    toast.success(`Applied ${filterCount} filter${filterCount === 1 ? '' : 's'} from visual builder`);
-  }, []);
-  
-  // Apply quick preset
-  const applyPreset = useCallback((presetId: string) => {
-    clearFilters();
-    setActivePreset(presetId);
-    const preset = QUICK_PRESETS.find(p => p.id === presetId);
-    if (!preset) return;
-    
-    if (preset.filters.status) setStatusFilter(preset.filters.status);
-    if (preset.filters.risk) setRiskFilters([preset.filters.risk]);
-    if (preset.filters.approval) setApprovalFilters([preset.filters.approval]);
-    if (preset.filters.minValue) {
-      const range = VALUE_RANGES.find(r => r.min <= preset.filters.minValue! && r.max > preset.filters.minValue!);
-      if (range) setValueRangeFilter(range.value);
-    }
-    if (preset.filters.expirationDays) {
-      const exp = EXPIRATION_FILTERS.find(e => e.value === `expiring-${preset.filters.expirationDays}`);
-      if (exp) setExpirationFilters([exp.value]);
-    }
-  }, [clearFilters]);
-
-  // Contract action handlers
-  const handleDownload = useCallback(async (contractId: string, format: 'json' | 'csv' | 'pdf' = 'pdf') => {
-    try {
-      toast.info('Preparing download...');
-      const response = await fetch(`/api/contracts/${contractId}/export?format=${format}`, {
-        headers: { 'x-tenant-id': getTenantId() },
-      });
-      
-      if (!response.ok) throw new Error('Export failed');
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `contract-${contractId}.${format === 'pdf' ? 'html' : format}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success('Download started');
-    } catch {
-      toast.error('Failed to download contract');
-    }
-  }, []);
-
-  const handleShare = useCallback((contractId: string, contractTitle: string) => {
-    setShareContractId(contractId);
-    setShareContractTitle(contractTitle);
-    setShareDialogOpen(true);
-  }, []);
-
-  const handleRequestApproval = useCallback((contractId: string, contractTitle: string) => {
-    setApprovalContractId(contractId);
-    setApprovalContractTitle(contractTitle);
-    setApprovalModalOpen(true);
-  }, []);
-  
-  const handleApprovalSuccess = useCallback(() => {
-    toast.success('Contract submitted for approval', {
-      description: `${approvalContractTitle} has been sent for review`,
-    });
-    setApprovalModalOpen(false);
-    setApprovalContractId(null);
-    setApprovalContractTitle("");
-    refetch();
-  }, [approvalContractTitle, refetch]);
-
-  // Open delete confirmation dialog
-  const handleDeleteClick = useCallback((contractId: string, contractTitle: string) => {
-    setContractToDelete({ id: contractId, title: contractTitle });
-    setDeleteDialogOpen(true);
-  }, []);
-
-  // Confirm single delete
-  const handleConfirmDelete = useCallback(async () => {
-    if (!contractToDelete) return;
-    
-    const contractId = contractToDelete.id;
-    
-    try {
-      toast.info('Deleting contract...');
-      
-      // Remove from selected contracts
-      setSelectedContracts(prev => {
-        const updated = new Set(prev);
-        updated.delete(contractId);
-        return updated;
-      });
-      
-      // Perform the actual delete with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      const response = await fetch(`/api/contracts/${contractId}`, {
-        method: 'DELETE',
-        headers: { 'x-tenant-id': getTenantId() },
-        signal: controller.signal,
-      }).finally(() => clearTimeout(timeoutId));
-      
-      const data = await response.json().catch(() => ({}));
-      
-      if (!response.ok) {
-        throw new Error(data?.error || data?.details || 'Delete failed');
-      }
-      
-      // Force refetch to get fresh data from server
-      await refetch();
-      
-      // Also refetch stats
-      await refetchStats();
-      
-      // Invalidate related caches across modules (non-blocking)
-      crossModule.onContractChange(contractId);
-      
-      toast.success('Contract deleted successfully');
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          toast.error('Delete request timed out. Please try again.');
-        } else {
-          toast.error(error.message);
-        }
-      } else {
-        toast.error('Failed to delete contract');
-      }
-    } finally {
-      setContractToDelete(null);
-      setDeleteDialogOpen(false);
-    }
-  }, [contractToDelete, crossModule, refetch, refetchStats]);
-
-  // Bulk delete handler
-  const handleBulkDeleteClick = useCallback(() => {
-    if (selectedContracts.size === 0) return;
-    setBulkDeleteDialogOpen(true);
-  }, [selectedContracts.size]);
-
-  const handleConfirmBulkDelete = useCallback(async () => {
-    if (selectedContracts.size === 0) return;
-    
-    setIsProcessingBulk(true);
-    try {
-      // Use the bulk endpoint instead of N individual DELETE requests
-      const response = await fetch('/api/contracts/bulk', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-data-mode': dataMode,
-          'x-tenant-id': getTenantId(),
-        },
-        body: JSON.stringify({
-          operation: 'delete',
-          contractIds: Array.from(selectedContracts),
-        }),
-      });
-
-      if (!response.ok) throw new Error('Bulk delete failed');
-      
-      // Force immediate refresh - invalidate cache AND refetch
-      await queryClient.invalidateQueries({ 
-        queryKey: queryKeys.contracts.all,
-        refetchType: 'all'
-      });
-      
-      // Also refresh stats
-      await refetchStats();
-      
-      // Force refetch the main contracts list
-      await refetch();
-      
-      // Also invalidate related caches across modules
-      crossModule.onContractChange();
-      
-      toast.success(`Deleted ${selectedContracts.size} contracts`);
-      setSelectedContracts(new Set());
-    } catch {
-      toast.error('Failed to delete some contracts');
-    } finally {
-      setIsProcessingBulk(false);
-    }
-  }, [selectedContracts, dataMode, crossModule, queryClient, refetch, refetchStats]);
-
-  // Bulk action with confirmation handlers
-  const handleBulkActionWithConfirmation = useCallback((action: 'export' | 'analyze' | 'share') => {
-    if (selectedContracts.size === 0) return;
-    setPendingBulkAction(action);
-    switch (action) {
-      case 'export':
-        setBulkExportDialogOpen(true);
-        break;
-      case 'analyze':
-        setBulkAnalyzeDialogOpen(true);
-        break;
-      case 'share':
-        setBulkShareDialogOpen(true);
-        break;
-    }
-  }, [selectedContracts.size]);
-
-  const handleConfirmBulkAction = useCallback(async () => {
-    if (!pendingBulkAction) return;
-    await performBulkAction(pendingBulkAction);
-    setBulkExportDialogOpen(false);
-    setBulkAnalyzeDialogOpen(false);
-    setBulkShareDialogOpen(false);
-    setPendingBulkAction(null);
-  }, [pendingBulkAction, performBulkAction]);
 
   // Derive dynamic filter options from actual contract data
   const availableSuppliers = useMemo(() => {
@@ -915,61 +358,17 @@ export default function ContractsPage() {
     return Array.from(types).filter(Boolean).sort();
   }, [contracts]);
 
-  // Check if any filters are active (consolidated: FilterState is the single source
-  // for status, type, risk, supplier, category, client, currency, jurisdiction, paymentTerms)
-  const hasActiveFilters = searchQuery || approvalFilters.length > 0 || valueRangeFilter || dateRangeFilter || expirationFilters.length > 0 || signatureFilters.length > 0 || documentTypeFilters.length > 0 || activePreset || Object.keys(advancedFilters).length > 0 || filterState.statuses.length > 0 || filterState.documentRoles.length > 0 || filterState.categories.length > 0 || filterState.hasDeadline !== null || filterState.isExpiring !== null || (filterState.riskLevels?.length ?? 0) > 0 || (filterState.suppliers?.length ?? 0) > 0 || (filterState.clients?.length ?? 0) > 0 || (filterState.contractTypes?.length ?? 0) > 0 || (filterState.currencies?.length ?? 0) > 0 || (filterState.jurisdictions?.length ?? 0) > 0 || (filterState.paymentTerms?.length ?? 0) > 0;
-  
-  // Count active filters for badge (no double-counting: consolidated vars
-  // are only counted once via their FilterState source)
-  const activeFilterCount = [
-    searchQuery ? 1 : 0,
-    approvalFilters.length,
-    valueRangeFilter ? 1 : 0,
-    dateRangeFilter ? 1 : 0,
-    expirationFilters.length,
-    signatureFilters.length,
-    documentTypeFilters.length,
-    filterState.statuses.length,
-    filterState.documentRoles.length,
-    filterState.categories.length,
-    filterState.hasDeadline !== null ? 1 : 0,
-    filterState.isExpiring !== null ? 1 : 0,
-    filterState.riskLevels?.length ?? 0,
-    filterState.suppliers?.length ?? 0,
-    filterState.clients?.length ?? 0,
-    filterState.contractTypes?.length ?? 0,
-    filterState.currencies?.length ?? 0,
-    filterState.jurisdictions?.length ?? 0,
-    filterState.paymentTerms?.length ?? 0,
-  ].reduce((a, b) => a + b, 0);
-  
+  // Client-side filters for dimensions not supported by the server API.
+  // Server handles: search, status, contractType, supplier, client, value range.
   const filteredContracts = useMemo(() => {
     if (!Array.isArray(contracts)) return [];
     
     const now = new Date();
     
     return contracts.filter((contract) => {
-      // Text search - search across multiple fields
-      const matchesSearch =
-        searchQuery === "" ||
-        contract.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        contract.parties?.client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        contract.parties?.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        contract.type?.toLowerCase().includes(searchQuery.toLowerCase());
-
-      // Status filter (consolidated — filterState.statuses is the single source)
-      const matchesStatus =
-        filterState.statuses.length === 0 || filterState.statuses.includes(contract.status || '');
-
       // Document role filter
       const matchesDocumentRole = filterState.documentRoles.length === 0 || 
         filterState.documentRoles.includes(contract.documentRole || '');
-
-      // Contract type filter (consolidated — filterState.contractTypes is the single source)
-      const matchesType = !filterState.contractTypes?.length ||
-        filterState.contractTypes.some(t =>
-          contract.type?.toLowerCase().includes(t.toLowerCase())
-        );
 
       // Risk level filter (consolidated — filterState.riskLevels is the single source)
       const matchesRisk = !filterState.riskLevels?.length || filterState.riskLevels.some(risk => {
@@ -989,13 +388,6 @@ export default function ContractsPage() {
         const contractApprovalStatus = contract.approvalStatus || 'none';
         return contractApprovalStatus === approval;
       });
-      
-      // Value range filter (preset-based + filterState slider)
-      const matchesValueRange = (!valueRangeFilter || (() => {
-        const range = VALUE_RANGES.find(r => r.value === valueRangeFilter);
-        if (!range || !contract.value) return false;
-        return contract.value >= range.min && contract.value < range.max;
-      })()) && (!contract.value || (contract.value >= filterState.valueRange.min && contract.value <= filterState.valueRange.max));
       
       // Date range filter (preset-based + filterState date picker)
       const matchesDateRange = (!dateRangeFilter || (() => {
@@ -1036,20 +428,6 @@ export default function ContractsPage() {
         const daysUntilExpiry = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         return daysUntilExpiry >= 0 && daysUntilExpiry <= 30;
       })();
-
-      // Supplier filter (consolidated — filterState.suppliers is the single source)
-      const matchesSupplier = !filterState.suppliers?.length ||
-        filterState.suppliers.some(s =>
-          contract.parties?.supplier?.toLowerCase().includes(s.toLowerCase()) ||
-          contract.supplierName?.toLowerCase().includes(s.toLowerCase())
-        );
-
-      // Client filter (from filterState — case-insensitive partial match)
-      const matchesClient = !filterState.clients?.length ||
-        filterState.clients.some(c =>
-          contract.parties?.client?.toLowerCase().includes(c.toLowerCase()) ||
-          contract.clientName?.toLowerCase().includes(c.toLowerCase())
-        );
 
       // Signature status filter
       const matchesSignature = signatureFilters.length === 0 || 
@@ -1102,10 +480,10 @@ export default function ContractsPage() {
           );
         });
 
-      return matchesSearch && matchesStatus && matchesDocumentRole && matchesType && matchesRisk && matchesApproval && matchesValueRange && matchesDateRange && matchesExpiration && matchesHasDeadline && matchesIsExpiring && matchesSupplier && matchesClient && matchesSignature && matchesDocumentType && matchesAdvanced && matchesCategory && matchesCurrency && matchesJurisdiction && matchesPaymentTerms;
+      return matchesDocumentRole && matchesRisk && matchesApproval && matchesDateRange && matchesExpiration && matchesHasDeadline && matchesIsExpiring && matchesSignature && matchesDocumentType && matchesAdvanced && matchesCategory && matchesCurrency && matchesJurisdiction && matchesPaymentTerms;
     });
      
-  }, [contracts, searchQuery, approvalFilters, valueRangeFilter, dateRangeFilter, expirationFilters, signatureFilters, documentTypeFilters, advancedFilters, filterState]);
+  }, [contracts, approvalFilters, dateRangeFilter, expirationFilters, signatureFilters, documentTypeFilters, advancedFilters, filterState]);
 
   // Sort filtered contracts
   const sortedContracts = useMemo(() => {
@@ -1138,11 +516,6 @@ export default function ContractsPage() {
   const totalPages = Math.ceil((contractsData?.total ?? 0) / pageSize);
   // With server-side pagination, contracts are already the current page
   const paginatedContracts = sortedContracts;
-  
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, statusFilter, typeFilters, riskFilters, approvalFilters, valueRangeFilter, dateRangeFilter, expirationFilters]);
 
   // Sparkline trend data — computed once, shared by both heroStats branches
   const trendData = useMemo(() => {
@@ -1386,41 +759,6 @@ export default function ContractsPage() {
       toast.error('Export failed');
     }
   }, [sortedContracts]);
-  
-  // Save current filters
-  const handleSaveFilter = useCallback(() => {
-    if (!filterName.trim()) return;
-    const newFilter = {
-      id: Date.now().toString(),
-      name: filterName,
-      filters: {
-        statusFilter,
-        typeFilters,
-        riskFilters,
-        approvalFilters,
-        valueRangeFilter,
-        dateRangeFilter,
-        expirationFilters,
-      }
-    };
-    setSavedFilters(prev => [...prev, newFilter]);
-    setFilterName('');
-    setShowSaveFilterModal(false);
-    toast.success(`Filter "${filterName}" saved`);
-  }, [filterName, statusFilter, typeFilters, riskFilters, approvalFilters, valueRangeFilter, dateRangeFilter, expirationFilters]);
-  
-  // Load saved filter
-  const handleLoadFilter = useCallback((filter: typeof savedFilters[0]) => {
-    clearFilters();
-    if (filter.filters.statusFilter) setStatusFilter(filter.filters.statusFilter);
-    if (filter.filters.typeFilters) setTypeFilters(filter.filters.typeFilters);
-    if (filter.filters.riskFilters) setRiskFilters(filter.filters.riskFilters);
-    if (filter.filters.approvalFilters) setApprovalFilters(filter.filters.approvalFilters);
-    if (filter.filters.valueRangeFilter) setValueRangeFilter(filter.filters.valueRangeFilter);
-    if (filter.filters.dateRangeFilter) setDateRangeFilter(filter.filters.dateRangeFilter);
-    if (filter.filters.expirationFilters) setExpirationFilters(filter.filters.expirationFilters);
-    toast.success(`Loaded filter "${filter.name}"`);
-  }, [clearFilters]);
 
   const allVisibleSelected = useMemo(() => {
     if (paginatedContracts.length === 0) return false;
@@ -1751,7 +1089,7 @@ export default function ContractsPage() {
             dateRangeFilter={dateRangeFilter}
             onDateRangeFilterChange={setDateRangeFilter}
             suppliers={Array.from(new Set(contracts?.map(c => c.parties?.supplier).filter(Boolean) || [])).sort() as string[]}
-            categories={categories.map(cat => cat.name)}
+            categories={categories.map(cat => ({ id: cat.id, name: cat.name, color: cat.color }))}
             onClearFilters={clearFilters}
             onAISearchClick={(query) => window.dispatchEvent(new CustomEvent('openAIChatbot', {
               detail: { autoMessage: query ? `Search for contracts matching: ${query}` : 'Help me find contracts' }
@@ -1805,7 +1143,7 @@ export default function ContractsPage() {
         {/* Visual Filter Builder Modal */}
         {showVisualBuilder && (
           <DragDropFilterBuilder
-            onApply={handleVisualBuilderApply}
+            onApply={(groups, logic) => { handleVisualBuilderApply(groups, logic); setShowVisualBuilder(false); }}
             onClose={() => setShowVisualBuilder(false)}
             initialGroups={[]}
             availableSuppliers={availableSuppliers}
@@ -2246,7 +1584,7 @@ export default function ContractsPage() {
                         case 'ai':
                           window.dispatchEvent(new CustomEvent('openAIChatbot', {
                             detail: { 
-                              autoMessage: `Tell me about this contract: ${contract.title || 'Unknown'} - ${contract.supplierName || 'Unknown supplier'}`,
+                              autoMessage: `Tell me about this contract: ${contract.title || 'Unknown'} - ${contract.parties?.find(p => p.role === 'vendor')?.name || 'Unknown supplier'}`,
                               contractId: contract.id
                             }
                           }));
