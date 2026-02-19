@@ -51,7 +51,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { 
-  AISummarizer, 
   ContractComparison, 
   CategoryBadge, 
   CategorySelector, 
@@ -87,7 +86,6 @@ import {
   SectionErrorBoundary,
 } from './components'
 import { useContractMetadata } from './hooks'
-import { CreateRenewalModal } from '@/components/contracts/CreateRenewalModal'
 
 // ============ TYPES ============
 
@@ -235,7 +233,6 @@ export default function ContractDetailPage() {
   
   // UI state
   const [showShareDialog, setShowShareDialog] = useState(false)
-  const [showAISummarizer, setShowAISummarizer] = useState(false)
   const [showComparison, setShowComparison] = useState(false)
   const [showCategorySelector, setShowCategorySelector] = useState(false)
   const [showReminderDialog, setShowReminderDialog] = useState(false)
@@ -245,7 +242,6 @@ export default function ContractDetailPage() {
   const [isExtractingObligations, setIsExtractingObligations] = useState(false)
   const [isSavingCategory, setIsSavingCategory] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
-  const [showRenewalModal, setShowRenewalModal] = useState(false)
   
   // Notes state
   const [notes, setNotes] = useState<Array<{
@@ -295,8 +291,6 @@ export default function ContractDetailPage() {
   const { metadata, riskInfo, complianceInfo, isProcessing, overviewData, financialData } = useContractMetadata(contract as any)
 
   // ============ KEYBOARD SHORTCUTS ============
-  const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
-  
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
@@ -309,12 +303,9 @@ export default function ContractDetailPage() {
           case '4': case 'a': case 'A': setTab('ai'); break
           case 'p': case 'P': setPdfViewerOpen(!showPdfViewer); break
           case 'e': case 'E': if (!isEditing) setIsEditing(true); break
-          case 'f': case 'F': setIsFavorite(prev => !prev); break
-          case '?': setShowShortcutsDialog(true); break
           case 'Escape':
             if (isEditing) setIsEditing(false)
             if (showPdfViewer) setPdfViewerOpen(false)
-            if (showShortcutsDialog) setShowShortcutsDialog(false)
             break
         }
       }
@@ -342,7 +333,7 @@ export default function ContractDetailPage() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
     
-  }, [isEditing, setPdfViewerOpen, setTab, showPdfViewer])
+  }, [isEditing, setPdfViewerOpen, setTab, showPdfViewer, handleDownload, loadContract])
 
   // Initialize tab from URL (shareable deep-link)
   useEffect(() => {
@@ -1451,13 +1442,6 @@ export default function ContractDetailPage() {
         documentTitle={contract?.filename || 'Contract'}
       />
 
-      <AISummarizer
-        contractId={params.id as string}
-        contractTitle={contract?.filename || 'Contract'}
-        isOpen={showAISummarizer}
-        onClose={() => setShowAISummarizer(false)}
-      />
-
       <ContractComparison
         contractId={params.id as string}
         versions={contractVersions.length > 0 ? contractVersions : [
@@ -1586,31 +1570,6 @@ export default function ContractDetailPage() {
         onCreateRenewal={() => router.push(`/contracts/${params.id}/renew`)}
       />
 
-      {/* Create Renewal Modal */}
-      {contract && (
-        <CreateRenewalModal
-          open={showRenewalModal}
-          onOpenChange={setShowRenewalModal}
-          contract={{
-            id: contract.id,
-            title: metadata.document_title || contract.filename || 'Contract',
-            fileName: contract.filename,
-            effectiveDate: metadata.start_date || contract.effectiveDate,
-            expirationDate: metadata.end_date || contract.expirationDate,
-            totalValue: metadata.tcv_amount ?? (typeof contract.totalValue === 'string' ? parseFloat(contract.totalValue) : contract.totalValue),
-            currency: metadata.currency || contract.currency,
-            clientName: metadata.external_parties?.find(p => p.role?.toLowerCase() === 'client' || p.role?.toLowerCase() === 'buyer')?.legalName || contract.clientName,
-            supplierName: metadata.external_parties?.find(p => p.role?.toLowerCase() === 'supplier' || p.role?.toLowerCase() === 'vendor')?.legalName || contract.supplierName,
-            contractType: metadata.contract_type || contract.contractType,
-            status: contract.status,
-          }}
-          onRenewalCreated={(renewal) => {
-            toast.success(`Renewal created: ${renewal.title}`)
-            // Navigate to the new renewal contract
-            router.push(`/contracts/${renewal.id}`)
-          }}
-        />
-      )}
     </div>
   )
 }

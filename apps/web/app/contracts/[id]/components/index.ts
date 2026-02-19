@@ -1,64 +1,21 @@
 // Contract Detail Page Components
-// Core layout components
+
+// Core layout
 export { ContractHeader } from './ContractHeader'
 export { ContractQuickOverview } from './ContractQuickOverview'
 export { ContractStatusBanner } from './ContractStatusBanner'
-export { ContractSummaryTab, SectionSkeleton as SummaryTabSkeleton } from './ContractSummaryTab'
+export { ContractSummaryTab } from './ContractSummaryTab'
 
-// Action components
+// Actions & dialogs
 export { ContractFloatingActions } from './ContractFloatingActions'
 export { ContractReminderDialog } from './ContractReminderDialog'
-export { KeyboardShortcutsHelp, ShortcutsHint } from './KeyboardShortcutsHelp'
+export { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp'
 
-// Content components
+// Content sections
 export { ContractNotes } from './ContractNotes'
 export { ContractTimeline } from './ContractTimeline'
 export { RelatedContracts } from './RelatedContracts'
-export { ContractSearch } from './ContractSearch'
 
-// Feedback components
-export { UndoToast, useUndoToast } from './UndoToast'
-export { EmptyState } from './EmptyState'
-export { SectionSkeleton } from './SectionSkeleton'
-
-// Accessibility & Error handling
+// Accessibility & error handling
 export { SkipToContent } from './SkipToContent'
-export { SectionErrorBoundary, withSectionErrorBoundary } from './SectionErrorBoundary'
-
-// Virtualization
-export { VirtualizedList, DynamicVirtualizedList, useVirtualization } from './VirtualizedList'
-
-// Drag & Drop
-export { 
-  DraggableSection, 
-  DraggableCardList, 
-  DraggableGrid, 
-  DragHandle,
-  useDraggable 
-} from './DraggableSection'
-
-// Design System
-export {
-  ProfessionalCard,
-  StatusIndicator,
-  SectionHeader,
-  MetricDisplay,
-  Divider,
-  Shimmer,
-  ProfessionalBadge,
-  fadeInUp,
-  fadeIn,
-  scaleIn,
-  slideInRight,
-  staggerContainer,
-  staggerItem,
-} from './DesignSystem'
-
-// NEW: Enhanced components for improved UX
-export { ContractHealthScoreWidget } from './ContractHealthScoreWidget'
-export { AIInsightsSummaryCard } from './AIInsightsSummaryCard'
-export { SignatureDetailsCard } from './SignatureDetailsCard'
-export { ContractQuickActionsBar } from './ContractQuickActionsBar'
-export { ContractSmartAlerts } from './ContractSmartAlerts'
-export { ContractLifecycleTimeline } from './ContractLifecycleTimeline'
-export { ContractRenewalWorkflowCard } from './ContractRenewalWorkflowCard'
+export { SectionErrorBoundary } from './SectionErrorBoundary'
