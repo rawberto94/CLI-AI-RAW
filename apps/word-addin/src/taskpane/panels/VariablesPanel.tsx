@@ -12,14 +12,11 @@ import {
   Body2,
   Button,
   Input,
-  Field,
-  Card,
   Spinner,
   Badge,
   Divider,
   MessageBar,
   MessageBarBody,
-  Tooltip,
   Dialog,
   DialogSurface,
   DialogTitle,
@@ -28,16 +25,12 @@ import {
   DialogActions,
 } from '@fluentui/react-components';
 import {
-  SearchRegular,
   ArrowSyncRegular,
-  SaveRegular,
   PersonRegular,
   BuildingRegular,
   CalendarRegular,
   MoneyRegular,
   DocumentRegular,
-  DeleteRegular,
-  AddRegular,
 } from '@fluentui/react-icons';
 import { wordService, Variable } from '../../services/word-service';
 import { apiClient } from '../../services/api-client';

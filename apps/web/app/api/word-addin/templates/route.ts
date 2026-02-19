@@ -18,6 +18,10 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const category = searchParams.get('category');
     const search = searchParams.get('search');
+    const sort = searchParams.get('sort') || 'name';   // name | updatedAt | usageCount
+    const order = searchParams.get('order') || 'asc';   // asc | desc
+    const limit = Math.min(parseInt(searchParams.get('limit') || '100', 10), 200);
+    const offset = parseInt(searchParams.get('offset') || '0', 10);
 
     const where: Record<string, unknown> = {
       tenantId: ctx.tenantId,
@@ -35,22 +39,32 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const templates = await prisma.contractTemplate.findMany({
-      where,
-      orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        category: true,
-        structure: true,
-        metadata: true,
-        isActive: true,
-        version: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const orderByField = ['name', 'updatedAt', 'usageCount', 'createdAt'].includes(sort) ? sort : 'name';
+    const orderByDir = order === 'desc' ? 'desc' : 'asc';
+
+    const [templates, total] = await Promise.all([
+      prisma.contractTemplate.findMany({
+        where,
+        orderBy: { [orderByField]: orderByDir },
+        skip: offset,
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          category: true,
+          structure: true,
+          metadata: true,
+          isActive: true,
+          version: true,
+          usageCount: true,
+          lastUsedAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.contractTemplate.count({ where }),
+    ]);
 
     // Transform to match Word Add-in expected format
     const transformed = templates.map((t) => ({
@@ -58,16 +72,19 @@ export async function GET(req: NextRequest) {
       name: t.name,
       description: t.description || '',
       category: t.category || 'OTHER',
+      folder: t.category || 'OTHER',
       content: t.structure || { sections: [] },
       variables: Array.isArray(t.metadata) ? t.metadata : [],
       clauses: [],
       isActive: t.isActive,
       version: t.version || 1,
+      usageCount: t.usageCount,
+      lastUsedAt: t.lastUsedAt?.toISOString() || null,
       createdAt: t.createdAt.toISOString(),
       updatedAt: t.updatedAt.toISOString(),
     }));
 
-    return createSuccessResponse(ctx, transformed);
+    return createSuccessResponse(ctx, { templates: transformed, total, limit, offset });
   } catch (error) {
     console.error('Word Add-in templates error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch templates', 500);

@@ -22,12 +22,14 @@ import {
   SparkleRegular,
   PersonRegular,
   SettingsRegular,
+  NoteRegular,
 } from '@fluentui/react-icons';
 import { TemplatesPanel } from './panels/TemplatesPanel';
 import { ClausesPanel } from './panels/ClausesPanel';
 import { AIAssistPanel } from './panels/AIAssistPanel';
 import { VariablesPanel } from './panels/VariablesPanel';
 import { SettingsPanel } from './panels/SettingsPanel';
+import { DraftsPanel } from './panels/DraftsPanel';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginScreen } from './components/LoginScreen';
 
@@ -65,7 +67,7 @@ const useStyles = makeStyles({
   },
 });
 
-type TabId = 'templates' | 'clauses' | 'ai' | 'variables' | 'settings';
+type TabId = 'templates' | 'drafts' | 'clauses' | 'ai' | 'variables' | 'settings';
 
 const AppContent: React.FC = () => {
   const styles = useStyles();
@@ -108,6 +110,9 @@ const AppContent: React.FC = () => {
           <Tab value="templates" icon={<DocumentRegular />}>
             Templates
           </Tab>
+          <Tab value="drafts" icon={<NoteRegular />}>
+            Drafts
+          </Tab>
           <Tab value="clauses" icon={<TextBulletListSquareRegular />}>
             Clauses
           </Tab>
@@ -126,6 +131,7 @@ const AppContent: React.FC = () => {
       {/* Main Content */}
       <div className={styles.content}>
         {selectedTab === 'templates' && <TemplatesPanel />}
+        {selectedTab === 'drafts' && <DraftsPanel />}
         {selectedTab === 'clauses' && <ClausesPanel />}
         {selectedTab === 'ai' && <AIAssistPanel />}
         {selectedTab === 'variables' && <VariablesPanel />}

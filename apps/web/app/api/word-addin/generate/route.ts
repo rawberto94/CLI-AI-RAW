@@ -41,20 +41,21 @@ export async function POST(req: NextRequest) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Template not found', 404);
     }
 
-    // Fetch selected clauses
+    // Fetch selected clauses from reusable ClauseLibrary
     let clauses: Array<{ id: string; name: string; content: string }> = [];
     if (selectedClauses && selectedClauses.length > 0) {
-      const rawClauses = await prisma.clause.findMany({
+      const rawClauses = await prisma.clauseLibrary.findMany({
         where: {
           id: { in: selectedClauses },
+          tenantId: ctx.tenantId,
         },
         select: {
           id: true,
-          category: true,
-          text: true,
+          title: true,
+          content: true,
         },
       });
-      clauses = rawClauses.map(c => ({ id: c.id, name: c.category, content: c.text }));
+      clauses = rawClauses.map(c => ({ id: c.id, name: c.title, content: c.content }));
     }
 
     // Generate contract content
@@ -70,6 +71,15 @@ export async function POST(req: NextRequest) {
         variables,
         status: 'draft',
         createdBy: ctx.userId || 'word-addin',
+      },
+    });
+
+    // Track template usage
+    await prisma.contractTemplate.update({
+      where: { id: templateId },
+      data: {
+        usageCount: { increment: 1 },
+        lastUsedAt: new Date(),
       },
     });
 

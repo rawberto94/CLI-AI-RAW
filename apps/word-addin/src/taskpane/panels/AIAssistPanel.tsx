@@ -11,8 +11,6 @@ import {
   Body1,
   Body2,
   Button,
-  Card,
-  CardHeader,
   Spinner,
   Textarea,
   Select,
@@ -35,7 +33,7 @@ import {
   ArrowDownloadRegular,
   CopyRegular,
 } from '@fluentui/react-icons';
-import { apiClient, AIAssistResponse, RiskFlag } from '../../services/api-client';
+import { apiClient, AIAssistResponse } from '../../services/api-client';
 import { wordService } from '../../services/word-service';
 
 const useStyles = makeStyles({

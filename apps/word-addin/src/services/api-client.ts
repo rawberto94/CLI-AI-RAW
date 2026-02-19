@@ -24,12 +24,15 @@ export interface Template {
   id: string;
   name: string;
   description: string;
-  category: 'MSA' | 'SOW' | 'NDA' | 'AMENDMENT' | 'SLA' | 'OTHER';
+  category: 'MSA' | 'SOW' | 'NDA' | 'AMENDMENT' | 'SLA' | 'OTHER' | string;
+  folder: string;
   content: TemplateContent;
   variables: TemplateVariable[];
   clauses: string[]; // Clause IDs
   isActive: boolean;
   version: number;
+  usageCount: number;
+  lastUsedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -220,32 +223,86 @@ class ContigoApiClient {
   // TEMPLATES
   // ============================================================================
 
-  async getTemplates(category?: string): Promise<ApiResponse<Template[]>> {
-    const query = category ? `?category=${encodeURIComponent(category)}` : '';
-    return this.request(`/word-addin/templates${query}`);
+  async getTemplates(category?: string, search?: string, sort?: string): Promise<ApiResponse<{ templates: Template[]; total: number }>> {
+    const params = new URLSearchParams();
+    if (category) params.set('category', category);
+    if (search) params.set('search', search);
+    if (sort) params.set('sort', sort);
+    const query = params.toString();
+    return this.request(`/word-addin/templates${query ? `?${query}` : ''}`);
   }
 
   async getTemplate(id: string): Promise<ApiResponse<Template>> {
     return this.request(`/word-addin/templates/${id}`);
   }
 
-  async createTemplate(template: Omit<Template, 'id' | 'createdAt' | 'updatedAt'>): Promise<ApiResponse<Template>> {
+  async createTemplate(template: {
+    name: string;
+    description?: string;
+    category?: string;
+    content?: { sections: Array<{ id: string; heading: string; level: number; content: string; isOptional?: boolean }> };
+    variables?: TemplateVariable[];
+  }): Promise<ApiResponse<Template>> {
     return this.request('/word-addin/templates', {
       method: 'POST',
       body: JSON.stringify(template),
     });
   }
 
-  async updateTemplate(id: string, template: Partial<Template>): Promise<ApiResponse<Template>> {
+  async updateTemplate(id: string, template: Partial<{
+    name: string;
+    description: string;
+    category: string;
+    content: unknown;
+    variables: TemplateVariable[];
+    isActive: boolean;
+  }>): Promise<ApiResponse<Template>> {
     return this.request(`/word-addin/templates/${id}`, {
       method: 'PUT',
       body: JSON.stringify(template),
     });
   }
 
-  async deleteTemplate(id: string): Promise<ApiResponse<void>> {
+  async deleteTemplate(id: string): Promise<ApiResponse<{ deleted: boolean }>> {
     return this.request(`/word-addin/templates/${id}`, {
       method: 'DELETE',
+    });
+  }
+
+  async duplicateTemplate(id: string, newName: string): Promise<ApiResponse<Template>> {
+    // Fetch full template, then create a copy
+    const result = await this.getTemplate(id);
+    if (!result.success || !result.data) {
+      return { success: false, error: result.error || { code: 'NOT_FOUND', message: 'Template not found' } };
+    }
+    const t = result.data;
+    return this.createTemplate({
+      name: newName,
+      description: t.description,
+      category: t.category,
+      content: t.content,
+      variables: t.variables,
+    });
+  }
+
+  async getTemplateFolders(): Promise<ApiResponse<{
+    folders: Array<{ name: string; count: number; isBuiltIn: boolean }>;
+    totalCount: number;
+  }>> {
+    return this.request('/word-addin/templates/folders');
+  }
+
+  async moveTemplatesToFolder(templateIds: string[], folder: string): Promise<ApiResponse<{ moved: number }>> {
+    return this.request('/word-addin/templates/folders', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'move', templateIds, folder }),
+    });
+  }
+
+  async renameFolder(oldFolder: string, newFolder: string): Promise<ApiResponse<{ renamed: number }>> {
+    return this.request('/word-addin/templates/folders', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'rename', oldFolder, newFolder }),
     });
   }
 
@@ -355,11 +412,32 @@ class ContigoApiClient {
   }
 
   async loadContractDraft(draftId: string): Promise<ApiResponse<{
+    id: string;
+    title: string;
     content: string;
     variables: Record<string, string>;
-    template: Template;
+    status: string;
+    template: Template | null;
   }>> {
     return this.request(`/word-addin/drafts/${draftId}`);
+  }
+
+  async updateContractDraft(draftId: string, data: {
+    title?: string;
+    content?: string;
+    variables?: Record<string, string>;
+    status?: string;
+  }): Promise<ApiResponse<{ id: string; status: string }>> {
+    return this.request(`/word-addin/drafts/${draftId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteContractDraft(draftId: string): Promise<ApiResponse<{ deleted: boolean }>> {
+    return this.request(`/word-addin/drafts/${draftId}`, {
+      method: 'DELETE',
+    });
   }
 
   // ============================================================================
