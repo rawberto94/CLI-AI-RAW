@@ -19,6 +19,8 @@ export interface Contract {
     client?: string;
     supplier?: string;
   };
+  clientName?: string;
+  supplierName?: string;
   value?: number;
   effectiveDate?: string;
   expirationDate?: string;
@@ -38,6 +40,15 @@ export interface Contract {
   } | null;
   type?: string;
   createdAt?: string;
+  // Financial fields
+  currency?: string;
+  totalValue?: number;
+  paymentTerms?: string;
+  paymentFrequency?: string;
+  // Enterprise metadata
+  jurisdiction?: string;
+  autoRenewing?: boolean | null;
+  noticePeriod?: string;
   // Signature and document classification
   signatureStatus?: SignatureStatus;
   signatureDate?: string;

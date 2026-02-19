@@ -54,7 +54,7 @@ interface FilterGroup {
 }
 
 interface DragDropFilterBuilderProps {
-  onApply: (groups: FilterGroup[]) => void;
+  onApply: (groups: FilterGroup[], interGroupLogic?: 'AND' | 'OR') => void;
   onClose: () => void;
   initialGroups?: FilterGroup[];
   /** Dynamic options derived from contract data */
@@ -206,6 +206,8 @@ export function DragDropFilterBuilder({
   const [showTemplateList, setShowTemplateList] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
+  // Inter-group connector logic: how groups combine at the top level
+  const [interGroupLogic, setInterGroupLogic] = useState<'AND' | 'OR'>('AND');
 
   // Build effective filter templates with dynamic options
   const effectiveTemplates = FILTER_TEMPLATES.map(t => {
@@ -299,6 +301,7 @@ export function DragDropFilterBuilder({
 
   const clearAllFilters = useCallback(() => {
     setFilterGroups([{ id: 'group-1', logic: 'AND', filters: [] }]);
+    setInterGroupLogic('AND');
   }, []);
 
   const toggleGroupLogic = useCallback((groupId: string) => {
@@ -335,13 +338,13 @@ export function DragDropFilterBuilder({
       if (e.key === 'Escape') {
         onClose();
       } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && totalFilters > 0) {
-        onApply(filterGroups);
+        onApply(filterGroups, interGroupLogic);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, onApply, filterGroups, totalFilters]);
+  }, [onClose, onApply, filterGroups, totalFilters, interGroupLogic]);
 
   return (
     <motion.div
@@ -603,18 +606,24 @@ export function DragDropFilterBuilder({
                   <div key={group.id}>
                     {/* Group Connector */}
                     {groupIndex > 0 && (
-                      <div className="flex items-center justify-center py-2">
+                      <div className="flex items-center justify-center py-2 gap-2">
+                        <div className="flex-1 h-px bg-slate-300" />
                         <Button
                           variant="outline"
                           size="sm"
-                          className="bg-white border-2 border-slate-300 hover:border-indigo-400 font-semibold shadow-sm z-10"
-                          onClick={() => {
-                            // Toggle between groups (AND/OR at top level)
-                          }}
+                          className={cn(
+                            "border-2 font-semibold shadow-sm z-10 transition-colors",
+                            interGroupLogic === 'OR'
+                              ? "bg-amber-50 border-amber-400 hover:border-amber-500 text-amber-700"
+                              : "bg-white border-slate-300 hover:border-indigo-400"
+                          )}
+                          onClick={() => setInterGroupLogic(prev => prev === 'AND' ? 'OR' : 'AND')}
+                          title={`Click to toggle: groups are combined with ${interGroupLogic}. ${interGroupLogic === 'AND' ? 'All groups must match.' : 'Any group can match.'}`}
                         >
                           <Link2 className="h-3 w-3 mr-1" />
-                          AND
+                          {interGroupLogic}
                         </Button>
+                        <div className="flex-1 h-px bg-slate-300" />
                       </div>
                     )}
 
@@ -857,7 +866,7 @@ export function DragDropFilterBuilder({
                 Cancel
               </Button>
               <Button
-                onClick={() => onApply(filterGroups)}
+                onClick={() => onApply(filterGroups, interGroupLogic)}
                 disabled={totalFilters === 0}
                 className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
               >

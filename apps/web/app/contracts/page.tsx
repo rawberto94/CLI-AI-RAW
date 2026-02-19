@@ -113,7 +113,6 @@ import { CompactContractRow } from "@/components/contracts/CompactContractRow";
 import {
   type SortField,
   type SortDirection,
-  RISK_LEVELS,
   VALUE_RANGES,
   DATE_PRESETS,
   EXPIRATION_FILTERS,
@@ -160,14 +159,12 @@ export default function ContractsPage() {
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [typeFilters, setTypeFilters] = useState<string[]>([]);
-  const [riskFilters, setRiskFilters] = useState<string[]>([]);
+  // NOTE: statusFilter, typeFilters, riskFilters, supplierFilters, categoryFilter
+  // are now DERIVED from filterState (see below) to eliminate the dual-filter-system.
   const [approvalFilters, setApprovalFilters] = useState<string[]>([]);
   const [valueRangeFilter, setValueRangeFilter] = useState<string | null>(null);
   const [dateRangeFilter, setDateRangeFilter] = useState<string | null>(null);
   const [expirationFilters, setExpirationFilters] = useState<string[]>([]);
-  const [supplierFilters, setSupplierFilters] = useState<string[]>([]);
   const [signatureFilters, setSignatureFilters] = useState<string[]>([]);
   const [documentTypeFilters, setDocumentTypeFilters] = useState<string[]>([]);
   const [activePreset, setActivePreset] = useState<string | null>(null);
@@ -196,8 +193,36 @@ export default function ContractsPage() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showVisualBuilder, setShowVisualBuilder] = useState(false);
   
-  // Category filter state
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  // ── Consolidated filter accessors ──────────────────────────────────
+  // These 5 filters previously had their own useState, creating a dual
+  // source of truth with FilterState.  Now they are DERIVED from
+  // filterState so the AdvancedFilterPanel, Visual Builder, search bar,
+  // mobile sheet, and filter chips all share a single source of truth.
+  const statusFilter = filterState.statuses.length > 0 ? filterState.statuses[0] : 'all';
+  const typeFilters = filterState.contractTypes ?? [];
+  const riskFilters = filterState.riskLevels ?? [];
+  const supplierFilters = filterState.suppliers ?? [];
+  const categoryFilter = filterState.categories.length > 0 ? filterState.categories[0] : null;
+
+  // Setter callbacks that forward to filterState (backward-compatible
+  // with existing consumer components like StateOfTheArtSearch)
+  const setStatusFilter = useCallback((val: string) => {
+    setFilterState(prev => ({ ...prev, statuses: val === 'all' ? [] : [val] }));
+  }, []);
+  const setTypeFilters = useCallback((vals: string[]) => {
+    setFilterState(prev => ({ ...prev, contractTypes: vals }));
+  }, []);
+  const setRiskFilters = useCallback((vals: string[]) => {
+    setFilterState(prev => ({ ...prev, riskLevels: vals }));
+  }, []);
+  const setSupplierFilters = useCallback((vals: string[]) => {
+    setFilterState(prev => ({ ...prev, suppliers: vals }));
+  }, []);
+  const setCategoryFilter = useCallback((cat: string | null) => {
+    setFilterState(prev => ({ ...prev, categories: cat ? [cat] : [] }));
+  }, []);
+
+  // Category metadata state
   const [categories, setCategories] = useState<Array<{id: string; name: string; color: string; icon: string; contractCount?: number}>>([]);
   const [isBulkCategorizing, setIsBulkCategorizing] = useState(false);
   
@@ -496,22 +521,18 @@ export default function ContractsPage() {
     }
   }, [selectedContracts, dataMode, refetch]);
 
-  // Clear all filters
+  // Clear all filters  (single source of truth: filterState for the 5
+  // consolidated filters; remaining standalone vars cleared explicitly)
   const clearFilters = useCallback(() => {
     setSearchQuery("");
-    setStatusFilter("all");
-    setTypeFilters([]);
-    setRiskFilters([]);
     setApprovalFilters([]);
     setValueRangeFilter(null);
     setDateRangeFilter(null);
     setExpirationFilters([]);
-    setSupplierFilters([]);
     setSignatureFilters([]);
     setDocumentTypeFilters([]);
     setActivePreset(null);
     setAdvancedFilters({});
-    setCategoryFilter(null);
     setFilterState({
       statuses: [],
       documentRoles: [],
@@ -578,7 +599,7 @@ export default function ContractsPage() {
       operator: string;
       value: any;
     }>;
-  }>) => {
+  }>, _interGroupLogic?: 'AND' | 'OR') => {
     // Convert visual builder format to FilterState
     const newFilterState: FilterState = {
       statuses: [],
@@ -916,23 +937,44 @@ export default function ContractsPage() {
     return Array.from(types).filter(Boolean).sort();
   }, [contracts]);
 
-  // Check if any filters are active (includes both legacy standalone filters AND FilterState fields)
-  const hasActiveFilters = searchQuery || statusFilter !== "all" || typeFilters.length > 0 || riskFilters.length > 0 || approvalFilters.length > 0 || valueRangeFilter || dateRangeFilter || expirationFilters.length > 0 || supplierFilters.length > 0 || signatureFilters.length > 0 || documentTypeFilters.length > 0 || activePreset || Object.keys(advancedFilters).length > 0 || categoryFilter || filterState.statuses.length > 0 || filterState.documentRoles.length > 0 || filterState.categories.length > 0 || filterState.hasDeadline !== null || filterState.isExpiring !== null || (filterState.riskLevels?.length ?? 0) > 0 || (filterState.suppliers?.length ?? 0) > 0 || (filterState.clients?.length ?? 0) > 0 || (filterState.contractTypes?.length ?? 0) > 0 || (filterState.currencies?.length ?? 0) > 0 || (filterState.jurisdictions?.length ?? 0) > 0 || (filterState.paymentTerms?.length ?? 0) > 0;
+  const availableCurrencies = useMemo(() => {
+    const currencies = new Set<string>();
+    contracts.forEach(c => {
+      if ((c as any).currency) currencies.add((c as any).currency);
+    });
+    return Array.from(currencies).filter(Boolean).sort();
+  }, [contracts]);
+
+  const availableJurisdictions = useMemo(() => {
+    const jurisdictions = new Set<string>();
+    contracts.forEach(c => {
+      if ((c as any).jurisdiction) jurisdictions.add((c as any).jurisdiction);
+    });
+    return Array.from(jurisdictions).filter(Boolean).sort();
+  }, [contracts]);
+
+  const availablePaymentTerms = useMemo(() => {
+    const terms = new Set<string>();
+    contracts.forEach(c => {
+      if ((c as any).paymentTerms) terms.add((c as any).paymentTerms);
+    });
+    return Array.from(terms).filter(Boolean).sort();
+  }, [contracts]);
+
+  // Check if any filters are active (consolidated: FilterState is the single source
+  // for status, type, risk, supplier, category, client, currency, jurisdiction, paymentTerms)
+  const hasActiveFilters = searchQuery || approvalFilters.length > 0 || valueRangeFilter || dateRangeFilter || expirationFilters.length > 0 || signatureFilters.length > 0 || documentTypeFilters.length > 0 || activePreset || Object.keys(advancedFilters).length > 0 || filterState.statuses.length > 0 || filterState.documentRoles.length > 0 || filterState.categories.length > 0 || filterState.hasDeadline !== null || filterState.isExpiring !== null || (filterState.riskLevels?.length ?? 0) > 0 || (filterState.suppliers?.length ?? 0) > 0 || (filterState.clients?.length ?? 0) > 0 || (filterState.contractTypes?.length ?? 0) > 0 || (filterState.currencies?.length ?? 0) > 0 || (filterState.jurisdictions?.length ?? 0) > 0 || (filterState.paymentTerms?.length ?? 0) > 0;
   
-  // Count active filters for badge (includes both legacy standalone filters AND FilterState fields)
+  // Count active filters for badge (no double-counting: consolidated vars
+  // are only counted once via their FilterState source)
   const activeFilterCount = [
     searchQuery ? 1 : 0,
-    statusFilter !== 'all' ? 1 : 0,
-    typeFilters.length,
-    riskFilters.length,
     approvalFilters.length,
     valueRangeFilter ? 1 : 0,
     dateRangeFilter ? 1 : 0,
     expirationFilters.length,
-    supplierFilters.length,
     signatureFilters.length,
     documentTypeFilters.length,
-    categoryFilter ? 1 : 0,
     filterState.statuses.length,
     filterState.documentRoles.length,
     filterState.categories.length,
@@ -965,24 +1007,31 @@ export default function ContractsPage() {
         contract.parties?.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         contract.type?.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Status filter (combines old statusFilter + new filterState.statuses)
+      // Status filter (consolidated — filterState.statuses is the single source)
       const matchesStatus =
-        (statusFilter === "all" || contract.status === statusFilter) &&
-        (filterState.statuses.length === 0 || filterState.statuses.includes(contract.status || ''));
+        filterState.statuses.length === 0 || filterState.statuses.includes(contract.status || '');
 
-      // Document role filter (new from filterState)
+      // Document role filter
       const matchesDocumentRole = filterState.documentRoles.length === 0 || 
         filterState.documentRoles.includes(contract.documentRole || '');
 
-      // Contract type filter
-      const matchesType = typeFilters.length === 0 || 
-        (contract.type && typeFilters.includes(contract.type));
+      // Contract type filter (consolidated — filterState.contractTypes is the single source)
+      const matchesType = !filterState.contractTypes?.length ||
+        filterState.contractTypes.some(t =>
+          contract.type?.toLowerCase().includes(t.toLowerCase())
+        );
 
-      // Risk level filter
-      const matchesRisk = riskFilters.length === 0 || riskFilters.some(risk => {
-        const level = RISK_LEVELS.find(l => l.value === risk);
-        if (!level?.range || contract.riskScore === undefined || contract.riskScore === null) return false;
-        return contract.riskScore >= (level.range[0] ?? 0) && contract.riskScore < (level.range[1] ?? 100);
+      // Risk level filter (consolidated — filterState.riskLevels is the single source)
+      const matchesRisk = !filterState.riskLevels?.length || filterState.riskLevels.some(risk => {
+        const riskLower = risk.toLowerCase();
+        if (contract.riskScore === undefined || contract.riskScore === null) return false;
+        switch (riskLower) {
+          case 'low': return contract.riskScore >= 0 && contract.riskScore < 30;
+          case 'medium': return contract.riskScore >= 30 && contract.riskScore < 70;
+          case 'high': return contract.riskScore >= 70 && contract.riskScore < 90;
+          case 'critical': return contract.riskScore >= 90;
+          default: return false;
+        }
       });
 
       // Approval status filter  
@@ -991,14 +1040,14 @@ export default function ContractsPage() {
         return contractApprovalStatus === approval;
       });
       
-      // Value range filter (combines old valueRangeFilter + new filterState.valueRange)
+      // Value range filter (preset-based + filterState slider)
       const matchesValueRange = (!valueRangeFilter || (() => {
         const range = VALUE_RANGES.find(r => r.value === valueRangeFilter);
         if (!range || !contract.value) return false;
         return contract.value >= range.min && contract.value < range.max;
       })()) && (!contract.value || (contract.value >= filterState.valueRange.min && contract.value <= filterState.valueRange.max));
       
-      // Date range filter (combines old dateRangeFilter + new filterState.dateRange)
+      // Date range filter (preset-based + filterState date picker)
       const matchesDateRange = (!dateRangeFilter || (() => {
         const preset = DATE_PRESETS.find(p => p.value === dateRangeFilter);
         if (!preset || !contract.createdAt) return false;
@@ -1025,22 +1074,32 @@ export default function ContractsPage() {
         }
       });
 
-      // Has deadline filter (new from filterState)
+      // Has deadline filter
       const matchesHasDeadline = filterState.hasDeadline === null || 
         (filterState.hasDeadline ? !!contract.expirationDate : !contract.expirationDate);
 
-      // Is expiring filter (new from filterState)
+      // Is expiring filter
       const matchesIsExpiring = filterState.isExpiring === null || (() => {
         if (!filterState.isExpiring) return true;
         if (!contract.expirationDate) return false;
         const expirationDate = new Date(contract.expirationDate);
         const daysUntilExpiry = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        return daysUntilExpiry >= 0 && daysUntilExpiry <= 30; // Expiring within 30 days
+        return daysUntilExpiry >= 0 && daysUntilExpiry <= 30;
       })();
 
-      // Supplier filter
-      const matchesSupplier = supplierFilters.length === 0 || 
-        (contract.parties?.supplier && supplierFilters.includes(contract.parties.supplier));
+      // Supplier filter (consolidated — filterState.suppliers is the single source)
+      const matchesSupplier = !filterState.suppliers?.length ||
+        filterState.suppliers.some(s =>
+          contract.parties?.supplier?.toLowerCase().includes(s.toLowerCase()) ||
+          (contract as any).supplierName?.toLowerCase().includes(s.toLowerCase())
+        );
+
+      // Client filter (from filterState — case-insensitive partial match)
+      const matchesClient = !filterState.clients?.length ||
+        filterState.clients.some(c =>
+          contract.parties?.client?.toLowerCase().includes(c.toLowerCase()) ||
+          (contract as any).clientName?.toLowerCase().includes(c.toLowerCase())
+        );
 
       // Signature status filter
       const matchesSignature = signatureFilters.length === 0 || 
@@ -1050,81 +1109,53 @@ export default function ContractsPage() {
       const matchesDocumentType = documentTypeFilters.length === 0 || 
         documentTypeFilters.includes(contract.documentClassification || 'contract');
 
-      // Advanced filters
+      // Advanced filters (text-based client/supplier name + min/max value)
       const matchesAdvanced = 
         (!advancedFilters.clientName || contract.parties?.client?.toLowerCase().includes(advancedFilters.clientName.toLowerCase())) &&
         (!advancedFilters.supplierName || contract.parties?.supplier?.toLowerCase().includes(advancedFilters.supplierName.toLowerCase())) &&
         (!advancedFilters.minValue || (contract.value && contract.value >= advancedFilters.minValue)) &&
         (!advancedFilters.maxValue || (contract.value && contract.value <= advancedFilters.maxValue));
 
-      // Category filter (combines old categoryFilter + new filterState.categories)
-      const matchesCategory = (!categoryFilter || 
-        (categoryFilter === 'uncategorized' ? !contract.category : contract.category?.id === categoryFilter)) &&
-        (filterState.categories.length === 0 || (contract.category && filterState.categories.includes(contract.category.id)));
+      // Category filter (consolidated — filterState.categories is the single source,
+      // 'uncategorized' is a special value meaning "no category assigned")
+      const matchesCategory = filterState.categories.length === 0 || filterState.categories.some(cat =>
+        cat === 'uncategorized' ? !contract.category : contract.category?.id === cat
+      );
 
-      // Visual builder: risk level filter (from filterState.riskLevels)
-      const matchesFilterStateRisk = !filterState.riskLevels?.length || filterState.riskLevels.some(risk => {
-        const riskLower = risk.toLowerCase();
-        if (contract.riskScore === undefined || contract.riskScore === null) return false;
-        switch (riskLower) {
-          case 'low': return contract.riskScore >= 0 && contract.riskScore < 30;
-          case 'medium': return contract.riskScore >= 30 && contract.riskScore < 70;
-          case 'high': return contract.riskScore >= 70 && contract.riskScore < 90;
-          case 'critical': return contract.riskScore >= 90;
-          default: return false;
-        }
-      });
-
-      // Visual builder: supplier filter (case-insensitive partial match)
-      const matchesFilterStateSupplier = !filterState.suppliers?.length ||
-        filterState.suppliers.some(s =>
-          contract.parties?.supplier?.toLowerCase().includes(s.toLowerCase())
-        );
-
-      // Visual builder: client filter (case-insensitive partial match)
-      const matchesFilterStateClient = !filterState.clients?.length ||
-        filterState.clients.some(c =>
-          contract.parties?.client?.toLowerCase().includes(c.toLowerCase())
-        );
-
-      // Visual builder: contract type filter (case-insensitive partial match)
-      const matchesFilterStateContractType = !filterState.contractTypes?.length ||
-        filterState.contractTypes.some(t =>
-          contract.type?.toLowerCase().includes(t.toLowerCase())
-        );
-
-      // Visual builder: currency filter (search title + type for currency mentions)
-      const matchesFilterStateCurrency = !filterState.currencies?.length ||
+      // Currency filter (uses actual contract.currency field with title fallback)
+      const matchesCurrency = !filterState.currencies?.length ||
         filterState.currencies.some(cur => {
           const curLower = cur.toLowerCase();
           return (
-            contract.title?.toLowerCase().includes(curLower) ||
-            contract.type?.toLowerCase().includes(curLower)
+            (contract as any).currency?.toLowerCase() === curLower ||
+            contract.title?.toLowerCase().includes(curLower)
           );
         });
 
-      // Visual builder: jurisdiction filter (search title + parties for jurisdiction mentions)
-      const matchesFilterStateJurisdiction = !filterState.jurisdictions?.length ||
+      // Jurisdiction filter (uses actual contract.jurisdiction field with title fallback)
+      const matchesJurisdiction = !filterState.jurisdictions?.length ||
         filterState.jurisdictions.some(jur => {
           const jurLower = jur.toLowerCase();
           return (
-            contract.title?.toLowerCase().includes(jurLower) ||
-            contract.parties?.client?.toLowerCase().includes(jurLower) ||
-            contract.parties?.supplier?.toLowerCase().includes(jurLower)
+            (contract as any).jurisdiction?.toLowerCase().includes(jurLower) ||
+            contract.title?.toLowerCase().includes(jurLower)
           );
         });
 
-      // Visual builder: payment terms filter (search title for payment terms mentions)
-      const matchesFilterStatePaymentTerms = !filterState.paymentTerms?.length ||
+      // Payment terms filter (uses actual contract.paymentTerms field with title fallback)
+      const matchesPaymentTerms = !filterState.paymentTerms?.length ||
         filterState.paymentTerms.some(pt => {
           const ptLower = pt.toLowerCase();
-          return contract.title?.toLowerCase().includes(ptLower);
+          return (
+            (contract as any).paymentTerms?.toLowerCase().includes(ptLower) ||
+            contract.title?.toLowerCase().includes(ptLower)
+          );
         });
 
-      return matchesSearch && matchesStatus && matchesDocumentRole && matchesType && matchesRisk && matchesApproval && matchesValueRange && matchesDateRange && matchesExpiration && matchesHasDeadline && matchesIsExpiring && matchesSupplier && matchesSignature && matchesDocumentType && matchesAdvanced && matchesCategory && matchesFilterStateRisk && matchesFilterStateSupplier && matchesFilterStateClient && matchesFilterStateContractType && matchesFilterStateCurrency && matchesFilterStateJurisdiction && matchesFilterStatePaymentTerms;
+      return matchesSearch && matchesStatus && matchesDocumentRole && matchesType && matchesRisk && matchesApproval && matchesValueRange && matchesDateRange && matchesExpiration && matchesHasDeadline && matchesIsExpiring && matchesSupplier && matchesClient && matchesSignature && matchesDocumentType && matchesAdvanced && matchesCategory && matchesCurrency && matchesJurisdiction && matchesPaymentTerms;
     });
      
-  }, [contracts, searchQuery, statusFilter, typeFilters, riskFilters, approvalFilters, valueRangeFilter, dateRangeFilter, expirationFilters, supplierFilters, signatureFilters, documentTypeFilters, advancedFilters, categoryFilter, filterState]);
+  }, [contracts, searchQuery, approvalFilters, valueRangeFilter, dateRangeFilter, expirationFilters, signatureFilters, documentTypeFilters, advancedFilters, filterState]);
 
   // Sort filtered contracts
   const sortedContracts = useMemo(() => {
