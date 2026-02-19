@@ -5,12 +5,14 @@
  * Returns the state of all registered circuit breakers for operational visibility.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getAllCircuitStats } from '@/lib/scalability/circuit-breaker';
+import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(_request: NextRequest) {
+  const ctx = getApiContext(_request);
   try {
     const stats = getAllCircuitStats();
     
@@ -22,7 +24,7 @@ export async function GET(_request: NextRequest) {
     
     const overallHealth = openCount > 0 ? 'degraded' : halfOpenCount > 0 ? 'recovering' : 'healthy';
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       status: overallHealth,
       timestamp: new Date().toISOString(),
       summary: {
@@ -34,13 +36,6 @@ export async function GET(_request: NextRequest) {
       breakers: stats,
     });
   } catch (error) {
-    return NextResponse.json(
-      { 
-        status: 'error', 
-        message: 'Failed to retrieve circuit breaker metrics',
-        error: (error as Error).message,
-      },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to retrieve circuit breaker metrics', 500, { details: (error as Error).message });
   }
 }

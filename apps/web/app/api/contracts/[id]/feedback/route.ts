@@ -10,8 +10,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from '@/lib/auth'
-import { getSessionTenantId } from '@/lib/tenant-server'
 import { prisma } from '@/lib/prisma'
 import { contractService } from 'data-orchestration/services'
 import type { Prisma } from '@prisma/client'
@@ -55,13 +53,8 @@ export async function POST(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession()
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-
     const { id: contractId } = await params
-    const tenantId = getSessionTenantId(session)
+    const tenantId = ctx.tenantId
     
     const body: FeedbackRequest = await request.json()
     const { feedbackType, fields } = body
@@ -184,13 +177,8 @@ export async function GET(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession()
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-
     const { id: contractId } = await params
-    const tenantId = getSessionTenantId(session)
+    const tenantId = ctx.tenantId
     const { searchParams } = new URL(request.url)
     const view = searchParams.get('view') || 'history'
 

@@ -8,14 +8,15 @@
  *   Returns the current embedding model and a summary of stale counts.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthenticatedApiContext } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 export async function GET(request: NextRequest) {
+  const ctx = getApiContext(request);
   const authCtx = getAuthenticatedApiContext(request);
   if (!authCtx) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
   }
   try {
     const currentModel = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
       prisma.contractMetadata.count({ where: { embeddingVersion: null } }),
     ]);
 
-    return NextResponse.json({
+    return createSuccessResponse(authCtx, {
       currentModel,
       counts: {
         total,
@@ -46,17 +47,15 @@ export async function GET(request: NextRequest) {
       refreshCron: process.env.EMBEDDING_REFRESH_CRON || '0 3 * * *',
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch embedding status' },
-      { status: 500 },
-    );
+    return createErrorResponse(authCtx, 'INTERNAL_ERROR', error.message || 'Failed to fetch embedding status', 500);
   }
 }
 
 export async function POST(request: NextRequest) {
+  const ctx = getApiContext(request);
   const authCtx = getAuthenticatedApiContext(request);
   if (!authCtx) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
   }
   try {
     // Dynamic import to avoid bundling worker code in the web app
@@ -67,10 +66,7 @@ export async function POST(request: NextRequest) {
 
     const result = await triggerEmbeddingRefresh();
 
-    return NextResponse.json({
-      success: true,
-      ...result,
-    });
+    return createSuccessResponse(authCtx, result);
   } catch (error: any) {
     // If the worker module isn't available (e.g. web-only deploy), queue the
     // job via BullMQ directly as a fallback.
@@ -81,15 +77,11 @@ export async function POST(request: NextRequest) {
         jobId: 'embedding-refresh-manual',
         priority: 10,
       });
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(authCtx, {
         message: 'Embedding refresh job queued (worker will process)',
       });
     } catch {
-      return NextResponse.json(
-        { error: error.message || 'Failed to trigger embedding refresh' },
-        { status: 500 },
-      );
+      return createErrorResponse(authCtx, 'INTERNAL_ERROR', error.message || 'Failed to trigger embedding refresh', 500);
     }
   }
 }

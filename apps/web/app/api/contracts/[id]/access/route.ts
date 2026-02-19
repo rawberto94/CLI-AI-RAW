@@ -5,7 +5,6 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getServerSession } from '@/lib/auth';
 
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
@@ -29,16 +28,11 @@ export async function GET(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
     const { id: contractId } = await params;
-    
-    if (!session?.user?.id || !session.user.tenantId) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
     
     // Verify contract belongs to tenant
     const contract = await prisma.contract.findFirst({
-      where: { id: contractId, tenantId: session.user.tenantId },
+      where: { id: contractId, tenantId: ctx.tenantId },
       select: { id: true, fileName: true },
     });
     
@@ -107,16 +101,11 @@ export async function POST(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
     const { id: contractId } = await params;
     
-    if (!session?.user?.id || !session.user.tenantId) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-    
     // Check permission to manage contract access
-    const canManage = await hasPermission(session.user.id, 'contracts:manage') ||
-                      await hasContractAccess(session.user.id, contractId, 'manage');
+    const canManage = await hasPermission(ctx.userId, 'contracts:manage') ||
+                      await hasContractAccess(ctx.userId, contractId, 'manage');
     
     if (!canManage) {
       return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
@@ -134,7 +123,7 @@ export async function POST(
     }
     
     // Verify contract belongs to tenant via service layer
-    const contractResult = await contractService.getContract(contractId, session.user.tenantId);
+    const contractResult = await contractService.getContract(contractId, ctx.tenantId);
     
     if (!contractResult.success || !contractResult.data) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
@@ -146,7 +135,7 @@ export async function POST(
     if (userIds && userIds.length > 0) {
       // Verify users belong to same tenant
       const validUsers = await prisma.user.findMany({
-        where: { id: { in: userIds }, tenantId: session.user.tenantId },
+        where: { id: { in: userIds }, tenantId: ctx.tenantId },
         select: { id: true },
       });
       
@@ -159,12 +148,12 @@ export async function POST(
             contractId,
             userId: user.id,
             accessLevel,
-            grantedBy: session.user.id,
+            grantedBy: ctx.userId,
             expiresAt: expiresAt ? new Date(expiresAt) : null,
           },
           update: {
             accessLevel,
-            grantedBy: session.user.id,
+            grantedBy: ctx.userId,
             expiresAt: expiresAt ? new Date(expiresAt) : null,
           },
         });
@@ -176,7 +165,7 @@ export async function POST(
     if (groupIds && groupIds.length > 0) {
       // Verify groups belong to same tenant
       const validGroups = await prisma.userGroup.findMany({
-        where: { id: { in: groupIds }, tenantId: session.user.tenantId },
+        where: { id: { in: groupIds }, tenantId: ctx.tenantId },
         select: { id: true },
       });
       
@@ -191,12 +180,12 @@ export async function POST(
               contractId,
               groupId: group.id,
               accessLevel,
-              grantedBy: session.user.id,
+              grantedBy: ctx.userId,
               expiresAt: expiresAt ? new Date(expiresAt) : null,
             },
             update: {
               accessLevel,
-              grantedBy: session.user.id,
+              grantedBy: ctx.userId,
               expiresAt: expiresAt ? new Date(expiresAt) : null,
             },
           })
@@ -207,8 +196,8 @@ export async function POST(
     
     await auditLog({
       action: AuditAction.CONTRACT_ACCESS_GRANTED,
-      userId: session.user.id,
-      tenantId: session.user.tenantId,
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
       resourceType: 'contract',
       resourceId: contractId,
       metadata: { userIds, groupIds, accessLevel, expiresAt },
@@ -220,14 +209,18 @@ export async function POST(
       try {
         // Fetch user details for notification
         const usersToNotify = await prisma.user.findMany({
-          where: { id: { in: userIds }, tenantId: session.user.tenantId },
+          where: { id: { in: userIds }, tenantId: ctx.tenantId },
           select: { id: true, email: true, firstName: true },
         });
         
-        const userSession = session.user as { firstName?: string; lastName?: string; email?: string } & typeof session.user;
-        const granterName = userSession.firstName 
-          ? `${userSession.firstName} ${userSession.lastName || ''}`
-          : session.user.email || 'Unknown';
+        // Fetch current user details for notification
+        const currentUser = await prisma.user.findUnique({
+          where: { id: ctx.userId },
+          select: { firstName: true, lastName: true, email: true },
+        });
+        const granterName = currentUser?.firstName 
+          ? `${currentUser.firstName} ${currentUser.lastName || ''}`
+          : currentUser?.email || 'Unknown';
         
         const baseUrl = process.env.NEXT_PUBLIC_URL;
         if (!baseUrl) {
@@ -277,15 +270,10 @@ export async function DELETE(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
     const { id: contractId } = await params;
     
-    if (!session?.user?.id || !session.user.tenantId) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-    
-    const canManage = await hasPermission(session.user.id, 'contracts:manage') ||
-                      await hasContractAccess(session.user.id, contractId, 'manage');
+    const canManage = await hasPermission(ctx.userId, 'contracts:manage') ||
+                      await hasContractAccess(ctx.userId, contractId, 'manage');
     
     if (!canManage) {
       return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
@@ -312,8 +300,8 @@ export async function DELETE(
     
     await auditLog({
       action: AuditAction.CONTRACT_ACCESS_REVOKED,
-      userId: session.user.id,
-      tenantId: session.user.tenantId,
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
       resourceType: 'contract',
       resourceId: contractId,
       metadata: { userIds, groupIds },

@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api-middleware';
 import { notificationService } from 'data-orchestration/services';
@@ -30,12 +29,8 @@ export async function GET(request: NextRequest) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-    const tenantId = session.user.tenantId;
-    const userId = session.user.id;
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
     const { searchParams } = new URL(request.url);
     
     const unreadOnly = searchParams.get('unread') === 'true';
@@ -91,11 +86,7 @@ export async function POST(request: NextRequest) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-    const tenantId = session.user.tenantId;
+    const tenantId = ctx.tenantId;
     const body = await request.json();
     
     const { userId, type, title, message, link, metadata, recipients } = body;
@@ -153,12 +144,8 @@ export async function PATCH(request: NextRequest) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-    const tenantId = session.user.tenantId;
-    const userId = session.user.id;
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
     const body = await request.json();
     
     const { notificationIds, markAllRead } = body;
@@ -220,12 +207,8 @@ export async function DELETE(request: NextRequest) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-    const tenantId = session.user.tenantId;
-    const userId = session.user.id;
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
     const { searchParams } = new URL(request.url);
     
     const notificationId = searchParams.get('id');

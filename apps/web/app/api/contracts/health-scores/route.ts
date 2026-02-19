@@ -91,6 +91,11 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
         hs.industry_average, hs.percentile_rank, hs.calculated_at
       FROM contract_health_scores hs
       WHERE hs.tenant_id = ${tenantId}
+        ${contractId ? Prisma.sql`AND hs.contract_id = ${contractId}` : Prisma.empty}
+        ${alertLevel ? Prisma.sql`AND hs.alert_level = ${alertLevel}` : Prisma.empty}
+        ${trendDirection ? Prisma.sql`AND hs.trend_direction = ${trendDirection}` : Prisma.empty}
+        ${minScore ? Prisma.sql`AND hs.overall_score >= ${parseFloat(minScore)}` : Prisma.empty}
+        ${maxScore ? Prisma.sql`AND hs.overall_score <= ${parseFloat(maxScore)}` : Prisma.empty}
       ORDER BY hs.overall_score ASC
       LIMIT ${limit} OFFSET ${offset}
     `;

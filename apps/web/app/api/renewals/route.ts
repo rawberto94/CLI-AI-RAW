@@ -10,7 +10,6 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
-import { getServerSession } from '@/lib/auth';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
 
@@ -124,11 +123,6 @@ export async function GET(request: NextRequest) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
@@ -369,11 +363,6 @@ export async function POST(request: NextRequest) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-
     const body = await request.json();
     const { contractId, renewalId, action, renewalData } = body;
     const tenantId = await getServerTenantId();
@@ -539,11 +528,6 @@ export async function PATCH(request: NextRequest) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-
     const body = await request.json();
     const { contractId, renewalId, updates } = body;
     const tenantId = await getServerTenantId();

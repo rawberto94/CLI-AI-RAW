@@ -7,9 +7,9 @@
  * @version 1.0.0
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withAuthApiHandler, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, type AuthenticatedApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -63,7 +63,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   });
 
   if (contracts.length === 0) {
-    return NextResponse.json({ success: true, data: { redlines: [] } });
+    return createSuccessResponse(ctx, { redlines: [] });
   }
 
   // Build redline change objects from contract metadata
@@ -124,7 +124,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     }
   }
 
-  return NextResponse.json({ success: true, data: { redlines } });
+  return createSuccessResponse(ctx, { redlines });
 });
 
 /**
@@ -137,7 +137,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   const { message, contractId, context: extraContext } = body;
 
   if (!message) {
-    return NextResponse.json({ success: false, error: 'Message is required' }, { status: 400 });
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Message is required', 400);
   }
 
   // Optionally fetch contract context
@@ -168,10 +168,10 @@ If the user asks about a clause, analyze risk, suggest counter-positions, and no
     });
 
     const reply = response.choices[0]?.message?.content || 'I could not generate a response.';
-    return NextResponse.json({ success: true, data: { reply } });
+    return createSuccessResponse(ctx, { reply });
   } catch (error: any) {
     console.error('Negotiation chat error:', error);
-    return NextResponse.json({ success: true, data: { reply: 'AI negotiation service is temporarily unavailable.' } });
+    return createSuccessResponse(ctx, { reply: 'AI negotiation service is temporarily unavailable.' });
   }
 });
 

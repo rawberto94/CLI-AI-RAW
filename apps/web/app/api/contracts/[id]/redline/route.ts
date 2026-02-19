@@ -5,11 +5,9 @@
  * GET  /api/contracts/[id]/redline — Load last-saved redline session
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionTenantId } from '@/lib/tenant-server';
-import { getAuthenticatedApiContext } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 /* ------------------------------------------------------------------ */
 /*  GET — load saved redline state                                     */
@@ -19,18 +17,14 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(_request);
   const authCtx = getAuthenticatedApiContext(_request);
   if (!authCtx) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { id } = await params;
-    const tenantId = getSessionTenantId(session as any);
+    const tenantId = authCtx.tenantId;
 
     const contract = await prisma.contract.findFirst({
       where: { id, tenantId, isDeleted: false },
@@ -44,34 +38,28 @@ export async function GET(
     });
 
     if (!contract) {
-      return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+      return createErrorResponse(authCtx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Redline state stored in metadata.redline
     const meta = (contract.metadata as Record<string, unknown>) || {};
     const redline = (meta.redline as Record<string, unknown>) || null;
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        contractId: contract.id,
-        contractTitle: contract.contractTitle,
-        status: contract.status,
-        content: redline?.content ?? contract.rawText ?? '',
-        changes: redline?.changes ?? [],
-        comments: redline?.comments ?? [],
-        documentStatus: redline?.documentStatus ?? 'draft',
-        savedAt: redline?.savedAt ?? null,
-        savedBy: redline?.savedBy ?? null,
-        version: redline?.version ?? 0,
-      },
+    return createSuccessResponse(authCtx, {
+      contractId: contract.id,
+      contractTitle: contract.contractTitle,
+      status: contract.status,
+      content: redline?.content ?? contract.rawText ?? '',
+      changes: redline?.changes ?? [],
+      comments: redline?.comments ?? [],
+      documentStatus: redline?.documentStatus ?? 'draft',
+      savedAt: redline?.savedAt ?? null,
+      savedBy: redline?.savedBy ?? null,
+      version: redline?.version ?? 0,
     });
   } catch (error) {
     console.error('[Redline GET] Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to load redline data' },
-      { status: 500 }
-    );
+    return createErrorResponse(authCtx, 'INTERNAL_ERROR', 'Failed to load redline data', 500);
   }
 }
 
@@ -83,18 +71,14 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   const authCtx = getAuthenticatedApiContext(request);
   if (!authCtx) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { id } = await params;
-    const tenantId = getSessionTenantId(session as any);
+    const tenantId = authCtx.tenantId;
 
     const body = await request.json();
     const {
@@ -106,10 +90,7 @@ export async function POST(
     } = body;
 
     if (typeof content !== 'string') {
-      return NextResponse.json(
-        { error: 'content (string) is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(authCtx, 'VALIDATION_ERROR', 'content (string) is required', 400);
     }
 
     // Verify ownership
@@ -119,13 +100,20 @@ export async function POST(
     });
 
     if (!contract) {
-      return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+      return createErrorResponse(authCtx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     const now = new Date().toISOString();
     const existingMeta = (contract.metadata as Record<string, unknown>) || {};
     const existingRedline = (existingMeta.redline as Record<string, unknown>) || {};
     const version = ((existingRedline.version as number) || 0) + 1;
+
+    // Look up user details for savedBy field
+    const user = await prisma.user.findUnique({
+      where: { id: authCtx.userId },
+      select: { email: true, firstName: true, lastName: true },
+    });
+    const savedByName = user?.email || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'unknown');
 
     // Build redline payload
     const redlinePayload = {
@@ -134,7 +122,7 @@ export async function POST(
       comments,
       documentStatus: finalize ? 'approved' : documentStatus,
       savedAt: now,
-      savedBy: session.user.email || session.user.name || 'unknown',
+      savedBy: savedByName,
       version,
     };
 
@@ -155,7 +143,7 @@ export async function POST(
                 from: contract.status,
                 to: 'ACTIVE',
                 at: now,
-                by: session.user.email || session.user.name,
+                by: savedByName,
                 reason: 'Redline finalized — all changes accepted',
               },
             ]
@@ -173,24 +161,18 @@ export async function POST(
       data: updateData as any,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        contractId: id,
-        version,
-        documentStatus: redlinePayload.documentStatus,
-        savedAt: now,
-        finalized: finalize,
-        pendingChanges: changes.filter(
-          (c: { status?: string }) => c.status === 'pending'
-        ).length,
-      },
+    return createSuccessResponse(authCtx, {
+      contractId: id,
+      version,
+      documentStatus: redlinePayload.documentStatus,
+      savedAt: now,
+      finalized: finalize,
+      pendingChanges: changes.filter(
+        (c: { status?: string }) => c.status === 'pending'
+      ).length,
     });
   } catch (error) {
     console.error('[Redline POST] Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to save redline data' },
-      { status: 500 }
-    );
+    return createErrorResponse(authCtx, 'INTERNAL_ERROR', 'Failed to save redline data', 500);
   }
 }

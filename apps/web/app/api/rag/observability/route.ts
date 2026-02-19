@@ -10,11 +10,11 @@
  *  - Pipeline configuration
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getSemanticCache } from '@/lib/rag/semantic-cache.service';
 import { getChunkGraph } from '@/lib/rag/chunk-graph.service';
 import { prisma } from '@/lib/prisma';
-import { getAuthenticatedApiContext } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,10 +22,11 @@ export const dynamic = 'force-dynamic';
 const lastRequestByIp = new Map<string, number>();
 
 export async function GET(request: NextRequest) {
+  const ctx = getApiContext(request);
   // Auth check (defense-in-depth)
   const authCtx = getAuthenticatedApiContext(request);
   if (!authCtx) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
   }
 
   // Rate limit
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
   const now = Date.now();
   const last = lastRequestByIp.get(ip) || 0;
   if (now - last < 1000) {
-    return NextResponse.json({ error: 'Rate limited' }, { status: 429 });
+    return createErrorResponse(authCtx, 'RATE_LIMITED', 'Rate limited', 429);
   }
   lastRequestByIp.set(ip, now);
   // Prevent memory leak
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest) {
       mmrLambda: 0.7,
     };
 
-    return NextResponse.json({
+    return createSuccessResponse(authCtx, {
       ok: true,
       timestamp: new Date().toISOString(),
       cache: cacheStats,
@@ -120,9 +121,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('[RAG Observability] Error:', error);
-    return NextResponse.json(
-      { ok: false, error: 'Internal error gathering RAG stats' },
-      { status: 500 },
-    );
+    return createErrorResponse(authCtx, 'INTERNAL_ERROR', 'Internal error gathering RAG stats', 500);
   }
 }

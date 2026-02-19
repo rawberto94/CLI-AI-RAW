@@ -675,12 +675,12 @@ export function useContractIntelligence(contractId: string) {
   const healthScore = useQuery({
     queryKey: ['contract-health', contractId],
     queryFn: async () => {
-      const response = await fetch(`/api/intelligence/health?contractId=${contractId}`, {
+      const response = await fetch(`/api/contracts/health-scores?contractId=${contractId}`, {
         headers: { 'x-tenant-id': getTenantId() },
       });
       if (!response.ok) return null;
       const json = await response.json();
-      return json.data?.score || null;
+      return json.data?.healthScores?.[0]?.scores?.overall ?? json.data?.score ?? null;
     },
     enabled: !!contractId,
   });

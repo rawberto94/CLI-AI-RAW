@@ -78,14 +78,15 @@ export function IntelligenceWidget({
     
     async function fetchData() {
       try {
-        const res = await fetch('/api/intelligence/health');
+        const res = await fetch('/api/contracts/health-scores');
         const json = await res.json();
         if (json.success && json.data?.stats) {
+          const s = json.data.stats;
           setHealthSummary({
-            healthy: json.data.stats.healthy ?? 0,
-            atRisk: json.data.stats.atRisk ?? 0,
-            critical: json.data.stats.critical ?? 0,
-            avgScore: json.data.stats.averageScore ?? 0,
+            healthy: s.byAlertLevel?.healthy ?? s.healthy ?? 0,
+            atRisk: ((s.byAlertLevel?.high ?? 0) + (s.byAlertLevel?.medium ?? 0)) || (s.atRisk ?? 0),
+            critical: s.byAlertLevel?.critical ?? s.critical ?? 0,
+            avgScore: s.averages?.overall ?? s.averageScore ?? 0,
           });
         } else {
           // No data - show zeros

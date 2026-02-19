@@ -623,7 +623,11 @@ export function useRefreshHealth() {
 
   return useMutation({
     mutationFn: () => 
-      fetchWithTenant('/api/intelligence/health', { method: 'POST' }),
+      fetchWithTenant('/api/contracts/health-scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'recalculate' }),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contract-health'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
@@ -641,7 +645,11 @@ export function useReassessContract() {
 
   return useMutation({
     mutationFn: (contractId: string) => 
-      fetchWithTenant(`/api/intelligence/health/${contractId}/reassess`, { method: 'POST' }),
+      fetchWithTenant('/api/contracts/health-scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'recalculate', contractIds: [contractId] }),
+      }),
     onSuccess: (_, contractId) => {
       queryClient.invalidateQueries({ queryKey: ['contract-health', contractId] });
       queryClient.invalidateQueries({ queryKey: queryKeys.contracts.detail(contractId) });

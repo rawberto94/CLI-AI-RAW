@@ -8,7 +8,6 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
@@ -87,11 +86,6 @@ export async function PATCH(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
-    }
-
     const tenantId = await getApiTenantId(request);
     const { id } = await params;
     const body = await request.json();
@@ -106,7 +100,7 @@ export async function PATCH(
     }
 
     // Check if draft is locked by another user
-    if (existing.isLocked && existing.lockedBy !== session.user.id) {
+    if (existing.isLocked && existing.lockedBy !== ctx.userId) {
       return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Draft is locked by another user', 423);
     }
 
@@ -154,7 +148,7 @@ export async function PATCH(
     if (isLocked !== undefined) {
       updateData.isLocked = isLocked;
       if (isLocked) {
-        updateData.lockedBy = session.user.id;
+        updateData.lockedBy = ctx.userId;
         updateData.lockedAt = new Date();
       } else {
         updateData.lockedBy = null;

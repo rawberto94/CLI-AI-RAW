@@ -2,21 +2,19 @@
  * Word Add-in Clause Alternatives API
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedApiContext } from '@/lib/api-middleware';
+import { NextRequest } from 'next/server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const apiCtx = getApiContext(req);
   try {
-    const ctx = await getAuthenticatedApiContext(req);
+    const ctx = getAuthenticatedApiContext(req);
     if (!ctx) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const { id } = await params;
@@ -28,10 +26,7 @@ export async function GET(
     });
 
     if (!clause) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Clause not found' } },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Clause not found', 404);
     }
 
     // Parse alternatives if stored as JSON
@@ -40,12 +35,9 @@ export async function GET(
       ? clauseData.alternatives
       : [];
 
-    return NextResponse.json({ success: true, data: alternatives });
+    return createSuccessResponse(ctx, alternatives);
   } catch (error) {
     console.error('Word Add-in clause alternatives error:', error);
-    return NextResponse.json(
-      { error: { code: 'SERVER_ERROR', message: 'Failed to fetch alternatives' } },
-      { status: 500 }
-    );
+    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch alternatives', 500);
   }
 }

@@ -8,7 +8,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
-import { aiCopilotService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
 
@@ -124,10 +123,13 @@ export async function POST(
         // Store tool calls and results in sources JSON field
         sources: toolCalls || toolResults ? JSON.stringify({ toolCalls, toolResults }) : undefined } });
 
-    // Update conversation's lastMessageAt
+    // Update conversation's lastMessageAt and messageCount
     await prisma.chatConversation.update({
       where: { id: conversationId },
-      data: { lastMessageAt: new Date() } });
+      data: {
+        lastMessageAt: new Date(),
+        messageCount: { increment: 1 },
+      } });
 
     return createSuccessResponse(ctx, {
       data: { message } });

@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ObligationStatus, ObligationPriority, Prisma } from '@prisma/client';
-import { getServerSession } from '@/lib/auth';
 import { aiObligationTrackerService } from 'data-orchestration/services';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
@@ -38,17 +37,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
-    }
-
     const { id } = await params;
 
     const obligation = await prisma.obligation.findFirst({
       where: {
         id,
-        tenantId: session.user.tenantId,
+        tenantId: ctx.tenantId,
       },
       include: {
         contract: {
@@ -108,17 +102,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
-    }
-
     const { id } = await params;
     const body = await request.json();
 
     // Verify obligation exists
     const existing = await prisma.obligation.findFirst({
-      where: { id, tenantId: session.user.tenantId },
+      where: { id, tenantId: ctx.tenantId },
     });
 
     if (!existing) {
@@ -127,7 +116,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // Build update data
     const updateData: Prisma.ObligationUpdateInput = {
-      updatedBy: session.user.id,
+      updatedBy: ctx.userId,
     };
 
     // Handle status changes
@@ -138,7 +127,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       // If completing, set completion info
       if (newStatus === 'COMPLETED') {
         updateData.completedAt = new Date();
-        updateData.completedBy = session.user.id;
+        updateData.completedBy = ctx.userId;
         if (body.completionNotes) {
           updateData.completionNotes = body.completionNotes;
         }
@@ -196,7 +185,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           ? 'Obligation marked as completed'
           : `Obligation updated: ${Object.keys(changes).join(', ')}`,
         previousValue: Object.keys(changes).length > 0 ? JSON.parse(JSON.stringify(changes)) : undefined,
-        performedBy: session.user.id,
+        performedBy: ctx.userId,
       },
     });
 
@@ -225,16 +214,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
-    }
-
     const { id } = await params;
 
     // Verify obligation exists
     const existing = await prisma.obligation.findFirst({
-      where: { id, tenantId: session.user.tenantId },
+      where: { id, tenantId: ctx.tenantId },
     });
 
     if (!existing) {

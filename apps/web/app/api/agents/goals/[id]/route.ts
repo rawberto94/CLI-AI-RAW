@@ -4,8 +4,8 @@
  * Fetch a single agent goal with its steps and triggers.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuthApiHandler, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, type AuthenticatedApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 export const GET = withAuthApiHandler(async (
   request: NextRequest,
@@ -18,10 +18,7 @@ export const GET = withAuthApiHandler(async (
     const id = url.pathname.split('/').pop();
     
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: 'Goal ID required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Goal ID required', 400);
     }
 
     const { prisma } = await import('@/lib/prisma');
@@ -35,26 +32,17 @@ export const GET = withAuthApiHandler(async (
     });
 
     if (!goal) {
-      return NextResponse.json(
-        { success: false, error: 'Goal not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Goal not found', 404);
     }
 
     // Verify tenant ownership
     if (goal.tenantId !== tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Goal not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Goal not found', 404);
     }
 
-    return NextResponse.json({ success: true, data: goal });
+    return createSuccessResponse(ctx, goal);
   } catch (error) {
     console.error('[Goal Detail] Error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch goal' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch goal', 500);
   }
 });

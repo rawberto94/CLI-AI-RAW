@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
-import { getServerSession } from '@/lib/auth';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
 
@@ -86,7 +85,6 @@ export async function PUT(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
     const tenantId = await getApiTenantId(request);
     const { id } = await params;
     const body = await request.json();
@@ -137,7 +135,7 @@ export async function PUT(
         ...(status !== undefined ? { status } : {}),
         ...(tags !== undefined ? { tags } : {}),
         ...(variables !== undefined ? { variables } : {}),
-        updatedBy: session?.user?.id || 'system',
+        updatedBy: ctx.userId,
         updatedAt: new Date().toISOString(),
       };
     }

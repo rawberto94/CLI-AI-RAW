@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
 import { aiObligationTrackerService } from 'data-orchestration/services';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
@@ -18,16 +17,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
-    }
-
     const { id } = await params;
 
     // Search for obligation in all contracts
     const contracts = await prisma.contract.findMany({
-      where: { tenantId: session.user.tenantId },
+      where: { tenantId: ctx.tenantId },
       select: {
         id: true,
         contractTitle: true,
@@ -71,18 +65,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
-    }
-
     const { id } = await params;
     const body = await request.json();
     const { status, notes, evidence, completedBy } = body;
 
     // Find the contract containing this obligation
     const contracts = await prisma.contract.findMany({
-      where: { tenantId: session.user.tenantId },
+      where: { tenantId: ctx.tenantId },
       select: {
         id: true,
         metadata: true,
@@ -123,7 +112,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         : notes || 'Obligation updated',
       previousStatus: existingObligation.status,
       newStatus: status || existingObligation.status,
-      performedBy: session.user.id,
+      performedBy: ctx.userId,
       performedAt: now.toISOString(),
     };
 
@@ -133,7 +122,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       ...(status && { status }),
       ...(status === 'completed' && {
         completedAt: now.toISOString(),
-        completedBy: completedBy || session.user.id,
+        completedBy: completedBy || ctx.userId,
         completionNotes: notes,
       }),
       updatedAt: now.toISOString(),
@@ -147,7 +136,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         ...e,
         id: crypto.randomUUID(),
         uploadedAt: now.toISOString(),
-        uploadedBy: session.user.id,
+        uploadedBy: ctx.userId,
       }));
       updatedObligation.attachedEvidence = [...existingEvidence, ...newEvidence];
     }
@@ -187,16 +176,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
-    }
-
     const { id } = await params;
 
     // Find and remove from contract
     const contracts = await prisma.contract.findMany({
-      where: { tenantId: session.user.tenantId },
+      where: { tenantId: ctx.tenantId },
       select: {
         id: true,
         metadata: true,

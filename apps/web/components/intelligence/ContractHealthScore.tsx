@@ -897,21 +897,24 @@ export const ContractHealthScore: React.FC = () => {
       }
       
       try {
-        const res = await fetch('/api/intelligence/health');
+        const res = await fetch('/api/contracts/health-scores');
         const json = await res.json();
-        if (json.success && json.data?.contracts?.length > 0) {
-          const mapped = json.data.contracts.map((item: Record<string, unknown>) => {
-            const score = Number(item.overallScore || item.healthScore || 75);
+        const items = json.data?.healthScores || json.data?.contracts || [];
+        if (json.success && items.length > 0) {
+          const mapped = items.map((item: Record<string, unknown>) => {
+            const scores = item.scores as Record<string, number> | undefined;
+            const trendObj = item.trend as Record<string, unknown> | string | undefined;
+            const score = Number(scores?.overall || item.overallScore || item.healthScore || 75);
             return {
             contractId: item.contractId || item.id,
             contractName: item.contractName || item.name || 'Unknown Contract',
             supplierName: item.supplierName || item.counterparty || item.vendor || 'Unknown',
             overallScore: score,
-            previousScore: Number(item.previousScore || score - 5 || 70),
-            trend: item.trend || 'stable',
+            previousScore: Number((typeof trendObj === 'object' ? trendObj?.previousScore : null) || item.previousScore || score - 5 || 70),
+            trend: (typeof trendObj === 'object' ? trendObj?.direction : trendObj) || 'stable',
             status: score >= 70 ? 'healthy' : score >= 50 ? 'at-risk' : 'critical',
             factors: Array.isArray(item.factors) ? item.factors : [],
-            lastAssessed: item.lastAssessed || new Date().toISOString(),
+            lastAssessed: item.calculatedAt || item.lastAssessed || new Date().toISOString(),
             nextReview: item.nextReview || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
             actionItems: Array.isArray(item.actionItems) ? item.actionItems : [],
           }});
@@ -957,7 +960,11 @@ export const ContractHealthScore: React.FC = () => {
     setLoading(true);
     toast.info('Refreshing all health scores...');
     try {
-      const res = await fetch('/api/intelligence/health', { method: 'POST' });
+      const res = await fetch('/api/contracts/health-scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'recalculate' }),
+      });
       if (res.ok) {
         toast.success('All health scores refreshed');
         // Refetch data after refresh
@@ -1006,7 +1013,11 @@ export const ContractHealthScore: React.FC = () => {
   const handleReassess = useCallback(async (contractId: string, contractName: string) => {
     toast.info(`Reassessing ${contractName}...`);
     try {
-      const res = await fetch(`/api/intelligence/health/${contractId}/reassess`, { method: 'POST' });
+      const res = await fetch('/api/contracts/health-scores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'recalculate', contractIds: [contractId] }),
+      });
       if (res.ok) {
         toast.success(`${contractName} reassessment complete`);
       } else {

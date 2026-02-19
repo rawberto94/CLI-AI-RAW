@@ -3,8 +3,8 @@
  * Generates contracts from templates with variable substitution
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedApiContext } from '@/lib/api-middleware';
+import { NextRequest } from 'next/server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 
 interface GenerateContractRequest {
@@ -15,23 +15,18 @@ interface GenerateContractRequest {
 }
 
 export async function POST(req: NextRequest) {
+  const apiCtx = getApiContext(req);
   try {
-    const ctx = await getAuthenticatedApiContext(req);
+    const ctx = getAuthenticatedApiContext(req);
     if (!ctx) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const body: GenerateContractRequest = await req.json();
     const { templateId, variables, selectedClauses, format } = body;
 
     if (!templateId) {
-      return NextResponse.json(
-        { error: { code: 'VALIDATION_ERROR', message: 'Template ID is required' } },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Template ID is required', 400);
     }
 
     // Fetch template
@@ -43,10 +38,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!template) {
-      return NextResponse.json(
-        { error: { code: 'NOT_FOUND', message: 'Template not found' } },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Template not found', 404);
     }
 
     // Fetch selected clauses
@@ -81,21 +73,15 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        content: content.formatted,
-        format,
-        contractId: draft.id,
-        draftId: draft.id,
-      },
+    return createSuccessResponse(ctx, {
+      content: content.formatted,
+      format,
+      contractId: draft.id,
+      draftId: draft.id,
     });
   } catch (error) {
     console.error('Word Add-in generate error:', error);
-    return NextResponse.json(
-      { error: { code: 'SERVER_ERROR', message: 'Contract generation failed' } },
-      { status: 500 }
-    );
+    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Contract generation failed', 500);
   }
 }
 

@@ -3,18 +3,16 @@
  * Provides template CRUD operations for the Word Add-in
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedApiContext } from '@/lib/api-middleware';
+import { NextRequest } from 'next/server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
+  const apiCtx = getApiContext(req);
   try {
-    const ctx = await getAuthenticatedApiContext(req);
+    const ctx = getAuthenticatedApiContext(req);
     if (!ctx) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const { searchParams } = new URL(req.url);
@@ -69,34 +67,26 @@ export async function GET(req: NextRequest) {
       updatedAt: t.updatedAt.toISOString(),
     }));
 
-    return NextResponse.json({ success: true, data: transformed });
+    return createSuccessResponse(ctx, transformed);
   } catch (error) {
     console.error('Word Add-in templates error:', error);
-    return NextResponse.json(
-      { error: { code: 'SERVER_ERROR', message: 'Failed to fetch templates' } },
-      { status: 500 }
-    );
+    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch templates', 500);
   }
 }
 
 export async function POST(req: NextRequest) {
+  const apiCtx = getApiContext(req);
   try {
-    const ctx = await getAuthenticatedApiContext(req);
+    const ctx = getAuthenticatedApiContext(req);
     if (!ctx) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const body = await req.json();
     const { name, description, category, content, variables } = body;
 
     if (!name) {
-      return NextResponse.json(
-        { error: { code: 'VALIDATION_ERROR', message: 'Template name is required' } },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Template name is required', 400);
     }
 
     const template = await prisma.contractTemplate.create({
@@ -114,26 +104,20 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        id: template.id,
-        name: template.name,
-        description: template.description,
-        category: template.category,
-        content: template.structure,
-        variables: template.metadata,
-        isActive: template.isActive,
-        version: template.version,
-        createdAt: template.createdAt.toISOString(),
-        updatedAt: template.updatedAt.toISOString(),
-      },
+    return createSuccessResponse(ctx, {
+      id: template.id,
+      name: template.name,
+      description: template.description,
+      category: template.category,
+      content: template.structure,
+      variables: template.metadata,
+      isActive: template.isActive,
+      version: template.version,
+      createdAt: template.createdAt.toISOString(),
+      updatedAt: template.updatedAt.toISOString(),
     });
   } catch (error) {
     console.error('Word Add-in create template error:', error);
-    return NextResponse.json(
-      { error: { code: 'SERVER_ERROR', message: 'Failed to create template' } },
-      { status: 500 }
-    );
+    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to create template', 500);
   }
 }

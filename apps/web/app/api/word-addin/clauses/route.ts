@@ -3,18 +3,16 @@
  * Provides clause library operations for the Word Add-in
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedApiContext } from '@/lib/api-middleware';
+import { NextRequest } from 'next/server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
+  const apiCtx = getApiContext(req);
   try {
     const ctx = getAuthenticatedApiContext(req);
     if (!ctx) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const { searchParams } = new URL(req.url);
@@ -77,34 +75,26 @@ export async function GET(req: NextRequest) {
       usageCount: c.usageCount || 0,
     }));
 
-    return NextResponse.json({ success: true, data: transformed });
+    return createSuccessResponse(ctx, transformed);
   } catch (error) {
     console.error('Word Add-in clauses error:', error);
-    return NextResponse.json(
-      { error: { code: 'SERVER_ERROR', message: 'Failed to fetch clauses' } },
-      { status: 500 }
-    );
+    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch clauses', 500);
   }
 }
 
 export async function POST(req: NextRequest) {
+  const apiCtx = getApiContext(req);
   try {
     const ctx = getAuthenticatedApiContext(req);
     if (!ctx) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const body = await req.json();
     const { name, title, category, content, riskLevel, isStandard, tags } = body;
 
     if (!title || !content) {
-      return NextResponse.json(
-        { error: { code: 'VALIDATION_ERROR', message: 'Clause title and content are required' } },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Clause title and content are required', 400);
     }
 
     // Generate unique name from title if not provided
@@ -129,25 +119,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        id: clause.id,
-        name: clause.name,
-        title: clause.title,
-        category: clause.category,
-        content: clause.content,
-        riskLevel: clause.riskLevel,
-        isStandard: clause.isStandard,
-        tags: clause.tags,
-        usageCount: clause.usageCount,
-      },
+    return createSuccessResponse(ctx, {
+      id: clause.id,
+      name: clause.name,
+      title: clause.title,
+      category: clause.category,
+      content: clause.content,
+      riskLevel: clause.riskLevel,
+      isStandard: clause.isStandard,
+      tags: clause.tags,
+      usageCount: clause.usageCount,
     });
   } catch (error) {
     console.error('Word Add-in create clause error:', error);
-    return NextResponse.json(
-      { error: { code: 'SERVER_ERROR', message: 'Failed to create clause' } },
-      { status: 500 }
-    );
+    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to create clause', 500);
   }
 }

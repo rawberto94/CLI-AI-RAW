@@ -3,8 +3,8 @@
  * Provides AI-powered contract assistance for the Word Add-in
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedApiContext } from '@/lib/api-middleware';
+import { NextRequest } from 'next/server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { getAIClient } from '@/lib/ai/ai-client';
 
 interface AIAssistRequest {
@@ -30,23 +30,18 @@ interface RiskFlag {
 }
 
 export async function POST(req: NextRequest) {
+  const apiCtx = getApiContext(req);
   try {
-    const ctx = await getAuthenticatedApiContext(req);
+    const ctx = getAuthenticatedApiContext(req);
     if (!ctx) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const body: AIAssistRequest = await req.json();
     const { context, selection, action, contractType } = body;
 
     if (!context && !selection) {
-      return NextResponse.json(
-        { error: { code: 'VALIDATION_ERROR', message: 'Context or selection is required' } },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Context or selection is required', 400);
     }
 
     const textToAnalyze = selection || context;
@@ -115,10 +110,7 @@ export async function POST(req: NextRequest) {
         break;
 
       default:
-        return NextResponse.json(
-          { error: { code: 'VALIDATION_ERROR', message: 'Invalid action' } },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action', 400);
     }
 
     // Call AI
@@ -159,19 +151,13 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        suggestions: parsed.suggestions || [],
-        riskFlags: parsed.riskFlags || [],
-        confidence: parsed.suggestions?.[0]?.confidence || 0.8,
-      },
+    return createSuccessResponse(ctx, {
+      suggestions: parsed.suggestions || [],
+      riskFlags: parsed.riskFlags || [],
+      confidence: parsed.suggestions?.[0]?.confidence || 0.8,
     });
   } catch (error) {
     console.error('Word Add-in AI assist error:', error);
-    return NextResponse.json(
-      { error: { code: 'SERVER_ERROR', message: 'AI assistance failed' } },
-      { status: 500 }
-    );
+    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'AI assistance failed', 500);
   }
 }

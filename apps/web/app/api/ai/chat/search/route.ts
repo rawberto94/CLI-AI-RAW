@@ -7,9 +7,9 @@
  * Returns results shaped for the ChatHistorySearch component.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withAuthApiHandler, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, type AuthenticatedApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const { tenantId, userId } = ctx;
@@ -24,7 +24,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   const endDate = searchParams.get('endDate');
 
   if (!q) {
-    return NextResponse.json({ success: true, results: [] });
+    return createSuccessResponse(ctx, { results: [] });
   }
 
   try {
@@ -128,12 +128,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     // Trim to requested limit
     results = results.slice(0, limit);
 
-    return NextResponse.json({ success: true, results });
+    return createSuccessResponse(ctx, { results });
   } catch (error) {
     console.error('[Chat Search] Error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Search failed', results: [] },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'SEARCH_ERROR', 'Search failed', 500);
   }
 });

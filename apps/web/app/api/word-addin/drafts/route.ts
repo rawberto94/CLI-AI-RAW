@@ -3,18 +3,16 @@
  * Manages contract drafts for the Word Add-in
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedApiContext } from '@/lib/api-middleware';
+import { NextRequest } from 'next/server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
+  const apiCtx = getApiContext(req);
   try {
-    const ctx = await getAuthenticatedApiContext(req);
+    const ctx = getAuthenticatedApiContext(req);
     if (!ctx) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const drafts = await prisma.contractDraft.findMany({
@@ -39,34 +37,26 @@ export async function GET(req: NextRequest) {
       status: d.status,
     }));
 
-    return NextResponse.json({ success: true, data: transformed });
+    return createSuccessResponse(ctx, transformed);
   } catch (error) {
     console.error('Word Add-in drafts error:', error);
-    return NextResponse.json(
-      { error: { code: 'SERVER_ERROR', message: 'Failed to fetch drafts' } },
-      { status: 500 }
-    );
+    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch drafts', 500);
   }
 }
 
 export async function POST(req: NextRequest) {
+  const apiCtx = getApiContext(req);
   try {
-    const ctx = await getAuthenticatedApiContext(req);
+    const ctx = getAuthenticatedApiContext(req);
     if (!ctx) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const body = await req.json();
     const { templateId, title, content, variables } = body;
 
     if (!title) {
-      return NextResponse.json(
-        { error: { code: 'VALIDATION_ERROR', message: 'Draft title is required' } },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Draft title is required', 400);
     }
 
     const draft = await prisma.contractDraft.create({
@@ -81,15 +71,9 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: { draftId: draft.id },
-    });
+    return createSuccessResponse(ctx, { draftId: draft.id });
   } catch (error) {
     console.error('Word Add-in create draft error:', error);
-    return NextResponse.json(
-      { error: { code: 'SERVER_ERROR', message: 'Failed to create draft' } },
-      { status: 500 }
-    );
+    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to create draft', 500);
   }
 }

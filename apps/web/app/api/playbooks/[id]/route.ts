@@ -5,8 +5,6 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-import { getSessionTenantId } from '@/lib/tenant-server';
 import { getLegalReviewService } from 'data-orchestration/services';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
@@ -24,10 +22,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-
     const { id } = await params;
-    const tenantId = getSessionTenantId(session);
+    const tenantId = ctx.tenantId;
 
     const legalReviewService = getLegalReviewService();
     const playbook = await legalReviewService.getPlaybook(id, tenantId);
@@ -55,10 +51,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-
     const { id } = await params;
-    const tenantId = getSessionTenantId(session);
+    const tenantId = ctx.tenantId;
     const body = await request.json();
 
     const legalReviewService = getLegalReviewService();

@@ -5,8 +5,8 @@
  * These track AI extractions vs user corrections for continuous improvement.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuthApiHandler, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, type AuthenticatedApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   try {
@@ -53,9 +53,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       ? confRecords.reduce((a: number, r: { confidence: unknown }) => a + Number(r.confidence), 0) / confRecords.length
       : 0;
 
-    return NextResponse.json({
-      success: true,
-      data: {
+    return createSuccessResponse(ctx, {
         records: records.map((r: Record<string, unknown>) => ({
           id: r.id,
           field: r.field,
@@ -71,13 +69,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
         total: totalRecords,
         correctionBreakdown,
         avgConfidence: Math.round(avgConfidence * 100) / 100,
-      },
     });
   } catch (error) {
     console.error('[Learning API] Error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch learning records' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch learning records', 500);
   }
 });

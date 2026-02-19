@@ -5,7 +5,6 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth";
 import { z } from "zod";
 import {
   batchDownload,
@@ -44,8 +43,7 @@ async function handleDownload(req: NextRequest): Promise<NextResponse> {
     return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user?.tenantId) {
+    if (!ctx.tenantId) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
@@ -54,7 +52,7 @@ async function handleDownload(req: NextRequest): Promise<NextResponse> {
 
     const result = await batchDownload(
       validated as BatchDownloadRequest,
-      session.user.tenantId
+      ctx.tenantId
     );
 
     return createSuccessResponse(ctx, {
@@ -84,8 +82,7 @@ async function handleImport(req: NextRequest): Promise<NextResponse> {
     return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user?.tenantId || !session.user.id) {
+    if (!ctx.tenantId || !ctx.userId) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
@@ -95,8 +92,8 @@ async function handleImport(req: NextRequest): Promise<NextResponse> {
     const result = await batchImport(
       validated.sourceId,
       validated.fileIds,
-      session.user.tenantId,
-      session.user.id
+      ctx.tenantId,
+      ctx.userId
     );
 
     return createSuccessResponse(ctx, {
@@ -125,8 +122,7 @@ async function handleDelete(req: NextRequest): Promise<NextResponse> {
     return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user?.tenantId) {
+    if (!ctx.tenantId) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
@@ -136,7 +132,7 @@ async function handleDelete(req: NextRequest): Promise<NextResponse> {
     const result = await batchDelete(
       validated.sourceId,
       validated.fileIds,
-      session.user.tenantId
+      ctx.tenantId
     );
 
     return createSuccessResponse(ctx, {

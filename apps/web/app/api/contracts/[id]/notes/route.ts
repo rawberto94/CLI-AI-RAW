@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { contractService } from 'data-orchestration/services'
-import { getServerSession } from '@/lib/auth'
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
@@ -17,11 +16,7 @@ export async function GET(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession()
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-    const tenantId = session.user.tenantId
+    const tenantId = ctx.tenantId
     const { id: contractId } = await params
     
     // Get notes (using ContractComment model with special type)
@@ -79,12 +74,8 @@ export async function POST(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession()
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-    const tenantId = session.user.tenantId
-    const userId = session.user.id
+    const tenantId = ctx.tenantId
+    const userId = ctx.userId
     const { id: contractId } = await params
     
     const body = await request.json()

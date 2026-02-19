@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { workflowService } from 'data-orchestration/services';
@@ -20,9 +19,8 @@ export async function POST(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    const tenantId = session.user.tenantId;
-    const userId = session.user.id;
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
     const { id: workflowId } = await params;
     const body = await request.json();
     const { contractId, initiatedBy, metadata, dueDate, priority } = body;
@@ -167,7 +165,7 @@ export async function GET(
   }
   try {
     const { id: workflowId } = await params;
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     const contractId = searchParams.get('contractId');
     const executionId = searchParams.get('executionId');

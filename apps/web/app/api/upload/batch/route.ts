@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server'
 import { API_BASE_URL } from "@/lib/config"
 import { getErrorMessage, isUploadedFile } from "@/lib/types/common"
-import { getServerSession } from '@/lib/auth'
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware'
 import { uploadRequestSchema } from 'schemas'
 
@@ -17,11 +16,6 @@ export async function POST(req: NextRequest) {
     return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-
     const form = await req.formData()
 
     // Validate file metadata if JSON metadata field is provided

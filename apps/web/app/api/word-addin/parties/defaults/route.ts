@@ -3,18 +3,16 @@
  * Manages saved party information for quick contract filling
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedApiContext } from '@/lib/api-middleware';
+import { NextRequest } from 'next/server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
+  const apiCtx = getApiContext(req);
   try {
-    const ctx = await getAuthenticatedApiContext(req);
+    const ctx = getAuthenticatedApiContext(req);
     if (!ctx) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const { searchParams } = new URL(req.url);
@@ -37,45 +35,34 @@ export async function GET(req: NextRequest) {
 
     if (!partyDefaults) {
       // Return empty defaults
-      return NextResponse.json({
-        success: true,
-        data: {
-          name: '',
-          address: '',
-          contact: '',
-          email: '',
-        },
+      return createSuccessResponse(ctx, {
+        name: '',
+        address: '',
+        contact: '',
+        email: '',
       });
     }
 
-    return NextResponse.json({ success: true, data: partyDefaults });
+    return createSuccessResponse(ctx, partyDefaults);
   } catch (error) {
     console.error('Word Add-in party defaults error:', error);
-    return NextResponse.json(
-      { error: { code: 'SERVER_ERROR', message: 'Failed to fetch party defaults' } },
-      { status: 500 }
-    );
+    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch party defaults', 500);
   }
 }
 
 export async function POST(req: NextRequest) {
+  const apiCtx = getApiContext(req);
   try {
-    const ctx = await getAuthenticatedApiContext(req);
+    const ctx = getAuthenticatedApiContext(req);
     if (!ctx) {
-      return NextResponse.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } },
-        { status: 401 }
-      );
+      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const body = await req.json();
     const { type: partyType, name, address, contact, email } = body;
 
     if (!partyType) {
-      return NextResponse.json(
-        { error: { code: 'VALIDATION_ERROR', message: 'Party type is required' } },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Party type is required', 400);
     }
 
     // Get or create user settings
@@ -114,12 +101,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true });
+    return createSuccessResponse(ctx, { saved: true });
   } catch (error) {
     console.error('Word Add-in save party defaults error:', error);
-    return NextResponse.json(
-      { error: { code: 'SERVER_ERROR', message: 'Failed to save party defaults' } },
-      { status: 500 }
-    );
+    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to save party defaults', 500);
   }
 }

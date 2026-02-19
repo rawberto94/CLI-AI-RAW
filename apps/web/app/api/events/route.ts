@@ -1,50 +1,17 @@
 /**
- * Server-Sent Events (SSE) Endpoint
- * Streams real-time updates to connected clients
+ * Server-Sent Events (SSE) Endpoint with Redis Pub/Sub
  * 
- * NOTE: Completely standalone implementation to avoid dependency issues
- * with data-orchestration package. Event bus implemented inline.
+ * Streams real-time updates to connected clients by subscribing
+ * to Redis events published by workers.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { EventEmitter } from 'events';
+import Redis from 'ioredis';
 import { withAuthApiHandler } from '@/lib/api-middleware';
 
-// Inline event bus to avoid any data-orchestration imports
-enum Events {
-  CONTRACT_CREATED = 'contract:created',
-  CONTRACT_UPDATED = 'contract:updated',
-  PROCESSING_COMPLETED = 'processing:completed',
-  ARTIFACT_GENERATED = 'artifact:generated',
-  ARTIFACT_UPDATED = 'artifact:updated',
-  RATE_CARD_CREATED = 'ratecard:created',
-  RATE_CARD_UPDATED = 'ratecard:updated',
-  RATE_CARD_IMPORTED = 'ratecard:imported',
-  BENCHMARK_CALCULATED = 'benchmark:calculated',
-  BENCHMARK_INVALIDATED = 'benchmark:invalidated',
-  JOB_PROGRESS = 'job:progress',
-  JOB_STATUS_CHANGED = 'job:status:changed',
-}
+const CHANNEL_PREFIX = 'cli-ai:events';
 
-class EventBus extends EventEmitter {
-  private static instance: EventBus;
-
-  private constructor() {
-    super();
-    this.setMaxListeners(100);
-  }
-
-  public static getInstance(): EventBus {
-    if (!EventBus.instance) {
-      EventBus.instance = new EventBus();
-    }
-    return EventBus.instance;
-  }
-}
-
-const eventBus = EventBus.getInstance();
-
-// Inline SSE connection management to avoid data-orchestration/services
+// SSE connection tracking
 interface SSEConnection {
   id: string;
   tenantId: string;
@@ -56,48 +23,96 @@ interface SSEConnection {
 
 const connections = new Map<string, SSEConnection>();
 
-const sseConnectionManager = {
-  registerConnection: (
-    controller: ReadableStreamDefaultController,
-    tenantId: string,
-    userId?: string,
-    _metadata?: Record<string, string | null | undefined>
-  ): SSEConnection => {
-    const id = `sse_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const connection: SSEConnection = {
-      id,
-      controller,
-      tenantId,
-      userId,
-      createdAt: Date.now(),
-      lastActivity: Date.now(),
-    };
-    connections.set(id, connection);
-    return connection;
-  },
+// Shared Redis subscriber for all SSE connections
+let redisSubscriber: InstanceType<typeof Redis> | null = null;
+let subscriberReady = false;
 
-  unregisterConnection: (id: string) => {
-    connections.delete(id);
-  },
+function getRedisUrl(): string {
+  return process.env.REDIS_URL || 
+    `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`;
+}
 
-  updateActivity: (id: string) => {
-    const conn = connections.get(id);
-    if (conn) {
-      conn.lastActivity = Date.now();
+async function ensureRedisSubscriber(): Promise<InstanceType<typeof Redis>> {
+  if (redisSubscriber && subscriberReady) {
+    return redisSubscriber;
+  }
+
+  try {
+    redisSubscriber = new Redis(getRedisUrl(), {
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times: number) => Math.min(times * 100, 3000),
+      lazyConnect: true,
+    });
+
+    await redisSubscriber.connect();
+    await redisSubscriber.subscribe(CHANNEL_PREFIX);
+
+    // Handle incoming messages and broadcast to SSE connections
+    redisSubscriber.on('message', (channel: string, message: string) => {
+      if (channel !== CHANNEL_PREFIX) return;
+
+      try {
+        const payload = JSON.parse(message);
+        broadcastToConnections(payload);
+      } catch {
+        // Failed to parse Redis message - ignore invalid messages
+      }
+    });
+
+    redisSubscriber.on('error', () => {
+      subscriberReady = false;
+    });
+
+    redisSubscriber.on('close', () => {
+      subscriberReady = false;
+    });
+
+    subscriberReady = true;
+    return redisSubscriber;
+  } catch (err) {
+    throw err;
+  }
+}
+
+function broadcastToConnections(payload: {
+  event: string;
+  data: {
+    contractId?: string;
+    tenantId?: string;
+    userId?: string;
+    [key: string]: unknown;
+  };
+  timestamp: string;
+  source?: string;
+}): void {
+  const encoder = new TextEncoder();
+  const message = JSON.stringify({
+    type: payload.event,
+    data: payload.data,
+    timestamp: payload.timestamp,
+    source: payload.source,
+  });
+
+  connections.forEach((connection, id) => {
+    try {
+      // Filter by tenant
+      if (payload.data.tenantId && payload.data.tenantId !== connection.tenantId) {
+        return;
+      }
+
+      // Filter by user for user-specific events
+      if (payload.data.userId && connection.userId && payload.data.userId !== connection.userId) {
+        return;
+      }
+
+      connection.controller.enqueue(encoder.encode(`data: ${message}\n\n`));
+      connection.lastActivity = Date.now();
+    } catch {
+      // Remove dead connection
+      connections.delete(id);
     }
-  },
-
-  getMetrics: () => ({
-    totalConnections: connections.size,
-    activeConnections: connections.size,
-  }),
-};
-
-const healthCheckService = {
-  updateSSEConnectionCount: (_count: number) => {
-    // Health check tracking - no-op in simplified mode
-  },
-};
+  });
+}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -117,90 +132,60 @@ export const GET = withAuthApiHandler(async (request: NextRequest, _ctx) => {
 
   const userId = searchParams.get('userId') || undefined;
 
-  // Create a readable stream
+  // Ensure Redis subscriber is running
+  try {
+    await ensureRedisSubscriber();
+  } catch {
+    // Redis not available, falling back to local events only
+  }
+
   const stream = new ReadableStream({
     start(controller) {
-      let connection;
-      let keepAliveInterval: NodeJS.Timeout;
-      
-      try {
-        // Register connection with the manager
-        connection = sseConnectionManager.registerConnection(
-          controller,
-          tenantId,
-          userId,
-          {
-            userAgent: request.headers.get('user-agent'),
-            ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
-          }
-        );
+      const connectionId = `sse_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const encoder = new TextEncoder();
 
-        // Update health check service with connection count
-        const metrics = sseConnectionManager.getMetrics();
-        healthCheckService.updateSSEConnectionCount(metrics.activeConnections);
+      // Register connection
+      const connection: SSEConnection = {
+        id: connectionId,
+        tenantId,
+        userId,
+        controller,
+        createdAt: Date.now(),
+        lastActivity: Date.now(),
+      };
+      connections.set(connectionId, connection);
 
-        // Send initial connection message
-        const encoder = new TextEncoder();
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ 
-            type: 'connected', 
-            connectionId: connection.id,
-            timestamp: new Date().toISOString()
-          })}\n\n`)
-        );
+      // Send connected message
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({
+          type: 'connected',
+          connectionId,
+          timestamp: new Date().toISOString(),
+          redisConnected: subscriberReady,
+        })}\n\n`)
+      );
 
-        // Setup event listeners
-        const eventHandlers = setupEventHandlers(controller, connection.id, tenantId, userId);
-
-        // Keep-alive ping every 30 seconds
-        keepAliveInterval = setInterval(() => {
-          try {
-            controller.enqueue(encoder.encode(': keep-alive\n\n'));
-            sseConnectionManager.updateActivity(connection!.id);
-          } catch (_e) {
-            clearInterval(keepAliveInterval);
-          }
-        }, 30000);
-
-        // Cleanup on close
-        request.signal.addEventListener('abort', () => {
-          // Clear keep-alive interval
+      // Keep-alive ping every 30 seconds
+      const keepAliveInterval = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(`: keep-alive\n\n`));
+          connection.lastActivity = Date.now();
+        } catch {
           clearInterval(keepAliveInterval);
-          
-          // Unregister connection
-          sseConnectionManager.unregisterConnection(connection!.id);
-          
-          // Update health check service
-          const metrics = sseConnectionManager.getMetrics();
-          healthCheckService.updateSSEConnectionCount(metrics.activeConnections);
-          
-          // Cleanup event handlers
-          cleanupEventHandlers(eventHandlers);
-          
-          try {
-            controller.close();
-          } catch (_e) {
-            // Already closed
-          }
-        });
-      } catch {
-        // Send error message
-        const encoder = new TextEncoder();
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ 
-            type: 'error', 
-            message: 'Connection failed',
-            timestamp: new Date().toISOString()
-          })}\n\n`)
-        );
+        }
+      }, 30000);
+
+      // Cleanup on disconnect
+      request.signal.addEventListener('abort', () => {
+        clearInterval(keepAliveInterval);
+        connections.delete(connectionId);
         
-        // Close the connection
         try {
           controller.close();
-        } catch (_e) {
+        } catch {
           // Already closed
         }
-      }
+      });
     },
   });
 
@@ -209,162 +194,21 @@ export const GET = withAuthApiHandler(async (request: NextRequest, _ctx) => {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no', // Disable nginx buffering
+      'X-Accel-Buffering': 'no',
     },
   });
 });
 
 /**
- * SSE event payload types
+ * Get SSE connection statistics
  */
-interface SSEEventPayload {
-  tenantId?: string;
-  userId?: string;
-  contractId?: string;
-  artifactId?: string;
-  rateCardId?: string;
-  jobId?: string;
-  progress?: number;
-  status?: string;
-  message?: string;
-  data?: unknown;
-  [key: string]: unknown;
-}
-
-type SSEEventHandler = (data: SSEEventPayload) => void;
-
-/**
- * Setup event handlers for this connection
- */
-function setupEventHandlers(
-  controller: ReadableStreamDefaultController,
-  connectionId: string,
-  tenantId: string,
-  userId?: string
-) {
-  const encoder = new TextEncoder();
-  const handlers: Array<{ event: string; handler: SSEEventHandler }> = [];
-
-  const sendEvent = (type: string, data: SSEEventPayload) => {
-    try {
-      // Filter by tenant
-      if (data.tenantId && data.tenantId !== tenantId) {
-        return;
-      }
-
-      const message = {
-        type,
-        data,
-        timestamp: new Date().toISOString(),
-      };
-
-      controller.enqueue(
-        encoder.encode(`data: ${JSON.stringify(message)}\n\n`)
-      );
-      
-      // Update activity timestamp
-      sseConnectionManager.updateActivity(connectionId);
-    } catch {
-      // Connection errored, but we don't track state in simplified manager
-    }
+export function getSSEStats() {
+  return {
+    totalConnections: connections.size,
+    redisConnected: subscriberReady,
+    connectionsByTenant: Array.from(connections.values()).reduce((acc, conn) => {
+      acc[conn.tenantId] = (acc[conn.tenantId] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>),
   };
-
-  // Contract events
-  const contractCreatedHandler: SSEEventHandler = (data) => sendEvent('contract:created', data);
-  const contractUpdatedHandler: SSEEventHandler = (data) => sendEvent('contract:updated', data);
-  const processingCompletedHandler: SSEEventHandler = (data) => sendEvent('contract:completed', data);
-
-  eventBus.on(Events.CONTRACT_CREATED, contractCreatedHandler);
-  eventBus.on(Events.CONTRACT_UPDATED, contractUpdatedHandler);
-  eventBus.on(Events.PROCESSING_COMPLETED, processingCompletedHandler);
-
-  handlers.push(
-    { event: Events.CONTRACT_CREATED, handler: contractCreatedHandler },
-    { event: Events.CONTRACT_UPDATED, handler: contractUpdatedHandler },
-    { event: Events.PROCESSING_COMPLETED, handler: processingCompletedHandler }
-  );
-
-  // Artifact events
-  const artifactGeneratedHandler: SSEEventHandler = (data) => sendEvent('artifact:generated', data);
-  const artifactUpdatedHandler: SSEEventHandler = (data) => sendEvent('artifact:updated', data);
-
-  eventBus.on(Events.ARTIFACT_GENERATED, artifactGeneratedHandler);
-  eventBus.on(Events.ARTIFACT_UPDATED, artifactUpdatedHandler);
-
-  handlers.push(
-    { event: Events.ARTIFACT_GENERATED, handler: artifactGeneratedHandler },
-    { event: Events.ARTIFACT_UPDATED, handler: artifactUpdatedHandler }
-  );
-
-  // Rate card events
-  const rateCardCreatedHandler: SSEEventHandler = (data) => sendEvent('ratecard:created', data);
-  const rateCardUpdatedHandler: SSEEventHandler = (data) => sendEvent('ratecard:updated', data);
-  const rateCardImportedHandler: SSEEventHandler = (data) => sendEvent('ratecard:imported', data);
-
-  eventBus.on(Events.RATE_CARD_CREATED, rateCardCreatedHandler);
-  eventBus.on(Events.RATE_CARD_UPDATED, rateCardUpdatedHandler);
-  eventBus.on(Events.RATE_CARD_IMPORTED, rateCardImportedHandler);
-
-  handlers.push(
-    { event: Events.RATE_CARD_CREATED, handler: rateCardCreatedHandler },
-    { event: Events.RATE_CARD_UPDATED, handler: rateCardUpdatedHandler },
-    { event: Events.RATE_CARD_IMPORTED, handler: rateCardImportedHandler }
-  );
-
-  // Benchmark events
-  const benchmarkCalculatedHandler: SSEEventHandler = (data) => sendEvent('benchmark:calculated', data);
-  const benchmarkInvalidatedHandler: SSEEventHandler = (data) => sendEvent('benchmark:invalidated', data);
-
-  eventBus.on(Events.BENCHMARK_CALCULATED, benchmarkCalculatedHandler);
-  eventBus.on(Events.BENCHMARK_INVALIDATED, benchmarkInvalidatedHandler);
-
-  handlers.push(
-    { event: Events.BENCHMARK_CALCULATED, handler: benchmarkCalculatedHandler },
-    { event: Events.BENCHMARK_INVALIDATED, handler: benchmarkInvalidatedHandler }
-  );
-
-  // Job progress events
-  const jobProgressHandler: SSEEventHandler = (data) => sendEvent('job:progress', data);
-  const jobStatusChangedHandler: SSEEventHandler = (data) => sendEvent('job:status', data);
-
-  eventBus.on(Events.JOB_PROGRESS, jobProgressHandler);
-  eventBus.on(Events.JOB_STATUS_CHANGED, jobStatusChangedHandler);
-
-  handlers.push(
-    { event: Events.JOB_PROGRESS, handler: jobProgressHandler },
-    { event: Events.JOB_STATUS_CHANGED, handler: jobStatusChangedHandler }
-  );
-
-  // Notification events
-  const notificationHandler: SSEEventHandler = (data) => {
-    // Filter by user if specified
-    if (userId && data.userId && data.userId !== userId) {
-      return;
-    }
-    sendEvent('notification', data);
-  };
-
-  eventBus.on('notification', notificationHandler);
-  handlers.push({ event: 'notification', handler: notificationHandler });
-
-  return handlers;
 }
-
-/**
- * Cleanup event handlers
- */
-function cleanupEventHandlers(handlers: Array<{ event: string; handler: SSEEventHandler }>) {
-  handlers.forEach(({ event, handler }) => {
-    eventBus.off(event as Events | 'notification', handler);
-  });
-}
-
-/**
- * Get connection statistics
- */
-export function getConnectionStats() {
-  return sseConnectionManager.getMetrics();
-}
-
-// Note: broadcast functions removed - not needed for basic SSE functionality
-// Restore from git history if needed after fixing data-orchestration package

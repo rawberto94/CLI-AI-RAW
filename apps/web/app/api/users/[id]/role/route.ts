@@ -5,7 +5,6 @@
 import { NextRequest } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { auditTrailService } from 'data-orchestration/services';
 
@@ -21,14 +20,10 @@ export async function PUT(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
-    }
     const { id: userId } = await params;
 
     const currentUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: ctx.userId },
       select: { tenantId: true, role: true },
     });
 
@@ -64,7 +59,7 @@ export async function PUT(
     }
 
     // Cannot demote yourself
-    if (targetUser.id === session.user.id && role !== currentUser.role) {
+    if (targetUser.id === ctx.userId && role !== currentUser.role) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Cannot change your own role', 400);
     }
 
@@ -78,7 +73,7 @@ export async function PUT(
     await prisma.auditLog.create({
       data: {
         tenantId: currentUser.tenantId,
-        userId: session.user.id,
+        userId: ctx.userId,
         action: 'USER_ROLE_CHANGED',
         resourceType: 'user',
         resource: userId,

@@ -420,24 +420,38 @@ class ContractSourceSyncService {
 
       progress.filesFound += result.files.length;
 
-      // Process each file
-      for (const file of result.files) {
+      // Process files concurrently with a semaphore (5 parallel downloads)
+      const CONCURRENCY = 5;
+      const filesToProcess = result.files.filter(f => {
+        if (job?.cancel) return false;
+        if (processedIds.has(f.id)) return false;
+        processedIds.add(f.id);
+        return true;
+      });
+
+      // Process in batches of CONCURRENCY
+      for (let i = 0; i < filesToProcess.length; i += CONCURRENCY) {
         if (job?.cancel) break;
-        if (processedIds.has(file.id)) continue;
-        processedIds.add(file.id);
+        const batch = filesToProcess.slice(i, i + CONCURRENCY);
 
-        progress.currentFile = file.name;
+        const results = await Promise.allSettled(
+          batch.map(async (file) => {
+            progress.currentFile = file.name;
+            await this.processFile(source, connector, file, syncId, progress, incrementalOnly);
+          })
+        );
 
-        try {
-          await this.processFile(source, connector, file, syncId, progress, incrementalOnly);
-        } catch (error) {
-          progress.filesFailed++;
-          progress.errors.push({
-            fileId: file.id,
-            fileName: file.name,
-            error: error instanceof Error ? error.message : 'Unknown error',
-          });
-        }
+        // Track failures
+        results.forEach((result, idx) => {
+          if (result.status === 'rejected') {
+            progress.filesFailed++;
+            progress.errors.push({
+              fileId: batch[idx].id,
+              fileName: batch[idx].name,
+              error: result.reason instanceof Error ? result.reason.message : 'Unknown error',
+            });
+          }
+        });
       }
 
       pageToken = result.nextPageToken;

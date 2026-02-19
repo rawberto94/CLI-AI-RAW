@@ -10,7 +10,6 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getServerSession } from '@/lib/auth';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 import {
@@ -28,13 +27,7 @@ import { auditLog, AuditAction, getAuditContext } from '@/lib/security/audit';
  */
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
-    const session = await getServerSession();
-    
-    if (!session?.user?.id) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-    
-    const enabled = await isMFAEnabled(session.user.id);
+    const enabled = await isMFAEnabled(ctx.userId);
     
     return createSuccessResponse(ctx, {
       mfaEnabled: enabled,
@@ -50,24 +43,18 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
-    const session = await getServerSession();
-    
-    if (!session?.user?.id) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-    
     const body = await request.json();
     const { action, token } = body;
     
     switch (action) {
       case 'setup': {
         // Initialize MFA setup
-        const result = await initializeMFASetup(session.user.id);
+        const result = await initializeMFASetup(ctx.userId);
         
         await auditLog({
           action: AuditAction.MFA_SETUP_STARTED,
-          userId: session.user.id,
-          tenantId: session.user.tenantId,
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
           metadata: {},
           ...getAuditContext(request),
         });
@@ -85,13 +72,13 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'Token required', 400);
         }
         
-        const success = await completeMFASetup(session.user.id, token);
+        const success = await completeMFASetup(ctx.userId, token);
         
         if (success) {
           await auditLog({
             action: AuditAction.MFA_ENABLED,
-            userId: session.user.id,
-            tenantId: session.user.tenantId,
+            userId: ctx.userId,
+            tenantId: ctx.tenantId,
             metadata: { method: 'totp' },
             ...getAuditContext(request),
           });
@@ -108,13 +95,13 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'Token required', 400);
         }
         
-        const success = await verifyMFAToken(session.user.id, token);
+        const success = await verifyMFAToken(ctx.userId, token);
         
         if (success) {
           await auditLog({
             action: AuditAction.MFA_VERIFIED,
-            userId: session.user.id,
-            tenantId: session.user.tenantId,
+            userId: ctx.userId,
+            tenantId: ctx.tenantId,
             metadata: {},
             ...getAuditContext(request),
           });
@@ -123,8 +110,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         } else {
           await auditLog({
             action: AuditAction.MFA_FAILED,
-            userId: session.user.id,
-            tenantId: session.user.tenantId,
+            userId: ctx.userId,
+            tenantId: ctx.tenantId,
             metadata: {},
             ...getAuditContext(request),
           });
@@ -141,7 +128,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
         // Verify the user can disable (via TOTP or password)
         if (token) {
-          const isValid = await verifyMFAToken(session.user.id, token);
+          const isValid = await verifyMFAToken(ctx.userId, token);
           if (!isValid) {
             return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid verification code', 400);
           }
@@ -149,7 +136,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           const { compare } = await import('bcryptjs');
           const { prisma } = await import('@/lib/prisma');
           const user = await prisma.user.findUnique({
-            where: { id: session.user.id },
+            where: { id: ctx.userId },
             select: { passwordHash: true },
           });
           if (!user?.passwordHash) {
@@ -161,12 +148,12 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           }
         }
 
-        await disableMFA(session.user.id);
+        await disableMFA(ctx.userId);
         
         await auditLog({
           action: AuditAction.MFA_DISABLED,
-          userId: session.user.id,
-          tenantId: session.user.tenantId,
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
           metadata: {},
           ...getAuditContext(request),
         });
@@ -176,12 +163,12 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       
       case 'regenerate-backup-codes': {
         // Regenerate backup codes
-        const codes = await regenerateBackupCodes(session.user.id);
+        const codes = await regenerateBackupCodes(ctx.userId);
         
         await auditLog({
           action: AuditAction.MFA_BACKUP_CODES_REGENERATED,
-          userId: session.user.id,
-          tenantId: session.user.tenantId,
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
           metadata: {},
           ...getAuditContext(request),
         });

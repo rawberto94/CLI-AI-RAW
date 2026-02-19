@@ -9,8 +9,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from '@/lib/auth'
-import { getSessionTenantId } from '@/lib/tenant-server'
 import { prisma } from '@/lib/prisma'
 import { contractService } from 'data-orchestration/services'
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
@@ -34,13 +32,8 @@ export async function GET(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession()
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-
     const { id: contractId } = await params
-    const tenantId = getSessionTenantId(session)
+    const tenantId = ctx.tenantId
 
     // Get contract with metadata
     const contract = await prisma.contract.findFirst({

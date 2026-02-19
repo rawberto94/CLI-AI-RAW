@@ -14,7 +14,6 @@ import {
   type CloudProvider,
 } from '@/lib/templates/cloud-sync-service';
 import type { ContractTemplate } from '@/lib/templates/document-service';
-import { getServerSession } from '@/lib/auth';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
 
@@ -27,12 +26,7 @@ export async function POST(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
-    }
-
-    const tenantId = session.user.tenantId;
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant not found', 400);
     }
@@ -162,12 +156,7 @@ export async function GET(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Not authenticated', 401);
-    }
-
-    const tenantId = session.user.tenantId;
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant not found', 400);
     }

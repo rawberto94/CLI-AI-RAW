@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import getDb from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
-import { getServerSession } from '@/lib/auth';
 import { getAuthenticatedApiContext, getApiContext, parseQueryParams, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware';
 import { z } from 'zod';
 
@@ -22,11 +21,6 @@ export async function GET(request: NextRequest) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-
     const validated = parseQueryParams(request, deadlinesQuerySchema);
     if (!validated.success) {
       return createValidationErrorResponse(ctx, validated.error);

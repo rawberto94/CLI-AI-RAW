@@ -11,9 +11,9 @@
  * @version 1.0.0
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withAuthApiHandler, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, type AuthenticatedApiContext, createSuccessResponse } from '@/lib/api-middleware';
 
 interface GraphNode {
   id: string;
@@ -177,8 +177,5 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
     }
   }
 
-  return NextResponse.json({
-    success: true,
-    data: { nodes, edges, stats: { contracts: contracts.length, suppliers: supplierMap.size, categories: categoryMap.size } },
-  });
+  return createSuccessResponse(ctx, { nodes, edges, stats: { contracts: contracts.length, suppliers: supplierMap.size, categories: categoryMap.size } });
 });

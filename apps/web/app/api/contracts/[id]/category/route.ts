@@ -9,7 +9,6 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from "@/lib/tenant-server";
-import { getServerSession } from "@/lib/auth";
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
@@ -223,7 +222,7 @@ export async function PUT(
             ...meta._categorization,
             manualOverride: feedbackType !== "confirmation",
             overriddenAt: new Date().toISOString(),
-            overriddenBy: (await getServerSession())?.user?.id || "system",
+            overriddenBy: ctx.userId,
           },
           // Remove pending if it existed
           _pendingCategorization: undefined,
