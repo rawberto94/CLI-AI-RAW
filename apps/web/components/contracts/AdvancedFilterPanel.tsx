@@ -28,6 +28,13 @@ import {
   Clock,
   FileText,
   Sparkles,
+  Shield,
+  Building2,
+  UserCircle,
+  FileStack,
+  Coins,
+  MapPin,
+  CreditCard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -61,6 +68,10 @@ interface AdvancedFilterPanelProps {
   onChange: (filters: FilterState) => void;
   onClose?: () => void;
   availableCategories?: string[];
+  /** Dynamic options derived from actual contract data */
+  availableSuppliers?: string[];
+  availableClients?: string[];
+  availableContractTypes?: string[];
 }
 
 const STATUS_OPTIONS = [
@@ -85,6 +96,9 @@ export function AdvancedFilterPanel({
   onChange,
   onClose,
   availableCategories = [],
+  availableSuppliers = [],
+  availableClients = [],
+  availableContractTypes = [],
 }: AdvancedFilterPanelProps) {
   const [localFilters, setLocalFilters] = useState<FilterState>(filters);
 
@@ -116,6 +130,14 @@ export function AdvancedFilterPanel({
       ? current.filter(c => c !== category)
       : [...current, category];
     updateFilter('categories', updated);
+  };
+
+  const toggleArrayFilter = (key: 'riskLevels' | 'suppliers' | 'clients' | 'contractTypes' | 'currencies' | 'jurisdictions' | 'paymentTerms', value: string) => {
+    const current = localFilters[key] ?? [];
+    const updated = current.includes(value)
+      ? current.filter((v: string) => v !== value)
+      : [...current, value];
+    updateFilter(key, updated);
   };
 
   const resetFilters = () => {
@@ -393,6 +415,141 @@ export function AdvancedFilterPanel({
                   </Badge>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Risk Level Filter */}
+        <div className="space-y-3">
+          <Label className="text-sm font-semibold flex items-center gap-2">
+            <Shield className="h-4 w-4 text-red-600" />
+            Risk Level
+          </Label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { value: 'low', label: 'Low', color: 'border-green-500 bg-green-50 text-green-700' },
+              { value: 'medium', label: 'Medium', color: 'border-amber-500 bg-amber-50 text-amber-700' },
+              { value: 'high', label: 'High', color: 'border-red-500 bg-red-50 text-red-700' },
+            ].map(option => {
+              const isSelected = (localFilters.riskLevels ?? []).includes(option.value);
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => toggleArrayFilter('riskLevels', option.value)}
+                  className={cn(
+                    'flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium',
+                    isSelected
+                      ? option.color + ' shadow-sm'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                  )}
+                >
+                  {option.label}
+                  {isSelected && <CheckCircle2 className="h-3.5 w-3.5" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Contract Type Filter */}
+        {availableContractTypes.length > 0 && (
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold flex items-center gap-2">
+              <FileStack className="h-4 w-4 text-indigo-600" />
+              Contract Type
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {availableContractTypes.map(type => {
+                const isSelected = (localFilters.contractTypes ?? []).includes(type);
+                return (
+                  <Badge
+                    key={type}
+                    variant={isSelected ? 'default' : 'outline'}
+                    className={cn(
+                      'cursor-pointer transition-all',
+                      isSelected
+                        ? 'bg-indigo-500 hover:bg-indigo-600'
+                        : 'hover:border-indigo-300'
+                    )}
+                    onClick={() => toggleArrayFilter('contractTypes', type)}
+                  >
+                    {type}
+                    {isSelected && <X className="ml-1 h-3 w-3" />}
+                  </Badge>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Supplier Filter */}
+        {availableSuppliers.length > 0 && (
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-blue-600" />
+              Supplier
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {availableSuppliers.slice(0, 12).map(supplier => {
+                const isSelected = (localFilters.suppliers ?? []).includes(supplier);
+                return (
+                  <Badge
+                    key={supplier}
+                    variant={isSelected ? 'default' : 'outline'}
+                    className={cn(
+                      'cursor-pointer transition-all',
+                      isSelected
+                        ? 'bg-blue-500 hover:bg-blue-600'
+                        : 'hover:border-blue-300'
+                    )}
+                    onClick={() => toggleArrayFilter('suppliers', supplier)}
+                  >
+                    {supplier}
+                    {isSelected && <X className="ml-1 h-3 w-3" />}
+                  </Badge>
+                );
+              })}
+              {availableSuppliers.length > 12 && (
+                <Badge variant="outline" className="text-slate-400">
+                  +{availableSuppliers.length - 12} more
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Client Filter */}
+        {availableClients.length > 0 && (
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold flex items-center gap-2">
+              <UserCircle className="h-4 w-4 text-purple-600" />
+              Client
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {availableClients.slice(0, 12).map(client => {
+                const isSelected = (localFilters.clients ?? []).includes(client);
+                return (
+                  <Badge
+                    key={client}
+                    variant={isSelected ? 'default' : 'outline'}
+                    className={cn(
+                      'cursor-pointer transition-all',
+                      isSelected
+                        ? 'bg-purple-500 hover:bg-purple-600'
+                        : 'hover:border-purple-300'
+                    )}
+                    onClick={() => toggleArrayFilter('clients', client)}
+                  >
+                    {client}
+                    {isSelected && <X className="ml-1 h-3 w-3" />}
+                  </Badge>
+                );
+              })}
+              {availableClients.length > 12 && (
+                <Badge variant="outline" className="text-slate-400">
+                  +{availableClients.length - 12} more
+                </Badge>
+              )}
             </div>
           </div>
         )}

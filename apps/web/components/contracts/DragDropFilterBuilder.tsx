@@ -57,6 +57,10 @@ interface DragDropFilterBuilderProps {
   onApply: (groups: FilterGroup[]) => void;
   onClose: () => void;
   initialGroups?: FilterGroup[];
+  /** Dynamic options derived from contract data */
+  availableSuppliers?: string[];
+  availableClients?: string[];
+  availableContractTypes?: string[];
 }
 
 const FILTER_TEMPLATES = [
@@ -174,10 +178,15 @@ const getColorClasses = (color: string) => {
   return colorMap[color] || colorMap.blue;
 };
 
+const SAVED_TEMPLATES_KEY = 'contigo-filter-templates';
+
 export function DragDropFilterBuilder({
   onApply,
   onClose,
   initialGroups = [],
+  availableSuppliers = [],
+  availableClients = [],
+  availableContractTypes = [],
 }: DragDropFilterBuilderProps) {
   const [filterGroups, setFilterGroups] = useState<FilterGroup[]>(
     initialGroups.length > 0
@@ -187,14 +196,38 @@ export function DragDropFilterBuilder({
   const [draggedTemplate, setDraggedTemplate] = useState<(typeof FILTER_TEMPLATES)[number] | null>(null);
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [savedTemplates, setSavedTemplates] = useState<Array<{ name: string; groups: FilterGroup[] }>>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem(SAVED_TEMPLATES_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+  const [showTemplateList, setShowTemplateList] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [showSaveInput, setShowSaveInput] = useState(false);
 
-  const addFilterToGroup = useCallback((groupId: string, template: (typeof FILTER_TEMPLATES)[number]) => {
+  // Build effective filter templates with dynamic options
+  const effectiveTemplates = FILTER_TEMPLATES.map(t => {
+    if (t.type === 'supplier' && availableSuppliers.length > 0) {
+      return { ...t, options: availableSuppliers.slice(0, 6) as unknown as typeof t.options };
+    }
+    if (t.type === 'client' && availableClients.length > 0) {
+      return { ...t, options: availableClients.slice(0, 6) as unknown as typeof t.options };
+    }
+    if (t.type === 'contractType' && availableContractTypes.length > 0) {
+      return { ...t, options: availableContractTypes.slice(0, 6) as unknown as typeof t.options };
+    }
+    return t;
+  });
+
+  const addFilterToGroup = useCallback((groupId: string, template: (typeof FILTER_TEMPLATES)[number], overrideValue?: string) => {
     const newFilter: FilterBlock = {
       id: `filter-${Date.now()}`,
       type: template.type,
       label: template.label,
       operator: 'equals',
-      value: template.options[0],
+      value: overrideValue ?? template.options[0],
       color: template.color,
       icon: template.icon,
     };
@@ -370,7 +403,7 @@ export function DragDropFilterBuilder({
               </div>
 
               <div className="space-y-2">
-                {FILTER_TEMPLATES
+                {effectiveTemplates
                   .filter(template => 
                     template.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
                     template.type.toLowerCase().includes(searchQuery.toLowerCase())
@@ -382,7 +415,7 @@ export function DragDropFilterBuilder({
                     <p className="text-xs text-slate-400">Try a different search</p>
                   </div>
                 ) : (
-                  FILTER_TEMPLATES
+                  effectiveTemplates
                     .filter(template => 
                       template.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
                       template.type.toLowerCase().includes(searchQuery.toLowerCase())
@@ -428,7 +461,7 @@ export function DragDropFilterBuilder({
                     className="w-full justify-start text-xs h-8"
                     onClick={() => {
                       // Active contracts
-                      addFilterToGroup(filterGroups[0].id, FILTER_TEMPLATES.find(t => t.type === 'status')!);
+                      addFilterToGroup(filterGroups[0].id, effectiveTemplates.find(t => t.type === 'status')!, 'Active');
                     }}
                   >
                     <CheckCircle2 className="h-3 w-3 mr-2 text-violet-600" />
@@ -440,7 +473,7 @@ export function DragDropFilterBuilder({
                     className="w-full justify-start text-xs h-8"
                     onClick={() => {
                       // Expiring soon
-                      addFilterToGroup(filterGroups[0].id, FILTER_TEMPLATES.find(t => t.type === 'expiration')!);
+                      addFilterToGroup(filterGroups[0].id, effectiveTemplates.find(t => t.type === 'expiration')!, 'Expiring Soon');
                     }}
                   >
                     <AlertTriangle className="h-3 w-3 mr-2 text-red-600" />
@@ -452,7 +485,7 @@ export function DragDropFilterBuilder({
                     className="w-full justify-start text-xs h-8"
                     onClick={() => {
                       // High value
-                      addFilterToGroup(filterGroups[0].id, FILTER_TEMPLATES.find(t => t.type === 'value')!);
+                      addFilterToGroup(filterGroups[0].id, effectiveTemplates.find(t => t.type === 'value')!, '> $1M');
                     }}
                   >
                     <DollarSign className="h-3 w-3 mr-2 text-violet-600" />
@@ -468,24 +501,97 @@ export function DragDropFilterBuilder({
                   variant="outline"
                   size="sm"
                   className="w-full justify-start gap-2"
-                  onClick={() => {
-                    // Load saved template
-                  }}
+                  onClick={() => setShowTemplateList(!showTemplateList)}
                 >
                   <Save className="h-3.5 w-3.5" />
                   Load Template
+                  {savedTemplates.length > 0 && (
+                    <Badge variant="secondary" className="ml-auto text-[10px] px-1.5">{savedTemplates.length}</Badge>
+                  )}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start gap-2"
-                  onClick={() => {
-                    // Save current as template
-                  }}
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  Save as Template
-                </Button>
+                {showTemplateList && savedTemplates.length > 0 && (
+                  <div className="space-y-1 pl-2 border-l-2 border-slate-200 ml-2">
+                    {savedTemplates.map((tmpl, idx) => (
+                      <div key={idx} className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 justify-start text-xs h-7 truncate"
+                          onClick={() => {
+                            setFilterGroups(tmpl.groups);
+                            setShowTemplateList(false);
+                          }}
+                        >
+                          {tmpl.name}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-slate-400 hover:text-red-500"
+                          onClick={() => {
+                            const updated = savedTemplates.filter((_, i) => i !== idx);
+                            setSavedTemplates(updated);
+                            localStorage.setItem(SAVED_TEMPLATES_KEY, JSON.stringify(updated));
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {showTemplateList && savedTemplates.length === 0 && (
+                  <p className="text-xs text-slate-400 pl-4">No saved templates yet</p>
+                )}
+                {showSaveInput ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      placeholder="Template name..."
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      className="h-7 text-xs flex-1"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && templateName.trim()) {
+                          const updated = [...savedTemplates, { name: templateName.trim(), groups: filterGroups }];
+                          setSavedTemplates(updated);
+                          localStorage.setItem(SAVED_TEMPLATES_KEY, JSON.stringify(updated));
+                          setTemplateName('');
+                          setShowSaveInput(false);
+                        }
+                        if (e.key === 'Escape') setShowSaveInput(false);
+                      }}
+                      autoFocus
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      disabled={!templateName.trim()}
+                      onClick={() => {
+                        if (templateName.trim()) {
+                          const updated = [...savedTemplates, { name: templateName.trim(), groups: filterGroups }];
+                          setSavedTemplates(updated);
+                          localStorage.setItem(SAVED_TEMPLATES_KEY, JSON.stringify(updated));
+                          setTemplateName('');
+                          setShowSaveInput(false);
+                        }
+                      }}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={() => setShowSaveInput(true)}
+                    disabled={filterGroups.every(g => g.filters.length === 0)}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Save as Template
+                  </Button>
+                )}
               </div>
               </div>
             </div>
@@ -603,7 +709,7 @@ export function DragDropFilterBuilder({
                           >
                             {group.filters.map((filter, filterIndex) => {
                               const Icon = filter.icon;
-                              const template = FILTER_TEMPLATES.find(t => t.type === filter.type);
+                              const template = effectiveTemplates.find(t => t.type === filter.type);
                               const colors = getColorClasses(filter.color);
 
                               return (

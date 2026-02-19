@@ -887,10 +887,39 @@ export default function ContractsPage() {
     setPendingBulkAction(null);
   }, [pendingBulkAction, performBulkAction]);
 
-  // Check if any filters are active
-  const hasActiveFilters = searchQuery || statusFilter !== "all" || typeFilters.length > 0 || riskFilters.length > 0 || approvalFilters.length > 0 || valueRangeFilter || dateRangeFilter || expirationFilters.length > 0 || supplierFilters.length > 0 || signatureFilters.length > 0 || documentTypeFilters.length > 0 || activePreset || Object.keys(advancedFilters).length > 0 || categoryFilter;
+  // Derive dynamic filter options from actual contract data
+  const availableSuppliers = useMemo(() => {
+    const suppliers = new Set<string>();
+    contracts.forEach(c => {
+      const parties = (c as any).parties;
+      if (parties?.supplier) suppliers.add(parties.supplier);
+      if ((c as any).supplierName) suppliers.add((c as any).supplierName);
+    });
+    return Array.from(suppliers).filter(Boolean).sort();
+  }, [contracts]);
+
+  const availableClients = useMemo(() => {
+    const clients = new Set<string>();
+    contracts.forEach(c => {
+      const parties = (c as any).parties;
+      if (parties?.client) clients.add(parties.client);
+      if ((c as any).clientName) clients.add((c as any).clientName);
+    });
+    return Array.from(clients).filter(Boolean).sort();
+  }, [contracts]);
+
+  const availableContractTypes = useMemo(() => {
+    const types = new Set<string>();
+    contracts.forEach(c => {
+      if (c.type) types.add(c.type);
+    });
+    return Array.from(types).filter(Boolean).sort();
+  }, [contracts]);
+
+  // Check if any filters are active (includes both legacy standalone filters AND FilterState fields)
+  const hasActiveFilters = searchQuery || statusFilter !== "all" || typeFilters.length > 0 || riskFilters.length > 0 || approvalFilters.length > 0 || valueRangeFilter || dateRangeFilter || expirationFilters.length > 0 || supplierFilters.length > 0 || signatureFilters.length > 0 || documentTypeFilters.length > 0 || activePreset || Object.keys(advancedFilters).length > 0 || categoryFilter || filterState.statuses.length > 0 || filterState.documentRoles.length > 0 || filterState.categories.length > 0 || filterState.hasDeadline !== null || filterState.isExpiring !== null || (filterState.riskLevels?.length ?? 0) > 0 || (filterState.suppliers?.length ?? 0) > 0 || (filterState.clients?.length ?? 0) > 0 || (filterState.contractTypes?.length ?? 0) > 0 || (filterState.currencies?.length ?? 0) > 0 || (filterState.jurisdictions?.length ?? 0) > 0 || (filterState.paymentTerms?.length ?? 0) > 0;
   
-  // Count active filters for badge
+  // Count active filters for badge (includes both legacy standalone filters AND FilterState fields)
   const activeFilterCount = [
     searchQuery ? 1 : 0,
     statusFilter !== 'all' ? 1 : 0,
@@ -904,6 +933,18 @@ export default function ContractsPage() {
     signatureFilters.length,
     documentTypeFilters.length,
     categoryFilter ? 1 : 0,
+    filterState.statuses.length,
+    filterState.documentRoles.length,
+    filterState.categories.length,
+    filterState.hasDeadline !== null ? 1 : 0,
+    filterState.isExpiring !== null ? 1 : 0,
+    filterState.riskLevels?.length ?? 0,
+    filterState.suppliers?.length ?? 0,
+    filterState.clients?.length ?? 0,
+    filterState.contractTypes?.length ?? 0,
+    filterState.currencies?.length ?? 0,
+    filterState.jurisdictions?.length ?? 0,
+    filterState.paymentTerms?.length ?? 0,
   ].reduce((a, b) => a + b, 0);
   
   // Category stats
@@ -1833,14 +1874,14 @@ export default function ContractsPage() {
             onExpirationFiltersChange={setExpirationFilters}
             supplierFilters={supplierFilters}
             onSupplierFiltersChange={setSupplierFilters}
-            categoryFilter={null}
-            onCategoryFilterChange={() => {}}
-            valueRangeFilter={null}
-            onValueRangeFilterChange={() => {}}
+            categoryFilter={categoryFilter}
+            onCategoryFilterChange={(cat) => setCategoryFilter(cat)}
+            valueRangeFilter={valueRangeFilter}
+            onValueRangeFilterChange={(val) => setValueRangeFilter(val)}
             dateRangeFilter={dateRangeFilter}
             onDateRangeFilterChange={setDateRangeFilter}
             suppliers={Array.from(new Set(contracts?.map(c => c.parties?.supplier).filter(Boolean) || [])).sort() as string[]}
-            categories={[]}
+            categories={categories.map(cat => cat.name)}
             onClearFilters={clearFilters}
             onAISearchClick={(query) => window.dispatchEvent(new CustomEvent('openAIChatbot', {
               detail: { autoMessage: query ? `Search for contracts matching: ${query}` : 'Help me find contracts' }
@@ -1883,6 +1924,9 @@ export default function ContractsPage() {
                 onChange={setFilterState}
                 onClose={() => setShowAdvancedFilters(false)}
                 availableCategories={categories.map(cat => cat.name)}
+                availableSuppliers={availableSuppliers}
+                availableClients={availableClients}
+                availableContractTypes={availableContractTypes}
               />
             </motion.div>
           )}
@@ -1894,6 +1938,9 @@ export default function ContractsPage() {
             onApply={handleVisualBuilderApply}
             onClose={() => setShowVisualBuilder(false)}
             initialGroups={[]}
+            availableSuppliers={availableSuppliers}
+            availableClients={availableClients}
+            availableContractTypes={availableContractTypes}
           />
         )}
 
@@ -1949,18 +1996,23 @@ export default function ContractsPage() {
               {showAdvancedFilters ? <X className="h-3.5 w-3.5 mr-1.5" /> : <Filter className="h-3.5 w-3.5 mr-1.5" />}
               <span className="hidden sm:inline">Advanced Filters</span>
               <span className="sm:hidden">Filters</span>
-              {(filterState.statuses.length > 0 || filterState.documentRoles.length > 0 || 
-                filterState.categories.length > 0 || filterState.hasDeadline !== null || 
-                filterState.isExpiring !== null) && (
+              {(() => {
+                const advBadgeCount = filterState.statuses.length + filterState.documentRoles.length + 
+                   filterState.categories.length + (filterState.hasDeadline !== null ? 1 : 0) + 
+                   (filterState.isExpiring !== null ? 1 : 0) +
+                   (filterState.riskLevels?.length ?? 0) + (filterState.suppliers?.length ?? 0) +
+                   (filterState.clients?.length ?? 0) + (filterState.contractTypes?.length ?? 0) +
+                   (filterState.currencies?.length ?? 0) + (filterState.jurisdictions?.length ?? 0) +
+                   (filterState.paymentTerms?.length ?? 0);
+                return advBadgeCount > 0 ? (
                 <Badge className={cn(
                   "ml-1.5",
                   showAdvancedFilters ? "bg-white text-slate-800" : "bg-slate-800 text-white"
                 )} variant="secondary">
-                  {filterState.statuses.length + filterState.documentRoles.length + 
-                   filterState.categories.length + (filterState.hasDeadline !== null ? 1 : 0) + 
-                   (filterState.isExpiring !== null ? 1 : 0)}
+                  {advBadgeCount}
                 </Badge>
-              )}
+                ) : null;
+              })()}
             </Button>
         </div>
 
