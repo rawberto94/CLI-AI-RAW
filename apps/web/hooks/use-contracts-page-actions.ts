@@ -29,7 +29,6 @@ export function useContractsPageActions({
   // ── Selection state ────────────────────────────────────────────────
   const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
-  const [isBulkCategorizing, setIsBulkCategorizing] = useState(false);
 
   // ── Dialog state ───────────────────────────────────────────────────
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -38,14 +37,11 @@ export function useContractsPageActions({
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [approvalContractId, setApprovalContractId] = useState<string | null>(null);
   const [approvalContractTitle, setApprovalContractTitle] = useState("");
-  const [aiReportModalOpen, setAiReportModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contractToDelete, setContractToDelete] = useState<{ id: string; title: string } | null>(null);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [bulkExportDialogOpen, setBulkExportDialogOpen] = useState(false);
-  const [bulkAnalyzeDialogOpen, setBulkAnalyzeDialogOpen] = useState(false);
   const [bulkShareDialogOpen, setBulkShareDialogOpen] = useState(false);
-  const [pendingBulkAction, setPendingBulkAction] = useState<"export" | "analyze" | "share" | null>(null);
 
   // ── Selection ──────────────────────────────────────────────────────
   const toggleSelect = useCallback((contractId: string) => {
@@ -88,41 +84,6 @@ export function useContractsPageActions({
     },
     [selectedContracts, dataMode, refetch],
   );
-
-  const handleBulkCategorize = useCallback(async () => {
-    if (selectedContracts.size === 0) {
-      toast.warning("No contracts selected");
-      return;
-    }
-    setIsBulkCategorizing(true);
-    try {
-      const response = await fetch("/api/contracts/categorize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-tenant-id": getTenantId() },
-        body: JSON.stringify({ contractIds: Array.from(selectedContracts), force: false }),
-      });
-      if (!response.ok) throw new Error("Categorization failed");
-      const data = await response.json();
-      const results = data.data?.results || [];
-      const successCount = results.filter((r: any) => r.success && r.category).length;
-      const failedCount = results.filter((r: any) => !r.success || !r.category).length;
-      if (successCount > 0 && failedCount === 0) {
-        toast.success(`Categorized ${successCount} contract${successCount > 1 ? "s" : ""}`);
-      } else if (successCount > 0) {
-        toast.success(`Categorized ${successCount} of ${selectedContracts.size} contracts. ${failedCount} could not be auto-categorized.`);
-      } else if (results[0]?.error?.includes("No taxonomy categories")) {
-        toast.error("No categories defined. Go to Settings → Taxonomy to set up categories.", { duration: 5000 });
-      } else {
-        toast.warning("AI could not categorize the selected contracts. Try setting up keywords in your taxonomy.");
-      }
-      refetch();
-      setSelectedContracts(new Set());
-    } catch {
-      toast.error("Failed to categorize contracts");
-    } finally {
-      setIsBulkCategorizing(false);
-    }
-  }, [selectedContracts, refetch]);
 
   // ── Contract actions ───────────────────────────────────────────────
   const handleDownload = useCallback(async (contractId: string, format: "json" | "csv" | "pdf" = "pdf") => {
@@ -246,15 +207,11 @@ export function useContractsPageActions({
 
   // ── Bulk action with confirmation ──────────────────────────────────
   const handleBulkActionWithConfirmation = useCallback(
-    (action: "export" | "analyze" | "share") => {
+    (action: "export" | "share") => {
       if (selectedContracts.size === 0) return;
-      setPendingBulkAction(action);
       switch (action) {
         case "export":
           setBulkExportDialogOpen(true);
-          break;
-        case "analyze":
-          setBulkAnalyzeDialogOpen(true);
           break;
         case "share":
           setBulkShareDialogOpen(true);
@@ -265,22 +222,24 @@ export function useContractsPageActions({
   );
 
   const handleConfirmBulkAction = useCallback(async () => {
-    if (!pendingBulkAction) return;
-    await performBulkAction(pendingBulkAction);
-    setBulkExportDialogOpen(false);
-    setBulkAnalyzeDialogOpen(false);
-    setBulkShareDialogOpen(false);
-    setPendingBulkAction(null);
-  }, [pendingBulkAction, performBulkAction]);
+    // Determine which dialog is open and perform the action
+    if (bulkExportDialogOpen) {
+      await performBulkAction("export");
+      setBulkExportDialogOpen(false);
+    } else if (bulkShareDialogOpen) {
+      await performBulkAction("share");
+      setBulkShareDialogOpen(false);
+    }
+  }, [bulkExportDialogOpen, bulkShareDialogOpen, performBulkAction]);
 
   // ── Return ─────────────────────────────────────────────────────────
   return {
     // Selection
     selectedContracts, setSelectedContracts, toggleSelect,
     // Processing
-    isProcessingBulk, isBulkCategorizing,
+    isProcessingBulk,
     // Actions
-    performBulkAction, handleBulkCategorize,
+    performBulkAction,
     handleDownload, handleShare, handleRequestApproval, handleApprovalSuccess,
     handleDeleteClick, handleConfirmDelete,
     handleBulkDeleteClick, handleConfirmBulkDelete,
@@ -288,12 +247,9 @@ export function useContractsPageActions({
     // Dialogs
     shareDialogOpen, setShareDialogOpen, shareContractId, setShareContractId, shareContractTitle,
     approvalModalOpen, setApprovalModalOpen, approvalContractId, setApprovalContractId, approvalContractTitle, setApprovalContractTitle,
-    aiReportModalOpen, setAiReportModalOpen,
     deleteDialogOpen, setDeleteDialogOpen, contractToDelete,
     bulkDeleteDialogOpen, setBulkDeleteDialogOpen,
     bulkExportDialogOpen, setBulkExportDialogOpen,
-    bulkAnalyzeDialogOpen, setBulkAnalyzeDialogOpen,
     bulkShareDialogOpen, setBulkShareDialogOpen,
-    pendingBulkAction,
   };
 }

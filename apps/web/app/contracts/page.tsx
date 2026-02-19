@@ -29,7 +29,6 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import {
-  CheckCircle,
   Loader2,
   Filter,
   Download,
@@ -134,8 +133,6 @@ export default function ContractsPage() {
     expirationFilters, setExpirationFilters,
     signatureFilters, documentTypeFilters,
     activePreset, advancedFilters, setAdvancedFilters,
-    savedFilters, filterName, setFilterName,
-    showSaveFilterModal, setShowSaveFilterModal,
     currentPage, setCurrentPage, pageSize, setPageSize,
     sortField, setSortField, sortDirection, setSortDirection,
     statusFilter, typeFilters, riskFilters, supplierFilters, categoryFilter,
@@ -143,8 +140,6 @@ export default function ContractsPage() {
     serverParams,
     hasActiveFilters, activeFilterCount,
     clearFilters, handleClearFilter, handleLoadPreset,
-    handleVisualBuilderApply, applyPreset,
-    handleSaveFilter, handleLoadFilter,
   } = useContractsPageFilters();
 
   // UI toggle state (not part of filter logic)
@@ -159,7 +154,6 @@ export default function ContractsPage() {
   // Enhanced UI state
   const [previewContract, setPreviewContract] = useState<ExtendedContract | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [favoriteContracts, setFavoriteContracts] = useState<Set<string>>(new Set());
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // Use React Query for data fetching with caching
@@ -178,22 +172,18 @@ export default function ContractsPage() {
 
   const {
     selectedContracts, setSelectedContracts, toggleSelect,
-    isProcessingBulk, isBulkCategorizing,
-    performBulkAction, handleBulkCategorize,
+    isProcessingBulk,
+    performBulkAction,
     handleDownload, handleShare,
-    handleRequestApproval, handleApprovalSuccess,
+    handleRequestApproval,
     handleDeleteClick, handleConfirmDelete,
     handleBulkDeleteClick, handleConfirmBulkDelete,
-    handleBulkActionWithConfirmation, handleConfirmBulkAction,
+    handleConfirmBulkAction,
     shareDialogOpen, setShareDialogOpen, shareContractId, setShareContractId, shareContractTitle,
-    approvalModalOpen, setApprovalModalOpen, approvalContractId, setApprovalContractId, approvalContractTitle, setApprovalContractTitle,
-    aiReportModalOpen, setAiReportModalOpen,
     deleteDialogOpen, setDeleteDialogOpen, contractToDelete,
     bulkDeleteDialogOpen, setBulkDeleteDialogOpen,
     bulkExportDialogOpen, setBulkExportDialogOpen,
-    bulkAnalyzeDialogOpen, setBulkAnalyzeDialogOpen,
     bulkShareDialogOpen, setBulkShareDialogOpen,
-    pendingBulkAction,
   } = useContractsPageActions({ dataMode, refetch, refetchStats, crossModule, queryClient });
 
   const contracts: Contract[] = contractsData?.contracts || [];
@@ -235,13 +225,6 @@ export default function ContractsPage() {
         e.preventDefault();
         const searchInput = document.querySelector('[data-testid="contract-search"]') as HTMLInputElement;
         searchInput?.focus();
-      }
-      
-      // R - refresh
-      if (e.key === 'r' && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        refetch();
-        toast.info('Refreshing contracts...');
       }
       
       // V - toggle view mode
@@ -573,7 +556,7 @@ export default function ContractsPage() {
         ...(contract.parties.client ? [{ name: contract.parties.client, role: 'client' as const }] : []),
         ...(contract.parties.supplier ? [{ name: contract.parties.supplier, role: 'vendor' as const }] : []),
       ] : [],
-      isFavorite: favoriteContracts.has(contract.id),
+      isFavorite: false,
       isPinned: false,
       completeness: contract.status === 'completed' ? 100 : contract.status === 'processing' ? (contract.processing?.progress || 50) : 0,
       keyTerms: [],
@@ -584,7 +567,7 @@ export default function ContractsPage() {
       childContracts: contract.childContracts?.map(c => ({ ...c, contractType: c.contractType ?? undefined })),
       hasHierarchy: contract.hasHierarchy,
     } satisfies EnhancedContract));
-  }, [paginatedContracts, favoriteContracts]);
+  }, [paginatedContracts]);
 
   // Convert to ExtendedContract for preview panel
   const convertToExtendedContract = useCallback((contract: Contract): ExtendedContract => ({
@@ -625,21 +608,6 @@ export default function ContractsPage() {
     setPreviewContract(convertToExtendedContract(contract));
     setPreviewOpen(true);
   }, [convertToExtendedContract]);
-
-  // Handle favorite toggle
-  const handleToggleFavorite = useCallback((contractId: string) => {
-    setFavoriteContracts(prev => {
-      const next = new Set(prev);
-      if (next.has(contractId)) {
-        next.delete(contractId);
-        toast.success('Removed from favorites');
-      } else {
-        next.add(contractId);
-        toast.success('Added to favorites');
-      }
-      return next;
-    });
-  }, []);
 
   // Navigate between contracts in preview
   const handlePreviewNavigate = useCallback((direction: 'prev' | 'next') => {
@@ -701,6 +669,17 @@ export default function ContractsPage() {
     if (paginatedContracts.length === 0) return false;
     return paginatedContracts.every(c => selectedContracts.has(c.id));
   }, [paginatedContracts, selectedContracts]);
+
+  // Precompute advanced filter badge count
+  const advancedFilterCount = useMemo(() =>
+    filterState.statuses.length + filterState.documentRoles.length +
+    filterState.categories.length + (filterState.hasDeadline !== null ? 1 : 0) +
+    (filterState.isExpiring !== null ? 1 : 0) +
+    (filterState.riskLevels?.length ?? 0) + (filterState.suppliers?.length ?? 0) +
+    (filterState.clients?.length ?? 0) + (filterState.contractTypes?.length ?? 0) +
+    (filterState.currencies?.length ?? 0) + (filterState.jurisdictions?.length ?? 0) +
+    (filterState.paymentTerms?.length ?? 0),
+  [filterState]);
 
   if (loading) {
     return (
@@ -941,9 +920,7 @@ export default function ContractsPage() {
               key="processing-tracker"
               contracts={contracts} 
               onContractComplete={(id) => {
-                toast.success('Contract processing completed!', {
-                  icon: <CheckCircle className="h-4 w-4 text-green-500" />,
-                });
+                toast.success('Contract processing completed!');
                 refetch();
               }}
             />
@@ -1009,23 +986,14 @@ export default function ContractsPage() {
               {showAdvancedFilters ? <X className="h-3.5 w-3.5 mr-1.5" /> : <Filter className="h-3.5 w-3.5 mr-1.5" />}
               <span className="hidden sm:inline">Advanced Filters</span>
               <span className="sm:hidden">Filters</span>
-              {(() => {
-                const advBadgeCount = filterState.statuses.length + filterState.documentRoles.length + 
-                   filterState.categories.length + (filterState.hasDeadline !== null ? 1 : 0) + 
-                   (filterState.isExpiring !== null ? 1 : 0) +
-                   (filterState.riskLevels?.length ?? 0) + (filterState.suppliers?.length ?? 0) +
-                   (filterState.clients?.length ?? 0) + (filterState.contractTypes?.length ?? 0) +
-                   (filterState.currencies?.length ?? 0) + (filterState.jurisdictions?.length ?? 0) +
-                   (filterState.paymentTerms?.length ?? 0);
-                return advBadgeCount > 0 ? (
+              {advancedFilterCount > 0 && (
                 <Badge className={cn(
                   "ml-1.5",
                   showAdvancedFilters ? "bg-white text-slate-800" : "bg-slate-800 text-white"
                 )} variant="secondary">
-                  {advBadgeCount}
+                  {advancedFilterCount}
                 </Badge>
-                ) : null;
-              })()}
+              )}
             </Button>
         </div>
 
@@ -1278,7 +1246,7 @@ export default function ContractsPage() {
                     contract={contract}
                     isSelected={selectedContracts.has(contract.id)}
                     onSelect={() => toggleSelect(contract.id)}
-                    onClick={() => handlePreview(originalContract)}
+                    onClick={() => pushToContract(contract.id)}
                     onQuickAction={(action) => {
                       switch (action) {
                         case 'preview':
@@ -1288,7 +1256,7 @@ export default function ContractsPage() {
                           handleShare(contract.id, contract.title || 'Contract');
                           break;
                         case 'favorite':
-                          handleToggleFavorite(contract.id);
+                          // Favorites not yet persisted — no-op
                           break;
                       }
                     }}
@@ -1429,21 +1397,6 @@ export default function ContractsPage() {
           documentTitle={shareContractTitle}
         />
       )}
-      
-      {/* Submit for Approval Modal - Hidden for now, will be enabled in future */}
-      {/* {approvalContractId && (
-        <SubmitForApprovalModal
-          isOpen={approvalModalOpen}
-          onClose={() => {
-            setApprovalModalOpen(false);
-            setApprovalContractId(null);
-            setApprovalContractTitle("");
-          }}
-          contractId={approvalContractId}
-          contractTitle={approvalContractTitle}
-          onSuccess={handleApprovalSuccess}
-        />
-      )} */}
       
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
