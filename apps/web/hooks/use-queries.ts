@@ -49,6 +49,8 @@ export interface Contract {
   jurisdiction?: string;
   autoRenewing?: boolean | null;
   noticePeriod?: string;
+  // Approval workflow
+  approvalStatus?: string;
   // Signature and document classification
   signatureStatus?: SignatureStatus;
   signatureDate?: string;

@@ -19,7 +19,7 @@
 
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,6 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 import { AdvancedSearchModal, type AdvancedSearchFilters } from "@/components/contracts/AdvancedSearchModal";
-import { ContractStatusBadge } from "@/components/contracts/ContractStatusBadge";
 import { AdvancedFilterPanel, type FilterState } from "@/components/contracts/AdvancedFilterPanel";
 import { DragDropFilterBuilder } from "@/components/contracts/DragDropFilterBuilder";
 import { ActiveFilterChips } from "@/components/contracts/ActiveFilterChips";
@@ -47,9 +46,7 @@ import {
 import {
   CheckCircle,
   AlertTriangle,
-  AlertCircle,
   Loader2,
-  Shield,
   Filter,
   Download,
   Trash2,
@@ -64,7 +61,6 @@ import {
   ArrowDown,
   Sparkles,
   Tag,
-  CircleDot,
   FileDown,
   FileSpreadsheet,
   ChevronLeft,
@@ -73,7 +69,6 @@ import {
   FileBarChart,
   Database,
   ArrowLeftRight,
-  Clock,
   Wand2,
 } from "lucide-react";
 import Link from "next/link";
@@ -90,7 +85,6 @@ import { LazyContractPreviewPanel } from "@/components/lazy";
 import { ContractsHeroDashboard, type ContractStats } from "@/components/contracts/ContractsHeroDashboard";
 import { EnhancedContractCard, type EnhancedContract } from "@/components/contracts/EnhancedContractCard";
 import { type ExtendedContract } from "@/components/contracts/ContractPreviewPanel";
-import { type ContractFilters } from "@/components/contracts/SmartFilters";
 import { MobileFiltersSheet } from "@/components/contracts/MobileContractViews";
 import { NoContracts, NoResults } from "@/components/contracts/EmptyStates";
 import { ShareDialog } from "@/components/collaboration/ShareDialog";
@@ -168,7 +162,6 @@ export default function ContractsPage() {
   const [signatureFilters, setSignatureFilters] = useState<string[]>([]);
   const [documentTypeFilters, setDocumentTypeFilters] = useState<string[]>([]);
   const [activePreset, setActivePreset] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(true);
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedSearchFilters>({});
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -275,11 +268,8 @@ export default function ContractsPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [favoriteContracts, setFavoriteContracts] = useState<Set<string>>(new Set());
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [useEnhancedUI, setUseEnhancedUI] = useState(true); // Toggle between enhanced and legacy UI
-  const listContainerRef = useRef<HTMLDivElement>(null);
-  
-  // Live update state
-  const [isLiveUpdatesEnabled, setIsLiveUpdatesEnabled] = useState(false);
+  // Live update state (controlled internally; UI toggle deferred to future)
+  const [isLiveUpdatesEnabled] = useState(false);
   const [newContractsCount, setNewContractsCount] = useState(0);
 
   // Use React Query for data fetching with caching and live updates
@@ -288,9 +278,6 @@ export default function ContractsPage() {
     isLoading: loading, 
     isFetching: isRefetching,
     refetch,
-    error,
-    lastUpdated,
-    isPolling 
   } = useContracts({
     status: statusFilter === 'all' ? undefined : statusFilter,
     page: currentPage,
@@ -469,20 +456,6 @@ export default function ContractsPage() {
       }
       return next;
     });
-  }, []);
-
-  // Select/deselect all visible contracts
-  const toggleSelectAll = useCallback(() => {
-    const visibleIds = filteredContracts.map(c => c.id);
-    setSelectedContracts(prev => {
-      const allSelected = visibleIds.every(id => prev.has(id));
-      if (allSelected) {
-        return new Set();
-      } else {
-        return new Set(visibleIds);
-      }
-    });
-    
   }, []);
 
   // Bulk operations
@@ -849,14 +822,21 @@ export default function ContractsPage() {
     
     setIsProcessingBulk(true);
     try {
-      const deletePromises = Array.from(selectedContracts).map(id =>
-        fetch(`/api/contracts/${id}`, {
-          method: 'DELETE',
-          headers: { 'x-tenant-id': getTenantId() },
-        })
-      );
-      
-      await Promise.all(deletePromises);
+      // Use the bulk endpoint instead of N individual DELETE requests
+      const response = await fetch('/api/contracts/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-data-mode': dataMode,
+          'x-tenant-id': getTenantId(),
+        },
+        body: JSON.stringify({
+          operation: 'delete',
+          contractIds: Array.from(selectedContracts),
+        }),
+      });
+
+      if (!response.ok) throw new Error('Bulk delete failed');
       
       // Force immediate refresh - invalidate cache AND refetch
       await queryClient.invalidateQueries({ 
@@ -880,7 +860,7 @@ export default function ContractsPage() {
     } finally {
       setIsProcessingBulk(false);
     }
-  }, [selectedContracts, crossModule, queryClient, refetch, refetchStats]);
+  }, [selectedContracts, dataMode, crossModule, queryClient, refetch, refetchStats]);
 
   // Bulk action with confirmation handlers
   const handleBulkActionWithConfirmation = useCallback((action: 'export' | 'analyze' | 'share') => {
@@ -912,9 +892,8 @@ export default function ContractsPage() {
   const availableSuppliers = useMemo(() => {
     const suppliers = new Set<string>();
     contracts.forEach(c => {
-      const parties = (c as any).parties;
-      if (parties?.supplier) suppliers.add(parties.supplier);
-      if ((c as any).supplierName) suppliers.add((c as any).supplierName);
+      if (c.parties?.supplier) suppliers.add(c.parties.supplier);
+      if (c.supplierName) suppliers.add(c.supplierName);
     });
     return Array.from(suppliers).filter(Boolean).sort();
   }, [contracts]);
@@ -922,9 +901,8 @@ export default function ContractsPage() {
   const availableClients = useMemo(() => {
     const clients = new Set<string>();
     contracts.forEach(c => {
-      const parties = (c as any).parties;
-      if (parties?.client) clients.add(parties.client);
-      if ((c as any).clientName) clients.add((c as any).clientName);
+      if (c.parties?.client) clients.add(c.parties.client);
+      if (c.clientName) clients.add(c.clientName);
     });
     return Array.from(clients).filter(Boolean).sort();
   }, [contracts]);
@@ -935,30 +913,6 @@ export default function ContractsPage() {
       if (c.type) types.add(c.type);
     });
     return Array.from(types).filter(Boolean).sort();
-  }, [contracts]);
-
-  const availableCurrencies = useMemo(() => {
-    const currencies = new Set<string>();
-    contracts.forEach(c => {
-      if ((c as any).currency) currencies.add((c as any).currency);
-    });
-    return Array.from(currencies).filter(Boolean).sort();
-  }, [contracts]);
-
-  const availableJurisdictions = useMemo(() => {
-    const jurisdictions = new Set<string>();
-    contracts.forEach(c => {
-      if ((c as any).jurisdiction) jurisdictions.add((c as any).jurisdiction);
-    });
-    return Array.from(jurisdictions).filter(Boolean).sort();
-  }, [contracts]);
-
-  const availablePaymentTerms = useMemo(() => {
-    const terms = new Set<string>();
-    contracts.forEach(c => {
-      if ((c as any).paymentTerms) terms.add((c as any).paymentTerms);
-    });
-    return Array.from(terms).filter(Boolean).sort();
   }, [contracts]);
 
   // Check if any filters are active (consolidated: FilterState is the single source
@@ -989,10 +943,6 @@ export default function ContractsPage() {
     filterState.paymentTerms?.length ?? 0,
   ].reduce((a, b) => a + b, 0);
   
-  // Category stats
-  const uncategorizedCount = contracts.filter(c => !c.category).length;
-  const categorizedCount = contracts.length - uncategorizedCount;
-
   const filteredContracts = useMemo(() => {
     if (!Array.isArray(contracts)) return [];
     
@@ -1036,7 +986,7 @@ export default function ContractsPage() {
 
       // Approval status filter  
       const matchesApproval = approvalFilters.length === 0 || approvalFilters.some(approval => {
-        const contractApprovalStatus = (contract as any).approvalStatus || 'none';
+        const contractApprovalStatus = contract.approvalStatus || 'none';
         return contractApprovalStatus === approval;
       });
       
@@ -1091,14 +1041,14 @@ export default function ContractsPage() {
       const matchesSupplier = !filterState.suppliers?.length ||
         filterState.suppliers.some(s =>
           contract.parties?.supplier?.toLowerCase().includes(s.toLowerCase()) ||
-          (contract as any).supplierName?.toLowerCase().includes(s.toLowerCase())
+          contract.supplierName?.toLowerCase().includes(s.toLowerCase())
         );
 
       // Client filter (from filterState — case-insensitive partial match)
       const matchesClient = !filterState.clients?.length ||
         filterState.clients.some(c =>
           contract.parties?.client?.toLowerCase().includes(c.toLowerCase()) ||
-          (contract as any).clientName?.toLowerCase().includes(c.toLowerCase())
+          contract.clientName?.toLowerCase().includes(c.toLowerCase())
         );
 
       // Signature status filter
@@ -1127,7 +1077,7 @@ export default function ContractsPage() {
         filterState.currencies.some(cur => {
           const curLower = cur.toLowerCase();
           return (
-            (contract as any).currency?.toLowerCase() === curLower ||
+            contract.currency?.toLowerCase() === curLower ||
             contract.title?.toLowerCase().includes(curLower)
           );
         });
@@ -1137,7 +1087,7 @@ export default function ContractsPage() {
         filterState.jurisdictions.some(jur => {
           const jurLower = jur.toLowerCase();
           return (
-            (contract as any).jurisdiction?.toLowerCase().includes(jurLower) ||
+            contract.jurisdiction?.toLowerCase().includes(jurLower) ||
             contract.title?.toLowerCase().includes(jurLower)
           );
         });
@@ -1147,7 +1097,7 @@ export default function ContractsPage() {
         filterState.paymentTerms.some(pt => {
           const ptLower = pt.toLowerCase();
           return (
-            (contract as any).paymentTerms?.toLowerCase().includes(ptLower) ||
+            contract.paymentTerms?.toLowerCase().includes(ptLower) ||
             contract.title?.toLowerCase().includes(ptLower)
           );
         });
@@ -1194,18 +1144,28 @@ export default function ContractsPage() {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, typeFilters, riskFilters, approvalFilters, valueRangeFilter, dateRangeFilter, expirationFilters]);
 
-  // Inline stats for filtered results
-  const filteredStats = useMemo(() => {
-    const totalValue = sortedContracts.reduce((sum, c) => sum + (c.value || 0), 0);
-    const avgValue = sortedContracts.length > 0 ? totalValue / sortedContracts.length : 0;
-    const highRiskCount = sortedContracts.filter(c => (c.riskScore || 0) >= 70).length;
-    const expiringCount = sortedContracts.filter(c => {
-      if (!c.expirationDate) return false;
-      const daysUntil = Math.ceil((new Date(c.expirationDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-      return daysUntil >= 0 && daysUntil <= 30;
-    }).length;
-    return { totalValue, avgValue, highRiskCount, expiringCount };
-  }, [sortedContracts]);
+  // Sparkline trend data — computed once, shared by both heroStats branches
+  const trendData = useMemo(() => {
+    const now = Date.now();
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(now - (6 - i) * 24 * 60 * 60 * 1000);
+      const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+      
+      const dayContracts = contracts.filter(c => {
+        if (!c.createdAt) return false;
+        const created = new Date(c.createdAt);
+        return created >= dayStart && created < dayEnd;
+      });
+      
+      return {
+        date: dayNames[date.getDay()],
+        contracts: dayContracts.length,
+        value: dayContracts.reduce((sum, c) => sum + (c.value || 0), 0)
+      };
+    });
+  }, [contracts]);
 
   // Hero Dashboard Stats - Use real database stats when available, fallback to client-side calculation
   const heroStats: ContractStats = useMemo(() => {
@@ -1225,28 +1185,7 @@ export default function ContractsPage() {
         processingCount: dbStats.overview.byStatus?.processing || 0,
         pendingReview: dbStats.overview.pending,
         recentlyAdded: dbStats.timeline.recentlyUploaded,
-        // Calculate sparkline from client data for visualization
-        trendData: (() => {
-          const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-          const last7Days = Array.from({ length: 7 }, (_, i) => {
-            const date = new Date(now - (6 - i) * 24 * 60 * 60 * 1000);
-            const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-            const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-            
-            const dayContracts = contracts.filter(c => {
-              if (!c.createdAt) return false;
-              const created = new Date(c.createdAt);
-              return created >= dayStart && created < dayEnd;
-            });
-            
-            return {
-              date: days[date.getDay()],
-              contracts: dayContracts.length,
-              value: dayContracts.reduce((sum, c) => sum + (c.value || 0), 0)
-            };
-          });
-          return last7Days;
-        })(),
+        trendData,
       };
     }
     
@@ -1297,30 +1236,10 @@ export default function ContractsPage() {
         if (!c.createdAt) return false;
         return new Date(c.createdAt).getTime() > now - 7 * 24 * 60 * 60 * 1000;
       }).length,
-      trendData: (() => {
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const last7Days = Array.from({ length: 7 }, (_, i) => {
-          const date = new Date(now - (6 - i) * 24 * 60 * 60 * 1000);
-          const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-          const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-          
-          const dayContracts = contracts.filter(c => {
-            if (!c.createdAt) return false;
-            const created = new Date(c.createdAt);
-            return created >= dayStart && created < dayEnd;
-          });
-          
-          return {
-            date: days[date.getDay()],
-            contracts: dayContracts.length,
-            value: dayContracts.reduce((sum, c) => sum + (c.value || 0), 0)
-          };
-        });
-        return last7Days;
-      })(),
+      trendData,
     };
      
-  }, [contracts, contractsData?.total, dbStats]);
+  }, [contracts, contractsData?.total, dbStats, trendData]);
 
   // Convert Contract to EnhancedContract for enhanced cards
   const enhancedContracts = useMemo(() => {
@@ -1410,34 +1329,6 @@ export default function ContractsPage() {
       }
       return next;
     });
-  }, []);
-
-  // Smart filters change handler
-  const handleSmartFiltersChange = useCallback((filters: ContractFilters) => {
-    setSearchQuery(filters.search || '');
-    if (filters.status?.length && filters.status[0]) {
-      setStatusFilter(filters.status[0]);
-    } else {
-      setStatusFilter('all');
-    }
-    if (filters.riskLevel?.length) {
-      setRiskFilters(filters.riskLevel);
-    } else {
-      setRiskFilters([]);
-    }
-    if (filters.contractType?.length) {
-      setTypeFilters(filters.contractType);
-    } else {
-      setTypeFilters([]);
-    }
-    // Date range handling
-    if (filters.dateRange?.from) {
-      const daysDiff = Math.ceil((Date.now() - new Date(filters.dateRange.from).getTime()) / (1000 * 60 * 60 * 24));
-      const preset = DATE_PRESETS.find(p => p.days >= daysDiff);
-      setDateRangeFilter(preset?.value || null);
-    } else {
-      setDateRangeFilter(null);
-    }
   }, []);
 
   // Navigate between contracts in preview
@@ -1531,62 +1422,10 @@ export default function ContractsPage() {
     toast.success(`Loaded filter "${filter.name}"`);
   }, [clearFilters]);
 
-  // After sortedContracts is computed, we need to fix toggleSelectAll
   const allVisibleSelected = useMemo(() => {
     if (paginatedContracts.length === 0) return false;
     return paginatedContracts.every(c => selectedContracts.has(c.id));
   }, [paginatedContracts, selectedContracts]);
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      completed: { label: "Active", color: "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400", icon: CheckCircle },
-      processing: { label: "Processing", color: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300", icon: Loader2 },
-      failed: { label: "Failed", color: "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400", icon: AlertTriangle },
-      pending: { label: "Pending", color: "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400", icon: Clock },
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || {
-      label: status,
-      color: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300",
-      icon: CircleDot,
-    };
-
-    const Icon = config.icon;
-
-    return (
-      <Badge className={`${config.color} border-0 gap-1.5 px-3 py-1 rounded-full shadow-sm font-medium`}>
-        <Icon className={cn("h-3.5 w-3.5", status === 'processing' && "animate-spin")} />
-        {config.label}
-      </Badge>
-    );
-  };
-
-  const getRiskBadge = (riskScore?: number) => {
-    if (!riskScore) return null;
-
-    if (riskScore < 30) {
-      return (
-        <Badge className="bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-0 gap-1.5 px-3 py-1 rounded-full font-medium">
-          <Shield className="h-3.5 w-3.5" />
-          Low Risk
-        </Badge>
-      );
-    } else if (riskScore < 70) {
-      return (
-        <Badge className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-0 gap-1.5 px-3 py-1 rounded-full font-medium">
-          <Shield className="h-3.5 w-3.5" />
-          Medium Risk
-        </Badge>
-      );
-    } else {
-      return (
-        <Badge className="bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-0 gap-1.5 px-3 py-1 rounded-full font-medium">
-          <AlertTriangle className="h-3.5 w-3.5" />
-          High Risk
-        </Badge>
-      );
-    }
-  };
 
   if (loading) {
     return (
@@ -2407,7 +2246,7 @@ export default function ContractsPage() {
                         case 'ai':
                           window.dispatchEvent(new CustomEvent('openAIChatbot', {
                             detail: { 
-                              autoMessage: `Tell me about this contract: ${contract.title || 'Unknown'} - ${(contract as any).supplierName || 'Unknown supplier'}`,
+                              autoMessage: `Tell me about this contract: ${contract.title || 'Unknown'} - ${contract.supplierName || 'Unknown supplier'}`,
                               contractId: contract.id
                             }
                           }));
