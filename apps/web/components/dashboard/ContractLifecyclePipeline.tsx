@@ -3,15 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, FileText, CheckCircle2, AlertTriangle, Clock, RefreshCw, Archive, Pen } from 'lucide-react';
+import { ArrowRight, FileText, CheckCircle2, AlertTriangle, Clock, RefreshCw, Archive, Pen, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface StageInfo {
   key: string;
   label: string;
-  icon: any;
+  icon: LucideIcon;
   color: string;
   bgColor: string;
   borderColor: string;
@@ -51,9 +50,9 @@ export default function ContractLifecyclePipeline() {
         setTotalContracts(Object.values(counts).reduce((sum: number, c) => sum + (c as number), 0));
       }
     } catch {
-      // Use fallback data if API fails
-      setStageCounts({ DRAFT: 12, IN_REVIEW: 8, NEGOTIATION: 5, PENDING_APPROVAL: 3, ACTIVE: 142, EXPIRING: 7, ARCHIVED: 34 });
-      setTotalContracts(211);
+      toast.error('Failed to load pipeline data');
+      setStageCounts({});
+      setTotalContracts(0);
     } finally {
       setLoading(false);
     }
@@ -79,7 +78,7 @@ export default function ContractLifecyclePipeline() {
           {STAGES.map((stage, idx) => {
             const count = stageCounts[stage.key] || 0;
             const pct = totalContracts > 0 ? Math.round((count / totalContracts) * 100) : 0;
-            const barHeight = Math.max(20, (count / maxCount) * 100);
+            const barWidth = Math.max(20, (count / maxCount) * 100);
             const Icon = stage.icon;
 
             return (
@@ -95,7 +94,7 @@ export default function ContractLifecyclePipeline() {
                   <span className="text-[10px] text-muted-foreground">{pct}%</span>
                   {/* Mini bar */}
                   <div className="w-full h-1.5 bg-white/50 rounded-full mt-2 overflow-hidden">
-                    <div className={cn('h-full rounded-full transition-all', stage.color.replace('text-', 'bg-'))} style={{ width: `${barHeight}%` }} />
+                    <div className={cn('h-full rounded-full transition-all', stage.color.replace('text-', 'bg-'))} style={{ width: `${barWidth}%` }} />
                   </div>
                 </div>
                 {idx < STAGES.length - 1 && (

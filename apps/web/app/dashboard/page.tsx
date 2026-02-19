@@ -123,7 +123,7 @@ const quickActions = [
     label: "Renewals",
     description: "Track renewals",
     href: "/renewals",
-    gradient: "from-violet-500 to-violet-500",
+    gradient: "from-amber-500 to-orange-500",
   },
   {
     icon: MessageSquare,
@@ -137,7 +137,7 @@ const quickActions = [
     label: "Search",
     description: "Find contracts",
     href: "/search",
-    gradient: "from-violet-500 to-violet-500",
+    gradient: "from-blue-500 to-indigo-500",
   },
 ];
 
@@ -159,12 +159,14 @@ export default function DashboardPage() {
 
   // Persist widget configuration to localStorage on change
   useEffect(() => {
-    if (dashboardWidgets.length > 0) {
-      try {
+    try {
+      if (dashboardWidgets.length > 0) {
         localStorage.setItem('contigo-dashboard-widgets', JSON.stringify(dashboardWidgets));
-      } catch {
-        // Ignore storage errors
+      } else {
+        localStorage.removeItem('contigo-dashboard-widgets');
       }
+    } catch {
+      // Ignore storage errors
     }
   }, [dashboardWidgets]);
 
@@ -184,7 +186,6 @@ export default function DashboardPage() {
     'contract:created': () => queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
     'contract:completed': () => queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
     'job:progress': () => queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-    'notification': () => {},
   }), [queryClient]);
 
   useRealTimeEvents(eventHandlers);
@@ -400,7 +401,7 @@ export default function DashboardPage() {
                     <TrendingUp className="h-5 w-5" />
                   </div>
                   <Badge variant="outline" className="px-3 py-1 bg-violet-50 text-violet-700 border-violet-200 text-xs">
-                    <TrendingUp className="h-3.5 w-3.5 mr-1" /> +12%
+                    All time
                   </Badge>
                 </div>
                 <div className="space-y-1">
@@ -451,8 +452,14 @@ export default function DashboardPage() {
                   <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform duration-300">
                     <CheckCircle className="h-5 w-5" />
                   </div>
-                  <Badge variant="outline" className="px-3 py-1 bg-violet-50 text-violet-700 border-violet-200 text-xs">
-                    Low Risk
+                  <Badge variant="outline" className={`px-3 py-1 text-xs ${
+                    dashboardData.complianceScore >= 80
+                      ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/50 dark:text-green-400 dark:border-green-800'
+                      : dashboardData.complianceScore >= 60
+                        ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800'
+                        : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-400 dark:border-red-800'
+                  }`}>
+                    {dashboardData.complianceScore >= 80 ? 'Low Risk' : dashboardData.complianceScore >= 60 ? 'Medium Risk' : 'High Risk'}
                   </Badge>
                 </div>
                 <div className="space-y-1">
@@ -551,29 +558,30 @@ export default function DashboardPage() {
               <CardContent className="p-5">
                 <div className="space-y-3">
                   {recentContracts.length > 0 ? recentContracts.map((contract: { id: string; fileName?: string; originalName?: string; status?: string; createdAt?: string }, idx: number) => (
-                    <motion.div
-                      key={contract.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.1 * idx }}
-                      className="group flex items-center gap-4 p-4 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md transition-all duration-200 cursor-pointer"
-                    >
-                      <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
-                        <FileText className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate text-slate-900 dark:text-white">
-                          {contract.originalName || contract.fileName || `Contract ${contract.id.slice(0, 8)}`}
-                        </p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-2">
-                          <Clock className="h-3 w-3" />
-                          {contract.createdAt ? new Date(contract.createdAt).toLocaleDateString() : 'Recently added'}
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="px-3 py-1 text-xs bg-violet-50 text-violet-700 border-violet-200">
-                        {contract.status || 'Active'}
-                      </Badge>
-                    </motion.div>
+                    <Link key={contract.id} href={`/contracts/${contract.id}`}>
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 * idx }}
+                        className="group flex items-center gap-4 p-4 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md transition-all duration-200"
+                      >
+                        <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
+                          <FileText className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate text-slate-900 dark:text-white">
+                            {contract.originalName || contract.fileName || `Contract ${contract.id.slice(0, 8)}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-2">
+                            <Clock className="h-3 w-3" />
+                            {contract.createdAt ? new Date(contract.createdAt).toLocaleDateString() : 'Recently added'}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="px-3 py-1 text-xs bg-violet-50 text-violet-700 border-violet-200">
+                          {contract.status || 'Active'}
+                        </Badge>
+                      </motion.div>
+                    </Link>
                   )) : (
                     <div className="text-center py-8 text-muted-foreground">
                       <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -626,7 +634,7 @@ export default function DashboardPage() {
                     ].map((suggestion, idx) => (
                       <Link
                         key={idx}
-                        href="/ai/chat"
+                        href={`/ai/chat?query=${encodeURIComponent(suggestion)}`}
                         className="block p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                       >
                         <MessageSquare className="h-3.5 w-3.5 text-slate-400 inline mr-2" />
