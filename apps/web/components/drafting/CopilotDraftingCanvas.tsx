@@ -156,7 +156,7 @@ export function CopilotDraftingCanvas({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content,
+          text: content,
           cursorPosition,
           selectedText,
           contractType,
@@ -166,7 +166,8 @@ export function CopilotDraftingCanvas({
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const json = await response.json();
+        const data = json.data || json;
         setSuggestions(data.suggestions || []);
         setRisks(data.risks || []);
       }
@@ -196,7 +197,8 @@ export function CopilotDraftingCanvas({
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const json = await response.json();
+        const data = json.data || json;
         setAutoCompletions(data.completions || []);
         setShowCompletionPopup(data.completions?.length > 0);
         setSelectedCompletionIndex(0);
@@ -214,14 +216,15 @@ export function CopilotDraftingCanvas({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content,
+          text: content,
           contractType,
-          playbookId,
+          playbook: playbookId ? { id: playbookId } : undefined,
         }),
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const json = await response.json();
+        const data = json.data || json;
         setRisks(data.risks || []);
       }
     } catch (error) {
@@ -355,7 +358,7 @@ export function CopilotDraftingCanvas({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content,
+          text: content,
           cursorPosition,
           selectedText,
           contractType,
@@ -366,7 +369,8 @@ export function CopilotDraftingCanvas({
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const json = await response.json();
+        const data = json.data || json;
         if (data.generatedText) {
           // Insert at cursor position
           const newContent = 

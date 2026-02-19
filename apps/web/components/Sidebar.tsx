@@ -143,6 +143,7 @@ const navigationGroups: NavGroup[] = [
       { href: "/renewals", label: "Renewals", icon: RefreshCw, description: "Track contract renewals", tourId: "renewals" },
       { href: "/amendments", label: "Amendments", icon: FileSignature, description: "Contract amendment lifecycle", isNew: true, tourId: "amendments" },
       { href: "/templates", label: "Templates", icon: BookOpen, description: "Contract templates library", tourId: "templates" },
+      { href: "/drafting", label: "Document Studio", icon: FileSignature, description: "AI-powered contract drafting", isNew: true, tourId: "drafting" },
       { href: "/clauses/governance", label: "Clause Governance", icon: BookOpen, description: "Clause approval workflows", isNew: true, tourId: "clause-governance" },
       { href: "/clauses/versions", label: "Clause Versions", icon: GitBranch, description: "Version history and diff viewer", isNew: true, tourId: "clause-versions" },
       { href: "/document-expiry", label: "Document Expiry", icon: CalendarClock, description: "Track document expirations", isNew: true, tourId: "document-expiry" },

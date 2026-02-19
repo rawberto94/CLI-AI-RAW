@@ -385,22 +385,97 @@ Return JSON array: [{ insight, counterpartyPattern, suggestedPosition, strength 
   // CLAUSE LIBRARY METHODS
   // ============================================================================
 
+  /**
+   * Generate embedding for a text query using OpenAI
+   */
+  private async generateEmbedding(text: string): Promise<number[] | null> {
+    try {
+      const response = await this.openai.embeddings.create({
+        model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small',
+        input: text.slice(0, 8000), // Model limit safety
+      });
+      return response.data[0]?.embedding || null;
+    } catch (error) {
+      console.error('Failed to generate embedding:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Vector-enhanced clause library matching
+   * 
+   * Uses pgvector HNSW cosine similarity against ContractEmbedding + Jaccard fallback.
+   * This replaces the previous pure Jaccard matching with RAG-grade retrieval.
+   */
   private async matchClauseLibrary(
     text: string,
     context: CopilotContext
   ): Promise<RealtimeSuggestion[]> {
     const suggestions: RealtimeSuggestion[] = [];
 
+    // ── 1. Vector search via pgvector (primary path) ──
     try {
-      // Get clauses from library - use clauseLibrary model which has tenantId and content
+      const embedding = await this.generateEmbedding(text);
+      if (embedding) {
+        const vectorStr = `[${embedding.join(',')}]`;
+
+        // Search ContractEmbedding for semantically similar chunks from this tenant
+        const vectorResults: Array<{
+          id: string;
+          chunkText: string;
+          chunkType: string | null;
+          section: string | null;
+          contractType: string | null;
+          similarity: number;
+        }> = await this.prisma.$queryRawUnsafe(`
+          SELECT 
+            id, 
+            "chunkText", 
+            "chunkType", 
+            section, 
+            "contractType",
+            1 - ("embedding" <=> $1::vector) AS similarity
+          FROM "ContractEmbedding"
+          WHERE "tenantId" = $2
+            AND "embedding" IS NOT NULL
+          ORDER BY "embedding" <=> $1::vector
+          LIMIT 5
+        `, vectorStr, context.tenantId);
+
+        for (const result of vectorResults) {
+          if (result.similarity > 0.4) {
+            suggestions.push({
+              id: `rag_${result.id}`,
+              type: 'clause_improvement',
+              triggerText: text.slice(0, 50),
+              suggestedText: result.chunkText,
+              explanation: `Semantically matched ${result.chunkType || result.section || 'clause'} from your contract library (${Math.round(result.similarity * 100)}% match)`,
+              confidence: result.similarity,
+              position: { startOffset: 0, endOffset: text.length },
+              source: {
+                type: 'historical',
+                name: `Contract Library${result.contractType ? ` (${result.contractType})` : ''}`,
+                confidence: result.similarity,
+              },
+            });
+          }
+        }
+
+        if (suggestions.length > 0) return suggestions;
+      }
+    } catch (error) {
+      console.error('Vector search failed, falling back to Jaccard:', error);
+    }
+
+    // ── 2. Jaccard fallback (when no embeddings or vector search fails) ──
+    try {
       const clauses = await this.prisma.clauseLibrary.findMany({
         where: {
           tenantId: context.tenantId,
         },
-        take: 100,
+        take: 50,
       });
 
-      // Simple text matching (could be enhanced with embeddings)
       for (const clause of clauses) {
         const similarity = this.calculateSimilarity(text.toLowerCase(), clause.content.toLowerCase());
         if (similarity > 0.3) {
@@ -877,9 +952,54 @@ Identify specific risks. Return JSON:
     clauseType: string | undefined,
     tenantId: string
   ): Promise<ClauseCompletion[]> {
-    // In a full implementation, this would search through historical contracts
-    // For now, return empty as this requires significant data infrastructure
-    return [];
+    const completions: ClauseCompletion[] = [];
+
+    try {
+      const embedding = await this.generateEmbedding(text);
+      if (!embedding) return [];
+
+      const vectorStr = `[${embedding.join(',')}]`;
+
+      // Build optional clause type filter
+      const typeFilter = clauseType
+        ? `AND ("chunkType" = '${clauseType.replace(/'/g, "''")}' OR "section" ILIKE '%${clauseType.replace(/'/g, "''").replace(/_/g, '%')}%')`
+        : '';
+
+      const results: Array<{
+        id: string;
+        chunkText: string;
+        chunkType: string | null;
+        similarity: number;
+      }> = await this.prisma.$queryRawUnsafe(`
+        SELECT 
+          id,
+          "chunkText",
+          "chunkType",
+          1 - ("embedding" <=> $1::vector) AS similarity
+        FROM "ContractEmbedding"
+        WHERE "tenantId" = $2
+          AND "embedding" IS NOT NULL
+          ${typeFilter}
+        ORDER BY "embedding" <=> $1::vector
+        LIMIT 5
+      `, vectorStr, tenantId);
+
+      for (const result of results) {
+        if (result.similarity > 0.35) {
+          completions.push({
+            id: `hist_${result.id}`,
+            text: result.chunkText,
+            source: 'historical' as const,
+            matchScore: result.similarity,
+            riskLevel: 'info',
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to get historical completions:', error);
+    }
+
+    return completions;
   }
 
   private generateContextualTips(
