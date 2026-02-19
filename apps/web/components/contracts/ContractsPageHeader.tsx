@@ -116,7 +116,7 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
               </div>
               <h1 className="text-3xl font-bold text-white tracking-tight">Contracts</h1>
             </div>
-            <p className="text-violet-100/80 max-w-xl">
+            <p className="text-slate-300 max-w-xl">
               Manage your contract portfolio with AI-powered insights and analysis
             </p>
           </div>

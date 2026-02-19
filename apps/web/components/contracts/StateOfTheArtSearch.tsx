@@ -587,7 +587,14 @@ const FilterOptionItem = memo(function FilterOptionItem({
       )}>
         {isSelected && <Check className="h-3 w-3 text-white" />}
       </div>
-      {Icon && <Icon className={cn("h-4 w-4", `text-${option.color}-500`)} />}
+      {Icon && <Icon className={cn("h-4 w-4", {
+        'text-slate-500': option.color === 'slate',
+        'text-violet-500': option.color === 'violet',
+        'text-blue-500': option.color === 'blue',
+        'text-amber-500': option.color === 'amber',
+        'text-red-500': option.color === 'red',
+        'text-yellow-500': option.color === 'yellow',
+      })} />
       <span className="flex-1 text-left text-slate-700 dark:text-slate-300 font-medium">{option.label}</span>
       {option.count !== undefined && (
         <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{option.count}</span>

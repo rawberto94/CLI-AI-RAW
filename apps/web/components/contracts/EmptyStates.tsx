@@ -409,7 +409,7 @@ export const LoadingState = memo(function LoadingState({
       <div className="relative mb-6">
         {/* Outer rotating ring */}
         <motion.div
-          className="w-20 h-20 rounded-full border-4 border-slate-100 border-t-blue-500 border-r-violet-500"
+          className="w-20 h-20 rounded-full border-4 border-slate-100 border-t-violet-500 border-r-violet-400"
           animate={{ rotate: 360 }}
           transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
         />

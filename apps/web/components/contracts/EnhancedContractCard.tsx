@@ -214,7 +214,7 @@ function getStatusConfig(status?: EnhancedContract["status"]): StatusConfig {
       color: "bg-slate-100 text-slate-700 border-slate-200",
       icon: XCircle,
       label: "Terminated",
-      dotColor: "bg-gray-400",
+      dotColor: "bg-slate-400",
     },
     renewal: {
       color: "bg-blue-50 text-blue-700 border-blue-200",
@@ -360,7 +360,7 @@ export const HealthIndicator = memo(function HealthIndicator({
                   fill="none"
                   stroke="currentColor"
                   strokeWidth={cfg.stroke}
-                  className="text-gray-200"
+                  className="text-slate-200"
                 />
                 {/* Progress circle */}
                 <circle
@@ -768,7 +768,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
       data-testid="contract-card"
       className={cn(
         "group relative bg-white rounded-xl border shadow-sm transition-all duration-300 overflow-hidden",
-        isSelected && "ring-2 ring-primary border-primary shadow-lg shadow-primary/10",
+        isSelected && "ring-2 ring-slate-300 border-slate-300 shadow-lg shadow-slate-200/20",
         isHovered && "shadow-xl border-slate-300",
         contract.isPinned && "border-l-4 border-l-amber-400",
         needsAttention && !isExpired && "border-l-4 border-l-amber-500",
@@ -785,7 +785,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
     >
       {/* Premium Gradient Overlay on Hover */}
       <motion.div
-        className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-violet-500/[0.02] pointer-events-none"
+        className="absolute inset-0 bg-gradient-to-br from-violet-500/[0.02] via-transparent to-violet-500/[0.02] pointer-events-none"
         initial={{ opacity: 0 }}
         animate={{ opacity: isHovered ? 1 : 0 }}
         transition={{ duration: 0.3 }}
@@ -1075,7 +1075,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Button
                   size="sm"
-                  className="h-8 px-4 bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90 text-white shadow-md shadow-primary/20"
+                  className="h-8 px-4 bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800 text-white shadow-md shadow-violet-500/20"
                   onClick={(e) => {
                     e.stopPropagation();
                     onClick?.(contract.id);

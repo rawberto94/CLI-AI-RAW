@@ -546,12 +546,12 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-purple-900 p-4"
+        className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4"
       >
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-violet-500/10 blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-violet-500/10 blur-3xl" />
+          <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-slate-500/10 blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-slate-400/10 blur-3xl" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(120,119,198,0.1),transparent_50%)]" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(74,144,226,0.1),transparent_50%)]" />
