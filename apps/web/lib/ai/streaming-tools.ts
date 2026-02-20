@@ -11,6 +11,10 @@
 import OpenAI from 'openai';
 import { prisma } from '@/lib/prisma';
 import { hybridSearch } from '@/lib/rag/advanced-rag.service';
+import { validateToolArgs } from '@/lib/ai/tool-validation';
+
+// Re-export for consumers that imported from this module
+export { validateToolArgs } from '@/lib/ai/tool-validation';
 
 // =============================================================================
 // TYPES
@@ -455,58 +459,71 @@ export async function executeTool(
 ): Promise<ToolResult> {
   const start = Date.now();
 
+  // Validate tool arguments before executing
+  const validation = validateToolArgs(toolName, args);
+  if (!validation.valid) {
+    return {
+      toolName,
+      success: false,
+      data: null,
+      error: validation.error,
+      executionTimeMs: Date.now() - start,
+    };
+  }
+  const validArgs = validation.args;
+
   try {
     switch (toolName) {
       case 'search_contracts':
-        return await executeSearchContracts(args, tenantId, start);
+        return await executeSearchContracts(validArgs, tenantId, start);
       case 'get_contract_details':
-        return await executeGetContractDetails(args, tenantId, start);
+        return await executeGetContractDetails(validArgs, tenantId, start);
       case 'list_expiring_contracts':
-        return await executeListExpiring(args, tenantId, start);
+        return await executeListExpiring(validArgs, tenantId, start);
       case 'get_spend_analysis':
-        return await executeSpendAnalysis(args, tenantId, start);
+        return await executeSpendAnalysis(validArgs, tenantId, start);
       case 'get_risk_assessment':
         return await executeRiskAssessment(tenantId, start);
       case 'get_supplier_info':
-        return await executeSupplierInfo(args, tenantId, start);
+        return await executeSupplierInfo(validArgs, tenantId, start);
       case 'start_workflow':
-        return await executeStartWorkflow(args, tenantId, userId, start);
+        return await executeStartWorkflow(validArgs, tenantId, userId, start);
       case 'list_workflows':
-        return await executeListWorkflows(args, tenantId, start);
+        return await executeListWorkflows(validArgs, tenantId, start);
       case 'get_pending_approvals':
         return await executeGetPendingApprovals(tenantId, userId, start);
       case 'approve_or_reject_step':
-        return await executeApproveReject(args, tenantId, userId, start);
+        return await executeApproveReject(validArgs, tenantId, userId, start);
       case 'get_workflow_status':
-        return await executeGetWorkflowStatus(args, tenantId, start);
+        return await executeGetWorkflowStatus(validArgs, tenantId, start);
       case 'create_workflow':
-        return await executeCreateWorkflow(args, tenantId, userId, start);
+        return await executeCreateWorkflow(validArgs, tenantId, userId, start);
       case 'cancel_workflow':
-        return await executeCancelWorkflow(args, tenantId, userId, start);
+        return await executeCancelWorkflow(validArgs, tenantId, userId, start);
       case 'assign_approver':
-        return await executeAssignApprover(args, tenantId, userId, start);
+        return await executeAssignApprover(validArgs, tenantId, userId, start);
       case 'escalate_workflow':
-        return await executeEscalateWorkflow(args, tenantId, userId, start);
+        return await executeEscalateWorkflow(validArgs, tenantId, userId, start);
       case 'suggest_workflow':
-        return await executeSuggestWorkflow(args, tenantId, start);
+        return await executeSuggestWorkflow(validArgs, tenantId, start);
       case 'create_contract':
-        return await executeCreateContract(args, tenantId, userId, start);
+        return await executeCreateContract(validArgs, tenantId, userId, start);
       case 'update_contract':
-        return await executeUpdateContract(args, tenantId, userId, start);
+        return await executeUpdateContract(validArgs, tenantId, userId, start);
       case 'navigate_to_page':
-        return await executeNavigate(args, start);
+        return await executeNavigate(validArgs, start);
       case 'get_intelligence_insights':
-        return await executeIntelligenceInsights(args, tenantId, start);
+        return await executeIntelligenceInsights(validArgs, tenantId, start);
       case 'get_compliance_summary':
         return await executeComplianceSummary(tenantId, start);
       case 'get_contract_stats':
         return await executeContractStats(tenantId, start);
       case 'get_agent_insights':
-        return await executeAgentInsights(args, tenantId, start);
+        return await executeAgentInsights(validArgs, tenantId, start);
       case 'get_agent_debate':
-        return await executeAgentDebate(args, tenantId, start);
+        return await executeAgentDebate(validArgs, tenantId, start);
       case 'rate_response':
-        return await executeRateResponse(args, tenantId, userId, start);
+        return await executeRateResponse(validArgs, tenantId, userId, start);
       default:
         return { toolName, success: false, data: null, error: `Unknown tool: ${toolName}`, executionTimeMs: Date.now() - start };
     }

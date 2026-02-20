@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuthApiHandler, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 import {
   getNotifications,
   markNotificationRead,
@@ -22,6 +23,10 @@ import {
  */
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const { tenantId, userId } = ctx;
+
+  // Rate limit: 60 req/min per user (lightweight)
+  const rl = checkRateLimit(tenantId, userId, '/api/ai/notifications', AI_RATE_LIMITS.lightweight);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
   const { searchParams } = new URL(request.url);
 
   const filter: NotificationFilter = {

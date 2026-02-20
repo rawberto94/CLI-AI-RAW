@@ -166,8 +166,32 @@ export default function AgentTransparencyDashboard() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 60_000); // Auto-refresh every minute
-    return () => clearInterval(interval);
+
+    // Auto-refresh only when tab is visible
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    function startPolling() {
+      if (!interval) interval = setInterval(fetchData, 60_000);
+    }
+    function stopPolling() {
+      if (interval) { clearInterval(interval); interval = null; }
+    }
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') {
+        fetchData(); // Refresh on tab focus
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    }
+
+    startPolling();
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [fetchData]);
 
   if (loading && !data) {

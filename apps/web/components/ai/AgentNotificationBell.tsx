@@ -22,6 +22,7 @@ export function AgentNotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -38,10 +39,71 @@ export function AgentNotificationBell() {
     }
   }, []);
 
+  // SSE subscription for real-time notifications
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30_000);
-    return () => clearInterval(interval);
+    fetchNotifications(); // Initial load
+
+    let es: EventSource | null = null;
+    let fallbackInterval: ReturnType<typeof setInterval> | null = null;
+
+    function connectSSE() {
+      if (typeof EventSource === 'undefined') {
+        // Fallback to polling for browsers without SSE
+        fallbackInterval = setInterval(fetchNotifications, 30_000);
+        return;
+      }
+
+      es = new EventSource('/api/ai/notifications/stream');
+      eventSourceRef.current = es;
+
+      es.onmessage = (event) => {
+        try {
+          const notification: AgentNotification = JSON.parse(event.data);
+          setNotifications(prev => [notification, ...prev].slice(0, 50));
+          setUnreadCount(prev => prev + 1);
+        } catch {
+          // Invalid data
+        }
+      };
+
+      es.onerror = () => {
+        // SSE disconnected — fall back to polling until reconnect
+        es?.close();
+        eventSourceRef.current = null;
+        if (!fallbackInterval) {
+          fallbackInterval = setInterval(fetchNotifications, 30_000);
+        }
+        // Attempt reconnect after 10 seconds
+        setTimeout(() => {
+          if (document.visibilityState === 'visible') {
+            if (fallbackInterval) { clearInterval(fallbackInterval); fallbackInterval = null; }
+            connectSSE();
+          }
+        }, 10_000);
+      };
+    }
+
+    // Only connect SSE when tab is visible
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') {
+        if (!eventSourceRef.current) connectSSE();
+      } else {
+        // Tab hidden — close SSE to save resources, stop polling
+        es?.close();
+        eventSourceRef.current = null;
+        if (fallbackInterval) { clearInterval(fallbackInterval); fallbackInterval = null; }
+      }
+    }
+
+    connectSSE();
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      es?.close();
+      eventSourceRef.current = null;
+      if (fallbackInterval) clearInterval(fallbackInterval);
+    };
   }, [fetchNotifications]);
 
   // Close dropdown on outside click

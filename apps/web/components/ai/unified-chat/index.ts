@@ -10,13 +10,8 @@
  */
 
 // Main chatbot
-// TODO: Module './UnifiedChatbot' does not exist
-// export { UnifiedChatbot, default } from './UnifiedChatbot';
-// export type { 
-//   ChatMessage, 
-//   Conversation, 
-//   ChatSettings,
-// } from './UnifiedChatbot';
+// Note: UnifiedChatbot module was planned but not yet implemented.
+// Functionality is provided by FloatingAIBubble and useStreamingHandler.
 
 // Streaming handler
 export { useStreamingHandler } from './useStreamingHandler';

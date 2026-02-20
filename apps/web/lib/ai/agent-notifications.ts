@@ -39,11 +39,45 @@ export interface NotificationFilter {
 // ── In-memory notification store (production should use Redis pub/sub) ──
 
 const MAX_NOTIFICATIONS_PER_TENANT = 100;
-const notificationStore = new Map<string, AgentNotification[]>();
+const TENANT_TTL_MS = 60 * 60 * 1000; // 1 hour inactivity → evict
+
+interface TenantStore {
+  notifications: AgentNotification[];
+  lastAccess: number;
+}
+
+const notificationStore = new Map<string, TenantStore>();
 const emitter = new EventEmitter();
 emitter.setMaxListeners(50);
 
 let notificationCounter = 0;
+
+// ── Periodic eviction of stale tenants (every 10 minutes) ──
+
+function evictStaleTenants(): void {
+  const now = Date.now();
+  for (const [key, store] of notificationStore) {
+    if (now - store.lastAccess > TENANT_TTL_MS) {
+      notificationStore.delete(key);
+    }
+  }
+}
+
+const _evictionInterval = setInterval(evictStaleTenants, 10 * 60_000);
+// Allow Node.js to exit even if interval is running
+if (typeof _evictionInterval?.unref === 'function') _evictionInterval.unref();
+
+/** Get or create tenant store entry */
+function getTenantStore(tenantId: string): TenantStore {
+  let store = notificationStore.get(tenantId);
+  if (!store) {
+    store = { notifications: [], lastAccess: Date.now() };
+    notificationStore.set(tenantId, store);
+  } else {
+    store.lastAccess = Date.now();
+  }
+  return store;
+}
 
 /**
  * Push a notification from a background agent.
@@ -58,15 +92,13 @@ export function pushAgentNotification(notification: Omit<AgentNotification, 'id'
   };
 
   const key = notification.tenantId;
-  const existing = notificationStore.get(key) || [];
-  existing.unshift(full);
+  const store = getTenantStore(key);
+  store.notifications.unshift(full);
 
   // Trim to max size
-  if (existing.length > MAX_NOTIFICATIONS_PER_TENANT) {
-    existing.length = MAX_NOTIFICATIONS_PER_TENANT;
+  if (store.notifications.length > MAX_NOTIFICATIONS_PER_TENANT) {
+    store.notifications.length = MAX_NOTIFICATIONS_PER_TENANT;
   }
-
-  notificationStore.set(key, existing);
 
   // Emit for real-time subscribers (WebSocket handlers)
   emitter.emit(`notification:${key}`, full);
@@ -81,9 +113,8 @@ export function pushAgentNotification(notification: Omit<AgentNotification, 'id'
  * Get notifications for a tenant/user.
  */
 export function getNotifications(filter: NotificationFilter): AgentNotification[] {
-  const all = notificationStore.get(filter.tenantId) || [];
-
-  let filtered = all;
+  const store = getTenantStore(filter.tenantId);
+  let filtered = store.notifications;
 
   if (filter.userId) {
     filtered = filtered.filter(n => !n.userId || n.userId === filter.userId);
@@ -108,10 +139,8 @@ export function getNotifications(filter: NotificationFilter): AgentNotification[
  * Mark a notification as read.
  */
 export function markNotificationRead(tenantId: string, notificationId: string): boolean {
-  const notifications = notificationStore.get(tenantId);
-  if (!notifications) return false;
-
-  const notif = notifications.find(n => n.id === notificationId);
+  const store = getTenantStore(tenantId);
+  const notif = store.notifications.find(n => n.id === notificationId);
   if (notif) {
     notif.read = true;
     return true;
@@ -123,11 +152,9 @@ export function markNotificationRead(tenantId: string, notificationId: string): 
  * Mark all notifications as read for a tenant/user.
  */
 export function markAllRead(tenantId: string, userId?: string): number {
-  const notifications = notificationStore.get(tenantId);
-  if (!notifications) return 0;
-
+  const store = getTenantStore(tenantId);
   let count = 0;
-  for (const n of notifications) {
+  for (const n of store.notifications) {
     if (!n.read && (!userId || !n.userId || n.userId === userId)) {
       n.read = true;
       count++;
@@ -157,6 +184,6 @@ export function subscribeToNotifications(
  * Get unread count for a tenant/user.
  */
 export function getUnreadCount(tenantId: string, userId?: string): number {
-  const notifications = notificationStore.get(tenantId) || [];
-  return notifications.filter(n => !n.read && (!userId || !n.userId || n.userId === userId)).length;
+  const store = getTenantStore(tenantId);
+  return store.notifications.filter(n => !n.read && (!userId || !n.userId || n.userId === userId)).length;
 }

@@ -13,12 +13,17 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { aiCopilotService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 /**
  * GET - Get search suggestions
  */
 export const GET = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
+
+  // Rate limit: 60 req/min per user (lightweight)
+  const rl = checkRateLimit(tenantId, ctx.userId, '/api/ai/suggestions', AI_RATE_LIMITS.lightweight);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
     const { searchParams } = new URL(request.url);
     
     const prefix = searchParams.get('q') || '';

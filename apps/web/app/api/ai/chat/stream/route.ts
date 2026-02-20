@@ -34,6 +34,7 @@ import { calculateDynamicConfidence } from '@/lib/ai/confidence-calibration';
 import { retrieveRelevantMemories, storeMemory } from '@/lib/ai/episodic-memory-integration';
 import { STREAMING_TOOLS, executeTool, type ToolResult } from '@/lib/ai/streaming-tools';
 import { withAuthApiHandler, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 import { allocateBudget, getBudgetStats } from '@/lib/ai/token-budget';
 import { shouldUseAgent, executeWithAgent } from '@/lib/ai/agent-integration';
 import { routeToModel, recordAICost, estimateTokenCost, type TaskType } from '@/lib/ai/model-router.service';
@@ -186,6 +187,11 @@ function buildModelChain(complexity: QueryComplexity, query?: string): ModelConf
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const { tenantId, userId, userRole } = ctx;
+
+  // ── Rate limit: 10 streaming requests/min per user ──
+  const rl = checkRateLimit(tenantId, userId, '/api/ai/chat/stream', AI_RATE_LIMITS.streaming);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
+
   const { message, conversationHistory = [], context = {} } = await request.json();
 
   if (!message) {
@@ -734,7 +740,18 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
               args: Object.fromEntries(Object.entries(args).slice(0, 5)),
             })}\n\n`));
 
-            const result = await executeTool(toolName, args, tenantId, userId);
+            const result = await Promise.race([
+              executeTool(toolName, args, tenantId, userId),
+              new Promise<ToolResult>((_, reject) =>
+                setTimeout(() => reject(new Error(`Tool '${toolName}' timed out after 15s`)), 15_000)
+              ),
+            ]).catch(err => ({
+              toolName,
+              success: false,
+              data: null,
+              error: err instanceof Error ? err.message : 'Tool execution failed',
+              executionTimeMs: 15_000,
+            } as ToolResult));
 
             // Emit tool preview with partial data for streaming UX (#9)
             if (result.success && result.data) {
