@@ -17,6 +17,9 @@ import { registerObligationTrackerWorker } from './obligation-tracker-worker';
 import { registerAgentOrchestratorWorker } from './agent-orchestrator-worker';
 import { registerAutonomousTriggers, processScheduledTrigger } from './autonomous-scheduler';
 import { registerEmbeddingRefreshScheduler } from './embedding-refresh-scheduler';
+import { start as startForecastRefreshWorker } from './forecast-refresh-worker';
+import { createContractSourceSyncWorker, schedulePeriodicCheck as scheduleSourceSync } from './contract-source-sync-worker';
+import { startGoalWorker, stopGoalWorker } from './agents/goal-execution-worker';
 import { getMetricsCollector } from './metrics';
 import { startHealthServer } from './health-server';
 import { getDeadLetterQueueManager } from './dead-letter-queue';
@@ -148,6 +151,32 @@ async function startWorkers() {
       logger.info('🔄 Embedding refresh scheduler registered');
     }
 
+    // Start forecast refresh worker (hourly predictive analytics)
+    try {
+      await startForecastRefreshWorker();
+      logger.info('📈 Forecast refresh worker started');
+    } catch (forecastError) {
+      logger.warn({ error: forecastError }, '⚠️ Forecast refresh worker failed to start (non-fatal)');
+    }
+
+    // Start contract source sync worker (external source polling)
+    let sourceSyncWorker;
+    try {
+      sourceSyncWorker = createContractSourceSyncWorker();
+      await scheduleSourceSync();
+      logger.info('🔗 Contract source sync worker started');
+    } catch (syncError) {
+      logger.warn({ error: syncError }, '⚠️ Contract source sync worker failed to start (non-fatal)');
+    }
+
+    // Start goal execution worker (HITL-approved goal resumption)
+    try {
+      await startGoalWorker();
+      logger.info('🎯 Goal execution worker started');
+    } catch (goalError) {
+      logger.warn({ error: goalError }, '⚠️ Goal execution worker failed to start (non-fatal)');
+    }
+
     // Register workers with metrics collector
     metricsCollector.registerWorker('ocr-artifact', ocrArtifactWorker);
     metricsCollector.registerWorker('artifact-generator', artifactWorker);
@@ -196,6 +225,8 @@ async function startWorkers() {
       { worker: metadataWorker, queue: 'metadata-extraction' },
       { worker: categorizationWorker, queue: 'contract-categorization' },
       { worker: agentOrchestratorWorker, queue: 'agent-orchestration' },
+      { worker: renewalAlertWorker, queue: 'renewal-alerts' },
+      { worker: obligationTrackerWorker, queue: 'obligation-tracking' },
     ];
 
     for (const { worker, queue } of workerQueueMap) {
@@ -251,6 +282,8 @@ async function startWorkers() {
         (renewalAlertWorker as any).close(),
         (obligationTrackerWorker as any).close(),
         (agentOrchestratorWorker as any).close(),
+        sourceSyncWorker ? (sourceSyncWorker as any).close() : Promise.resolve(),
+        stopGoalWorker().catch(() => {}),
       ]);
 
       // Close DLQ

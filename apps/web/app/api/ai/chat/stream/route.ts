@@ -39,7 +39,7 @@ import { allocateBudget, getBudgetStats } from '@/lib/ai/token-budget';
 import { shouldUseAgent, executeWithAgent } from '@/lib/ai/agent-integration';
 import { routeToModel, recordAICost, estimateTokenCost, type TaskType } from '@/lib/ai/model-router.service';
 import { shouldUseRAG } from '@/lib/ai/chat/response-builder';
-import { getLearningContext, formatLearningContextForPrompt } from '@contigo/agents/learning-context';
+import { getLearningContext, formatLearningContextForPrompt } from '@repo/agents/learning-context';
 
 // ─── Clients ────────────────────────────────────────────────────────────
 
@@ -388,7 +388,7 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
 
   try {
     // @ts-ignore
-    const { extractMention } = await import('@contigo/workers/agents/agent-personas');
+    const { extractMention } = await import('@repo/workers/agents/agent-personas');
     const mention = extractMention(message);
     if (mention) {
       // Inject the persona's system prompt overlay
