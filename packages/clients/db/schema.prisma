@@ -214,6 +214,10 @@ model User {
   ocrReviewsAssigned OcrReviewItem[] @relation("OcrReviewAssignee")
   ocrReviewsCreated  OcrReviewItem[] @relation("OcrReviewCreator")
 
+  // Draft collaboration
+  draftComments DraftComment[]  @relation("DraftCommentAuthor")
+  draftVersions DraftVersion[]  @relation("DraftVersionAuthor")
+
   @@index([email])
   @@index([tenantId])
   @@index([status])
@@ -1239,6 +1243,10 @@ model ContractDraft {
   sourceContract Contract?         @relation("DraftSourceContract", fields: [sourceContractId], references: [id], onDelete: SetNull)
   createdByUser  User?             @relation("DraftCreator", fields: [createdBy], references: [id], onDelete: SetNull)
 
+  // Relations to sub-resources
+  comments DraftComment[]
+  versions DraftVersion[]
+
   @@index([tenantId])
   @@index([templateId])
   @@index([status])
@@ -1248,6 +1256,62 @@ model ContractDraft {
   @@index([tenantId, type])
   @@index([createdAt(sort: Desc)])
   @@map("contract_drafts")
+}
+
+/// Draft Comment - Collaborative comments on contract drafts
+model DraftComment {
+  id       String @id @default(cuid())
+  draftId  String
+  tenantId String
+  userId   String
+
+  content   String  @db.Text
+  resolved  Boolean @default(false)
+  parentId  String? // For threaded replies
+  // Position in the document (paragraph index + character offset)
+  anchorPos Json?   @default("{}") // { paragraph: number, offset: number, text?: string }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  draft   ContractDraft  @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  user    User           @relation("DraftCommentAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  parent  DraftComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies DraftComment[] @relation("CommentReplies")
+
+  @@index([draftId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([parentId])
+  @@index([draftId, resolved])
+  @@map("draft_comments")
+}
+
+/// Draft Version - Snapshot of draft content at each save
+model DraftVersion {
+  id       String @id @default(cuid())
+  draftId  String
+  tenantId String
+  userId   String
+
+  version   Int
+  content   String  @db.Text
+  label     String? // e.g., "Auto-save", "Manual save", "Before merge"
+  changeSummary String? // Brief description of what changed
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  draft ContractDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  user  User          @relation("DraftVersionAuthor", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([draftId, version])
+  @@index([draftId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([draftId, version])
+  @@map("draft_versions")
 }
 
 /// AI Chat Conversation - Stores chat history for AI Copilot

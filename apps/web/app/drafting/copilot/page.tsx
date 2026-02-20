@@ -13,7 +13,7 @@
  * - draft: existing draft ID to edit
  */
 
-import React, { Suspense, useCallback, useState, useRef } from 'react';
+import React, { Suspense, useCallback, useState, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -21,6 +21,7 @@ import { PageBreadcrumb } from '@/components/navigation';
 import { Sparkles, FileText, Edit3 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import TemplateVariableForm from '@/components/drafting/TemplateVariableForm';
 
 // Dynamic import to avoid SSR issues
 const CopilotDraftingCanvas = dynamic(
@@ -57,6 +58,46 @@ export default function CopilotDraftPage() {
   // Track if we've created a draft already
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(draftId || null);
   const savedTitleRef = useRef<string | null>(null);
+
+  // Template variable injection flow
+  const [templateContent, setTemplateContent] = useState<string | null>(null);
+  const [showVariableForm, setShowVariableForm] = useState(false);
+  const [hydratedContent, setHydratedContent] = useState<string | null>(null);
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
+
+  // Fetch template content when templateId is present
+  useEffect(() => {
+    if (!templateId || draftId || currentDraftId) return;
+    let cancelled = false;
+
+    const fetchTemplate = async () => {
+      setIsLoadingTemplate(true);
+      try {
+        const res = await fetch(`/api/templates/${templateId}`);
+        if (!res.ok) throw new Error('Failed to fetch template');
+        const data = await res.json();
+        const content = data?.data?.template?.content || data?.template?.content || '';
+        if (!cancelled && content) {
+          setTemplateContent(content);
+          // Check if it has variables — show form if so
+          const hasVars = /\{\{[^}]+\}\}/.test(content);
+          if (hasVars) {
+            setShowVariableForm(true);
+          } else {
+            // No variables, pass template content directly
+            setHydratedContent(content);
+          }
+        }
+      } catch (err) {
+        console.error('Template fetch error:', err);
+      } finally {
+        if (!cancelled) setIsLoadingTemplate(false);
+      }
+    };
+
+    fetchTemplate();
+    return () => { cancelled = true; };
+  }, [templateId, draftId, currentDraftId]);
 
   // Save handler - persists to database
   const handleSave = useCallback(async (content: string) => {
@@ -191,12 +232,45 @@ export default function CopilotDraftPage() {
 
       {/* Main Content */}
       <Suspense fallback={null}>
-        <CopilotDraftingCanvas 
-          templateId={templateId || undefined}
-          draftId={currentDraftId || draftId || undefined}
-          isBlankDocument={mode === 'blank'}
-          onSave={handleSave}
-        />
+        {/* Template Variable Form — shown when template has {{variables}} */}
+        {showVariableForm && templateContent ? (
+          <div className="max-w-2xl mx-auto py-12 px-6">
+            <TemplateVariableForm
+              templateContent={templateContent}
+              templateName={templateName ? decodeURIComponent(templateName) : 'Template'}
+              onComplete={(content, _variables) => {
+                setHydratedContent(content);
+                setShowVariableForm(false);
+              }}
+              onSkip={() => {
+                setHydratedContent(templateContent);
+                setShowVariableForm(false);
+              }}
+            />
+          </div>
+        ) : isLoadingTemplate ? (
+          <div className="min-h-[calc(100vh-120px)] flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center"
+            >
+              <div className="relative mx-auto mb-4">
+                <div className="w-16 h-16 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
+                <Sparkles className="w-6 h-6 text-violet-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+              </div>
+              <p className="text-slate-600 font-medium">Loading template...</p>
+            </motion.div>
+          </div>
+        ) : (
+          <CopilotDraftingCanvas 
+            templateId={templateId || undefined}
+            draftId={currentDraftId || draftId || undefined}
+            isBlankDocument={mode === 'blank'}
+            onSave={handleSave}
+            initialContent={hydratedContent || undefined}
+          />
+        )}
       </Suspense>
     </div>
   );

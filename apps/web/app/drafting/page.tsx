@@ -362,6 +362,9 @@ export default function DraftingPage() {
   const [activeTab, setActiveTab] = useState('drafts')
   const [aiPrompt, setAiPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string>('')
+  const [dateFrom, setDateFrom] = useState<string>('')
+  const [dateTo, setDateTo] = useState<string>('')
 
   // Fetch templates via React Query
   const { data: templatesData, isLoading: templatesLoading } = useTemplates()
@@ -372,11 +375,16 @@ export default function DraftingPage() {
       .slice(0, 12)
   }, [templatesData])
 
-  // Fetch drafts
+  // Fetch drafts with server-side filtering
   const fetchDrafts = useCallback(async () => {
     try {
       setDraftsLoading(true)
-      const res = await fetch('/api/drafts?limit=50&sortBy=updatedAt&sortOrder=desc')
+      const params = new URLSearchParams({ limit: '50', sortBy: 'updatedAt', sortOrder: 'desc' })
+      if (searchQuery.trim()) params.set('search', searchQuery.trim())
+      if (statusFilter) params.set('status', statusFilter)
+      if (dateFrom) params.set('dateFrom', new Date(dateFrom).toISOString())
+      if (dateTo) params.set('dateTo', new Date(dateTo + 'T23:59:59').toISOString())
+      const res = await fetch(`/api/drafts?${params.toString()}`)
       if (res.ok) {
         const data = await res.json()
         setDrafts(data.data?.drafts || [])
@@ -386,22 +394,14 @@ export default function DraftingPage() {
     } finally {
       setDraftsLoading(false)
     }
-  }, [])
+  }, [searchQuery, statusFilter, dateFrom, dateTo])
 
   useEffect(() => {
     fetchDrafts()
   }, [fetchDrafts])
 
-  // Derived data
-  const recentDrafts = useMemo(() => {
-    if (!searchQuery) return drafts
-    const q = searchQuery.toLowerCase()
-    return drafts.filter(
-      (d) =>
-        (d.title || '').toLowerCase().includes(q) ||
-        (d.template?.name || '').toLowerCase().includes(q),
-    )
-  }, [drafts, searchQuery])
+  // Derived data — server already filters by search/status/date
+  const recentDrafts = useMemo(() => drafts, [drafts])
 
   const filteredTemplates = useMemo(() => {
     if (!searchQuery) return templates
@@ -738,38 +738,85 @@ export default function DraftingPage() {
 
               {/* Search */}
               {(activeTab === 'drafts' || activeTab === 'templates') && (
-                <div className="relative w-full sm:w-72">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={
-                      activeTab === 'drafts'
-                        ? 'Search drafts...'
-                        : 'Search templates...'
-                    }
-                    className="pl-9 h-9 rounded-lg text-sm"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-md hover:bg-slate-100"
-                    >
-                      <span className="sr-only">Clear</span>
-                      <svg
-                        className="h-3.5 w-3.5 text-slate-400"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-full sm:w-60">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={
+                        activeTab === 'drafts'
+                          ? 'Search drafts...'
+                          : 'Search templates...'
+                      }
+                      className="pl-9 h-9 rounded-lg text-sm"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-md hover:bg-slate-100"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
+                        <span className="sr-only">Clear</span>
+                        <svg
+                          className="h-3.5 w-3.5 text-slate-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Status Filter (drafts tab only) */}
+                  {activeTab === 'drafts' && (
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="h-9 px-3 text-sm border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="DRAFT">Draft</option>
+                      <option value="IN_REVIEW">In Review</option>
+                      <option value="PENDING_APPROVAL">Pending Approval</option>
+                      <option value="APPROVED">Approved</option>
+                      <option value="REJECTED">Rejected</option>
+                      <option value="FINALIZED">Finalized</option>
+                    </select>
+                  )}
+
+                  {/* Date Range (drafts tab only) */}
+                  {activeTab === 'drafts' && (
+                    <>
+                      <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                        className="h-9 px-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        aria-label="From date"
+                      />
+                      <input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                        className="h-9 px-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        aria-label="To date"
+                      />
+                      {(statusFilter || dateFrom || dateTo) && (
+                        <button
+                          onClick={() => { setStatusFilter(''); setDateFrom(''); setDateTo(''); }}
+                          className="h-9 px-3 text-xs text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50"
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               )}

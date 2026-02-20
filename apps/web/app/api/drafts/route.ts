@@ -19,6 +19,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const status = searchParams.get('status');
   const type = searchParams.get('type');
   const sourceType = searchParams.get('sourceType');
+  const search = searchParams.get('search');
+  const dateFrom = searchParams.get('dateFrom');
+  const dateTo = searchParams.get('dateTo');
   const limit = parseInt(searchParams.get('limit') || '50');
   const offset = parseInt(searchParams.get('offset') || '0');
   const sortBy = searchParams.get('sortBy') || 'updatedAt';
@@ -35,6 +38,18 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   }
   if (sourceType) {
     where.sourceType = sourceType;
+  }
+  if (search) {
+    where.OR = [
+      { title: { contains: search, mode: 'insensitive' } },
+      { content: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+  if (dateFrom || dateTo) {
+    const createdAtFilter: Record<string, Date> = {};
+    if (dateFrom) createdAtFilter.gte = new Date(dateFrom);
+    if (dateTo) createdAtFilter.lte = new Date(dateTo);
+    where.createdAt = createdAtFilter;
   }
 
   // Get drafts

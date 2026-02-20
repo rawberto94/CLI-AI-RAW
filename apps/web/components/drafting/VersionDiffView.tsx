@@ -1,0 +1,258 @@
+'use client';
+
+/**
+ * VersionDiffView
+ *
+ * Side-by-side or inline diff view comparing two versions of a draft.
+ * Uses a simple word-level diff algorithm (no external dependency).
+ */
+
+import React, { useState, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, ArrowLeftRight, Columns, AlignJustify, ChevronDown } from 'lucide-react';
+
+interface DiffVersion {
+  version: number;
+  content: string;
+  author: string;
+  timestamp: string;
+  label?: string;
+}
+
+interface VersionDiffViewProps {
+  versions: DiffVersion[];
+  onClose: () => void;
+}
+
+type DiffMode = 'side-by-side' | 'inline';
+
+interface DiffSegment {
+  type: 'same' | 'added' | 'removed';
+  text: string;
+}
+
+/** Simple word-level diff */
+function diffWords(oldText: string, newText: string): DiffSegment[] {
+  const stripHtml = (s: string) => s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  const oldWords = stripHtml(oldText).split(' ').filter(Boolean);
+  const newWords = stripHtml(newText).split(' ').filter(Boolean);
+
+  // LCS-based diff (optimized for reasonable sizes)
+  const m = oldWords.length;
+  const n = newWords.length;
+
+  // For very large documents, fall back to a simpler approach
+  if (m * n > 500_000) {
+    return simpleDiff(oldWords, newWords);
+  }
+
+  // Build LCS table
+  const dp = Array.from({ length: m + 1 }, () => new Uint16Array(n + 1));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = oldWords[i - 1] === newWords[j - 1]
+        ? dp[i - 1][j - 1] + 1
+        : Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+
+  // Trace back
+  const segments: DiffSegment[] = [];
+  let i = m, j = n;
+  const stack: DiffSegment[] = [];
+
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldWords[i - 1] === newWords[j - 1]) {
+      stack.push({ type: 'same', text: oldWords[i - 1] });
+      i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      stack.push({ type: 'added', text: newWords[j - 1] });
+      j--;
+    } else {
+      stack.push({ type: 'removed', text: oldWords[i - 1] });
+      i--;
+    }
+  }
+
+  // Merge consecutive same-type segments
+  stack.reverse();
+  for (const seg of stack) {
+    if (segments.length > 0 && segments[segments.length - 1].type === seg.type) {
+      segments[segments.length - 1].text += ' ' + seg.text;
+    } else {
+      segments.push({ ...seg });
+    }
+  }
+
+  return segments;
+}
+
+function simpleDiff(oldWords: string[], newWords: string[]): DiffSegment[] {
+  const segments: DiffSegment[] = [];
+  if (oldWords.length > 0) segments.push({ type: 'removed', text: oldWords.join(' ') });
+  if (newWords.length > 0) segments.push({ type: 'added', text: newWords.join(' ') });
+  return segments;
+}
+
+function DiffSegmentView({ segment }: { segment: DiffSegment }) {
+  if (segment.type === 'same') {
+    return <span className="text-gray-800 dark:text-slate-200">{segment.text} </span>;
+  }
+  if (segment.type === 'added') {
+    return (
+      <span className="bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 px-0.5 rounded">
+        {segment.text}{' '}
+      </span>
+    );
+  }
+  return (
+    <span className="bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 line-through px-0.5 rounded">
+      {segment.text}{' '}
+    </span>
+  );
+}
+
+export function VersionDiffView({ versions, onClose }: VersionDiffViewProps) {
+  const [leftIdx, setLeftIdx] = useState(versions.length >= 2 ? versions.length - 2 : 0);
+  const [rightIdx, setRightIdx] = useState(versions.length - 1);
+  const [mode, setMode] = useState<DiffMode>('inline');
+
+  const left = versions[leftIdx];
+  const right = versions[rightIdx];
+
+  const diffSegments = useMemo(() => {
+    if (!left || !right) return [];
+    return diffWords(left.content, right.content);
+  }, [left, right]);
+
+  const stats = useMemo(() => {
+    let added = 0, removed = 0;
+    for (const seg of diffSegments) {
+      const words = seg.text.split(/\s+/).filter(Boolean).length;
+      if (seg.type === 'added') added += words;
+      if (seg.type === 'removed') removed += words;
+    }
+    return { added, removed };
+  }, [diffSegments]);
+
+  if (versions.length < 2) {
+    return (
+      <div className="p-6 text-center text-gray-500 dark:text-slate-400">
+        <p className="text-sm">Need at least 2 versions to compare.</p>
+        <button onClick={onClose} className="mt-3 text-violet-600 dark:text-violet-400 text-sm hover:underline">Close</button>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-lg overflow-hidden"
+    >
+      {/* Header */}
+      <div className="px-4 py-3 bg-gray-50 dark:bg-slate-700/50 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <ArrowLeftRight className="h-4 w-4 text-violet-500" />
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">Version Comparison</h3>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-green-600 dark:text-green-400 font-medium">+{stats.added} words</span>
+            <span className="text-red-600 dark:text-red-400 font-medium">-{stats.removed} words</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Mode toggle */}
+          <div className="flex items-center bg-gray-100 dark:bg-slate-600 rounded-lg p-0.5">
+            <button
+              onClick={() => setMode('inline')}
+              className={`p-1.5 rounded-md text-xs transition-colors ${mode === 'inline' ? 'bg-white dark:bg-slate-500 shadow-sm text-gray-900 dark:text-slate-100' : 'text-gray-500 dark:text-slate-400'}`}
+              title="Inline diff"
+            >
+              <AlignJustify className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setMode('side-by-side')}
+              className={`p-1.5 rounded-md text-xs transition-colors ${mode === 'side-by-side' ? 'bg-white dark:bg-slate-500 shadow-sm text-gray-900 dark:text-slate-100' : 'text-gray-500 dark:text-slate-400'}`}
+              title="Side by side"
+            >
+              <Columns className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Version selectors */}
+      <div className="px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center gap-4 text-sm">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500 dark:text-slate-400 text-xs">Old:</span>
+          <select
+            value={leftIdx}
+            onChange={(e) => setLeftIdx(parseInt(e.target.value))}
+            className="text-xs border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
+          >
+            {versions.map((v, i) => (
+              <option key={i} value={i}>v{v.version} — {v.author} ({v.label || 'Save'})</option>
+            ))}
+          </select>
+        </div>
+        <ArrowLeftRight className="h-3 w-3 text-gray-400" />
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500 dark:text-slate-400 text-xs">New:</span>
+          <select
+            value={rightIdx}
+            onChange={(e) => setRightIdx(parseInt(e.target.value))}
+            className="text-xs border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 rounded px-2 py-1"
+          >
+            {versions.map((v, i) => (
+              <option key={i} value={i}>v{v.version} — {v.author} ({v.label || 'Save'})</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Diff content */}
+      <div className="p-4 max-h-[50vh] overflow-y-auto">
+        {mode === 'inline' ? (
+          <div className="prose prose-sm dark:prose-invert max-w-none font-serif leading-relaxed">
+            {diffSegments.map((seg, i) => (
+              <DiffSegmentView key={i} segment={seg} />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-3 bg-red-50/50 dark:bg-red-900/10 rounded-lg border border-red-100 dark:border-red-800/30">
+              <div className="text-xs font-medium text-red-600 dark:text-red-400 mb-2">
+                v{left.version} — {left.author}
+              </div>
+              <div className="prose prose-sm dark:prose-invert max-w-none font-serif text-sm leading-relaxed">
+                {diffSegments
+                  .filter((s) => s.type === 'same' || s.type === 'removed')
+                  .map((seg, i) => (
+                    <DiffSegmentView key={i} segment={seg} />
+                  ))}
+              </div>
+            </div>
+            <div className="p-3 bg-green-50/50 dark:bg-green-900/10 rounded-lg border border-green-100 dark:border-green-800/30">
+              <div className="text-xs font-medium text-green-600 dark:text-green-400 mb-2">
+                v{right.version} — {right.author}
+              </div>
+              <div className="prose prose-sm dark:prose-invert max-w-none font-serif text-sm leading-relaxed">
+                {diffSegments
+                  .filter((s) => s.type === 'same' || s.type === 'added')
+                  .map((seg, i) => (
+                    <DiffSegmentView key={i} segment={seg} />
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+export default VersionDiffView;
