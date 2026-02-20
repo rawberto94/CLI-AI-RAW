@@ -11,29 +11,25 @@ import { broadcastSSE } from '@/app/api/agents/sse/route';
 import { sendHITLApprovalNotification, sendHITLDecisionNotification } from '@/lib/notifications/hitl-notification.service';
 
 /**
- * Add a goal execution job to the queue (BullMQ or fallback)
+ * Add a goal execution job to the queue (BullMQ via shared QueueService or fallback)
  */
 async function queueGoalExecution(goalId: string, tenantId: string): Promise<void> {
   try {
-    // Dynamic import to avoid build errors if BullMQ not installed
-    const bullMQ = await import('bullmq').catch(() => null);
-    if (bullMQ && process.env.REDIS_URL) {
-      const { Queue } = bullMQ;
-      const queue = new Queue('agent-goals', {
-        connection: { url: process.env.REDIS_URL }
-      });
-      await queue.add('execute-goal', { goalId, tenantId }, {
+    // Use the shared singleton QueueService — avoids creating a new Redis connection per request
+    const { getInitializedQueueService } = await import('@/lib/queue-init');
+    const queueService = getInitializedQueueService();
+    if (queueService) {
+      await queueService.addJob('agent-orchestration', 'execute-goal', { goalId, tenantId }, {
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: { age: 86400 * 7 }, // Keep 7 days
-        removeOnFail: { age: 86400 * 30 }, // Keep 30 days
+        removeOnComplete: { age: 86400 * 7 },
+        removeOnFail: { age: 86400 * 30 },
       });
-      await queue.close();
       console.warn(`[Agent Goals] Queued goal execution: ${goalId}`);
       return;
     }
   } catch (error) {
-    console.error('[Agent Goals] BullMQ queueing failed:', error);
+    console.error('[Agent Goals] QueueService queueing failed:', error);
     // Fall through to webhook/logging
   }
 
