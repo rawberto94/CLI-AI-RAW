@@ -179,7 +179,32 @@ export const SmartSuggestions = memo(({
   className,
 }: SmartSuggestionsProps) => {
   const [recentSuggestions, setRecentSuggestions] = useState<Suggestion[]>([]);
+  const [dynamicSuggestions, setDynamicSuggestions] = useState<Suggestion[]>([]);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  // Fetch dynamic portfolio-aware suggestions from API (#7)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/ai/suggestions?context=${pageContext}`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const dynamic = (data.dynamicSuggestions || []).map((s: any, i: number) => ({
+          id: s.id || `dyn-${i}`,
+          text: s.text,
+          category: s.category === 'urgent' ? 'contextual' as const : s.category === 'proactive' ? 'smart' as const : (s.category || 'quick') as any,
+          icon: s.category === 'urgent' ? Zap : s.category === 'proactive' ? Lightbulb : Star,
+          priority: s.priority || i,
+          metadata: s.metadata,
+        }));
+        if (!cancelled) setDynamicSuggestions(dynamic);
+      } catch {
+        // Silently handle fetch failure
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pageContext]);
 
   // Load recent suggestions from localStorage
   useEffect(() => {
@@ -241,6 +266,9 @@ export const SmartSuggestions = memo(({
   const allSuggestions = useMemo(() => {
     const suggestions: Suggestion[] = [];
 
+    // Add dynamic portfolio-based suggestions (highest priority)
+    suggestions.push(...dynamicSuggestions);
+
     // Add context-specific suggestions
     const contextSuggestions = CONTEXT_SUGGESTIONS[pageContext] || [];
     suggestions.push(...contextSuggestions);
@@ -276,7 +304,7 @@ export const SmartSuggestions = memo(({
       })
       .sort((a, b) => a.priority - b.priority)
       .slice(0, maxSuggestions);
-  }, [pageContext, contractContext, recentSuggestions, maxSuggestions]);
+  }, [pageContext, contractContext, recentSuggestions, dynamicSuggestions, maxSuggestions]);
 
   // Group by category for list view
   const groupedSuggestions = useMemo(() => {

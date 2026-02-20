@@ -117,6 +117,127 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
           label: 'Spending Analysis', 
           query: 'What is my total contract value by supplier?',
           icon: 'bar-chart' },
-      ] });
+      ],
+      // Dynamic portfolio-aware suggestions (#7)
+      dynamicSuggestions: await buildDynamicSuggestions(tenantId, context),
+    });
 
   });
+
+// ── Dynamic Portfolio-Aware Suggestions (#7) ────────────────────────────
+
+interface DynamicSuggestion {
+  id: string;
+  text: string;
+  category: 'urgent' | 'proactive' | 'contextual' | 'smart';
+  priority: number;
+  metadata?: Record<string, unknown>;
+}
+
+async function buildDynamicSuggestions(tenantId: string, pageContext: string): Promise<DynamicSuggestion[]> {
+  const suggestions: DynamicSuggestion[] = [];
+
+  try {
+    // 1. Contracts expiring soon (urgent)
+    const expiringCount = await prisma.contract.count({
+      where: {
+        tenantId,
+        status: 'ACTIVE',
+        expirationDate: {
+          lte: new Date(Date.now() + 30 * 86400000),
+          gte: new Date(),
+        },
+      },
+    });
+
+    if (expiringCount > 0) {
+      suggestions.push({
+        id: 'dyn-expiring',
+        text: `${expiringCount} contract${expiringCount > 1 ? 's' : ''} expiring in 30 days — review now`,
+        category: 'urgent',
+        priority: 1,
+        metadata: { count: expiringCount },
+      });
+    }
+
+    // 2. Pending approvals
+    const pendingApprovals = await prisma.workflowExecution.count({
+      where: { tenantId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
+    });
+
+    if (pendingApprovals > 0) {
+      suggestions.push({
+        id: 'dyn-approvals',
+        text: `${pendingApprovals} pending approval${pendingApprovals > 1 ? 's' : ''} waiting for review`,
+        category: 'urgent',
+        priority: 2,
+        metadata: { count: pendingApprovals },
+      });
+    }
+
+    // 3. High-risk contracts
+    const highRiskCount = await prisma.contract.count({
+      where: { tenantId, expirationRisk: { in: ['HIGH', 'CRITICAL'] } },
+    });
+
+    if (highRiskCount > 0) {
+      suggestions.push({
+        id: 'dyn-risk',
+        text: `${highRiskCount} high-risk contract${highRiskCount > 1 ? 's' : ''} need attention`,
+        category: 'urgent',
+        priority: 3,
+        metadata: { count: highRiskCount },
+      });
+    }
+
+    // 4. Missing data
+    const missingDates = await prisma.contract.count({
+      where: { tenantId, status: 'ACTIVE', expirationDate: null },
+    });
+
+    if (missingDates > 0) {
+      suggestions.push({
+        id: 'dyn-missing',
+        text: `${missingDates} active contract${missingDates > 1 ? 's' : ''} missing expiration dates`,
+        category: 'proactive',
+        priority: 5,
+      });
+    }
+
+    // 5. Agent insights nudge
+    try {
+      const recentGoals = await prisma.$queryRawUnsafe<any[]>(
+        `SELECT COUNT(*) as cnt FROM agent_goals
+         WHERE tenant_id = $1 AND status = 'COMPLETED' AND created_at > NOW() - INTERVAL '24 hours'`,
+        tenantId
+      );
+      const cnt = parseInt(recentGoals[0]?.cnt || '0');
+      if (cnt > 0) {
+        suggestions.push({
+          id: 'dyn-agents',
+          text: `AI agents found ${cnt} insight${cnt > 1 ? 's' : ''} today — ask "what have the agents found?"`,
+          category: 'proactive',
+          priority: 4,
+        });
+      }
+    } catch { /* */ }
+
+    // 6. Time-based
+    const hour = new Date().getHours();
+    const dayOfWeek = new Date().getDay();
+
+    if (dayOfWeek === 1 && hour < 12) {
+      suggestions.push({
+        id: 'dyn-weekly',
+        text: 'Monday morning — review contracts needing attention this week',
+        category: 'smart',
+        priority: 7,
+      });
+    }
+
+  } catch (error) {
+    console.error('[Dynamic Suggestions] Error:', error);
+  }
+
+  return suggestions.sort((a, b) => a.priority - b.priority).slice(0, 6);
+}

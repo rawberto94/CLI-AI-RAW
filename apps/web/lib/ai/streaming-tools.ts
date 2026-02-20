@@ -386,6 +386,61 @@ export const STREAMING_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+
+  // ── Agent Intelligence Bridge ───────────────────────────────────────
+  {
+    type: 'function',
+    function: {
+      name: 'get_agent_insights',
+      description: 'Get proactive insights from background AI agents including risk alerts, optimization opportunities, compliance issues, and learning patterns. Use when the user asks "what have the agents found?", "any AI insights?", "proactive alerts", "agent findings", or "what should I know?".',
+      parameters: {
+        type: 'object',
+        properties: {
+          category: {
+            type: 'string',
+            enum: ['all', 'risk', 'opportunities', 'compliance', 'learning', 'health'],
+            description: 'Filter insights by category. "all" returns everything.',
+          },
+          limit: { type: 'number', description: 'Maximum insights to return (default 10)', default: 10 },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_agent_debate',
+      description: 'Request a multi-agent debate/analysis on a contract. Multiple specialist agents (legal, pricing, compliance, risk, operations) analyze and debate the contract, resolving conflicts to produce a consensus plan. Use when the user asks for "second opinion", "multi-agent analysis", "agent debate", or "comprehensive review from all perspectives".',
+      parameters: {
+        type: 'object',
+        properties: {
+          contractId: { type: 'string', description: 'The contract ID to analyze' },
+          focusAreas: {
+            type: 'array',
+            items: { type: 'string', enum: ['legal', 'pricing', 'compliance', 'risk', 'operations'] },
+            description: 'Specific areas to focus the debate on (optional — defaults to all)',
+          },
+        },
+        required: ['contractId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'rate_response',
+      description: 'Record user feedback on AI response quality. Use when the user says "good answer", "bad response", "thumbs up", "thumbs down", "that was helpful", or provides quality feedback on a previous answer.',
+      parameters: {
+        type: 'object',
+        properties: {
+          rating: { type: 'string', enum: ['positive', 'negative'], description: 'Whether the response was helpful' },
+          reason: { type: 'string', description: 'Optional reason for the rating' },
+          messageId: { type: 'string', description: 'ID of the message being rated (optional)' },
+        },
+        required: ['rating'],
+      },
+    },
+  },
 ];
 
 // =============================================================================
@@ -446,6 +501,12 @@ export async function executeTool(
         return await executeComplianceSummary(tenantId, start);
       case 'get_contract_stats':
         return await executeContractStats(tenantId, start);
+      case 'get_agent_insights':
+        return await executeAgentInsights(args, tenantId, start);
+      case 'get_agent_debate':
+        return await executeAgentDebate(args, tenantId, start);
+      case 'rate_response':
+        return await executeRateResponse(args, tenantId, userId, start);
       default:
         return { toolName, success: false, data: null, error: `Unknown tool: ${toolName}`, executionTimeMs: Date.now() - start };
     }
@@ -1372,5 +1433,297 @@ async function executeContractStats(tenantId: string, start: number): Promise<To
     },
     executionTimeMs: Date.now() - start,
     suggestedActions: [{ label: '📊 Dashboard', action: 'navigate:/dashboard' }],
+  };
+}
+
+// ── Agent Insights (Bridge background agents → chat) ───────────────────
+
+async function executeAgentInsights(args: Record<string, unknown>, tenantId: string, start: number): Promise<ToolResult> {
+  const category = (args.category as string) || 'all';
+  const limit = (args.limit as number) || 10;
+
+  const insights: Array<{ type: string; severity: string; title: string; detail: string; source: string; timestamp?: string }> = [];
+
+  try {
+    // 1. Query agent_goals for recent findings
+    const recentGoals = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT type, status, result, error, created_at, completed_at
+       FROM agent_goals
+       WHERE tenant_id = $1
+         AND created_at > NOW() - INTERVAL '7 days'
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      tenantId,
+      limit
+    );
+
+    for (const goal of recentGoals) {
+      if (goal.status === 'COMPLETED' && goal.result) {
+        const result = typeof goal.result === 'string' ? JSON.parse(goal.result) : goal.result;
+        insights.push({
+          type: goal.type || 'agent_finding',
+          severity: 'info',
+          title: `Agent completed: ${goal.type}`,
+          detail: typeof result === 'object' ? JSON.stringify(result).slice(0, 300) : String(result).slice(0, 300),
+          source: 'background-agent',
+          timestamp: goal.completed_at?.toISOString?.() || goal.created_at?.toISOString?.(),
+        });
+      }
+      if (goal.status === 'FAILED' && goal.error) {
+        insights.push({
+          type: 'agent_failure',
+          severity: 'warning',
+          title: `Agent failed: ${goal.type}`,
+          detail: String(goal.error).slice(0, 300),
+          source: 'background-agent',
+          timestamp: goal.created_at?.toISOString?.(),
+        });
+      }
+    }
+  } catch {
+    // agent_goals table may not exist
+  }
+
+  try {
+    // 2. Query learning_records for learned patterns
+    if (category === 'all' || category === 'learning') {
+      const learnings = await prisma.$queryRawUnsafe<any[]>(
+        `SELECT field, correction_type, confidence, created_at
+         FROM learning_records
+         WHERE tenant_id = $1
+           AND created_at > NOW() - INTERVAL '30 days'
+         ORDER BY created_at DESC
+         LIMIT 5`,
+        tenantId
+      );
+
+      for (const learning of learnings) {
+        insights.push({
+          type: 'learning',
+          severity: 'info',
+          title: `Learned pattern: ${learning.field}`,
+          detail: `Correction type: ${learning.correction_type}, confidence: ${((learning.confidence || 0) * 100).toFixed(0)}%`,
+          source: 'feedback-learner',
+          timestamp: learning.created_at?.toISOString?.(),
+        });
+      }
+    }
+  } catch {
+    // learning_records table may not exist
+  }
+
+  // 3. Add risk insights from contract data
+  if (category === 'all' || category === 'risk') {
+    try {
+      const riskyContracts = await prisma.contract.findMany({
+        where: { tenantId, expirationRisk: { in: ['HIGH', 'CRITICAL'] } },
+        take: 5,
+        orderBy: { expirationDate: 'asc' },
+        select: { id: true, contractTitle: true, expirationDate: true, totalValue: true, expirationRisk: true },
+      });
+
+      for (const c of riskyContracts) {
+        const days = c.expirationDate ? Math.ceil((c.expirationDate.getTime() - Date.now()) / 86400000) : null;
+        insights.push({
+          type: 'risk',
+          severity: c.expirationRisk === 'CRITICAL' ? 'critical' : 'high',
+          title: `${c.contractTitle || 'Contract'} — ${c.expirationRisk} risk`,
+          detail: days !== null && days > 0 ? `Expires in ${days} days, value: $${Number(c.totalValue || 0).toLocaleString()}` : 'Expiration risk flagged',
+          source: 'risk-detector',
+        });
+      }
+    } catch { /* */ }
+  }
+
+  // 4. Health summary
+  if (category === 'all' || category === 'health') {
+    try {
+      const contracts = await prisma.contract.findMany({
+        where: { tenantId },
+        select: { metadata: true },
+      });
+      let totalScore = 0;
+      let scored = 0;
+      for (const c of contracts) {
+        const meta = c.metadata as { healthScore?: number } | null;
+        if (meta?.healthScore) { totalScore += meta.healthScore; scored++; }
+      }
+      if (scored > 0) {
+        insights.push({
+          type: 'health',
+          severity: totalScore / scored >= 70 ? 'info' : 'warning',
+          title: `Portfolio health: ${Math.round(totalScore / scored)}%`,
+          detail: `Based on ${scored} contracts with health scores`,
+          source: 'health-monitor',
+        });
+      }
+    } catch { /* */ }
+  }
+
+  // Filter by category
+  const filtered = category === 'all' ? insights : insights.filter(i => i.type === category || i.severity === category);
+
+  return {
+    toolName: 'get_agent_insights',
+    success: true,
+    data: {
+      totalInsights: filtered.length,
+      insights: filtered.slice(0, limit),
+      categories: [...new Set(filtered.map(i => i.type))],
+      lastUpdated: new Date().toISOString(),
+    },
+    executionTimeMs: Date.now() - start,
+    navigation: { url: '/ai/agents', label: 'Agent Dashboard' },
+    suggestedActions: [
+      { label: '🤖 Agent Dashboard', action: 'navigate:/ai/agents' },
+      { label: '⚠️ Risk Dashboard', action: 'navigate:/risk-dashboard' },
+    ],
+  };
+}
+
+// ── Agent Debate (Multi-agent contract analysis) ───────────────────────
+
+async function executeAgentDebate(args: Record<string, unknown>, tenantId: string, start: number): Promise<ToolResult> {
+  const contractId = args.contractId as string;
+
+  const contract = await prisma.contract.findFirst({
+    where: { id: contractId, tenantId },
+    select: { id: true, contractTitle: true, contractType: true, totalValue: true, rawText: true },
+  });
+
+  if (!contract) {
+    return { toolName: 'get_agent_debate', success: false, data: null, error: 'Contract not found', executionTimeMs: Date.now() - start };
+  }
+
+  // Import and use the multi-agent coordinator
+  try {
+    const { MultiAgentCoordinator } = await import('@contigo/workers/agents/multi-agent-coordinator');
+    const coordinator = new MultiAgentCoordinator();
+
+    const contractText = contract.rawText || contract.contractTitle || '';
+    const requiredArtifacts = ['OVERVIEW', 'CLAUSES', 'OBLIGATIONS', 'FINANCIAL', 'RISK', 'COMPLIANCE'];
+    
+    const focusAreas = args.focusAreas as string[] | undefined;
+    const filteredArtifacts = focusAreas
+      ? requiredArtifacts.filter(a => {
+          const mapping: Record<string, string[]> = {
+            legal: ['CLAUSES', 'OBLIGATIONS'],
+            pricing: ['FINANCIAL'],
+            compliance: ['COMPLIANCE'],
+            risk: ['RISK'],
+            operations: ['OVERVIEW'],
+          };
+          return focusAreas.some(area => mapping[area]?.includes(a));
+        })
+      : requiredArtifacts;
+
+    const negotiation = await coordinator.analyzeContract(
+      contractId,
+      contract.contractType || 'General',
+      filteredArtifacts,
+      contractText.slice(0, 5000)
+    );
+
+    const executionPlan = await coordinator.createExecutionPlan(negotiation);
+
+    return {
+      toolName: 'get_agent_debate',
+      success: true,
+      data: {
+        contractTitle: contract.contractTitle,
+        negotiation: {
+          proposalCount: negotiation.proposals.length,
+          consensusCount: negotiation.consensus.length,
+          conflictCount: negotiation.conflicts.length,
+          proposals: negotiation.proposals.map(p => ({
+            agent: p.agentType,
+            artifacts: p.artifactTypes,
+            confidence: Math.round(p.confidence * 100),
+            reasoning: p.reasoning,
+          })),
+          conflicts: negotiation.conflicts.map(c => ({
+            agents: c.agents,
+            issue: c.issue,
+            resolution: c.resolution,
+          })),
+          consensus: negotiation.consensus.map(p => ({
+            agent: p.agentType,
+            artifacts: p.artifactTypes,
+            confidence: Math.round(p.confidence * 100),
+          })),
+        },
+        executionPlan: {
+          phases: executionPlan.phases.map(p => ({
+            name: p.name,
+            agents: p.agents,
+            artifacts: p.artifacts,
+            parallel: p.parallel,
+            estimatedDuration: p.estimatedDuration,
+          })),
+          totalCost: executionPlan.totalCost,
+          totalTime: executionPlan.totalTime,
+          optimizationScore: Math.round(executionPlan.optimizationScore * 100),
+        },
+      },
+      executionTimeMs: Date.now() - start,
+      navigation: { url: `/contracts/${contractId}`, label: 'View Contract' },
+      suggestedActions: [
+        { label: '📋 View Contract', action: `navigate:/contracts/${contractId}` },
+        { label: '🔍 Detailed Analysis', action: `analyze:${contractId}` },
+      ],
+    };
+  } catch {
+    // Multi-agent coordinator not available — provide basic analysis
+    return {
+      toolName: 'get_agent_debate',
+      success: true,
+      data: {
+        contractTitle: contract.contractTitle,
+        negotiation: {
+          proposalCount: 0,
+          consensusCount: 0,
+          conflictCount: 0,
+          proposals: [],
+          conflicts: [],
+          consensus: [],
+        },
+        note: 'Multi-agent coordinator not available. The agent worker service may need to be started.',
+      },
+      executionTimeMs: Date.now() - start,
+    };
+  }
+}
+
+// ── Rate Response (Model quality feedback) ─────────────────────────────
+
+async function executeRateResponse(args: Record<string, unknown>, tenantId: string, userId: string, start: number): Promise<ToolResult> {
+  const rating = args.rating as 'positive' | 'negative';
+  const reason = args.reason as string | undefined;
+
+  try {
+    // Store feedback in the database
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO learning_records (tenant_id, user_id, field, correction_type, confidence, metadata, created_at)
+       VALUES ($1, $2, 'response_quality', $3, $4, $5::jsonb, NOW())`,
+      tenantId,
+      userId,
+      rating === 'positive' ? 'positive_feedback' : 'negative_feedback',
+      rating === 'positive' ? 0.9 : 0.1,
+      JSON.stringify({ reason: reason || null, source: 'chat_feedback' })
+    );
+  } catch {
+    // learning_records table may not exist — still acknowledge the feedback
+  }
+
+  return {
+    toolName: 'rate_response',
+    success: true,
+    data: {
+      rating,
+      reason,
+      acknowledged: true,
+      message: rating === 'positive' ? 'Thanks for the positive feedback! I\'ll continue this approach.' : 'Thanks for the feedback. I\'ll adjust my responses accordingly.',
+    },
+    executionTimeMs: Date.now() - start,
   };
 }

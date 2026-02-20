@@ -38,6 +38,7 @@ import { allocateBudget, getBudgetStats } from '@/lib/ai/token-budget';
 import { shouldUseAgent, executeWithAgent } from '@/lib/ai/agent-integration';
 import { routeToModel, recordAICost, estimateTokenCost, type TaskType } from '@/lib/ai/model-router.service';
 import { shouldUseRAG } from '@/lib/ai/chat/response-builder';
+import { getLearningContext, formatLearningContextForPrompt } from '@contigo/agents/learning-context';
 
 // ─── Clients ────────────────────────────────────────────────────────────
 
@@ -286,6 +287,21 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
     }), []),
   ]);
 
+  // ── Cross-conversation learning context (#6) ──────────────────────────
+  let learningContextStr = '';
+  try {
+    const learningCtx = await withTimeout(getLearningContext(tenantId), {
+      tenantId,
+      correctionPatterns: [],
+      historicalPatterns: [],
+      qualityThresholds: {},
+      builtAt: new Date(),
+    } as any);
+    learningContextStr = formatLearningContextForPrompt(learningCtx);
+  } catch {
+    // Learning context unavailable — continue without it
+  }
+
   const searchResults = ragResults.results || [];
   const ragSources = searchResults.map(r => r.contractName);
 
@@ -319,7 +335,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   const systemPrompt = `You are ConTigo AI, an autonomous contract management assistant.
 
 **Capabilities:**
-You have access to tools that let you search contracts, view details, analyze spend & risk, fully manage workflows (start/approve/reject/cancel/escalate/assign/create/check status/suggest), create and update contracts, check compliance, retrieve AI intelligence insights (health scores, risk insights, portfolio analytics), and navigate the user to any page including Intelligence Hub features.
+You have access to tools that let you search contracts, view details, analyze spend & risk, fully manage workflows (start/approve/reject/cancel/escalate/assign/create/check status/suggest), create and update contracts, check compliance, retrieve AI intelligence insights (health scores, risk insights, portfolio analytics), navigate the user to any page, query background AI agent findings (risk alerts, compliance issues, learning patterns), run multi-agent debates on contracts (getting specialist perspectives from legal/pricing/compliance/risk/operations agents), and record user feedback on response quality.
 
 **When to use tools:**
 - ALWAYS use a tool when the user asks for data, actions, or navigation — do NOT guess or make up data.
@@ -338,6 +354,9 @@ You have access to tools that let you search contracts, view details, analyze sp
   • "create a new approval workflow" → create_workflow
   • "list workflows" / "show templates" → list_workflows
 - For intelligence navigation ("show me the knowledge graph", "open health scores", "negotiation co-pilot"), use navigate_to_page with intelligence targets.
+- For agent insights ("what have the agents found", "proactive alerts", "what should I know"), use get_agent_insights.
+- For multi-agent debate ("second opinion", "multi-agent analysis", "comprehensive review"), use get_agent_debate with the contract ID.
+- For user feedback ("good answer", "thumbs up", "bad response"), use rate_response.
 
 **Response rules:**
 1. Be concise and actionable.
@@ -346,9 +365,13 @@ You have access to tools that let you search contracts, view details, analyze sp
 4. After tool results, summarize findings with specific numbers and recommendations.
 5. If a tool returns a navigation URL, mention it so the user can click through.
 6. Current user role: ${userRole}. Respect permissions.
+7. If you used get_agent_insights, present findings organized by severity with actionable next steps.
+8. If you used get_agent_debate, present each agent's perspective, highlight key conflicts and the consensus, then recommend action.
+9. When users give feedback (positive/negative), acknowledge it warmly and adjust your approach.
 
 ${ragContext}
-${memoryContext}`;
+${memoryContext}
+${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${learningContextStr}` : ''}`;
 
   // ═══════════════════════════════════════════════════════════════════════
   // STEP 3.1 — AGENT PERSONA @MENTION DETECTION
@@ -387,10 +410,20 @@ ${memoryContext}`;
     });
     
     if (agentResponse.agentUsed && agentResponse.response) {
-      // Stream agent response
+      // Stream agent response with plan visualization (#5)
       const encoder = new TextEncoder();
       const readable = new ReadableStream({
         start(controller) {
+          // Emit plan event so frontend can show reasoning steps
+          if (agentResponse.steps && agentResponse.steps.length > 0) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'plan',
+              steps: agentResponse.steps,
+              reasoning: agentResponse.reasoning,
+              agentType: 'react',
+            })}\n\n`));
+          }
+
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'metadata',
             sources: ragSources,
@@ -703,6 +736,18 @@ ${memoryContext}`;
 
             const result = await executeTool(toolName, args, tenantId, userId);
 
+            // Emit tool preview with partial data for streaming UX (#9)
+            if (result.success && result.data) {
+              const preview = buildToolPreview(result);
+              if (preview) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  type: 'tool_preview',
+                  toolName,
+                  preview,
+                })}\n\n`));
+              }
+            }
+
             // Notify client — tool done
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({
               type: 'tool_done',
@@ -738,8 +783,42 @@ ${memoryContext}`;
         }
 
         // ═══════════════════════════════════════════════════════════════
-        // STEP 5 — POST-PROCESSING (Cache, Memory, Done signal)
+        // STEP 5 — POST-PROCESSING (Self-Critique, Cache, Memory, Done)
         // ═══════════════════════════════════════════════════════════════
+
+        // ── Self-critique (#4): Quick quality check on generated response ──
+        let selfCritiqueScore = 1.0;
+        let selfCritiqueNote = '';
+        if (fullContent.length > 50 && searchResults.length > 0) {
+          try {
+            // Check if response is grounded in RAG context
+            const ragTexts = searchResults.map(r => r.text.toLowerCase()).join(' ');
+            const responseWords = fullContent.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+            const groundedWords = responseWords.filter(w => ragTexts.includes(w));
+            const groundingRatio = responseWords.length > 0 ? groundedWords.length / responseWords.length : 0;
+
+            if (groundingRatio < 0.1 && !allToolResults.some(r => r.success)) {
+              selfCritiqueScore = 0.5;
+              selfCritiqueNote = 'Response may not be fully grounded in contract data';
+            } else if (groundingRatio < 0.3) {
+              selfCritiqueScore = 0.75;
+              selfCritiqueNote = 'Partially grounded — some claims may need verification';
+            } else {
+              selfCritiqueScore = 1.0;
+              selfCritiqueNote = 'Well-grounded in source data';
+            }
+
+            // Check for hallucination indicators
+            const hallucinationPatterns = ['I believe', 'I think', 'probably', 'it seems like', 'I assume'];
+            const hasHedging = hallucinationPatterns.some(p => fullContent.toLowerCase().includes(p));
+            if (hasHedging && selfCritiqueScore > 0.6) {
+              selfCritiqueScore -= 0.1;
+              selfCritiqueNote += '. Contains hedging language';
+            }
+          } catch {
+            // Self-critique is non-critical
+          }
+        }
 
         const finalConfidence = calculateDynamicConfidence(
           searchResults.map(r => ({ score: r.score, matchType: r.matchType, sources: r.sources })),
@@ -750,6 +829,9 @@ ${memoryContext}`;
         const adjustedConfidence = allToolResults.length > 0 && allToolResults.every(r => r.success)
           ? Math.min(finalConfidence.confidence + 0.1, 1.0)
           : finalConfidence.confidence;
+
+        // Factor in self-critique score
+        const finalAdjustedConfidence = Math.round(adjustedConfidence * selfCritiqueScore * 100) / 100;
 
         // Cache asynchronously
         semanticCache
@@ -764,7 +846,7 @@ ${memoryContext}`;
             })),
             metadata: {
               intent: context.intent?.type,
-              confidence: adjustedConfidence,
+              confidence: finalAdjustedConfidence,
               tokensUsed: Math.round(fullContent.length / 4),
             },
           }, tenantId)
@@ -814,7 +896,7 @@ ${memoryContext}`;
                     content: fullContent,
                     model: usedModel,
                     tokensUsed: Math.round(fullContent.length / 4),
-                    confidence: adjustedConfidence,
+                    confidence: finalAdjustedConfidence,
                     sources: ragSources.slice(0, 10) as any,
                   },
                 ],
@@ -858,9 +940,14 @@ ${memoryContext}`;
           type: 'done',
           done: true,
           totalTokens: Math.round(fullContent.length / 4),
-          confidence: adjustedConfidence,
+          confidence: finalAdjustedConfidence,
           confidenceTier: finalConfidence.tier,
           explanation: finalConfidence.explanation,
+          selfCritique: {
+            score: selfCritiqueScore,
+            note: selfCritiqueNote,
+            grounded: selfCritiqueScore >= 0.75,
+          },
           model: usedModel,
           provider: usedProvider,
           toolsUsed,
@@ -955,6 +1042,14 @@ function summarizeToolResult(result: ToolResult): string {
       return `Compliance: ${d.complianceScore || 0}%`;
     case 'get_contract_stats':
       return `${d.totalContracts || 0} contracts, $${Number(d.totalValue || 0).toLocaleString()}`;
+    case 'get_agent_insights':
+      return `${d.totalInsights || 0} agent insights across ${(d.categories as string[])?.length || 0} categories`;
+    case 'get_agent_debate': {
+      const neg = d.negotiation as Record<string, unknown> | undefined;
+      return neg ? `${neg.proposalCount || 0} agent proposals, ${neg.conflictCount || 0} conflicts resolved` : 'Debate complete';
+    }
+    case 'rate_response':
+      return `Feedback recorded: ${d.rating}`;
     default:
       return 'Complete';
   }
@@ -968,4 +1063,84 @@ function deduplicateActions(actions: Array<{ label: string; action: string }>): 
     seen.add(a.action);
     return true;
   });
+}
+
+/** Build a rich preview from tool results for streaming UI (#9). */
+function buildToolPreview(result: ToolResult): Record<string, unknown> | null {
+  const d = result.data as Record<string, unknown>;
+  if (!d) return null;
+
+  switch (result.toolName) {
+    case 'search_contracts': {
+      const contracts = d.contracts as Array<Record<string, unknown>> | undefined;
+      if (!contracts || contracts.length === 0) return null;
+      return {
+        type: 'contract_list',
+        items: contracts.slice(0, 3).map(c => ({
+          id: c.contractId,
+          name: c.contractName,
+          supplier: c.supplier,
+          score: c.score,
+        })),
+        totalCount: d.count,
+      };
+    }
+    case 'get_contract_details':
+      return {
+        type: 'contract_card',
+        title: d.title,
+        supplier: d.supplier,
+        status: d.status,
+        value: d.value,
+        daysUntilExpiry: d.daysUntilExpiry,
+      };
+    case 'list_expiring_contracts': {
+      const contracts = d.contracts as Array<Record<string, unknown>> | undefined;
+      return {
+        type: 'expiring_list',
+        count: d.count,
+        totalValueAtRisk: d.totalValueAtRisk,
+        items: (contracts || []).slice(0, 3).map(c => ({
+          title: c.title,
+          supplier: c.supplier,
+          daysUntilExpiry: c.daysUntilExpiry,
+          value: c.value,
+        })),
+      };
+    }
+    case 'get_agent_insights': {
+      const insights = d.insights as Array<Record<string, unknown>> | undefined;
+      if (!insights || insights.length === 0) return null;
+      return {
+        type: 'insights_list',
+        count: d.totalInsights,
+        topInsights: insights.slice(0, 3).map(i => ({
+          severity: i.severity,
+          title: i.title,
+          source: i.source,
+        })),
+      };
+    }
+    case 'get_agent_debate': {
+      const negotiation = d.negotiation as Record<string, unknown> | undefined;
+      if (!negotiation) return null;
+      return {
+        type: 'debate_summary',
+        proposalCount: negotiation.proposalCount,
+        conflictCount: negotiation.conflictCount,
+        consensusCount: negotiation.consensusCount,
+      };
+    }
+    case 'get_pending_approvals':
+      return {
+        type: 'approvals_count',
+        total: d.total,
+        urgent: (d.approvals as Array<Record<string, unknown>> | undefined)?.filter(a => {
+          const started = a.startedAt as string | undefined;
+          return started && (Date.now() - new Date(started).getTime() > 3 * 86400000);
+        }).length || 0,
+      };
+    default:
+      return null;
+  }
 }
