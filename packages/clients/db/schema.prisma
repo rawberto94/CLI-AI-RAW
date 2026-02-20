@@ -215,8 +215,8 @@ model User {
   ocrReviewsCreated  OcrReviewItem[] @relation("OcrReviewCreator")
 
   // Draft collaboration
-  draftComments DraftComment[]  @relation("DraftCommentAuthor")
-  draftVersions DraftVersion[]  @relation("DraftVersionAuthor")
+  draftComments DraftComment[] @relation("DraftCommentAuthor")
+  draftVersions DraftVersion[] @relation("DraftVersionAuthor")
 
   @@index([email])
   @@index([tenantId])
@@ -1295,9 +1295,9 @@ model DraftVersion {
   tenantId String
   userId   String
 
-  version   Int
-  content   String  @db.Text
-  label     String? // e.g., "Auto-save", "Manual save", "Before merge"
+  version       Int
+  content       String  @db.Text
+  label         String? // e.g., "Auto-save", "Manual save", "Before merge"
   changeSummary String? // Brief description of what changed
 
   createdAt DateTime @default(now())

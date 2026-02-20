@@ -14,6 +14,7 @@ import {
   createErrorResponse,
   handleApiError,
 } from '@/lib/api-middleware';
+import { pushAgentNotification } from '@/lib/ai/agent-notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,14 +65,54 @@ export async function POST(
       where: { id: draftId },
       data: {
         status: 'REJECTED',
-        approvalWorkflow: [...(existingWorkflow as Record<string, unknown>[]), rejectionEntry],
-      },
-      include: {
-        createdByUser: {
-          select: { id: true, firstName: true, lastName: true, email: true },
-        },
+        approvalWorkflow: JSON.parse(JSON.stringify([...existingWorkflow, rejectionEntry])),
       },
     });
+
+    // Fetch creator for notifications (separate query to avoid TS include issues)
+    const creator = updated.createdBy
+      ? await prisma.user.findUnique({
+          where: { id: updated.createdBy },
+          select: { id: true, firstName: true, lastName: true, email: true },
+        })
+      : null;
+
+    // Push in-app notification to draft author
+    if (creator) {
+      pushAgentNotification({
+        tenantId,
+        userId: updated.createdBy || undefined,
+        type: 'risk_alert',
+        severity: 'high',
+        title: 'Draft Rejected',
+        message: `Your draft "${updated.title}" was rejected. Reason: ${reason}`,
+        source: 'approval-workflow',
+        metadata: { draftId, action: 'REJECTED', rejectedBy: ctx.userId, reason },
+        actionUrl: `/drafting/copilot?draft=${draftId}`,
+      });
+    }
+
+    // Send email notification via approvals notify API (fire-and-forget)
+    if (creator?.email) {
+      fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'}/api/approvals/notify`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': ctx.userId,
+          'x-tenant-id': tenantId,
+        },
+        body: JSON.stringify({
+          type: 'approval_rejected',
+          contractId: draftId,
+          contractTitle: updated.title,
+          recipientEmail: creator.email,
+          recipientName: `${creator.firstName || ''} ${creator.lastName || ''}`.trim() || creator.email,
+          senderName: ctx.userId,
+          message: reason,
+          actionUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'}/drafting/copilot?draft=${draftId}`,
+        }),
+      }).catch(() => { /* fire-and-forget */ });
+    }
 
     return createSuccessResponse(ctx, {
       success: true,

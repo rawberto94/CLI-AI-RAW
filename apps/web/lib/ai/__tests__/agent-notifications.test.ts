@@ -35,7 +35,7 @@ describe('Agent Notification Service', () => {
       expect(notif.title).toBe('Test Alert');
     });
 
-    it('stores notification retrievable by getNotifications', () => {
+    it('stores notification retrievable by getNotifications', async () => {
       const tid = `push-${Date.now()}`;
       pushAgentNotification({
         tenantId: tid,
@@ -47,12 +47,12 @@ describe('Agent Notification Service', () => {
         source: 'savings-agent',
       });
 
-      const result = getNotifications({ tenantId: tid, userId });
+      const result = await getNotifications({ tenantId: tid, userId });
       expect(result.length).toBeGreaterThanOrEqual(1);
       expect(result[0].title).toBe('Opportunity Found');
     });
 
-    it('trims to MAX_NOTIFICATIONS_PER_TENANT (100)', () => {
+    it('trims to MAX_NOTIFICATIONS_PER_TENANT (100)', async () => {
       const tid = `trim-${Date.now()}`;
       for (let i = 0; i < 110; i++) {
         pushAgentNotification({
@@ -64,103 +64,103 @@ describe('Agent Notification Service', () => {
           source: 'test',
         });
       }
-      const result = getNotifications({ tenantId: tid, limit: 200 });
+      const result = await getNotifications({ tenantId: tid, limit: 200 });
       expect(result.length).toBeLessThanOrEqual(100);
     });
   });
 
   describe('getNotifications', () => {
-    it('filters by type', () => {
+    it('filters by type', async () => {
       const tid = `filter-type-${Date.now()}`;
       pushAgentNotification({ tenantId: tid, type: 'risk_alert', severity: 'high', title: 'Risk', message: 'r', source: 's' });
       pushAgentNotification({ tenantId: tid, type: 'opportunity', severity: 'info', title: 'Opp', message: 'o', source: 's' });
 
-      const risks = getNotifications({ tenantId: tid, types: ['risk_alert'] });
+      const risks = await getNotifications({ tenantId: tid, types: ['risk_alert'] });
       expect(risks.length).toBe(1);
       expect(risks[0].title).toBe('Risk');
     });
 
-    it('filters by severity', () => {
+    it('filters by severity', async () => {
       const tid = `filter-sev-${Date.now()}`;
       pushAgentNotification({ tenantId: tid, type: 'risk_alert', severity: 'critical', title: 'Crit', message: 'c', source: 's' });
       pushAgentNotification({ tenantId: tid, type: 'risk_alert', severity: 'low', title: 'Low', message: 'l', source: 's' });
 
-      const crits = getNotifications({ tenantId: tid, severities: ['critical'] });
+      const crits = await getNotifications({ tenantId: tid, severities: ['critical'] });
       expect(crits.length).toBe(1);
       expect(crits[0].title).toBe('Crit');
     });
 
-    it('filters unread only', () => {
+    it('filters unread only', async () => {
       const tid = `filter-unread-${Date.now()}`;
       const n1 = pushAgentNotification({ tenantId: tid, type: 'learning', severity: 'info', title: 'Read', message: 'm', source: 's' });
       pushAgentNotification({ tenantId: tid, type: 'learning', severity: 'info', title: 'Unread', message: 'm', source: 's' });
-      markNotificationRead(tid, n1.id);
+      await markNotificationRead(tid, n1.id);
 
-      const unread = getNotifications({ tenantId: tid, unreadOnly: true });
+      const unread = await getNotifications({ tenantId: tid, unreadOnly: true });
       expect(unread.length).toBe(1);
       expect(unread[0].title).toBe('Unread');
     });
 
-    it('respects limit', () => {
+    it('respects limit', async () => {
       const tid = `limit-${Date.now()}`;
       for (let i = 0; i < 10; i++) {
         pushAgentNotification({ tenantId: tid, type: 'learning', severity: 'info', title: `N${i}`, message: 'm', source: 's' });
       }
-      const limited = getNotifications({ tenantId: tid, limit: 3 });
+      const limited = await getNotifications({ tenantId: tid, limit: 3 });
       expect(limited.length).toBe(3);
     });
   });
 
   describe('markNotificationRead', () => {
-    it('marks a notification as read', () => {
+    it('marks a notification as read', async () => {
       const tid = `mark-${Date.now()}`;
       const n = pushAgentNotification({ tenantId: tid, type: 'risk_alert', severity: 'high', title: 'Mark Me', message: 'm', source: 's' });
       
-      expect(markNotificationRead(tid, n.id)).toBe(true);
-      const unread = getNotifications({ tenantId: tid, unreadOnly: true });
+      expect(await markNotificationRead(tid, n.id)).toBe(true);
+      const unread = await getNotifications({ tenantId: tid, unreadOnly: true });
       expect(unread.find(x => x.id === n.id)).toBeUndefined();
     });
 
-    it('returns true even for already-read notifications', () => {
+    it('returns true even for already-read notifications', async () => {
       const tid = `mark-twice-${Date.now()}`;
       const n = pushAgentNotification({ tenantId: tid, type: 'risk_alert', severity: 'high', title: 'X', message: 'm', source: 's' });
-      markNotificationRead(tid, n.id);
+      await markNotificationRead(tid, n.id);
       // Second call on same notif — returns true (notif found, already read)
-      expect(markNotificationRead(tid, n.id)).toBe(true);
+      expect(await markNotificationRead(tid, n.id)).toBe(true);
     });
   });
 
   describe('markAllRead', () => {
-    it('marks all unread notifications as read', () => {
+    it('marks all unread notifications as read', async () => {
       const tid = `markall-${Date.now()}`;
       pushAgentNotification({ tenantId: tid, type: 'learning', severity: 'info', title: 'A', message: 'm', source: 's' });
       pushAgentNotification({ tenantId: tid, type: 'learning', severity: 'info', title: 'B', message: 'm', source: 's' });
 
-      const count = markAllRead(tid);
+      const count = await markAllRead(tid);
       expect(count).toBe(2);
-      expect(getUnreadCount(tid)).toBe(0);
+      expect(await getUnreadCount(tid)).toBe(0);
     });
 
-    it('filters by userId when provided', () => {
+    it('filters by userId when provided', async () => {
       const tid = `markall-user-${Date.now()}`;
       pushAgentNotification({ tenantId: tid, userId: 'alice', type: 'learning', severity: 'info', title: 'Alice1', message: 'm', source: 's' });
       pushAgentNotification({ tenantId: tid, userId: 'bob', type: 'learning', severity: 'info', title: 'Bob1', message: 'm', source: 's' });
 
-      const count = markAllRead(tid, 'alice');
+      const count = await markAllRead(tid, 'alice');
       expect(count).toBe(1);
-      expect(getUnreadCount(tid, 'bob')).toBe(1);
+      expect(await getUnreadCount(tid, 'bob')).toBe(1);
     });
   });
 
   describe('getUnreadCount', () => {
-    it('returns correct count', () => {
+    it('returns correct count', async () => {
       const tid = `count-${Date.now()}`;
       pushAgentNotification({ tenantId: tid, type: 'risk_alert', severity: 'high', title: 'A', message: 'm', source: 's' });
       pushAgentNotification({ tenantId: tid, type: 'risk_alert', severity: 'high', title: 'B', message: 'm', source: 's' });
-      expect(getUnreadCount(tid)).toBe(2);
+      expect(await getUnreadCount(tid)).toBe(2);
 
-      markAllRead(tid);
-      expect(getUnreadCount(tid)).toBe(0);
+      await markAllRead(tid);
+      expect(await getUnreadCount(tid)).toBe(0);
     });
   });
 

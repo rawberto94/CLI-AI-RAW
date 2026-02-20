@@ -18,7 +18,7 @@ import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { PageBreadcrumb } from '@/components/navigation';
-import { Sparkles, FileText, Edit3 } from 'lucide-react';
+import { Sparkles, FileText, Edit3, RefreshCw, GitBranch } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import TemplateVariableForm from '@/components/drafting/TemplateVariableForm';
@@ -54,6 +54,7 @@ export default function CopilotDraftPage() {
   const templateId = searchParams?.get('template');
   const templateName = searchParams?.get('name');
   const draftId = searchParams?.get('draft');
+  const fromContractId = searchParams?.get('from');
   
   // Track if we've created a draft already
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(draftId || null);
@@ -64,6 +65,80 @@ export default function CopilotDraftPage() {
   const [showVariableForm, setShowVariableForm] = useState(false);
   const [hydratedContent, setHydratedContent] = useState<string | null>(null);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
+
+  // Source contract data for renewal/amendment flows
+  const [sourceContract, setSourceContract] = useState<{
+    id: string;
+    title: string;
+    supplier: string;
+    client: string;
+    value: number | null;
+    currency: string;
+    startDate: string | null;
+    endDate: string | null;
+    rawText: string | null;
+  } | null>(null);
+
+  // Fetch source contract for renewal/amendment flows
+  useEffect(() => {
+    if (!fromContractId || draftId || currentDraftId) return;
+    if (mode !== 'renewal' && mode !== 'amendment') return;
+    let cancelled = false;
+
+    const fetchSourceContract = async () => {
+      setIsLoadingTemplate(true);
+      try {
+        const res = await fetch(`/api/contracts/${fromContractId}`);
+        if (!res.ok) throw new Error('Failed to fetch source contract');
+        const data = await res.json();
+        const contract = data?.data?.contract || data?.contract;
+        if (!cancelled && contract) {
+          setSourceContract({
+            id: contract.id,
+            title: contract.contractTitle || contract.title || 'Untitled',
+            supplier: contract.supplierName || '',
+            client: contract.clientName || '',
+            value: contract.totalValue,
+            currency: contract.currency || 'USD',
+            startDate: contract.startDate || contract.effectiveDate || null,
+            endDate: contract.endDate || contract.expirationDate || null,
+            rawText: contract.rawText || null,
+          });
+
+          // Build pre-populated content for the editor
+          const label = mode === 'renewal' ? 'RENEWAL' : 'AMENDMENT';
+          const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          const preContent = [
+            `<h1>CONTRACT ${label}</h1>`,
+            `<p><strong>Based on:</strong> ${contract.contractTitle || 'Original Contract'}</p>`,
+            contract.supplierName ? `<p><strong>Supplier:</strong> ${contract.supplierName}</p>` : '',
+            contract.clientName ? `<p><strong>Client:</strong> ${contract.clientName}</p>` : '',
+            `<p><strong>Date:</strong> ${today}</p>`,
+            `<p><strong>Original Contract Period:</strong> ${contract.startDate ? new Date(contract.startDate).toLocaleDateString() : 'N/A'} – ${contract.endDate || contract.expirationDate ? new Date(contract.endDate || contract.expirationDate).toLocaleDateString() : 'N/A'}</p>`,
+            contract.totalValue ? `<p><strong>Original Value:</strong> ${contract.currency || 'USD'} ${Number(contract.totalValue).toLocaleString()}</p>` : '',
+            '<hr>',
+            mode === 'renewal'
+              ? '<h2>Renewal Terms</h2><p>This renewal agreement extends the original contract under the following updated terms:</p><ul><li>Renewed period: [Start Date] – [End Date]</li><li>Updated pricing: [Details]</li><li>Modified clauses: [Details]</li></ul>'
+              : '<h2>Amendment Details</h2><p>This amendment modifies the original contract as follows:</p><ul><li>Section modified: [Section]</li><li>Previous term: [Original Language]</li><li>Updated term: [New Language]</li><li>Effective date: [Date]</li></ul>',
+            '<hr>',
+            '<h2>Signatures</h2>',
+            '<p>Authorized Representative (Party A): ________________________</p>',
+            '<p>Authorized Representative (Party B): ________________________</p>',
+          ].filter(Boolean).join('\n');
+
+          setHydratedContent(preContent);
+        }
+      } catch (err) {
+        console.error('Source contract fetch error:', err);
+        toast.error('Could not load source contract');
+      } finally {
+        if (!cancelled) setIsLoadingTemplate(false);
+      }
+    };
+
+    fetchSourceContract();
+    return () => { cancelled = true; };
+  }, [fromContractId, mode, draftId, currentDraftId]);
 
   // Fetch template content when templateId is present
   useEffect(() => {
@@ -120,9 +195,15 @@ export default function CopilotDraftPage() {
         toast.success('Draft saved');
       } else {
         // Create new draft
+        const isRenewal = mode === 'renewal';
+        const isAmendment = mode === 'amendment';
         const title = savedTitleRef.current || templateName 
           ? `Draft - ${decodeURIComponent(templateName || 'New Contract')}`
-          : `Draft - ${new Date().toLocaleDateString()}`;
+          : isRenewal && sourceContract
+            ? `Renewal - ${sourceContract.title}`
+            : isAmendment && sourceContract
+              ? `Amendment - ${sourceContract.title}`
+              : `Draft - ${new Date().toLocaleDateString()}`;
         
         const response = await fetch('/api/drafts', {
           method: 'POST',
@@ -132,8 +213,9 @@ export default function CopilotDraftPage() {
             content,
             type: 'contract',
             status: 'DRAFT',
-            sourceType: templateId ? 'template' : 'blank',
+            sourceType: isRenewal ? 'RENEWAL' : isAmendment ? 'AMENDMENT' : templateId ? 'template' : 'blank',
             sourceTemplateId: templateId || undefined,
+            sourceContractId: fromContractId || undefined,
           }),
         });
         
@@ -172,6 +254,22 @@ export default function CopilotDraftPage() {
         description: 'Continue working on your contract draft',
         icon: Edit3,
         badge: 'Editing',
+      };
+    }
+    if (mode === 'renewal') {
+      return {
+        title: sourceContract ? `Renewal: ${sourceContract.title}` : 'Contract Renewal',
+        description: 'Create a renewal based on an existing contract',
+        icon: RefreshCw,
+        badge: 'Renewal',
+      };
+    }
+    if (mode === 'amendment') {
+      return {
+        title: sourceContract ? `Amendment: ${sourceContract.title}` : 'Contract Amendment',
+        description: 'Create an amendment to modify an existing contract',
+        icon: GitBranch,
+        badge: 'Amendment',
       };
     }
     if (templateId) {

@@ -340,7 +340,7 @@ export const STREAMING_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           page: {
             type: 'string',
-            enum: ['dashboard', 'contracts', 'analytics', 'workflows', 'settings', 'vendors', 'compliance', 'risk-dashboard', 'reports', 'bulk-operations', 'calendar', 'intelligence', 'intelligence-graph', 'intelligence-health', 'intelligence-search', 'intelligence-negotiate', 'self-service', 'ecosystem', 'governance', 'admin'],
+            enum: ['dashboard', 'contracts', 'analytics', 'workflows', 'settings', 'vendors', 'compliance', 'risk-dashboard', 'reports', 'bulk-operations', 'calendar', 'intelligence', 'intelligence-graph', 'intelligence-health', 'intelligence-search', 'intelligence-negotiate', 'self-service', 'ecosystem', 'governance', 'admin', 'renewals', 'generate', 'drafting', 'drafting-copilot', 'approvals'],
             description: 'Target page',
           },
           contractId: { type: 'string', description: 'Specific contract to navigate to' },
@@ -1617,75 +1617,55 @@ async function executeAgentDebate(args: Record<string, unknown>, tenantId: strin
     return { toolName: 'get_agent_debate', success: false, data: null, error: 'Contract not found', executionTimeMs: Date.now() - start };
   }
 
-  // Import and use the multi-agent coordinator
+  const contractText = contract.rawText || contract.contractTitle || '';
+  const focusAreas = args.focusAreas as string[] | undefined;
+  const debateTopic = focusAreas?.length
+    ? `Analyze contract "${contract.contractTitle}" focusing on: ${focusAreas.join(', ')}`
+    : `Comprehensive analysis of contract "${contract.contractTitle}"`;
+
+  // Use the real Multi-Agent Debate service from @repo/data-orchestration
   try {
-    const { MultiAgentCoordinator } = await import('@contigo/workers/agents/multi-agent-coordinator');
-    const coordinator = new MultiAgentCoordinator();
+    const { quickDebate } = await import('@repo/data-orchestration');
 
-    const contractText = contract.rawText || contract.contractTitle || '';
-    const requiredArtifacts = ['OVERVIEW', 'CLAUSES', 'OBLIGATIONS', 'FINANCIAL', 'RISK', 'COMPLIANCE'];
-    
-    const focusAreas = args.focusAreas as string[] | undefined;
-    const filteredArtifacts = focusAreas
-      ? requiredArtifacts.filter(a => {
-          const mapping: Record<string, string[]> = {
-            legal: ['CLAUSES', 'OBLIGATIONS'],
-            pricing: ['FINANCIAL'],
-            compliance: ['COMPLIANCE'],
-            risk: ['RISK'],
-            operations: ['OVERVIEW'],
-          };
-          return focusAreas.some(area => mapping[area]?.includes(a));
-        })
-      : requiredArtifacts;
-
-    const negotiation = await coordinator.analyzeContract(
-      contractId,
-      contract.contractType || 'General',
-      filteredArtifacts,
-      contractText.slice(0, 5000)
+    const result = await quickDebate(
+      debateTopic,
+      contractText.slice(0, 8000),
+      tenantId,
+      'standard',
     );
-
-    const executionPlan = await coordinator.createExecutionPlan(negotiation);
 
     return {
       toolName: 'get_agent_debate',
       success: true,
       data: {
         contractTitle: contract.contractTitle,
-        negotiation: {
-          proposalCount: negotiation.proposals.length,
-          consensusCount: negotiation.consensus.length,
-          conflictCount: negotiation.conflicts.length,
-          proposals: negotiation.proposals.map(p => ({
-            agent: p.agentType,
-            artifacts: p.artifactTypes,
-            confidence: Math.round(p.confidence * 100),
-            reasoning: p.reasoning,
-          })),
-          conflicts: negotiation.conflicts.map(c => ({
-            agents: c.agents,
-            issue: c.issue,
-            resolution: c.resolution,
-          })),
-          consensus: negotiation.consensus.map(p => ({
-            agent: p.agentType,
-            artifacts: p.artifactTypes,
-            confidence: Math.round(p.confidence * 100),
-          })),
+        consensusReached: result.consensusReached,
+        consensusConfidence: Math.round(result.consensusConfidence * 100),
+        finalConclusion: result.finalConclusion,
+        reasoning: result.reasoning,
+        debate: {
+          totalTurns: result.metadata.totalTurns,
+          agentsParticipated: result.metadata.agentsParticipated,
+          convergenceScore: Math.round(result.metadata.convergenceScore * 100),
+          processingTimeMs: result.metadata.processingTimeMs,
         },
-        executionPlan: {
-          phases: executionPlan.phases.map(p => ({
-            name: p.name,
-            agents: p.agents,
-            artifacts: p.artifacts,
-            parallel: p.parallel,
-            estimatedDuration: p.estimatedDuration,
-          })),
-          totalCost: executionPlan.totalCost,
-          totalTime: executionPlan.totalTime,
-          optimizationScore: Math.round(executionPlan.optimizationScore * 100),
+        keyArguments: {
+          supporting: result.keyArguments.supporting.map(a => ({ claim: a.claim, strength: a.strength, evidence: a.evidence })),
+          opposing: result.keyArguments.opposing.map(a => ({ claim: a.claim, strength: a.strength, evidence: a.evidence })),
+          unresolved: result.keyArguments.unresolved.map(a => ({ claim: a.claim, strength: a.strength })),
         },
+        turns: result.turns.slice(0, 6).map(t => ({
+          agent: t.agentName,
+          role: t.role,
+          confidence: Math.round(t.confidence * 100),
+          message: t.message.slice(0, 500),
+          arguments: t.arguments.slice(0, 3).map(a => ({ type: a.type, claim: a.claim, strength: a.strength })),
+        })),
+        dissent: result.dissent ? {
+          agent: result.dissent.agentName,
+          view: result.dissent.dissenterView,
+          strength: result.dissent.strength,
+        } : null,
       },
       executionTimeMs: Date.now() - start,
       navigation: { url: `/contracts/${contractId}`, label: 'View Contract' },
@@ -1694,22 +1674,23 @@ async function executeAgentDebate(args: Record<string, unknown>, tenantId: strin
         { label: '🔍 Detailed Analysis', action: `analyze:${contractId}` },
       ],
     };
-  } catch {
-    // Multi-agent coordinator not available — provide basic analysis
+  } catch (err) {
+    // Multi-agent debate service unavailable — provide graceful fallback
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     return {
       toolName: 'get_agent_debate',
       success: true,
       data: {
         contractTitle: contract.contractTitle,
-        negotiation: {
-          proposalCount: 0,
-          consensusCount: 0,
-          conflictCount: 0,
-          proposals: [],
-          conflicts: [],
-          consensus: [],
-        },
-        note: 'Multi-agent coordinator not available. The agent worker service may need to be started.',
+        consensusReached: false,
+        consensusConfidence: 0,
+        finalConclusion: '',
+        reasoning: '',
+        debate: { totalTurns: 0, agentsParticipated: [], convergenceScore: 0, processingTimeMs: 0 },
+        keyArguments: { supporting: [], opposing: [], unresolved: [] },
+        turns: [],
+        dissent: null,
+        note: `Multi-agent debate service unavailable: ${errorMsg}. Ensure @repo/data-orchestration is built and OpenAI API key is configured.`,
       },
       executionTimeMs: Date.now() - start,
     };

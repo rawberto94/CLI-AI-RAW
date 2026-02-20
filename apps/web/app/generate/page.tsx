@@ -622,6 +622,7 @@ export default function ContractGenerationPage() {
 
   const handleCreateSelect = useCallback((type: 'new' | 'template' | 'renewal' | 'amendment') => {
     setCreateType(type);
+    const fromContractId = sessionStorage.getItem('renewal_source_contract');
     switch (type) {
       case 'new':
         // Navigate to AI Copilot for blank document
@@ -631,14 +632,20 @@ export default function ContractGenerationPage() {
         setShowTemplateDialog(true);
         setActiveTab('templates');
         break;
-      case 'renewal':
-        // Navigate to contracts list with renewal filter
-        router.push('/contracts?action=renewal');
+      case 'renewal': {
+        // Navigate to AI Copilot with renewal mode and source contract
+        const renewalParams = new URLSearchParams({ mode: 'renewal' });
+        if (fromContractId) renewalParams.set('from', fromContractId);
+        router.push(`/drafting/copilot?${renewalParams.toString()}`);
         break;
-      case 'amendment':
-        // Navigate to contracts list with amendment filter
-        router.push('/contracts?action=amendment');
+      }
+      case 'amendment': {
+        // Navigate to AI Copilot with amendment mode and source contract
+        const amendParams = new URLSearchParams({ mode: 'amendment' });
+        if (fromContractId) amendParams.set('from', fromContractId);
+        router.push(`/drafting/copilot?${amendParams.toString()}`);
         break;
+      }
     }
   }, [router]);
 

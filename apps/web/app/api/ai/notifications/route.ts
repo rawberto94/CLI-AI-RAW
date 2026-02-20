@@ -46,8 +46,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     filter.severities = severities.split(',') as NotificationFilter['severities'];
   }
 
-  const notifications = getNotifications(filter);
-  const unreadCount = getUnreadCount(tenantId, userId);
+  const notifications = await getNotifications(filter);
+  const unreadCount = await getUnreadCount(tenantId, userId);
 
   return NextResponse.json({
     notifications,
@@ -64,12 +64,12 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   const body = await request.json();
 
   if (body.markAllRead) {
-    const count = markAllRead(tenantId, userId);
+    const count = await markAllRead(tenantId, userId);
     return NextResponse.json({ success: true, markedRead: count });
   }
 
   if (body.notificationId) {
-    const success = markNotificationRead(tenantId, body.notificationId);
+    const success = await markNotificationRead(tenantId, body.notificationId);
     return NextResponse.json({ success });
   }
 
