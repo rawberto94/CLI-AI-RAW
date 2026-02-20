@@ -1281,6 +1281,11 @@ async function executeNavigate(args: Record<string, unknown>, start: number): Pr
     ecosystem: '/ecosystem',
     governance: '/governance',
     admin: '/admin',
+    renewals: '/renewals',
+    generate: '/generate',
+    drafting: '/drafting',
+    'drafting-copilot': '/drafting/copilot',
+    approvals: '/approvals',
   };
 
   const url = contractId ? `/contracts/${contractId}` : (routes[page] || '/dashboard');

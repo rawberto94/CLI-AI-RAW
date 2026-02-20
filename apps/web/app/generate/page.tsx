@@ -610,7 +610,12 @@ export default function ContractGenerationPage() {
   // Handle URL params for direct create links
   useEffect(() => {
     const create = searchParams?.get('create');
+    const fromContractId = searchParams?.get('from') || searchParams?.get('source');
     if (create) {
+      // Store the source contract ID for renewal/amendment flows
+      if (fromContractId) {
+        sessionStorage.setItem('renewal_source_contract', fromContractId);
+      }
       handleCreateSelect(create as 'new' | 'template' | 'renewal' | 'amendment');
     }
   }, [searchParams]);

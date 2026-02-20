@@ -197,7 +197,7 @@ I'll help you create a renewal for the current contract. The renewal will:
 • Allow you to update dates and values
 • Maintain the relationship to the parent contract
 
-👉 **[Create Renewal](/generate?create=renewal&source=${contractId})**`
+👉 **[Create Renewal](/generate?create=renewal&from=${contractId})**`
     : `🔄 **Create Contract Renewal**
 
 To create a renewal, please navigate to the contract you want to renew, or tell me which contract.
@@ -211,7 +211,7 @@ You can also go directly to generate:
     data: {
       navigation: { 
         path: contractId 
-          ? `/generate?create=renewal&source=${contractId}` 
+          ? `/generate?create=renewal&from=${contractId}` 
           : '/generate?create=renewal',
         action: 'navigate' 
       }
@@ -229,7 +229,7 @@ I'll help you create an amendment to modify the current contract. The amendment 
 • Track all changes made
 • Maintain legal relationship to parent
 
-👉 **[Create Amendment](/generate?create=amendment&source=${contractId})**`
+👉 **[Create Amendment](/generate?create=amendment&from=${contractId})**`
     : `📄 **Create Contract Amendment**
 
 To create an amendment, please navigate to the contract you want to amend, or tell me which contract.
@@ -243,7 +243,7 @@ You can also go directly to generate:
     data: {
       navigation: { 
         path: contractId 
-          ? `/generate?create=amendment&source=${contractId}` 
+          ? `/generate?create=amendment&from=${contractId}` 
           : '/generate?create=amendment',
         action: 'navigate' 
       }

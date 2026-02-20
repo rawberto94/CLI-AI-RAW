@@ -27,6 +27,7 @@ import {
   SendHorizonal,
   GitBranch,
   ClipboardCheck,
+  FileEdit,
 } from 'lucide-react';
 import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal';
 import { useCrossModuleInvalidation, useRenewals } from '@/hooks/use-queries';
@@ -283,6 +284,17 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
                 title="Start renewal wizard"
               >
                 <Play className="w-4 h-4" />
+              </Link>
+            )}
+            {/* Draft Renewal in AI Copilot */}
+            {(renewal.status === 'upcoming' || renewal.status === 'in-progress') && (
+              <Link
+                href={`/generate?create=renewal&from=${renewal.contractId}`}
+                onClick={(e) => e.stopPropagation()}
+                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title="Draft renewal with AI Copilot"
+              >
+                <FileEdit className="w-4 h-4" />
               </Link>
             )}
             {(!renewal.approvalStatus || renewal.approvalStatus === 'none' || renewal.approvalStatus === 'rejected') && (
