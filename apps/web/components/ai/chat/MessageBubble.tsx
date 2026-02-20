@@ -81,6 +81,9 @@ export interface ChatMessage {
   feedback?: 'positive' | 'negative' | null;
   bookmarked?: boolean;
   isTyping?: boolean;
+  planSteps?: Array<{ step: number; description: string }>;
+  toolPreviews?: Array<{ toolName: string; preview: { type: string; title?: string; items?: Array<Record<string, unknown>>; count?: number; [key: string]: unknown } }>;
+  selfCritique?: { score: number; note: string; grounded: boolean };
   metadata?: {
     confidence?: number;
     processingTime?: number;
@@ -533,6 +536,58 @@ export const MessageBubble = memo(({
                 {suggestion}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Plan Steps */}
+        {!isUser && message.planSteps && message.planSteps.length > 0 && (
+          <div className="mt-2 p-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-800">
+            <div className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1.5">Agent Plan</div>
+            <div className="space-y-1">
+              {message.planSteps.map((ps) => (
+                <div key={ps.step} className="flex items-start gap-2 text-xs text-indigo-700 dark:text-indigo-300">
+                  <span className="w-4 h-4 rounded-full bg-indigo-200 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                    {ps.step}
+                  </span>
+                  <span>{ps.description}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tool Previews */}
+        {!isUser && message.toolPreviews && message.toolPreviews.length > 0 && (
+          <div className="mt-2 space-y-2">
+            {message.toolPreviews.map((tp, idx) => (
+              <div key={idx} className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300 capitalize">
+                    {tp.preview.title || tp.preview.type?.replace('_', ' ')}
+                  </span>
+                  {tp.preview.count != null && (
+                    <span className="text-slate-400">({tp.preview.count})</span>
+                  )}
+                </div>
+                {tp.preview.items && tp.preview.items.slice(0, 3).map((item, i) => (
+                  <div key={i} className="text-slate-600 dark:text-slate-400 truncate">
+                    {String(item.title || item.name || item.contractName || JSON.stringify(item).slice(0, 80))}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Self-Critique Indicator */}
+        {!isUser && message.selfCritique && (
+          <div className={`mt-2 flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-md w-fit ${
+            message.selfCritique.grounded
+              ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800'
+              : 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800'
+          }`} title={message.selfCritique.note}>
+            {message.selfCritique.grounded ? '✓ Grounded in sources' : '⚠ May need verification'}
+            <span className="text-[9px] opacity-70">({Math.round(message.selfCritique.score * 100)}%)</span>
           </div>
         )}
 

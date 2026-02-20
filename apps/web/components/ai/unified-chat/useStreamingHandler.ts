@@ -18,6 +18,9 @@ export interface StreamingState {
   error: string | null;
   ragSources: RagSource[];
   metadata?: StreamMetadata;
+  planSteps?: Array<{ step: number; description: string }>;
+  toolPreviews?: Array<{ toolName: string; preview: Record<string, unknown> }>;
+  selfCritique?: { score: number; note: string; grounded: boolean };
 }
 
 export interface RagSource {
@@ -204,15 +207,36 @@ export function useStreamingHandler(options: StreamOptions = {}) {
             case 'tool_start':
               setState(prev => ({
                 ...prev,
-                currentTool: parsed.tool,
-                toolsUsed: prev.toolsUsed.includes(parsed.tool) 
+                currentTool: parsed.tool || parsed.toolName,
+                toolsUsed: prev.toolsUsed.includes(parsed.tool || parsed.toolName) 
                   ? prev.toolsUsed 
-                  : [...prev.toolsUsed, parsed.tool],
+                  : [...prev.toolsUsed, parsed.tool || parsed.toolName],
               }));
               break;
               
             case 'tool_end':
+            case 'tool_done':
               setState(prev => ({ ...prev, currentTool: null }));
+              break;
+              
+            case 'tool_preview':
+              setState(prev => ({
+                ...prev,
+                toolPreviews: [
+                  ...(prev.toolPreviews || []),
+                  { toolName: parsed.toolName, preview: parsed.preview },
+                ],
+              }));
+              break;
+              
+            case 'plan':
+              setState(prev => ({
+                ...prev,
+                planSteps: (parsed.steps || []).map((s: { step?: number; description?: string }, i: number) => ({
+                  step: s.step || i + 1,
+                  description: s.description || String(s),
+                })),
+              }));
               break;
               
             case 'rag_sources':
@@ -234,6 +258,13 @@ export function useStreamingHandler(options: StreamOptions = {}) {
               break;
               
             case 'done':
+              // Extract selfCritique from done event if present
+              if (parsed.selfCritique) {
+                setState(prev => ({
+                  ...prev,
+                  selfCritique: parsed.selfCritique,
+                }));
+              }
               break;
           }
         }

@@ -103,6 +103,9 @@ interface Message {
   clarificationNeeded?: boolean;
   clarificationPrompts?: string[];
   toolProgress?: ToolProgressEntry[];
+  toolPreviews?: ToolPreviewEntry[];
+  planSteps?: PlanStep[];
+  selfCritique?: { score: number; note: string; grounded: boolean };
   metadata?: {
     source?: string;
     confidence?: number;
@@ -113,6 +116,23 @@ interface Message {
     isError?: boolean;
     toolsUsed?: string[];
   };
+}
+
+interface ToolPreviewEntry {
+  toolName: string;
+  preview: {
+    type: string;
+    title?: string;
+    items?: Array<Record<string, unknown>>;
+    count?: number;
+    [key: string]: unknown;
+  };
+}
+
+interface PlanStep {
+  step: number;
+  description: string;
+  status?: string;
 }
 
 interface ToolProgressEntry {
@@ -1082,6 +1102,35 @@ export function FloatingAIBubble() {
                         ...data.suggestedActions,
                       ];
                     }
+                  } else if (data.type === 'tool_preview') {
+                    // Store structured tool preview for rich rendering
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantMessageId
+                          ? {
+                              ...m,
+                              toolPreviews: [
+                                ...(m.toolPreviews || []),
+                                { toolName: data.toolName, preview: data.preview },
+                              ],
+                            }
+                          : m
+                      )
+                    );
+                  } else if (data.type === 'plan') {
+                    // Store ReAct plan steps for visualization
+                    const planSteps = (data.steps || []).map((s: { step?: number; description?: string }, i: number) => ({
+                      step: s.step || i + 1,
+                      description: s.description || String(s),
+                      status: 'planned',
+                    }));
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantMessageId
+                          ? { ...m, planSteps }
+                          : m
+                      )
+                    );
                   } else if (data.type === 'metadata') {
                     finalMetadata = data || {};
                     // Update token usage for cost widget
@@ -1114,6 +1163,7 @@ export function FloatingAIBubble() {
                                 label: a.label,
                                 action: a.action,
                               })),
+                              selfCritique: data.selfCritique || undefined,
                               metadata: {
                                 confidence: data.confidence as number || finalMetadata.confidence as number || 0.95,
                                 processingTime,
@@ -1909,6 +1959,25 @@ export function FloatingAIBubble() {
                                       : "bg-white/95 backdrop-blur-sm text-gray-800 rounded-bl-md shadow-md border border-gray-100/80 hover:shadow-lg transition-shadow"
                                   }`}
                                 >
+                                  {/* Plan Steps Visualization */}
+                                  {message.planSteps && message.planSteps.length > 0 && (
+                                    <div className="mb-3 p-2.5 rounded-lg bg-indigo-50/60 border border-indigo-100">
+                                      <div className="flex items-center gap-1.5 mb-1.5">
+                                        <span className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider">Agent Plan</span>
+                                      </div>
+                                      <div className="space-y-1">
+                                        {message.planSteps.map((ps) => (
+                                          <div key={ps.step} className="flex items-start gap-2 text-xs text-indigo-700">
+                                            <span className="w-4 h-4 rounded-full bg-indigo-200 text-indigo-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                                              {ps.step}
+                                            </span>
+                                            <span>{ps.description}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
                                   {/* Tool Progress Indicators */}
                                   {message.toolProgress && message.toolProgress.length > 0 && (
                                     <div className="mb-3 space-y-1.5">
@@ -1944,6 +2013,29 @@ export function FloatingAIBubble() {
                                     </div>
                                   )}
 
+                                  {/* Tool Preview Cards */}
+                                  {message.toolPreviews && message.toolPreviews.length > 0 && (
+                                    <div className="mb-3 space-y-2">
+                                      {message.toolPreviews.map((tp, idx) => (
+                                        <div key={idx} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                                          <div className="flex items-center gap-1.5 mb-1">
+                                            <span className="font-semibold text-slate-700 capitalize">
+                                              {tp.preview.title || tp.preview.type?.replace('_', ' ')}
+                                            </span>
+                                            {tp.preview.count != null && (
+                                              <span className="text-slate-400">({tp.preview.count})</span>
+                                            )}
+                                          </div>
+                                          {tp.preview.items && tp.preview.items.slice(0, 3).map((item, i) => (
+                                            <div key={i} className="text-slate-600 truncate">
+                                              {item.title || item.name || item.contractName || JSON.stringify(item).slice(0, 80)}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
                                   <MarkdownContent
                                     content={message.content}
                                     className="text-[15px] leading-relaxed"
@@ -1969,6 +2061,18 @@ export function FloatingAIBubble() {
                                         <span className="text-[10px] font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-violet-200/50">
                                           <Zap className="w-2.5 h-2.5" />
                                           {Math.round(message.metadata.confidence * 100)}%
+                                        </span>
+                                      )}
+                                      {/* Self-critique grounding indicator */}
+                                      {message.selfCritique && (
+                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 border ${
+                                          message.selfCritique.grounded
+                                            ? 'text-emerald-600 bg-emerald-50 border-emerald-200/50'
+                                            : 'text-amber-600 bg-amber-50 border-amber-200/50'
+                                        }`}
+                                          title={message.selfCritique.note}
+                                        >
+                                          {message.selfCritique.grounded ? '✓' : '⚠'} {message.selfCritique.grounded ? 'Grounded' : 'Review'}
                                         </span>
                                       )}
                                     </div>

@@ -128,6 +128,7 @@ const navigationGroups: NavGroup[] = [
       { href: "/intelligence/negotiate", label: "Negotiation Copilot", icon: Scale, description: "AI-powered negotiation strategy", isNew: true, tourId: "negotiate" },
       { href: "/ai/smart-compare", label: "AI Comparison", icon: GitCompare, description: "Semantic clause-level comparison", isNew: true, tourId: "smart-compare" },
       { href: "/ai/predictions", label: "Predictive Analytics", icon: Target, description: "Renewal & cost predictions", isNew: true, tourId: "predictions" },
+      { href: "/ai/agents", label: "Agent Transparency", icon: Sparkles, description: "See what AI agents are doing & learning", isNew: true, tourId: "agent-transparency" },
       { href: "/ai-insights", label: "AI Insights", icon: Sparkles, description: "Aggregated AI-driven insights", isNew: true, tourId: "ai-insights" },
       { href: "/admin/rag-eval", label: "RAG Quality", icon: Gauge, description: "RAG pipeline quality monitoring", isNew: true, tourId: "rag-eval" },
     ],

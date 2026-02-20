@@ -87,6 +87,9 @@ interface Message {
   content: string;
   timestamp: Date;
   suggestions?: string[];
+  planSteps?: Array<{ step: number; description: string }>;
+  toolPreviews?: Array<{ toolName: string; preview: Record<string, unknown> }>;
+  selfCritique?: { score: number; note: string; grounded: boolean };
   metadata?: {
     sources?: string[];
     confidence?: number;
@@ -503,6 +506,9 @@ function AIChatPageContent() {
       let sources: string[] = [];
       let confidence: number | undefined;
       let suggestions: string[] = [];
+      let selfCritique: { score: number; note: string; grounded: boolean } | undefined;
+      let planSteps: Array<{ step: number; description: string }> = [];
+      let toolPreviews: Array<{ toolName: string; preview: Record<string, unknown> }> = [];
       let sseBuffer = ''; // Buffer for incomplete SSE lines across chunks
 
       if (reader) {
@@ -529,10 +535,23 @@ function AIChatPageContent() {
                   }
                   if (data.sources) sources = data.sources;
                   if (data.confidence) confidence = data.confidence;
+                  if (data.selfCritique) selfCritique = data.selfCritique;
+                  if (data.type === 'plan' && data.steps) {
+                    planSteps = data.steps.map((s: { step?: number; description?: string }, i: number) => ({
+                      step: s.step || i + 1,
+                      description: s.description || String(s),
+                    }));
+                  }
+                  if (data.type === 'tool_preview' && data.preview) {
+                    toolPreviews.push({ toolName: data.toolName, preview: data.preview });
+                  }
                   if (data.suggestedActions) {
                     suggestions = data.suggestedActions.map((a: { label: string }) => a.label);
                   }
-                  if (data.done || data.type === 'done') break;
+                  if (data.done || data.type === 'done') {
+                    if (data.selfCritique) selfCritique = data.selfCritique;
+                    break;
+                  }
                 } catch {
                   // Ignore parse errors for malformed SSE lines
                 }
@@ -550,6 +569,9 @@ function AIChatPageContent() {
         content: fullContent || "I apologize, but I couldn't process that request. Please try again.",
         timestamp: new Date(),
         suggestions: suggestions.length > 0 ? suggestions : undefined,
+        planSteps: planSteps.length > 0 ? planSteps : undefined,
+        toolPreviews: toolPreviews.length > 0 ? toolPreviews : undefined,
+        selfCritique,
         conversationId: activeConversationId || undefined,
         metadata: {
           sources,

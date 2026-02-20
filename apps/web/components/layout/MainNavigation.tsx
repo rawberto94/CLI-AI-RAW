@@ -44,6 +44,7 @@ import {
   Key,
 } from 'lucide-react'
 import { ApprovalNotificationBell } from '@/components/workflows/ApprovalNotificationBell'
+import { AgentNotificationBell } from '@/components/ai/AgentNotificationBell'
 
 interface NavigationItem {
   name: string
@@ -105,6 +106,12 @@ const navigationItems: NavigationItem[] = [
         href: '/ai/activity',
         icon: Activity,
         description: 'Agent activity monitor'
+      },
+      {
+        name: 'Agent Transparency',
+        href: '/ai/agents',
+        icon: Activity,
+        description: 'Agent health & learning'
       }
     ]
   },
@@ -350,6 +357,7 @@ function MainNavigation() {
           <span className="font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Contract Intelligence</span>
         </div>
         <div className="flex items-center gap-2">
+          <AgentNotificationBell />
           <ApprovalNotificationBell />
           <CompactConnectionStatus />
           <Button
@@ -407,7 +415,10 @@ function MainNavigation() {
               <span className="font-light text-base text-slate-900">tigo</span>
             </div>
           </div>
-          <ApprovalNotificationBell />
+          <div className="flex items-center gap-1">
+            <AgentNotificationBell />
+            <ApprovalNotificationBell />
+          </div>
         </div>
 
         {/* Navigation */}
