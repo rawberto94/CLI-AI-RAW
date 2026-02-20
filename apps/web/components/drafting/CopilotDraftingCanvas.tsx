@@ -13,6 +13,7 @@ import {
   Check, Keyboard,
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import UnderlineExt from '@tiptap/extension-underline';
@@ -189,6 +190,8 @@ export function CopilotDraftingCanvas({
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [draftStatus, setDraftStatus] = useState<'DRAFT' | 'IN_REVIEW' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'FINALIZED'>('DRAFT');
+  const [createdContractId, setCreatedContractId] = useState<string | null>(null);
+  const router = useRouter();
 
   // Comments & versions — now wired to API
   const [comments, setComments] = useState<ApiComment[]>([]);
@@ -938,14 +941,44 @@ export function CopilotDraftingCanvas({
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || 'Finalization failed');
+        throw new Error(err.error || err.data?.error || 'Finalization failed');
       }
 
+      const result = await response.json();
+      const contractId = result?.data?.data?.contract?.id || result?.data?.contract?.id;
+
       setDraftStatus('FINALIZED');
-      toast.success('Draft finalized and contract created!');
+      setCreatedContractId(contractId || null);
+
+      if (contractId) {
+        toast.success('Draft finalized! Redirecting to contract...', { duration: 2000 });
+        // Short delay for the user to see the success state, then navigate
+        setTimeout(() => {
+          router.push(`/contracts/${contractId}`);
+        }, 1500);
+      } else {
+        toast.success('Draft finalized successfully!');
+      }
     } catch (error) {
       console.error('Finalization failed:', error);
       toast.error(error instanceof Error ? error.message : 'Finalization failed');
+    }
+  }, [draftId, router]);
+
+  const handleRevertToDraft = useCallback(async () => {
+    if (!draftId) return;
+    try {
+      const response = await fetch(`/api/drafts/${draftId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'DRAFT' }),
+      });
+      if (!response.ok) throw new Error('Failed to revert to draft');
+      setDraftStatus('DRAFT');
+      toast.success('Draft reverted — you can now edit and re-submit.');
+    } catch (error) {
+      console.error('Revert failed:', error);
+      toast.error('Failed to revert draft status');
     }
   }, [draftId]);
 
@@ -1681,6 +1714,24 @@ export function CopilotDraftingCanvas({
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   Finalize
+                </button>
+              )}
+              {draftId && draftStatus === 'FINALIZED' && createdContractId && (
+                <button
+                  onClick={() => router.push(`/contracts/${createdContractId}`)}
+                  className="hidden sm:flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                  View Contract
+                </button>
+              )}
+              {draftId && draftStatus === 'REJECTED' && (
+                <button
+                  onClick={handleRevertToDraft}
+                  className="hidden sm:flex items-center gap-2 px-3 py-2 border border-amber-300 dark:border-amber-600 text-amber-700 dark:text-amber-300 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors"
+                >
+                  <Edit3 className="h-4 w-4" />
+                  Revise &amp; Re-submit
                 </button>
               )}
 

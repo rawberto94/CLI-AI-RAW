@@ -97,14 +97,24 @@ export async function POST(
       });
 
       // 2. Create a Contract record from the draft
+      // Field mapping: Contract model uses contractTitle, contractType, rawText,
+      // uploadedBy, fileName (required), fileSize (required BigInt), mimeType (required)
+      const draftContent = typeof draft.content === 'string'
+        ? draft.content
+        : JSON.stringify(draft.content);
+
       const contract = await tx.contract.create({
         data: {
           tenantId,
-          title: draft.title,
-          type: draft.contractType || 'CUSTOM',
+          contractTitle: draft.title,
+          contractType: draft.contractType || 'CUSTOM',
           status: 'DRAFT',
           description: `Contract created from finalized draft: ${draft.title}`,
-          content: typeof draft.content === 'string' ? draft.content : JSON.stringify(draft.content),
+          rawText: draftContent,
+          fileName: `${(draft.title || 'contract').replace(/[^a-zA-Z0-9-_ ]/g, '').slice(0, 100)}.html`,
+          fileSize: BigInt(Buffer.byteLength(draftContent, 'utf8')),
+          mimeType: 'text/html',
+          originalName: draft.title || 'Untitled Draft',
           metadata: {
             sourceType: 'draft_finalization',
             sourceDraftId: id,
@@ -112,8 +122,9 @@ export async function POST(
             finalizedAt: new Date().toISOString(),
             draftVersion: finalizedDraft.version,
           },
-          createdById: ctx.userId,
+          uploadedBy: ctx.userId,
           tags: ['from-draft'],
+          importSource: 'DRAFTING',
         },
       });
 
@@ -137,7 +148,7 @@ export async function POST(
       },
       contract: {
         id: result.contract.id,
-        title: result.contract.title,
+        title: result.contract.contractTitle,
         status: result.contract.status,
       },
     });

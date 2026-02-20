@@ -110,7 +110,7 @@ describe('POST /api/drafts/[id]/finalize', () => {
     mockDraftFindFirst.mockResolvedValue(VALID_DRAFT);
 
     const finalizedDraft = { id: 'd1', status: 'FINALIZED', version: 4 };
-    const createdContract = { id: 'c1', title: 'Test Contract Draft', status: 'DRAFT' };
+    const createdContract = { id: 'c1', contractTitle: 'Test Contract Draft', status: 'DRAFT' };
 
     mockTransaction.mockImplementation(async (cb: Function) => {
       // Mock the tx parameter passed to the callback
@@ -152,7 +152,7 @@ describe('POST /api/drafts/[id]/finalize', () => {
           update: vi.fn().mockResolvedValue({ id: 'd1', status: 'FINALIZED', version: 4 }),
         },
         contract: {
-          create: vi.fn().mockResolvedValue({ id: 'c2', title: VALID_DRAFT.title, status: 'DRAFT' }),
+          create: vi.fn().mockResolvedValue({ id: 'c2', contractTitle: VALID_DRAFT.title, status: 'DRAFT' }),
         },
       };
       return cb(tx);
