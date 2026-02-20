@@ -7,6 +7,8 @@ import { useDataMode } from '@/contexts/DataModeContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Tooltip,
@@ -31,6 +33,10 @@ import {
   Globe,
   Link2,
   MessageSquare,
+  Upload,
+  Download,
+  PenTool,
+  CheckCircle2,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -523,20 +529,47 @@ export default function ContractDetailPage() {
   }, [isProcessing, contract, params.id, dataMode, loadContract])
 
   // ============ ACTION HANDLERS ============
+
+  // Signature workflow state
+  const [showUploadSignedDialog, setShowUploadSignedDialog] = useState(false)
+  const [isUploadingSigned, setIsUploadingSigned] = useState(false)
+  const signedFileRef = React.useRef<HTMLInputElement>(null)
+
   const handleDownload = useCallback(async () => {
     try {
       toast.info('Preparing download...')
-      const response = await fetch(`/api/contracts/${params.id}/export?format=pdf`, {
+      const response = await fetch(`/api/contracts/${params.id}/download`, {
         headers: { 'x-tenant-id': getTenantId() },
       })
       
-      if (!response.ok) throw new Error('Export failed')
+      if (!response.ok) {
+        // Fallback to export endpoint if download fails (no stored file)
+        const exportResp = await fetch(`/api/contracts/${params.id}/export?format=pdf`, {
+          headers: { 'x-tenant-id': getTenantId() },
+        })
+        if (!exportResp.ok) throw new Error('Export failed')
+        const blob = await exportResp.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `contract-${params.id}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
+        toast.success('Download started (exported)')
+        return
+      }
       
+      const disposition = response.headers.get('Content-Disposition')
+      const filenameMatch = disposition?.match(/filename="?(.+?)"?$/)
+      const downloadName = filenameMatch?.[1] || contract?.filename || `contract-${params.id}`
+
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `contract-${params.id}.pdf`
+      a.download = downloadName
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -544,6 +577,66 @@ export default function ContractDetailPage() {
       toast.success('Download started')
     } catch {
       toast.error('Failed to download contract')
+    }
+  }, [params.id, contract?.filename])
+
+  const handleRequestSignature = useCallback(() => {
+    router.push(`/contracts/${params.id}/esign`)
+  }, [params.id, router])
+
+  const handleUploadSignedCopy = useCallback(async (file: File, signers?: string, notes?: string) => {
+    setIsUploadingSigned(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      if (signers) formData.append('signers', signers)
+      if (notes) formData.append('notes', notes)
+
+      const response = await fetch(`/api/contracts/${params.id}/signed-copy`, {
+        method: 'POST',
+        headers: { 'x-tenant-id': getTenantId() },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Upload failed' }))
+        throw new Error(err.error || 'Upload failed')
+      }
+
+      toast.success('Signed copy uploaded successfully! Contract marked as signed.')
+      setShowUploadSignedDialog(false)
+      await loadContract()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to upload signed copy')
+    } finally {
+      setIsUploadingSigned(false)
+    }
+  }, [params.id, loadContract])
+
+  const handleDownloadSignedCopy = useCallback(async () => {
+    try {
+      toast.info('Downloading signed copy...')
+      const response = await fetch(`/api/contracts/${params.id}/signed-copy`, {
+        headers: { 'x-tenant-id': getTenantId() },
+      })
+      if (!response.ok) throw new Error('Signed copy not found')
+
+      const disposition = response.headers.get('Content-Disposition')
+      const filenameMatch = disposition?.match(/filename="?(.+?)"?$/)
+      const downloadName = filenameMatch?.[1] || `signed-contract-${params.id}.pdf`
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = downloadName
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      toast.success('Signed copy downloaded')
+    } catch {
+      toast.error('Failed to download signed copy')
     }
   }, [params.id])
 
@@ -1113,6 +1206,69 @@ export default function ContractDetailPage() {
                     <TooltipContent>Copy link</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+
+                {/* Signature Actions */}
+                {(metadata.signature_required_flag || metadata.signature_status === 'unsigned' || metadata.signature_status === 'pending') && metadata.signature_status !== 'signed' && (
+                  <>
+                    <div className="h-5 w-px bg-slate-200 mx-1 hidden sm:block" />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleRequestSignature}
+                            aria-label="Request e-signature"
+                            className="h-8 px-2.5 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                          >
+                            <PenTool className="h-4 w-4 mr-1.5" />
+                            <span className="text-xs font-medium hidden sm:inline">Request Signature</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Send for e-signature via DocuSign or internal workflow</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowUploadSignedDialog(true)}
+                            aria-label="Upload signed copy"
+                            className="h-8 px-2.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                          >
+                            <Upload className="h-4 w-4 mr-1.5" />
+                            <span className="text-xs font-medium hidden sm:inline">Upload Signed</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Upload an externally signed copy of this contract</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </>
+                )}
+                {metadata.signature_status === 'signed' && (
+                  <>
+                    <div className="h-5 w-px bg-slate-200 mx-1 hidden sm:block" />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleDownloadSignedCopy}
+                            aria-label="Download signed copy"
+                            className="h-8 px-2.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                            <span className="text-xs font-medium hidden sm:inline">Download Signed</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Download the signed copy of this contract</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </>
+                )}
               </div>
             </motion.div>
 
@@ -1509,6 +1665,103 @@ export default function ContractDetailPage() {
           await loadContract()
         }}
       />
+
+      {/* Upload Signed Copy Dialog */}
+      <Dialog open={showUploadSignedDialog} onOpenChange={setShowUploadSignedDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-semibold">
+              <Upload className="h-5 w-5 text-emerald-600" />
+              Upload Signed Copy
+            </DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const formData = new FormData(e.currentTarget)
+              const file = formData.get('signedFile') as File
+              const signers = formData.get('signers') as string
+              const notes = formData.get('notes') as string
+              if (!file || !file.size) {
+                toast.error('Please select a file')
+                return
+              }
+              handleUploadSignedCopy(file, signers, notes)
+            }}
+            className="space-y-4 mt-2"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="signedFile" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Signed Document <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="signedFile"
+                name="signedFile"
+                type="file"
+                ref={signedFileRef}
+                accept=".pdf,.docx,.doc,.png,.jpg,.jpeg"
+                required
+                className="cursor-pointer file:mr-3 file:rounded-md file:border-0 file:bg-emerald-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-emerald-700 hover:file:bg-emerald-100"
+              />
+              <p className="text-xs text-slate-500">PDF, DOCX, DOC, PNG, or JPEG (max 50 MB)</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="signers" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Signers (optional)
+              </Label>
+              <Input
+                id="signers"
+                name="signers"
+                type="text"
+                placeholder="e.g. John Smith, Jane Doe"
+                className="text-sm"
+              />
+              <p className="text-xs text-slate-500">Comma-separated names of people who signed</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Notes (optional)
+              </Label>
+              <Input
+                id="notes"
+                name="notes"
+                type="text"
+                placeholder="e.g. Signed at annual meeting on..."
+                className="text-sm"
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowUploadSignedDialog(false)}
+                disabled={isUploadingSigned}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isUploadingSigned}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isUploadingSigned ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-1.5" />
+                    Upload Signed Copy
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Floating Actions */}
       <ContractFloatingActions

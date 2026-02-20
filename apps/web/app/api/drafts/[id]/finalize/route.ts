@@ -125,6 +125,8 @@ export async function POST(
           uploadedBy: ctx.userId,
           tags: ['from-draft'],
           importSource: 'DRAFTING',
+          signatureStatus: 'unsigned',
+          signatureRequiredFlag: true,
         },
       });
 
