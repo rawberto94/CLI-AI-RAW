@@ -309,16 +309,26 @@ export function AIDraftAssistant() {
     setIsSaving(true)
     
     try {
+      // Build full-text content from the structured draft
+      const fullText = currentDraft.fullText || [
+        `<h1>${currentDraft.title}</h1>`,
+        `<p><strong>Type:</strong> ${currentDraft.type}</p>`,
+        `<p>${currentDraft.description}</p>`,
+        ...(currentDraft.suggestedClauses || []).map((c: { title: string; content: string }) =>
+          `<h2>${c.title}</h2><p>${c.content}</p>`
+        ),
+      ].join('\n')
+
       const payload = {
         title: currentDraft.title,
-        type: currentDraft.type.toUpperCase().replace(/\s+/g, '_'),
-        description: currentDraft.description,
+        contractType: currentDraft.type.toUpperCase().replace(/\s+/g, '_'),
+        content: fullText,
         status: 'DRAFT',
-        parties: currentDraft.parties.map(p => ({
+        externalParties: currentDraft.parties.map((p: { name: string; role: string }) => ({
           name: p.name,
-          role: p.role.toUpperCase().replace(/\s+/g, '_'),
+          role: p.role,
         })),
-        tags: ['ai-generated'],
+        aiPrompt: messages.filter(m => m.role === 'user').map(m => m.content).join('\n'),
         metadata: {
           aiGenerated: true,
           generatedAt: new Date().toISOString(),
@@ -327,7 +337,7 @@ export function AIDraftAssistant() {
         },
       }
       
-      const response = await fetch('/api/contracts', {
+      const response = await fetch('/api/drafts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -337,16 +347,17 @@ export function AIDraftAssistant() {
       })
       
       if (!response.ok) {
-        throw new Error('Failed to save contract')
+        throw new Error('Failed to save draft')
       }
       
       const result = await response.json()
+      const draft = result.data?.draft || result.draft || result
       
-      toast.success('Contract draft saved!', {
-        description: 'Opening contract details...',
+      toast.success('Draft saved!', {
+        description: 'Opening in Copilot Editor...',
       })
       
-      router.push(`/contracts/${result.id}`)
+      router.push(`/drafting/copilot?draft=${draft.id}`)
     } catch {
       toast.error('Failed to save draft', {
         description: 'Please try again',
@@ -354,7 +365,7 @@ export function AIDraftAssistant() {
     } finally {
       setIsSaving(false)
     }
-  }, [currentDraft, router])
+  }, [currentDraft, router, messages])
   
   const handleCopyDraft = useCallback(() => {
     if (!currentDraft) return
@@ -389,9 +400,9 @@ export function AIDraftAssistant() {
   }, [messages])
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-purple-950/30">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200">
+      <div className="sticky top-0 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -410,8 +421,8 @@ export function AIDraftAssistant() {
                   <Sparkles className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-semibold text-slate-900">AI Draft Assistant</h1>
-                  <p className="text-sm text-slate-500">
+                  <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">AI Draft Assistant</h1>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
                     Describe your contract needs in plain language
                   </p>
                 </div>
@@ -436,7 +447,7 @@ export function AIDraftAssistant() {
             "flex flex-col transition-all duration-300",
             showDraftPanel ? "w-1/2" : "w-full max-w-3xl mx-auto"
           )}>
-            <Card className="flex-1 flex flex-col shadow-lg border-slate-200/60">
+            <Card className="flex-1 flex flex-col shadow-lg border-slate-200/60 dark:border-slate-700/60 dark:bg-slate-800">
               {/* Messages */}
               <ScrollArea ref={scrollRef} className="flex-1 p-4">
                 <div className="space-y-4">
@@ -460,7 +471,7 @@ export function AIDraftAssistant() {
                         "max-w-[80%] rounded-2xl px-4 py-3",
                         message.role === 'user' 
                           ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white"
-                          : "bg-slate-100 text-slate-900"
+                          : "bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                       )}>
                         {message.isLoading ? (
                           <div className="flex items-center gap-2">
@@ -481,7 +492,7 @@ export function AIDraftAssistant() {
                               size="sm"
                               variant="outline"
                               onClick={() => setShowDraftPanel(true)}
-                              className="w-full bg-white gap-2"
+                              className="w-full bg-white dark:bg-slate-700 gap-2"
                             >
                               <FileText className="h-4 w-4 text-violet-500" />
                               View Draft
@@ -492,8 +503,8 @@ export function AIDraftAssistant() {
                       </div>
                       
                       {message.role === 'user' && (
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
-                          <User className="h-4 w-4 text-slate-600" />
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                          <User className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                         </div>
                       )}
                     </motion.div>
@@ -503,8 +514,8 @@ export function AIDraftAssistant() {
               
               {/* Suggestions (only show if no messages yet) */}
               {messages.length === 1 && (
-                <div className="p-4 border-t border-slate-100">
-                  <p className="text-xs text-slate-500 mb-3 flex items-center gap-1">
+                <div className="p-4 border-t border-slate-100 dark:border-slate-700">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1">
                     <Lightbulb className="h-3 w-3" />
                     Quick suggestions
                   </p>
@@ -513,10 +524,10 @@ export function AIDraftAssistant() {
                       <button
                         key={index}
                         onClick={() => handleSuggestionClick(suggestion.text)}
-                        className="text-left p-3 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-violet-50/50 transition-colors group"
+                        className="text-left p-3 rounded-xl border border-slate-200 dark:border-slate-600 hover:border-indigo-300 dark:hover:border-violet-500 hover:bg-violet-50/50 dark:hover:bg-violet-900/30 transition-colors group"
                       >
                         <span className="text-lg mr-2">{suggestion.icon}</span>
-                        <span className="text-sm text-slate-700 group-hover:text-violet-700">
+                        <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-violet-700 dark:group-hover:text-violet-400">
                           {suggestion.text.slice(0, 40)}...
                         </span>
                       </button>
@@ -526,7 +537,7 @@ export function AIDraftAssistant() {
               )}
               
               {/* Input */}
-              <div className="p-4 border-t border-slate-100">
+              <div className="p-4 border-t border-slate-100 dark:border-slate-700">
                 <div className="flex gap-2">
                   <Textarea
                     ref={inputRef}
@@ -554,7 +565,7 @@ export function AIDraftAssistant() {
                     )}
                   </Button>
                 </div>
-                <p className="text-xs text-slate-400 mt-2 text-center">
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 text-center">
                   Press Enter to send, Shift+Enter for new line
                 </p>
               </div>
@@ -570,7 +581,7 @@ export function AIDraftAssistant() {
                 exit={{ opacity: 0, x: 20 }}
                 className="w-1/2"
               >
-                <Card className="h-full flex flex-col shadow-lg border-slate-200/60">
+                <Card className="h-full flex flex-col shadow-lg border-slate-200/60 dark:border-slate-700/60 dark:bg-slate-800">
                   <CardHeader className="pb-3 flex-shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2">
@@ -592,7 +603,7 @@ export function AIDraftAssistant() {
                     <div className="space-y-6 pb-4">
                       {/* Title & Type */}
                       <div>
-                        <h3 className="text-xl font-semibold text-slate-900">
+                        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
                           {currentDraft.title}
                         </h3>
                         <Badge variant="secondary" className="mt-2">
@@ -604,19 +615,19 @@ export function AIDraftAssistant() {
                       
                       {/* Parties */}
                       <div>
-                        <h4 className="text-sm font-medium text-slate-700 mb-3">Parties</h4>
+                        <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Parties</h4>
                         <div className="space-y-2">
                           {currentDraft.parties.map((party, index) => (
                             <div
                               key={index}
-                              className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"
+                              className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg"
                             >
-                              <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center">
-                                <User className="h-4 w-4 text-violet-600" />
+                              <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center">
+                                <User className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                               </div>
                               <div>
-                                <p className="font-medium text-slate-900">{party.name}</p>
-                                <p className="text-xs text-slate-500">{party.role}</p>
+                                <p className="font-medium text-slate-900 dark:text-slate-100">{party.name}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{party.role}</p>
                               </div>
                             </div>
                           ))}
@@ -625,7 +636,7 @@ export function AIDraftAssistant() {
                       
                       {/* Key Terms */}
                       <div>
-                        <h4 className="text-sm font-medium text-slate-700 mb-3">Key Terms</h4>
+                        <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Key Terms</h4>
                         <div className="flex flex-wrap gap-2">
                           {currentDraft.keyTerms.map((term, index) => (
                             <Badge key={index} variant="outline">
@@ -637,17 +648,17 @@ export function AIDraftAssistant() {
                       
                       {/* Suggested Clauses */}
                       <div>
-                        <h4 className="text-sm font-medium text-slate-700 mb-3">Suggested Clauses</h4>
+                        <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Suggested Clauses</h4>
                         <div className="space-y-3">
                           {currentDraft.suggestedClauses.map((clause, index) => (
                             <div
                               key={index}
-                              className="p-3 border border-slate-200 rounded-lg"
+                              className="p-3 border border-slate-200 dark:border-slate-600 rounded-lg"
                             >
-                              <h5 className="text-sm font-medium text-slate-900 mb-1">
+                              <h5 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">
                                 {clause.title}
                               </h5>
-                              <p className="text-sm text-slate-600 line-clamp-2">
+                              <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">
                                 {clause.content}
                               </p>
                             </div>
@@ -658,7 +669,7 @@ export function AIDraftAssistant() {
                   </ScrollArea>
                   
                   {/* Actions */}
-                  <div className="p-4 border-t border-slate-100 space-y-3 flex-shrink-0">
+                  <div className="p-4 border-t border-slate-100 dark:border-slate-700 space-y-3 flex-shrink-0">
                     <div className="flex gap-2">
                       <TooltipProvider>
                         <Tooltip>
@@ -713,7 +724,7 @@ export function AIDraftAssistant() {
                       )}
                     </Button>
                     
-                    <p className="text-xs text-center text-slate-500">
+                    <p className="text-xs text-center text-slate-500 dark:text-slate-400">
                       <Clock className="h-3 w-3 inline mr-1" />
                       Draft will be saved for further editing
                     </p>

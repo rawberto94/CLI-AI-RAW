@@ -8,10 +8,19 @@ import {
   GitBranch, Undo2, Redo2, Bold, Italic, Underline, List,
   Heading1, Heading2, Quote, X, Send, Clock, Zap, Shield, Scale,
   FileCheck, RefreshCw, Loader2, Brain, AlertCircle, Menu,
+  Download, FileDown, CheckCircle2, ArrowRight,
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import UnderlineExt from '@tiptap/extension-underline';
+import Highlight from '@tiptap/extension-highlight';
+import TextAlign from '@tiptap/extension-text-align';
+import Placeholder from '@tiptap/extension-placeholder';
+import DOMPurify from 'isomorphic-dompurify';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
+import { exportDraftAsPDF, exportDraftAsDOCX } from '@/lib/drafting/draft-export';
 
 // ============================================================================
 // TYPES
@@ -101,9 +110,8 @@ export function CopilotDraftingCanvas({
   onLegalReview,
 }: CopilotDraftingCanvasProps) {
   const { data: session } = useSession();
-  const editorRef = useRef<HTMLTextAreaElement>(null);
 
-  // Content state
+  // Content state — TipTap manages the DOM; we keep a plain-text mirror for AI APIs
   const [content, setContent] = useState(initialContent);
   const [cursorPosition, setCursorPosition] = useState(0);
   const [selectedText, setSelectedText] = useState('');
@@ -127,13 +135,65 @@ export function CopilotDraftingCanvas({
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
-  const [undoStack, setUndoStack] = useState<string[]>([]);
-  const [redoStack, setRedoStack] = useState<string[]>([]);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<'DRAFT' | 'IN_REVIEW' | 'PENDING_APPROVAL' | 'APPROVED' | 'FINALIZED'>('DRAFT');
 
   // Comments & versions (would be fetched from API in production)
   const [comments, setComments] = useState<Comment[]>([]);
   const [versions, setVersions] = useState<Version[]>([]);
   const [newComment, setNewComment] = useState('');
+
+  // ============================================================================
+  // TIPTAP EDITOR
+  // ============================================================================
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        history: { depth: 100 },
+      }),
+      UnderlineExt,
+      Highlight.configure({ multicolor: true }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Placeholder.configure({
+        placeholder: 'Start drafting your contract…',
+      }),
+    ],
+    content: initialContent || '',
+    editable: isEditing,
+    editorProps: {
+      attributes: {
+        class: 'tiptap-editor prose prose-lg dark:prose-invert max-w-none focus:outline-none min-h-[550px] md:min-h-[750px] font-serif leading-relaxed text-base md:text-lg',
+        style: 'font-family: Georgia, serif',
+      },
+    },
+    onUpdate: ({ editor: ed }) => {
+      const text = ed.getText();
+      setContent(ed.getHTML());
+
+      // trigger auto-completions on current line
+      const lines = text.split('\n');
+      const currentLine = lines[lines.length - 1] || '';
+      if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
+      if (currentLine.length > 20) {
+        completionTimerRef.current = setTimeout(() => {
+          fetchAutoCompletions(currentLine);
+        }, 800);
+      }
+    },
+    onSelectionUpdate: ({ editor: ed }) => {
+      const { from } = ed.state.selection;
+      setCursorPosition(from);
+      const sel = ed.state.doc.textBetween(ed.state.selection.from, ed.state.selection.to, ' ');
+      setSelectedText(sel);
+    },
+  });
+
+  // Sync editable flag when mode toggles
+  useEffect(() => {
+    if (editor) editor.setEditable(isEditing);
+  }, [isEditing, editor]);
 
   // ============================================================================
   // COPILOT API CALLS
@@ -254,23 +314,26 @@ export function CopilotDraftingCanvas({
   // Auto-save
   useEffect(() => {
     const autoSave = setInterval(async () => {
-      if (content !== lastSavedContentRef.current && onSave) {
-        setIsSaving(true);
-        try {
-          await onSave(content);
-          lastSavedContentRef.current = content;
-          setLastSaved(new Date());
-        } catch (error) {
-          console.error('Auto-save failed:', error);
-          toast.error('Auto-save failed');
-        } finally {
-          setIsSaving(false);
+      if (editor && onSave) {
+        const html = editor.getHTML();
+        if (html !== lastSavedContentRef.current) {
+          setIsSaving(true);
+          try {
+            await onSave(html);
+            lastSavedContentRef.current = html;
+            setLastSaved(new Date());
+          } catch (error) {
+            console.error('Auto-save failed:', error);
+            toast.error('Auto-save failed');
+          } finally {
+            setIsSaving(false);
+          }
         }
       }
     }, 60000); // Every minute
 
     return () => clearInterval(autoSave);
-  }, [content, onSave]);
+  }, [editor, onSave]);
 
   // ============================================================================
   // HANDLERS
@@ -279,31 +342,7 @@ export function CopilotDraftingCanvas({
   // Auto-completion debounce ref
   const completionTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const handleContentChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newContent = e.target.value;
-    
-    // Save undo state on meaningful edits (debounced)
-    if (Math.abs(newContent.length - content.length) > 5) {
-      setUndoStack(prev => [...prev.slice(-49), content]);
-      setRedoStack([]);
-    }
-    
-    setContent(newContent);
-    setCursorPosition(e.target.selectionStart);
-
-    // Get current line/clause for auto-completion (debounced)
-    const lines = newContent.slice(0, e.target.selectionStart).split('\n');
-    const currentLine = lines[lines.length - 1];
-    
-    if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
-    if (currentLine.length > 20) {
-      completionTimerRef.current = setTimeout(() => {
-        fetchAutoCompletions(currentLine);
-      }, 800);
-    }
-  }, [content, fetchAutoCompletions]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // Handle auto-completion navigation
     if (showCompletionPopup && autoCompletions.length > 0) {
       if (e.key === 'ArrowDown') {
@@ -324,44 +363,24 @@ export function CopilotDraftingCanvas({
   }, [showCompletionPopup, autoCompletions, selectedCompletionIndex]);
 
   const applyCompletion = useCallback((completion: AutoCompletion) => {
-    if (!editorRef.current) return;
-
-    const textarea = editorRef.current;
-    const start = textarea.selectionStart;
-    
-    // Find the start of the current clause/line
-    const beforeCursor = content.slice(0, start);
-    const lineStart = beforeCursor.lastIndexOf('\n') + 1;
-    
-    const newContent = content.slice(0, lineStart) + completion.text + content.slice(start);
-    setContent(newContent);
+    if (!editor) return;
+    // Replace from start-of-current line to cursor with the completion text
+    editor.chain().focus().insertContent(completion.text).run();
     setShowCompletionPopup(false);
-
-    // Move cursor to end of inserted text
-    setTimeout(() => {
-      if (editorRef.current) {
-        const newPosition = lineStart + completion.text.length;
-        editorRef.current.setSelectionRange(newPosition, newPosition);
-        editorRef.current.focus();
-      }
-    }, 0);
-  }, [content]);
+  }, [editor]);
 
   const applySuggestion = useCallback((suggestion: CopilotSuggestion) => {
-    const newContent = 
-      content.slice(0, suggestion.position.startOffset) +
-      suggestion.suggestedText +
-      content.slice(suggestion.position.endOffset);
-    
-    setContent(newContent);
+    if (!editor) return;
+    // Replace range with suggested text — TipTap uses positions
+    const { from, to } = { from: suggestion.position.startOffset, to: suggestion.position.endOffset };
+    editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, suggestion.suggestedText).run();
+    setContent(editor.getHTML());
     setSelectedSuggestion(null);
-    
-    // Remove applied suggestion from list
     setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
-  }, [content]);
+  }, [editor]);
 
   const handleAIAssist = useCallback(async () => {
-    if (!aiPrompt.trim()) return;
+    if (!aiPrompt.trim() || !editor) return;
 
     setIsGenerating(true);
     try {
@@ -369,7 +388,7 @@ export function CopilotDraftingCanvas({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: content,
+          text: editor.getHTML(),
           cursorPosition,
           selectedText,
           contractType,
@@ -383,12 +402,8 @@ export function CopilotDraftingCanvas({
         const json = await response.json();
         const data = json.data || json;
         if (data.generatedText) {
-          // Insert at cursor position
-          const newContent = 
-            content.slice(0, cursorPosition) +
-            data.generatedText +
-            content.slice(cursorPosition);
-          setContent(newContent);
+          editor.chain().focus().insertContent(data.generatedText).run();
+          setContent(editor.getHTML());
         }
         if (data.suggestions) {
           setSuggestions(prev => [...data.suggestions, ...prev]);
@@ -402,15 +417,16 @@ export function CopilotDraftingCanvas({
       setAiPrompt('');
       setShowAIPanel(false);
     }
-  }, [aiPrompt, content, cursorPosition, selectedText, contractType, playbookId]);
+  }, [aiPrompt, editor, cursorPosition, selectedText, contractType, playbookId]);
 
   const handleSave = useCallback(async () => {
-    if (!onSave) return;
+    if (!onSave || !editor) return;
     
     setIsSaving(true);
     try {
-      await onSave(content);
-      lastSavedContentRef.current = content;
+      const html = editor.getHTML();
+      await onSave(html);
+      lastSavedContentRef.current = html;
       setLastSaved(new Date());
       toast.success('Document saved');
     } catch (error) {
@@ -419,95 +435,142 @@ export function CopilotDraftingCanvas({
     } finally {
       setIsSaving(false);
     }
-  }, [content, onSave]);
+  }, [editor, onSave]);
 
   // ============================================================================
-  // FORMATTING HELPERS (Markdown-style)
+  // FORMATTING HELPERS — TipTap commands
   // ============================================================================
 
   const insertFormatting = useCallback((format: string) => {
-    if (!editorRef.current) return;
-    const textarea = editorRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = content.slice(start, end);
-    
-    // Save undo state
-    setUndoStack(prev => [...prev.slice(-49), content]);
-    setRedoStack([]);
-
-    let newContent = content;
-    let newCursorPos = start;
+    if (!editor) return;
 
     switch (format) {
-      case 'bold': {
-        const wrapped = `**${selected || 'bold text'}**`;
-        newContent = content.slice(0, start) + wrapped + content.slice(end);
-        newCursorPos = selected ? start + wrapped.length : start + 2;
+      case 'bold':
+        editor.chain().focus().toggleBold().run();
         break;
-      }
-      case 'italic': {
-        const wrapped = `*${selected || 'italic text'}*`;
-        newContent = content.slice(0, start) + wrapped + content.slice(end);
-        newCursorPos = selected ? start + wrapped.length : start + 1;
+      case 'italic':
+        editor.chain().focus().toggleItalic().run();
         break;
-      }
-      case 'underline': {
-        const wrapped = `__${selected || 'underlined text'}__`;
-        newContent = content.slice(0, start) + wrapped + content.slice(end);
-        newCursorPos = selected ? start + wrapped.length : start + 2;
+      case 'underline':
+        editor.chain().focus().toggleUnderline().run();
         break;
-      }
-      case 'h1': {
-        const lineStart = content.lastIndexOf('\n', start - 1) + 1;
-        newContent = content.slice(0, lineStart) + '# ' + content.slice(lineStart);
-        newCursorPos = start + 2;
+      case 'h1':
+        editor.chain().focus().toggleHeading({ level: 1 }).run();
         break;
-      }
-      case 'h2': {
-        const lineStart = content.lastIndexOf('\n', start - 1) + 1;
-        newContent = content.slice(0, lineStart) + '## ' + content.slice(lineStart);
-        newCursorPos = start + 3;
+      case 'h2':
+        editor.chain().focus().toggleHeading({ level: 2 }).run();
         break;
-      }
-      case 'list': {
-        const lineStart = content.lastIndexOf('\n', start - 1) + 1;
-        newContent = content.slice(0, lineStart) + '- ' + content.slice(lineStart);
-        newCursorPos = start + 2;
+      case 'list':
+        editor.chain().focus().toggleBulletList().run();
         break;
-      }
-      case 'quote': {
-        const lineStart = content.lastIndexOf('\n', start - 1) + 1;
-        newContent = content.slice(0, lineStart) + '> ' + content.slice(lineStart);
-        newCursorPos = start + 2;
+      case 'quote':
+        editor.chain().focus().toggleBlockquote().run();
         break;
-      }
     }
-
-    setContent(newContent);
-    setTimeout(() => {
-      if (editorRef.current) {
-        editorRef.current.focus();
-        editorRef.current.setSelectionRange(newCursorPos, newCursorPos);
-      }
-    }, 0);
-  }, [content]);
+  }, [editor]);
 
   const handleUndo = useCallback(() => {
-    if (undoStack.length === 0) return;
-    const prev = undoStack[undoStack.length - 1];
-    setRedoStack(r => [...r, content]);
-    setUndoStack(u => u.slice(0, -1));
-    setContent(prev);
-  }, [undoStack, content]);
+    if (!editor) return;
+    editor.chain().focus().undo().run();
+  }, [editor]);
 
   const handleRedo = useCallback(() => {
-    if (redoStack.length === 0) return;
-    const next = redoStack[redoStack.length - 1];
-    setUndoStack(u => [...u, content]);
-    setRedoStack(r => r.slice(0, -1));
-    setContent(next);
-  }, [redoStack, content]);
+    if (!editor) return;
+    editor.chain().focus().redo().run();
+  }, [editor]);
+
+  // ============================================================================
+  // EXPORT HANDLERS
+  // ============================================================================
+
+  const handleExportPDF = useCallback(async () => {
+    if (!editor) return;
+    setIsExporting(true);
+    try {
+      await exportDraftAsPDF({
+        title: `${contractType} Contract`,
+        content: editor.getHTML(),
+        contractType,
+        author: session?.user?.name || 'Unknown',
+      });
+      toast.success('PDF exported successfully');
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      toast.error('PDF export failed');
+    } finally {
+      setIsExporting(false);
+      setShowExportMenu(false);
+    }
+  }, [editor, contractType, session]);
+
+  const handleExportDOCX = useCallback(async () => {
+    if (!editor) return;
+    setIsExporting(true);
+    try {
+      await exportDraftAsDOCX({
+        title: `${contractType} Contract`,
+        content: editor.getHTML(),
+        contractType,
+        author: session?.user?.name || 'Unknown',
+      });
+      toast.success('DOCX exported successfully');
+    } catch (error) {
+      console.error('DOCX export failed:', error);
+      toast.error('DOCX export failed');
+    } finally {
+      setIsExporting(false);
+      setShowExportMenu(false);
+    }
+  }, [editor, contractType, session]);
+
+  // ============================================================================
+  // FINALIZATION HANDLERS
+  // ============================================================================
+
+  const handleStatusChange = useCallback(async (newStatus: typeof draftStatus) => {
+    if (!draftId) {
+      toast.error('Save the draft first before changing status');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/drafts/${draftId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) throw new Error('Status update failed');
+
+      setDraftStatus(newStatus);
+      toast.success(`Draft status updated to ${newStatus.replace('_', ' ')}`);
+    } catch (error) {
+      console.error('Status change failed:', error);
+      toast.error('Failed to update draft status');
+    }
+  }, [draftId]);
+
+  const handleFinalize = useCallback(async () => {
+    if (!draftId) return;
+
+    try {
+      const response = await fetch(`/api/drafts/${draftId}/finalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(err.error || 'Finalization failed');
+      }
+
+      setDraftStatus('FINALIZED');
+      toast.success('Draft finalized and contract created!');
+    } catch (error) {
+      console.error('Finalization failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Finalization failed');
+    }
+  }, [draftId]);
 
   // ============================================================================
   // COMPUTED VALUES
@@ -941,6 +1004,50 @@ export function CopilotDraftingCanvas({
 
               <div className="h-6 w-px bg-gray-200 dark:bg-slate-600 hidden sm:block" />
 
+              {/* Draft Status Badge */}
+              {draftId && (
+                <span className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                  draftStatus === 'FINALIZED' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' :
+                  draftStatus === 'IN_REVIEW' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' :
+                  draftStatus === 'APPROVED' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' :
+                  draftStatus === 'PENDING_APPROVAL' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300' :
+                  'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300'
+                }`}>
+                  {draftStatus === 'FINALIZED' && <CheckCircle2 className="h-3 w-3" />}
+                  {draftStatus.replace('_', ' ')}
+                </span>
+              )}
+
+              {/* Export Menu */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  disabled={isExporting}
+                  className="hidden sm:flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                >
+                  {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  Export
+                </button>
+                {showExportMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-50 overflow-hidden">
+                    <button
+                      onClick={handleExportPDF}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <FileDown className="h-4 w-4 text-red-500" />
+                      Export as PDF
+                    </button>
+                    <button
+                      onClick={handleExportDOCX}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <FileDown className="h-4 w-4 text-blue-500" />
+                      Export as DOCX
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* Actions */}
               {onLegalReview && (
                 <button
@@ -951,6 +1058,27 @@ export function CopilotDraftingCanvas({
                   Legal Review
                 </button>
               )}
+
+              {/* Finalization Actions */}
+              {draftId && draftStatus === 'DRAFT' && (
+                <button
+                  onClick={() => handleStatusChange('IN_REVIEW')}
+                  className="hidden sm:flex items-center gap-2 px-3 py-2 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                  Submit for Review
+                </button>
+              )}
+              {draftId && (draftStatus === 'APPROVED' || draftStatus === 'IN_REVIEW') && (
+                <button
+                  onClick={handleFinalize}
+                  className="hidden sm:flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Finalize
+                </button>
+              )}
+
               <button
                 onClick={handleSave}
                 disabled={isSaving}
@@ -966,10 +1094,10 @@ export function CopilotDraftingCanvas({
           {isEditing && (
             <div className="mt-3 flex flex-wrap items-center gap-1 pb-2 border-b border-gray-100 dark:border-slate-700" role="toolbar" aria-label="Document formatting toolbar">
               <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-50 dark:bg-slate-700" role="group" aria-label="History controls">
-                <button onClick={handleUndo} disabled={undoStack.length === 0} className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-30" title="Undo (Ctrl+Z)" aria-label="Undo last action">
+                <button onClick={handleUndo} disabled={!editor?.can().undo()} className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-30" title="Undo (Ctrl+Z)" aria-label="Undo last action">
                   <Undo2 className="h-4 w-4 text-gray-600 dark:text-slate-300" />
                 </button>
-                <button onClick={handleRedo} disabled={redoStack.length === 0} className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-30" title="Redo (Ctrl+Y)" aria-label="Redo last action">
+                <button onClick={handleRedo} disabled={!editor?.can().redo()} className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-30" title="Redo (Ctrl+Y)" aria-label="Redo last action">
                   <Redo2 className="h-4 w-4 text-gray-600 dark:text-slate-300" />
                 </button>
               </div>
@@ -1116,43 +1244,13 @@ export function CopilotDraftingCanvas({
                 className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 md:p-8 min-h-[600px] md:min-h-[800px] ${
                   isEditing ? 'focus-within:ring-2 focus-within:ring-violet-500 focus-within:border-transparent' : ''
                 }`}
+                onKeyDown={handleKeyDown}
               >
-                {isEditing ? (
-                  <textarea
-                    ref={editorRef}
-                    value={content}
-                    onChange={handleContentChange}
-                    onKeyDown={handleKeyDown}
-                    onSelect={(e) => {
-                      const target = e.target as HTMLTextAreaElement;
-                      setCursorPosition(target.selectionStart);
-                      if (target.selectionStart !== target.selectionEnd) {
-                        setSelectedText(content.slice(target.selectionStart, target.selectionEnd));
-                      } else {
-                        setSelectedText('');
-                      }
-                    }}
-                    className="w-full h-full min-h-[550px] md:min-h-[750px] resize-none focus:outline-none font-serif text-gray-900 dark:text-slate-100 dark:bg-slate-800 leading-relaxed text-base md:text-lg"
-                    style={{ fontFamily: 'Georgia, serif' }}
-                    placeholder="Start drafting your contract..."
-                    aria-label="Contract document editor"
-                  />
+                {editor ? (
+                  <EditorContent editor={editor} />
                 ) : (
-                  <div className="prose prose-lg dark:prose-invert max-w-none font-serif" style={{ fontFamily: 'Georgia, serif' }}>
-                    {content.split('\n').map((line, index) => {
-                      // Render Markdown-like syntax
-                      if (line.startsWith('## ')) return <h2 key={index} className="text-xl font-bold mt-6 mb-3 text-gray-900 dark:text-slate-100">{line.slice(3)}</h2>;
-                      if (line.startsWith('# ')) return <h1 key={index} className="text-2xl font-bold mt-8 mb-4 text-gray-900 dark:text-slate-100">{line.slice(2)}</h1>;
-                      if (line.startsWith('> ')) return <blockquote key={index} className="border-l-4 border-violet-300 dark:border-violet-600 pl-4 italic text-gray-600 dark:text-slate-400 my-3">{line.slice(2)}</blockquote>;
-                      if (line.startsWith('- ')) return <li key={index} className="ml-6 list-disc text-gray-700 dark:text-slate-300">{line.slice(2)}</li>;
-                      if (line.trim() === '') return <br key={index} />;
-                      // Inline formatting
-                      const rendered = line
-                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-                        .replace(/__(.+?)__/g, '<u>$1</u>');
-                      return <p key={index} className="text-gray-700 dark:text-slate-300 my-2" dangerouslySetInnerHTML={{ __html: rendered }} />;
-                    })}
+                  <div className="flex items-center justify-center min-h-[550px]">
+                    <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
                   </div>
                 )}
               </div>

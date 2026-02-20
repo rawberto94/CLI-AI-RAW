@@ -1,0 +1,147 @@
+/**
+ * Draft Finalization API
+ *
+ * POST /api/drafts/[id]/finalize
+ *
+ * Validates that the draft is complete, sets status to FINALIZED,
+ * and creates a corresponding Contract record from the draft.
+ */
+
+import { NextRequest } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
+import {
+  getAuthenticatedApiContext,
+  getApiContext,
+  createSuccessResponse,
+  createErrorResponse,
+  handleApiError,
+} from '@/lib/api-middleware';
+
+export const dynamic = 'force-dynamic';
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(
+      getApiContext(request),
+      'UNAUTHORIZED',
+      'Authentication required',
+      401,
+      { retryable: false }
+    );
+  }
+
+  try {
+    const tenantId = await getApiTenantId(request);
+    const { id } = await params;
+
+    // Fetch the draft
+    const draft = await prisma.contractDraft.findFirst({
+      where: { id, tenantId },
+    });
+
+    if (!draft) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Draft not found', 404, {
+        retryable: false,
+      });
+    }
+
+    // Validate status — must not already be finalized
+    if (draft.status === 'FINALIZED') {
+      return createErrorResponse(
+        ctx,
+        'CONFLICT',
+        'Draft is already finalized',
+        409,
+        { retryable: false }
+      );
+    }
+
+    // Validate completeness — must have content
+    if (!draft.content || (typeof draft.content === 'string' && draft.content.trim().length < 50)) {
+      return createErrorResponse(
+        ctx,
+        'VALIDATION_ERROR',
+        'Draft content is too short to finalize. Please add more content.',
+        422,
+        { retryable: false }
+      );
+    }
+
+    // Validate title
+    if (!draft.title || draft.title.trim().length === 0) {
+      return createErrorResponse(
+        ctx,
+        'VALIDATION_ERROR',
+        'Draft must have a title before finalizing.',
+        422,
+        { retryable: false }
+      );
+    }
+
+    // Perform finalization in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Update draft status to FINALIZED
+      const finalizedDraft = await tx.contractDraft.update({
+        where: { id },
+        data: {
+          status: 'FINALIZED',
+          completionPercent: 100,
+          currentStep: 'finalized',
+          version: { increment: 1 },
+        },
+      });
+
+      // 2. Create a Contract record from the draft
+      const contract = await tx.contract.create({
+        data: {
+          tenantId,
+          title: draft.title,
+          type: draft.contractType || 'CUSTOM',
+          status: 'DRAFT',
+          description: `Contract created from finalized draft: ${draft.title}`,
+          content: typeof draft.content === 'string' ? draft.content : JSON.stringify(draft.content),
+          metadata: {
+            sourceType: 'draft_finalization',
+            sourceDraftId: id,
+            aiGenerated: Boolean(draft.aiPrompt),
+            finalizedAt: new Date().toISOString(),
+            draftVersion: finalizedDraft.version,
+          },
+          createdById: ctx.userId,
+          tags: ['from-draft'],
+        },
+      });
+
+      // 3. Link contract back to the draft (if sourceContractId field exists)
+      await tx.contractDraft.update({
+        where: { id },
+        data: {
+          sourceContractId: contract.id,
+        },
+      });
+
+      return { draft: finalizedDraft, contract };
+    });
+
+    return createSuccessResponse(ctx, {
+      message: 'Draft finalized successfully',
+      draft: {
+        id: result.draft.id,
+        status: result.draft.status,
+        version: result.draft.version,
+      },
+      contract: {
+        id: result.contract.id,
+        title: result.contract.title,
+        status: result.contract.status,
+      },
+    });
+  } catch (error) {
+    return handleApiError(ctx, error);
+  }
+}
