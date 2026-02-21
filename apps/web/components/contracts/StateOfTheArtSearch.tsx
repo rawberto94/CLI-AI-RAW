@@ -594,7 +594,7 @@ const FilterOptionItem = memo(function FilterOptionItem({
         'text-amber-500': option.color === 'amber',
         'text-red-500': option.color === 'red',
         'text-yellow-500': option.color === 'yellow',
-      })} />
+      })} />}
       <span className="flex-1 text-left text-slate-700 dark:text-slate-300 font-medium">{option.label}</span>
       {option.count !== undefined && (
         <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{option.count}</span>
@@ -1000,13 +1000,13 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                       className={cn(
                         "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
                         statusFilter === status.value
-                          ? activeClasses[status.color] || activeClasses.slate
+                          ? activeClasses[status.color ?? 'slate'] || activeClasses.slate
                           : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
                       )}
                     >
                       <span className={cn(
                         "w-2 h-2 rounded-full",
-                        dotClasses[status.color] || 'bg-slate-400'
+                        dotClasses[status.color ?? 'slate'] || 'bg-slate-400'
                       )} />
                       {status.label}
                     </button>

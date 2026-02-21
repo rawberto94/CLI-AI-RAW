@@ -228,9 +228,7 @@ export function CopilotDraftingCanvas({
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        history: { depth: 100 },
-      }),
+      StarterKit.configure({}),
       UnderlineExt,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
@@ -692,7 +690,7 @@ export function CopilotDraftingCanvas({
   // ============================================================================
 
   // Auto-completion debounce ref
-  const completionTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const completionTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // ── Global keyboard shortcuts ──
@@ -1286,7 +1284,7 @@ export function CopilotDraftingCanvas({
                         </button>
                         {!comment.resolved && (
                           <button
-                            onClick={() => handleResolveComment(comment.id)}
+                            onClick={() => handleResolveComment(comment.id, true)}
                             className="text-xs text-green-600 dark:text-green-400 hover:underline flex items-center gap-0.5"
                           >
                             <Check className="h-3 w-3" /> Resolve
@@ -1558,7 +1556,7 @@ export function CopilotDraftingCanvas({
               {/* Lock/Unlock Button */}
               {draftId && (
                 <button
-                  onClick={lockInfo.isLocked ? handleUnlockDraft : handleLockDraft}
+                  onClick={() => handleLock(lockInfo.isLocked ? 'unlock' : 'lock')}
                   disabled={isLocking}
                   className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors ${
                     lockInfo.isLocked
@@ -1583,7 +1581,7 @@ export function CopilotDraftingCanvas({
                     <span className="hidden sm:inline">Approve</span>
                   </button>
                   <button
-                    onClick={() => setShowApprovalModal(true)}
+                    onClick={() => setShowApprovalModal("reject")}
                     className="flex items-center gap-1 px-2.5 py-1.5 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg text-xs hover:bg-red-200 dark:hover:bg-red-900 transition-colors"
                     title="Reject this draft"
                   >
@@ -2023,7 +2021,7 @@ export function CopilotDraftingCanvas({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            onClick={() => setShowApprovalModal(false)}
+            onClick={() => setShowApprovalModal(null)}
           >
             <motion.div
               key="approval-modal"
@@ -2044,13 +2042,13 @@ export function CopilotDraftingCanvas({
               />
               <div className="flex justify-end gap-3 mt-4">
                 <button
-                  onClick={() => { setShowApprovalModal(false); setApprovalComment(''); }}
+                  onClick={() => { setShowApprovalModal(null); setApprovalComment(''); }}
                   className="px-4 py-2 text-sm text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={() => { handleReject(); setShowApprovalModal(false); }}
+                  onClick={() => { handleReject(); setShowApprovalModal(null); }}
                   disabled={!approvalComment.trim()}
                   className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                 >

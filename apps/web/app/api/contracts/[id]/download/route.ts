@@ -80,12 +80,13 @@ export async function GET(
           const buffer = await storage.download(contract.storagePath);
           if (buffer) {
             const safeFilename = encodeURIComponent(displayName.replace(/[^\w\s.-]/g, '_'));
-            return new Response(buffer, {
+            const bytes = new Uint8Array(buffer);
+            return new Response(bytes, {
               status: 200,
               headers: {
                 'Content-Type': contract.mimeType || 'application/octet-stream',
                 'Content-Disposition': `attachment; filename="${safeFilename}"`,
-                'Content-Length': String(buffer.length),
+                'Content-Length': String(bytes.length),
                 'Cache-Control': 'private, max-age=300',
               },
             });

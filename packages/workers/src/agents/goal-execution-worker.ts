@@ -51,7 +51,7 @@ export async function startGoalWorker(): Promise<void> {
     getAutonomousOrchestrator = agents.getAutonomousOrchestrator;
   } catch {
     try {
-      const agents = await import('../../agents/src/autonomous-orchestrator');
+      const agents = await import('../../../agents/src/autonomous-orchestrator');
       getAutonomousOrchestrator = agents.getAutonomousOrchestrator;
     } catch (err) {
       logger.error({ error: String(err) }, 'Failed to import orchestrator — worker cannot process goals');

@@ -103,12 +103,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
         take: 10,
         select: {
           id: true,
-          type: true,
-          title: true,
+          action: true,
           description: true,
           priority: true,
           status: true,
-          impact: true,
           confidence: true,
           createdAt: true,
         },

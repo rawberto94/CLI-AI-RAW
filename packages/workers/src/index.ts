@@ -160,7 +160,7 @@ async function startWorkers() {
     }
 
     // Start contract source sync worker (external source polling)
-    let sourceSyncWorker;
+    let sourceSyncWorker: any;
     try {
       sourceSyncWorker = createContractSourceSyncWorker();
       await scheduleSourceSync();

@@ -23,7 +23,9 @@
       "@repo/db": ["../clients/db"],
       "@repo/db/*": ["../clients/db/*"],
       "@/*": ["../../apps/web/*"],
-      "@/lib/*": ["../../apps/web/lib/*"]
+      "@/lib/*": ["../../apps/web/lib/*"],
+      "@repo/agents": ["../agents/src"],
+      "@repo/agents/*": ["../agents/src/*"]
     }
   },
   "include": [

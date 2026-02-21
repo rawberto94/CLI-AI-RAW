@@ -202,7 +202,7 @@ export class ContinuousLearningAgent extends BaseAgent {
           correctPattern,
           occurrences: group._count.id,
           confidence: Math.min(0.95, 0.5 + group._count.id * 0.05),
-          examples: examples.map(e => ({
+          examples: examples.map((e: any) => ({
             input: e.originalValue || '',
             expected: e.correctedValue || '',
             actual: e.originalValue || '',
@@ -319,9 +319,9 @@ export class ContinuousLearningAgent extends BaseAgent {
         _count: { id: true },
       });
 
-      const correctMap = new Map(correctStats.map(s => [s.fieldName, s._count.id]));
+      const correctMap = new Map(correctStats.map((s: any) => [s.fieldName, s._count.id]));
 
-      return stats.map(s => {
+      return stats.map((s: any) => {
         const total = s._count.id;
         const correct = correctMap.get(s.fieldName) || 0;
         return {

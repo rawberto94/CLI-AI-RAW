@@ -483,7 +483,7 @@ export async function runAgentOrchestrationJob(
       }
 
       // Build artifact array for agents that need it
-      const artifactArray = allArtifacts.map(a => ({ type: String(a.type), data: a.data, id: String(a.type) }));
+      const artifactArray = allArtifacts.map((a: any) => ({ type: String(a.type), data: a.data, id: String(a.type) }));
 
       const agentContext = {
         contractText: typeof contract?.rawText === 'string' ? contract.rawText : '',

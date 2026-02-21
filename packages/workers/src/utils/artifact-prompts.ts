@@ -1421,7 +1421,7 @@ const MODEL_PRICING: Record<string, TokenPricing> = {
 
 export function estimateTokenCost(model: string, promptTokens: number, completionTokens: number): number {
   const pricing = MODEL_PRICING[model] || MODEL_PRICING['gpt-4o'];
-  return (promptTokens / 1_000_000) * pricing.inputPer1M + (completionTokens / 1_000_000) * pricing.outputPer1M;
+  return (promptTokens / 1_000_000) * (pricing?.inputPer1M ?? 0) + (completionTokens / 1_000_000) * (pricing?.outputPer1M ?? 0);
 }
 
 // ─── Cost Budget ────────────────────────────────────────────────────────────

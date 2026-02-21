@@ -324,13 +324,14 @@ export async function GET(
           const changes = signedVersion.changes as Record<string, unknown>;
           const mimeType = (changes?.mimeType as string) || 'application/pdf';
           const originalName = (changes?.originalFileName as string) || `signed-contract-${contractId}.pdf`;
+          const bytes = new Uint8Array(buffer);
 
-          return new Response(buffer, {
+          return new Response(bytes, {
             status: 200,
             headers: {
               'Content-Type': mimeType,
               'Content-Disposition': `attachment; filename="${encodeURIComponent(originalName)}"`,
-              'Content-Length': String(buffer.length),
+              'Content-Length': String(bytes.length),
             },
           });
         }

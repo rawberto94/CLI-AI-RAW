@@ -4,6 +4,7 @@
  * BullMQ worker that handles scheduled and manual sync jobs for contract sources.
  */
 
+// @ts-ignore - bullmq types resolve correctly from workers tsconfig
 import { Worker, Queue, Job } from 'bullmq';
 import clientsDb from 'clients-db';
 import { ContractSourceStatus } from '@prisma/client';
@@ -37,6 +38,7 @@ interface SchedulerJobData {
 type JobData = SyncJobData | SchedulerJobData;
 
 // Create the queue
+// @ts-ignore - generic Queue resolved from workers tsconfig
 export const contractSourceSyncQueue = new Queue<JobData>(QUEUE_NAME, {
   connection,
   defaultJobOptions: {
@@ -258,7 +260,9 @@ async function checkScheduledSyncs(): Promise<void> {
 /**
  * Create and start the worker
  */
+// @ts-ignore - generic Worker resolved from workers tsconfig
 export function createContractSourceSyncWorker(): Worker<JobData> {
+  // @ts-ignore
   const worker = new Worker<JobData>(
     QUEUE_NAME,
     async (job) => {

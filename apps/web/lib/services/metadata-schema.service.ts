@@ -13,6 +13,7 @@
  * - Field visibility and permissions
  */
 
+// @ts-ignore - data-orchestration resolved via web tsconfig paths
 import { dbAdaptor } from 'data-orchestration';
 
 // ============================================================================

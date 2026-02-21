@@ -192,25 +192,25 @@ describe('Azure Document Intelligence', () => {
 
       // Pages
       expect(result.pages).toHaveLength(1);
-      expect(result.pages[0].pageNumber).toBe(1);
-      expect(result.pages[0].words).toHaveLength(1);
-      expect(result.pages[0].words[0].content).toBe('Sample');
+      expect(result.pages[0]!.pageNumber).toBe(1);
+      expect(result.pages[0]!.words).toHaveLength(1);
+      expect(result.pages[0]!.words![0]!.content).toBe('Sample');
 
       // Tables
       expect(result.tables).toHaveLength(1);
-      expect(result.tables[0].rowCount).toBe(2);
-      expect(result.tables[0].columnCount).toBe(2);
-      expect(result.tables[0].headers).toContain('Header1');
-      expect(result.tables[0].rows).toHaveLength(1); // 1 data row
+      expect(result.tables[0]!.rowCount).toBe(2);
+      expect(result.tables[0]!.columnCount).toBe(2);
+      expect(result.tables[0]!.headers).toContain('Header1');
+      expect(result.tables[0]!.rows).toHaveLength(1); // 1 data row
 
       // Key-value pairs
       expect(result.keyValuePairs).toHaveLength(1);
-      expect(result.keyValuePairs[0].key).toBe('Date');
-      expect(result.keyValuePairs[0].value).toBe('2025-01-15');
+      expect(result.keyValuePairs[0]!.key).toBe('Date');
+      expect(result.keyValuePairs[0]!.value).toBe('2025-01-15');
 
       // Paragraphs
       expect(result.paragraphs).toHaveLength(2);
-      expect(result.paragraphs[0].role).toBe('title');
+      expect(result.paragraphs[0]!.role).toBe('title');
 
       // Metadata
       expect(result.metadata.model).toBe('prebuilt-layout');
@@ -230,7 +230,7 @@ describe('Azure Document Intelligence', () => {
         locale: 'en-US',
       });
 
-      const [submitUrl, submitOpts] = mockFetch.mock.calls[0];
+      const [submitUrl, submitOpts] = mockFetch.mock.calls[0]!;
       expect(submitUrl).toContain('prebuilt-layout');
       expect(submitUrl).toContain('api-version=2024-11-30');
       expect(submitUrl).toContain('features=keyValuePairs');
@@ -307,19 +307,19 @@ describe('Azure Document Intelligence', () => {
       const { analyzeContract } = await import('../azure-document-intelligence');
       const result = await analyzeContract(Buffer.from('fake-contract'));
 
-      expect(result.parties).toHaveLength(2);
-      expect(result.parties[0].name).toBe('Acme Corp');
-      expect(result.parties[0].role).toBe('Provider');
-      expect(result.parties[1].name).toBe('Globex Inc');
-      expect(result.parties[1].address).toBe('123 Main St');
+      expect(result.contract.parties).toHaveLength(2);
+      expect(result.contract.parties[0]!.name).toBe('Acme Corp');
+      expect(result.contract.parties[0]!.role).toBe('Provider');
+      expect(result.contract.parties[1]!.name).toBe('Globex Inc');
+      expect(result.contract.parties[1]!.address).toBe('123 Main St');
 
-      expect(result.dates.effectiveDate).toBe('2025-03-01');
-      expect(result.dates.expirationDate).toBe('2026-03-01');
-      expect(result.dates.executionDate).toBe('2025-02-15');
+      expect(result.contract.dates.effectiveDate).toBe('2025-03-01');
+      expect(result.contract.dates.expirationDate).toBe('2026-03-01');
+      expect(result.contract.dates.executionDate).toBe('2025-02-15');
 
-      expect(result.jurisdiction).toBe('Switzerland');
-      expect(result.title).toBe('Master Service Agreement');
-      expect(result.confidence).toBe(0.92);
+      expect(result.contract.jurisdiction).toBe('Switzerland');
+      expect(result.contract.title).toBe('Master Service Agreement');
+      expect(result.contract.confidence).toBe(0.92);
     });
   });
 
@@ -391,21 +391,21 @@ describe('Azure Document Intelligence', () => {
       const { analyzeInvoice } = await import('../azure-document-intelligence');
       const result = await analyzeInvoice(Buffer.from('fake-invoice'));
 
-      expect(result.vendorName).toBe('Acme Corp');
-      expect(result.customerName).toBe('Globex Inc');
-      expect(result.invoiceId).toBe('INV-2025-001');
-      expect(result.invoiceDate).toBe('2025-01-15');
-      expect(result.dueDate).toBe('2025-02-15');
-      expect(result.invoiceTotal).toBe(10770);
-      expect(result.currency).toBe('CHF');
-      expect(result.paymentTerms).toBe('Net 30');
+      expect(result.invoice.vendorName).toBe('Acme Corp');
+      expect(result.invoice.customerName).toBe('Globex Inc');
+      expect(result.invoice.invoiceId).toBe('INV-2025-001');
+      expect(result.invoice.invoiceDate).toBe('2025-01-15');
+      expect(result.invoice.dueDate).toBe('2025-02-15');
+      expect(result.invoice.invoiceTotal).toBe(10770);
+      expect(result.invoice.currency).toBe('CHF');
+      expect(result.invoice.paymentTerms).toBe('Net 30');
 
-      expect(result.lineItems).toHaveLength(1);
-      expect(result.lineItems[0].description).toBe('Consulting Services');
-      expect(result.lineItems[0].quantity).toBe(40);
-      expect(result.lineItems[0].unitPrice).toBe(250);
-      expect(result.lineItems[0].amount).toBe(10000);
-      expect(result.confidence).toBe(0.95);
+      expect(result.invoice.lineItems).toHaveLength(1);
+      expect(result.invoice.lineItems[0]!.description).toBe('Consulting Services');
+      expect(result.invoice.lineItems[0]!.quantity).toBe(40);
+      expect(result.invoice.lineItems[0]!.unitPrice).toBe(250);
+      expect(result.invoice.lineItems[0]!.amount).toBe(10000);
+      expect(result.invoice.confidence).toBe(0.95);
     });
   });
 

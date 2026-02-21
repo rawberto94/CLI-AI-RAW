@@ -42,7 +42,7 @@ export class AutonomousDeadlineManager extends BaseAgent {
           take: 50,
           orderBy: { expirationDate: 'asc' },
         });
-        contracts = dbContracts.map(c => ({
+        contracts = dbContracts.map((c: any) => ({
           id: c.id,
           title: c.contractTitle || '',
           status: c.status,
@@ -301,10 +301,10 @@ export class AutonomousDeadlineManager extends BaseAgent {
         };
       }
 
-      const durations = completed.map(j =>
+      const durations = completed.map((j: any) =>
         (j.completedAt!.getTime() - j.startedAt!.getTime()) / 86400000
       );
-      const avgDays = durations.reduce((a, b) => a + b, 0) / durations.length;
+      const avgDays = durations.reduce((a: any, b: any) => a + b, 0) / durations.length;
 
       const impact = avgDays <= 3 ? 'positive' : avgDays <= 7 ? 'neutral' : 'negative';
 

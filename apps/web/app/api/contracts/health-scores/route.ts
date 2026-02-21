@@ -9,7 +9,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 

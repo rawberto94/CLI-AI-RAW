@@ -2028,7 +2028,7 @@ export function FloatingAIBubble() {
                                           </div>
                                           {tp.preview.items && tp.preview.items.slice(0, 3).map((item, i) => (
                                             <div key={i} className="text-slate-600 truncate">
-                                              {item.title || item.name || item.contractName || JSON.stringify(item).slice(0, 80)}
+                                              {String(item.title || item.name || item.contractName || JSON.stringify(item).slice(0, 80))}
                                             </div>
                                           ))}
                                         </div>

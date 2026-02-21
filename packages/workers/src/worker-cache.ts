@@ -353,7 +353,7 @@ export function getWorkerCache(config?: CacheConfig): WorkerCache {
   if (!workerCache) {
     // Default config from environment
     workerCache = new WorkerCache({
-      host: process.env.REDIS_HOST,
+      host: process.env.REDIS_HOST ?? '',
       port: parseInt(process.env.REDIS_PORT || '6379'),
       password: process.env.REDIS_PASSWORD,
     });

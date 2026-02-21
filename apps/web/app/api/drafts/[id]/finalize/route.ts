@@ -107,7 +107,7 @@ export async function POST(
         data: {
           tenantId,
           contractTitle: draft.title,
-          contractType: draft.contractType || 'CUSTOM',
+          contractType: draft.type || 'CUSTOM',
           status: 'DRAFT',
           description: `Contract created from finalized draft: ${draft.title}`,
           rawText: draftContent,

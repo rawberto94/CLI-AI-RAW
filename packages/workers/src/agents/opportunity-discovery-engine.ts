@@ -40,7 +40,7 @@ export class OpportunityDiscoveryEngine extends BaseAgent {
           },
           take: 100,
         });
-        contracts = dbContracts.map(c => ({
+        contracts = dbContracts.map((c: any) => ({
           id: c.id,
           title: c.contractTitle || '',
           status: c.status,
@@ -535,13 +535,13 @@ export class OpportunityDiscoveryEngine extends BaseAgent {
       if (contracts.length < 3) return null;
 
       const values = contracts
-        .map(c => Number(c.totalValue))
-        .filter(v => v > 0)
-        .sort((a, b) => a - b);
+        .map((c: any) => Number(c.totalValue))
+        .filter((v: any) => v > 0)
+        .sort((a: any, b: any) => a - b);
 
       if (values.length === 0) return null;
 
-      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      const avg = values.reduce((a: any, b: any) => a + b, 0) / values.length;
       const median = values[Math.floor(values.length / 2)];
       const p25 = values[Math.floor(values.length * 0.25)];
       const p75 = values[Math.floor(values.length * 0.75)];
@@ -588,7 +588,7 @@ export class OpportunityDiscoveryEngine extends BaseAgent {
         take: 5,
       });
 
-      return alternatives.map(alt => ({
+      return alternatives.map((alt: any) => ({
         supplier: alt.supplierName || 'Unknown',
         estimatedCost: Number(alt.totalValue),
         rating: Math.min(5, 3 + (1 - Number(alt.totalValue) / contractValue) * 2),

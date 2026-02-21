@@ -210,12 +210,12 @@ export function getPersonaById(agentId: string): AgentPersona | undefined {
 export function extractMention(message: string): { handle: string; persona: AgentPersona; cleanMessage: string } | null {
   const mentionMatch = message.match(/^@(\w+)\s*(.*)/s) || message.match(/@(\w+)\s*(.*)/s);
   if (!mentionMatch) return null;
-  const handle = mentionMatch[1];
+  const handle = mentionMatch[1] ?? '';
   const persona = getPersonaByHandle(handle);
   if (!persona) return null;
   // Remove the @mention from the message
   const cleanMessage = message.replace(new RegExp(`@${handle}\\s*`, 'i'), '').trim();
-  return { handle, persona, cleanMessage: cleanMessage || message };
+  return { handle: handle ?? '', persona, cleanMessage: cleanMessage || message };
 }
 
 /** Get all personas for autocomplete */

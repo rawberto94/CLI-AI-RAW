@@ -421,7 +421,7 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
       const readable = new ReadableStream({
         start(controller) {
           // Emit plan event so frontend can show reasoning steps
-          if (agentResponse.steps && agentResponse.steps.length > 0) {
+          if (agentResponse.steps && agentResponse.steps > 0) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({
               type: 'plan',
               steps: agentResponse.steps,

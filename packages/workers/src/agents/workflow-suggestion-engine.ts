@@ -521,13 +521,13 @@ export class WorkflowSuggestionEngine extends BaseAgent {
         take: 50,
       });
 
-      return executions.map((exec): WorkflowHistory => ({
+      return executions.map((exec: any): WorkflowHistory => ({
         contractId: exec.contractId,
         contractType: (exec.contract.contractType || contractType) as any,
         value: exec.contract.totalValue ? Number(exec.contract.totalValue) : 0,
         steps: exec.stepExecutions
-          .filter(s => s.completedAt)
-          .map((s): CompletedStep => ({
+          .filter((s: any) => s.completedAt)
+          .map((s: any): CompletedStep => ({
             name: s.stepName || 'Unknown Step',
             assignee: s.assignedTo || 'unassigned',
             completedAt: s.completedAt!,

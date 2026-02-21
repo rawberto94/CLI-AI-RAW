@@ -21,9 +21,7 @@ async function queueGoalExecution(goalId: string, tenantId: string): Promise<voi
     if (queueService) {
       await queueService.addJob('agent-orchestration', 'execute-goal', { goalId, tenantId }, {
         attempts: 3,
-        backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: { age: 86400 * 7 },
-        removeOnFail: { age: 86400 * 30 },
+        delay: 5000,
       });
       console.warn(`[Agent Goals] Queued goal execution: ${goalId}`);
       return;

@@ -1930,6 +1930,7 @@ export async function processOCRArtifactJob(
     
     for (let i = 0; i < artifactTypes.length; i++) {
       const artifactType = artifactTypes[i];
+      if (!artifactType) continue;
       // Use per-type config from shared module
       const typeConfig = SHARED_ARTIFACT_TYPES.find(c => c.type === artifactType);
       const maxRetries = typeConfig?.maxRetries ?? 2;
@@ -2312,7 +2313,7 @@ export async function processOCRArtifactJob(
           // Use first sentence of summary as title, max 100 chars
           const summaryText = unwrap(overviewData.summary);
           if (summaryText && typeof summaryText === 'string') {
-            const title = summaryText.split('.')[0].substring(0, 100);
+            const title = summaryText.split('.')[0]!.substring(0, 100);
             if (title.length > 10) {
               contractUpdate.contractTitle = title;
             }
@@ -3353,8 +3354,8 @@ function getFallbackArtifact(type: string, contractText: string, contract: any):
         /(?:between|by and between|entered into by)\s+([A-Z][A-Za-z0-9\s&,.'()\-]{2,80}?)\s*(?:\(.*?\))?\s*(?:,?\s*(?:and|&)\s+)([A-Z][A-Za-z0-9\s&,.'()\-]{2,80}?)\s*(?:\(|,|\n)/i
       );
       if (betweenMatch) {
-        parties.push({ name: betweenMatch[1].trim(), role: 'Party A' });
-        parties.push({ name: betweenMatch[2].trim(), role: 'Party B' });
+        parties.push({ name: betweenMatch[1]!.trim(), role: 'Party A' });
+        parties.push({ name: betweenMatch[2]!.trim(), role: 'Party B' });
       }
     }
     if (parties.length > 0) base.parties = parties;

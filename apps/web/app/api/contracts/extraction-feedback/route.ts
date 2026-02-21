@@ -110,7 +110,7 @@ async function handleSingleFeedback(body: FeedbackRequest, tenantId: string, ctx
       // @ts-ignore - module may not be available in edge runtime
       const { runLearningFeedback } = await import('@repo/workers/agents/agent-dispatch');
       runLearningFeedback(contractId, tenantId, [
-        { fieldName, extractedValue: String(extractedValue ?? ''), correctedValue: String(correctedValue ?? ''), source: extractionSource },
+        { field: fieldName, originalValue: String(extractedValue ?? ''), correctedValue: String(correctedValue ?? ''), reason: extractionSource },
       ]).catch(() => {}); // fire-and-forget
     } catch (_) { /* worker import may fail in edge runtime — non-critical */ }
   }
@@ -177,10 +177,10 @@ async function handleBatchFeedback(body: BatchFeedbackRequest, tenantId: string,
       const corrections = feedback
         .filter(item => !item.wasCorrect && item.correctedValue !== undefined)
         .map(item => ({
-          fieldName: item.fieldName,
-          extractedValue: String(item.extractedValue ?? ''),
+          field: item.fieldName,
+          originalValue: String(item.extractedValue ?? ''),
           correctedValue: String(item.correctedValue ?? ''),
-          source: item.extractionSource,
+          reason: item.extractionSource,
         }));
       if (corrections.length > 0) {
         runLearningFeedback(contractId, tenantId, corrections).catch(() => {}); // fire-and-forget

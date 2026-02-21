@@ -375,7 +375,7 @@ export async function generateDraftDOCX(input: DraftExportInput): Promise<Uint8A
 // =============================================================================
 
 export function downloadFile(data: Uint8Array, filename: string, mimeType: string): void {
-  const blob = new Blob([data], { type: mimeType });
+  const blob = new Blob([data as unknown as BlobPart], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

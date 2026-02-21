@@ -296,51 +296,6 @@ export default function ContractDetailPage() {
   // Use the custom hook for metadata derivation
   const { metadata, riskInfo, complianceInfo, isProcessing, overviewData, financialData } = useContractMetadata(contract as any)
 
-  // ============ KEYBOARD SHORTCUTS ============
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      
-      if (!e.metaKey && !e.ctrlKey && !e.altKey) {
-        switch (e.key) {
-          case '1': setTab('overview'); break
-          case '2': setTab('details'); break
-          case '3': setTab('activity'); break
-          case '4': case 'a': case 'A': setTab('ai'); break
-          case 'p': case 'P': setPdfViewerOpen(!showPdfViewer); break
-          case 'e': case 'E': if (!isEditing) setIsEditing(true); break
-          case 'Escape':
-            if (isEditing) setIsEditing(false)
-            if (showPdfViewer) setPdfViewerOpen(false)
-            break
-        }
-      }
-      
-      if (e.metaKey || e.ctrlKey) {
-        switch (e.key) {
-          case 'd':
-            e.preventDefault()
-            handleDownload()
-            break
-          case 'r':
-            e.preventDefault()
-            loadContract()
-            break
-          case 's':
-            if (isEditing) {
-              e.preventDefault()
-              // Save would be handled by the metadata section
-            }
-            break
-        }
-      }
-    }
-    
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-    
-  }, [isEditing, setPdfViewerOpen, setTab, showPdfViewer, handleDownload, loadContract])
-
   // Initialize tab from URL (shareable deep-link)
   useEffect(() => {
     const requestedTab = searchParams?.get?.('tab')
@@ -579,6 +534,51 @@ export default function ContractDetailPage() {
       toast.error('Failed to download contract')
     }
   }, [params.id, contract?.filename])
+
+  // ============ KEYBOARD SHORTCUTS ============
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      
+      if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+        switch (e.key) {
+          case '1': setTab('overview'); break
+          case '2': setTab('details'); break
+          case '3': setTab('activity'); break
+          case '4': case 'a': case 'A': setTab('ai'); break
+          case 'p': case 'P': setPdfViewerOpen(!showPdfViewer); break
+          case 'e': case 'E': if (!isEditing) setIsEditing(true); break
+          case 'Escape':
+            if (isEditing) setIsEditing(false)
+            if (showPdfViewer) setPdfViewerOpen(false)
+            break
+        }
+      }
+      
+      if (e.metaKey || e.ctrlKey) {
+        switch (e.key) {
+          case 'd':
+            e.preventDefault()
+            handleDownload()
+            break
+          case 'r':
+            e.preventDefault()
+            loadContract()
+            break
+          case 's':
+            if (isEditing) {
+              e.preventDefault()
+              // Save would be handled by the metadata section
+            }
+            break
+        }
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+    
+  }, [isEditing, setPdfViewerOpen, setTab, showPdfViewer, handleDownload, loadContract])
 
   const handleRequestSignature = useCallback(() => {
     router.push(`/contracts/${params.id}/esign`)
@@ -1208,7 +1208,7 @@ export default function ContractDetailPage() {
                 </TooltipProvider>
 
                 {/* Signature Actions */}
-                {(metadata.signature_required_flag || metadata.signature_status === 'unsigned' || metadata.signature_status === 'pending') && metadata.signature_status !== 'signed' && (
+                {(metadata.signature_required_flag || metadata.signature_status === 'unsigned' || (metadata.signature_status as string) === 'pending') && metadata.signature_status !== 'signed' && (
                   <>
                     <div className="h-5 w-px bg-slate-200 mx-1 hidden sm:block" />
                     <TooltipProvider>

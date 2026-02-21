@@ -114,7 +114,7 @@ function extractObligationsFromContext(
       id: mkId(),
       type: 'notice',
       description: `${noticeDays}-day advance notice required before ${expDate}`,
-      dueDate: noticeDeadline.toISOString().split('T')[0],
+      dueDate: noticeDeadline.toISOString().split('T')[0] ?? null,
       status: daysUntilNotice < 0 ? 'overdue' : daysUntilNotice <= 14 ? 'at-risk' : 'pending',
       severity: daysUntilNotice < 0 ? 'critical' : daysUntilNotice <= 14 ? 'high' : 'medium',
       owner: ctx.department || 'Contract Owner',
