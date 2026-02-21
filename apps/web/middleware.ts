@@ -430,7 +430,10 @@ export default auth(async (req) => {
     !CSRF_EXEMPT_PATHS.some((path) => pathname.startsWith(path))
   ) {
     const headerToken = req.headers.get(CSRF_HEADER_NAME);
-    const cookieToken = req.cookies.get(CSRF_TOKEN_NAME)?.value;
+    const rawCookieToken = req.cookies.get(CSRF_TOKEN_NAME)?.value;
+    // Decode URL-encoded cookie value so it matches the header
+    // (the client-side interceptor decodes with decodeURIComponent before sending)
+    const cookieToken = rawCookieToken ? decodeURIComponent(rawCookieToken) : undefined;
 
     if (!headerToken || !cookieToken || headerToken !== cookieToken) {
       const response = NextResponse.json(
