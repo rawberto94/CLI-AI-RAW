@@ -92,32 +92,61 @@ interface NavigationGroup {
   requiresAdmin?: boolean; // Only show entire group for admin/owner users
 }
 
-// Full navigation — All platform features
+// Full navigation — Clustered for clarity
+// 5 groups: Core (always visible), Lifecycle (collapsible), Intelligence (collapsible),
+// Procurement & Risk (collapsible), Admin (collapsible, admin-only)
 const navigationGroups: NavigationGroup[] = [
   {
-    id: 'main',
-    label: 'Main',
+    id: 'core',
+    label: 'Core',
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, description: 'Overview & insights' },
       { name: 'Contracts', href: '/contracts', icon: FileText, description: 'Manage your contracts' },
-      { name: 'Renewals', href: '/renewals', icon: RefreshCcw, description: 'Track & manage renewals', badge: 'Live' },
-      { name: 'Obligations', href: '/obligations', icon: Calendar, description: 'Track obligations & deadlines' },
-      { name: 'Compare', href: '/compare', icon: Target, description: 'Side-by-side contract comparison' },
+      { name: 'Smart Search', href: '/search', icon: Search, description: 'Semantic & advanced search' },
     ]
   },
   {
     id: 'lifecycle',
     label: 'Contract Lifecycle',
     items: [
-      { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Manage contract templates' },
-      { name: 'Clauses', href: '/clauses', icon: BookOpen, description: 'Clause library & governance' },
-      { name: 'Drafting', href: '/drafting', icon: PenTool, description: 'AI-assisted contract drafting' },
-      { name: 'Workflows', href: '/workflows', icon: GitBranch, description: 'Workflows, approvals & SLA' },
+      {
+        name: 'Drafting & Templates',
+        href: '/drafting',
+        icon: PenTool,
+        description: 'Create & manage contracts',
+        children: [
+          { name: 'AI Drafting', href: '/drafting', icon: PenTool, description: 'AI-assisted contract drafting' },
+          { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Manage contract templates' },
+          { name: 'Clauses', href: '/clauses', icon: BookOpen, description: 'Clause library & governance' },
+        ]
+      },
+      {
+        name: 'Workflows & Approvals',
+        href: '/workflows',
+        icon: GitBranch,
+        description: 'Approvals, SLA & automation',
+        children: [
+          { name: 'Workflows', href: '/workflows', icon: GitBranch, description: 'Manage workflows' },
+          { name: 'Self-Service', href: '/self-service', icon: Zap, description: 'Quick actions & requests' },
+          { name: 'My Requests', href: '/self-service/my-requests', icon: Clock, description: 'Track your requests' },
+        ]
+      },
+      {
+        name: 'Tracking',
+        href: '/obligations',
+        icon: Calendar,
+        description: 'Obligations & renewals',
+        children: [
+          { name: 'Obligations', href: '/obligations', icon: Calendar, description: 'Track obligations & deadlines' },
+          { name: 'Renewals', href: '/renewals', icon: RefreshCcw, description: 'Track & manage renewals' },
+          { name: 'Compare', href: '/compare', icon: Target, description: 'Side-by-side contract comparison' },
+        ]
+      },
     ]
   },
   {
     id: 'intelligence',
-    label: 'AI Intelligence',
+    label: 'Intelligence & Analytics',
     items: [
       { 
         name: 'AI Chatbot', 
@@ -126,43 +155,46 @@ const navigationGroups: NavigationGroup[] = [
         action: 'openAIChatbot'
       },
       { name: 'Intelligence Hub', href: '/intelligence', icon: Lightbulb, description: 'Knowledge graph & negotiation' },
-      { name: 'Smart Search', href: '/search', icon: Search, description: 'Semantic & advanced search' },
+      {
+        name: 'Reports & Analytics',
+        href: '/analytics',
+        icon: BarChart3,
+        description: 'Dashboards & AI reports',
+        children: [
+          { name: 'Analytics', href: '/analytics', icon: BarChart3, description: 'Analytics dashboards' },
+          { name: 'AI Report Builder', href: '/reports/ai-builder', icon: FileBarChart, description: 'Generate AI-powered reports' },
+          { name: 'Ecosystem', href: '/ecosystem', icon: Network, description: 'ERP, Spend & Contract synergy' },
+        ]
+      },
     ]
   },
   {
     id: 'procurement',
-    label: 'Procurement',
+    label: 'Procurement & Risk',
     items: [
-      { name: 'Suppliers', href: '/suppliers', icon: Truck, description: 'Supplier management & performance' },
-      { name: 'Rate Cards', href: '/rate-cards/dashboard', icon: Receipt, description: 'Rate monitoring & benchmarking' },
-      { name: 'Spend', href: '/spend', icon: Wallet, description: 'PO, Invoice & 3-way matching' },
-      { name: 'Forecast', href: '/forecast', icon: TrendingUp, description: 'Spend & contract forecasting' },
-    ]
-  },
-  {
-    id: 'governance',
-    label: 'Governance & Risk',
-    items: [
-      { name: 'Governance', href: '/governance', icon: ShieldCheck, description: 'Policies, gates & routing rules' },
-      { name: 'Compliance', href: '/compliance', icon: ClipboardCheck, description: 'Compliance tracking' },
-      { name: 'Risk', href: '/risk', icon: AlertTriangle, description: 'Risk assessment & vendor risk' },
-    ]
-  },
-  {
-    id: 'self-service',
-    label: 'Self-Service',
-    items: [
-      { name: 'Self-Service Hub', href: '/self-service', icon: Zap, description: 'Quick actions & overview', isNew: true },
-      { name: 'My Requests', href: '/self-service/my-requests', icon: Clock, description: 'Track your contract requests' },
-    ]
-  },
-  {
-    id: 'analytics',
-    label: 'Analytics',
-    items: [
-      { name: 'Reports', href: '/analytics', icon: BarChart3, description: 'Analytics & reports' },
-      { name: 'AI Report Builder', href: '/reports/ai-builder', icon: FileBarChart, description: 'Generate AI-powered reports' },
-      { name: 'Ecosystem', href: '/ecosystem', icon: Network, description: 'ERP, Spend & Contract synergy' },
+      {
+        name: 'Procurement',
+        href: '/suppliers',
+        icon: Truck,
+        description: 'Suppliers, rates & spend',
+        children: [
+          { name: 'Suppliers', href: '/suppliers', icon: Truck, description: 'Supplier management & performance' },
+          { name: 'Rate Cards', href: '/rate-cards/dashboard', icon: Receipt, description: 'Rate monitoring & benchmarking' },
+          { name: 'Spend', href: '/spend', icon: Wallet, description: 'PO, Invoice & 3-way matching' },
+          { name: 'Forecast', href: '/forecast', icon: TrendingUp, description: 'Spend & contract forecasting' },
+        ]
+      },
+      {
+        name: 'Governance & Risk',
+        href: '/governance',
+        icon: ShieldCheck,
+        description: 'Policies, compliance & risk',
+        children: [
+          { name: 'Governance', href: '/governance', icon: ShieldCheck, description: 'Policies, gates & routing rules' },
+          { name: 'Compliance', href: '/compliance', icon: ClipboardCheck, description: 'Compliance tracking' },
+          { name: 'Risk', href: '/risk', icon: AlertTriangle, description: 'Risk assessment & vendor risk' },
+        ]
+      },
     ]
   },
   {
@@ -170,12 +202,21 @@ const navigationGroups: NavigationGroup[] = [
     label: 'Administration',
     requiresAdmin: true,
     items: [
-      { name: 'Clients', href: '/platform', icon: Users, description: 'Manage all client organizations', requiresAdmin: true },
-      { name: 'My Organization', href: '/admin', icon: Building2, description: 'Manage team & settings', requiresAdmin: true },
-      { name: 'Data Connections', href: '/admin/integrations', icon: Database, description: 'Connect external databases', requiresAdmin: true },
-      { name: 'Queue Dashboard', href: '/admin/queue', icon: Activity, description: 'Monitor processing queues', requiresAdmin: true },
-      { name: 'Audit Logs', href: '/audit-logs', icon: ScrollText, description: 'System-wide audit trail', requiresAdmin: true },
-      { name: 'Settings', href: '/settings', icon: Settings, description: 'System settings', requiresAdmin: true },
+      { name: 'Organization', href: '/admin', icon: Building2, description: 'Team & organization settings', requiresAdmin: true },
+      { name: 'Settings', href: '/settings', icon: Settings, description: 'Platform settings', requiresAdmin: true },
+      {
+        name: 'System',
+        href: '/audit-logs',
+        icon: ScrollText,
+        description: 'Logs, queues & connections',
+        requiresAdmin: true,
+        children: [
+          { name: 'Clients', href: '/platform', icon: Users, description: 'Manage all client organizations' },
+          { name: 'Queue Dashboard', href: '/admin/queue', icon: Activity, description: 'Monitor processing queues' },
+          { name: 'Audit Logs', href: '/audit-logs', icon: ScrollText, description: 'System-wide audit trail' },
+          { name: 'Data Connections', href: '/admin/integrations', icon: Database, description: 'Connect external databases' },
+        ]
+      },
     ]
   },
 ];
