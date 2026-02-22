@@ -3,9 +3,26 @@ import { createLogger } from "../utils/logger";
 
 const logger = createLogger("cache-adaptor");
 
+// Check if we're in build mode (no actual Redis connection needed)
+const IS_BUILD_MODE = process.env.NODE_ENV === 'production' && !process.env.REDIS_URL;
+
+// Null cache adaptor for build time - all operations are no-ops
+class NullCacheAdaptor {
+  async get<T>(): Promise<T | null> { return null; }
+  async set(): Promise<void> {}
+  async del(): Promise<void> {}
+  async exists(): Promise<boolean> { return false; }
+  async ttl(): Promise<number> { return -1; }
+  async keys(): Promise<string[]> { return []; }
+  async scan(): Promise<{ cursor: string; keys: string[] }> { return { cursor: '0', keys: [] }; }
+  async healthCheck(): Promise<boolean> { return false; }
+  async disconnect(): Promise<void> {}
+  getClient(): unknown { return null; }
+}
+
 export class CacheAdaptor {
   private client: InstanceType<typeof Redis>;
-  private static instance: CacheAdaptor;
+  private static instance: CacheAdaptor | NullCacheAdaptor;
 
   private constructor(redisUrl: string) {
     this.client = new Redis(redisUrl, {
@@ -20,15 +37,23 @@ export class CacheAdaptor {
     this.client.on("close", () => logger.info("Redis disconnected"));
   }
 
-  static getInstance(redisUrl?: string): CacheAdaptor {
+  static getInstance(redisUrl?: string): CacheAdaptor | NullCacheAdaptor {
     if (!CacheAdaptor.instance) {
       const url = redisUrl || process.env.REDIS_URL;
       if (!url) {
-        throw new Error('REDIS_URL environment variable must be configured');
+        // During build time, return a null cache adaptor
+        logger.warn('REDIS_URL not configured, using null cache adaptor');
+        CacheAdaptor.instance = new NullCacheAdaptor();
+        return CacheAdaptor.instance;
       }
       CacheAdaptor.instance = new CacheAdaptor(url);
     }
     return CacheAdaptor.instance;
+  }
+
+  // Check if Redis is available (for build-time checks)
+  static isConfigured(): boolean {
+    return Boolean(process.env.REDIS_URL);
   }
 
   async get<T>(key: string): Promise<T | null> {
@@ -101,4 +126,18 @@ export class CacheAdaptor {
   }
 }
 
-export const cacheAdaptor = CacheAdaptor.getInstance();
+// Lazy getter for cache adaptor - only instantiate when actually used
+export function getCacheAdaptor(): CacheAdaptor | NullCacheAdaptor {
+  return CacheAdaptor.getInstance();
+}
+
+// For backward compatibility - uses lazy initialization via proxy
+let _lazyInstance: CacheAdaptor | NullCacheAdaptor | null = null;
+export const cacheAdaptor = new Proxy({} as CacheAdaptor, {
+  get(_, prop) {
+    if (!_lazyInstance) {
+      _lazyInstance = CacheAdaptor.getInstance();
+    }
+    return (_lazyInstance as Record<string, unknown>)[prop as string];
+  }
+});
