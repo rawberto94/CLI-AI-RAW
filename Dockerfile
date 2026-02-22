@@ -52,6 +52,8 @@ ENV NODE_OPTIONS="--max-old-space-size=8192"
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy?schema=public"
 ENV OPENAI_API_KEY="sk-dummy-key-for-build"
 ENV INTERNAL_API_SECRET="dummy-secret-for-build"
+ENV NEXTAUTH_SECRET="dummy-nextauth-secret-for-build"
+ENV JWT_SECRET="dummy-jwt-secret-for-build"
 RUN pnpm build
 
 # Stage 3: Runner
