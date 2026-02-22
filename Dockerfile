@@ -54,6 +54,7 @@ ENV OPENAI_API_KEY="sk-dummy-key-for-build"
 ENV INTERNAL_API_SECRET="dummy-secret-for-build"
 ENV NEXTAUTH_SECRET="dummy-nextauth-secret-for-build"
 ENV JWT_SECRET="dummy-jwt-secret-for-build"
+ENV REDIS_URL="redis://localhost:6379"
 RUN pnpm build
 
 # Stage 3: Runner
