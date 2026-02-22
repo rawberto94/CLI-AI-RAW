@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
-import { monitoringService } from 'data-orchestration/services';
 import { randomUUID } from 'crypto';
 
 /** Data connection configuration stored in tenant settings */
@@ -73,12 +72,9 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     syncFrequency: syncFrequency || 'daily',
     contractTableName: config.contractTableName,
     createdAt: new Date().toISOString(),
-    encryptedConfig: Buffer.from(JSON.stringify({
-      ...config,
-      password: '***ENCRYPTED***',
-      secretAccessKey: '***ENCRYPTED***',
-      clientSecret: '***ENCRYPTED***',
-    })).toString('base64'),
+    // Store the full config (base64 encoded) — credentials are preserved for sync
+    // In production, use AES-256 encryption with a KMS-managed key
+    encryptedConfig: Buffer.from(JSON.stringify(config)).toString('base64'),
   };
 
   const settings = await prisma.tenantSettings.findFirst({

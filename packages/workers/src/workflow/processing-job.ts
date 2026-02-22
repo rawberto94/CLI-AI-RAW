@@ -108,7 +108,7 @@ export async function updateStep(args: {
   const existing = await prisma.processingJob.findFirst({
     where: { tenantId, contractId },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, checkpointData: true },
+    select: { id: true, checkpointData: true, status: true },
   });
 
   if (!existing) {
@@ -137,6 +137,10 @@ export async function updateStep(args: {
     steps,
   };
 
+  // Don't downgrade ProcessingJob status from COMPLETED to FAILED
+  // (e.g. categorization failure after OCR already completed successfully)
+  const shouldSetFailed = status === 'failed' && existing.status !== 'COMPLETED';
+
   await prisma.processingJob.update({
     where: { id: existing.id },
     data: {
@@ -144,7 +148,7 @@ export async function updateStep(args: {
       lastCheckpoint: step,
       currentStep: currentStep ?? step,
       progress: progress ?? undefined,
-      status: status === 'failed' ? 'FAILED' : undefined,
+      status: shouldSetFailed ? 'FAILED' : undefined,
       updatedAt: new Date(),
     },
   });

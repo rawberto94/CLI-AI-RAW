@@ -306,7 +306,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         });
         return successResp;
       }
-    } catch {
+    } catch (dupErr) {
+      console.error('[ContractUpload] Duplicate check failed:', dupErr);
       // Continue with upload if duplicate check fails
     }
   }
@@ -341,7 +342,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     } else {
       throw new Error("Storage service not available");
     }
-  } catch {
+  } catch (storageErr) {
+    console.error('[ContractUpload] S3/MinIO upload failed, falling back to local:', storageErr);
     // Fallback to local filesystem
     const uploadDir = join(process.cwd(), "uploads", "contracts", tenantId);
     await mkdir(uploadDir, { recursive: true });
@@ -479,8 +481,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     }).catch((err) => {
       console.error('[ContractUpload] Metadata initialization error:', err);
     });
-  } catch {
-    // Silently handle import errors
+  } catch (metaErr) {
+    console.error('[ContractUpload] Metadata init import error:', metaErr);
   }
 
   // Classify contract using taxonomy (non-blocking, async)
@@ -519,8 +521,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       .catch((err) => {
         console.error('[ContractUpload] Classification error:', err);
       });
-  } catch {
-    // Silently handle taxonomy classifier import errors
+  } catch (classErr) {
+    console.error('[ContractUpload] Taxonomy classification error:', classErr);
   }
 
   // Fast text-based party extraction at upload time
@@ -550,7 +552,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         });
       }
     }
-  } catch {
+  } catch (partyErr) {
+    console.error('[ContractUpload] Party extraction error:', partyErr);
     // Non-critical — AI worker will extract parties later
   }
 
@@ -575,8 +578,9 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         },
       });
     }
-  } catch {
-    // Silently handle - OCR worker will detect type later
+  } catch (typeErr) {
+    console.error('[ContractUpload] Contract type detection error:', typeErr);
+    // OCR worker will detect type later
   }
 
   // Trigger artifact generation via queue (non-blocking)
@@ -620,7 +624,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         },
       }).catch((err) => console.error('[ContractUpload] Processing job update error:', err));
     }
-  } catch {
+  } catch (queueErr) {
+    console.error('[ContractUpload] Artifact queue trigger error:', queueErr);
     // Continue anyway - job will still process via fallback
   }
 

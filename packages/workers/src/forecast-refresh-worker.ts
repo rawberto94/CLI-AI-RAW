@@ -45,7 +45,7 @@ async function refreshForecasts(data: ForecastRefreshJob): Promise<{ processed: 
     const staleThreshold = new Date(now.getTime() - REFRESH_INTERVAL_MS);
 
     const whereClause: Record<string, unknown> = {
-      status: { in: ['ACTIVE', 'NEGOTIATING', 'REVIEW', 'PENDING', 'IN_REVIEW'] },
+      status: { in: ['ACTIVE', 'PENDING', 'PROCESSING', 'COMPLETED'] },
     };
     if (data.tenantId) {
       whereClause.tenantId = data.tenantId;
@@ -78,36 +78,10 @@ async function refreshForecasts(data: ForecastRefreshJob): Promise<{ processed: 
         const renewalProbability = daysToExpiry > 90 ? 0.8 : daysToExpiry > 30 ? 0.5 : 0.2;
         const riskScore = daysToExpiry < 30 ? 80 : daysToExpiry < 90 ? 50 : 20;
 
-        // Persist forecast to RateForecast table
-        await prisma.rateForecast.upsert({
-          where: {
-            // Use a composite key of contractId + forecastType if unique constraint exists,
-            // otherwise create by ID
-            id: `forecast-${contract.id}-renewal`,
-          },
-          update: {
-            predictedValue: renewalProbability,
-            confidence: 0.7,
-            validUntil: new Date(now.getTime() + REFRESH_INTERVAL_MS),
-          },
-          create: {
-            id: `forecast-${contract.id}-renewal`,
-            tenantId: contract.tenantId,
-            contractId: contract.id,
-            forecastType: 'renewal',
-            predictedValue: renewalProbability,
-            confidence: 0.7,
-            horizon: '90d',
-            factors: [
-              { name: 'Days to Expiry', impact: daysToExpiry < 90 ? 'negative' : 'positive', weight: 0.4, value: daysToExpiry },
-            ],
-            recommendations: [],
-            modelVersion: '1.0.0',
-            validUntil: new Date(now.getTime() + REFRESH_INTERVAL_MS),
-          },
-        });
+        // Note: RateForecast table is for rate-card financial forecasting, not contract renewal forecasting.
+        // Contract renewal forecasts are stored directly in contract.metadata for now.
 
-        // Also update contract metadata with latest forecast
+        // Update contract metadata with latest forecast
         await prisma.contract.update({
           where: { id: contract.id },
           data: {
@@ -196,8 +170,9 @@ function startInterval(): void {
   setInterval(() => refreshForecasts({ batchSize: 50 }), REFRESH_INTERVAL_MS);
 }
 
-// Auto-start when loaded as a standalone worker
-if (require.main === module) {
+// Auto-start when loaded as a standalone worker (ESM compatible)
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+if (isMainModule) {
   start().catch(err => {
     logger.error({ error: err }, 'Failed to start forecast refresh worker');
     process.exit(1);
