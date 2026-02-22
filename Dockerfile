@@ -55,6 +55,10 @@ ENV INTERNAL_API_SECRET="dummy-secret-for-build"
 ENV NEXTAUTH_SECRET="dummy-nextauth-secret-for-build"
 ENV JWT_SECRET="dummy-jwt-secret-for-build"
 ENV REDIS_URL="redis://localhost:6379"
+ENV NEXT_PUBLIC_APP_URL="https://localhost:3000"
+ENV NEXTAUTH_URL="https://localhost:3000"
+ENV APP_URL="https://localhost:3000"
+ENV NEXT_PUBLIC_URL="https://localhost:3000"
 RUN pnpm build
 
 # Stage 3: Runner

@@ -8,13 +8,17 @@ import { prisma } from '@/lib/prisma';
 import { compare } from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET;
-if (!JWT_SECRET) {
-  throw new Error('CRITICAL: JWT_SECRET or NEXTAUTH_SECRET must be configured for Word Add-in authentication');
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    throw new Error('CRITICAL: JWT_SECRET or NEXTAUTH_SECRET must be configured for Word Add-in authentication');
+  }
+  return secret;
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const jwtSecret = getJwtSecret();
     const body = await req.json();
     const { email, password, source } = body;
 
@@ -66,7 +70,7 @@ export async function POST(req: NextRequest) {
         tenantId: primaryTenant.id,
         source: source || 'word-addin',
       },
-      JWT_SECRET as string,
+      jwtSecret,
       { expiresIn: '7d' }
     );
 
