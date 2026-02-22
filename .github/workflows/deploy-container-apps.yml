@@ -1,0 +1,81 @@
+name: Deploy to Azure Container Apps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Image version tag (e.g., v1.0.5)"
+        required: false
+        default: ""
+
+env:
+  AZURE_RESOURCE_GROUP: contigoContainerApps
+  ACR_NAME: contigoacr2026
+  CONTAINER_APP_NAME: contigo
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set version tag
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=sha-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        run: |
+          az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Build and push image
+        run: |
+          az acr build \
+            --registry ${{ env.ACR_NAME }} \
+            --image contigo-web:${{ steps.version.outputs.tag }} \
+            --image contigo-web:latest \
+            --file Dockerfile \
+            .
+
+      - name: Deploy to Container Apps
+        run: |
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/contigo-web:${{ steps.version.outputs.tag }}
+
+      - name: Verify deployment
+        run: |
+          # Wait for deployment to stabilize
+          sleep 30
+          
+          # Check provisioning state
+          STATE=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.provisioningState" -o tsv)
+          
+          if [ "$STATE" != "Succeeded" ]; then
+            echo "Deployment failed with state: $STATE"
+            exit 1
+          fi
+          
+          echo "Deployment successful!"
+          
+          # Get app URL
+          az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.configuration.ingress.fqdn" -o tsv
