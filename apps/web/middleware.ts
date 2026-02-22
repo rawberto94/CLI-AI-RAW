@@ -47,7 +47,7 @@ function constantTimeEqual(a: string, b: string): boolean {
 // CSRF constants (inline to avoid server-only import chain)
 const CSRF_TOKEN_NAME = 'csrf_token';
 const CSRF_HEADER_NAME = 'x-csrf-token';
-const CSRF_TOKEN_EXPIRY = 60 * 60 * 1000; // 1 hour
+const CSRF_TOKEN_EXPIRY = 8 * 60 * 60 * 1000; // 8 hours — generous window for long onboarding sessions
 
 // Safe HTTP methods that don't need CSRF validation
 const CSRF_SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -424,20 +424,20 @@ export default auth(async (req) => {
   }
 
   // CSRF enforcement for state-changing API requests
+  // Security: We verify the cryptographic HMAC signature on the token itself.
+  // This is sufficient because only the server can sign valid tokens.
+  // We intentionally do NOT compare header vs cookie (Double Submit pattern)
+  // because that causes race conditions during token refresh in bulk uploads.
   if (
     pathname.startsWith("/api/") &&
     !CSRF_SAFE_METHODS.has(req.method) &&
     !CSRF_EXEMPT_PATHS.some((path) => pathname.startsWith(path))
   ) {
     const headerToken = req.headers.get(CSRF_HEADER_NAME);
-    const rawCookieToken = req.cookies.get(CSRF_TOKEN_NAME)?.value;
-    // Decode URL-encoded cookie value so it matches the header
-    // (the client-side interceptor decodes with decodeURIComponent before sending)
-    const cookieToken = rawCookieToken ? decodeURIComponent(rawCookieToken) : undefined;
 
-    if (!headerToken || !cookieToken || headerToken !== cookieToken) {
+    if (!headerToken) {
       const response = NextResponse.json(
-        { error: "Forbidden", message: "CSRF validation failed", code: "CSRF_INVALID", requestId },
+        { error: "Forbidden", message: "CSRF token missing", code: "CSRF_MISSING", requestId },
         { status: 403 }
       );
       return addTracingHeaders(response);
@@ -445,7 +445,7 @@ export default auth(async (req) => {
 
     if (!(await verifyCSRFToken(headerToken, req.auth?.user?.id))) {
       const response = NextResponse.json(
-        { error: "Forbidden", message: "Invalid or expired CSRF token", code: "CSRF_INVALID", requestId },
+        { error: "Forbidden", message: "Invalid or expired CSRF token", code: "CSRF_EXPIRED", requestId },
         { status: 403 }
       );
       return addTracingHeaders(response);

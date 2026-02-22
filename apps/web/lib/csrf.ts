@@ -14,7 +14,7 @@ import { CSRF_CONSTANTS } from './csrf-constants';
 const CSRF_TOKEN_NAME = CSRF_CONSTANTS.TOKEN_NAME;
 const CSRF_HEADER_NAME = CSRF_CONSTANTS.HEADER_NAME;
 const CSRF_TOKEN_LENGTH = 32;
-const CSRF_TOKEN_EXPIRY = 60 * 60 * 1000; // 1 hour
+const CSRF_TOKEN_EXPIRY = 8 * 60 * 60 * 1000; // 8 hours — matches middleware expiry
 
 interface CSRFTokenPayload {
   token: string;
@@ -107,7 +107,7 @@ export async function setCSRFCookie(userId?: string): Promise<string> {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     path: '/',
-    maxAge: CSRF_TOKEN_EXPIRY / 1000,
+    maxAge: CSRF_TOKEN_EXPIRY / 1000, // 8 hours
   });
   
   return token;

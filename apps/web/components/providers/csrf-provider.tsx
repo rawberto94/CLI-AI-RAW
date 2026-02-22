@@ -80,6 +80,30 @@ function installFetchInterceptor(): () => void {
           }
           init = { ...init, headers: existingHeaders, credentials: init?.credentials ?? 'include' };
         }
+
+        // Execute the request
+        const response = await originalFetch.call(window, input, init!);
+
+        // Auto-retry ONCE on CSRF failure: refresh token and replay
+        if (response.status === 403) {
+          try {
+            const body = await response.clone().json();
+            if (body?.code === 'CSRF_MISSING' || body?.code === 'CSRF_EXPIRED' || body?.code === 'CSRF_INVALID') {
+              // Refresh token from server
+              await originalFetch.call(window, '/api/csrf', { method: 'GET', credentials: 'include' });
+              const freshToken = getTokenFromCookie();
+              if (freshToken) {
+                const retryHeaders = new Headers(init?.headers);
+                retryHeaders.set(CSRF_CONSTANTS.HEADER_NAME, freshToken);
+                return originalFetch.call(window, input, { ...init, headers: retryHeaders });
+              }
+            }
+          } catch {
+            // If retry parsing fails, return original response
+          }
+        }
+
+        return response;
       }
     }
 
@@ -140,8 +164,8 @@ export function CSRFProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetchToken();
     
-    // Refresh token periodically (every 50 minutes for 1 hour expiry)
-    const interval = setInterval(fetchToken, 50 * 60 * 1000);
+    // Refresh token periodically (every 4 hours for 8 hour expiry)
+    const interval = setInterval(fetchToken, 4 * 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchToken]);
 

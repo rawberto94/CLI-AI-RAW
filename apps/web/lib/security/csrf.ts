@@ -23,7 +23,7 @@ const CSRF_COOKIE_NAME = 'csrf_token'; // L20 FIX: Aligned with middleware and c
 const CSRF_HEADER_NAME = 'x-csrf-token';
 const CSRF_FORM_FIELD = 'csrf_token';
 const TOKEN_LENGTH = 32;
-const TOKEN_MAX_AGE = 3600; // 1 hour
+const TOKEN_MAX_AGE = 8 * 3600; // 8 hours — aligned with middleware expiry
 
 // ============================================================================
 // Token Generation
