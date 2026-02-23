@@ -795,19 +795,39 @@ let mistralModule: any = null;
   }
 })();
 
-// Initialize S3 client for MinIO — fail fast if credentials are missing in production
-if (process.env.NODE_ENV === 'production' && (!process.env.MINIO_ACCESS_KEY || !process.env.MINIO_SECRET_KEY)) {
-  throw new Error('CRITICAL: MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be configured in production');
+// Initialize S3 client for MinIO — lazy initialization to avoid build-time errors
+function getS3Client(): S3Client {
+  if (process.env.NODE_ENV === 'production' && (!process.env.MINIO_ACCESS_KEY || !process.env.MINIO_SECRET_KEY)) {
+    throw new Error('CRITICAL: MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be configured in production');
+  }
+  return new S3Client({
+    endpoint: `http://${process.env.MINIO_ENDPOINT || 'localhost'}:${process.env.MINIO_PORT || '9000'}`,
+    region: 'us-east-1',
+    credentials: {
+      accessKeyId: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+      secretAccessKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
+    },
+    forcePathStyle: true,
+  });
 }
-const s3Client = new S3Client({
-  endpoint: `http://${process.env.MINIO_ENDPOINT || 'localhost'}:${process.env.MINIO_PORT || '9000'}`,
-  region: 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-    secretAccessKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
-  },
-  forcePathStyle: true,
+
+let _s3Client: S3Client | null = null;
+function s3Client(): S3Client {
+  if (!_s3Client) {
+    _s3Client = getS3Client();
+  }
+  return _s3Client;
+}
+
+// Keep old const for backward compatibility - will be initialized lazily
+const s3ClientLegacy = new Proxy({} as S3Client, {
+  get(_, prop) {
+    return (s3Client() as Record<string, unknown>)[prop as string];
+  }
 });
+
+// For references that need a client object
+const getS3ClientInstance = () => s3Client();
 
 interface OCRArtifactResult {
   success: boolean;
@@ -1553,7 +1573,7 @@ export async function processOCRArtifactJob(
             Key: storagePath,
           });
 
-          const response = await s3Client.send(getObjectCommand);
+          const response = await s3Client().send(getObjectCommand);
           
           // Read stream to buffer
           const stream = response.Body as Readable;

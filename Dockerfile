@@ -59,6 +59,10 @@ ENV NEXT_PUBLIC_APP_URL="https://localhost:3000"
 ENV NEXTAUTH_URL="https://localhost:3000"
 ENV APP_URL="https://localhost:3000"
 ENV NEXT_PUBLIC_URL="https://localhost:3000"
+ENV MINIO_ACCESS_KEY="dummy-minio-key"
+ENV MINIO_SECRET_KEY="dummy-minio-secret"
+ENV MINIO_ENDPOINT="localhost"
+ENV MINIO_PORT="9000"
 RUN pnpm build
 
 # Stage 3: Runner
