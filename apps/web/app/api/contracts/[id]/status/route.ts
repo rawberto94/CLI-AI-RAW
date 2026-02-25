@@ -131,12 +131,17 @@ export async function GET(
     // Stale criteria:
     //  1. No artifacts generated AND idle for >90 seconds (worker never started), OR
     //  2. Processing for >10 minutes regardless (hard ceiling — worker crashed or stuck)
+    // BUT: never auto-resolve if the processingJob is actively RUNNING (heartbeat within 3 min)
     if (contract.status === 'PROCESSING') {
+      const processingJob = contract.processingJobs[0] || null;
+      const isJobActivelyRunning = processingJob?.status === 'RUNNING' && processingJob.startedAt &&
+        (Date.now() - new Date(processingJob.startedAt).getTime()) < 3 * 60 * 1000;
+
       const lastTouch = contract.updatedAt || contract.createdAt;
       const staleSinceMs = Date.now() - new Date(lastTouch).getTime();
       const hasNoArtifacts = contract.artifacts.length === 0;
       const isStale = (hasNoArtifacts && staleSinceMs > 90_000) || staleSinceMs > 10 * 60 * 1000;
-      if (isStale) {
+      if (isStale && !isJobActivelyRunning) {
         // Only mark COMPLETED if artifacts were generated; otherwise mark FAILED
         const newStatus = hasNoArtifacts ? 'FAILED' : 'COMPLETED';
         try {

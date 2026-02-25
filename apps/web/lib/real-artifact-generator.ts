@@ -1088,6 +1088,12 @@ export async function generateRealArtifacts(
         completed++;
         const progress = 30 + Math.floor((completed / totalTypes) * 60);
         
+        // Heartbeat: touch contract.updatedAt so auto-resolve doesn't fire mid-processing
+        await prisma.contract.update({
+          where: { id: contractId },
+          data: { updatedAt: new Date() },
+        });
+        
         await prisma.processingJob.updateMany({
           where: { contractId, tenantId },
           data: { 

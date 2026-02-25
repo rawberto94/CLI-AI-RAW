@@ -267,12 +267,29 @@ async function handler(request: NextRequest) {
       // A contract is stale if:
       //  1. No artifacts generated AND idle for >90 seconds (worker never started), OR
       //  2. Processing for >10 minutes regardless (hard ceiling — worker crashed or stuck)
+      // BUT: never auto-resolve if the processingJob is actively RUNNING.
       const STALE_NO_ARTIFACTS_MS = 90 * 1000;      // 90 seconds with 0 artifacts
       const STALE_HARD_CEILING_MS = 10 * 60 * 1000; // 10 minutes absolute max
+
+      // Fetch running processing jobs to guard against resolving active work
+      const runningJobContractIds = new Set<string>();
+      try {
+        const runningJobs = await prisma.processingJob.findMany({
+          where: {
+            tenantId,
+            status: 'RUNNING',
+            startedAt: { gte: new Date(Date.now() - 3 * 60 * 1000) }, // started within 3 min
+          },
+          select: { contractId: true },
+        });
+        for (const j of runningJobs) runningJobContractIds.add(j.contractId);
+      } catch { /* non-fatal */ }
 
       const staleContractIds: string[] = [];
       for (const contract of contracts) {
         if (contract.status !== 'PROCESSING') continue;
+        // Skip contracts whose processing job is actively running
+        if (runningJobContractIds.has(contract.id)) continue;
         const meta = contract.aiMetadata as any;
         const expected = meta?.expectedArtifactCount || 15;
         const actual = (contract as any)._count?.artifacts || 0;

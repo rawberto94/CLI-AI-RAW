@@ -459,6 +459,10 @@ export default function ContractDetailPage() {
   useEffect(() => {
     if (!isProcessing || !contract) return
     
+    // Track how many polls returned completed-but-empty so we can extend polling
+    let emptyCompletedPolls = 0
+    const MAX_EMPTY_COMPLETED_POLLS = 12 // Keep polling up to 60s after "completed" if data is empty
+    
     const pollInterval = setInterval(async () => {
       try {
         const response = await fetch(`/api/contracts/${params.id}`, {
@@ -472,6 +476,17 @@ export default function ContractDetailPage() {
         // If status changed from processing, do a full reload
         const newStatus = data.status?.toLowerCase()
         if (newStatus && newStatus !== 'processing' && newStatus !== 'uploaded') {
+          // Check if data is actually populated before stopping the poll.
+          // If the contract was auto-resolved but artifacts haven't finished loading,
+          // keep polling briefly so the user sees real data.
+          const hasData = data.extractedData && typeof data.extractedData === 'object' &&
+            Object.keys(data.extractedData).length > 0
+          
+          if (!hasData && emptyCompletedPolls < MAX_EMPTY_COMPLETED_POLLS) {
+            emptyCompletedPolls++
+            return // Keep polling — data not ready yet
+          }
+          
           clearInterval(pollInterval)
           loadContract()
         }
@@ -1008,7 +1023,19 @@ export default function ContractDetailPage() {
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-violet-900 text-sm sm:text-base">Processing Contract</p>
                           <p className="text-xs sm:text-sm text-violet-700 truncate">
-                            {contract?.processing?.currentStage || 'Generating artifacts...'} ({contract?.processing?.progress || 0}%)
+                            {(() => {
+                              const stage = contract?.processing?.currentStage || 'processing'
+                              const progress = contract?.processing?.progress || 0
+                              // Make stage names human-readable
+                              const stageLabel = stage === 'extracting_text' ? 'Extracting text from document'
+                                : stage === 'generating_artifacts' ? 'Generating contract analysis'
+                                : stage === 'extracting_metadata' ? 'Extracting contract metadata'
+                                : stage === 'complete' || stage === 'completed' ? 'Completing'
+                                : stage.startsWith('artifact_') ? `Analyzing ${stage.replace('artifact_', '').replace(/_/g, ' ')}`
+                                : stage === 'processing' ? 'Generating artifacts'
+                                : stage
+                              return `${stageLabel}... (${progress}%)`
+                            })()}
                           </p>
                         </div>
                         <Button variant="ghost" size="sm" onClick={loadContract} className="shrink-0">

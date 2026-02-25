@@ -301,11 +301,43 @@ export async function GET(
       },
     });
 
+    // Fetch latest processing job for real progress data
+    const processingJob = await prisma.processingJob.findFirst({
+      where: { contractId, tenantId },
+      orderBy: { createdAt: 'desc' },
+      select: { progress: true, currentStep: true, status: true },
+    });
+
     // Transform artifacts into expected format
     const artifactsByType = artifacts.reduce((acc, artifact) => {
       acc[artifact.type.toLowerCase()] = artifact.data;
       return acc;
     }, {} as Record<string, any>);
+
+    // Derive real progress: prefer processingJob, fallback to artifact count,
+    // and always return 100 for COMPLETED status.
+    const deriveProgress = (): number => {
+      if (contract.status === 'COMPLETED') return 100;
+      if (contract.status === 'FAILED') return 100;
+      // Use processingJob progress if it's actively tracking
+      if (processingJob?.progress && processingJob.progress > 0) {
+        return processingJob.progress;
+      }
+      // Fallback: derive from artifact count (14 types expected)
+      if (artifacts.length > 0) {
+        return Math.min(30 + Math.round((artifacts.length / 14) * 60), 99);
+      }
+      // Default: just started
+      return 10;
+    };
+
+    const deriveStage = (): string => {
+      if (contract.status === 'COMPLETED') return 'completed';
+      if (contract.status === 'FAILED') return 'failed';
+      if (processingJob?.currentStep) return processingJob.currentStep;
+      if (artifacts.length > 0) return 'generating_artifacts';
+      return 'processing';
+    };
 
     // Combine contract metadata with artifacts
     const contractData = {
@@ -321,9 +353,8 @@ export async function GET(
       processing: {
         jobId: contract.id,
         status: contract.status || "PROCESSING",
-        currentStage:
-          contract.status === "COMPLETED" ? "completed" : "processing",
-        progress: contract.status === "COMPLETED" ? 100 : 50,
+        currentStage: deriveStage(),
+        progress: deriveProgress(),
         startTime:
           contract.uploadedAt?.toISOString() || new Date().toISOString(),
         completedAt:
