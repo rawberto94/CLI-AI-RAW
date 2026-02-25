@@ -137,12 +137,14 @@ export async function GET(
       const hasNoArtifacts = contract.artifacts.length === 0;
       const isStale = (hasNoArtifacts && staleSinceMs > 90_000) || staleSinceMs > 10 * 60 * 1000;
       if (isStale) {
+        // Only mark COMPLETED if artifacts were generated; otherwise mark FAILED
+        const newStatus = hasNoArtifacts ? 'FAILED' : 'COMPLETED';
         try {
           await prisma.contract.update({
             where: { id: contract.id },
-            data: { status: 'COMPLETED', updatedAt: new Date() },
+            data: { status: newStatus, updatedAt: new Date() },
           });
-          (contract as any).status = 'COMPLETED';
+          (contract as any).status = newStatus;
         } catch {
           // Non-fatal — will retry on next poll
         }

@@ -101,6 +101,10 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
       
       const estimatedWaitMs = estimateWaitTime(priority);
       
+      // Safety net: if no worker picks up the job within 30 seconds, process inline.
+      // This handles the common dev scenario where Redis is running but no BullMQ workers are active.
+      scheduleInlineFallback(options, 30_000);
+      
       return {
         success: true,
         contractId,
@@ -157,6 +161,49 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
   })();
   
   return { success: true, contractId, status: 'processing' };
+}
+
+/**
+ * Schedule a delayed inline fallback: if the contract still has 0 artifacts
+ * after `delayMs`, run inline processing. This prevents contracts from being
+ * stuck when BullMQ workers are not running (common in dev).
+ */
+function scheduleInlineFallback(options: TriggerOptions, delayMs: number) {
+  setTimeout(async () => {
+    try {
+      const { PrismaClient } = await import('@prisma/client');
+      const checkPrisma = new PrismaClient();
+      try {
+        const contract = await checkPrisma.contract.findUnique({
+          where: { id: options.contractId },
+          select: {
+            status: true,
+            _count: { select: { artifacts: true } },
+          },
+        });
+        // Only process if contract exists, has 0 artifacts,
+        // and is still in a non-terminal state
+        if (
+          contract &&
+          contract._count.artifacts === 0 &&
+          ['PROCESSING', 'QUEUED', 'PENDING'].includes(contract.status)
+        ) {
+          logger.warn(
+            { contractId: options.contractId },
+            'No artifacts after queue delay — triggering inline fallback processing'
+          );
+          await triggerLegacyProcessing(options);
+        }
+      } finally {
+        await checkPrisma.$disconnect();
+      }
+    } catch (err) {
+      logger.error(
+        { contractId: options.contractId, error: (err as Error).message },
+        'Inline fallback check failed'
+      );
+    }
+  }, delayMs);
 }
 
 export async function triggerProcessing(_contractId: string, _options?: Record<string, unknown>) {

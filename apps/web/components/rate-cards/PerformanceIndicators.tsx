@@ -40,11 +40,11 @@ export function PerformanceIndicators() {
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(value);
+    }).format(value ?? 0);
   };
 
   const formatPercentage = (value: number) => {
-    return `${value.toFixed(1)}%`;
+    return `${(value ?? 0).toFixed(1)}%`;
   };
 
   if (loading) {
@@ -74,14 +74,14 @@ export function PerformanceIndicators() {
       value: formatPercentage(metrics.percentAboveMarket),
       icon: AlertCircle,
       description: 'Rates above market',
-      color: metrics.percentAboveMarket > 50 ? 'text-red-600' : 'text-yellow-600',
+      color: (metrics.percentAboveMarket ?? 0) > 50 ? 'text-red-600' : 'text-yellow-600',
     },
     {
       title: 'In Top Quartile',
       value: formatPercentage(metrics.percentTopQuartile),
       icon: Award,
       description: '75th percentile or higher',
-      color: metrics.percentTopQuartile > 25 ? 'text-red-600' : 'text-green-600',
+      color: (metrics.percentTopQuartile ?? 0) > 25 ? 'text-red-600' : 'text-green-600',
     },
     {
       title: 'Negotiated Rates',

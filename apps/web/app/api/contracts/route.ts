@@ -286,28 +286,55 @@ async function handler(request: NextRequest) {
         }
       }
 
-      // Await the update so the current response already reflects COMPLETED
-      if (staleContractIds.length > 0) {
+      // Separate stale contracts into those with artifacts (COMPLETED) and without (FAILED)
+      const staleWithArtifacts: string[] = [];
+      const staleWithoutArtifacts: string[] = [];
+      for (const contract of contracts) {
+        if (!staleContractIds.includes(contract.id)) continue;
+        const count = (contract as any)._count?.artifacts || 0;
+        if (count > 0) staleWithArtifacts.push(contract.id);
+        else staleWithoutArtifacts.push(contract.id);
+      }
+
+      if (staleWithArtifacts.length > 0) {
         try {
           await prisma.contract.updateMany({
-            where: { id: { in: staleContractIds }, tenantId, status: 'PROCESSING' },
+            where: { id: { in: staleWithArtifacts }, tenantId, status: 'PROCESSING' },
             data: { status: 'COMPLETED', updatedAt: new Date() },
           });
         } catch (e) {
-          logger.warn('Failed to auto-resolve stale contracts', { tenantId, staleContractIds, error: e });
+          logger.warn('Failed to auto-resolve stale contracts', { tenantId, staleContractIds: staleWithArtifacts, error: e });
         }
-        logger.info(`Auto-resolved ${staleContractIds.length} stale processing contract(s)`, { tenantId, staleContractIds });
+      }
+      if (staleWithoutArtifacts.length > 0) {
+        try {
+          await prisma.contract.updateMany({
+            where: { id: { in: staleWithoutArtifacts }, tenantId, status: 'PROCESSING' },
+            data: { status: 'FAILED', updatedAt: new Date() },
+          });
+        } catch (e) {
+          logger.warn('Failed to auto-resolve stale contracts as FAILED', { tenantId, staleContractIds: staleWithoutArtifacts, error: e });
+        }
+      }
+      if (staleContractIds.length > 0) {
+        logger.info(`Auto-resolved ${staleContractIds.length} stale processing contract(s)`, {
+          tenantId, completed: staleWithArtifacts.length, failed: staleWithoutArtifacts.length,
+        });
       }
 
       const staleIdSet = new Set(staleContractIds);
+      const failedIdSet = new Set(staleWithoutArtifacts);
 
       const result = {
         success: true,
         data: {
           contracts: contracts.map((contract) => {
             const categoryInfo = contract.category ? categoryMap.get(contract.category) : null;
-            // If this contract was just auto-resolved, reflect COMPLETED immediately
-            const effectiveStatus = staleIdSet.has(contract.id) ? 'completed' : contract.status.toLowerCase();
+            // If this contract was just auto-resolved, reflect the correct status immediately
+            let effectiveStatus = contract.status.toLowerCase();
+            if (staleIdSet.has(contract.id)) {
+              effectiveStatus = failedIdSet.has(contract.id) ? 'failed' : 'completed';
+            }
             return {
               id: contract.id,
               title: contract.contractTitle || contract.originalName || contract.fileName,
