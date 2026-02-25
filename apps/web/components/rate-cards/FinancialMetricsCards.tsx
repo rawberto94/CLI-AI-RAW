@@ -68,34 +68,42 @@ export function FinancialMetricsCards() {
     return null;
   }
 
+  const safe = {
+    totalAnnualSpend: metrics.totalAnnualSpend ?? 0,
+    totalSavingsIdentified: metrics.totalSavingsIdentified ?? 0,
+    totalSavingsRealized: metrics.totalSavingsRealized ?? 0,
+    avgRateVsMarket: metrics.avgRateVsMarket ?? 0,
+    savingsRealizationRate: metrics.savingsRealizationRate ?? 0,
+  };
+
   const financialCards = [
     {
       title: 'Total Annual Spend',
-      value: formatCurrency(metrics.totalAnnualSpend),
+      value: formatCurrency(safe.totalAnnualSpend),
       icon: DollarSign,
       description: 'On tracked rates',
       color: 'text-violet-600',
     },
     {
       title: 'Savings Identified',
-      value: formatCurrency(metrics.totalSavingsIdentified),
+      value: formatCurrency(safe.totalSavingsIdentified),
       icon: TrendingUp,
       description: 'Potential annual savings',
       color: 'text-green-600',
     },
     {
       title: 'Savings Realized',
-      value: formatCurrency(metrics.totalSavingsRealized),
+      value: formatCurrency(safe.totalSavingsRealized),
       icon: Target,
-      description: `${metrics.savingsRealizationRate.toFixed(0)}% of identified`,
+      description: `${safe.savingsRealizationRate.toFixed(0)}% of identified`,
       color: 'text-violet-600',
     },
     {
       title: 'Avg Rate vs Market',
-      value: formatPercentage(metrics.avgRateVsMarket),
-      icon: metrics.avgRateVsMarket > 0 ? TrendingUp : TrendingDown,
-      description: metrics.avgRateVsMarket > 0 ? 'Above market' : 'Below market',
-      color: metrics.avgRateVsMarket > 0 ? 'text-red-600' : 'text-green-600',
+      value: formatPercentage(safe.avgRateVsMarket),
+      icon: safe.avgRateVsMarket > 0 ? TrendingUp : TrendingDown,
+      description: safe.avgRateVsMarket > 0 ? 'Above market' : 'Below market',
+      color: safe.avgRateVsMarket > 0 ? 'text-red-600' : 'text-green-600',
     },
   ];
 

@@ -11,14 +11,14 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; commentId: string } }
+  context: { params: Promise<{ id: string; commentId: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const { id: contractId, commentId } = params;
+    const { id: contractId, commentId } = await context.params;
     const tenantId = await getApiTenantId(request);
 
     try {

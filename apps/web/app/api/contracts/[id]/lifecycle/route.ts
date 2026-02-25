@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
@@ -25,7 +25,7 @@ export async function POST(
   }
   try {
     const tenantId = await getTenantIdFromRequest(request);
-    const contractId = params.id;
+    const { id: contractId } = await context.params;
     const body = await request.json();
     
     const { documentRole, isNewContract, metadata } = body;
@@ -136,7 +136,7 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
@@ -144,7 +144,7 @@ export async function GET(
   }
   try {
     const tenantId = await getTenantIdFromRequest(request);
-    const contractId = params.id;
+    const { id: contractId } = await context.params;
 
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },

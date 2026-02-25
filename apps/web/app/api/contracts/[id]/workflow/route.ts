@@ -31,7 +31,7 @@ const createWorkflowSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
@@ -44,7 +44,7 @@ export async function GET(
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
-    const contractId = params.id;
+    const { id: contractId } = await context.params;
 
     // First verify contract exists
     const contract = await prisma.contract.findFirst({
@@ -132,7 +132,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
@@ -145,7 +145,7 @@ export async function POST(
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
-    const contractId = params.id;
+    const { id: contractId } = await context.params;
     const body = createWorkflowSchema.parse(await request.json());
 
     // Verify contract exists
@@ -272,7 +272,7 @@ export async function POST(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
@@ -285,7 +285,7 @@ export async function PUT(
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
-    const contractId = params.id;
+    const { id: contractId } = await context.params;
     const body = await request.json();
 
     // Find existing workflow execution for this contract
@@ -296,7 +296,7 @@ export async function PUT(
 
     if (!existingExecution?.workflow) {
       // If no existing workflow, create new one
-      return POST(request, { params });
+      return POST(request, context);
     }
 
     const workflowId = existingExecution.workflow.id;
@@ -401,7 +401,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
@@ -414,7 +414,7 @@ export async function DELETE(
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
-    const contractId = params.id;
+    const { id: contractId } = await context.params;
 
     // Find existing workflow execution for this contract
     const existingExecution = await prisma.workflowExecution.findFirst({

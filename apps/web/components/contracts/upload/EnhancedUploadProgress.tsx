@@ -503,7 +503,7 @@ export function EnhancedUploadProgress({
             {(status === 'completed' || isCompleted) && (
               <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-green-600 font-medium flex items-center gap-1">
                 <Zap className="h-3 w-3" />
-                Complete • {artifactCount} insights extracted
+                Complete
               </motion.span>
             )}
             {status === 'error' && !isCompleted && (

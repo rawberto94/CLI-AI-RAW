@@ -20,14 +20,14 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const contractId = params.id;
+    const { id: contractId } = await context.params;
     const tenantId = await getApiTenantId(request);
 
     try {
@@ -121,14 +121,14 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-    const contractId = params.id;
+    const { id: contractId } = await context.params;
     const tenantId = await getApiTenantId(request);
     const { content, author, authorEmail, parentId, mentions } = createCommentSchema.parse(await request.json());
 

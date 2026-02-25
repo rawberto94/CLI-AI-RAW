@@ -22,7 +22,7 @@ interface VersionDifference {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
@@ -39,7 +39,7 @@ export async function GET(
 
     try {
       const db = await getDb();
-      const contractId = params.id;
+      const { id: contractId } = await context.params;
       const tenantId = await getApiTenantId(request);
 
       // Get both versions
