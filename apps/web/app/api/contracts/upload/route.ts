@@ -452,6 +452,17 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       if (uploadResult.success) {
         filePath = objectKey;
         storageProvider = "s3";
+        // Also save a local copy so the artifact worker can always access the file
+        // even when BullMQ workers aren't running or S3 is unreachable from the worker
+        try {
+          const localUploadDir = join(process.cwd(), "uploads", "contracts", tenantId);
+          await mkdir(localUploadDir, { recursive: true });
+          const localCopyPath = join(localUploadDir, storedFileName);
+          await writeFile(localCopyPath, buffer);
+          logger.info(`[ContractUpload] Local copy saved at ${localCopyPath}`);
+        } catch (localCopyErr) {
+          logger.warn('[ContractUpload] Failed to save local copy (non-critical):', localCopyErr);
+        }
       } else {
         throw new Error(uploadResult.error || "Upload failed");
       }

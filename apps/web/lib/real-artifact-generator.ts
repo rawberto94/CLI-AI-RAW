@@ -927,21 +927,37 @@ export async function generateRealArtifacts(
     
     // Check if it's a relative path from storage (S3/MinIO path)
     if (!filePath.startsWith('/')) {
-      // Try local uploads directory first
+      // Try local uploads directory first — upload route saves a local copy here
       const localPath = path.join(process.cwd(), 'uploads', filePath);
       const webLocalPath = path.join(process.cwd(), 'apps', 'web', 'uploads', filePath);
       const rootLocalPath = path.join(process.cwd(), '..', '..', 'uploads', filePath);
+      // Also check the "uploads/contracts/..." pattern used by upload route (process.cwd() is apps/web)
+      const webCwdUploads = path.join(process.cwd(), 'uploads', 'contracts');
+      // filePath looks like "contracts/acme/timestamp-file.pdf" — try stripping "contracts/" prefix
+      const strippedPath = filePath.replace(/^contracts\//, '');
+      const cwdStripped = path.join(process.cwd(), 'uploads', 'contracts', strippedPath);
+      const rootStripped = path.join(process.cwd(), '..', '..', 'uploads', 'contracts', strippedPath);
       
-      if (await fs.access(localPath).then(() => true).catch(() => false)) {
-        actualPath = localPath;
-        logger.info({ actualPath }, 'Found file in local uploads');
-      } else if (await fs.access(webLocalPath).then(() => true).catch(() => false)) {
-        actualPath = webLocalPath;
-        logger.info({ actualPath }, 'Found file in web uploads');
-      } else if (await fs.access(rootLocalPath).then(() => true).catch(() => false)) {
-        actualPath = rootLocalPath;
-        logger.info({ actualPath }, 'Found file in root uploads');
-      } else {
+      // Try paths in order of likelihood
+      const pathsToTry = [
+        { p: localPath, label: 'local uploads' },
+        { p: cwdStripped, label: 'cwd uploads/contracts (stripped)' },
+        { p: webLocalPath, label: 'web uploads' },
+        { p: rootLocalPath, label: 'root uploads' },
+        { p: rootStripped, label: 'root uploads/contracts (stripped)' },
+      ];
+      
+      let found = false;
+      for (const { p, label } of pathsToTry) {
+        if (await fs.access(p).then(() => true).catch(() => false)) {
+          actualPath = p;
+          found = true;
+          logger.info({ actualPath, label }, 'Found file locally');
+          break;
+        }
+      }
+      
+      if (!found) {
         // File is in S3/MinIO - try to download it
         logger.info({ filePath }, 'File appears to be in S3/MinIO, attempting download');
         

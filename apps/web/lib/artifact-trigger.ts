@@ -120,64 +120,41 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
 }
 
 /**
- * Legacy processing method (for backwards compatibility)
+ * Legacy processing method — runs artifact generation inline (no queue worker needed)
+ * Falls back to this when BullMQ is unavailable (e.g., in dev without workers).
  */
 async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueResult> {
   const { contractId, tenantId, filePath, mimeType } = options;
   
-  // Spawn a separate Node process to avoid blocking/crashing the main server
-  const { spawn } = await import('child_process');
-  const { join } = await import('path');
-  const { existsSync } = await import('fs');
+  logger.info({ contractId, filePath }, 'Starting inline artifact generation (legacy fallback)');
   
-  // Get the workspace root directory - try multiple paths since Next.js can run from different locations
-  const possibleRoots = [
-    join(process.cwd(), '..', '..'), // If running from apps/web
-    join(process.cwd(), '..'),       // If running from apps level
-    process.cwd(),                    // If running from workspace root
-  ];
-  
-  let workspaceRoot = process.cwd();
-  let workerScript = '';
-  
-  for (const root of possibleRoots) {
-    const testPath = join(root, 'scripts', 'generate-artifacts-worker.mjs');
-    if (existsSync(testPath)) {
-      workspaceRoot = root;
-      workerScript = testPath;
-      break;
+  // Fire-and-forget: run generateRealArtifacts directly in-process
+  // We don't await it so the upload response returns immediately
+  (async () => {
+    try {
+      const { generateRealArtifacts } = await import('@/lib/real-artifact-generator');
+      const { PrismaClient } = await import('@prisma/client');
+      
+      // Use a separate Prisma client to avoid connection pool contention
+      const workerPrisma = new PrismaClient();
+      
+      try {
+        const result = await generateRealArtifacts(
+          contractId,
+          tenantId,
+          filePath,
+          mimeType || 'application/octet-stream',
+          workerPrisma
+        );
+        
+        logger.info({ contractId, ...result }, 'Inline artifact generation completed');
+      } finally {
+        await workerPrisma.$disconnect();
+      }
+    } catch (err) {
+      logger.error({ contractId, error: (err as Error).message }, 'Inline artifact generation failed');
     }
-  }
-  
-  // Fallback: assume standard monorepo structure
-  if (!workerScript) {
-    workspaceRoot = join(process.cwd(), '..', '..');
-    workerScript = join(workspaceRoot, 'scripts', 'generate-artifacts-worker.mjs');
-  }
-  
-  logger.info('Spawning legacy worker for contract', { contractId, workerScript, workspaceRoot });
-  
-  const worker = spawn('npx', ['tsx', workerScript, contractId, tenantId, filePath, mimeType || 'application/octet-stream'], {
-    detached: true,
-    stdio: 'pipe', // Use pipe to avoid blocking but capture errors
-    cwd: workspaceRoot,
-    env: {
-      ...process.env,
-      // Ensure the worker can find node_modules
-      PATH: process.env.PATH,
-    },
-  });
-  
-  // Log any errors from the worker
-  worker.stderr?.on('data', (data) => {
-    logger.error('Legacy worker stderr', { contractId, output: String(data) });
-  });
-  
-  worker.on('error', (err) => {
-    logger.error('Failed to start legacy worker', { contractId, error: err.message });
-  });
-  
-  worker.unref(); // Allow parent to exit independently
+  })();
   
   return { success: true, contractId, status: 'processing' };
 }
