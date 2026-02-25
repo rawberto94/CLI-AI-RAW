@@ -211,11 +211,16 @@ const RATE_LIMITS: Record<string, { anonymous: number; user: number; admin: numb
   'default': { anonymous: 50, user: 150, admin: 400 },
 };
 
-// Endpoints completely exempt from rate limiting (health checks, monitoring)
+// Endpoints completely exempt from rate limiting (health checks, monitoring, SSE streams)
 const RATE_LIMIT_EXEMPT = [
   '/api/health',
   '/api/monitoring/health',
   '/api/csrf',
+];
+
+// Patterns for SSE/streaming endpoints that have their own dedicated rate limiters
+const RATE_LIMIT_EXEMPT_PATTERNS = [
+  '/artifacts/stream',  // SSE stream endpoint has its own connection limiter
 ];
 
 function getEndpointCategory(pathname: string): string {
@@ -308,7 +313,8 @@ export default auth(async (req) => {
     '/api/auth/error',
   ];
   const isNextAuthInternal = NEXTAUTH_INTERNAL_PREFIXES.some(p => pathname.startsWith(p));
-  const isRateLimitExempt = RATE_LIMIT_EXEMPT.some(p => pathname.startsWith(p));
+  const isRateLimitExempt = RATE_LIMIT_EXEMPT.some(p => pathname.startsWith(p))
+    || RATE_LIMIT_EXEMPT_PATTERNS.some(p => pathname.includes(p));
   if (pathname.startsWith("/api/") && !isNextAuthInternal && !isRateLimitExempt) {
     // Periodically prune expired entries
     cleanupRateLimitStore();
@@ -359,18 +365,8 @@ export default auth(async (req) => {
     if (process.env.NODE_ENV === 'production') {
       response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     }
-    // M12: Content-Security-Policy
-    response.headers.set('Content-Security-Policy', [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
-      "connect-src 'self' https: wss:",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join('; '));
+    // M12: Content-Security-Policy — defined in next.config.mjs headers(), not duplicated here
+    // to avoid the middleware's version overriding the stricter config CSP
     return response;
   };
 
@@ -520,8 +516,13 @@ export default auth(async (req) => {
   if (pathname.startsWith("/api/")) {
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-request-id", requestId);
+    // ALWAYS set x-tenant-id from session (overwriting any client-sent value)
+    // to prevent tenant mismatch between stale localStorage and auth session.
+    // If session has no tenantId, clear any client-sent header to force API fallback.
     if (req.auth.user?.tenantId) {
       requestHeaders.set("x-tenant-id", req.auth.user.tenantId);
+    } else {
+      requestHeaders.delete("x-tenant-id");
     }
     if (req.auth.user?.id) {
       requestHeaders.set("x-user-id", req.auth.user.id);

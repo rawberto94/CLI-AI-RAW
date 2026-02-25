@@ -11,6 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -175,7 +176,7 @@ export async function PATCH(
         });
       } catch (_snapshotErr) {
         // Don't fail the update if snapshot creation fails (e.g., duplicate version)
-        console.warn('Version snapshot creation skipped (may be duplicate):', _snapshotErr);
+        logger.warn('Version snapshot creation skipped (may be duplicate):', _snapshotErr);
       }
     }
 

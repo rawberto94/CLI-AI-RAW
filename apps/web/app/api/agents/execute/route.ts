@@ -4,18 +4,20 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { agentRegistry } from '@repo/workers/agents';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
+const executeSchema = z.object({
+  agentName: z.string().min(1, 'agentName is required'),
+  contractId: z.string().min(1, 'contractId is required'),
+  context: z.record(z.unknown()).optional(),
+});
+
 export const POST = withAuthApiHandler(async (request, ctx) => {
-    const body = await request.json();
-    const { agentName, contractId, context } = body;
+    const { agentName, contractId, context } = executeSchema.parse(await request.json());
     // P0-FIX: Always use the authenticated tenant — never trust body.tenantId
     const tenantId = ctx.tenantId;
-
-    if (!agentName || !contractId) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'agentName and contractId are required', 400);
-    }
 
     if (!tenantId) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant context is required', 401);

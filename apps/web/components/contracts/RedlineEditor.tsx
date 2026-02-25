@@ -858,6 +858,111 @@ export function RedlineEditor({
     toast.info(`Comparing v${ver1?.version} with v${ver2?.version}`);
   }, [versions]);
 
+  // AI Suggestions handler — calls the copilot API and creates tracked changes
+  const [isAISuggesting, setIsAISuggesting] = useState(false);
+  const handleAISuggestions = useCallback(async () => {
+    setIsAISuggesting(true);
+    try {
+      const fullContent = sections.map(s => s.content).join('\n\n');
+      const response = await fetch('/api/copilot/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: fullContent.slice(0, 8000),
+          context: 'Suggest improvements for this contract text. Focus on legal precision, risk mitigation, and clarity. Return specific text replacements.',
+          type: 'contract-review',
+        }),
+      });
+
+      if (!response.ok) throw new Error('AI request failed');
+      const result = await response.json();
+      const suggestion = result?.data?.completion || result?.completion || result?.data?.text || '';
+
+      if (!suggestion) {
+        toast.info('No AI suggestions at this time');
+        return;
+      }
+
+      // Switch to suggest mode so AI changes are tracked 
+      setMode('suggest');
+
+      // Apply AI suggestion as a tracked change on the first paragraph section
+      const targetSection = sections.find(s => s.type === 'paragraph');
+      if (targetSection) {
+        const newChange: Change = {
+          id: generateId(),
+          type: 'replacement',
+          originalText: targetSection.content,
+          newText: suggestion.slice(0, targetSection.content.length + 500),
+          position: {
+            start: 0,
+            end: targetSection.content.length,
+            paragraph: sections.findIndex(s => s.id === targetSection.id),
+            sectionId: targetSection.id,
+          },
+          author: {
+            id: 'ai-copilot',
+            name: 'AI Copilot',
+            avatar: undefined,
+          },
+          timestamp: new Date(),
+          status: 'pending',
+          comments: [],
+        };
+        setChanges(prev => [...prev, newChange]);
+        setSections(prev => prev.map(s => 
+          s.id === targetSection.id ? { ...s, content: suggestion.slice(0, targetSection.content.length + 500) } : s
+        ));
+        setHasUnsavedChanges(true);
+        toast.success('AI suggestions added as tracked changes', {
+          description: 'Review and accept or reject them in the changes panel.',
+        });
+      }
+    } catch (err) {
+      console.error('AI suggestions failed:', err);
+      toast.error('Failed to get AI suggestions');
+    } finally {
+      setIsAISuggesting(false);
+    }
+  }, [sections]);
+
+  // Formatting helpers for the text editor
+  const applyFormatting = useCallback((format: 'bold' | 'italic' | 'underline' | 'highlight') => {
+    if (!editingSection) {
+      toast.info('Click on a paragraph to edit it first');
+      return;
+    }
+    const textarea = textareaRefs.current.get(editingSection);
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = editBuffer.slice(start, end);
+
+    if (!selected) {
+      toast.info('Select text to format');
+      return;
+    }
+
+    const markers: Record<string, [string, string]> = {
+      bold: ['**', '**'],
+      italic: ['_', '_'],
+      underline: ['__', '__'],
+      highlight: ['==', '=='],
+    };
+
+    const [pre, post] = markers[format];
+    const newText = editBuffer.slice(0, start) + pre + selected + post + editBuffer.slice(end);
+    setEditBuffer(newText);
+    setHasUnsavedChanges(true);
+
+    // Restore cursor position after the formatted text
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + pre.length, end + pre.length);
+    });
+  }, [editingSection, editBuffer]);
+
   const handleSave = useCallback(() => {
     // Convert sections back to content string
     const content = sections.map(s => {
@@ -1022,7 +1127,7 @@ export function RedlineEditor({
                   <div className="flex items-center gap-1">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button className="p-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">
+                        <button onClick={() => applyFormatting('bold')} className="p-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">
                           <Bold className="w-4 h-4" />
                         </button>
                       </TooltipTrigger>
@@ -1030,7 +1135,7 @@ export function RedlineEditor({
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button className="p-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">
+                        <button onClick={() => applyFormatting('italic')} className="p-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">
                           <Italic className="w-4 h-4" />
                         </button>
                       </TooltipTrigger>
@@ -1038,7 +1143,7 @@ export function RedlineEditor({
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button className="p-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">
+                        <button onClick={() => applyFormatting('underline')} className="p-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">
                           <Underline className="w-4 h-4" />
                         </button>
                       </TooltipTrigger>
@@ -1046,7 +1151,7 @@ export function RedlineEditor({
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button className="p-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">
+                        <button onClick={() => applyFormatting('highlight')} className="p-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">
                           <Highlighter className="w-4 h-4" />
                         </button>
                       </TooltipTrigger>
@@ -1168,15 +1273,44 @@ export function RedlineEditor({
                       Export
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent>
-                      <DropdownMenuItem onClick={() => toast.success('Exported with changes')}>
+                      <DropdownMenuItem onClick={() => {
+                        const content = sections.map(s => {
+                          const change = changes.find(c => c.position.sectionId === s.id && c.status === 'pending');
+                          if (change) {
+                            return `${s.content}\n  [CHANGE: ${change.originalText?.slice(0, 50)}... → ${change.newText?.slice(0, 50)}...]`;
+                          }
+                          return s.content;
+                        }).join('\n\n');
+                        const blob = new Blob([content], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${documentId}-redlined.txt`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast.success('Exported with redlines');
+                      }}>
                         <FileText className="w-4 h-4 mr-2" />
                         Export with redlines
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toast.success('Exported clean copy')}>
+                      <DropdownMenuItem onClick={() => {
+                        const content = sections.map(s => s.content).join('\n\n');
+                        const blob = new Blob([content], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${documentId}-clean.txt`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast.success('Exported clean copy');
+                      }}>
                         <FileText className="w-4 h-4 mr-2" />
                         Export clean copy
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toast.success('Exported as PDF')}>
+                      <DropdownMenuItem onClick={() => {
+                        window.print();
+                        toast.success('Print dialog opened for PDF export');
+                      }}>
                         <FileText className="w-4 h-4 mr-2" />
                         Export as PDF
                       </DropdownMenuItem>
@@ -1194,12 +1328,19 @@ export function RedlineEditor({
                     Print
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleAISuggestions} disabled={isAISuggesting}>
                     <Sparkles className="w-4 h-4 mr-2" />
-                    AI suggestions
+                    {isAISuggesting ? 'Getting AI suggestions...' : 'AI suggestions'}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => toast.info('Restoring previous version...')}>
+                  <DropdownMenuItem onClick={() => {
+                    // Restore to original content
+                    setUndoStack(prev => [...prev, { type: 'content', content: [...sections], timestamp: new Date() }]);
+                    setSections(parseContentToSections(initialContent));
+                    setChanges([]);
+                    setHasUnsavedChanges(true);
+                    toast.success('Restored to original version');
+                  }}>
                     <RotateCcw className="w-4 h-4 mr-2" />
                     Restore version
                   </DropdownMenuItem>
@@ -1222,7 +1363,9 @@ export function RedlineEditor({
             >
               {/* Document Title */}
               <h1 className="text-2xl font-bold text-slate-900 mb-6">
-                Master Services Agreement
+                {sections.find(s => s.type === 'title')?.content 
+                  || sections.find(s => s.type === 'heading')?.content 
+                  || 'Contract Document'}
               </h1>
 
               {/* Mode indicator */}
@@ -1308,13 +1451,13 @@ export function RedlineEditor({
                 ? `Last saved ${timeAgo(lastSaved)}`
                 : hasUnsavedChanges 
                   ? 'Not saved yet'
-                  : 'Last saved 2 minutes ago'
+                  : 'No changes'
               }
             </span>
           </div>
           <div className="flex items-center gap-2">
             <Users className="w-3 h-3" />
-            <span>3 collaborators</span>
+            <span>{new Set(changes.map(c => c.author.id)).size || 1} collaborator{new Set(changes.map(c => c.author.id)).size !== 1 ? 's' : ''}</span>
           </div>
         </div>
 

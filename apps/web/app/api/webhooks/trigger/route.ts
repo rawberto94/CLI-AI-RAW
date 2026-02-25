@@ -6,6 +6,7 @@ import { NextRequest } from 'next/server';
 import crypto from 'crypto';
 import { WEBHOOK_EVENTS, WebhookEvent, WebhookConfigType, webhookStore } from '../route';
 import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 interface TriggerPayload {
   event: WebhookEvent;
@@ -29,7 +30,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   // In production, INTERNAL_API_SECRET must be set and match
   if (process.env.NODE_ENV === 'production') {
     if (!expectedSecret) {
-      console.error('INTERNAL_API_SECRET not configured in production');
+      logger.error('INTERNAL_API_SECRET not configured in production');
       return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Server misconfiguration', 500);
     }
     if (internalSecret !== expectedSecret) {

@@ -5,6 +5,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
@@ -13,6 +14,22 @@ import { auditLog, AuditAction } from '@/lib/security/audit';
 import { sendEmail } from '@/lib/email/email-service';
 import { emailTemplates } from '@/lib/email/templates';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
+
+const grantAccessSchema = z.object({
+  userIds: z.array(z.string()).optional(),
+  groupIds: z.array(z.string()).optional(),
+  accessLevel: z.enum(['view', 'edit', 'manage', 'admin']).default('view'),
+  expiresAt: z.string().datetime().nullable().optional(),
+  notify: z.boolean().default(true),
+}).refine(data => (data.userIds?.length ?? 0) > 0 || (data.groupIds?.length ?? 0) > 0, {
+  message: 'userIds or groupIds required',
+});
+
+const revokeAccessSchema = z.object({
+  userIds: z.array(z.string()).optional(),
+  groupIds: z.array(z.string()).optional(),
+});
 
 type AccessLevel = 'view' | 'edit' | 'manage' | 'admin';
 
@@ -111,16 +128,7 @@ export async function POST(
       return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
     }
     
-    const body = await request.json();
-    const { userIds, groupIds, accessLevel = 'view', expiresAt, notify = true } = body;
-    
-    if ((!userIds || userIds.length === 0) && (!groupIds || groupIds.length === 0)) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'userIds or groupIds required', 400);
-    }
-    
-    if (!['view', 'edit', 'manage', 'admin'].includes(accessLevel)) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid access level', 400);
-    }
+    const { userIds, groupIds, accessLevel, expiresAt, notify } = grantAccessSchema.parse(await request.json());
     
     // Verify contract belongs to tenant via service layer
     const contractResult = await contractService.getContract(contractId, ctx.tenantId);
@@ -248,7 +256,7 @@ export async function POST(
         );
       } catch (notifyError) {
         // Log but don't fail the request if notifications fail
-        console.error('[Contract Access] Notification error:', notifyError);
+        logger.error('[Contract Access] Notification error:', notifyError);
       }
     }
     
@@ -279,8 +287,7 @@ export async function DELETE(
       return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
     }
     
-    const body = await request.json();
-    const { userIds, groupIds } = body;
+    const { userIds, groupIds } = revokeAccessSchema.parse(await request.json());
     
     const results = { usersRevoked: 0, groupsRevoked: 0 };
     

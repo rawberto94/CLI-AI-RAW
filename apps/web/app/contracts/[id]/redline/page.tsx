@@ -191,11 +191,11 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
                   <div className="flex items-center gap-4 mt-0.5 text-sm text-white/80">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {lastSaved ? `Last saved ${formatTimeAgo(lastSaved)}` : 'Last edited 2 hours ago'}
+                      {lastSaved ? `Last saved ${formatTimeAgo(lastSaved)}` : 'Ready to edit'}
                     </span>
                     <span className="flex items-center gap-1">
                       <Users className="w-3 h-3" />
-                      3 collaborators
+                      Editing
                     </span>
                     <Badge 
                       className={

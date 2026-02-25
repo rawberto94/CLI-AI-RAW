@@ -94,9 +94,10 @@ export class SupplierAlertService {
   async detectSupplierAlerts(tenantId: string): Promise<SupplierAlert[]> {
     const alerts: SupplierAlert[] = [];
 
-    // Get all suppliers for this tenant
+    // Get all suppliers for this tenant (cap at 1 000 to bound processing time)
     const suppliers = await prisma.rateCardSupplier.findMany({
-      where: { tenantId }
+      where: { tenantId },
+      take: 1_000,
     });
 
     for (const supplier of suppliers) {

@@ -81,3 +81,8 @@ export {
   type MobileEmptyStateProps,
   type MobileStatsSummaryProps,
 } from "./MobileContractViews";
+
+// Mobile Contract Comparison
+export {
+  MobileContractComparison,
+} from "./MobileContractComparison";

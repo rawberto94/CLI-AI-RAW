@@ -4,8 +4,17 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+
+const createDraftSchema = z.object({
+  templateId: z.string().optional(),
+  title: z.string().min(1, 'Draft title is required').max(300),
+  content: z.string().max(500000).optional().default(''),
+  variables: z.record(z.string()).optional().default({}),
+});
 
 export async function GET(req: NextRequest) {
   const apiCtx = getApiContext(req);
@@ -39,7 +48,7 @@ export async function GET(req: NextRequest) {
 
     return createSuccessResponse(ctx, transformed);
   } catch (error) {
-    console.error('Word Add-in drafts error:', error);
+    logger.error('Word Add-in drafts error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch drafts', 500);
   }
 }
@@ -53,11 +62,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { templateId, title, content, variables } = body;
-
-    if (!title) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Draft title is required', 400);
+    const parsed = createDraftSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.errors[0].message, 400);
     }
+    const { templateId, title, content, variables } = parsed.data;
 
     const draft = await prisma.contractDraft.create({
       data: {
@@ -73,7 +82,7 @@ export async function POST(req: NextRequest) {
 
     return createSuccessResponse(ctx, { draftId: draft.id });
   } catch (error) {
-    console.error('Word Add-in create draft error:', error);
+    logger.error('Word Add-in create draft error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to create draft', 500);
   }
 }

@@ -17,8 +17,9 @@ import { DATE_PRESETS, VALUE_RANGES } from './filter-constants';
 export interface ContractFilterCriteria {
   /** Free-text search (title, filename, parties, type, category) */
   searchQuery?: string;
-  /** AdvancedFilterPanel state (status, roles, risk, supplier, client, …) */
-  filterState: FilterState;
+  /** AdvancedFilterPanel state (status, roles, risk, supplier, client, …).
+   *  Partial is accepted — omitted dimensions are treated as "match all". */
+  filterState: Partial<FilterState>;
   /** Preset-based date range key (e.g. 'week', 'month', 'quarter') */
   dateRangePreset?: string | null;
   /** Expiration bucket filters (e.g. ['expired', 'expiring-30']) */
@@ -48,17 +49,17 @@ function matchesSearch(c: Contract, q: string | undefined): boolean {
   );
 }
 
-function matchesStatuses(c: Contract, statuses: string[]): boolean {
-  if (statuses.length === 0) return true;
+function matchesStatuses(c: Contract, statuses: string[] | undefined): boolean {
+  if (!statuses?.length) return true;
   return statuses.some((s) => s.toLowerCase() === c.status?.toLowerCase());
 }
 
-function matchesDocumentRoles(c: Contract, roles: string[]): boolean {
-  if (roles.length === 0) return true;
+function matchesDocumentRoles(c: Contract, roles: string[] | undefined): boolean {
+  if (!roles?.length) return true;
   return roles.includes(c.documentRole || '');
 }
 
-function matchesRiskLevels(c: Contract, levels: string[]): boolean {
+function matchesRiskLevels(c: Contract, levels: string[] | undefined): boolean {
   if (!levels?.length) return true;
   if (c.riskScore === undefined || c.riskScore === null) return false;
   return levels.some((risk) => {
@@ -72,8 +73,8 @@ function matchesRiskLevels(c: Contract, levels: string[]): boolean {
   });
 }
 
-function matchesCategories(c: Contract, cats: string[]): boolean {
-  if (cats.length === 0) return true;
+function matchesCategories(c: Contract, cats: string[] | undefined): boolean {
+  if (!cats?.length) return true;
   return cats.some((cat) =>
     cat === 'uncategorized' ? !c.category : c.category?.id === cat,
   );
@@ -95,16 +96,16 @@ function matchesArrayField(
   });
 }
 
-function matchesContractTypes(c: Contract, types: string[]): boolean {
+function matchesContractTypes(c: Contract, types: string[] | undefined): boolean {
   if (!types?.length) return true;
   return c.type ? types.some((t) => t.toLowerCase() === c.type!.toLowerCase()) : false;
 }
 
 function matchesDateRangeAdvanced(
   c: Contract,
-  range: { from?: Date; to?: Date },
+  range: { from?: Date; to?: Date } | undefined,
 ): boolean {
-  if (!range.from && !range.to) return true;
+  if (!range || (!range.from && !range.to)) return true;
   if (!c.createdAt) return true; // don't exclude contracts without a date
   const created = new Date(c.createdAt);
   if (range.from && created < range.from) return false;
@@ -127,9 +128,9 @@ function matchesDateRangePreset(
 
 function matchesValueRangeSlider(
   c: Contract,
-  range: { min: number; max: number },
+  range: { min: number; max: number } | undefined,
 ): boolean {
-  if (range.min <= 0 && range.max >= 1_000_000) return true;
+  if (!range || (range.min <= 0 && range.max >= 1_000_000)) return true;
   const val = c.value ?? c.totalValue ?? 0;
   if (range.min > 0 && val < range.min) return false;
   if (range.max < 1_000_000 && val > range.max) return false;
@@ -171,18 +172,18 @@ function matchesExpiration(
 
 function matchesHasDeadline(
   c: Contract,
-  flag: boolean | null,
+  flag: boolean | null | undefined,
 ): boolean {
-  if (flag === null) return true;
+  if (flag == null) return true;
   return flag ? !!c.expirationDate : !c.expirationDate;
 }
 
 function matchesIsExpiring(
   c: Contract,
-  flag: boolean | null,
+  flag: boolean | null | undefined,
   now: Date,
 ): boolean {
-  if (flag === null || !flag) return true;
+  if (flag == null || !flag) return true;
   if (!c.expirationDate) return false;
   const days = Math.ceil(
     (new Date(c.expirationDate).getTime() - now.getTime()) / 86_400_000,

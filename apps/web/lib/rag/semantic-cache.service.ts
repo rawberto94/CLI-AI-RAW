@@ -58,10 +58,13 @@ interface CacheStats {
 
 const DEFAULT_CONFIG: SemanticCacheConfig = {
   similarityThreshold: 0.95,
-  maxEntries: 500,
-  ttlMs: 30 * 60 * 1000, // 30 minutes
+  maxEntries: parseInt(process.env.RAG_CACHE_MAX_ENTRIES || '2000', 10), // 2000 for enterprise (was 500)
+  ttlMs: parseInt(process.env.RAG_CACHE_TTL_MS || String(30 * 60 * 1000), 10), // 30 min default
   enabled: true,
 };
+
+/** Per-tenant max share of the cache (prevents one noisy tenant from evicting others) */
+const MAX_ENTRIES_PER_TENANT = parseInt(process.env.RAG_CACHE_MAX_PER_TENANT || '500', 10);
 
 const REDIS_KEY_PREFIX = 'rag:cache:';
 const REDIS_INDEX_KEY = 'rag:cache:index'; // Sorted set of all cache keys by timestamp
@@ -231,7 +234,7 @@ class SemanticCacheStore {
     };
 
     // Store in hot LRU
-    this.evictHotIfNeeded();
+    this.evictHotIfNeeded(tenantId);
     this.hotEntries.set(key, entry);
     this.stats.entries = this.hotEntries.size;
 
@@ -306,11 +309,33 @@ class SemanticCacheStore {
 
   // -- Private helpers --
 
-  private evictHotIfNeeded(): void {
+  private evictHotIfNeeded(incomingTenantId?: string): void {
+    // Global eviction: if at capacity, evict oldest globally
     while (this.hotEntries.size >= this.config.maxEntries) {
       const oldestKey = this.findOldestHotEntry();
       if (oldestKey) this.hotEntries.delete(oldestKey);
       else break;
+    }
+
+    // Per-tenant eviction: prevent one tenant from monopolizing the cache
+    if (incomingTenantId) {
+      let tenantCount = 0;
+      let oldestTenantKey: string | null = null;
+      let oldestTenantTime = Infinity;
+
+      for (const [key, cached] of this.hotEntries) {
+        if (cached.tenantId === incomingTenantId) {
+          tenantCount++;
+          if (cached.cachedAt < oldestTenantTime) {
+            oldestTenantKey = key;
+            oldestTenantTime = cached.cachedAt;
+          }
+        }
+      }
+
+      if (tenantCount >= MAX_ENTRIES_PER_TENANT && oldestTenantKey) {
+        this.hotEntries.delete(oldestTenantKey);
+      }
     }
   }
 
@@ -325,7 +350,7 @@ class SemanticCacheStore {
   }
 
   private promoteToHot(key: string, cached: CachedQuery): void {
-    this.evictHotIfNeeded();
+    this.evictHotIfNeeded(cached.tenantId);
     this.hotEntries.set(key, cached);
     this.stats.entries = this.hotEntries.size;
   }

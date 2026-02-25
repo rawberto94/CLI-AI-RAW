@@ -102,6 +102,8 @@ export interface UseChatPersistenceReturn {
   togglePin: (conversationId: string) => Promise<void>;
   /** Archive conversation */
   archiveConversation: (conversationId: string) => Promise<void>;
+  /** Link a server-created conversationId without loading messages (prevents orphans) */
+  linkConversationId: (id: string) => void;
 }
 
 const DEFAULT_OPTIONS: Required<ChatPersistenceOptions> = {
@@ -483,6 +485,11 @@ export function useChatPersistence(
     };
   }, []);
 
+  // Lightweight setter to link a server-created conversationId without reloading messages
+  const linkConversationId = useCallback((id: string) => {
+    setConversationId(id);
+  }, []);
+
   return {
     conversationId,
     messages,
@@ -498,6 +505,7 @@ export function useChatPersistence(
     refreshConversations,
     togglePin,
     archiveConversation,
+    linkConversationId,
   };
 }
 

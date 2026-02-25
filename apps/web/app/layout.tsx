@@ -1,5 +1,6 @@
 import "./globals.css";
 import "../styles/orchestrator.css";
+import "../styles/accessibility.css";
 import { Inter } from "next/font/google";
 import { Suspense } from "react";
 
@@ -21,6 +22,7 @@ import { TenantContextBanner } from "@/components/platform/TenantContextBanner";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { UndoToastProvider } from "@/components/ui/undo-toast";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { EnterpriseThemeProvider } from "@/components/theme/EnterpriseThemeProvider";
 import { CommandPaletteProvider } from "@/components/command/CommandPalette";
 import { ConfirmProvider } from "@/components/dialogs/ConfirmDialog";
 import { AnnouncerProvider } from "@/components/accessibility";
@@ -79,6 +81,7 @@ export default function RootLayout({
         <GlobalErrorBoundary>
           <Toaster position="top-right" richColors closeButton />
           <ThemeProvider defaultTheme="system" storageKey="contigo-theme">
+          <EnterpriseThemeProvider>
             <AuthProvider>
               <CSRFProvider>
               <QueryProvider>
@@ -122,6 +125,7 @@ export default function RootLayout({
               </QueryProvider>
               </CSRFProvider>
             </AuthProvider>
+          </EnterpriseThemeProvider>
           </ThemeProvider>
         </GlobalErrorBoundary>
       </body>

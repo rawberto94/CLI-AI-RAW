@@ -79,8 +79,8 @@ describe('GET /api/ai/notifications', () => {
     const res = await GET(authGet(BASE));
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.notifications).toHaveLength(2);
-    expect(json.unreadCount).toBe(1);
+    expect(json.data.notifications).toHaveLength(2);
+    expect(json.data.unreadCount).toBe(1);
   });
 
   it('passes filter params to getNotifications', async () => {
@@ -136,7 +136,7 @@ describe('POST /api/ai/notifications', () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.success).toBe(true);
-    expect(json.markedRead).toBe(5);
+    expect(json.data.markedRead).toBe(5);
     expect(mocks.mockMarkAllRead).toHaveBeenCalledWith('tenant-1', 'user-1');
   });
 

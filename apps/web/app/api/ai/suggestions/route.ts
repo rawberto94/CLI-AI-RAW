@@ -14,6 +14,7 @@ import { prisma } from '@/lib/prisma';
 import { aiCopilotService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
+import { logger } from '@/lib/logger';
 
 /**
  * GET - Get search suggestions
@@ -241,7 +242,7 @@ async function buildDynamicSuggestions(tenantId: string, pageContext: string): P
     }
 
   } catch (error) {
-    console.error('[Dynamic Suggestions] Error:', error);
+    logger.error('[Dynamic Suggestions] Error:', error);
   }
 
   return suggestions.sort((a, b) => a.priority - b.priority).slice(0, 6);

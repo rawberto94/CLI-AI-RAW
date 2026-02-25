@@ -4,8 +4,20 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+
+const createClauseSchema = z.object({
+  name: z.string().max(100).optional(),
+  title: z.string().min(1, 'Clause title is required').max(300),
+  category: z.string().max(50).optional().default('General'),
+  content: z.string().min(1, 'Clause content is required').max(50000),
+  riskLevel: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional().default('LOW'),
+  isStandard: z.boolean().optional().default(false),
+  tags: z.array(z.string().max(50)).max(20).optional().default([]),
+});
 
 export async function GET(req: NextRequest) {
   const apiCtx = getApiContext(req);
@@ -77,7 +89,7 @@ export async function GET(req: NextRequest) {
 
     return createSuccessResponse(ctx, transformed);
   } catch (error) {
-    console.error('Word Add-in clauses error:', error);
+    logger.error('Word Add-in clauses error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch clauses', 500);
   }
 }
@@ -91,11 +103,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, title, category, content, riskLevel, isStandard, tags } = body;
-
-    if (!title || !content) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Clause title and content are required', 400);
+    const parsed = createClauseSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.errors[0].message, 400);
     }
+    const { name, title, category, content, riskLevel, isStandard, tags } = parsed.data;
 
     // Generate unique name from title if not provided
     const clauseName = name || title
@@ -131,7 +143,7 @@ export async function POST(req: NextRequest) {
       usageCount: clause.usageCount,
     });
   } catch (error) {
-    console.error('Word Add-in create clause error:', error);
+    logger.error('Word Add-in create clause error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to create clause', 500);
   }
 }

@@ -29,8 +29,8 @@ RUN cd packages/clients/db && npx prisma generate
 # Build packages (tsc emits JS even with non-critical type errors)
 RUN pnpm --filter @repo/utils build
 RUN pnpm --filter clients-db build
-# data-orchestration: tsc may report type warnings but still emits JS (noEmitOnError=false)
-RUN cd packages/data-orchestration && npx tsc || true
+# data-orchestration: build TS with strict=false (its own tsconfig) but DO fail on real errors
+RUN cd packages/data-orchestration && npx tsc --noEmitOnError false
 
 # Build Next.js app with increased memory
 ENV NEXT_TELEMETRY_DISABLED=1

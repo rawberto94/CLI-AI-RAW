@@ -10,6 +10,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { aiObligationTrackerService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 export const dynamic = 'force-dynamic';
 
 interface SlackMessage {
@@ -194,7 +195,7 @@ function isAllowedWebhookUrl(url: string): boolean {
 // Send Slack notification
 async function sendSlackNotification(webhookUrl: string, message: SlackMessage): Promise<boolean> {
   if (!isAllowedWebhookUrl(webhookUrl)) {
-    console.error('Slack webhook URL rejected by SSRF validation:', webhookUrl);
+    logger.error('Slack webhook URL rejected by SSRF validation:', webhookUrl);
     return false;
   }
   try {
@@ -205,7 +206,7 @@ async function sendSlackNotification(webhookUrl: string, message: SlackMessage):
     });
     return response.ok;
   } catch (error) {
-    console.error('Slack notification failed:', error);
+    logger.error('Slack notification failed:', error);
     return false;
   }
 }
@@ -213,7 +214,7 @@ async function sendSlackNotification(webhookUrl: string, message: SlackMessage):
 // Send Teams notification
 async function sendTeamsNotification(webhookUrl: string, message: TeamsMessage): Promise<boolean> {
   if (!isAllowedWebhookUrl(webhookUrl)) {
-    console.error('Teams webhook URL rejected by SSRF validation:', webhookUrl);
+    logger.error('Teams webhook URL rejected by SSRF validation:', webhookUrl);
     return false;
   }
   try {
@@ -224,7 +225,7 @@ async function sendTeamsNotification(webhookUrl: string, message: TeamsMessage):
     });
     return response.ok;
   } catch (error) {
-    console.error('Teams notification failed:', error);
+    logger.error('Teams notification failed:', error);
     return false;
   }
 }

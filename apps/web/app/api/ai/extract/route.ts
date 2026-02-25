@@ -18,6 +18,7 @@ import {
   createErrorResponse,
   type AuthenticatedApiContext,
 } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -117,7 +118,7 @@ Return JSON with these fields (include only those found):
       extractedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error('AI extraction error:', error);
+    logger.error('AI extraction error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Extraction failed', 500);
   }
 });

@@ -56,6 +56,12 @@ export interface AgentMetadata {
   priority: 'low' | 'medium' | 'high' | 'critical';
   timestamp: Date;
   parentJobId?: string;
+  /** Context enrichment metadata */
+  enrichment?: {
+    enrichmentTimeMs: number;
+    dataSources: string[];
+    cacheHit: boolean;
+  };
 }
 
 export interface AgentOutputMetadata {

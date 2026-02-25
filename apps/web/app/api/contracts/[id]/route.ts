@@ -20,6 +20,9 @@ import { contractUpdateSchema } from "@/lib/validation/contract.validation";
 import { ZodError } from "zod";
 import { semanticCache } from "@/lib/ai/semantic-cache.service";
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { generateETag, checkETagMatch, CacheDuration } from '@/lib/api-cache-headers';
+import { contractCache, etagHeaders } from '@/lib/cache/etag-cache';
+import { logger } from '@/lib/logger';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -154,7 +157,28 @@ export async function GET(
     const tenantId = await getServerTenantId();
     
     // Debug log
-    console.log(`[GET /api/contracts/${contractId}] Resolved tenant: ${tenantId}`);
+    logger.info(`[GET /api/contracts/${contractId}] Resolved tenant: ${tenantId}`);
+
+    // --- Server-side ETag cache: return cached response without DB query ---
+    const cacheKey = `contract:${tenantId}:${contractId}`;
+    const ifNoneMatch = req.headers.get('If-None-Match');
+    const cached = contractCache.get(cacheKey);
+    if (cached) {
+      if (contractCache.matches(cacheKey, ifNoneMatch)) {
+        return new Response(null, {
+          status: 304,
+          headers: { 'ETag': cached.etag, 'Cache-Control': `private, max-age=${CacheDuration.MEDIUM}` },
+        });
+      }
+      return createSuccessResponse(ctx, cached.data, {
+        headers: {
+          'X-Response-Time': `${Date.now() - startTime}ms`,
+          'X-Data-Source': 'server-cache',
+          'X-Cache-Status': 'HIT',
+          ...etagHeaders(cached.etag, { maxAge: CacheDuration.MEDIUM }),
+        },
+      });
+    }
 
     // Get contract with parent and child relationships
     const contract = await prisma.contract.findFirst({
@@ -655,11 +679,26 @@ export async function GET(
 
     const responseTime = Date.now() - startTime;
 
+    // Store in server-side cache for future requests
+    const etag = contractCache.set(cacheKey, enrichedData);
+
+    // ETag-based conditional response — return 304 if unchanged
+    if (checkETagMatch(req, etag.replace(/"/g, ''))) {
+      return new Response(null, {
+        status: 304,
+        headers: {
+          'ETag': etag,
+          'Cache-Control': `private, max-age=${CacheDuration.MEDIUM}, stale-while-revalidate=${CacheDuration.LONG}`,
+        },
+      });
+    }
+
     return createSuccessResponse(ctx, enrichedData, {
       headers: {
         "X-Response-Time": `${responseTime}ms`,
-        "X-Data-Source": "data-orchestration",
-        "X-Cache-Status": responseTime < 50 ? "HIT" : "MISS",
+        "X-Data-Source": "database",
+        "X-Cache-Status": "MISS",
+        ...etagHeaders(etag, { maxAge: CacheDuration.MEDIUM }),
       },
     });
   } catch (error: unknown) {
@@ -780,9 +819,11 @@ export async function PUT(
       },
     });
 
-    // Invalidate semantic cache for this contract (chatbot will see changes)
+    // Invalidate server-side + semantic caches
+    contractCache.invalidate(`contract:${tenantId}:${contractId}`);
+    contractCache.invalidate('contracts:', true); // prefix invalidation for list cache
     semanticCache.invalidate(tenantId, contractId).catch((err) => {
-      console.error('[ContractUpdate] Semantic cache invalidation error:', err);
+      logger.error('[ContractUpdate] Semantic cache invalidation error:', err);
     });
 
     return createSuccessResponse(ctx, {
@@ -832,9 +873,11 @@ export async function DELETE(
       return createErrorResponse(ctx, 'BAD_REQUEST', result.error || 'Delete failed', 400);
     }
 
-    // Invalidate semantic cache for this contract (chatbot won't reference deleted contract)
+    // Invalidate server-side + semantic caches
+    contractCache.invalidate(`contract:${tenantId}:${contractId}`);
+    contractCache.invalidate('contracts:', true); // prefix invalidation for list cache
     semanticCache.invalidate(tenantId, contractId).catch((err) => {
-      console.error('[ContractDelete] Semantic cache invalidation error:', err);
+      logger.error('[ContractDelete] Semantic cache invalidation error:', err);
     });
 
     // Legacy file cleanup (if exists)

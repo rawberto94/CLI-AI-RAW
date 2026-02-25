@@ -10,6 +10,7 @@ import { BoxConnector } from '@/lib/integrations/connectors/box.connector';
 import { auditTrailService } from 'data-orchestration/services';
 import { withApiHandler } from '@/lib/api-middleware';
 import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export const GET = withApiHandler(async (request: NextRequest) => {
   try {
@@ -29,7 +30,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
 
     // Handle OAuth errors
     if (error) {
-      console.error('Box OAuth error:', error, errorDescription);
+      logger.error('Box OAuth error:', error, errorDescription);
       return NextResponse.redirect(
         new URL(`/settings/contract-sources?error=${encodeURIComponent(errorDescription || error)}`, request.url)
       );
@@ -54,7 +55,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
           );
         }
       } catch {
-        console.warn('Failed to parse OAuth state');
+        logger.warn('Failed to parse OAuth state');
       }
     }
 
@@ -115,7 +116,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
       new URL('/settings/contract-sources?connected=box', request.url)
     );
   } catch (error) {
-    console.error('Box OAuth callback error:', error);
+    logger.error('Box OAuth callback error:', error);
     const message = error instanceof Error ? error.message : 'Authentication failed';
     return NextResponse.redirect(
       new URL(`/settings/contract-sources?error=${encodeURIComponent(message)}`, request.url)

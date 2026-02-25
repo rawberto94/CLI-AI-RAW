@@ -99,7 +99,8 @@ const collaborators: Collaborator[] = [
   { id: '3', name: 'Lisa Park', color: '#8B5CF6', isActive: false, lastSeen: '5m ago' },
 ];
 
-const comments: Comment[] = [
+// DEMO DATA
+const DEMO_COMMENTS: Comment[] = [
   {
     id: 'c1',
     author: 'Sarah Chen',
@@ -108,7 +109,7 @@ const comments: Comment[] = [
     resolved: false,
     position: { paragraph: 3, offset: 150 },
     replies: [
-      { id: 'r1', author: 'Mike Johnson', content: 'Agreed, Ill draft an alternative.', timestamp: '1 hour ago' },
+      { id: 'r1', author: 'Mike Johnson', content: 'Agreed, I\'ll draft an alternative.', timestamp: '1 hour ago' },
     ],
   },
   {
@@ -122,7 +123,8 @@ const comments: Comment[] = [
   },
 ];
 
-const suggestions: Suggestion[] = [
+// DEMO DATA
+const DEMO_SUGGESTIONS: Suggestion[] = [
   {
     id: 's1',
     type: 'risk',
@@ -155,7 +157,8 @@ const suggestions: Suggestion[] = [
   },
 ];
 
-const versions: Version[] = [
+// DEMO DATA
+const DEMO_VERSIONS: Version[] = [
   { id: 'v1', version: '3.2', author: 'Sarah Chen', timestamp: '10 minutes ago', changes: 5, label: 'Current' },
   { id: 'v2', version: '3.1', author: 'Mike Johnson', timestamp: '2 hours ago', changes: 12 },
   { id: 'v3', version: '3.0', author: 'Lisa Park', timestamp: '1 day ago', changes: 28, label: 'Legal Review' },
@@ -163,25 +166,29 @@ const versions: Version[] = [
 ];
 
 export function SmartDraftingCanvas() {
-  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [versions, setVersions] = useState<Version[]>([]);
+  const [isDemo, setIsDemo] = useState(true);
+  const [collaborators, setCollaborators] = useState<Collaborator[]>(DEMO_COLLABORATORS);
+  const [comments, setComments] = useState<Comment[]>(DEMO_COMMENTS);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>(DEMO_SUGGESTIONS);
+  const [versions, setVersions] = useState<Version[]>(DEMO_VERSIONS);
+  const [isAILoading, setIsAILoading] = useState(false);
 
-  // Fetch collaboration data
+  // Fetch real collaboration data — falls back to demo data on failure
   useEffect(() => {
     async function fetchData() {
       try {
         const res = await fetch('/api/drafts/current/collaboration');
+        if (!res.ok) return; // Keep demo data
         const data = await res.json();
         if (data.success) {
-          if (data.collaborators) setCollaborators(data.collaborators);
-          if (data.comments) setComments(data.comments);
-          if (data.suggestions) setSuggestions(data.suggestions);
-          if (data.versions) setVersions(data.versions);
+          setIsDemo(false);
+          if (data.collaborators?.length) setCollaborators(data.collaborators);
+          if (data.comments?.length) setComments(data.comments);
+          if (data.suggestions?.length) setSuggestions(data.suggestions);
+          if (data.versions?.length) setVersions(data.versions);
         }
       } catch {
-        // Empty state on error
+        // Keep demo data as fallback
       }
     }
     fetchData();
@@ -268,14 +275,53 @@ and
     setSelectedSuggestion(null);
   };
 
-  const handleAIAssist = useCallback(() => {
-    // Mock AI assistance
-    setAiPrompt('');
-    setShowAIPanel(false);
-  }, [aiPrompt]);
+  const handleAIAssist = useCallback(async () => {
+    if (!aiPrompt.trim() || isAILoading) return;
+    setIsAILoading(true);
+    try {
+      const res = await fetch('/api/copilot/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: aiPrompt,
+          context: content.slice(0, 4000),
+          type: 'contract_assist',
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.text || data.content) {
+          const aiText = data.text || data.content;
+          setContent((prev) => prev + '\n\n' + aiText);
+        }
+      }
+    } catch {
+      // Silently handle error
+    } finally {
+      setIsAILoading(false);
+      setAiPrompt('');
+      setShowAIPanel(false);
+    }
+  }, [aiPrompt, content, isAILoading]);
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Demo Banner */}
+      {isDemo && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-amber-800 text-sm">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="font-medium">Demo Preview</span>
+            <span className="text-amber-600">— Showing sample data. Connect your contract to enable real-time collaboration.</span>
+          </div>
+          <button
+            onClick={() => setIsDemo(false)}
+            className="text-amber-600 hover:text-amber-800 text-xs underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
         <div className="px-4 py-3">
@@ -284,14 +330,18 @@ and
               <div className="flex items-center gap-2">
                 <FileText className="h-6 w-6 text-violet-600" />
                 <div>
-                  <h1 className="font-semibold text-gray-900">Master Services Agreement</h1>
-                  <p className="text-xs text-gray-500">Acme Corporation • Draft v3.2</p>
+                  <h1 className="font-semibold text-gray-900">
+                    {content.split('\n').find(l => l.trim())?.trim() || 'Untitled Document'}
+                  </h1>
+                  <p className="text-xs text-gray-500">
+                    {versions.length > 0 ? `Draft v${versions[0].version}` : 'New Draft'}
+                  </p>
                 </div>
               </div>
               <div className="h-6 w-px bg-gray-200" />
               <div className="flex items-center gap-1 text-sm text-gray-500">
                 <Clock className="h-4 w-4" />
-                <span>Auto-saved 2 min ago</span>
+                <span>{isDemo ? 'Demo mode' : 'Auto-saved'}</span>
               </div>
             </div>
 
@@ -507,9 +557,10 @@ and
                           />
                           <button
                             onClick={handleAIAssist}
-                            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
+                            disabled={isAILoading || !aiPrompt.trim()}
+                            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            Generate
+                            {isAILoading ? 'Generating...' : 'Generate'}
                           </button>
                         </div>
                         <div className="mt-3 flex flex-wrap gap-2">

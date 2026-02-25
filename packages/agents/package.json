@@ -23,6 +23,11 @@
       "types": "./dist/tool-registry.d.ts",
       "import": "./dist/tool-registry.js",
       "require": "./dist/tool-registry.js"
+    },
+    "./learning-context": {
+      "types": "./dist/learning-context.d.ts",
+      "import": "./dist/learning-context.js",
+      "require": "./dist/learning-context.js"
     }
   },
   "scripts": {

@@ -15,6 +15,7 @@ import { getSemanticCache } from '@/lib/rag/semantic-cache.service';
 import { getChunkGraph } from '@/lib/rag/chunk-graph.service';
 import { prisma } from '@/lib/prisma';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -120,7 +121,7 @@ export async function GET(request: NextRequest) {
       config,
     });
   } catch (error) {
-    console.error('[RAG Observability] Error:', error);
+    logger.error('[RAG Observability] Error:', error);
     return createErrorResponse(authCtx, 'INTERNAL_ERROR', 'Internal error gathering RAG stats', 500);
   }
 }

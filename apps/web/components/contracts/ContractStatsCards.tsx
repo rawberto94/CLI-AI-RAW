@@ -42,6 +42,7 @@ export interface StatCardProps {
   ringColor?: string;
   onClick?: () => void;
   delay?: number;
+  testId?: string;
 }
 
 export interface ContractStatsData {
@@ -73,6 +74,7 @@ export const StatCard = memo(function StatCard({
   ringColor = "ring-violet-500 border-violet-300 shadow-violet-100",
   onClick,
   delay = 0.1,
+  testId,
 }: StatCardProps) {
   return (
     <motion.div
@@ -87,6 +89,7 @@ export const StatCard = memo(function StatCard({
           onClick && "cursor-pointer"
         )}
         onClick={onClick}
+        data-testid={testId}
       >
         <CardContent className="p-5">
           <div className="flex items-center justify-between">
@@ -141,6 +144,7 @@ export const TotalContractsCard = memo(function TotalContractsCard({
       ringColor="ring-violet-500 border-violet-300 shadow-violet-100"
       onClick={onClick}
       delay={0.1}
+      testId="stat-total"
     />
   );
 });
@@ -170,6 +174,7 @@ export const ActiveContractsCard = memo(function ActiveContractsCard({
       ringColor="ring-violet-500 border-violet-300 shadow-violet-100"
       onClick={onClick}
       delay={0.15}
+      testId="stat-active"
     />
   );
 });

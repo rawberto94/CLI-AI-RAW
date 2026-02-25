@@ -51,7 +51,7 @@ export const STREAMING_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
             type: 'object',
             properties: {
               supplier: { type: 'string', description: 'Filter by supplier name' },
-              status: { type: 'string', enum: ['ACTIVE', 'DRAFT', 'EXPIRED', 'PENDING', 'TERMINATED'] },
+              status: { type: 'string', enum: ['ACTIVE', 'DRAFT', 'EXPIRED', 'PENDING', 'COMPLETED', 'ARCHIVED', 'CANCELLED'] },
               minValue: { type: 'number', description: 'Minimum contract value' },
               maxValue: { type: 'number', description: 'Maximum contract value' },
             },
@@ -567,7 +567,7 @@ async function executeSearchContracts(args: Record<string, unknown>, tenantId: s
         contractName: r.contractName,
         supplier: r.supplierName,
         score: Math.round(r.score * 100),
-        excerpt: r.text.slice(0, 300),
+        excerpt: (r.text || '').slice(0, 300),
       })),
     },
     executionTimeMs: Date.now() - start,
@@ -579,6 +579,11 @@ async function executeSearchContracts(args: Record<string, unknown>, tenantId: s
 async function executeGetContractDetails(args: Record<string, unknown>, tenantId: string, start: number): Promise<ToolResult> {
   const contractId = args.contractId as string | undefined;
   const contractName = args.contractName as string | undefined;
+
+  // T24: Require at least one identifier
+  if (!contractId && !contractName) {
+    return { toolName: 'get_contract_details', success: false, data: null, error: 'Please provide either a contractId or contractName to look up.', executionTimeMs: Date.now() - start };
+  }
 
   const where = contractId
     ? { id: contractId, tenantId }
@@ -682,6 +687,7 @@ async function executeSpendAnalysis(args: Record<string, unknown>, tenantId: str
   const contracts = await prisma.contract.findMany({
     where,
     select: { supplierName: true, totalValue: true, categoryL1: true, category: true, effectiveDate: true },
+    take: 5000, // T6: Cap to prevent OOM on large tenants
   });
 
   const grouped = new Map<string, { count: number; value: number }>();
@@ -729,10 +735,10 @@ async function executeRiskAssessment(tenantId: string, start: number): Promise<T
   const d90 = new Date(now.getTime() + 90 * 86400000);
 
   const [exp30, exp90, autoRenewals, highValue] = await Promise.all([
-    prisma.contract.findMany({ where: { tenantId, status: 'ACTIVE', expirationDate: { gte: now, lte: d30 } }, select: { id: true, contractTitle: true, supplierName: true, totalValue: true, expirationDate: true } }),
-    prisma.contract.findMany({ where: { tenantId, status: 'ACTIVE', expirationDate: { gte: d30, lte: d90 } }, select: { id: true, contractTitle: true, supplierName: true, totalValue: true, expirationDate: true } }),
-    prisma.contract.findMany({ where: { tenantId, status: 'ACTIVE', autoRenewalEnabled: true, expirationDate: { gte: now, lte: d90 } }, select: { id: true, contractTitle: true, supplierName: true, totalValue: true, expirationDate: true } }),
-    prisma.contract.findMany({ where: { tenantId, status: 'ACTIVE', totalValue: { gte: 100000 }, expirationDate: { gte: now, lte: d90 } }, select: { id: true, contractTitle: true, supplierName: true, totalValue: true, expirationDate: true } }),
+    prisma.contract.findMany({ where: { tenantId, status: 'ACTIVE', expirationDate: { gte: now, lte: d30 } }, select: { id: true, contractTitle: true, supplierName: true, totalValue: true, expirationDate: true }, take: 100 }),
+    prisma.contract.findMany({ where: { tenantId, status: 'ACTIVE', expirationDate: { gte: d30, lte: d90 } }, select: { id: true, contractTitle: true, supplierName: true, totalValue: true, expirationDate: true }, take: 100 }),
+    prisma.contract.findMany({ where: { tenantId, status: 'ACTIVE', autoRenewalEnabled: true, expirationDate: { gte: now, lte: d90 } }, select: { id: true, contractTitle: true, supplierName: true, totalValue: true, expirationDate: true }, take: 100 }),
+    prisma.contract.findMany({ where: { tenantId, status: 'ACTIVE', totalValue: { gte: 100000 }, expirationDate: { gte: now, lte: d90 } }, select: { id: true, contractTitle: true, supplierName: true, totalValue: true, expirationDate: true }, take: 100 }),
   ]);
 
   return {
@@ -762,6 +768,7 @@ async function executeSupplierInfo(args: Record<string, unknown>, tenantId: stri
     where: { tenantId, supplierName: { contains: name, mode: 'insensitive' } },
     select: { id: true, contractTitle: true, status: true, totalValue: true, effectiveDate: true, expirationDate: true, contractType: true },
     orderBy: { totalValue: 'desc' },
+    take: 200, // T8: Cap to prevent unbounded memory
   });
 
   const active = contracts.filter(c => c.status === 'ACTIVE');
@@ -789,6 +796,19 @@ async function executeStartWorkflow(args: Record<string, unknown>, tenantId: str
 
   const contract = await prisma.contract.findFirst({ where: { id: contractId, tenantId } });
   if (!contract) return { toolName: 'start_workflow', success: false, data: null, error: 'Contract not found', executionTimeMs: Date.now() - start };
+
+  // T17: Check for existing active workflow on the same contract
+  const existingExecution = await prisma.workflowExecution.findFirst({
+    where: { contractId, tenantId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
+    include: { workflow: { select: { name: true } } },
+  });
+  if (existingExecution) {
+    return {
+      toolName: 'start_workflow', success: false, data: { existingExecutionId: existingExecution.id, workflowName: existingExecution.workflow?.name },
+      error: `Contract already has an active workflow "${existingExecution.workflow?.name || 'unknown'}" (ID: ${existingExecution.id}). Please cancel or complete it before starting a new one.`,
+      executionTimeMs: Date.now() - start,
+    };
+  }
 
   // Find workflow template
   const workflowWhere = args.workflowId
@@ -874,6 +894,7 @@ async function executeGetPendingApprovals(tenantId: string, userId: string, star
       stepExecutions: { where: { status: 'PENDING' }, include: { step: { select: { name: true, assignedUser: true } } } },
     },
     orderBy: { startedAt: 'desc' },
+    take: 100,
   });
 
   // Filter to ones assigned to this user or unassigned
@@ -920,6 +941,12 @@ async function executeApproveReject(args: Record<string, unknown>, tenantId: str
   if (execution.stepExecutions.length === 0) return { toolName: 'approve_or_reject_step', success: false, data: null, error: 'No pending steps to act on', executionTimeMs: Date.now() - start };
 
   const stepExec = execution.stepExecutions[0];
+
+  // T13: Authorization check — only the assigned user (or unassigned steps) can approve/reject
+  if (stepExec.assignedTo && stepExec.assignedTo !== userId) {
+    return { toolName: 'approve_or_reject_step', success: false, data: null, error: `This step is assigned to another user. You are not authorized to ${decision} it.`, executionTimeMs: Date.now() - start };
+  }
+
   await prisma.workflowStepExecution.update({
     where: { id: stepExec.id },
     data: { status: decision === 'approve' ? 'COMPLETED' : 'REJECTED', completedAt: new Date(), completedBy: userId, result: comment ? { comment } : undefined },
@@ -927,6 +954,21 @@ async function executeApproveReject(args: Record<string, unknown>, tenantId: str
 
   if (decision === 'reject') {
     await prisma.workflowExecution.update({ where: { id: executionId }, data: { status: 'REJECTED' } });
+  } else {
+    // T4: Advance to next workflow step — find next WAITING step and set to PENDING
+    const nextStep = await prisma.workflowStepExecution.findFirst({
+      where: { executionId: executionId, status: 'WAITING', stepOrder: { gt: stepExec.stepOrder } },
+      orderBy: { stepOrder: 'asc' },
+    });
+    if (nextStep) {
+      await prisma.workflowStepExecution.update({
+        where: { id: nextStep.id },
+        data: { status: 'PENDING' },
+      });
+    } else {
+      // No more steps — mark the workflow execution as completed
+      await prisma.workflowExecution.update({ where: { id: executionId }, data: { status: 'COMPLETED', completedAt: new Date() } });
+    }
   }
 
   return {
@@ -942,6 +984,11 @@ async function executeApproveReject(args: Record<string, unknown>, tenantId: str
 async function executeGetWorkflowStatus(args: Record<string, unknown>, tenantId: string, start: number): Promise<ToolResult> {
   const executionId = args.executionId as string | undefined;
   const contractId = args.contractId as string | undefined;
+
+  // T5: Require at least one identifier — don't return a random execution
+  if (!executionId && !contractId) {
+    return { toolName: 'get_workflow_status', success: false, data: null, error: 'Please provide either an executionId or a contractId to look up workflow status.', executionTimeMs: Date.now() - start };
+  }
 
   const execution = await prisma.workflowExecution.findFirst({
     where: {
@@ -1043,7 +1090,7 @@ async function executeCancelWorkflow(args: Record<string, unknown>, tenantId: st
 
   await prisma.$transaction([
     prisma.workflowExecution.update({ where: { id: execution.id }, data: { status: 'CANCELLED', completedAt: new Date() } }),
-    prisma.workflowStepExecution.updateMany({ where: { executionId: execution.id, status: { in: ['PENDING', 'WAITING'] } }, data: { status: 'CANCELLED' } }),
+    prisma.workflowStepExecution.updateMany({ where: { executionId: execution.id, status: { in: ['PENDING', 'WAITING', 'IN_PROGRESS'] } }, data: { status: 'CANCELLED' } }),
   ]);
 
   return {
@@ -1070,16 +1117,35 @@ async function executeAssignApprover(args: Record<string, unknown>, tenantId: st
     return { toolName: 'assign_approver', success: false, data: null, error: 'No pending step found', executionTimeMs: Date.now() - start };
   }
 
-  const user = await prisma.user.findFirst({
-    where: {
-      tenantId,
-      OR: [
-        { email: { contains: assignee, mode: 'insensitive' } },
-        { firstName: { contains: assignee, mode: 'insensitive' } },
-        { lastName: { contains: assignee, mode: 'insensitive' } },
-      ],
-    },
+  // First try exact email match, then fall back to name search
+  let user = await prisma.user.findFirst({
+    where: { tenantId, email: { equals: assignee, mode: 'insensitive' } },
   });
+
+  if (!user) {
+    // Fuzzy name search — but require a unique match to avoid assigning to wrong person
+    const candidates = await prisma.user.findMany({
+      where: {
+        tenantId,
+        OR: [
+          { email: { contains: assignee, mode: 'insensitive' } },
+          { firstName: { contains: assignee, mode: 'insensitive' } },
+          { lastName: { contains: assignee, mode: 'insensitive' } },
+        ],
+      },
+      take: 5,
+      select: { id: true, email: true, firstName: true, lastName: true },
+    });
+
+    if (candidates.length === 0) {
+      return { toolName: 'assign_approver', success: false, data: null, error: `User "${assignee}" not found in your organization`, executionTimeMs: Date.now() - start };
+    }
+    if (candidates.length > 1) {
+      const names = candidates.map(c => `${[c.firstName, c.lastName].filter(Boolean).join(' ')} (${c.email})`).join(', ');
+      return { toolName: 'assign_approver', success: false, data: null, error: `Multiple users match "${assignee}": ${names}. Please be more specific (e.g., use their email address).`, executionTimeMs: Date.now() - start };
+    }
+    user = candidates[0] as unknown as typeof user;
+  }
 
   if (!user) {
     return { toolName: 'assign_approver', success: false, data: null, error: `User "${assignee}" not found in your organization`, executionTimeMs: Date.now() - start };
@@ -1199,8 +1265,8 @@ async function executeCreateContract(args: Record<string, unknown>, tenantId: st
       expirationDate: args.expirationDate ? new Date(args.expirationDate as string) : undefined,
       status: 'DRAFT',
       uploadedBy: userId,
-      mimeType: 'application/pdf',
-      fileName: `contract-${Date.now()}.pdf`,
+      mimeType: 'application/octet-stream',
+      fileName: `ai-draft-${Date.now()}.txt`,
       fileSize: BigInt(0),
     },
   });
@@ -1229,12 +1295,44 @@ async function executeUpdateContract(args: Record<string, unknown>, tenantId: st
   if (!contract) return { toolName: 'update_contract', success: false, data: null, error: 'Contract not found', executionTimeMs: Date.now() - start };
 
   // Build update data based on field
+  const VALID_STATUSES = ['UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED', 'ARCHIVED', 'DELETED', 'ACTIVE', 'PENDING', 'DRAFT', 'EXPIRED', 'CANCELLED'];
   const updateData: Record<string, unknown> = {};
   switch (field) {
-    case 'status': updateData.status = value; break;
-    case 'totalValue': updateData.totalValue = Number(value); break;
-    case 'effectiveDate': updateData.effectiveDate = new Date(value); break;
-    case 'expirationDate': updateData.expirationDate = new Date(value); break;
+    case 'status': {
+      const upperStatus = value.toUpperCase();
+      if (!VALID_STATUSES.includes(upperStatus)) {
+        return { toolName: 'update_contract', success: false, data: null, error: `Invalid status "${value}". Valid statuses: ${VALID_STATUSES.join(', ')}`, executionTimeMs: Date.now() - start };
+      }
+      updateData.status = upperStatus;
+      break;
+    }
+    case 'totalValue': {
+      const num = Number(value);
+      if (isNaN(num)) {
+        return { toolName: 'update_contract', success: false, data: null, error: `Invalid number for totalValue: "${value}"`, executionTimeMs: Date.now() - start };
+      }
+      updateData.totalValue = num;
+      break;
+    }
+    case 'effectiveDate':
+    case 'expirationDate': {
+      const date = new Date(value);
+      if (isNaN(date.getTime())) {
+        return { toolName: 'update_contract', success: false, data: null, error: `Invalid date for ${field}: "${value}". Please use ISO format (e.g., 2025-01-15).`, executionTimeMs: Date.now() - start };
+      }
+      // Cross-validate: effectiveDate must be before expirationDate
+      const otherField = field === 'effectiveDate' ? 'expirationDate' : 'effectiveDate';
+      const otherDate = contract[otherField] as Date | null;
+      if (otherDate) {
+        const effective = field === 'effectiveDate' ? date : otherDate;
+        const expiration = field === 'expirationDate' ? date : otherDate;
+        if (effective >= expiration) {
+          return { toolName: 'update_contract', success: false, data: null, error: `effectiveDate (${effective.toISOString().slice(0, 10)}) must be before expirationDate (${expiration.toISOString().slice(0, 10)}).`, executionTimeMs: Date.now() - start };
+        }
+      }
+      updateData[field] = date;
+      break;
+    }
     case 'supplierName': updateData.supplierName = value; break;
     case 'clientName': updateData.clientName = value; break;
     case 'category': updateData.category = value; break;
@@ -1314,6 +1412,7 @@ async function executeIntelligenceInsights(args: Record<string, unknown>, tenant
     const contracts = await prisma.contract.findMany({
       where: { tenantId },
       select: { id: true, metadata: true },
+      take: 2000, // T9: Cap to prevent OOM — sample is statistically sufficient
     });
     let healthy = 0, atRisk = 0, critical = 0, total = 0;
     for (const c of contracts) {
@@ -1563,6 +1662,7 @@ async function executeAgentInsights(args: Record<string, unknown>, tenantId: str
       const contracts = await prisma.contract.findMany({
         where: { tenantId },
         select: { metadata: true },
+        take: 2000, // T10: Cap to prevent OOM
       });
       let totalScore = 0;
       let scored = 0;

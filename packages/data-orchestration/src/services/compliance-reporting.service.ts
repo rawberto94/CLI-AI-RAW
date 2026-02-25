@@ -63,7 +63,7 @@ export class ComplianceReportingService {
   ): Promise<ComplianceReport> {
     const { tenantId, startDate, endDate, reportType = 'full', userId, includeDetails = true } = options;
 
-    // Fetch audit logs for the period
+    // Fetch audit logs for the period (cap at 10 000 to bound memory)
     const auditLogs = await prisma.auditLog.findMany({
       where: {
         tenantId,
@@ -76,6 +76,7 @@ export class ComplianceReportingService {
       orderBy: {
         createdAt: 'desc',
       },
+      take: 10_000,
       include: {
         user: {
           select: {

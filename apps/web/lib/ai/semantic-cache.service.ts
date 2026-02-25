@@ -286,23 +286,42 @@ export class SemanticCacheService {
       const data = await this.redis.hgetall(`semantic-cache:${tenantId}`);
       if (!data) return [];
       
-      return Object.values(data).map(v => 
-        typeof v === 'string' ? JSON.parse(v) : v
-      ).filter(entry => {
-        // Filter out expired entries
+      const entries: CacheEntry[] = [];
+      const expiredKeys: string[] = [];
+      
+      for (const [key, v] of Object.entries(data)) {
+        const entry = typeof v === 'string' ? JSON.parse(v) : v;
         const age = Date.now() - entry.createdAt;
-        return age < this.config.ttlSeconds * 1000;
-      });
+        if (age < this.config.ttlSeconds * 1000) {
+          entries.push(entry);
+        } else {
+          expiredKeys.push(key);
+        }
+      }
+      
+      // Proactively clean up expired entries from Redis
+      if (expiredKeys.length > 0) {
+        this.redis.hdel(`semantic-cache:${tenantId}`, ...expiredKeys).catch(() => {});
+      }
+      
+      return entries;
     } else {
       // Memory cache fallback
       const entries: CacheEntry[] = [];
+      const expiredKeys: string[] = [];
       for (const [key, entry] of this.memoryCache.entries()) {
         if (key.startsWith(tenantId)) {
           const age = Date.now() - entry.createdAt;
           if (age < this.config.ttlSeconds * 1000) {
             entries.push(entry);
+          } else {
+            expiredKeys.push(key);
           }
         }
+      }
+      // Clean up expired in-memory entries
+      for (const key of expiredKeys) {
+        this.memoryCache.delete(key);
       }
       return entries;
     }
@@ -316,11 +335,18 @@ export class SemanticCacheService {
         `semantic-cache:${tenantId}`,
         { [key]: JSON.stringify(entry) }
       );
-      // Set TTL on the hash
-      await this.redis.expire(
-        `semantic-cache:${tenantId}`,
-        this.config.ttlSeconds
-      );
+      // Only set TTL if the hash is newly created (TTL = -1 means no expiry set).
+      // We do NOT reset TTL on every write — individual entry expiration is
+      // handled in getCacheEntries() by filtering on entry.createdAt.
+      // The hash-level TTL serves as a safety net to avoid unbounded growth.
+      const ttl = await this.redis.ttl(`semantic-cache:${tenantId}`);
+      if (ttl < 0) {
+        // No TTL set yet — set a generous outer bound (2x entry TTL)
+        await this.redis.expire(
+          `semantic-cache:${tenantId}`,
+          this.config.ttlSeconds * 2
+        );
+      }
     } else {
       this.memoryCache.set(`${tenantId}:${key}`, entry);
     }
@@ -352,14 +378,18 @@ export class SemanticCacheService {
   }
 
   private generateKey(query: string): string {
-    // Simple hash for key generation
-    let hash = 0;
+    // FNV-1a 64-bit-ish hash — much lower collision rate than 32-bit djb2.
+    // Uses two independent 32-bit accumulators to produce a 16-hex-char key.
+    let h1 = 0x811c9dc5 | 0;
+    let h2 = 0x01000193 | 0;
     for (let i = 0; i < query.length; i++) {
-      const char = query.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
+      const c = query.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 0x01000193);
+      h2 = Math.imul(h2 ^ c, 0x811c9dc5);
     }
-    return `q_${Math.abs(hash)}`;
+    const hex1 = (h1 >>> 0).toString(16).padStart(8, '0');
+    const hex2 = (h2 >>> 0).toString(16).padStart(8, '0');
+    return `q_${hex1}${hex2}`;
   }
 
   private updateHitRate(): void {

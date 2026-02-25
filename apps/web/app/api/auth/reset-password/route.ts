@@ -12,6 +12,7 @@ import { hash } from "bcryptjs";
 import { z } from "zod";
 import { auditLog, AuditAction } from "@/lib/security/audit";
 import { getApiContext, createSuccessResponse, createErrorResponse } from "@/lib/api-middleware";
+import { logger } from '@/lib/logger';
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, "Reset token is required"),
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return createErrorResponse(ctx, "VALIDATION_ERROR", error.errors[0]?.message || "Invalid input", 400);
     }
-    console.error("[Auth] Reset password error:", error);
+    logger.error("[Auth] Reset password error:", error);
     return createErrorResponse(ctx, "INTERNAL_ERROR", "Password reset failed", 500);
   }
 }

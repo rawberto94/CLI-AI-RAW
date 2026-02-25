@@ -11,9 +11,16 @@ import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    const key = (process.env.OPENAI_API_KEY || '').trim();
+    if (!key) throw new Error('OPENAI_API_KEY is not configured');
+    _openai = new OpenAI({ apiKey: key });
+  }
+  return _openai;
+}
+const openai = new Proxy({} as OpenAI, { get: (_, prop) => (getOpenAI() as any)[prop] });
 
 interface ContractSummary {
   id: string;

@@ -53,6 +53,9 @@ const nextConfig = {
     '@repo/db',
     'pino',
     'pino-pretty',
+    'thread-stream',
+    'sonic-boom',
+    'tiktoken',
     'bullmq',
     'ioredis',
     'perf_hooks',
@@ -119,6 +122,8 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
     externalDir: true,
+    // Partial Pre-Rendering – requires Next.js canary; enable when upgrading:
+    // ppr: 'incremental',
     // Optimized package imports - reduces bundle size significantly
     optimizePackageImports: [
       'lucide-react',
@@ -195,41 +200,62 @@ const nextConfig = {
       if (!existingHotModuleReplacementPlugin) {
         config.plugins.push(new webpack.HotModuleReplacementPlugin());
       }
-
-      // Add better error overlay configuration
-      config.devServer = {
-        ...config.devServer,
-        client: {
-          overlay: {
-            errors: true,
-            warnings: false,
-            runtimeErrors: false,
-          },
-          reconnect: 5,
-        },
-      };
     }
 
-    // Only apply optimizations in development mode to reduce memory usage
     // Skip for Edge Runtime — it needs its own ESM-compatible chunk format
-    if (process.env.NODE_ENV !== 'production' && nextRuntime !== 'edge') {
+    if (nextRuntime !== 'edge') {
+      const isProd = process.env.NODE_ENV === 'production';
       config.optimization = {
         ...config.optimization,
-        minimize: false,
+        minimize: isProd,
         moduleIds: 'deterministic',
-        runtimeChunk: 'single',
+        usedExports: isProd, // Only in production — conflicts with cacheUnaffected in dev
+        ...(isProd ? {} : { runtimeChunk: 'single' }),
         splitChunks: {
           chunks: 'all',
-          maxSize: 244000, // Split large chunks
+          minSize: 20000,
+          maxSize: 244000, // Stay under 250KB for HTTP/2
+          maxInitialRequests: 25,
           cacheGroups: {
             default: false,
             vendors: false,
+            // Core framework — stable, cached long-term
+            framework: {
+              test: /[\\/]node_modules[\\/](react|react-dom|next|scheduler)[\\/]/,
+              name: 'framework',
+              chunks: 'all',
+              priority: 50,
+              enforce: true,
+            },
+            // UI component libraries
+            ui: {
+              test: /[\\/]node_modules[\\/](@radix-ui|@headlessui|class-variance-authority|clsx)[\\/]/,
+              name: 'ui-vendor',
+              chunks: 'all',
+              priority: 40,
+            },
+            // AI/ML libraries — async loaded
+            ai: {
+              test: /[\\/]node_modules[\\/](langchain|@langchain|openai|anthropic)[\\/]/,
+              name: 'ai-vendor',
+              chunks: 'async',
+              priority: 30,
+            },
+            // Charts and visualization — async loaded
+            viz: {
+              test: /[\\/]node_modules[\\/](recharts|d3|chart\.js)[\\/]/,
+              name: 'viz-vendor',
+              chunks: 'async',
+              priority: 30,
+            },
+            // Common shared code
             commons: {
               name: 'commons',
               minChunks: 2,
               priority: 20,
               reuseExistingChunk: true,
             },
+            // Remaining vendor code
             lib: {
               test: /[\\/]node_modules[\\/]/,
               name(module) {
@@ -239,10 +265,9 @@ const nextConfig = {
                 return `lib.${packageName.replace('@', '')}`;
               },
               priority: 10,
+              reuseExistingChunk: true,
             },
           },
-          maxInitialRequests: 25,
-          minSize: 20000,
         },
       };
       
@@ -423,6 +448,26 @@ const nextConfig = {
       {
         // Cache static assets aggressively
         source: "/static/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        // Cache contract artifact API responses (private, short TTL with SWR)
+        source: "/api/contracts/:id/artifacts",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "private, max-age=300, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        // Cache _next/static immutably (hashed filenames)
+        source: "/_next/static/(.*)",
         headers: [
           {
             key: "Cache-Control",

@@ -13,6 +13,7 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,7 +109,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       ...(includeTeamMembers && { teamMembers }),
     });
   } catch (error) {
-    console.error('[Delegation Rules GET]', error);
+    logger.error('[Delegation Rules GET]', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch delegation rules', 500);
   }
 });
@@ -166,7 +167,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     if (error instanceof z.ZodError) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', error.errors[0]?.message || 'Invalid input', 400);
     }
-    console.error('[Delegation Rules POST]', error);
+    logger.error('[Delegation Rules POST]', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create delegation rule', 500);
   }
 });
@@ -235,7 +236,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     if (error instanceof z.ZodError) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', error.errors[0]?.message || 'Invalid input', 400);
     }
-    console.error('[Delegation Rules PATCH]', error);
+    logger.error('[Delegation Rules PATCH]', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update delegation rule', 500);
   }
 });
@@ -273,7 +274,7 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
       id: ruleId,
     });
   } catch (error) {
-    console.error('[Delegation Rules DELETE]', error);
+    logger.error('[Delegation Rules DELETE]', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to delete delegation rule', 500);
   }
 });

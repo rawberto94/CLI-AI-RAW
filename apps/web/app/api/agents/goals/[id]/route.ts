@@ -6,6 +6,7 @@
 
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, type AuthenticatedApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 export const GET = withAuthApiHandler(async (
   request: NextRequest,
@@ -42,7 +43,7 @@ export const GET = withAuthApiHandler(async (
 
     return createSuccessResponse(ctx, goal);
   } catch (error) {
-    console.error('[Goal Detail] Error:', error);
+    logger.error('[Goal Detail] Error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch goal', 500);
   }
 });

@@ -11,6 +11,7 @@ import { auditTrailService } from 'data-orchestration/services';
 import { hasPermission } from '@/lib/permissions';
 import { auditLog, AuditAction, getAuditContext } from '@/lib/security/audit';
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 
 // Validation schema for IP entries
 const ipEntrySchema = z.object({
@@ -235,7 +236,7 @@ export async function checkIPAllowed(ip: string, tenantId: string): Promise<{ al
 
     return { allowed: false, reason: 'IP address not authorized' };
   } catch (error) {
-    console.error('[IP Check Error]:', error);
+    logger.error('[IP Check Error]:', error);
     return { allowed: true };
   }
 }

@@ -449,23 +449,44 @@ export default function TemplatesPage() {
     setShowPreviewModal(true)
   }, [])
 
-  // Generate AI suggestions
+  // Generate AI suggestions using real Copilot API
   const generateAISuggestions = useCallback(async () => {
     if (!aiSuggestionQuery.trim()) return
     
     setIsLoadingAI(true)
     try {
-      // Simulate AI response - in production this would call the AI API
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      setAISuggestions([
-        `Based on "${aiSuggestionQuery}", consider a Master Services Agreement with specific SLA terms`,
-        'Include automatic renewal clauses with 90-day notice period',
-        'Add data protection addendum for GDPR compliance',
-        'Consider adding intellectual property assignment clauses',
-        'Include dispute resolution through arbitration',
-      ])
-    } catch {
-      toast.error('Failed to generate suggestions')
+      const response = await fetch('/api/copilot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'assist',
+          prompt: `Suggest 5 specific, actionable template improvements or additions for: "${aiSuggestionQuery}". Return each suggestion on a new line, numbered 1-5. Be concise and specific to contract templates.`,
+          text: '',
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`AI API returned ${response.status}`)
+      }
+
+      const data = await response.json()
+      const generatedText = data.generatedText || data.data?.generatedText || ''
+
+      // Parse numbered suggestions from AI response
+      const suggestions = generatedText
+        .split(/\n/)
+        .map((line: string) => line.replace(/^\d+[\.\)]\s*/, '').trim())
+        .filter((line: string) => line.length > 10)
+        .slice(0, 5)
+
+      if (suggestions.length === 0) {
+        toast.error('AI returned no suggestions. Try a more specific query.')
+      } else {
+        setAISuggestions(suggestions)
+      }
+    } catch (error) {
+      console.error('AI suggestions failed:', error)
+      toast.error('Failed to generate suggestions — check that the AI service is running')
     } finally {
       setIsLoadingAI(false)
     }
@@ -560,62 +581,69 @@ export default function TemplatesPage() {
     if (selectedTemplates.size === 0) return
     
     const count = selectedTemplates.size
-    try {
-      toast.info(`Deleting ${count} templates...`)
-      for (const id of selectedTemplates) {
-        await deleteTemplateMutation.mutateAsync(id)
-      }
+    toast.info(`Deleting ${count} templates...`)
+    const results = await Promise.allSettled(
+      [...selectedTemplates].map(id => deleteTemplateMutation.mutateAsync(id))
+    )
+    const failures = results.filter(r => r.status === 'rejected').length
+    if (failures === 0) {
       toast.success(`${count} templates deleted successfully`)
-      clearSelection()
-      crossModule.onTemplateChange()
-      refetch()
-    } catch {
-      toast.error('Failed to delete some templates')
+    } else {
+      toast.warning(`Deleted ${count - failures} of ${count} templates (${failures} failed)`)
     }
+    clearSelection()
+    crossModule.onTemplateChange()
+    refetch()
   }
 
   const handleBulkDuplicate = async () => {
     if (selectedTemplates.size === 0) return
     
     const selectedList = templates.filter(t => selectedTemplates.has(t.id))
-    try {
-      toast.info(`Duplicating ${selectedList.length} templates...`)
-      for (const template of selectedList) {
-        // Use the dedicated duplicate endpoint to copy all template data
-        await fetch(`/api/templates/${template.id}/duplicate`, {
+    toast.info(`Duplicating ${selectedList.length} templates...`)
+    const results = await Promise.allSettled(
+      selectedList.map(template =>
+        fetch(`/api/templates/${template.id}/duplicate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: `${template.name} (Copy)` }),
-        })
-      }
+        }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r; })
+      )
+    )
+    const failures = results.filter(r => r.status === 'rejected').length
+    if (failures === 0) {
       toast.success(`${selectedList.length} templates duplicated`)
-      clearSelection()
-      crossModule.onTemplateChange()
-      refetch()
-    } catch {
-      toast.error('Failed to duplicate some templates')
+    } else {
+      toast.warning(`Duplicated ${selectedList.length - failures} of ${selectedList.length} templates (${failures} failed)`)
     }
+    clearSelection()
+    crossModule.onTemplateChange()
+    refetch()
   }
 
   const handleBulkArchive = async () => {
     if (selectedTemplates.size === 0) return
     
-    try {
-      toast.info(`Archiving ${selectedTemplates.size} templates...`)
-      for (const id of selectedTemplates) {
-        await fetch(`/api/templates/${id}`, {
+    const count = selectedTemplates.size
+    toast.info(`Archiving ${count} templates...`)
+    const results = await Promise.allSettled(
+      [...selectedTemplates].map(id =>
+        fetch(`/api/templates/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'archived', isActive: false }),
-        })
-      }
-      toast.success(`${selectedTemplates.size} templates archived`)
-      clearSelection()
-      crossModule.onTemplateChange()
-      refetch()
-    } catch {
-      toast.error('Failed to archive some templates')
+        }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r; })
+      )
+    )
+    const failures = results.filter(r => r.status === 'rejected').length
+    if (failures === 0) {
+      toast.success(`${count} templates archived`)
+    } else {
+      toast.warning(`Archived ${count - failures} of ${count} templates (${failures} failed)`)
     }
+    clearSelection()
+    crossModule.onTemplateChange()
+    refetch()
   }
 
   const handleBulkExport = () => {
@@ -632,21 +660,56 @@ export default function TemplatesPage() {
     changes: string[]
   }
 
-  const getVersionHistory = useCallback((_template: ContractTemplate): VersionEntry[] => {
-    // In production, this would fetch from the API
-    return [
-      { version: '1.0.0', date: '2024-01-15', author: 'Sarah Chen', changes: ['Initial version created'] },
-      { version: '1.1.0', date: '2024-03-20', author: 'Mike Johnson', changes: ['Added payment terms clause', 'Updated termination section'] },
-      { version: '1.2.0', date: '2024-06-15', author: 'Sarah Chen', changes: ['GDPR compliance updates', 'Added data processing addendum'] },
-      { version: '2.0.0', date: '2024-09-10', author: 'Roberto Ostojic', changes: ['Major restructure', 'New liability cap clause', 'Updated IP section'] },
-      { version: '2.0.1', date: '2024-12-20', author: 'Sarah Chen', changes: ['Minor typo fixes', 'Formatting updates'] },
-    ]
+  const [versionHistoryEntries, setVersionHistoryEntries] = useState<VersionEntry[]>([])
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false)
+
+  const loadVersionHistory = useCallback(async (template: ContractTemplate) => {
+    setIsLoadingVersions(true)
+    try {
+      const response = await fetch(`/api/templates/${template.id}/versions`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        const versions = data.versions || data.data?.versions || []
+        setVersionHistoryEntries(
+          versions.map((v: Record<string, unknown>) => ({
+            version: v.version || v.label || '1.0.0',
+            date: v.createdAt || v.date || template.createdAt,
+            author: v.author || v.createdBy || template.createdBy || 'System',
+            changes: v.changes || (v.changeSummary ? [v.changeSummary as string] : ['Version saved']),
+          }))
+        )
+      } else {
+        // API not available — show minimal history from template metadata
+        const entries: VersionEntry[] = [{
+          version: '1.0.0',
+          date: template.createdAt,
+          author: template.createdBy || 'System',
+          changes: ['Template created'],
+        }]
+        if (template.updatedAt && template.updatedAt !== template.createdAt) {
+          entries.push({
+            version: '1.1.0',
+            date: template.updatedAt,
+            author: template.createdBy || 'System',
+            changes: ['Template updated'],
+          })
+        }
+        setVersionHistoryEntries(entries)
+      }
+    } catch {
+      toast.error('Failed to load version history')
+      setVersionHistoryEntries([])
+    } finally {
+      setIsLoadingVersions(false)
+    }
   }, [])
 
   const openVersionHistory = useCallback((template: ContractTemplate) => {
     setVersionHistoryTemplate(template)
     setShowVersionHistory(true)
-  }, [])
+    loadVersionHistory(template)
+  }, [loadVersionHistory])
 
   // ============= COMPARISON =============
   const openComparison = useCallback(() => {
@@ -827,24 +890,30 @@ export default function TemplatesPage() {
       
       toast.info(`Importing ${data.templates.length} templates...`)
       
-      for (const template of data.templates) {
-        // Use POST /api/templates with full template data
-        await fetch('/api/templates', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: template.name,
-            description: template.description,
-            category: template.category,
-            content: template.content || '',
-            tags: template.tags || [],
-            clauses: template.clauses || [],
-            status: 'draft',
-          }),
-        })
-      }
+      const results = await Promise.allSettled(
+        data.templates.map((template: Record<string, unknown>) =>
+          fetch('/api/templates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: template.name,
+              description: template.description,
+              category: template.category,
+              content: template.content || '',
+              tags: template.tags || [],
+              clauses: template.clauses || [],
+              status: 'draft',
+            }),
+          }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r; })
+        )
+      )
       
-      toast.success(`Imported ${data.templates.length} templates`)
+      const failures = results.filter(r => r.status === 'rejected').length
+      if (failures === 0) {
+        toast.success(`Imported ${data.templates.length} templates`)
+      } else {
+        toast.warning(`Imported ${data.templates.length - failures} of ${data.templates.length} templates (${failures} failed)`)
+      }
       setShowImportModal(false)
       crossModule.onTemplateChange()
       refetch()
@@ -853,7 +922,7 @@ export default function TemplatesPage() {
     }
   }
 
-  // ============= TEMPLATE SCHEDULING =============
+  // ============= TEMPLATE SCHEDULING (persisted to backend) =============
   const scheduleTemplateAction = async (
     template: ContractTemplate,
     action: 'activate' | 'archive' | 'publish',
@@ -867,22 +936,56 @@ export default function TemplatesPage() {
       scheduledDate,
       status: 'pending' as const,
     }
+
+    try {
+      // Persist to backend via template metadata
+      const response = await fetch(`/api/templates/${template.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metadata: {
+            scheduledAction: action,
+            scheduledDate: scheduledDate.toISOString(),
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        console.warn(`Schedule persistence returned ${response.status} — saved locally only`)
+      }
+    } catch (error) {
+      console.warn('Failed to persist schedule to backend:', error)
+    }
     
     setScheduledActions(prev => [...prev, newSchedule])
     toast.success(`Scheduled to ${action} "${template.name}" on ${scheduledDate.toLocaleDateString()}`)
     addActivity(`scheduled ${action}`, template.name)
     setShowScheduleModal(false)
     setScheduleTemplate(null)
-    
-    // In a real app, you would save this to the backend
-    // await fetch('/api/templates/schedule', { method: 'POST', body: JSON.stringify(newSchedule) })
   }
   
-  const cancelScheduledAction = (scheduleId: string) => {
+  const cancelScheduledAction = async (scheduleId: string) => {
+    const action = scheduledActions.find(s => s.id === scheduleId)
+    
     setScheduledActions(prev => 
       prev.map(s => s.id === scheduleId ? { ...s, status: 'cancelled' as const } : s)
     )
     toast.info('Scheduled action cancelled')
+    
+    // Clear schedule from backend
+    if (action) {
+      try {
+        await fetch(`/api/templates/${action.templateId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            metadata: { scheduledAction: null, scheduledDate: null },
+          }),
+        })
+      } catch {
+        // Schedule removal is best-effort
+      }
+    }
   }
 
   // ============= TEMPLATE DEPENDENCIES =============
@@ -1030,22 +1133,59 @@ export default function TemplatesPage() {
     }
   }
 
-  // ============= TEMPLATE LOCKING =============
-  const toggleTemplateLock = (templateId: string, templateName: string) => {
+  // ============= TEMPLATE LOCKING (persisted to backend) =============
+  const toggleTemplateLock = async (templateId: string, templateName: string) => {
+    const isCurrentlyLocked = lockedTemplates.has(templateId)
+    
+    // Optimistic UI update
     setLockedTemplates(prev => {
       const newLocks = new Set(prev)
-      if (newLocks.has(templateId)) {
+      if (isCurrentlyLocked) {
         newLocks.delete(templateId)
-        toast.success(`"${templateName}" is now unlocked`)
-        addActivity('unlocked', templateName)
       } else {
         newLocks.add(templateId)
-        toast.success(`"${templateName}" is now locked`)
-        addActivity('locked', templateName)
       }
       localStorage.setItem('template-locks', JSON.stringify([...newLocks]))
       return newLocks
     })
+
+    try {
+      // Persist lock state to backend via PATCH
+      const response = await fetch(`/api/templates/${templateId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metadata: { locked: !isCurrentlyLocked },
+          isActive: undefined, // preserve existing
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      if (isCurrentlyLocked) {
+        toast.success(`"${templateName}" is now unlocked`)
+        addActivity('unlocked', templateName)
+      } else {
+        toast.success(`"${templateName}" is now locked`)
+        addActivity('locked', templateName)
+      }
+    } catch (error) {
+      // Rollback optimistic update
+      console.error('Failed to persist template lock:', error)
+      setLockedTemplates(prev => {
+        const newLocks = new Set(prev)
+        if (isCurrentlyLocked) {
+          newLocks.add(templateId) // restore lock
+        } else {
+          newLocks.delete(templateId) // remove lock
+        }
+        localStorage.setItem('template-locks', JSON.stringify([...newLocks]))
+        return newLocks
+      })
+      toast.error(`Failed to ${isCurrentlyLocked ? 'unlock' : 'lock'} template`)
+    }
   }
   
   const isTemplateLocked = (templateId: string) => lockedTemplates.has(templateId)
@@ -3110,8 +3250,19 @@ export default function TemplatesPage() {
                 </div>
                 
                 <div className="p-6 overflow-y-auto flex-1">
+                  {isLoadingVersions ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-violet-500 mr-2" />
+                      <span className="text-sm text-gray-500">Loading version history...</span>
+                    </div>
+                  ) : versionHistoryEntries.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <History className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                      <p>No version history available</p>
+                    </div>
+                  ) : (
                   <div className="space-y-4">
-                    {getVersionHistory(versionHistoryTemplate).map((version, idx) => (
+                    {versionHistoryEntries.map((version, idx) => (
                       <div 
                         key={version.version} 
                         className={cn(
@@ -3154,6 +3305,7 @@ export default function TemplatesPage() {
                       </div>
                     ))}
                   </div>
+                  )}
                 </div>
                 
                 <div className="p-4 border-t bg-gray-50">

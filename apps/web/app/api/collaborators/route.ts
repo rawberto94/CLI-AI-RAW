@@ -11,6 +11,7 @@ import { auditLog, AuditAction } from '@/lib/security/audit';
 import { randomBytes } from 'crypto';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
+import { logger } from '@/lib/logger';
 // bcrypt import reserved for future password hashing needs
 
 type CollaboratorType = 'client' | 'vendor' | 'partner' | 'consultant' | 'auditor';
@@ -215,7 +216,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       `,
     });
   } catch (emailErr) {
-    console.warn('Failed to send collaborator invitation email:', emailErr);
+    logger.warn('Failed to send collaborator invitation email:', emailErr);
   }
 
   return createSuccessResponse(ctx, { 

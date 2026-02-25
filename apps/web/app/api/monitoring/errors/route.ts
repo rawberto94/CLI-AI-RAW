@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { monitoringService } from 'data-orchestration/services';
-import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +24,7 @@ interface ClientError {
   userAgent?: string;
 }
 
-export const POST = withApiHandler(async (request: NextRequest, ctx) => {
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const body: ClientError = await request.json();
 
   // Log the error

@@ -2,14 +2,13 @@
  * Chunked Upload API - Upload Chunk
  * POST /api/contracts/upload/chunk
  * 
- * Upload a single chunk of a large file
+ * Upload a single chunk of a large file.
+ * Uses the storage abstraction layer so chunks are stored via the
+ * configured provider (S3/MinIO, Azure Blob, or local filesystem).
  */
 
-import { NextRequest } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { uploadToStorage } from '@/lib/storage';
 
 export const POST = withAuthApiHandler(async (req, ctx) => {
   const tenantId = ctx.tenantId;
@@ -28,17 +27,16 @@ export const POST = withAuthApiHandler(async (req, ctx) => {
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Missing required fields', 400);
   }
 
-  // Create chunks directory
-  const chunksDir = join(process.cwd(), 'uploads', 'chunks', uploadId);
-  if (!existsSync(chunksDir)) {
-    await mkdir(chunksDir, { recursive: true });
-  }
-
-  // Save chunk to disk
-  const chunkPath = join(chunksDir, `chunk-${chunkIndex}`);
+  // Store chunk via the storage abstraction layer
   const bytes = await chunk.arrayBuffer();
   const buffer = Buffer.from(bytes);
-  await writeFile(chunkPath, buffer);
+  const chunkKey = `chunks/${uploadId}/chunk-${chunkIndex}`;
+
+  const result = await uploadToStorage(chunkKey, buffer, 'application/octet-stream');
+
+  if (!result.success) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to store chunk: ${result.error}`, 500);
+  }
 
   return createSuccessResponse(ctx, {
     chunkIndex,

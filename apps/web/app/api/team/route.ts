@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { auditTrailService } from 'data-orchestration/services';
+import { logger } from '@/lib/logger';
 
 type UserRole = 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
 type UserStatus = 'active' | 'invited' | 'inactive';
@@ -219,7 +220,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         html: template.html,
       });
     } catch (emailError) {
-      console.error('Failed to send invitation email:', emailError);
+      logger.error('Failed to send invitation email:', emailError);
       // Continue even if email fails - user is created
     }
 

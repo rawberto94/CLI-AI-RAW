@@ -14,9 +14,11 @@ import {
   MODEL_CONTEXT_WINDOWS,
   MODEL_OUTPUT_LIMITS,
 } from './token-counter';
-import pino from 'pino';
 
-const logger = pino({ name: 'token-budget' });
+// Lightweight logger — avoids pino's thread-stream which is incompatible with Turbopack
+const logger = {
+  warn: (ctx: Record<string, unknown>, msg: string) => console.warn(`[token-budget] ${msg}`, ctx),
+};
 
 // ============================================================================
 // TYPES

@@ -131,10 +131,13 @@ export async function processRAGIndexingJob(
       const embedFn: EmbedFn = async (texts: string[]) => {
         // Batch in groups of 64 to stay within API limits
         const EMBED_BATCH = 64;
+        const embedDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '0', 10);
         const all: number[][] = [];
         for (let b = 0; b < texts.length; b += EMBED_BATCH) {
           const batch = texts.slice(b, b + EMBED_BATCH);
-          const res = await embedClient.embeddings.create({ model: embedModel, input: batch });
+          const params: any = { model: embedModel, input: batch };
+          if (embedDims > 0 && embedModel.includes('text-embedding-3')) params.dimensions = embedDims;
+          const res = await embedClient.embeddings.create(params);
           all.push(...res.data.map((d: any) => d.embedding));
         }
         return all;
@@ -320,8 +323,11 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
       
       jobLogger.info({ batch: batchNum, total: totalBatches }, 'Generating embeddings batch');
       
+      const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '0', 10);
+      const embParams: any = { model, input: texts };
+      if (embDims > 0 && model.includes('text-embedding-3')) embParams.dimensions = embDims;
       const response = await retryWithBackoff(() => 
-        openai.embeddings.create({ model, input: texts })
+        openai.embeddings.create(embParams)
       ) as any;
       embeddings.push(...response.data.map((d: any) => d.embedding));
       

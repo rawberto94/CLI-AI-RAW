@@ -94,7 +94,7 @@ class AIAnalyticsService {
     const cost = this.calculateCost(event.model, event.inputTokens, event.outputTokens);
 
     try {
-      await (prisma as any).aiUsageLog?.create({
+      await prisma.aIUsageLog.create({
         data: {
           model: event.model,
           endpoint: event.endpoint,
@@ -154,7 +154,7 @@ class AIAnalyticsService {
     };
 
     // Get all logs for the period
-    const logs = await (prisma as any).aiUsageLog?.findMany({
+    const logs = await prisma.aIUsageLog.findMany({
       where: whereClause,
       orderBy: { createdAt: 'asc' },
     }) || [];
@@ -322,7 +322,7 @@ class AIAnalyticsService {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
-    const logs = await (prisma as any).aiUsageLog?.findMany({
+    const logs = await prisma.aIUsageLog.findMany({
       where: {
         createdAt: { gte: startOfDay },
         ...(tenantId && { tenantId }),
@@ -355,7 +355,7 @@ class AIAnalyticsService {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const logs = await (prisma as any).aiUsageLog?.findMany({
+    const logs = await prisma.aIUsageLog.findMany({
       where: {
         userId,
         createdAt: { gte: startDate },

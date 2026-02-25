@@ -382,7 +382,7 @@ export function ProcessingConfig({ options, onChange, disabled }: ProcessingConf
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label className="text-sm">Duplicate Detection</Label>
-                      <p className="text-xs text-slate-500">Check for existing copies</p>
+                      <p className="text-xs text-slate-500">Prevent uploading identical files (enabled by default)</p>
                     </div>
                     <Switch
                       checked={options.enableDuplicateDetection}

@@ -860,6 +860,11 @@ model ContractEmbedding {
   @@index([chunkType])
   @@index([tenantId])
   @@index([contractType])
+  // Enterprise-scale composite indexes for 5000+ contracts per tenant
+  @@index([tenantId, contractType])
+  @@index([tenantId, contractId])
+  @@index([tenantId, chunkType])
+  @@index([tenantId, contractId, chunkIndex])
 }
 
 model Clause {
@@ -1013,7 +1018,9 @@ model Artifact {
   @@index([tenantId])
   @@index([type])
   @@index([contractId, type])
+  @@index([contractId, tenantId])
   @@index([tenantId, type])
+  @@index([tenantId, contractId, createdAt(sort: Desc)])
   @@index([isEdited])
   @@index([validationStatus])
   @@index([lastPropagatedAt])
@@ -1874,6 +1881,7 @@ enum PartyType {
 
 enum ContractStatus {
   UPLOADED
+  QUEUED
   PROCESSING
   COMPLETED
   FAILED
@@ -1888,6 +1896,7 @@ enum ContractStatus {
 
 enum JobStatus {
   PENDING
+  QUEUED
   RUNNING
   COMPLETED
   FAILED
@@ -5786,4 +5795,173 @@ model IntentDetectionLog {
   @@index([detectedGoal, detectedAt])
   @@index([confidence])
   @@map("intent_detection_log")
+}
+
+/// Agent Memory — persistent memory for agents to learn from interactions
+model AgentMemory {
+  id             String    @id @default(uuid())
+  agentId        String    @map("agent_id")
+  tenantId       String    @map("tenant_id")
+  userId         String?   @map("user_id")
+  type           String // interaction, fact, preference, correction
+  content        String    @db.Text
+  context        String?   @db.Text
+  embedding      Json? // Vector for semantic search (stored as JSON array)
+  importance     Float     @default(0.5)
+  accessCount    Int       @default(0) @map("access_count")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  lastAccessedAt DateTime? @map("last_accessed_at")
+
+  @@index([agentId, tenantId])
+  @@index([type, importance])
+  @@index([createdAt])
+  @@map("agent_memory")
+}
+
+/// RFx Event — Request for Proposal/Quote/Information events
+model RFxEvent {
+  id          String  @id @default(uuid())
+  tenantId    String  @map("tenant_id")
+  title       String
+  description String? @db.Text
+  type        String // RFP, RFQ, RFI, Auction, RFT
+  status      String  @default("draft") // draft, published, open, closed, awarded, cancelled
+
+  // Scope
+  category       String?
+  contractType   String? @map("contract_type")
+  estimatedValue Float?  @map("estimated_value")
+  currency       String  @default("USD")
+
+  // Timeline
+  publishDate       DateTime? @map("publish_date")
+  responseDeadline  DateTime  @map("response_deadline")
+  awardDate         DateTime? @map("award_date")
+  contractStartDate DateTime? @map("contract_start_date")
+
+  // Requirements & Criteria
+  requirements       Json? @db.JsonB
+  evaluationCriteria Json? @map("evaluation_criteria") @db.JsonB
+
+  // Vendors & Responses
+  invitedVendors String[] @map("invited_vendors")
+  responses      Json?    @db.JsonB
+
+  // Results
+  winner             String?
+  awardJustification String? @map("award_justification") @db.Text
+  savingsAchieved    Float?  @map("savings_achieved")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String   @map("created_by")
+
+  @@index([tenantId, status])
+  @@index([tenantId, type])
+  @@index([responseDeadline])
+  @@index([status, responseDeadline])
+  @@map("rfx_events")
+}
+
+/// Knowledge Graph Sync — tracks entity extraction and graph updates
+model KnowledgeGraphSync {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  contractId    String    @map("contract_id")
+  entityCount   Int       @map("entity_count")
+  relationCount Int       @map("relation_count")
+  status        String    @default("pending") // pending, processing, completed, failed
+  errorMessage  String?   @map("error_message") @db.Text
+  processedAt   DateTime? @map("processed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId, contractId])
+  @@index([status, createdAt])
+  @@map("knowledge_graph_sync")
+}
+
+// ============================================================================
+// Contigo Labs - AI Agent Ecosystem Models
+// ============================================================================
+
+/// Approval Action Audit Log - Tracks all human-in-the-loop approval decisions
+model ApprovalAction {
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  approvalId    String   @map("approval_id")
+  approvalType  String   @map("approval_type") // agent_goal, rfx_award, compliance_alert, renewal_decision
+  action        String // approve, reject, modify, escalate, defer
+  actorId       String   @map("actor_id")
+  notes         String?  @db.Text
+  modifications Json? // JSON payload for requested modifications
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([approvalId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("approval_actions")
+}
+
+/// Agent Conversation - Chat history with AI agents
+model AgentConversation {
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  threadId      String   @map("thread_id")
+  role          String // user, assistant, system
+  content       String   @db.Text
+  userId        String?  @map("user_id")
+  agentId       String?  @map("agent_id") // e.g., rfx-procurement-agent
+  agentCodename String?  @map("agent_codename") // e.g., Merchant
+  context       Json? // contractId, rfxId, etc.
+  metadata      Json? // actions, data, confidence
+  timestamp     DateTime @default(now())
+
+  @@index([tenantId, threadId])
+  @@index([timestamp])
+  @@index([agentId])
+  @@map("agent_conversations")
+}
+
+/// RFx Opportunity - Detected sourcing opportunities by Scout agent
+model RFxOpportunity {
+  id                String             @id @default(uuid())
+  tenantId          String             @map("tenant_id")
+  contractId        String             @map("contract_id")
+  algorithm         String // expiration, savings, performance, consolidation
+  status            OpportunityStatus  @default(IDENTIFIED)
+  urgency           OpportunityUrgency @default(MEDIUM)
+  confidence        Float              @default(0.8)
+  title             String
+  description       String             @db.Text
+  reasoning         String             @db.Text
+  currentValue      Decimal?           @map("current_value") @db.Decimal(15, 2)
+  savingsPotential  Decimal?           @map("savings_potential") @db.Decimal(15, 2)
+  savingsPercent    Float?             @map("savings_percent")
+  marketRate        Decimal?           @map("market_rate") @db.Decimal(15, 2)
+  expiryDate        DateTime?          @map("expiry_date")
+  daysToExpiry      Int?               @map("days_to_expiry")
+  evidence          Json? // marketRate, similarContracts, performanceScore
+  recommendedAction String             @map("recommended_action") @db.Text
+  rfxId             String?            @map("rfx_id") // Set if converted to RFx
+  rejectedAt        DateTime?          @map("rejected_at")
+  rejectionReason   String?            @map("rejection_reason") @db.Text
+  snoozedUntil      DateTime?          @map("snoozed_until")
+  detectedAt        DateTime           @default(now()) @map("detected_at")
+  convertedAt       DateTime?          @map("converted_at")
+  metadata          Json? // sourceOpportunityId, etc.
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, algorithm])
+  @@index([detectedAt])
+  @@map("rfx_opportunities")
+}
+
+enum OpportunityUrgency {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
 }

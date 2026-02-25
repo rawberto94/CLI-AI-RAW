@@ -4,6 +4,7 @@ import { smartCacheService } from "./smart-cache.service";
 import { eventBus, Events } from "../events/event-bus";
 import { fileIntegrityService } from "./file-integrity.service";
 import { createLogger } from "../utils/logger";
+import { contractBatcher } from "../utils/query-batcher";
 import {
   Contract,
   ContractQuery,
@@ -311,6 +312,18 @@ export class ContractService {
     id: string,
     tenantId: string,
     includeRelations = false
+  ): Promise<ServiceResponse<Contract>> {
+    // Deduplicate concurrent identical requests (e.g. parallel components)
+    const dedupKey = `contract:${tenantId}:${id}:${includeRelations}`;
+    return contractBatcher.execute(dedupKey, () =>
+      this._getContractImpl(id, tenantId, includeRelations)
+    );
+  }
+
+  private async _getContractImpl(
+    id: string,
+    tenantId: string,
+    includeRelations: boolean
   ): Promise<ServiceResponse<Contract>> {
     try {
       // Try smart cache first (only for basic contract, not with relations)

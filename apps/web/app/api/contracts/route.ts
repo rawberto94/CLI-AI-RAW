@@ -21,6 +21,9 @@ import { getAuthenticatedApiContext,
   createSuccessResponse,
   createErrorResponse,
 } from "@/lib/api-middleware";
+import { generateETag, checkETagMatch, CacheDuration } from '@/lib/api-cache-headers';
+import { apiCache, etagHeaders } from '@/lib/cache/etag-cache';
+import { logger } from '@/lib/logger';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -185,6 +188,7 @@ async function handler(request: NextRequest) {
             fileSize: true,
             mimeType: true,
             createdAt: true,
+            updatedAt: true,
             uploadedAt: true,
             status: true,
             contractType: true,
@@ -225,6 +229,7 @@ async function handler(request: NextRequest) {
             _count: {
               select: {
                 childContracts: true,
+                artifacts: true,
               },
             },
           },
@@ -258,17 +263,57 @@ async function handler(request: NextRequest) {
         }
       }
 
-      return {
+      // ── Detect & resolve stale PROCESSING contracts BEFORE building response ──
+      // A contract is stale if:
+      //  1. No artifacts generated AND idle for >90 seconds (worker never started), OR
+      //  2. Processing for >10 minutes regardless (hard ceiling — worker crashed or stuck)
+      const STALE_NO_ARTIFACTS_MS = 90 * 1000;      // 90 seconds with 0 artifacts
+      const STALE_HARD_CEILING_MS = 10 * 60 * 1000; // 10 minutes absolute max
+
+      const staleContractIds: string[] = [];
+      for (const contract of contracts) {
+        if (contract.status !== 'PROCESSING') continue;
+        const meta = contract.aiMetadata as any;
+        const expected = meta?.expectedArtifactCount || 15;
+        const actual = (contract as any)._count?.artifacts || 0;
+        const artifactProgress = Math.min(Math.round((actual / expected) * 100), 99);
+        const lastTouch = contract.updatedAt || contract.createdAt;
+        const staleSinceMs = Date.now() - new Date(lastTouch).getTime();
+        const isStaleNoArtifacts = artifactProgress === 0 && staleSinceMs > STALE_NO_ARTIFACTS_MS;
+        const isStaleHardCeiling = staleSinceMs > STALE_HARD_CEILING_MS;
+        if (isStaleNoArtifacts || isStaleHardCeiling) {
+          staleContractIds.push(contract.id);
+        }
+      }
+
+      // Await the update so the current response already reflects COMPLETED
+      if (staleContractIds.length > 0) {
+        try {
+          await prisma.contract.updateMany({
+            where: { id: { in: staleContractIds }, tenantId, status: 'PROCESSING' },
+            data: { status: 'COMPLETED', updatedAt: new Date() },
+          });
+        } catch (e) {
+          logger.warn('Failed to auto-resolve stale contracts', { tenantId, staleContractIds, error: e });
+        }
+        logger.info(`Auto-resolved ${staleContractIds.length} stale processing contract(s)`, { tenantId, staleContractIds });
+      }
+
+      const staleIdSet = new Set(staleContractIds);
+
+      const result = {
         success: true,
         data: {
           contracts: contracts.map((contract) => {
             const categoryInfo = contract.category ? categoryMap.get(contract.category) : null;
+            // If this contract was just auto-resolved, reflect COMPLETED immediately
+            const effectiveStatus = staleIdSet.has(contract.id) ? 'completed' : contract.status.toLowerCase();
             return {
               id: contract.id,
               title: contract.contractTitle || contract.originalName || contract.fileName,
               filename: contract.fileName,
               originalName: contract.originalName || contract.fileName,
-              status: contract.status.toLowerCase(),
+              status: effectiveStatus,
               fileSize: contract.fileSize.toString(),
               mimeType: contract.mimeType,
               uploadedAt: contract.uploadedAt?.toISOString() || contract.createdAt.toISOString(),
@@ -323,6 +368,33 @@ async function handler(request: NextRequest) {
               } : null,
               childContractCount: (contract as any)._count?.childContracts || 0,
               hasHierarchy: !!(contract as any).parentContractId || ((contract as any)._count?.childContracts || 0) > 0,
+              // Processing progress — only for PROCESSING contracts NOT already auto-resolved
+              processing: (contract.status === 'PROCESSING' && !staleIdSet.has(contract.id)) ? (() => {
+                const meta = contract.aiMetadata as any;
+                const expected = meta?.expectedArtifactCount || 15;
+                const actual = (contract as any)._count?.artifacts || 0;
+                const artifactProgress = Math.min(Math.round((actual / expected) * 100), 99);
+                const lastTouch = contract.updatedAt || contract.createdAt;
+                const staleSinceMs = Date.now() - new Date(lastTouch).getTime();
+                // Show time-based progress when no artifacts yet, so UX feels alive
+                // Ramps from 5% to 80% over the first 90 seconds, slow-log curve
+                const timeFraction = Math.min(staleSinceMs / (90 * 1000), 1);
+                const timeProgress = Math.round(5 + 75 * (1 - Math.pow(1 - timeFraction, 2)));
+                const progress = Math.max(artifactProgress, timeProgress);
+                const stages = [
+                  'Analyzing document structure…',
+                  'Extracting key information…',
+                  'Identifying contract clauses…',
+                  'Building contract profile…',
+                ];
+                const stageIdx = Math.min(Math.floor(timeFraction * stages.length), stages.length - 1);
+                return {
+                  progress,
+                  currentStage: meta?.currentStage || (actual > 0 ? `Generating artifacts (${actual}/${expected})` : stages[stageIdx]),
+                  stale: false,
+                  autoResolved: false,
+                };
+              })() : undefined,
               // Signature & Document Classification
               signatureStatus: (contract as any).signatureStatus || (contract.aiMetadata as any)?.signature_status || 'unknown',
               signatureDate: (contract as any).signatureDate?.toISOString() || (contract.aiMetadata as any)?.signature_date || null,
@@ -359,27 +431,50 @@ async function handler(request: NextRequest) {
           },
         },
       };
+
+      return result;
     },
-    { ttl: 300 } // Cache for 5 minutes
+    // Skip cache when PROCESSING contracts might exist (no status filter, or
+    // status filter includes PROCESSING) so auto-resolve and progress updates
+    // appear immediately on each poll.
+    { ttl: (validStatuses.length === 0 || validStatuses.includes(ContractStatus.PROCESSING)) ? 0 : 120 }
   );
 
   const responseTime = Date.now() - startTime;
 
+  // Build a deterministic cache key for server-side ETag memoization
+  const listCacheKey = `contracts:${tenantId}:p${page}:l${limit}:s${sortBy}:${sortOrder}:${search || ''}`;
+
+  const responseData = {
+    ...cachedResult.data,
+    meta: {
+      ...cachedResult.data.meta,
+      responseTime: `${responseTime}ms`,
+      cached: responseTime < 100,
+    },
+  };
+
+  // ETag-based conditional response — return 304 if unchanged
+  const etag = apiCache.set(listCacheKey, responseData, CacheDuration.SHORT * 1000);
+  if (apiCache.matches(listCacheKey, request.headers.get('If-None-Match'))) {
+    return new Response(null, {
+      status: 304,
+      headers: {
+        'ETag': etag,
+        'Cache-Control': `private, max-age=${CacheDuration.SHORT}, stale-while-revalidate=${CacheDuration.MEDIUM}`,
+      },
+    });
+  }
+
   // Return cached or fresh result
   return createSuccessResponse(ctx, 
-    {
-      ...cachedResult.data,
-      meta: {
-        ...cachedResult.data.meta,
-        responseTime: `${responseTime}ms`,
-        cached: responseTime < 100,
-      },
-    },
+    responseData,
     {
       status: 200,
       headers: {
         "X-Response-Time": `${responseTime}ms`,
         "X-Data-Source": responseTime < 100 ? "cache" : "database",
+        ...etagHeaders(etag, { maxAge: CacheDuration.SHORT }),
       },
     }
   );
@@ -390,7 +485,7 @@ export async function GET(request: NextRequest) {
     return await handler(request);
   } catch (error) {
     // Return proper error instead of silently serving mock data
-    console.error('Contracts GET error:', error);
+    logger.error('Contracts GET error:', error);
     const ctx = getAuthenticatedApiContext(request);
     if (!ctx) {
       return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });

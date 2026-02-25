@@ -1,189 +1,241 @@
 /**
- * Agent SSE (Server-Sent Events) Endpoint for Real-Time HITL Notifications
+ * Agent SSE (Server-Sent Events) Endpoint
  * 
- * Provides a streaming connection for the frontend to receive instant updates about:
- * - New goals requiring approval (approval_required)
- * - Goal status changes (goal_updated)
- * - Goal completion/failure events (goal_completed, goal_failed)
+ * Provides real-time updates for:
+ * - Agent activities
+ * - New approvals
+ * - Opportunity detection
+ * - Chat messages
  * 
- * Usage from frontend:
- *   const es = new EventSource('/api/agents/sse');
- *   es.addEventListener('approval_required', (e) => { ... });
- *   es.addEventListener('goal_updated', (e) => { ... });
+ * Usage: new EventSource('/api/agents/sse?tenantId=xxx')
  */
 
 import { NextRequest } from 'next/server';
+import { redis } from '@/lib/redis';
 import { prisma } from '@/lib/prisma';
-import { sendHITLApprovalNotification } from '@/lib/notifications/hitl-notification.service';
+import { logger } from '@/lib/logger';
 
-// =============================================================================
-// In-memory subscriber tracking
-// =============================================================================
-
-const MAX_SUBSCRIBERS = 1000; // M5: prevent memory exhaustion
-
-interface SSESubscriber {
-  tenantId: string;
-  controller: ReadableStreamDefaultController;
-  lastEventId: number;
-  connectedAt: Date;
-}
-
-const subscribers = new Map<string, SSESubscriber>();
-let subscriberIdCounter = 0;
+// Track connected clients
+const clients = new Map<string, ReadableStreamDefaultController[]>();
 
 /**
- * Broadcast an SSE event to all subscribers for a given tenant.
- * Called from the goals API or orchestrator when HITL-relevant events occur.
- *
- * For 'approval_required' events, also fires out-of-browser notifications
- * (in-app, push, Slack, webhook) via the HITL notification service.
+ * GET /api/agents/sse
+ * 
+ * Establish SSE connection for real-time updates
  */
-export function broadcastSSE(tenantId: string, event: string, data: Record<string, unknown>): void {
-  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-  const encoder = new TextEncoder();
+export async function GET(req: NextRequest) {
+  const searchParams = req.nextUrl.searchParams;
+  const tenantId = searchParams.get('tenantId');
+  const userId = searchParams.get('userId');
 
-  for (const [id, sub] of subscribers) {
-    if (sub.tenantId === tenantId) {
-      try {
-        sub.controller.enqueue(encoder.encode(payload));
-      } catch {
-        // Subscriber disconnected — clean up
-        subscribers.delete(id);
-      }
-    }
+  if (!tenantId) {
+    return new Response('Missing tenantId', { status: 400 });
   }
 
-  // Out-of-browser notifications for approval requests
-  if (event === 'approval_required' && data.goalId) {
-    sendHITLApprovalNotification({
-      tenantId,
-      goalId: data.goalId as string,
-      goalTitle: (data.title as string) || 'Agent Goal',
-      goalType: (data.goalType as string) || 'unknown',
-      goalDescription: data.description as string | undefined,
-      riskLevel: (data.riskLevel as string) || 'high',
-      requiredApprovals: (data.requiredApprovals as string[]) || ['human_review'],
-      creatorUserId: data.userId as string | undefined,
-    }).catch(() => {}); // fire-and-forget — SSE already delivered
-  }
-}
-
-/**
- * Get current subscriber count for monitoring.
- */
-export function getSSESubscriberCount(): number {
-  return subscribers.size;
-}
-
-// =============================================================================
-// GET - Open SSE connection
-// =============================================================================
-
-export async function GET(request: NextRequest): Promise<Response> {
-  // C1: Defense-in-depth auth — require x-user-id header (injected by edge middleware)
-  const userId = request.headers.get('x-user-id');
-  if (!userId) {
-    return new Response(JSON.stringify({ error: 'Authentication required' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  const tenantId = request.headers.get('x-tenant-id') || 'demo';
-
-  // M5: Rate limit — reject if at capacity
-  if (subscribers.size >= MAX_SUBSCRIBERS) {
-    return new Response(JSON.stringify({ error: 'Too many active connections' }), {
-      status: 429,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  const subscriberId = `sse-${++subscriberIdCounter}`;
+  const clientId = `${tenantId}:${userId || 'anonymous'}:${Date.now()}`;
 
   const stream = new ReadableStream({
     start(controller) {
+      // Send initial connection message
       const encoder = new TextEncoder();
+      controller.enqueue(encoder.encode(`event: connected\ndata: ${JSON.stringify({ clientId, timestamp: new Date().toISOString() })}\n\n`));
 
-      // Register subscriber
-      subscribers.set(subscriberId, {
-        tenantId,
-        controller,
-        lastEventId: 0,
-        connectedAt: new Date(),
-      });
+      // Store controller for this client
+      if (!clients.has(tenantId)) {
+        clients.set(tenantId, []);
+      }
+      clients.get(tenantId)!.push(controller);
 
-      // Send initial connection event
-      controller.enqueue(encoder.encode(`event: connected\ndata: ${JSON.stringify({ subscriberId, tenantId, timestamp: new Date().toISOString() })}\n\n`));
+      // Send initial data burst
+      sendInitialData(controller, tenantId);
 
-      // Heartbeat every 30 seconds to keep connection alive
+      // Set up Redis subscription for this tenant
+      setupRedisSubscription(tenantId);
+
+      // Heartbeat to keep connection alive
       const heartbeat = setInterval(() => {
         try {
-          controller.enqueue(encoder.encode(`: heartbeat ${new Date().toISOString()}\n\n`));
+          controller.enqueue(encoder.encode(`event: heartbeat\ndata: ${JSON.stringify({ time: Date.now() })}\n\n`));
         } catch {
           clearInterval(heartbeat);
-          subscribers.delete(subscriberId);
+          removeClient(tenantId, controller);
         }
-      }, 30_000);
+      }, 30000);
 
-      // Send current pending approvals on connect (catch-up)
-      sendPendingApprovals(tenantId, controller, encoder).catch(() => {});
-
-      // Clean up on close
-      request.signal.addEventListener('abort', () => {
+      // Cleanup on close
+      req.signal.addEventListener('abort', () => {
         clearInterval(heartbeat);
-        subscribers.delete(subscriberId);
-        try { controller.close(); } catch { /* already closed */ }
+        removeClient(tenantId, controller);
       });
-    },
-
-    cancel() {
-      subscribers.delete(subscriberId);
     },
   });
 
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
+      'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no', // Disable nginx buffering
     },
   });
 }
 
 /**
- * Send current pending approval goals to a newly connected subscriber.
+ * POST /api/agents/sse/broadcast
+ * 
+ * Broadcast event to all connected clients for a tenant
+ * (Used by other API routes to trigger real-time updates)
  */
-async function sendPendingApprovals(
-  tenantId: string,
-  controller: ReadableStreamDefaultController,
-  encoder: TextEncoder
-): Promise<void> {
+export async function POST(req: NextRequest) {
   try {
-    const pendingGoals = await prisma.agentGoal.findMany({
-      where: {
-        tenantId,
-        status: 'AWAITING_APPROVAL',
-      },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        type: true,
-        priority: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    });
+    const body = await req.json();
+    const { tenantId, event, data } = body;
 
-    if (pendingGoals.length > 0) {
-      const payload = `event: pending_approvals\ndata: ${JSON.stringify({ goals: pendingGoals, count: pendingGoals.length })}\n\n`;
-      controller.enqueue(encoder.encode(payload));
+    if (!tenantId || !event) {
+      return Response.json({ error: 'Missing tenantId or event' }, { status: 400 });
     }
-  } catch {
-    // DB unavailable — subscriber will get updates via polling fallback
+
+    // Publish to Redis for cross-instance communication
+    await redis.publish(`sse:${tenantId}`, JSON.stringify({ event, data, timestamp: Date.now() }));
+
+    // Broadcast to local clients
+    broadcastToTenant(tenantId, event, data);
+
+    return Response.json({ success: true, clientsConnected: clients.get(tenantId)?.length || 0 });
+  } catch (error) {
+    logger.error('SSE broadcast error:', error);
+    return Response.json({ error: 'Broadcast failed' }, { status: 500 });
+  }
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+async function sendInitialData(controller: ReadableStreamDefaultController, tenantId: string) {
+  const encoder = new TextEncoder();
+
+  try {
+    // Fetch recent activities
+    const [activities, approvals, opportunities] = await Promise.all([
+      prisma.agentEvent.findMany({
+        where: { tenantId },
+        orderBy: { timestamp: 'desc' },
+        take: 5,
+      }).catch(() => []),
+      prisma.agentGoal.count({
+        where: { tenantId, status: 'AWAITING_APPROVAL' },
+      }).catch(() => 0),
+      prisma.rFxOpportunity.count({
+        where: { tenantId, status: 'DETECTED' },
+      }).catch(() => 0),
+    ]);
+
+    const initialData = {
+      activities: activities || [],
+      pendingApprovals: approvals || 0,
+      newOpportunities: opportunities || 0,
+      timestamp: new Date().toISOString(),
+    };
+
+    controller.enqueue(encoder.encode(`event: initial\ndata: ${JSON.stringify(initialData)}\n\n`));
+  } catch (error) {
+    logger.error('Error sending initial data:', error);
+  }
+}
+
+function broadcastToTenant(tenantId: string, event: string, data: any) {
+  const tenantClients = clients.get(tenantId);
+  if (!tenantClients) return;
+
+  const encoder = new TextEncoder();
+  const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  const encoded = encoder.encode(message);
+
+  // Send to all connected clients for this tenant
+  tenantClients.forEach(controller => {
+    try {
+      controller.enqueue(encoded);
+    } catch (error) {
+      // Client disconnected
+      removeClient(tenantId, controller);
+    }
+  });
+}
+
+function removeClient(tenantId: string, controller: ReadableStreamDefaultController) {
+  const tenantClients = clients.get(tenantId);
+  if (tenantClients) {
+    const index = tenantClients.indexOf(controller);
+    if (index > -1) {
+      tenantClients.splice(index, 1);
+    }
+    if (tenantClients.length === 0) {
+      clients.delete(tenantId);
+    }
+  }
+}
+
+// Redis subscription for cross-instance communication
+let redisSubscriber: any = null;
+const subscribedTenants = new Set<string>();
+
+async function setupRedisSubscription(tenantId: string) {
+  if (subscribedTenants.has(tenantId)) return;
+  subscribedTenants.add(tenantId);
+
+  try {
+    if (!redisSubscriber) {
+      // Create a duplicate connection for subscribing
+      redisSubscriber = redis.duplicate();
+      await redisSubscriber.connect();
+    }
+
+    await redisSubscriber.subscribe(`sse:${tenantId}`, (message: string) => {
+      try {
+        const { event, data } = JSON.parse(message);
+        broadcastToTenant(tenantId, event, data);
+      } catch (error) {
+        logger.error('Error parsing Redis message:', error);
+      }
+    });
+  } catch (error) {
+    logger.error('Redis subscription error:', error);
+  }
+}
+
+// ============================================================================
+// BROADCAST HELPERS (for use in other API routes)
+// ============================================================================
+
+export async function broadcastActivity(tenantId: string, activity: any) {
+  try {
+    await redis.publish(`sse:${tenantId}`, JSON.stringify({
+      event: 'activity',
+      data: activity,
+    }));
+  } catch (error) {
+    logger.error('Broadcast error:', error);
+  }
+}
+
+export async function broadcastApproval(tenantId: string, approval: any) {
+  try {
+    await redis.publish(`sse:${tenantId}`, JSON.stringify({
+      event: 'approval',
+      data: approval,
+    }));
+  } catch (error) {
+    logger.error('Broadcast error:', error);
+  }
+}
+
+export async function broadcastOpportunity(tenantId: string, opportunity: any) {
+  try {
+    await redis.publish(`sse:${tenantId}`, JSON.stringify({
+      event: 'opportunity',
+      data: opportunity,
+    }));
+  } catch (error) {
+    logger.error('Broadcast error:', error);
   }
 }

@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { auditTrailService } from 'data-orchestration/services';
+import { logger } from '@/lib/logger';
 type ActivityType = 
   | 'contract_created'
   | 'contract_updated'
@@ -199,7 +200,7 @@ export async function logActivity(
   const ctx = getApiContext(type as any);
   try {
     if (!options.tenantId) {
-      console.error('[logActivity] tenantId is required');
+      logger.error('[logActivity] tenantId is required');
       return;
     }
     await prisma.contractActivity.create({
@@ -219,7 +220,7 @@ export async function logActivity(
       },
     });
   } catch (error) {
-    console.error('Failed to log activity:', error);
+    logger.error('Failed to log activity:', error);
     // Don't throw - activity logging should not break the main flow
   }
 }

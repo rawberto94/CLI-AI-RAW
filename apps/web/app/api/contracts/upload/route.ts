@@ -21,6 +21,73 @@ import { publishRealtimeEvent } from "@/lib/realtime/publish";
 import { contractUploadSchema } from "@/lib/validation/contract.validation";
 import { ZodError } from "zod";
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { rateLimitConfigs } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
+import { scanBuffer } from '@/lib/security/virus-scan';
+
+// ============================================================================
+// UPLOAD RATE LIMITING (Redis-backed with in-memory fallback)
+// ============================================================================
+
+let _redisClient: any = null;
+async function getUploadRedisClient(): Promise<any> {
+  if (_redisClient) return _redisClient;
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) return null;
+  try {
+    const Redis = (await import('ioredis')).default;
+    _redisClient = new Redis(redisUrl, { maxRetriesPerRequest: 2, lazyConnect: true });
+    await _redisClient.connect();
+    return _redisClient;
+  } catch {
+    return null;
+  }
+}
+
+const _memRateStore = new Map<string, { count: number; resetAt: number }>();
+// Clean up expired entries every 2 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of _memRateStore.entries()) {
+    if (val.resetAt < now) _memRateStore.delete(key);
+  }
+}, 120_000);
+
+async function checkUploadRateLimit(tenantId: string): Promise<{ allowed: boolean; retryAfter?: number }> {
+  const config = rateLimitConfigs['/api/contracts/upload'] || { windowMs: 60000, maxRequests: 10, keyPrefix: 'ratelimit:upload:' };
+  const key = `${config.keyPrefix}${tenantId}`;
+  const now = Date.now();
+
+  // Try Redis first
+  const redis = await getUploadRedisClient();
+  if (redis) {
+    try {
+      const count = await redis.incr(key);
+      if (count === 1) {
+        await redis.pexpire(key, config.windowMs);
+      }
+      if (count > config.maxRequests) {
+        const ttl = await redis.pttl(key);
+        return { allowed: false, retryAfter: Math.ceil(Math.max(ttl, 1000) / 1000) };
+      }
+      return { allowed: true };
+    } catch {
+      // Redis failed, fall through to memory
+    }
+  }
+
+  // In-memory fallback
+  const entry = _memRateStore.get(key);
+  if (entry && entry.resetAt > now) {
+    entry.count++;
+    if (entry.count > config.maxRequests) {
+      return { allowed: false, retryAfter: Math.ceil((entry.resetAt - now) / 1000) };
+    }
+    return { allowed: true };
+  }
+  _memRateStore.set(key, { count: 1, resetAt: now + config.windowMs });
+  return { allowed: true };
+}
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -182,12 +249,52 @@ function sanitizeFileName(fileName: string): string {
  */
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
+  const uploadStartTime = Date.now();
   
   // Require tenant ID for data isolation
   if (!tenantId) {
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400, {
       details: 'Please provide x-tenant-id header',
     });
+  }
+
+  // Rate limiting: 10 uploads per minute per tenant (Redis-backed)
+  const rlResult = await checkUploadRateLimit(tenantId);
+  if (!rlResult.allowed) {
+    return createErrorResponse(ctx, 'RATE_LIMITED', `Too many uploads. Limit: 10 per minute.`, 429, {
+      retryAfter: rlResult.retryAfter,
+    });
+  }
+
+  // Tenant upload quota: configurable max contracts per tenant
+  const TENANT_MAX_CONTRACTS = parseInt(process.env.TENANT_MAX_CONTRACTS || '10000', 10);
+  const TENANT_MAX_STORAGE_MB = parseInt(process.env.TENANT_MAX_STORAGE_MB || '50000', 10);
+  try {
+    const tenantUsage = await prisma.contract.aggregate({
+      where: { tenantId, isDeleted: false },
+      _count: { id: true },
+      _sum: { fileSize: true },
+    });
+    const contractCount = tenantUsage._count.id || 0;
+    const storageMB = Number(tenantUsage._sum.fileSize || 0) / (1024 * 1024);
+
+    if (contractCount >= TENANT_MAX_CONTRACTS) {
+      return createErrorResponse(ctx, 'QUOTA_EXCEEDED', `Tenant quota exceeded: ${contractCount}/${TENANT_MAX_CONTRACTS} contracts`, 403, {
+        details: `Maximum ${TENANT_MAX_CONTRACTS} contracts per tenant. Please archive or delete unused contracts.`,
+        currentCount: contractCount,
+        limit: TENANT_MAX_CONTRACTS,
+      });
+    }
+    if (storageMB >= TENANT_MAX_STORAGE_MB) {
+      return createErrorResponse(ctx, 'QUOTA_EXCEEDED', `Storage quota exceeded: ${storageMB.toFixed(0)}MB/${TENANT_MAX_STORAGE_MB}MB`, 403, {
+        details: `Maximum ${TENANT_MAX_STORAGE_MB}MB storage per tenant.`,
+        currentMB: Math.round(storageMB),
+        limitMB: TENANT_MAX_STORAGE_MB,
+      });
+    }
+  } catch (quotaError) {
+    // Non-blocking: if quota check fails, allow upload but log warning
+    logger.warn({ tenantId, error: quotaError }, 'Failed to check tenant quota, allowing upload');
   }
 
   const formData = await request.formData();
@@ -251,15 +358,24 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
   
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
+
+  // Virus/malware scan before processing
+  const scanResult = await scanBuffer(buffer, file.name);
+  if (!scanResult.clean) {
+    logger.warn(`Virus scan failed for ${file.name}`, { threats: scanResult.threats, tenantId });
+    return NextResponse.json(
+      { error: 'File rejected by security scan', threats: scanResult.threats },
+      { status: 422 }
+    );
+  }
   
   // Generate content hash for deduplication (uses checksum field)
   const contentHash = generateContentHash(buffer);
   
   // Check for duplicate file using transactional read for consistency
-  // DISABLED: Duplicate detection is currently disabled to avoid false positives
-  // To re-enable, set ENABLE_DUPLICATE_DETECTION=true in env
+  // ENABLED by default — set DISABLE_DUPLICATE_DETECTION=true to opt out
   const skipDuplicateCheck = request.headers.get('x-skip-duplicate-check') === 'true';
-  const enableDuplicateDetection = process.env.ENABLE_DUPLICATE_DETECTION === 'true';
+  const enableDuplicateDetection = process.env.DISABLE_DUPLICATE_DETECTION !== 'true';
   
   if (enableDuplicateDetection && !skipDuplicateCheck) {
     try {
@@ -307,7 +423,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         return successResp;
       }
     } catch (dupErr) {
-      console.error('[ContractUpload] Duplicate check failed:', dupErr);
+      logger.error('[ContractUpload] Duplicate check failed:', dupErr);
       // Continue with upload if duplicate check fails
     }
   }
@@ -343,8 +459,10 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       throw new Error("Storage service not available");
     }
   } catch (storageErr) {
-    console.error('[ContractUpload] S3/MinIO upload failed, falling back to local:', storageErr);
+    logger.error('[ContractUpload] S3/MinIO upload failed, falling back to local:', storageErr);
     // Fallback to local filesystem
+    // WARNING: In multi-container deployments the worker may not access this path.
+    // This works in dev (same host), but in production ensure MinIO/S3 is always available.
     const uploadDir = join(process.cwd(), "uploads", "contracts", tenantId);
     await mkdir(uploadDir, { recursive: true });
     const localPath = join(uploadDir, storedFileName);
@@ -352,6 +470,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     
     filePath = localPath;
     storageProvider = "local";
+    logger.warn(`[ContractUpload] File stored locally at ${localPath} — worker must run on same host`);
   }
 
   // Extract metadata
@@ -402,8 +521,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         },
         idempotencyKey,
       });
-    } catch {
-      
+    } catch (sideEffectsErr) {
+      logger.warn('[ContractUpload] createContractWithSideEffects unavailable, using direct creation:', (sideEffectsErr as Error).message);
       // Fallback to direct creation — use transaction for atomicity
       const txResult = await prisma.$transaction(async (tx) => {
         const contract = await tx.contract.create({
@@ -479,10 +598,10 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       totalValue: metadata.totalValue ? Number(metadata.totalValue) : undefined,
       currency: metadata.currency,
     }).catch((err) => {
-      console.error('[ContractUpload] Metadata initialization error:', err);
+      logger.error('[ContractUpload] Metadata initialization error:', err);
     });
   } catch (metaErr) {
-    console.error('[ContractUpload] Metadata init import error:', metaErr);
+    logger.error('[ContractUpload] Metadata init import error:', metaErr);
   }
 
   // Classify contract using taxonomy (non-blocking, async)
@@ -519,10 +638,10 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         }
       })
       .catch((err) => {
-        console.error('[ContractUpload] Classification error:', err);
+        logger.error('[ContractUpload] Classification error:', err);
       });
   } catch (classErr) {
-    console.error('[ContractUpload] Taxonomy classification error:', classErr);
+    logger.error('[ContractUpload] Taxonomy classification error:', classErr);
   }
 
   // Fast text-based party extraction at upload time
@@ -553,7 +672,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       }
     }
   } catch (partyErr) {
-    console.error('[ContractUpload] Party extraction error:', partyErr);
+    logger.error('[ContractUpload] Party extraction error:', partyErr);
     // Non-critical — AI worker will extract parties later
   }
 
@@ -579,11 +698,12 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       });
     }
   } catch (typeErr) {
-    console.error('[ContractUpload] Contract type detection error:', typeErr);
+    logger.error('[ContractUpload] Contract type detection error:', typeErr);
     // OCR worker will detect type later
   }
 
   // Trigger artifact generation via queue (non-blocking)
+  let queueTriggered = true;
   try {
     // Initialize queue service if not already done
     await import("@/lib/queue-init");
@@ -598,6 +718,23 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       priority = PROCESSING_PRIORITY.LOW;
     } else if (priorityParam === 'background') {
       priority = PROCESSING_PRIORITY.BACKGROUND;
+    }
+
+    // P4.2: File size priority boost — smaller files get higher priority
+    // when no explicit priority was requested by the user
+    if (!priorityParam) {
+      const fileSizeBytes = file.size;
+      const MB = 1024 * 1024;
+      if (fileSizeBytes < 1 * MB) {
+        priority = PROCESSING_PRIORITY.HIGH;      // < 1 MB → fast-track
+      } else if (fileSizeBytes < 5 * MB) {
+        priority = PROCESSING_PRIORITY.NORMAL;    // 1–5 MB → normal
+      } else if (fileSizeBytes < 20 * MB) {
+        priority = PROCESSING_PRIORITY.LOW;       // 5–20 MB → lower prio
+      } else {
+        priority = PROCESSING_PRIORITY.BACKGROUND; // > 20 MB → background
+      }
+      logger.info({ fileSizeBytes, derivedPriority: priority }, 'File size priority boost applied');
     }
     
     // Get OCR mode from form data (user-selected AI model)
@@ -615,31 +752,73 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     });
     
     if (artifactResult.jobId) {
-      // Update processing job with queue job ID
+      // Update processing job with queue job ID and set QUEUED status
       await prisma.processingJob.update({
         where: { id: processingJob.id },
         data: {
           queueId: artifactResult.jobId,
-          status: "RUNNING",
+          status: "QUEUED",
         },
-      }).catch((err) => console.error('[ContractUpload] Processing job update error:', err));
+      }).catch((err) => logger.error('[ContractUpload] Processing job update error:', err));
+
+      // Set contract to QUEUED until worker picks it up
+      await prisma.contract.update({
+        where: { id: contract.id },
+        data: {
+          status: 'QUEUED',
+        },
+      }).catch((err) => logger.error('[ContractUpload] Contract QUEUED status update error:', err));
     }
   } catch (queueErr) {
-    console.error('[ContractUpload] Artifact queue trigger error:', queueErr);
-    // Continue anyway - job will still process via fallback
+    logger.error('[ContractUpload] Artifact queue trigger error:', queueErr);
+    // CRITICAL: Revert contract to UPLOADED so it's not stuck in PROCESSING forever.
+    // The user can retry processing later via the status API.
+    try {
+      await prisma.contract.update({
+        where: { id: contract.id },
+        data: { status: 'UPLOADED' },
+      });
+      await prisma.processingJob.update({
+        where: { id: processingJob.id },
+        data: { status: 'FAILED', error: `Queue trigger failed: ${(queueErr as Error).message}` },
+      });
+      logger.warn(`[ContractUpload] Contract ${contract.id} reverted to UPLOADED after queue failure`);
+    } catch (revertErr) {
+      logger.error('[ContractUpload] Failed to revert contract status:', revertErr);
+    }
+    queueTriggered = false;
   }
+
+  const actualStatus = !queueTriggered ? 'UPLOADED' : 
+    metadata.lifecycle === 'REVIEW' ? 'PENDING' : 'PROCESSING';
+
+  // Upload metrics logging
+  logger.info('upload_complete', {
+    tenantId,
+    contractId: contract.id,
+    fileSize: file.size,
+    fileType: file.type,
+    duration: Date.now() - uploadStartTime,
+    processingMode: metadata.lifecycle || 'standard',
+    ocrMode: formData.get('ocrMode') as string || 'default',
+    queueTriggered,
+    status: queueTriggered ? 'success' : 'fallback',
+  });
 
   const response = createSuccessResponse(ctx, {
       contractId: contract.id,
       fileName: file.name,
       fileSize: file.size,
       mimeType: file.type,
-      status: metadata.lifecycle === 'REVIEW' ? "PENDING" : "PROCESSING",
+      status: actualStatus,
       documentRole: metadata.lifecycle === 'REVIEW' ? 'REVIEW' : undefined,
       processingJobId: processingJob.id,
-      message: metadata.lifecycle === 'REVIEW' 
-        ? "File uploaded for review — AI analysis is running in the background"
-        : "File uploaded successfully",
+      queueTriggered,
+      message: !queueTriggered
+        ? "File uploaded but processing could not be started. Please retry from the contract page."
+        : metadata.lifecycle === 'REVIEW' 
+          ? "File uploaded for review — AI analysis is running in the background"
+          : "File uploaded successfully",
     },
     { status: 201 }
   );

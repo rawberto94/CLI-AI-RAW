@@ -18,6 +18,7 @@ import {
   createErrorResponse,
   type AuthenticatedApiContext,
 } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -130,7 +131,7 @@ ${variableContext || 'None specified — use standard placeholders'}${templateCo
       },
     });
   } catch (error: any) {
-    console.error('AI draft generation error:', error);
+    logger.error('AI draft generation error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Draft generation failed', 500);
   }
 });

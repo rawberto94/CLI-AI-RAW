@@ -239,7 +239,7 @@ Return JSON format:
   async learnFromCorrection(feedback: LearningFeedback): Promise<void> {
     try {
       // Store the correction as a high-confidence mapping
-      await (prisma as any).roleMapping.create({
+      await prisma.roleMapping.create({
         data: {
           tenantId: feedback.tenantId,
           originalRole: feedback.originalRole,
@@ -275,7 +275,7 @@ Return JSON format:
   ): Promise<string[]> {
     try {
       // Get from taxonomy
-      const taxonomyResults = await (prisma as any).roleTaxonomy.findMany({
+      const taxonomyResults = await prisma.roleTaxonomy.findMany({
         where: {
           OR: [
             { standardizedName: { contains: partial, mode: 'insensitive' } },
@@ -288,7 +288,7 @@ Return JSON format:
       });
 
       // Get from recent mappings
-      const mappingResults = await (prisma as any).roleMapping.findMany({
+      const mappingResults = await prisma.roleMapping.findMany({
         where: {
           tenantId,
           standardizedRole: { contains: partial, mode: 'insensitive' },
@@ -321,15 +321,15 @@ Return JSON format:
   }> {
     try {
       const [totalRoles, totalMappings, categories, recent] = await Promise.all([
-        (prisma as any).roleTaxonomy.count(),
-        (prisma as any).roleMapping.count({ where: tenantId ? { tenantId } : {} }),
-        (prisma as any).roleTaxonomy.groupBy({
+        prisma.roleTaxonomy.count(),
+        prisma.roleMapping.count({ where: tenantId ? { tenantId } : {} }),
+        prisma.roleTaxonomy.groupBy({
           by: ['category'],
           _count: true,
           orderBy: { _count: { category: 'desc' } },
           take: 10,
         }),
-        (prisma as any).roleTaxonomy.findMany({
+        prisma.roleTaxonomy.findMany({
           orderBy: { createdAt: 'desc' },
           take: 10,
           select: { standardizedName: true },
@@ -385,7 +385,7 @@ Return JSON format:
     tenantId: string
   ): Promise<RoleMapping | null> {
     try {
-      const mapping = await (prisma as any).roleMapping.findFirst({
+      const mapping = await prisma.roleMapping.findFirst({
         where: {
           tenantId,
           originalRole: { equals: originalRole, mode: 'insensitive' },
@@ -408,7 +408,7 @@ Return JSON format:
   ): Promise<RoleTaxonomy | null> {
     try {
       // Exact match on standardized name
-      let match = await (prisma as any).roleTaxonomy.findFirst({
+      let match = await prisma.roleTaxonomy.findFirst({
         where: {
           standardizedName: { equals: originalRole, mode: 'insensitive' },
         },
@@ -417,7 +417,7 @@ Return JSON format:
       if (match) return match as RoleTaxonomy;
 
       // Match on aliases
-      match = await (prisma as any).roleTaxonomy.findFirst({
+      match = await prisma.roleTaxonomy.findFirst({
         where: {
           aliases: { has: originalRole.toLowerCase() },
         },
@@ -427,7 +427,7 @@ Return JSON format:
 
       // Fuzzy match on keywords
       const keywords = originalRole.toLowerCase().split(/\s+/);
-      match = await (prisma as any).roleTaxonomy.findFirst({
+      match = await prisma.roleTaxonomy.findFirst({
         where: {
           keywords: { hasSome: keywords },
         },
@@ -449,7 +449,7 @@ Return JSON format:
     context?: any
   ): Promise<void> {
     try {
-      const existing = await (prisma as any).roleTaxonomy.findFirst({
+      const existing = await prisma.roleTaxonomy.findFirst({
         where: { standardizedName: standardizedRole },
       });
 
@@ -457,7 +457,7 @@ Return JSON format:
         // Add alias if not already present
         const aliases = existing.aliases || [];
         if (!aliases.includes(originalRole.toLowerCase())) {
-          await (prisma as any).roleTaxonomy.update({
+          await prisma.roleTaxonomy.update({
             where: { id: existing.id },
             data: {
               aliases: [...aliases, originalRole.toLowerCase()],
@@ -467,7 +467,7 @@ Return JSON format:
         }
       } else {
         // Create new taxonomy entry
-        await (prisma as any).roleTaxonomy.create({
+        await prisma.roleTaxonomy.create({
           data: {
             standardizedName: standardizedRole,
             category: context?.category || 'General',
@@ -490,7 +490,7 @@ Return JSON format:
    */
   private async incrementTaxonomyUsage(taxonomyId: string): Promise<void> {
     try {
-      await (prisma as any).roleTaxonomy.update({
+      await prisma.roleTaxonomy.update({
         where: { id: taxonomyId },
         data: { usageCount: { increment: 1 } },
       });
@@ -507,7 +507,7 @@ Return JSON format:
     result: StandardizationResult,
     tenantId: string
   ): void {
-    (prisma as any).roleMapping
+    prisma.roleMapping
       .create({
         data: {
           tenantId,

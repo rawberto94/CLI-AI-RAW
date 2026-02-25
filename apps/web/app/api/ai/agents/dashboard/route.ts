@@ -9,10 +9,11 @@
  * @version 1.0.0
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuthApiHandler, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const { tenantId, userId } = ctx;
@@ -167,7 +168,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       0
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       timeRange,
       overview: {
         totalGoals: recentGoals.length,
@@ -196,10 +197,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       opportunities: opportunityDiscoveries,
     });
   } catch (error) {
-    console.error('[Agent Dashboard API] Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch agent dashboard data' },
-      { status: 500 }
-    );
+    logger.error('[Agent Dashboard API] Error:', error);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch agent dashboard data', 500);
   }
 });

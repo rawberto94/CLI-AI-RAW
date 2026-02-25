@@ -133,12 +133,23 @@ export const ContractHoverPreview = memo(function ContractHoverPreview({
     return `${positions[side]} ${alignments[align]}`;
   };
 
+  // Dismiss preview on mouseDown so row click always reaches the row handler
+  const handleMouseDown = useCallback(() => {
+    setShowPreview(false);
+    setIsHovered(false);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
   return (
     <div
       ref={containerRef}
       className="relative flex-1 min-w-[200px]"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onMouseDown={handleMouseDown}
     >
       {children}
       
@@ -147,7 +158,7 @@ export const ContractHoverPreview = memo(function ContractHoverPreview({
           <motion.div key="preview"
             initial={{ opacity: 0, scale: 0.95, y: side === 'bottom' ? -5 : side === 'top' ? 5 : 0, x: side === 'right' ? -5 : side === 'left' ? 5 : 0 }}
             animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
+            exit={{ opacity: 0, scale: 0.95, pointerEvents: 'none' as any }}
             transition={{ duration: 0.15 }}
             className={cn(
               'absolute z-50 w-80',

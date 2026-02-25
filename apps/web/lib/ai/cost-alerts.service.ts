@@ -68,7 +68,7 @@ class CostAlertService {
 
     // Persist to database
     try {
-      await (prisma as any).costThreshold?.upsert({
+      await prisma.costThreshold.upsert({
         where: {
           tenantId_period: {
             tenantId,
@@ -109,7 +109,7 @@ class CostAlertService {
 
     // Load from database
     try {
-      const dbThresholds = await (prisma as any).costThreshold?.findMany({
+      const dbThresholds = await prisma.costThreshold.findMany({
         where: { tenantId },
       }) || [];
 
@@ -225,7 +225,7 @@ class CostAlertService {
     }
 
     try {
-      const result = await (prisma as any).aiUsageLog?.aggregate({
+      const result = await prisma.aIUsageLog.aggregate({
         where: {
           tenantId,
           createdAt: { gte: startDate },
@@ -235,7 +235,7 @@ class CostAlertService {
         },
       });
 
-      return result?._sum?.cost || 0;
+      return result._sum.cost || 0;
     } catch (error) {
       console.error('Failed to get cost for period:', error);
       return 0;
@@ -256,7 +256,7 @@ class CostAlertService {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
 
-      const result = await (prisma as any).aiUsageLog?.aggregate({
+      const result = await prisma.aIUsageLog.aggregate({
         where: {
           tenantId,
           createdAt: {
@@ -269,7 +269,7 @@ class CostAlertService {
         },
       });
 
-      const avgDailyCost = (result?._sum?.cost || 0) / 7;
+      const avgDailyCost = (result._sum.cost || 0) / 7;
 
       // Alert if today's cost is 3x the average
       if (avgDailyCost > 0 && todayCost > avgDailyCost * 3) {
@@ -310,7 +310,7 @@ class CostAlertService {
     };
 
     try {
-      await (prisma as any).costAlert?.create({
+      await prisma.costAlert.create({
         data: {
           id: alert.id,
           tenantId,
@@ -460,7 +460,7 @@ class CostAlertService {
     const { limit = 10, unacknowledgedOnly = false } = options;
 
     try {
-      const alerts = await (prisma as any).costAlert?.findMany({
+      const alerts = await prisma.costAlert.findMany({
         where: {
           tenantId,
           ...(unacknowledgedOnly && { acknowledged: false }),
@@ -491,7 +491,7 @@ class CostAlertService {
    */
   async acknowledgeAlert(alertId: string): Promise<boolean> {
     try {
-      await (prisma as any).costAlert?.update({
+      await prisma.costAlert.update({
         where: { id: alertId },
         data: { acknowledged: true },
       });

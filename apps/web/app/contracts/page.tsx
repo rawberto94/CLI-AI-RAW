@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -110,7 +110,7 @@ export default function ContractsPage() {
     }
   }, []);
 
-  const pushToContract = (id: string) => {
+  const pushToContract = useCallback((id: string) => {
     try {
       sessionStorage.setItem('contracts:list:scrollY', String(window.scrollY));
       sessionStorage.setItem('contracts:list:restore', '1');
@@ -118,7 +118,7 @@ export default function ContractsPage() {
       // ignore
     }
     router.push(`/contracts/${id}`, { scroll: true });
-  };
+  }, [router]);
   
   // ── Extracted hooks ──────────────────────────────────────────────────
   const {
@@ -148,13 +148,35 @@ export default function ContractsPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
+  // Track whether any contracts are processing (for auto-polling)
+  const [hasProcessingContracts, setHasProcessingContracts] = useState(false);
+  const processingStartTimeRef = useRef<number | null>(null);
+
+  // Adaptive polling interval: fast initially, slowing down over time
+  // Hard cap at 5 minutes — after that we stop aggressive polling
+  const MAX_PROCESSING_POLL_MS = 5 * 60 * 1000;
+
+  const getPollingInterval = useCallback(() => {
+    if (!processingStartTimeRef.current) return 5000;
+    const elapsed = Date.now() - processingStartTimeRef.current;
+    if (elapsed > MAX_PROCESSING_POLL_MS) return 30000; // Degrade to 30s after 5 min
+    if (elapsed < 30000) return 3000;    // First 30s: poll every 3s
+    if (elapsed < 120000) return 5000;   // 30s-2min: poll every 5s
+    if (elapsed < 300000) return 10000;  // 2-5min: poll every 10s
+    return 15000;                         // 5min+: poll every 15s
+  }, []);
+
   // Use React Query for data fetching with caching
+  // Enable polling when contracts are processing so progress updates in real time
   const { 
     data: contractsData, 
     isLoading: loading, 
     isFetching: isRefetching,
     refetch,
-  } = useContracts(serverParams);
+  } = useContracts(serverParams, {
+    pollingEnabled: hasProcessingContracts,
+    pollingInterval: getPollingInterval(),
+  });
   
   // Fetch real-time stats from the database (always accurate)
   const { data: dbStats, refetch: refetchStats } = useContractStats();
@@ -182,6 +204,27 @@ export default function ContractsPage() {
   } = useContractsPageActions({ dataMode, refetch, refetchStats, crossModule, queryClient });
 
   const contracts: Contract[] = contractsData?.contracts || [];
+
+  // Stable row callbacks — prevent memo() busting on CompactContractRow
+  const handleRowSelect = useCallback((id: string) => toggleSelect(id), [toggleSelect]);
+  const handleRowView = useCallback((id: string) => pushToContract(id), [pushToContract]);
+  const handleRowShare = useCallback((id: string, title: string) => handleShare(id, title), [handleShare]);
+  const handleRowDelete = useCallback((id: string, title: string) => handleDeleteClick(id, title), [handleDeleteClick]);
+  const handleRowDownload = useCallback((id: string) => handleDownload(id), [handleDownload]);
+  const handleRowApproval = useCallback((id: string, title: string) => handleRequestApproval(id, title), [handleRequestApproval]);
+  
+  // Update polling state when contract data changes
+  useEffect(() => {
+    const anyProcessing = contractsData?.contracts?.some((c: Contract) => c.status === 'processing') ?? false;
+    if (anyProcessing && !hasProcessingContracts) {
+      // Started processing — record time for adaptive interval
+      processingStartTimeRef.current = Date.now();
+    } else if (!anyProcessing && hasProcessingContracts) {
+      // Processing finished — reset timer
+      processingStartTimeRef.current = null;
+    }
+    setHasProcessingContracts(anyProcessing);
+  }, [contractsData, hasProcessingContracts]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -279,52 +322,26 @@ export default function ContractsPage() {
     return Array.from(terms).filter(Boolean).sort();
   }, [contracts]);
 
-  // Single unified filter – all dimensions in one pure function.
+  // Apply only client-side supplementary filters (signature, documentType, etc.)
+  // Server already handles search, status, type, category, date, value filters.
   const filteredContracts = useMemo(
     () =>
       applyContractFilters(contracts, {
-        searchQuery,
-        filterState,
-        dateRangePreset: dateRangeFilter,
+        searchQuery: '', // Server already filtered by search
+        filterState: {}, // Server already filtered by status/type/category
+        dateRangePreset: undefined, // Server already filtered
         expirationFilters,
         signatureFilters,
         documentTypeFilters,
-        valueRangePreset: valueRangeFilter,
+        valueRangePreset: undefined, // Server already filtered
       }),
-    [contracts, searchQuery, filterState, dateRangeFilter, expirationFilters, signatureFilters, documentTypeFilters, valueRangeFilter],
+    [contracts, expirationFilters, signatureFilters, documentTypeFilters],
   );
 
-  // Sort filtered contracts
-  const sortedContracts = useMemo(() => {
-    return [...filteredContracts].sort((a, b) => {
-      let comparison = 0;
-      
-      switch (sortField) {
-        case 'title':
-          comparison = (a.title || '').localeCompare(b.title || '');
-          break;
-        case 'createdAt':
-          comparison = new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
-          break;
-        case 'value':
-          comparison = (a.value || 0) - (b.value || 0);
-          break;
-        case 'expirationDate':
-          comparison = new Date(a.expirationDate || 0).getTime() - new Date(b.expirationDate || 0).getTime();
-          break;
-        case 'status':
-          comparison = (a.status || '').localeCompare(b.status || '');
-          break;
-      }
-      
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-  }, [filteredContracts, sortField, sortDirection]);
-
-  // Pagination - use server-side total
+  // Server already sorts — skip redundant client-side sort.
+  // Pagination uses server-side total.
   const totalPages = Math.ceil((contractsData?.total ?? 0) / pageSize);
-  // With server-side pagination, contracts are already the current page
-  const paginatedContracts = sortedContracts;
+  const paginatedContracts = filteredContracts;
 
   // Sparkline trend data — computed once, shared by both heroStats branches
   const trendData = useMemo(() => {
@@ -514,10 +531,10 @@ export default function ContractsPage() {
   // Export filtered results
   const handleExportFiltered = useCallback(async (format: 'csv' | 'json') => {
     try {
-      toast.info(`Exporting ${sortedContracts.length} contracts...`);
+      toast.info(`Exporting ${filteredContracts.length} contracts...`);
       
       if (format === 'json') {
-        const data = JSON.stringify(sortedContracts, null, 2);
+        const data = JSON.stringify(filteredContracts, null, 2);
         const blob = new Blob([data], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -528,7 +545,7 @@ export default function ContractsPage() {
       } else {
         // CSV export
         const headers = ['Title', 'Status', 'Client', 'Supplier', 'Value', 'Created', 'Expiration', 'Risk Score'];
-        const rows = sortedContracts.map(c => [
+        const rows = filteredContracts.map(c => [
           c.title || '',
           c.status || '',
           c.parties?.client || '',
@@ -548,11 +565,11 @@ export default function ContractsPage() {
         URL.revokeObjectURL(url);
       }
       
-      toast.success(`Exported ${sortedContracts.length} contracts`);
+      toast.success(`Exported ${filteredContracts.length} contracts`);
     } catch (error) {
       toast.error('Export failed');
     }
-  }, [sortedContracts]);
+  }, [filteredContracts]);
 
   const allVisibleSelected = useMemo(() => {
     if (paginatedContracts.length === 0) return false;
@@ -561,9 +578,9 @@ export default function ContractsPage() {
 
   // Precompute advanced filter badge count
   const advancedFilterCount = useMemo(() =>
-    filterState.statuses.length + filterState.documentRoles.length +
-    filterState.categories.length + (filterState.hasDeadline !== null ? 1 : 0) +
-    (filterState.isExpiring !== null ? 1 : 0) +
+    (filterState.statuses?.length ?? 0) + (filterState.documentRoles?.length ?? 0) +
+    (filterState.categories?.length ?? 0) + (filterState.hasDeadline != null ? 1 : 0) +
+    (filterState.isExpiring != null ? 1 : 0) +
     (filterState.riskLevels?.length ?? 0) + (filterState.suppliers?.length ?? 0) +
     (filterState.clients?.length ?? 0) + (filterState.contractTypes?.length ?? 0) +
     (filterState.currencies?.length ?? 0) + (filterState.jurisdictions?.length ?? 0) +
@@ -644,119 +661,6 @@ export default function ContractsPage() {
       
       <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6 space-y-5">
 
-        {/* Bulk Actions Bar — sticky so it's always visible when scrolling */}
-        <AnimatePresence>
-          {selectedContracts.size > 0 && (
-            <motion.div
-              key="bulk-actions-bar"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.15 }}
-              className="sticky top-0 z-40"
-            >
-              <Card className="bg-slate-900 border-slate-700/50 shadow-lg rounded-xl overflow-hidden">
-                <div className="h-px w-full bg-slate-700" />
-                <CardContent className="py-3 px-5">
-                  <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div className="flex items-center gap-5">
-                      <div className="flex items-center gap-3">
-                        <Badge className="bg-white/15 text-white font-semibold px-3 py-1.5 text-sm rounded-lg border border-white/10">
-                          {selectedContracts.size}
-                        </Badge>
-                        <span className="text-sm text-slate-300">
-                          contract{selectedContracts.size !== 1 ? 's' : ''} selected
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-slate-400 hover:text-red-400 hover:bg-red-950/30 h-8 rounded-lg transition-colors"
-                        onClick={() => setSelectedContracts(new Set())}
-                      >
-                        <X className="h-3.5 w-3.5 mr-1" />
-                        Clear
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* Export */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
-                            onClick={() => performBulkAction('export')}
-                            disabled={isProcessingBulk}
-                          >
-                            {isProcessingBulk ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                            <span className="hidden sm:inline ml-1.5 text-xs font-medium">Export</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Export selected contracts</TooltipContent>
-                      </Tooltip>
-                      
-                      {selectedContracts.size === 2 && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
-                              onClick={() => {
-                                const ids = Array.from(selectedContracts);
-                                router.push(`/compare?contract1=${ids[0]}&contract2=${ids[1]}`);
-                              }}
-                              disabled={isProcessingBulk}
-                            >
-                              <ArrowLeftRight className="h-3.5 w-3.5" />
-                              <span className="hidden sm:inline ml-1.5 text-xs font-medium">Compare</span>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Compare side-by-side</TooltipContent>
-                        </Tooltip>
-                      )}
-                      
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
-                            onClick={() => performBulkAction('share')}
-                            disabled={isProcessingBulk}
-                          >
-                            <Share2 className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline ml-1.5 text-xs font-medium">Share</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Share selected</TooltipContent>
-                      </Tooltip>
-                      
-                      <div className="w-px h-5 bg-slate-700 mx-0.5 hidden sm:block" />
-                      
-                      {/* Destructive action */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="sm"
-                            className="bg-red-600 hover:bg-red-500 text-white border-0 h-8 px-3 rounded-lg transition-colors"
-                            onClick={handleBulkDeleteClick}
-                            disabled={isProcessingBulk}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline ml-1.5 text-xs font-medium">Delete</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Delete selected</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Hero Dashboard */}
         <ContractsHeroDashboard
           stats={heroStats}
@@ -803,18 +707,14 @@ export default function ContractsPage() {
         </div>
 
         {/* Processing Contracts Live Tracker */}
-        <AnimatePresence>
-          {contracts.some(c => c.status === 'processing') && (
-            <ProcessingContractTracker 
-              key="processing-tracker"
-              contracts={contracts} 
-              onContractComplete={(id) => {
-                toast.success('Contract processing completed!');
-                refetch();
-              }}
-            />
-          )}
-        </AnimatePresence>
+        <ProcessingContractTracker 
+          contracts={contracts} 
+          onContractComplete={() => {
+            refetch();
+          }}
+          onRetry={() => refetch()}
+          onDismiss={() => refetch()}
+        />
 
         {/* Advanced Filter Panel - Inline & Collapsible */}
         <AnimatePresence>
@@ -1015,7 +915,7 @@ export default function ContractsPage() {
         {/* Contracts List */}
         <div data-tour="contracts">
         <AnimatePresence mode="wait">
-          {sortedContracts.length === 0 ? (
+          {filteredContracts.length === 0 ? (
             <motion.div
               key="empty"
               initial={{ opacity: 0 }}
@@ -1099,12 +999,12 @@ export default function ContractsPage() {
                         index={index}
                         isSelected={selectedContracts.has(contract.id)}
                         searchQuery={searchQuery}
-                        onSelect={() => toggleSelect(contract.id)}
-                        onView={() => pushToContract(contract.id)}
-                        onShare={() => handleShare(contract.id, contract.title || 'Contract')}
-                        onDelete={() => handleDeleteClick(contract.id, contract.title || 'Contract')}
-                        onDownload={() => handleDownload(contract.id)}
-                        onApproval={() => handleRequestApproval(contract.id, contract.title || 'Contract')}
+                        onSelect={() => handleRowSelect(contract.id)}
+                        onView={() => handleRowView(contract.id)}
+                        onShare={() => handleRowShare(contract.id, contract.title || 'Contract')}
+                        onDelete={() => handleRowDelete(contract.id, contract.title || 'Contract')}
+                        onDownload={() => handleRowDownload(contract.id)}
+                        onApproval={() => handleRowApproval(contract.id, contract.title || 'Contract')}
                         formatCurrency={formatCurrency}
                         formatDate={formatDate}
                       />
@@ -1166,7 +1066,7 @@ export default function ContractsPage() {
         </div>
         
         {/* Pagination Controls */}
-        {sortedContracts.length > 0 && (
+        {filteredContracts.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1382,6 +1282,118 @@ export default function ContractsPage() {
 
       {/* Scroll to Top Button */}
       <ScrollToTopButton threshold={600} />
+
+      {/* Bulk Actions Bar — fixed bottom so it's always visible */}
+      <AnimatePresence>
+        {selectedContracts.size > 0 && (
+          <motion.div
+            key="bulk-actions-bar"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-auto max-w-[95vw]"
+          >
+            <Card className="bg-slate-900 border-slate-700/50 shadow-2xl rounded-2xl overflow-hidden backdrop-blur-sm">
+              <CardContent className="py-3 px-5">
+                <div className="flex items-center gap-5 flex-wrap">
+                  {/* Count + Clear */}
+                  <div className="flex items-center gap-3">
+                    <Badge className="bg-white/15 text-white font-semibold px-3 py-1.5 text-sm rounded-lg border border-white/10">
+                      {selectedContracts.size}
+                    </Badge>
+                    <span className="text-sm text-slate-300">
+                      selected
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-slate-400 hover:text-slate-200 hover:bg-slate-800 h-8 rounded-lg transition-colors"
+                      onClick={() => setSelectedContracts(new Set())}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+
+                  <div className="w-px h-6 bg-slate-700" />
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
+                          onClick={() => performBulkAction('export')}
+                          disabled={isProcessingBulk}
+                        >
+                          {isProcessingBulk ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                          <span className="ml-1.5 text-xs font-medium">Export</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">Export selected</TooltipContent>
+                    </Tooltip>
+
+                    {selectedContracts.size === 2 && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
+                            onClick={() => {
+                              const ids = Array.from(selectedContracts);
+                              router.push(`/compare?contract1=${ids[0]}&contract2=${ids[1]}`);
+                            }}
+                            disabled={isProcessingBulk}
+                          >
+                            <ArrowLeftRight className="h-3.5 w-3.5" />
+                            <span className="ml-1.5 text-xs font-medium">Compare</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">Compare side-by-side</TooltipContent>
+                      </Tooltip>
+                    )}
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
+                          onClick={() => performBulkAction('share')}
+                          disabled={isProcessingBulk}
+                        >
+                          <Share2 className="h-3.5 w-3.5" />
+                          <span className="ml-1.5 text-xs font-medium">Share</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">Share selected</TooltipContent>
+                    </Tooltip>
+
+                    <div className="w-px h-5 bg-slate-700 mx-0.5" />
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          className="bg-red-600 hover:bg-red-500 text-white border-0 h-8 px-3 rounded-lg transition-colors"
+                          onClick={handleBulkDeleteClick}
+                          disabled={isProcessingBulk}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span className="ml-1.5 text-xs font-medium">Delete</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">Delete selected</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
     </TooltipProvider>
   );

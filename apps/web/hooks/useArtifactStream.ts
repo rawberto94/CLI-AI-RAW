@@ -47,7 +47,7 @@ export interface StreamMessage {
 
 export interface UseArtifactStreamOptions {
   contractId: string;
-  tenantId?: string;
+  tenantId?: string; // Deprecated: server uses session tenant from middleware
   onComplete?: (artifacts: ArtifactUpdate[]) => void;
   onError?: (error: string) => void;
   enabled?: boolean;
@@ -55,7 +55,7 @@ export interface UseArtifactStreamOptions {
 
 export function useArtifactStream({
   contractId,
-  tenantId = 'demo',
+  tenantId: _tenantId, // Ignored — server uses session tenant from middleware
   onComplete,
   onError,
   enabled = true
@@ -85,7 +85,19 @@ export function useArtifactStream({
   const staleCheckIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const forceCompleteTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const streamStartTimeRef = useRef<number>(Date.now());
+  const isCompleteRef = useRef(false);
+  const contractNotFoundRef = useRef(false);
+  // Stabilize callback refs to prevent useEffect/useCallback dependency churn.
+  // Without this, inline arrow functions from the parent cause connect() to get
+  // a new identity every render, which restarts the verification effect and
+  // tears down the SSE connection in an infinite loop.
+  const onCompleteRef = useRef(onComplete);
+  const onErrorRef = useRef(onError);
   const maxReconnectAttempts = MAX_RECONNECT_ATTEMPTS;
+
+  // Keep callback refs in sync
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+  useEffect(() => { onErrorRef.current = onError; }, [onError]);
 
   // Also mark complete if all received artifacts are done (fallback)
   // Don't hardcode a count — contract-type filtering may produce fewer than 10
@@ -95,6 +107,7 @@ export function useArtifactStream({
       if (completedCount >= artifacts.length) {
         // All artifacts the server told us about are complete
         setIsComplete(true);
+        isCompleteRef.current = true;
         // Clean up connection
         if (eventSourceRef.current) {
           eventSourceRef.current.close();
@@ -148,7 +161,8 @@ export function useArtifactStream({
 
   const connect = useCallback(() => {
     // Skip establishing new connections after completion or if not found
-    if (!enabled || !contractId || isComplete || contractNotFound) {
+    // Read from refs to avoid depending on state that changes every render
+    if (!enabled || !contractId || isCompleteRef.current || contractNotFoundRef.current) {
       return;
     }
 
@@ -157,8 +171,10 @@ export function useArtifactStream({
       eventSourceRef.current.close();
     }
 
-    // Create new EventSource connection with tenant ID in URL (EventSource can't send headers)
-    const url = `/api/contracts/${contractId}/artifacts/stream?tenantId=${encodeURIComponent(tenantId)}`;
+    // Create EventSource connection — the middleware injects the session tenant via
+    // x-tenant-id header automatically, so we don't pass tenantId in the URL
+    // (localStorage tenantId can be stale/mismatched with the session).
+    const url = `/api/contracts/${contractId}/artifacts/stream`;
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
@@ -174,7 +190,7 @@ export function useArtifactStream({
       }
       staleCheckIntervalRef.current = setInterval(() => {
         const timeSinceLastUpdate = Date.now() - lastUpdateTimeRef.current;
-        if (timeSinceLastUpdate > STALE_CONNECTION_TIMEOUT && !isComplete) {
+        if (timeSinceLastUpdate > STALE_CONNECTION_TIMEOUT && !isCompleteRef.current) {
           eventSource.close();
           reconnectAttemptsRef.current++;
           if (reconnectAttemptsRef.current < maxReconnectAttempts) {
@@ -226,11 +242,12 @@ export function useArtifactStream({
 
           case 'complete':
             setIsComplete(true);
+            isCompleteRef.current = true;
             setIsConnected(false);
             // Use artifacts from message or current state
             const finalArtifacts = data.artifacts || artifacts;
-            if (finalArtifacts.length > 0 && onComplete) {
-              onComplete(finalArtifacts);
+            if (finalArtifacts.length > 0 && onCompleteRef.current) {
+              onCompleteRef.current(finalArtifacts);
             }
             eventSource.close();
             break;
@@ -239,8 +256,8 @@ export function useArtifactStream({
             // Only set error if it's not recoverable
             if (!data.recoverable) {
               setError(data.error || 'Unknown error');
-              if (onError) {
-                onError(data.error || 'Unknown error');
+              if (onErrorRef.current) {
+                onErrorRef.current(data.error || 'Unknown error');
               }
               eventSource.close();
             }
@@ -265,7 +282,7 @@ export function useArtifactStream({
       reconnectAttemptsRef.current++;
 
       // Auto-retry connection with exponential backoff if not complete
-      if (!isComplete && reconnectAttemptsRef.current < maxReconnectAttempts) {
+      if (!isCompleteRef.current && reconnectAttemptsRef.current < maxReconnectAttempts) {
         const retryDelay = Math.min(2000 * Math.pow(1.5, reconnectAttemptsRef.current), 10000);
         reconnectTimeoutRef.current = setTimeout(() => {
           connect();
@@ -274,8 +291,9 @@ export function useArtifactStream({
         const message = 'Unable to connect to live updates. Please refresh the page to retry.';
         setError(message);
         setIsComplete(true);
-        if (onError) {
-          onError(message);
+        isCompleteRef.current = true;
+        if (onErrorRef.current) {
+          onErrorRef.current(message);
         }
       }
     };
@@ -287,7 +305,12 @@ export function useArtifactStream({
       }
     };
     
-  }, [contractId, enabled, isComplete, contractNotFound, onComplete, onError, tenantId]);
+  // Stable deps only — callbacks are accessed via refs to avoid infinite loop
+  }, [contractId, enabled]);
+
+  // Use a ref for connect so the verification effect doesn't restart when connect changes
+  const connectRef = useRef(connect);
+  useEffect(() => { connectRef.current = connect; }, [connect]);
 
   useEffect(() => {
     if (!enabled || !contractId) {
@@ -295,7 +318,7 @@ export function useArtifactStream({
     }
 
     // Don't try to connect if contract was already marked as not found
-    if (contractNotFound || wasNotFound) {
+    if (contractNotFoundRef.current || wasNotFound) {
       return;
     }
 
@@ -308,16 +331,15 @@ export function useArtifactStream({
 
     const verifyAndConnect = async () => {
       verifyAttempts++;
-      console.log(`[useArtifactStream] Verification attempt ${verifyAttempts}/${MAX_VERIFY_ATTEMPTS} for contract ${contractId} with tenant ${tenantId}`);
+      console.log(`[useArtifactStream] Verification attempt ${verifyAttempts}/${MAX_VERIFY_ATTEMPTS} for contract ${contractId}`);
       try {
         // Add timeout to prevent hanging requests
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+        // Don't manually set x-tenant-id — the middleware injects
+        // the correct session tenant into the header automatically.
         const response = await fetch(`/api/contracts/${contractId}`, {
-          headers: {
-            'x-tenant-id': tenantId
-          },
           signal: controller.signal
         });
 
@@ -341,16 +363,29 @@ export function useArtifactStream({
             console.warn(`[useArtifactStream] Contract ${contractId} not found after ${MAX_VERIFY_ATTEMPTS} retries - marking as not found`);
             // Don't persist in sessionStorage - just set local state
             setContractNotFound(true);
+            contractNotFoundRef.current = true;
             setArtifacts([]);
             setIsComplete(false);
+            isCompleteRef.current = false;
             const message = 'Contract not found - it may have been deleted.';
             setError(message);
-            if (onError) {
-              onError(message);
+            if (onErrorRef.current) {
+              onErrorRef.current(message);
             }
             return; // Don't retry on 404
           }
           console.error(`[useArtifactStream] Non-404 error: ${response.status} for contract ${contractId}`);
+          // Retry on 429 (rate limited) or 5xx server errors
+          if ((response.status === 429 || response.status >= 500) && verifyAttempts < MAX_VERIFY_ATTEMPTS) {
+            const retryDelay = response.status === 429 ? 3000 : VERIFY_RETRY_DELAY;
+            console.log(`[useArtifactStream] Retrying verification in ${retryDelay}ms (status ${response.status})`);
+            if (!cancelled) {
+              setTimeout(() => {
+                if (!cancelled) verifyAndConnect();
+              }, retryDelay);
+            }
+            return;
+          }
           throw new Error('Unable to verify contract status.');
         }
 
@@ -360,22 +395,22 @@ export function useArtifactStream({
           return;
         }
 
-        cleanup = connect();
+        cleanup = connectRef.current();
       } catch (err) {
         if (cancelled) return;
         
         // Handle abort errors gracefully
         if (err instanceof Error && err.name === 'AbortError') {
           // Try to connect directly without verification
-          cleanup = connect();
+          cleanup = connectRef.current();
           return;
         }
         const message = err instanceof Error ? err.message : 'Unable to connect to live updates.';
         setError(message);
         // Don't mark as complete on verification failure - allow retry
         setIsConnected(false);
-        if (onError) {
-          onError(message);
+        if (onErrorRef.current) {
+          onErrorRef.current(message);
         }
       }
     };
@@ -399,7 +434,10 @@ export function useArtifactStream({
       }
     };
     
-  }, [contractId, enabled, tenantId, connect, onError, contractNotFound, wasNotFound]);
+  // Only restart the entire verify+connect cycle when contractId or enabled changes.
+  // Callbacks are accessed via refs to avoid triggering this effect on every render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractId, enabled]);
 
   const disconnect = useCallback(() => {
     if (eventSourceRef.current) {

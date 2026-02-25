@@ -70,6 +70,11 @@ import {
   ScrollText,
   Award,
   TrendingDown,
+  MessageSquare,
+  Bot,
+  ListChecks,
+  Rocket,
+  Gavel,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -92,9 +97,8 @@ interface NavigationGroup {
   requiresAdmin?: boolean; // Only show entire group for admin/owner users
 }
 
-// Full navigation — Clustered for clarity
-// 5 groups: Core (always visible), Lifecycle (collapsible), Intelligence (collapsible),
-// Procurement & Risk (collapsible), Admin (collapsible, admin-only)
+// Full navigation — Consolidated (removed duplicates)
+// 6 groups: Core, Contigo Labs (AI), Lifecycle, Intelligence, Procurement & Risk, Admin
 const navigationGroups: NavigationGroup[] = [
   {
     id: 'core',
@@ -102,7 +106,29 @@ const navigationGroups: NavigationGroup[] = [
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, description: 'Overview & insights' },
       { name: 'Contracts', href: '/contracts', icon: FileText, description: 'Manage your contracts' },
-      { name: 'Smart Search', href: '/search', icon: Search, description: 'Semantic & advanced search' },
+      { name: 'Search', href: '/search', icon: Search, description: 'Smart semantic search' },
+    ]
+  },
+  {
+    id: 'contigo-labs',
+    label: 'Contigo Labs',
+    items: [
+      { name: 'Overview', href: '/contigo-labs', icon: Rocket, description: 'AI command center', isNew: true },
+      { 
+        name: 'AI Agents', 
+        href: '/contigo-labs?tab=agents', 
+        icon: Bot, 
+        description: '19 AI agents with HITL workflows',
+        isNew: true,
+        children: [
+          { name: 'Agent Center', href: '/contigo-labs?tab=agents', icon: Bot, description: 'Monitor all agents' },
+          { name: 'Approvals', href: '/contigo-labs?tab=approvals', icon: ListChecks, description: 'Review recommendations', badge: 'pending' },
+          { name: 'RFx Studio', href: '/contigo-labs?tab=rfx-studio', icon: Gavel, description: 'AI-powered sourcing' },
+        ]
+      },
+      { name: 'AI Assistant', href: '/contigo-labs?tab=chat', icon: MessageSquare, description: 'Chat with @mentions', isNew: true },
+      { name: 'Knowledge Graph', href: '/contigo-labs?tab=knowledge', icon: Network, description: 'Entity relationships', isNew: true },
+      { name: 'Predictions', href: '/contigo-labs?tab=analytics', icon: TrendingUp, description: 'AI-powered forecasts', isNew: true },
     ]
   },
   {
@@ -110,25 +136,25 @@ const navigationGroups: NavigationGroup[] = [
     label: 'Contract Lifecycle',
     items: [
       {
-        name: 'Drafting & Templates',
+        name: 'Drafting',
         href: '/drafting',
         icon: PenTool,
         description: 'Create & manage contracts',
         children: [
-          { name: 'AI Drafting', href: '/drafting', icon: PenTool, description: 'AI-assisted contract drafting' },
-          { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Manage contract templates' },
-          { name: 'Clauses', href: '/clauses', icon: BookOpen, description: 'Clause library & governance' },
+          { name: 'Document Studio', href: '/drafting', icon: PenTool, description: 'AI-assisted drafting' },
+          { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Contract templates' },
+          { name: 'Clauses', href: '/clauses', icon: BookOpen, description: 'Clause library' },
         ]
       },
       {
-        name: 'Workflows & Approvals',
+        name: 'Workflows',
         href: '/workflows',
         icon: GitBranch,
-        description: 'Approvals, SLA & automation',
+        description: 'Approvals & automation',
         children: [
           { name: 'Workflows', href: '/workflows', icon: GitBranch, description: 'Manage workflows' },
-          { name: 'Self-Service', href: '/self-service', icon: Zap, description: 'Quick actions & requests' },
-          { name: 'My Requests', href: '/self-service/my-requests', icon: Clock, description: 'Track your requests' },
+          { name: 'Requests', href: '/requests', icon: Zap, description: 'Contract requests' },
+          { name: 'My Tasks', href: '/self-service/my-requests', icon: CheckSquare, description: 'Your tasks' },
         ]
       },
       {
@@ -137,33 +163,29 @@ const navigationGroups: NavigationGroup[] = [
         icon: Calendar,
         description: 'Obligations & renewals',
         children: [
-          { name: 'Obligations', href: '/obligations', icon: Calendar, description: 'Track obligations & deadlines' },
-          { name: 'Renewals', href: '/renewals', icon: RefreshCcw, description: 'Track & manage renewals' },
-          { name: 'Compare', href: '/compare', icon: Target, description: 'Side-by-side contract comparison' },
+          { name: 'Obligations', href: '/obligations', icon: Calendar, description: 'Track commitments' },
+          { name: 'Renewals', href: '/renewals', icon: RefreshCcw, description: 'Manage renewals' },
+          { name: 'Compare', href: '/compare', icon: Target, description: 'Compare contracts' },
         ]
       },
     ]
   },
   {
     id: 'intelligence',
-    label: 'Intelligence & Analytics',
+    label: 'Intelligence',
     items: [
-      { 
-        name: 'AI Chatbot', 
-        icon: Brain, 
-        description: 'Ask questions about your contracts',
-        action: 'openAIChatbot'
-      },
-      { name: 'Intelligence Hub', href: '/intelligence', icon: Lightbulb, description: 'Knowledge graph & negotiation' },
+      { name: 'Intelligence Hub', href: '/intelligence', icon: Lightbulb, description: 'AI insights & negotiation' },
+      { name: 'Contract Health', href: '/intelligence/health', icon: ShieldCheck, description: 'Portfolio health scores' },
+      { name: 'RAG Search', href: '/intelligence/search', icon: Search, description: 'Semantic vector search' },
       {
-        name: 'Reports & Analytics',
+        name: 'Analytics',
         href: '/analytics',
         icon: BarChart3,
-        description: 'Dashboards & AI reports',
+        description: 'Reports & dashboards',
         children: [
-          { name: 'Analytics', href: '/analytics', icon: BarChart3, description: 'Analytics dashboards' },
-          { name: 'AI Report Builder', href: '/reports/ai-builder', icon: FileBarChart, description: 'Generate AI-powered reports' },
-          { name: 'Ecosystem', href: '/ecosystem', icon: Network, description: 'ERP, Spend & Contract synergy' },
+          { name: 'Dashboards', href: '/analytics', icon: BarChart3, description: 'Analytics dashboards' },
+          { name: 'Reports', href: '/reports', icon: FileBarChart, description: 'Custom reports' },
+          { name: 'Ecosystem', href: '/ecosystem', icon: Network, description: 'ERP & Spend integration' },
         ]
       },
     ]
@@ -173,26 +195,38 @@ const navigationGroups: NavigationGroup[] = [
     label: 'Procurement & Risk',
     items: [
       {
-        name: 'Procurement',
-        href: '/suppliers',
-        icon: Truck,
-        description: 'Suppliers, rates & spend',
+        name: 'RFx Studio',
+        href: '/contigo-labs?tab=rfx-studio',
+        icon: Gavel,
+        description: 'AI-powered sourcing',
+        isNew: true,
         children: [
-          { name: 'Suppliers', href: '/suppliers', icon: Truck, description: 'Supplier management & performance' },
-          { name: 'Rate Cards', href: '/rate-cards/dashboard', icon: Receipt, description: 'Rate monitoring & benchmarking' },
-          { name: 'Spend', href: '/spend', icon: Wallet, description: 'PO, Invoice & 3-way matching' },
-          { name: 'Forecast', href: '/forecast', icon: TrendingUp, description: 'Spend & contract forecasting' },
+          { name: 'Scout Opportunities', href: '/contigo-labs?tab=rfx-studio', icon: Target, description: 'AI-detected opportunities' },
+          { name: 'My RFx Events', href: '/requests', icon: ListChecks, description: 'Manage sourcing events' },
+          { name: 'Create RFx', href: '/requests/new', icon: Rocket, description: 'Start new RFx' },
         ]
       },
       {
-        name: 'Governance & Risk',
+        name: 'Suppliers',
+        href: '/suppliers',
+        icon: Truck,
+        description: 'Supplier management & spend',
+        children: [
+          { name: 'Supplier Directory', href: '/suppliers', icon: Truck, description: 'Supplier management' },
+          { name: 'Rate Cards', href: '/rate-cards/dashboard', icon: Receipt, description: 'Rate monitoring' },
+          { name: 'Spend Analysis', href: '/spend', icon: Wallet, description: 'PO & Invoice matching' },
+          { name: 'Forecasting', href: '/forecast', icon: TrendingUp, description: 'Spend forecasting' },
+        ]
+      },
+      {
+        name: 'Governance',
         href: '/governance',
         icon: ShieldCheck,
-        description: 'Policies, compliance & risk',
+        description: 'Compliance & risk',
         children: [
-          { name: 'Governance', href: '/governance', icon: ShieldCheck, description: 'Policies, gates & routing rules' },
+          { name: 'Governance', href: '/governance', icon: ShieldCheck, description: 'Policies & routing' },
           { name: 'Compliance', href: '/compliance', icon: ClipboardCheck, description: 'Compliance tracking' },
-          { name: 'Risk', href: '/risk', icon: AlertTriangle, description: 'Risk assessment & vendor risk' },
+          { name: 'Risk', href: '/risk', icon: AlertTriangle, description: 'Risk assessment' },
         ]
       },
     ]
@@ -208,13 +242,13 @@ const navigationGroups: NavigationGroup[] = [
         name: 'System',
         href: '/audit-logs',
         icon: ScrollText,
-        description: 'Logs, queues & connections',
+        description: 'Logs & monitoring',
         requiresAdmin: true,
         children: [
-          { name: 'Clients', href: '/platform', icon: Users, description: 'Manage all client organizations' },
-          { name: 'Queue Dashboard', href: '/admin/queue', icon: Activity, description: 'Monitor processing queues' },
-          { name: 'Audit Logs', href: '/audit-logs', icon: ScrollText, description: 'System-wide audit trail' },
-          { name: 'Data Connections', href: '/admin/integrations', icon: Database, description: 'Connect external databases' },
+          { name: 'Clients', href: '/platform', icon: Users, description: 'Client organizations' },
+          { name: 'Queue', href: '/admin/queue', icon: Activity, description: 'Processing queues' },
+          { name: 'Audit Logs', href: '/audit-logs', icon: ScrollText, description: 'Audit trail' },
+          { name: 'Integrations', href: '/admin/integrations', icon: Database, description: 'Data connections' },
         ]
       },
     ]
@@ -308,7 +342,7 @@ function NavItem({
                     onClick={onMobileClose}
                     aria-current={isActive(child.href) ? 'page' : undefined}
                     className={cn(
-                      'flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/50',
+                      'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-left',
                       isActive(child.href)
                         ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 font-medium'
                         : 'text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-700 dark:hover:text-slate-200'
@@ -352,11 +386,11 @@ function NavItem({
 
   return (
     <Link
-      href={item.href || '/'}
+      href={item.href || '#'}
       onClick={onMobileClose}
       aria-current={itemActive ? 'page' : undefined}
       className={cn(
-        'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-violet-500/50',
+        'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-left',
         itemActive
           ? 'bg-violet-50/80 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400'
           : 'text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-slate-100'
@@ -448,7 +482,19 @@ function EnhancedNavigation() {
   const isActive = useCallback((href?: string) => {
     if (!href) return false;
     if (href === '/') return pathname === '/';
-    return pathname.startsWith(href);
+    
+    // Handle URLs with query strings (e.g., /contigo-labs?tab=rfx-studio)
+    const [hrefPath, hrefQuery] = href.split('?');
+    
+    // Check if the base path matches
+    if (!pathname.startsWith(hrefPath)) return false;
+    
+    // If there's no query string in href, it's a match
+    if (!hrefQuery) return true;
+    
+    // For query string URLs, check if we're on the right page
+    // (exact match for the path part)
+    return pathname === hrefPath;
   }, [pathname]);
 
   const isChildActive = useCallback((children?: NavigationItem[]): boolean => {

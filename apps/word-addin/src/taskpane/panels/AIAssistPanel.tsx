@@ -218,6 +218,12 @@ const AI_ACTIONS: Array<{
     icon: <DocumentTextRegular />,
     description: 'Complete partially written clauses',
   },
+  {
+    id: 'simplify' as AIAction,
+    label: 'Simplify',
+    icon: <TextGrammarArrowLeftRegular />,
+    description: 'Simplify complex legal language while preserving meaning',
+  },
 ];
 
 export const AIAssistPanel: React.FC = () => {
@@ -339,9 +345,25 @@ export const AIAssistPanel: React.FC = () => {
 
   const handleInsertSuggestion = useCallback(async (text: string) => {
     try {
-      await wordService.insertText(text);
+      // Enable track changes so AI edits are visible as tracked modifications
+      await wordService.setTrackChanges(true);
+      // Insert as HTML to preserve any formatting in the suggestion
+      const isHtml = text.includes('<') && (text.includes('</') || text.includes('/>'));
+      if (isHtml) {
+        await wordService.insertHtml(text);
+      } else {
+        await wordService.insertText(text);
+      }
+      // Restore track changes off after insertion
+      await wordService.setTrackChanges(false);
     } catch (err) {
       console.error('Failed to insert text:', err);
+      // Try without track changes as fallback (Word API 1.4+ required)
+      try {
+        await wordService.insertText(text);
+      } catch (fallbackErr) {
+        console.error('Fallback insert also failed:', fallbackErr);
+      }
     }
   }, []);
 

@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils';
 
 interface RealtimeArtifactViewerProps {
   contractId: string;
-  tenantId?: string;
+  tenantId?: string; // Deprecated: server uses session tenant from middleware
   onComplete?: () => void;
   onContractNotFound?: () => void;  // Called when contract returns 404
 }
@@ -100,7 +100,7 @@ const stageLabels: Record<string, string> = {
 
 export function RealtimeArtifactViewer({ 
   contractId, 
-  tenantId = 'demo',
+  tenantId: _tenantId, // Deprecated: server uses session tenant from middleware
   onComplete,
   onContractNotFound
 }: RealtimeArtifactViewerProps) {
@@ -116,7 +116,7 @@ export function RealtimeArtifactViewer({
     reconnect
   } = useArtifactStream({
     contractId,
-    tenantId,
+    // tenantId not passed — server uses session tenant from middleware
     onComplete: () => {
       if (onComplete) onComplete();
     },
@@ -180,13 +180,11 @@ export function RealtimeArtifactViewer({
     
     const poll = async () => {
       try {
-        const response = await fetch(`/api/contracts/${contractId}/artifacts`, {
-          headers: { 'x-tenant-id': tenantId }
-        });
+        const response = await fetch(`/api/contracts/${contractId}/artifacts`);
         if (response.ok) {
           const data = await response.json();
-          // Check if all artifacts are complete - response is { success, data: [...] }
-          const artifactList = data.data || data.artifacts || [];
+          // Response shape: { success, data: [...artifacts] } via createSuccessResponse
+          const artifactList = Array.isArray(data.data) ? data.data : (data.artifacts || []);
           if (artifactList.length > 0) {
             // Count items with actual content
             const completed = artifactList.filter((a: any) => 
@@ -219,7 +217,7 @@ export function RealtimeArtifactViewer({
     
     pollingIntervalRef.current = setInterval(poll, 3000);
     poll(); // Immediate first poll
-  }, [contractId, tenantId, isConnected, isEffectivelyComplete]);
+  }, [contractId, isConnected, isEffectivelyComplete]);
 
   // Start polling fallback if connection doesn't establish within 10s
   useEffect(() => {
@@ -260,7 +258,6 @@ export function RealtimeArtifactViewer({
         {
           method: 'POST',
           headers: {
-            'x-tenant-id': tenantId,
             'Content-Type': 'application/json'
           }
         }
@@ -297,8 +294,10 @@ export function RealtimeArtifactViewer({
   });
 
   // Use actual artifact count from the stream (varies by contract type)
-  const totalCount = Math.max(artifacts.length, 1);
-  const progressPercent = totalCount > 0 ? Math.min(100, (completedCount / totalCount) * 100) : 0;
+  const totalCount = artifacts.length;
+  // Show indeterminate progress (pulsing bar) when no artifacts yet, otherwise real progress
+  const hasArtifacts = totalCount > 0;
+  const progressPercent = hasArtifacts ? Math.min(100, (completedCount / totalCount) * 100) : 0;
 
   // Early return if contract not found - don't render anything
   if (contractNotFound) {
@@ -357,7 +356,7 @@ export function RealtimeArtifactViewer({
           )}
         </div>
         
-        {!isEffectivelyComplete && (
+        {!isEffectivelyComplete && hasArtifacts && (
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Clock className="h-4 w-4" />
             <span>{completedCount} of {totalCount} artifacts</span>
@@ -381,10 +380,14 @@ export function RealtimeArtifactViewer({
                 </div>
                 <Loader2 className="h-5 w-5 animate-spin text-violet-600" />
               </div>
-              <Progress value={progressPercent} className="h-2" />
-              <p className="text-xs text-gray-500 text-right">
-                {Math.round(progressPercent)}% complete
-              </p>
+              <Progress value={hasArtifacts ? progressPercent : undefined} className="h-2" />
+              {hasArtifacts ? (
+                <p className="text-xs text-gray-500 text-right">
+                  {Math.round(progressPercent)}% complete
+                </p>
+              ) : (
+                <p className="text-xs text-gray-400 text-right">Waiting for AI analysis...</p>
+              )}
             </div>
           </CardContent>
         </Card>

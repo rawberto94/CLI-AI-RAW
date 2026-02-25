@@ -11,6 +11,7 @@ import { contractService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { Prisma } from '@prisma/client';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // Types
@@ -311,7 +312,7 @@ export async function createContractAuditLog(options: {
       },
     });
   } catch (error) {
-    console.error('Failed to create contract audit log:', error);
+    logger.error('Failed to create contract audit log:', error);
     // Don't throw - audit logging should not break the main flow
   }
 }

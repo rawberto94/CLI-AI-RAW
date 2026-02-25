@@ -27,7 +27,8 @@ async function processContractWithSemanticChunking(
   text: string,
   options: { apiKey: string; model?: string }
 ): Promise<{ chunksCreated: number; embeddingsGenerated: number }> {
-  const { apiKey, model = 'text-embedding-3-small' } = options;
+  const { apiKey, model = process.env.RAG_EMBED_MODEL || 'text-embedding-3-large' } = options;
+  const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
   
   // Semantic chunking - split by sections and paragraphs
   const chunks = semanticChunk(text);
@@ -49,15 +50,22 @@ async function processContractWithSemanticChunking(
 
     console.log(`  🌐 Embedding batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(chunks.length / BATCH_SIZE)}`);
 
-    const response = await openai.embeddings.create({ model, input: texts });
+    const createParams: Record<string, unknown> = { model, input: texts };
+    if (embDims > 0 && model.includes('text-embedding-3')) {
+      createParams.dimensions = embDims;
+    }
+    const response = await openai.embeddings.create(createParams as any);
     embeddings.push(...response.data.map(d => d.embedding));
   }
 
   // Store in database
   const { toSql } = await import('pgvector');
 
-  // Delete existing embeddings
-  await prisma.contractEmbedding.deleteMany({ where: { contractId } });
+  // Delete existing document chunks only (preserve artifact/metadata chunks at 9900+)
+  await prisma.$executeRaw`
+    DELETE FROM "ContractEmbedding"
+    WHERE "contractId" = ${contractId} AND "chunkIndex" < 9900
+  `;
 
   // Create new embeddings
   for (let i = 0; i < chunks.length; i++) {

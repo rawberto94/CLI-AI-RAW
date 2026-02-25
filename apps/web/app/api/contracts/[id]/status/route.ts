@@ -13,9 +13,16 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+
+const statusUpdateSchema = z.object({
+  status: z.string().min(1, 'status is required'),
+  reason: z.string().optional(),
+  workflowExecutionId: z.string().optional(),
+});
 
 // Tenant isolation helper
 function getTenantId(request: NextRequest): string | null {
@@ -120,6 +127,28 @@ export async function GET(
       return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
+    // ── Auto-resolve stale PROCESSING contracts ──
+    // Stale criteria:
+    //  1. No artifacts generated AND idle for >90 seconds (worker never started), OR
+    //  2. Processing for >10 minutes regardless (hard ceiling — worker crashed or stuck)
+    if (contract.status === 'PROCESSING') {
+      const lastTouch = contract.updatedAt || contract.createdAt;
+      const staleSinceMs = Date.now() - new Date(lastTouch).getTime();
+      const hasNoArtifacts = contract.artifacts.length === 0;
+      const isStale = (hasNoArtifacts && staleSinceMs > 90_000) || staleSinceMs > 10 * 60 * 1000;
+      if (isStale) {
+        try {
+          await prisma.contract.update({
+            where: { id: contract.id },
+            data: { status: 'COMPLETED', updatedAt: new Date() },
+          });
+          (contract as any).status = 'COMPLETED';
+        } catch {
+          // Non-fatal — will retry on next poll
+        }
+      }
+    }
+
     const processingJob = contract.processingJobs[0] || null;
 
     // Count artifacts by type
@@ -131,14 +160,23 @@ export async function GET(
     const hasClauses = artifactTypes.includes('clauses');
 
     const artifactsGenerated = contract.artifacts.length;
-    const totalArtifacts = 5;
+    // Estimate total based on actual artifact count (worker generates variable amounts)
+    const totalArtifacts = Math.max(artifactsGenerated, 5);
 
     // Determine current processing step with more detail
     let currentStep: ProcessingStage = 'upload';
     let progress = 0;
     let stageProgress = 0;
 
-    if (contract.status === 'UPLOADED') {
+    if (contract.status === 'PENDING') {
+      currentStep = 'queued';
+      progress = 10;
+      stageProgress = 25;
+    } else if (contract.status === 'UPLOADED') {
+      currentStep = 'queued';
+      progress = 15;
+      stageProgress = 50;
+    } else if (contract.status === 'QUEUED') {
       currentStep = 'queued';
       progress = 20;
       stageProgress = 100;
@@ -192,7 +230,7 @@ export async function GET(
     return createSuccessResponse(ctx, {
       // Basic info
       contractId: contract.id,
-      status: contract.status,
+      status: contract.status.toLowerCase(),
       fileName: contract.fileName,
       fileSize: Number(contract.fileSize),
       mimeType: contract.mimeType,
@@ -271,6 +309,7 @@ function formatDuration(ms: number): string {
 const VALID_TRANSITIONS: Record<string, Set<string>> = {
   DRAFT:      new Set(['PENDING', 'ACTIVE', 'PROCESSING', 'CANCELLED']),
   PENDING:    new Set(['ACTIVE', 'DRAFT', 'CANCELLED', 'PROCESSING']),
+  QUEUED:     new Set(['PROCESSING', 'FAILED', 'CANCELLED', 'DRAFT']),
   PROCESSING: new Set(['COMPLETED', 'FAILED', 'PENDING']),
   COMPLETED:  new Set(['ACTIVE', 'ARCHIVED', 'DRAFT', 'PENDING']),
   ACTIVE:     new Set(['EXPIRED', 'ARCHIVED', 'CANCELLED', 'DRAFT', 'PENDING']),
@@ -278,13 +317,13 @@ const VALID_TRANSITIONS: Record<string, Set<string>> = {
   FAILED:     new Set(['PROCESSING', 'DRAFT']),
   ARCHIVED:   new Set(['ACTIVE', 'DRAFT']),
   CANCELLED:  new Set(['DRAFT']),
-  UPLOADED:   new Set(['PROCESSING', 'DRAFT', 'PENDING', 'ACTIVE']),
+  UPLOADED:   new Set(['QUEUED', 'PROCESSING', 'DRAFT', 'PENDING', 'ACTIVE']),
   DELETED:    new Set([]),
 };
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
@@ -296,13 +335,8 @@ export async function PATCH(
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
 
-    const contractId = params.id;
-    const body = await request.json();
-    const { status: newStatus, reason, workflowExecutionId } = body;
-
-    if (!newStatus) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'status is required', 400);
-    }
+    const { id: contractId } = await params;
+    const { status: newStatus, reason, workflowExecutionId } = statusUpdateSchema.parse(await request.json());
 
     const normalizedStatus = newStatus.toUpperCase();
 

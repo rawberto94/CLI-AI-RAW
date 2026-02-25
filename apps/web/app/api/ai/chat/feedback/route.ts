@@ -12,6 +12,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { aiCopilotService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 interface ChatFeedbackPayload {
   messageId?: string;
@@ -53,7 +54,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
             feedback: rating === 'like' ? 'positive' : 'negative',
             feedbackNote: correction || category || null } });
       } catch (err) {
-        console.error('[Chat Feedback] Failed to update message:', err);
+        logger.error('[Chat Feedback] Failed to update message:', err);
         // Continue even if message not found - still log the feedback
       }
     }
@@ -82,12 +83,12 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           correction,
           expectedResponse: body.expectedResponse,
           context: body.context ? JSON.stringify(body.context) : undefined } as Prisma.InputJsonValue } }).catch(err => {
-      console.error('[Chat Feedback] Failed to create audit log:', err);
+      logger.error('[Chat Feedback] Failed to create audit log:', err);
     });
 
     // Log feedback for analytics (use warn to pass linting)
     if (process.env.NODE_ENV === 'development') {
-      console.warn('[Chat Feedback]', {
+      logger.warn('[Chat Feedback]', {
         feedbackId,
         tenantId,
         rating,
@@ -100,7 +101,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
     // If negative feedback with correction, could trigger learning pipeline
     if (rating === 'dislike' && correction) {
-      console.warn('[Chat Feedback] Learning opportunity:', {
+      logger.warn('[Chat Feedback] Learning opportunity:', {
         feedbackId,
         category,
         correctionLength: correction.length });

@@ -20,14 +20,23 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       return createSuccessResponse(ctx, { versions });
     }
 
-    // Get all clause library entries with latest version
-    const clauses = await (prisma as any).clauseLibrary.findMany({
+    // Get all clause library entries (ClauseLibrary tracks version via built-in version field)
+    const clauses = await prisma.clauseLibrary.findMany({
       where: { tenantId: ctx.tenantId },
       orderBy: { updatedAt: 'desc' },
-      include: {
-        _count: { select: { versions: true } },
-        versions: { take: 1, orderBy: { version: 'desc' }, select: { version: true, createdAt: true } },
-      } as any,
+      select: {
+        id: true,
+        name: true,
+        title: true,
+        category: true,
+        content: true,
+        version: true,
+        riskLevel: true,
+        isStandard: true,
+        isMandatory: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     return createSuccessResponse(ctx, { clauses });

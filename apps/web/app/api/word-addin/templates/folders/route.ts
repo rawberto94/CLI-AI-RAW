@@ -5,6 +5,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import {
   getAuthenticatedApiContext,
   getApiContext,
@@ -12,6 +13,20 @@ import {
   createErrorResponse,
 } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+
+const folderActionSchema = z.discriminatedUnion('action', [
+  z.object({
+    action: z.literal('move'),
+    templateIds: z.array(z.string()).min(1, 'At least one template ID required'),
+    folder: z.string().min(1, 'Folder name is required').max(50),
+  }),
+  z.object({
+    action: z.literal('rename'),
+    oldFolder: z.string().min(1, 'Old folder name required'),
+    newFolder: z.string().min(1, 'New folder name required').max(50),
+  }),
+]);
 
 /** Built-in categories that always appear */
 const BUILT_IN_CATEGORIES = ['MSA', 'SOW', 'NDA', 'AMENDMENT', 'SLA', 'OTHER'];
@@ -54,7 +69,7 @@ export async function GET(req: NextRequest) {
       totalCount,
     });
   } catch (error) {
-    console.error('Word Add-in folders error:', error);
+    logger.error('Word Add-in folders error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch folders', 500);
   }
 }
@@ -67,10 +82,13 @@ export async function POST(req: NextRequest) {
     if (!ctx) return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
 
     const body = await req.json();
-    const { action, templateIds, folder, oldFolder, newFolder } = body;
+    const parsed = folderActionSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.errors[0].message, 400);
+    }
 
-    if (action === 'move' && templateIds && folder) {
-      // Move templates to a folder
+    if (parsed.data.action === 'move') {
+      const { templateIds, folder } = parsed.data;
       await prisma.contractTemplate.updateMany({
         where: {
           id: { in: templateIds },
@@ -81,8 +99,8 @@ export async function POST(req: NextRequest) {
       return createSuccessResponse(ctx, { moved: templateIds.length });
     }
 
-    if (action === 'rename' && oldFolder && newFolder) {
-      // Rename a folder — updates all templates in that category
+    if (parsed.data.action === 'rename') {
+      const { oldFolder, newFolder } = parsed.data;
       const result = await prisma.contractTemplate.updateMany({
         where: {
           tenantId: ctx.tenantId,
@@ -93,9 +111,9 @@ export async function POST(req: NextRequest) {
       return createSuccessResponse(ctx, { renamed: result.count });
     }
 
-    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action. Use "move" or "rename".', 400);
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action.', 400);
   } catch (error) {
-    console.error('Word Add-in folder action error:', error);
+    logger.error('Word Add-in folder action error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to perform folder action', 500);
   }
 }

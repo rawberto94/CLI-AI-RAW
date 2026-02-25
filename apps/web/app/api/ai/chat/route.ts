@@ -12,6 +12,7 @@ import { hybridSearch } from '@/lib/rag/advanced-rag.service'
 import { prisma } from '@/lib/prisma'
 import { conversationMemoryService } from 'data-orchestration/services'
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 // AI Chat modules
 import { detectIntent } from '@/lib/ai/chat/intent-detection';
@@ -31,7 +32,13 @@ import { getOpenAIResponse } from '@/lib/ai/chat/response-builder';
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
   const userRole = ctx.userRole || 'VIEWER';
+
+  // ── Rate limit: shared bucket with streaming endpoint ──
+  const rl = checkRateLimit(tenantId, userId, '/api/ai/chat', { ...AI_RATE_LIMITS.streaming, identifier: 'ai-chat' });
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
+
   try {
     const { message, contractId, context: initialContext, conversationHistory, conversationId: providedConversationId } = await request.json()
     let context = initialContext || {};
@@ -73,17 +80,22 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
     // Get or create conversation
     if (!conversationId) {
-      conversationId = await conversationMemoryService.createConversation(tenantId, tenantId);
+      conversationId = await conversationMemoryService.createConversation(tenantId, userId);
     }
 
     // Resolve references in the message ("it", "that contract", "the supplier")
-    const resolutionResult = await conversationMemoryService.resolveReferences(
-      conversationId,
-      message,
-      tenantId
-    );
-    resolvedMessage = resolutionResult.resolvedMessage;
-    referenceResolutions = resolutionResult.resolutions;
+    try {
+      const resolutionResult = await conversationMemoryService.resolveReferences(
+        conversationId,
+        message,
+        tenantId
+      );
+      resolvedMessage = resolutionResult.resolvedMessage;
+      referenceResolutions = resolutionResult.resolutions;
+    } catch {
+      // Fallback to original message if reference resolution fails
+      resolvedMessage = message;
+    }
 
     // Save user message to conversation memory
     await conversationMemoryService.addMessage(conversationId, 'user', message);

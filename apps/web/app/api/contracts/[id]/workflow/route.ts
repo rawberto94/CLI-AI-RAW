@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
 import { Prisma } from '@prisma/client';
@@ -6,19 +7,27 @@ import { getApiTenantId } from '@/lib/tenant-server';
 import { requiresApprovalWorkflow, getContractLifecycle } from '@/lib/contract-helpers';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
-export const dynamic = 'force-dynamic';
+const workflowStepSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  order: z.number().int().optional(),
+  type: z.string().optional(),
+  assignedRole: z.string().optional(),
+  assignedUser: z.string().optional(),
+  config: z.record(z.unknown()).optional(),
+  isRequired: z.boolean().optional(),
+  timeout: z.number().int().optional(),
+});
 
-interface WorkflowStepInput {
-  name: string;
-  description?: string;
-  order?: number;
-  type?: string;
-  assignedRole?: string;
-  assignedUser?: string;
-  config?: Record<string, unknown>;
-  isRequired?: boolean;
-  timeout?: number;
-}
+const createWorkflowSchema = z.object({
+  name: z.string().optional(),
+  description: z.string().optional(),
+  type: z.string().default('APPROVAL'),
+  isActive: z.boolean().default(true),
+  config: z.record(z.unknown()).default({}),
+  metadata: z.record(z.unknown()).default({}),
+  steps: z.array(workflowStepSchema).default([]),
+});
 
 export async function GET(
   request: NextRequest,
@@ -119,6 +128,8 @@ export async function GET(
   }
 }
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -135,7 +146,7 @@ export async function POST(
     }
     
     const contractId = params.id;
-    const body = await request.json();
+    const body = createWorkflowSchema.parse(await request.json());
 
     // Verify contract exists
     const contract = await prisma.contract.findFirst({
@@ -176,12 +187,12 @@ export async function POST(
         tenantId,
         name: body.name || `Workflow for ${contract.contractTitle || contract.fileName}`,
         description: body.description,
-        type: body.type || 'APPROVAL',
-        isActive: body.isActive ?? true,
-        config: body.config || {},
-        metadata: body.metadata || {},
+        type: body.type,
+        isActive: body.isActive,
+        config: body.config as Prisma.InputJsonValue,
+        metadata: body.metadata as Prisma.InputJsonValue,
         steps: {
-          create: ((body.steps || []) as WorkflowStepInput[]).map((step, index) => {
+          create: body.steps.map((step, index) => {
             const stepData: Prisma.WorkflowStepCreateWithoutWorkflowInput = {
               name: step.name,
               order: step.order ?? index,

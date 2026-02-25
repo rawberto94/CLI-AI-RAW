@@ -232,7 +232,7 @@ export const bulkOperationSchema = z.object({
     'export-json',
     'export-pdf',
   ]),
-  contractIds: z.array(z.string().uuid()).min(1).max(100),
+  contractIds: z.array(z.string().min(1).max(50)).min(1).max(100),
   
   // Operation-specific fields
   status: contractStatusEnum.optional(),

@@ -5,6 +5,7 @@ import { aiArtifactGeneratorService } from "data-orchestration/services";
 import { getApiTenantId } from "@/lib/tenant-server";
 import { queueRAGReindex } from "@/lib/rag/reindex-helper";
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 // aiArtifactGeneratorService is already an instance via getInstance()
 const aiArtifactGenerator = aiArtifactGeneratorService;
@@ -73,7 +74,7 @@ export async function POST(
     // Regenerate artifact in background (non-blocking)
     regenerateArtifactAsync(contractId, artifactId, artifact.type, contract.rawText, tenantId)
       .catch((err) => {
-        console.error('[ArtifactRegenerate] Background regeneration error:', err);
+        logger.error('[ArtifactRegenerate] Background regeneration error:', err);
       });
 
     return createSuccessResponse(ctx, {

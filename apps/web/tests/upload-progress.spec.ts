@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { join } from 'path';
 
 // E2E: Upload via UI, verify progress bar updates and redirect to contract page,
 // then check ingestion artifact has text.
@@ -13,7 +14,7 @@ test.describe('Upload progress and artifacts', () => {
     await page.goto('http://localhost:3002/upload');
 
     // Select a small test file (use tmp/sample-contract.txt in repo)
-  const filePath = '/Users/maddalena/Library/Mobile Documents/com~apple~CloudDocs/Robi/contract-intelligence/tmp/sample-contract.txt';
+    const filePath = join(process.cwd(), 'tmp', 'sample-contract.txt');
     await page.setInputFiles('[data-testid="contract-upload-input"]', filePath);
 
     // Click Upload & Analyze

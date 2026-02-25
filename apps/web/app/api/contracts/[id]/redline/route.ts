@@ -6,8 +6,18 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
+
+const redlineSaveSchema = z.object({
+  content: z.string({ required_error: 'content (string) is required' }),
+  changes: z.array(z.record(z.unknown())).default([]),
+  comments: z.array(z.record(z.unknown())).default([]),
+  documentStatus: z.string().default('draft'),
+  finalize: z.boolean().default(false),
+});
 
 /* ------------------------------------------------------------------ */
 /*  GET — load saved redline state                                     */
@@ -58,7 +68,7 @@ export async function GET(
       version: redline?.version ?? 0,
     });
   } catch (error) {
-    console.error('[Redline GET] Error:', error);
+    logger.error('[Redline GET] Error:', error);
     return createErrorResponse(authCtx, 'INTERNAL_ERROR', 'Failed to load redline data', 500);
   }
 }
@@ -80,18 +90,13 @@ export async function POST(
     const { id } = await params;
     const tenantId = authCtx.tenantId;
 
-    const body = await request.json();
     const {
       content,
-      changes = [],
-      comments = [],
-      documentStatus = 'draft',
-      finalize = false,
-    } = body;
-
-    if (typeof content !== 'string') {
-      return createErrorResponse(authCtx, 'VALIDATION_ERROR', 'content (string) is required', 400);
-    }
+      changes,
+      comments,
+      documentStatus,
+      finalize,
+    } = redlineSaveSchema.parse(await request.json());
 
     // Verify ownership
     const contract = await prisma.contract.findFirst({
@@ -172,7 +177,7 @@ export async function POST(
       ).length,
     });
   } catch (error) {
-    console.error('[Redline POST] Error:', error);
+    logger.error('[Redline POST] Error:', error);
     return createErrorResponse(authCtx, 'INTERNAL_ERROR', 'Failed to save redline data', 500);
   }
 }

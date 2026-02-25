@@ -284,6 +284,16 @@ export { AnomalyExplainerService, AnomalyExplainerService as anomalyExplainerSer
 export { AIInsightsGeneratorService, AIInsightsGeneratorService as aiInsightsGeneratorService } from './ai-insights-generator.service';
 // export { ragIntegrationService } from './rag-integration.service'; // Excluded in tsconfig
 
+// Agent Context Enrichment (for Contigo Lab)
+export {
+  AgentContextEnrichmentService,
+  agentContextEnrichmentService,
+  type EnrichedAgentContext,
+  type ContractArtifacts,
+  type GraphInsights,
+  // Note: SimilarContract is already exported from contract-similarity.service
+} from './agent-context-enrichment.service';
+
 // Extraction services
 export { rateCardExtractionService } from './rate-card-extraction.service';
 export { tableExtractionService } from './table-extraction.service';

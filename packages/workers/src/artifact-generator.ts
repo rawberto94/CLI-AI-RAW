@@ -604,6 +604,17 @@ async function createOrUpdateArtifact(args: {
   const now = new Date();
   const { contractId, tenantId, type, artifactData, validationStatus, modelUsed, promptVersion, metadata } = args;
 
+  // Validate artifact data against expected schema before saving
+  const { validateArtifactData } = await import('./utils/artifact-schema-validator');
+  const validation = validateArtifactData(type, artifactData);
+  if (!validation.valid) {
+    logger.error({ contractId, type, errors: validation.errors }, 'Artifact data failed schema validation');
+    throw new Error(`Artifact validation failed for ${type}: ${validation.errors.join(', ')}`);
+  }
+  if (validation.warnings.length > 0) {
+    logger.warn({ contractId, type, warnings: validation.warnings }, 'Artifact validation warnings');
+  }
+
   // Hash only the stable content (exclude volatile meta like timestamps).
   const stableForHash = { ...artifactData } as any;
   delete stableForHash._meta;

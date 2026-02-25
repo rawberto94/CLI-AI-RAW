@@ -10,7 +10,15 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
+
+const mfaActionSchema = z.object({
+  action: z.enum(['setup', 'verify-setup', 'verify', 'disable', 'backup-codes'], {
+    errorMap: () => ({ message: 'Invalid MFA action. Must be one of: setup, verify-setup, verify, disable, backup-codes' }),
+  }),
+  token: z.string().optional(),
+});
 
 import {
   initializeMFASetup,
@@ -21,6 +29,7 @@ import {
   regenerateBackupCodes,
 } from '@/lib/security/mfa';
 import { auditLog, AuditAction, getAuditContext } from '@/lib/security/audit';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/auth/mfa/status - Check MFA status
@@ -33,7 +42,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
       mfaEnabled: enabled,
     });
   } catch (error) {
-    console.error('[MFA Status Error]:', error);
+    logger.error('[MFA Status Error]:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to get MFA status', 500);
   }
 });
@@ -43,8 +52,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
-    const body = await request.json();
-    const { action, token } = body;
+    const { action, token } = mfaActionSchema.parse(await request.json());
     
     switch (action) {
       case 'setup': {
@@ -180,7 +188,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
     }
   } catch (error) {
-    console.error('[MFA Error]:', error);
+    logger.error('[MFA Error]:', error);
     return createErrorResponse(
       ctx,
       'INTERNAL_ERROR',

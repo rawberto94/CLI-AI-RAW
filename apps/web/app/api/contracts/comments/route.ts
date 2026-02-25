@@ -9,6 +9,7 @@ import { contractService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/tenant-server';
 // TODO: Migrate contractComment/contractActivity operations to dedicated comment service
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 // Response type that maps to ContractComment model
 interface CommentResponse {
@@ -167,7 +168,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         isReply: !!parentId,
       },
     },
-  }).catch(err => console.error('Failed to create activity:', err));
+  }).catch(err => logger.error('Failed to create activity:', err));
 
   const comment = transformComment(dbComment);
 

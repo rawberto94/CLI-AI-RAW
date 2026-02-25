@@ -12,6 +12,7 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -198,7 +199,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
       recentActivity,
     });
   } catch (error) {
-    console.error('[Approval Analytics GET]', error);
+    logger.error('[Approval Analytics GET]', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch approval analytics', 500);
   }
 });

@@ -291,3 +291,49 @@ Output: ["termination rights supplier contracts", "notice period requirements", 
     return [query];
   }
 }
+
+/**
+ * Step-back prompting — generate a broader, more abstract version of the query
+ * to retrieve higher-level context that the specific query might miss.
+ *
+ * Example: "What is the penalty for late delivery under section 4.2?"
+ *       → "contract penalties and remedies for non-performance"
+ *
+ * The broad query is used as an additional retrieval query alongside the
+ * original, so the final result set covers both specific and contextual hits.
+ */
+export async function stepBackQuery(query: string): Promise<string | null> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a legal contract retrieval assistant. Given a specific legal query, generate ONE broader, more abstract version of the query that captures the underlying legal concept. The broader query should help retrieve background context and related clauses that the specific query might miss.
+
+Rules:
+- Remove specific section numbers, dates, party names, and dollar amounts
+- Focus on the general legal concept or clause category
+- Keep it concise (under 15 words)
+- Return ONLY the broader query text, nothing else
+
+Examples:
+"What is the penalty for late delivery under section 4.2?" → "contract penalties and remedies for non-performance"
+"Can Acme Corp assign this agreement to a third party?" → "assignment and transfer of contractual rights and obligations"
+"What happens if the vendor fails to meet the 99.9% SLA?" → "service level agreements breach consequences and remedies"`,
+        },
+        {
+          role: 'user',
+          content: query,
+        },
+      ],
+      temperature: 0.2,
+      max_tokens: 60,
+    });
+
+    const content = response.choices[0]?.message?.content?.trim();
+    return content && content.length > 5 ? content : null;
+  } catch {
+    return null;
+  }
+}

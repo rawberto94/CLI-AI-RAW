@@ -1,23 +1,11 @@
 /**
- * Agent Approval Queue Page
- *
- * Review and approve/reject recommendations generated
- * by autonomous AI agents before they are enacted.
+ * Agent Approvals Page
+ * 
+ * Redirects to the unified Contigo Labs experience
  */
 
-import { Metadata } from 'next';
-import { AgentApprovalQueue } from '@/components/agents/AgentApprovalQueue';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = {
-  title: 'Agent Approvals | ConTigo',
-  description:
-    'Review and approve or reject AI agent recommendations before they are applied',
-};
-
-export default function AgentApprovalsPage() {
-  return (
-    <div className="container mx-auto py-6 space-y-6">
-      <AgentApprovalQueue />
-    </div>
-  );
+export default function AgentsApprovalsPage() {
+  redirect('/contigo-labs?tab=approvals');
 }

@@ -11,6 +11,7 @@ import { SharePointConnector } from '@/lib/integrations/connectors/sharepoint.co
 import { SharePointCredentials } from '@/lib/integrations/connectors/types';
 import { auditTrailService } from 'data-orchestration/services';
 import { withApiHandler } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 export const GET = withApiHandler(async (request: NextRequest) => {
   try {
@@ -21,7 +22,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
     const errorDescription = searchParams.get('error_description');
 
     if (error) {
-      console.error('OAuth error:', error, errorDescription);
+      logger.error('OAuth error:', error, errorDescription);
       return redirectWithError(`Authentication failed: ${errorDescription || error}`);
     }
 
@@ -89,7 +90,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
       new URL(`/settings/integrations/sources?connected=${sourceId}`, appUrl)
     );
   } catch (error) {
-    console.error('OAuth callback error:', error);
+    logger.error('OAuth callback error:', error);
     return redirectWithError(
       error instanceof Error ? error.message : 'Authentication failed'
     );

@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { contractService } from 'data-orchestration/services';
-import { getApiTenantId } from "@/lib/tenant-server";
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 // Bulletproof constants
 const FAST_POLL_MS = 500; // Poll every 500ms during active processing
@@ -14,11 +13,30 @@ const IDLE_THRESHOLD = 5; // consecutive no-change polls before slowing
 
 // --- P3-24: SSE Rate Limiting ---
 // Track active SSE connections per tenant to prevent resource exhaustion
-const activeConnections = new Map<string, Set<string>>(); // tenantId -> Set<contractId>
+const activeConnections = new Map<string, Set<string>>(); // tenantId -> Set<contractId:timestamp-rand>
 const MAX_CONNECTIONS_PER_TENANT = 10;
 const MAX_CONNECTIONS_PER_CONTRACT = 3; // Allow a few concurrent viewers
+const CONNECTION_TTL_MS = 10 * 60 * 1000; // 10 minutes - stale connection cleanup threshold
 
-function acquireConnection(tenantId: string, contractId: string): boolean {
+// Periodic cleanup of stale connections that failed to release properly
+const _connectionCleanupInterval = setInterval(() => {
+  const now = Date.now();
+  for (const [tenantId, connections] of activeConnections) {
+    for (const key of connections) {
+      // Key format: contractId:timestamp-rand
+      const parts = key.split(':');
+      const timestamp = parseInt(parts[1] || '0');
+      if (timestamp > 0 && now - timestamp > CONNECTION_TTL_MS) {
+        connections.delete(key);
+      }
+    }
+    if (connections.size === 0) {
+      activeConnections.delete(tenantId);
+    }
+  }
+}, 60_000); // Run every minute
+
+function acquireConnection(tenantId: string, contractId: string): string | null {
   if (!activeConnections.has(tenantId)) {
     activeConnections.set(tenantId, new Set());
   }
@@ -26,7 +44,7 @@ function acquireConnection(tenantId: string, contractId: string): boolean {
 
   // Check tenant-level limit
   if (tenantConns.size >= MAX_CONNECTIONS_PER_TENANT) {
-    return false;
+    return null;
   }
 
   // Check per-contract limit (count how many entries match this contractId)
@@ -35,24 +53,18 @@ function acquireConnection(tenantId: string, contractId: string): boolean {
     if (key.startsWith(contractId + ':')) contractCount++;
   }
   if (contractCount >= MAX_CONNECTIONS_PER_CONTRACT) {
-    return false;
+    return null;
   }
 
   const connKey = `${contractId}:${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   tenantConns.add(connKey);
-  return true;
+  return connKey;
 }
 
-function releaseConnection(tenantId: string, contractId: string): void {
+function releaseConnectionByKey(tenantId: string, connKey: string): void {
   const tenantConns = activeConnections.get(tenantId);
   if (!tenantConns) return;
-  // Remove oldest matching connection
-  for (const key of tenantConns) {
-    if (key.startsWith(contractId + ':')) {
-      tenantConns.delete(key);
-      break;
-    }
-  }
+  tenantConns.delete(connKey);
   if (tenantConns.size === 0) {
     activeConnections.delete(tenantId);
   }
@@ -103,15 +115,15 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   }
   const contractId = params.id;
   
-  // EventSource can't send headers, so we also check query param for tenant ID
-  const { searchParams } = new URL(request.url);
-  const queryTenantId = searchParams.get('tenantId');
-  
-  // Use query param tenant ID if provided, otherwise fall back to header/session
-  const tenantId = queryTenantId || await getApiTenantId(request);
+  // Use the middleware-injected tenant ID from the authenticated context.
+  // The middleware overwrites x-tenant-id with the session tenant, so ctx.tenantId
+  // is authoritative. Do NOT use query param tenantId — it comes from client-side
+  // localStorage which may be stale/mismatched with the session.
+  const tenantId = ctx.tenantId;
 
   // --- P3-24: Rate limiting check ---
-  if (!acquireConnection(tenantId, contractId)) {
+  const connKey = acquireConnection(tenantId, contractId);
+  if (!connKey) {
     return new Response(
       JSON.stringify({ error: 'Too many active streams. Please close other contract views and retry.' }),
       { 
@@ -122,18 +134,19 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   }
 
   // Check initial contract status - if already completed, we can send data immediately
-  let contract: { id: string; status: string } | null = null;
+  let contract: { id: string; status: string; aiMetadata?: any } | null = null;
   let isInitiallyCompleted = false;
   
   try {
     // Use findFirst with tenant filter for proper multi-tenant isolation
     contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
-      select: { id: true, status: true }
+      select: { id: true, status: true, aiMetadata: true }
     });
     
     if (!contract) {
       // Contract doesn't exist - return 404
+      releaseConnectionByKey(tenantId, connKey);
       return new Response(
         JSON.stringify({ error: 'Contract not found' }),
         { 
@@ -146,6 +159,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     }
   } catch {
     // Database error - return 503 instead of silently using mock data
+    releaseConnectionByKey(tenantId, connKey);
     return new Response(
       JSON.stringify({ error: 'Database unavailable' }),
       { 
@@ -180,7 +194,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         if (queuedEventsCount > BACKPRESSURE_QUEUE_LIMIT && !isBackpressured) {
           isBackpressured = true;
           currentPollInterval = BACKPRESSURE_POLL_SLOWDOWN_MS;
-          console.warn(`[SSE] Backpressure detected for contract ${contractId}, slowing to ${BACKPRESSURE_POLL_SLOWDOWN_MS}ms`);
+          logger.warn(`[SSE] Backpressure detected for contract ${contractId}, slowing to ${BACKPRESSURE_POLL_SLOWDOWN_MS}ms`);
           // Restart the poll interval with slower rate
           if (pollInterval) {
             clearInterval(pollInterval);
@@ -329,6 +343,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             })}\n\n`)
           );
           
+          releaseConnectionByKey(tenantId, connKey);
           controller.close();
           isClosed = true;
           return;
@@ -344,7 +359,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         clearInterval(pollInterval);
         clearInterval(heartbeatInterval);
         isClosed = true;
-        releaseConnection(tenantId, contractId);
+        releaseConnectionByKey(tenantId, connKey);
         try {
           controller.close();
         } catch (_e) {
@@ -374,6 +389,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             message: 'Processing timeout - please retry'
           });
           clearInterval(pollInterval);
+          releaseConnectionByKey(tenantId, connKey);
           controller.close();
           isClosed = true;
           return;
@@ -390,6 +406,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             message: 'Processing partially complete - some artifacts may still be generating'
           });
           clearInterval(pollInterval);
+          releaseConnectionByKey(tenantId, connKey);
           controller.close();
           isClosed = true;
           return;
@@ -421,7 +438,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             shouldCheckStatus ? prisma.contract.findFirst({
               where: { id: contractId, tenantId },
               select: { 
-                status: true
+                status: true,
+                aiMetadata: true, // Include metadata for expected artifact count
               }
             }) : Promise.resolve(contract)
           ]);
@@ -429,10 +447,15 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           const artifacts = buildArtifactPayload(dbArtifacts);
           contractStatus = updatedContract?.status || 'PROCESSING';
 
+          // Use expectedArtifactCount from worker metadata for accurate progress
+          // (instead of just dividing by current DB count which would always be 100%)
+          const aiMeta = (updatedContract as any)?.aiMetadata;
+          const expectedTotal = aiMeta?.expectedArtifactCount || 0;
+
           // Detect per-artifact status transitions
           const transitions = detectTransitions(artifacts);
           const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
-          const totalCount = artifacts.length;
+          const totalCount = expectedTotal > 0 ? expectedTotal : artifacts.length;
           const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
           const stage = inferProcessingStage(contractStatus, totalCount, completedCount);
 
@@ -502,6 +525,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             );
             
             clearInterval(pollInterval);
+            releaseConnectionByKey(tenantId, connKey);
             controller.close();
             isClosed = true;
           }
@@ -517,6 +541,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
               timestamp: new Date().toISOString()
             });
             clearInterval(pollInterval);
+            releaseConnectionByKey(tenantId, connKey);
             controller.close();
             isClosed = true;
             return;
@@ -538,7 +563,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       clearInterval(pollInterval);
       clearInterval(heartbeatInterval);
       isClosed = true;
-      releaseConnection(tenantId, contractId);
+      releaseConnectionByKey(tenantId, connKey);
     }
   });
 

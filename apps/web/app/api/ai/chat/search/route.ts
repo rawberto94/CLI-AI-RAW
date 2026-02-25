@@ -10,6 +10,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, type AuthenticatedApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const { tenantId, userId } = ctx;
@@ -130,7 +131,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
 
     return createSuccessResponse(ctx, { results });
   } catch (error) {
-    console.error('[Chat Search] Error:', error);
+    logger.error('[Chat Search] Error:', error);
     return createErrorResponse(ctx, 'SEARCH_ERROR', 'Search failed', 500);
   }
 });

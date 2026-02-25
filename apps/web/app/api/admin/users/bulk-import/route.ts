@@ -12,6 +12,7 @@ import { hasPermission } from '@/lib/permissions';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
+import { logger } from '@/lib/logger';
 
 interface ImportUser {
   email: string;
@@ -191,7 +192,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
             `,
           });
         } catch (emailErr) {
-          console.warn('Failed to send invitation email:', emailErr);
+          logger.warn('Failed to send invitation email:', emailErr);
         }
 
         pendingInvitations.add(user.email);
@@ -227,7 +228,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         results.push({ email: user.email, status: 'created', userId: newUser.id });
       }
     } catch (e) {
-      console.error(`Failed to import user ${user.email}:`, e);
+      logger.error(`Failed to import user ${user.email}:`, e);
       results.push({ email: user.email, status: 'error', reason: 'Database error' });
     }
   }

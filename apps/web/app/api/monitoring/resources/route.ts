@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { resourceMonitor } from 'data-orchestration/services';
-import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type ApiContext, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type ApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
  * GET /api/monitoring/resources
  * Get resource metrics and statistics
  */
-export const GET = withApiHandler(async (request: NextRequest, ctx) => {
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const searchParams = request.nextUrl.searchParams;
   const action = searchParams.get('action');
 

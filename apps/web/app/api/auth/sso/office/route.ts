@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
+import { logger } from '@/lib/logger';
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET;
 const AZURE_AD_CLIENT_ID = process.env.AZURE_AD_CLIENT_ID;
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
             );
           }
 
-          console.error('OBO token exchange failed:', oboError);
+          logger.error('OBO token exchange failed:', oboError);
           return NextResponse.json(
             { success: false, error: { code: 'OBO_FAILED', message: 'Microsoft token validation failed' } },
             { status: 401 }
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
         // OBO succeeded — token is valid. We can optionally call Graph here for profile,
         // but we already have email/name from the bootstrap token claims.
       } catch (oboErr) {
-        console.error('OBO fetch error:', oboErr);
+        logger.error('OBO fetch error:', oboErr);
         return NextResponse.json(
           { success: false, error: { code: 'OBO_ERROR', message: 'Failed to validate Microsoft token' } },
           { status: 500 }
@@ -200,7 +201,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Office SSO exchange error:', error);
+    logger.error('Office SSO exchange error:', error);
     return NextResponse.json(
       { success: false, error: { code: 'SERVER_ERROR', message: 'SSO authentication failed' } },
       { status: 500 }

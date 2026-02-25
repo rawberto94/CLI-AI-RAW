@@ -33,7 +33,7 @@ import { useRouter } from 'next/navigation';
 
 interface ContractStatusResponse {
   contractId: string;
-  status: 'UPLOADED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  status: 'UPLOADED' | 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   fileName: string;
   fileSize: number;
   mimeType: string;
@@ -99,9 +99,32 @@ export interface UploadProgressProps {
 // Constants
 // ============================================================================
 
+/**
+ * Adaptive polling interval based on processing stage.
+ * - Active processing (ocr/artifacts): fast polling for responsive UX
+ * - Queued/upload: slower polling since nothing is changing yet
+ * - Storage/indexing: medium polling (fast stage)
+ */
+function getPollInterval(apiStep?: string, statusStr?: string): number {
+  if (statusStr === 'QUEUED' || statusStr === 'UPLOADED') return 4000;  // Waiting in queue — slow poll
+  switch (apiStep) {
+    case 'upload':
+    case 'queued':
+      return 3000;   // Waiting stages
+    case 'ocr':
+    case 'artifacts':
+      return 1500;   // Active processing — fast poll
+    case 'storage':
+    case 'complete':
+      return 2000;   // Wrapping up
+    default:
+      return 2000;
+  }
+}
+
 const API_STEP_TO_STAGE: Record<string, string> = {
   'upload': 'upload',
-  'queued': 'extract',
+  'queued': 'upload',   // Queued stays in upload stage (waiting for worker pickup)
   'ocr': 'extract',
   'artifacts': 'analyze',
   'storage': 'index',
@@ -136,7 +159,11 @@ function formatDuration(ms: number): string {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
-function getProcessingMessage(stage: string, artifactCount: number): string {
+function getProcessingMessage(stage: string, artifactCount: number, apiStatus?: ContractStatusResponse | null): string {
+  // Show queue-specific message when status is QUEUED
+  if (apiStatus?.status === 'QUEUED') {
+    return 'Waiting in queue...';
+  }
   switch (stage) {
     case 'upload': return 'Uploading file...';
     case 'extract': return 'Extracting text from document...';
@@ -179,16 +206,15 @@ export function EnhancedUploadProgress({
   const [apiStatus, setApiStatus] = useState<ContractStatusResponse | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);  // Track internal completion state
-  const pollRef = useRef<NodeJS.Timeout | null>(null);
   const hasCompletedRef = useRef(false);
 
-  // Update elapsed time
+  // Update elapsed time — stop counting once completed
   useEffect(() => {
-    if (status === 'uploading' || status === 'processing') {
+    if ((status === 'uploading' || status === 'processing') && !isCompleted) {
       const interval = setInterval(() => setElapsedTime(Date.now() - startTime), 1000);
       return () => clearInterval(interval);
     }
-  }, [status, startTime]);
+  }, [status, startTime, isCompleted]);
 
   // Auto-expand on error
   useEffect(() => {
@@ -203,15 +229,20 @@ export function EnhancedUploadProgress({
     hasCompletedRef.current = true;
     
     setShowSuccess(true);
-    setIsCompleted(true);  // Mark as completed internally
+    setIsCompleted(true);
+    // All stages complete
+    setStages(STAGES.map(s => ({ ...s, status: 'completed' as const })));
     if (onComplete) onComplete(finalContractId);
+    
+    // Auto-dismiss success overlay after 3 seconds
+    setTimeout(() => setShowSuccess(false), 3000);
     
     if (autoNavigate) {
       setTimeout(() => router.push(`/contracts/${finalContractId}`), 1500);
     }
   }, [autoNavigate, onComplete, router]);
 
-  // Poll contract status
+  // Poll contract status with adaptive interval
   useEffect(() => {
     if (!contractId || (status !== 'processing' && status !== 'uploading')) return;
 
@@ -219,9 +250,26 @@ export function EnhancedUploadProgress({
     let pollCount = 0;
     const MAX_NOT_FOUND = 5;
     const INITIAL_GRACE_POLLS = 5; // Increased grace period for DB commit delay
+    const MAX_PROCESSING_MS = 120_000; // 2 minutes — if no COMPLETED/FAILED by then, auto-complete
+    let timeoutId: NodeJS.Timeout | null = null;
+    const pollStartTime = Date.now();
+
+    const schedulePoll = (intervalMs: number) => {
+      timeoutId = setTimeout(poll, intervalMs);
+    };
 
     const poll = async () => {
       pollCount++;
+
+      // ── Processing timeout ──
+      // If we've been polling for too long without a terminal status,
+      // auto-complete to unblock the UI. The contracts list page will
+      // pick up the actual status on its own polling cycle.
+      if (Date.now() - pollStartTime > MAX_PROCESSING_MS) {
+        handleCompletion(contractId);
+        return;
+      }
+
       try {
         const res = await fetch(`/api/contracts/${contractId}/status`, {
           headers: { 'x-tenant-id': tenantId },
@@ -231,22 +279,32 @@ export function EnhancedUploadProgress({
         if (res.status === 404) {
           // During initial grace period, don't count 404s (database may not have committed yet)
           if (pollCount <= INITIAL_GRACE_POLLS) {
-            console.log(`[EnhancedUploadProgress] 404 during grace period (poll ${pollCount}/${INITIAL_GRACE_POLLS})`);
+            schedulePoll(2000);
             return;
           }
           notFoundCount++;
-          console.log(`[EnhancedUploadProgress] 404 count: ${notFoundCount}/${MAX_NOT_FOUND}`);
-          // Don't trigger onContractNotFound - just log it
-          // The parent will handle this via RealtimeArtifactViewer if needed
+          if (notFoundCount >= MAX_NOT_FOUND) {
+            // Exhausted retries — notify parent
+            if (onContractNotFound) onContractNotFound();
+            return; // Stop polling
+          }
+          schedulePoll(3000);
           return;
         }
         
-        if (!res.ok) return;
+        if (!res.ok) {
+          schedulePoll(3000);
+          return;
+        }
         
         // Reset not found counter on success
         notFoundCount = 0;
         
-        const data: ContractStatusResponse = await res.json();
+        // API wraps response in { success, data } envelope
+        const json = await res.json();
+        const data: ContractStatusResponse = json.data ?? json;
+        // Normalize status to uppercase (API may return lowercase)
+        if (data.status) data.status = data.status.toUpperCase() as ContractStatusResponse['status'];
         setApiStatus(data);
 
         // Update stages
@@ -262,26 +320,30 @@ export function EnhancedUploadProgress({
         })));
 
         if (data.status === 'COMPLETED') {
-          if (pollRef.current) clearInterval(pollRef.current);
           handleCompletion(contractId);
+          return; // Stop polling
         } else if (data.status === 'FAILED') {
-          if (pollRef.current) clearInterval(pollRef.current);
           setExpanded(true);
+          return; // Stop polling
         }
+
+        // Schedule next poll with adaptive interval
+        const nextInterval = getPollInterval(data.currentStep, data.status);
+        schedulePoll(nextInterval);
       } catch {
-        // Ignore errors
+        // On error, retry with backoff
+        schedulePoll(3000);
       }
     };
 
     // Add small delay before first poll to allow database transaction to commit
     const initialDelay = setTimeout(() => {
       poll();
-      pollRef.current = setInterval(poll, 1500);  // Faster polling for better UX
     }, 1000); // Wait 1 second before first poll
     
     return () => { 
       clearTimeout(initialDelay);
-      if (pollRef.current) clearInterval(pollRef.current); 
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [contractId, status, tenantId, onContractNotFound, handleCompletion]);
 
@@ -305,32 +367,59 @@ export function EnhancedUploadProgress({
     }
   }, [status, contractId]);
 
-  const progress = apiStatus?.progress ?? (status === 'completed' ? 100 : status === 'uploading' ? 15 : 0);
+  // Simulated progress when API hasn't responded yet
+  const simulatedProgress = (() => {
+    if (isCompleted || status === 'completed') return 100;
+    if (status === 'error') return 0;
+    if (status === 'pending') return 0;
+    // Simulate progress over time: 15% → 95% over 120s (matches MAX_PROCESSING_MS)
+    const elapsed = elapsedTime / 1000;
+    if (elapsed < 2) return 15;
+    if (elapsed < 10) return 15 + (elapsed / 10) * 25;          // 15% → 40%
+    if (elapsed < 30) return 40 + ((elapsed - 10) / 20) * 20;   // 40% → 60%
+    if (elapsed < 60) return 60 + ((elapsed - 30) / 30) * 15;   // 60% → 75%
+    if (elapsed < 90) return 75 + ((elapsed - 60) / 30) * 10;   // 75% → 85%
+    if (elapsed < 120) return 85 + ((elapsed - 90) / 30) * 10;  // 85% → 95%
+    return 95 + Math.min(3, (elapsed - 120) / 60);              // Slowly creep to 98%
+  })();
+  const progress = apiStatus?.progress ?? simulatedProgress;
   const displayTime = apiStatus?.timing?.elapsedMs ?? elapsedTime;
   const artifactCount = apiStatus?.artifactsGenerated ?? 0;
   const estimatedRemaining = apiStatus?.timing?.estimatedRemainingMs;
   const currentStage = stages.find(s => s.status === 'in-progress');
-  const processingMessage = getProcessingMessage(currentStage?.id || 'upload', artifactCount);
+  const processingMessage = getProcessingMessage(currentStage?.id || 'upload', artifactCount, apiStatus);
 
   // Handle duplicate
   if (isDuplicate && existingContractId) {
     return (
-      <div className="flex items-center gap-3 p-3 rounded-lg border border-amber-200 bg-amber-50">
-        <div className="p-2 rounded-lg bg-amber-100">
-          <Copy className="h-4 w-4 text-amber-600" />
+      <div className="flex items-center gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30">
+        <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-800">
+          <Copy className="h-5 w-5 text-amber-600 dark:text-amber-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-amber-900 truncate">{fileName}</p>
-          <p className="text-xs text-amber-600">Already uploaded recently</p>
+          <p className="font-medium text-amber-900 dark:text-amber-100 truncate">{fileName}</p>
+          <p className="text-sm text-amber-700 dark:text-amber-300">
+            Already uploaded recently
+          </p>
         </div>
-        <div className="flex items-center gap-1.5">
-          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => router.push(`/contracts/${existingContractId}`)}>
+        <div className="flex items-center gap-2">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="h-8 text-xs border-amber-300 dark:border-amber-600 hover:bg-amber-100 dark:hover:bg-amber-800"
+            onClick={() => router.push(`/contracts/${existingContractId}`)}
+          >
             <Eye className="h-3.5 w-3.5 mr-1" />
-            View
+            View Original
           </Button>
-          <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={onRetry}>
+          <Button 
+            size="sm" 
+            variant="ghost" 
+            className="h-8 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800"
+            onClick={onRetry}
+          >
             <RefreshCw className="h-3.5 w-3.5 mr-1" />
-            Re-upload
+            Re-process Anyway
           </Button>
           <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={onRemove}>
             <X className="h-3.5 w-3.5" />

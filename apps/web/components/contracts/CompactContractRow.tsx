@@ -1,7 +1,6 @@
 "use client";
 
 import { memo } from "react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -89,10 +88,7 @@ export const CompactContractRow = memo(function CompactContractRow({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 5 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.15, delay: index * 0.015 }}
+    <div
       className={cn(
         "flex items-center gap-4 px-5 py-4 cursor-pointer transition-colors duration-150 group border-b border-slate-100 dark:border-slate-700 relative",
         isSelected 
@@ -109,16 +105,25 @@ export const CompactContractRow = memo(function CompactContractRow({
       tabIndex={0}
       aria-label={`View contract ${contract.title || 'Untitled Contract'}`}
       onKeyDown={handleRowKeyDown}
+      data-testid={`contract-row-${contract.id}`}
     >
       {/* Selection indicator line */}
       {isSelected && (
         <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-slate-800" />
       )}
-      {/* Checkbox */}
+      {/* Checkbox — stopPropagation only when clicking the checkbox itself, not the padding */}
       <div
         className="w-10 flex-shrink-0 flex items-center justify-center"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('[role="checkbox"]')) {
+            e.stopPropagation();
+          }
+        }}
+        onKeyDown={(e) => {
+          if ((e.target as HTMLElement).closest('[role="checkbox"]')) {
+            e.stopPropagation();
+          }
+        }}
       >
         <Checkbox
           checked={isSelected}
@@ -285,8 +290,12 @@ export const CompactContractRow = memo(function CompactContractRow({
         />
       </div>
 
-      {/* Actions */}
-      <div className="w-10 flex-shrink-0 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+      {/* Actions — stopPropagation only when interacting with the menu, not empty padding */}
+      <div className="w-10 flex-shrink-0 flex items-center justify-center" onClick={(e) => {
+        if ((e.target as HTMLElement).closest('button, [role="menu"], [role="menuitem"]')) {
+          e.stopPropagation();
+        }
+      }}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -339,6 +348,6 @@ export const CompactContractRow = memo(function CompactContractRow({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </motion.div>
+    </div>
   );
 });

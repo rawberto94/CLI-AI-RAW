@@ -176,6 +176,7 @@ export function CopilotDraftingCanvas({
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [showCompletionPopup, setShowCompletionPopup] = useState(false);
   const [selectedCompletionIndex, setSelectedCompletionIndex] = useState(0);
+  const [completionPopupPos, setCompletionPopupPos] = useState<{ top: number; left: number }>({ top: 80, left: 32 });
 
   // UI state
   const [activeTab, setActiveTab] = useState<'copilot' | 'comments' | 'versions' | 'clauses'>('copilot');
@@ -227,6 +228,7 @@ export function CopilotDraftingCanvas({
   // ============================================================================
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({}),
       UnderlineExt,
@@ -248,14 +250,37 @@ export function CopilotDraftingCanvas({
       const text = ed.getText();
       setContent(ed.getHTML());
 
-      // trigger auto-completions on current line
-      const lines = text.split('\n');
-      const currentLine = lines[lines.length - 1] || '';
+      // trigger auto-completions only when user pauses typing at end of a
+      // substantial line (not mid-sentence edits or cursor-only moves)
+      const { from } = ed.state.selection;
+      const resolvedPos = ed.state.doc.resolve(from);
+      const lineEnd = resolvedPos.end();
+      const isAtLineEnd = from >= lineEnd - 1; // within 1 char of line end
+      const docText = ed.state.doc.textBetween(0, from, '\n');
+      const lines = docText.split('\n');
+      const currentLine = (lines[lines.length - 1] || '').trim();
+
       if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
-      if (currentLine.length > 20) {
+
+      // Only trigger when: at end-of-line, line is substantial, and line ends
+      // with natural pause punctuation or a space (user paused typing)
+      if (isAtLineEnd && currentLine.length > 30 && /[\s,;.]$/.test(currentLine)) {
+        // Capture cursor coordinates for popup positioning
+        try {
+          const coords = ed.view.coordsAtPos(from);
+          const editorRect = ed.view.dom.getBoundingClientRect();
+          setCompletionPopupPos({
+            top: coords.bottom - editorRect.top + 4,
+            left: Math.min(coords.left - editorRect.left, editorRect.width - 400),
+          });
+        } catch { /* use previous position */ }
+
         completionTimerRef.current = setTimeout(() => {
           fetchAutoCompletions(currentLine);
-        }, 800);
+        }, 1200);
+      } else {
+        // Dismiss if user keeps typing or moves away
+        setShowCompletionPopup(false);
       }
     },
     onSelectionUpdate: ({ editor: ed }) => {
@@ -263,6 +288,8 @@ export function CopilotDraftingCanvas({
       setCursorPosition(from);
       const sel = ed.state.doc.textBetween(ed.state.selection.from, ed.state.selection.to, ' ');
       setSelectedText(sel);
+      // Dismiss auto-complete when user moves cursor (avoids stale popups)
+      if (showCompletionPopup) setShowCompletionPopup(false);
     },
   });
 
@@ -298,6 +325,9 @@ export function CopilotDraftingCanvas({
         const data = json.data || json;
         setSuggestions(data.suggestions || []);
         setRisks(data.risks || []);
+      } else {
+        const errorBody = await response.json().catch(() => null);
+        console.warn('Copilot suggestions non-OK:', response.status, errorBody?.error || response.statusText);
       }
     } catch (error) {
       console.error('Failed to fetch suggestions:', error);
@@ -331,6 +361,8 @@ export function CopilotDraftingCanvas({
         setAutoCompletions(data.completions || []);
         setShowCompletionPopup(data.completions?.length > 0);
         setSelectedCompletionIndex(0);
+      } else {
+        console.warn('Auto-complete non-OK:', response.status);
       }
     } catch (error) {
       console.error('Failed to fetch completions:', error);
@@ -355,6 +387,8 @@ export function CopilotDraftingCanvas({
         const json = await response.json();
         const data = json.data || json;
         setRisks(data.risks || []);
+      } else {
+        console.warn('Risk analysis non-OK:', response.status);
       }
     } catch (error) {
       console.error('Failed to fetch risks:', error);
@@ -373,8 +407,9 @@ export function CopilotDraftingCanvas({
     }
   }, [debouncedContent, fetchSuggestions]);
 
-  // Fetch risks periodically or on significant content changes
+  // Fetch risks periodically (only when actively editing)
   useEffect(() => {
+    if (!isEditing) return;
     const interval = setInterval(() => {
       if (content.length > 200) {
         fetchRisks();
@@ -382,7 +417,7 @@ export function CopilotDraftingCanvas({
     }, 30000); // Every 30 seconds
 
     return () => clearInterval(interval);
-  }, [content, fetchRisks]);
+  }, [content, fetchRisks, isEditing]);
 
   // Track last saved content to avoid redundant auto-saves
   const lastSavedContentRef = useRef(initialContent);
@@ -605,8 +640,13 @@ export function CopilotDraftingCanvas({
 
   const handleInsertClause = useCallback((clause: LibraryClause) => {
     if (!editor) return;
-    const html = clause.content.startsWith('<') ? clause.content : `<p>${clause.content}</p>`;
-    editor.chain().focus().insertContent(html).run();
+    const rawHtml = clause.content.startsWith('<') ? clause.content : `<p>${clause.content}</p>`;
+    // Sanitize clause content before inserting (library clauses may contain arbitrary HTML)
+    const sanitized = DOMPurify.sanitize(rawHtml, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'a', 'span', 'div', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'mark', 'sub', 'sup'],
+      ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style'],
+    });
+    editor.chain().focus().insertContent(sanitized).run();
     setContent(editor.getHTML());
     toast.success(`Inserted clause: ${clause.title}`);
   }, [editor]);
@@ -691,6 +731,8 @@ export function CopilotDraftingCanvas({
 
   // Auto-completion debounce ref
   const completionTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Ref to always call the latest handleSave (avoids stale closure since it's defined later)
+  const handleSaveRef = useRef<() => void>(() => {});
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // ── Global keyboard shortcuts ──
@@ -699,7 +741,7 @@ export function CopilotDraftingCanvas({
     // Ctrl+S — Save
     if (isMod && e.key === 's') {
       e.preventDefault();
-      handleSave();
+      handleSaveRef.current();
       return;
     }
     // Ctrl+Shift+E — Export menu
@@ -749,8 +791,44 @@ export function CopilotDraftingCanvas({
 
   const applySuggestion = useCallback((suggestion: CopilotSuggestion) => {
     if (!editor) return;
-    // Replace range with suggested text — TipTap uses positions
-    const { from, to } = { from: suggestion.position.startOffset, to: suggestion.position.endOffset };
+
+    const docSize = editor.state.doc.content.size;
+    let from = suggestion.position.startOffset;
+    let to = suggestion.position.endOffset;
+
+    // If positions are out of range (document changed since analysis), fall back
+    // to searching for the original text in the document.
+    if (from >= docSize || to > docSize || from < 0 || to < from) {
+      const docText = editor.state.doc.textContent;
+      const original = suggestion.originalText;
+      if (original) {
+        const idx = docText.indexOf(original);
+        if (idx !== -1) {
+          // Convert text offset to ProseMirror position (+1 for the doc node)
+          from = idx + 1;
+          to = from + original.length;
+        } else {
+          // Can't locate the text — insert at current cursor instead
+          editor.chain().focus().insertContent(suggestion.suggestedText).run();
+          setContent(editor.getHTML());
+          setSelectedSuggestion(null);
+          setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
+          return;
+        }
+      } else {
+        // No original text to search for — insert at cursor
+        editor.chain().focus().insertContent(suggestion.suggestedText).run();
+        setContent(editor.getHTML());
+        setSelectedSuggestion(null);
+        setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
+        return;
+      }
+    }
+
+    // Clamp to valid range as a final safety net
+    from = Math.max(0, Math.min(from, docSize));
+    to = Math.max(from, Math.min(to, docSize));
+
     editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, suggestion.suggestedText).run();
     setContent(editor.getHTML());
     setSelectedSuggestion(null);
@@ -780,12 +858,20 @@ export function CopilotDraftingCanvas({
         const json = await response.json();
         const data = json.data || json;
         if (data.generatedText) {
-          editor.chain().focus().insertContent(data.generatedText).run();
+          // Sanitize AI-generated HTML before inserting
+          const sanitized = DOMPurify.sanitize(data.generatedText, {
+            ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'a', 'span', 'div', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'mark', 'sub', 'sup'],
+            ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style', 'data-*'],
+          });
+          editor.chain().focus().insertContent(sanitized).run();
           setContent(editor.getHTML());
         }
         if (data.suggestions) {
           setSuggestions(prev => [...data.suggestions, ...prev]);
         }
+      } else {
+        const errorBody = await response.json().catch(() => null);
+        toast.error(errorBody?.error || 'AI generation returned an error');
       }
     } catch (error) {
       console.error('AI assist failed:', error);
@@ -814,6 +900,9 @@ export function CopilotDraftingCanvas({
       setIsSaving(false);
     }
   }, [editor, onSave]);
+
+  // Keep ref in sync so handleKeyDown (Ctrl+S) always calls latest handler
+  handleSaveRef.current = handleSave;
 
   // ============================================================================
   // FORMATTING HELPERS — TipTap commands
@@ -1916,7 +2005,8 @@ export function CopilotDraftingCanvas({
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="absolute left-4 md:left-8 top-20 z-20 w-[calc(100%-2rem)] md:w-full max-w-[600px] bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 overflow-hidden"
+                    className="absolute z-20 w-[calc(100%-2rem)] md:w-auto max-w-[600px] bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 overflow-hidden"
+                    style={{ top: completionPopupPos.top, left: Math.max(16, completionPopupPos.left) }}
                     role="listbox"
                     aria-label="Auto-complete suggestions"
                   >

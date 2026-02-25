@@ -23,21 +23,26 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
   const isAuthPage = pathname?.startsWith('/auth');
   const isMarketingPage = MARKETING_PAGES.includes(pathname || '');
   
-  // useEffect must be called unconditionally (before any early returns)
+  // Move focus to main content after navigation when it was triggered from nav.
+  // Use a longer delay to avoid racing with Next.js soft navigation transitions.
   useEffect(() => {
     // Skip for auth and marketing pages
     if (isAuthPage || isMarketingPage) return;
     
-    const active = document.activeElement as HTMLElement | null;
-    const nav = document.getElementById('main-nav');
+    // Use a microtask delay so Next.js finishes the route transition first
+    const id = setTimeout(() => {
+      const active = document.activeElement as HTMLElement | null;
+      const nav = document.getElementById('main-nav');
 
-    // If navigation was triggered from inside the nav, move focus to main content.
-    if (active && nav?.contains(active)) {
-      requestAnimationFrame(() => {
+      // Only steal focus if a navigation link (anchor) is currently focused
+      // This avoids interfering with clicks on search, buttons, or content
+      if (active?.tagName === 'A' && nav?.contains(active)) {
         const main = document.getElementById('main-content') as HTMLElement | null;
-        main?.focus();
-      });
-    }
+        main?.focus({ preventScroll: true });
+      }
+    }, 100);
+    
+    return () => clearTimeout(id);
   }, [pathname, isAuthPage, isMarketingPage]);
 
   // Marketing pages: Use marketing layout (handled by route group)

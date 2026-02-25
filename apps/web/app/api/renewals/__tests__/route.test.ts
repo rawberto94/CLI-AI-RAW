@@ -117,10 +117,10 @@ describe('GET /api/renewals', () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.data.data.renewals).toBeDefined();
-    expect(data.data.data.renewals).toHaveLength(1);
-    expect(data.data.data.stats).toBeDefined();
-    expect(data.data.data.stats.total).toBe(1);
+    expect(data.data.renewals).toBeDefined();
+    expect(data.data.renewals).toHaveLength(1);
+    expect(data.data.stats).toBeDefined();
+    expect(data.data.stats.total).toBe(1);
   });
 
   it('returns empty renewals when no contracts', async () => {
@@ -132,8 +132,8 @@ describe('GET /api/renewals', () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.data.data.renewals).toEqual([]);
-    expect(data.data.data.stats.total).toBe(0);
+    expect(data.data.renewals).toEqual([]);
+    expect(data.data.stats.total).toBe(0);
   });
 
   it('filters by status', async () => {

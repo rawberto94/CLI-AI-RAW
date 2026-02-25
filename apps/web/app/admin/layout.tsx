@@ -24,6 +24,7 @@ import {
   PanelLeft,
   Search,
   Keyboard,
+  BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -89,6 +90,11 @@ const adminNavItems = [
     title: 'OCR Review',
     href: '/admin/ocr',
     icon: ScanText,
+  },
+  {
+    title: 'Upload Metrics',
+    href: '/admin/upload-metrics',
+    icon: BarChart3,
   },
   {
     title: 'Queue',

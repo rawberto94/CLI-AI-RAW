@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext, getAuthenticatedApiContext, type AuthenticatedApiContext } from '@/lib/api-middleware';
 import { notificationService } from 'data-orchestration/services';
+import { logger } from '@/lib/logger';
 
 // Validation schemas
 const preferencesSchema = z.object({
@@ -139,7 +140,7 @@ export async function PUT(req: NextRequest) {
     if (error instanceof z.ZodError) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Validation failed', 400, { details: error.errors.map(e => e.message).join('; ') });
     }
-    console.error("[Notification Preferences PUT Error]", error);
+    logger.error("[Notification Preferences PUT Error]", error);
     return handleApiError(ctx, error);
   }
 }

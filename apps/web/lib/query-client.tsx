@@ -50,8 +50,8 @@ const defaultQueryClientOptions = {
     // Retry failed requests 3 times with exponential backoff
     retry: 3,
     retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    // Refetch on window focus for fresh data
-    refetchOnWindowFocus: true,
+    // Only refetch on window focus if data is stale (avoid burst of requests on every alt-tab)
+    refetchOnWindowFocus: 'always' as const,
     // Refetch on reconnect
     refetchOnReconnect: true,
     // Don't refetch on mount if data is fresh

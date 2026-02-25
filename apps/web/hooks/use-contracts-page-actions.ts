@@ -181,6 +181,7 @@ export function useContractsPageActions({
   const handleConfirmBulkDelete = useCallback(async () => {
     if (selectedContracts.size === 0) return;
     setIsProcessingBulk(true);
+    setBulkDeleteDialogOpen(false);
     try {
       const response = await fetch("/api/contracts/bulk", {
         method: "POST",
@@ -191,15 +192,25 @@ export function useContractsPageActions({
         },
         body: JSON.stringify({ operation: "delete", contractIds: Array.from(selectedContracts) }),
       });
-      if (!response.ok) throw new Error("Bulk delete failed");
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || data?.details || "Bulk delete failed");
+      }
+      const failedCount = data?.failed ?? 0;
+      const deletedCount = data?.deleted ?? selectedContracts.size;
       await queryClient.invalidateQueries({ queryKey: queryKeys.contracts.all, refetchType: "all" });
       await refetchStats();
       await refetch();
       crossModule.onContractChange();
-      toast.success(`Deleted ${selectedContracts.size} contracts`);
+      if (failedCount > 0) {
+        toast.warning(`Deleted ${deletedCount} contracts, ${failedCount} failed`);
+      } else {
+        toast.success(`Deleted ${deletedCount} contracts`);
+      }
       setSelectedContracts(new Set());
-    } catch {
-      toast.error("Failed to delete some contracts");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete contracts";
+      toast.error(message);
     } finally {
       setIsProcessingBulk(false);
     }

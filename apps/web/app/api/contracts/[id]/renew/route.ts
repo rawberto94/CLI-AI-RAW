@@ -15,6 +15,7 @@ import { getServerTenantId } from '@/lib/tenant-server';
 import { z } from 'zod';
 import { EmailService } from '@/lib/services/email.service';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 // Validation schema for renewal request
 const renewalRequestSchema = z.object({
@@ -282,7 +283,7 @@ export async function POST(
         value: renewalContract.totalValue ? Number(renewalContract.totalValue) : undefined,
         submittedForApproval: body.submitForApproval || false,
       }).catch((err) => {
-        console.error('[ContractRenew] Email notification error:', err);
+        logger.error('[ContractRenew] Email notification error:', err);
       });
     }
 

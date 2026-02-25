@@ -13,6 +13,7 @@ import { auth, generateMfaVerificationToken } from "@/lib/auth";
 import { verifyMFAToken } from "@/lib/security/mfa";
 import { auditLog, AuditAction, getAuditContext } from "@/lib/security/audit";
 import { getApiContext, createSuccessResponse, createErrorResponse } from "@/lib/api-middleware";
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   const ctx = getApiContext(request);
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     return createErrorResponse(ctx, "BAD_REQUEST", "Invalid verification code", 400);
   } catch (error) {
-    console.error("[MFA Verify Login] Error:", error);
+    logger.error("[MFA Verify Login] Error:", error);
     return createErrorResponse(ctx, "INTERNAL_ERROR", "Verification failed", 500);
   }
 }

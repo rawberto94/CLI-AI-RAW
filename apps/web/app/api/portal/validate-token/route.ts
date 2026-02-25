@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { logger } from '@/lib/logger';
 
 interface TokenPayload {
   sid: string; // Supplier ID
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Token validation error:', error);
+    logger.error('Token validation error:', error);
     return NextResponse.json(
       { error: { code: 'SERVER_ERROR', message: 'Token validation failed' } },
       { status: 500 }

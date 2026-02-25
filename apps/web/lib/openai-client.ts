@@ -6,7 +6,22 @@
 import OpenAI from 'openai';
 
 // Initialize OpenAI client with API key from environment
-const apiKey = process.env.OPENAI_API_KEY || '';
+const apiKey = (process.env.OPENAI_API_KEY || '').trim();
+
+/**
+ * Returns the OpenAI API key, or throws a clear error if missing.
+ * Use this instead of `process.env.OPENAI_API_KEY || ''` to fail fast
+ * with a descriptive error rather than a cryptic 401 from OpenAI.
+ */
+export function getOpenAIApiKey(): string {
+  const key = (process.env.OPENAI_API_KEY || '').trim();
+  if (!key || key.startsWith('sk-your')) {
+    throw new Error(
+      'OPENAI_API_KEY is not configured. Set it in your .env file to use AI features.'
+    );
+  }
+  return key;
+}
 
 // Type the client with explicit chat method signature to ensure response_format is recognized
 interface TypedOpenAIClient {

@@ -21,7 +21,10 @@ export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
       version: health.version,
     };
     
-    const statusCode = health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
+    // Return 200 for healthy/degraded. Only return 503 if unhealthy AND
+    // uptime > 30s (allow cold-start grace period for services to initialize).
+    const uptimeMs = healthCheckService.getUptime();
+    const statusCode = health.status === 'unhealthy' && uptimeMs > 30000 ? 503 : 200;
     
     if (statusCode === 503) {
       return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'System unhealthy', 503);

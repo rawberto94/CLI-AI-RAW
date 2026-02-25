@@ -11,6 +11,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import {
   getAuthenticatedApiContext,
   getApiContext,
@@ -18,13 +19,17 @@ import {
   createErrorResponse,
 } from '@/lib/api-middleware';
 import { getAIClient } from '@/lib/ai/ai-client';
+import { logger } from '@/lib/logger';
 
-interface ReviewRequest {
-  documentText: string;
-  headings: Array<{ text: string; level: number }>;
-  contractType?: string;
-  wordCount: number;
-}
+const reviewSchema = z.object({
+  documentText: z.string().min(20, 'Document must contain at least 20 characters').max(200000),
+  headings: z.array(z.object({
+    text: z.string(),
+    level: z.number().int().min(0).max(6),
+  })).max(100).optional().default([]),
+  contractType: z.string().max(50).optional(),
+  wordCount: z.number().int().min(0).optional().default(0),
+});
 
 export async function POST(req: NextRequest) {
   const apiCtx = getApiContext(req);
@@ -34,17 +39,12 @@ export async function POST(req: NextRequest) {
       return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
-    const body: ReviewRequest = await req.json();
-    const { documentText, headings, contractType, wordCount } = body;
-
-    if (!documentText || documentText.trim().length < 20) {
-      return createErrorResponse(
-        ctx,
-        'VALIDATION_ERROR',
-        'Document must contain at least 20 characters of text',
-        400,
-      );
+    const body = await req.json();
+    const validation = reviewSchema.safeParse(body);
+    if (!validation.success) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', validation.error.errors[0].message, 400);
     }
+    const { documentText, headings, contractType, wordCount } = validation.data;
 
     const aiClient = await getAIClient();
 
@@ -158,7 +158,7 @@ ${truncatedText}`;
       summary: parsed.summary ?? 'Review completed.',
     });
   } catch (error) {
-    console.error('Word Add-in AI review error:', error);
+    logger.error('Word Add-in AI review error:', error);
 
     // Provide a more helpful error if it's a quota/auth issue
     const errMsg = error instanceof Error ? error.message : 'AI review failed';

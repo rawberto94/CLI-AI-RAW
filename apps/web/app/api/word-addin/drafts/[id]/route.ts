@@ -4,6 +4,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import {
   getAuthenticatedApiContext,
   getApiContext,
@@ -11,6 +12,14 @@ import {
   createErrorResponse,
 } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+
+const updateDraftSchema = z.object({
+  title: z.string().min(1).max(300).optional(),
+  content: z.string().max(500000).optional(),
+  variables: z.record(z.string()).optional(),
+  status: z.enum(['draft', 'review', 'completed', 'approved']).optional(),
+});
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -67,7 +76,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         : null,
     });
   } catch (error) {
-    console.error('Word Add-in get draft error:', error);
+    logger.error('Word Add-in get draft error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch draft', 500);
   }
 }
@@ -81,7 +90,11 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const body = await req.json();
-    const { title, content, variables, status } = body;
+    const parsed = updateDraftSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.errors[0].message, 400);
+    }
+    const { title, content, variables, status } = parsed.data;
 
     const existing = await prisma.contractDraft.findFirst({
       where: { id, tenantId: ctx.tenantId },
@@ -113,7 +126,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       updatedAt: draft.updatedAt.toISOString(),
     });
   } catch (error) {
-    console.error('Word Add-in update draft error:', error);
+    logger.error('Word Add-in update draft error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to update draft', 500);
   }
 }
@@ -142,7 +155,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     return createSuccessResponse(ctx, { deleted: true });
   } catch (error) {
-    console.error('Word Add-in delete draft error:', error);
+    logger.error('Word Add-in delete draft error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to delete draft', 500);
   }
 }

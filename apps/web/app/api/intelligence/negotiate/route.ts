@@ -11,6 +11,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, type AuthenticatedApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import OpenAI from 'openai';
+import { logger } from '@/lib/logger';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -170,7 +171,7 @@ If the user asks about a clause, analyze risk, suggest counter-positions, and no
     const reply = response.choices[0]?.message?.content || 'I could not generate a response.';
     return createSuccessResponse(ctx, { reply });
   } catch (error: any) {
-    console.error('Negotiation chat error:', error);
+    logger.error('Negotiation chat error:', error);
     return createSuccessResponse(ctx, { reply: 'AI negotiation service is temporarily unavailable.' });
   }
 });

@@ -3,8 +3,16 @@ import { hybridSearch } from '@/lib/rag/advanced-rag.service';
 import { prisma } from '@/lib/prisma';
 import { getContractContext } from './contract-context';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '' });
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    const key = (process.env.OPENAI_API_KEY || '').trim();
+    if (!key) throw new Error('OPENAI_API_KEY is not configured');
+    _openai = new OpenAI({ apiKey: key });
+  }
+  return _openai;
+}
+const openai = new Proxy({} as OpenAI, { get: (_, prop) => (getOpenAI() as any)[prop] });
 
 export async function getOpenAIResponse(message: string, conversationHistory: Array<{ role?: string; content?: string }>, context: Record<string, any>) {
   try {

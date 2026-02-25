@@ -14,6 +14,7 @@ import { publishRealtimeEvent } from "@/lib/realtime/publish";
 import { getContractQueue } from "@repo/utils/queue/contract-queue";
 import { semanticCache } from "@/lib/ai/semantic-cache.service";
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 // Fields that should trigger RAG re-indexing when updated
 const RAG_TRIGGER_FIELDS = [
@@ -519,7 +520,7 @@ export async function PUT(
 
     // Invalidate semantic cache so chatbot sees updated metadata
     semanticCache.invalidate(tenantId, contractId).catch((err) => {
-      console.error('[MetadataUpdate] Semantic cache invalidation error:', err);
+      logger.error('[MetadataUpdate] Semantic cache invalidation error:', err);
     });
 
     await publishRealtimeEvent({

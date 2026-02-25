@@ -7,8 +7,8 @@
  * @version 1.0.0
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuthApiHandler, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 import {
   getNotifications,
@@ -49,7 +49,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   const notifications = await getNotifications(filter);
   const unreadCount = await getUnreadCount(tenantId, userId);
 
-  return NextResponse.json({
+  return createSuccessResponse(ctx, {
     notifications,
     unreadCount,
     total: notifications.length,
@@ -65,13 +65,13 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
 
   if (body.markAllRead) {
     const count = await markAllRead(tenantId, userId);
-    return NextResponse.json({ success: true, markedRead: count });
+    return createSuccessResponse(ctx, { markedRead: count });
   }
 
   if (body.notificationId) {
     const success = await markNotificationRead(tenantId, body.notificationId);
-    return NextResponse.json({ success });
+    return createSuccessResponse(ctx, { success });
   }
 
-  return NextResponse.json({ error: 'Provide notificationId or markAllRead: true' }, { status: 400 });
+  return createErrorResponse(ctx, 'INVALID_REQUEST', 'Provide notificationId or markAllRead: true', 400);
 });

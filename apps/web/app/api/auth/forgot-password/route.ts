@@ -14,6 +14,8 @@ import crypto from "crypto";
 import { z } from "zod";
 import { auditLog, AuditAction } from "@/lib/security/audit";
 import { getApiContext, createSuccessResponse, createErrorResponse } from "@/lib/api-middleware";
+import { sendEmail } from "@/lib/email/email-service";
+import { logger } from '@/lib/logger';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Valid email is required"),
@@ -67,19 +69,35 @@ export async function POST(request: NextRequest) {
     // In production, send email. In dev, log to console.
     if (process.env.NODE_ENV === "production") {
       if (!process.env.SMTP_HOST && !process.env.SENDGRID_API_KEY && !process.env.RESEND_API_KEY) {
-        console.error(`[Auth] CRITICAL: No email provider configured (SMTP_HOST, SENDGRID_API_KEY, or RESEND_API_KEY). Password reset email NOT sent for: ${email}`);
+        logger.error(`[Auth] CRITICAL: No email provider configured (SMTP_HOST, SENDGRID_API_KEY, or RESEND_API_KEY). Password reset email NOT sent for: ${email}`);
         // Still return success to prevent user enumeration, but log the failure
       } else {
-        // TODO: Integrate with email service (SendGrid, Resend, SMTP)
-        console.log(`[Auth] Password reset email queued for: ${email}`);
+        const emailSent = await sendEmail({
+          to: email,
+          subject: 'Reset Your ConTigo Password',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #1a1a1a;">Password Reset Request</h2>
+              <p>You requested a password reset for your ConTigo account. Click the button below to set a new password.</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetUrl}" 
+                   style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+                  Reset Password
+                </a>
+              </div>
+              <p style="color: #666; font-size: 14px;">This link expires in 1 hour. If you didn't request this reset, you can safely ignore this email.</p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+              <p style="color: #999; font-size: 12px;">ConTigo CLM Platform</p>
+            </div>
+          `,
+          text: `Password Reset Request\n\nYou requested a password reset. Visit this link to set a new password: ${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, ignore this email.`,
+        });
+        if (!emailSent) {
+          logger.error(`[Auth] Failed to send password reset email to: ${email}`);
+        }
       }
     } else {
-      console.log(`\n========================================`);
-      console.log(`PASSWORD RESET LINK (dev mode)`);
-      console.log(`Email: ${email}`);
-      console.log(`Link:  ${resetUrl}`);
-      console.log(`Expires: ${expiresAt.toISOString()}`);
-      console.log(`========================================\n`);
+      logger.info('PASSWORD RESET LINK (dev mode)', { action: 'password-reset', email, resetUrl, expiresAt: expiresAt.toISOString() });
     }
 
     await auditLog({
@@ -96,7 +114,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return createErrorResponse(ctx, "VALIDATION_ERROR", error.errors[0]?.message || "Invalid input", 400);
     }
-    console.error("[Auth] Forgot password error:", error);
+    logger.error("[Auth] Forgot password error:", error);
     return createErrorResponse(ctx, "INTERNAL_ERROR", "An error occurred", 500);
   }
 }

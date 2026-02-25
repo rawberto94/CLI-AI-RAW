@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
     const contracts = await prisma.contract.findMany({
       where: {
         tenantId,
-        status: { in: ['COMPLETED', 'ACTIVE'] },
+        status: { in: ['COMPLETED', 'ACTIVE', 'PENDING_RENEWAL'] },
         OR: [
           { endDate: { not: null } },
           { expirationDate: { not: null } },
@@ -197,7 +197,7 @@ export async function GET(request: NextRequest) {
         supplier = vendorParty?.name || null;
       }
 
-      const noticePeriod = 60; // Default 60 days
+      const noticePeriod = contract.noticePeriodDays || 60;
       const healthScore = calculateHealthScore(contract);
       const hasRenewalRecord = contract.renewalStatus === 'INITIATED';
 
@@ -337,19 +337,12 @@ export async function GET(request: NextRequest) {
     }));
 
     return createSuccessResponse(ctx, {
-      data: {
-        renewals,
-        stats,
-        timeline,
-        filters: {
-          statuses: ['urgent', 'pending-review', 'in-negotiation', 'upcoming', 'completed', 'expired'],
-          priorities: ['critical', 'high', 'medium', 'low'],
-        },
-      },
-      meta: {
-        source: 'database',
-        timestamp: now.toISOString(),
-        tenantId,
+      renewals,
+      stats,
+      timeline,
+      filters: {
+        statuses: ['urgent', 'pending-review', 'in-negotiation', 'upcoming', 'completed', 'expired'],
+        priorities: ['critical', 'high', 'medium', 'low'],
       },
     });
   } catch (error) {

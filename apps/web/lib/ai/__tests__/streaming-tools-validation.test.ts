@@ -167,71 +167,138 @@ describe('Tool Args Validation', () => {
   });
 
   describe('rate_response validation', () => {
-    it('rejects rating out of range', () => {
+    it('rejects invalid rating value', () => {
       const result = validateToolArgs('rate_response', {
-        messageId: 'msg-1',
-        rating: 10,
+        rating: 'excellent',
       });
       expect(result.valid).toBe(false);
     });
 
-    it('rejects rating below 1', () => {
+    it('rejects numeric rating (must be enum)', () => {
       const result = validateToolArgs('rate_response', {
-        messageId: 'msg-1',
-        rating: 0,
-      });
-      expect(result.valid).toBe(false);
-    });
-
-    it('accepts valid rating', () => {
-      const result = validateToolArgs('rate_response', {
-        messageId: 'msg-1',
         rating: 4,
-        feedback: 'Great response',
+      });
+      expect(result.valid).toBe(false);
+    });
+
+    it('accepts valid positive rating', () => {
+      const result = validateToolArgs('rate_response', {
+        rating: 'positive',
+        reason: 'Great response',
+        messageId: 'msg-1',
       });
       expect(result.valid).toBe(true);
     });
 
-    it('rejects feedback exceeding 2000 chars', () => {
+    it('accepts valid negative rating', () => {
       const result = validateToolArgs('rate_response', {
-        messageId: 'msg-1',
-        rating: 4,
-        feedback: 'x'.repeat(2001),
+        rating: 'negative',
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('rejects reason exceeding 2000 chars', () => {
+      const result = validateToolArgs('rate_response', {
+        rating: 'positive',
+        reason: 'x'.repeat(2001),
       });
       expect(result.valid).toBe(false);
     });
   });
 
   describe('approve_or_reject_step validation', () => {
-    it('rejects non-UUID stepId', () => {
+    it('rejects non-UUID executionId', () => {
       const result = validateToolArgs('approve_or_reject_step', {
-        stepId: 'invalid',
-        action: 'approve',
+        executionId: 'invalid',
+        decision: 'approve',
       });
       expect(result.valid).toBe(false);
     });
 
-    it('rejects invalid action', () => {
+    it('rejects invalid decision', () => {
       const result = validateToolArgs('approve_or_reject_step', {
-        stepId: '00000000-0000-0000-0000-000000000001',
-        action: 'delete',
+        executionId: '00000000-0000-0000-0000-000000000001',
+        decision: 'delete',
       });
       expect(result.valid).toBe(false);
     });
 
-    it('accepts valid approve action', () => {
+    it('accepts valid approve decision', () => {
       const result = validateToolArgs('approve_or_reject_step', {
-        stepId: '00000000-0000-0000-0000-000000000001',
-        action: 'approve',
+        executionId: '00000000-0000-0000-0000-000000000001',
+        decision: 'approve',
         comment: 'Looks good',
       });
       expect(result.valid).toBe(true);
     });
   });
 
+  describe('workflow tool schemas', () => {
+    it('rejects get_workflow_status with no identifiers', () => {
+      const result = validateToolArgs('get_workflow_status', {});
+      expect(result.valid).toBe(false);
+    });
+
+    it('accepts get_workflow_status with executionId', () => {
+      const result = validateToolArgs('get_workflow_status', {
+        executionId: '00000000-0000-0000-0000-000000000001',
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('rejects cancel_workflow without executionId', () => {
+      const result = validateToolArgs('cancel_workflow', { reason: 'no longer needed' });
+      expect(result.valid).toBe(false);
+    });
+
+    it('accepts cancel_workflow with valid UUID', () => {
+      const result = validateToolArgs('cancel_workflow', {
+        executionId: '00000000-0000-0000-0000-000000000001',
+        reason: 'Duplicate',
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('rejects escalate_workflow with invalid UUID', () => {
+      const result = validateToolArgs('escalate_workflow', { executionId: 'bad' });
+      expect(result.valid).toBe(false);
+    });
+
+    it('rejects create_workflow without name', () => {
+      const result = validateToolArgs('create_workflow', { type: 'APPROVAL' });
+      expect(result.valid).toBe(false);
+    });
+
+    it('accepts create_workflow with valid args', () => {
+      const result = validateToolArgs('create_workflow', {
+        name: 'Vendor Onboarding',
+        type: 'APPROVAL',
+        steps: [{ name: 'Legal Review' }, { name: 'Finance Review' }],
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('rejects assign_approver without assignee', () => {
+      const result = validateToolArgs('assign_approver', {
+        executionId: '00000000-0000-0000-0000-000000000001',
+      });
+      expect(result.valid).toBe(false);
+    });
+
+    it('accepts list_expiring_contracts with valid days', () => {
+      const result = validateToolArgs('list_expiring_contracts', { days: 30 });
+      expect(result.valid).toBe(true);
+    });
+
+    it('rejects list_expiring_contracts with days > 365', () => {
+      const result = validateToolArgs('list_expiring_contracts', { days: 999 });
+      expect(result.valid).toBe(false);
+    });
+  });
+
   describe('unknown tools passthrough', () => {
     it('passes through for tools without explicit schema', () => {
-      const result = validateToolArgs('list_expiring_contracts', { days: 30 });
+      const result = validateToolArgs('get_contract_stats', { period: 'monthly' });
       expect(result.valid).toBe(true);
     });
 

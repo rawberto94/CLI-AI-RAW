@@ -16,6 +16,8 @@ import { intelligentSearchAgent } from './intelligent-search-agent';
 import { complianceMonitoringAgent } from './compliance-monitoring-agent';
 import { obligationTrackingAgent } from './obligation-tracking-agent';
 import { contractSummarizationAgent } from './contract-summarization-agent';
+import { RFxProcurementAgent } from './rfx-procurement-agent';
+import { rfxDetectionAgent } from './rfx-detection-agent';
 
 export class AgentRegistry {
   private agents: Map<string, BaseAgent>;
@@ -48,6 +50,10 @@ export class AgentRegistry {
     this.register(complianceMonitoringAgent);
     this.register(obligationTrackingAgent);
     this.register(contractSummarizationAgent);
+
+    // Phase 5: RFx Procurement & Detection
+    this.register(new RFxProcurementAgent());
+    this.register(rfxDetectionAgent);
   }
 
   /**
@@ -113,7 +119,12 @@ export {
   complianceMonitoringAgent,
   obligationTrackingAgent,
   contractSummarizationAgent,
+  RFxProcurementAgent,
+  rfxDetectionAgent,
 };
+
+// Export AgentSwarm separately (not a BaseAgent, manages multiple agents)
+export { AgentSwarm } from './agent-swarm';
 
 // Export types
 export type { BaseAgent };

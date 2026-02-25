@@ -14,6 +14,7 @@ import type { Prisma as _Prisma } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -339,7 +340,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     SET renewal_status = 'COMPLETED', resolution = 'RENEWED', resolution_date = ${now},
         updated_at = ${now}
     WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
-  `.catch((err) => console.error('[RenewalHistory] Expiration record update error:', err));
+  `.catch((err) => logger.error('[RenewalHistory] Expiration record update error:', err));
 
   return createSuccessResponse(ctx, {
     message: 'Renewal recorded successfully',

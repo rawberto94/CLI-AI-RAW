@@ -5,7 +5,7 @@
  * Accessible modal system with animations
  */
 
-import React, { useEffect, useRef, createContext, useContext } from 'react';
+import React, { useEffect, useRef, useCallback, createContext, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertTriangle, CheckCircle, Info, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -110,16 +110,58 @@ export function Modal({
     }
   }, [isOpen]);
 
-  // Focus trap
-  useEffect(() => {
-    if (isOpen && modalRef.current) {
-      const focusableElements = modalRef.current.querySelectorAll(
+  // Focus trap – cycle Tab / Shift-Tab within modal and save / restore focus
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  const getFocusable = useCallback(() => {
+    if (!modalRef.current) return [];
+    return Array.from(
+      modalRef.current.querySelectorAll<HTMLElement>(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      const firstElement = focusableElements[0] as HTMLElement;
-      firstElement?.focus();
-    }
-  }, [isOpen]);
+      )
+    ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Save the element that was focused before the modal opened
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+
+    // Focus first focusable element inside modal
+    requestAnimationFrame(() => {
+      const first = getFocusable()[0];
+      first?.focus();
+    });
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const focusable = getFocusable();
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      // Return focus to the previously focused element
+      previousFocusRef.current?.focus();
+    };
+  }, [isOpen, getFocusable]);
 
   return (
     <AnimatePresence>
@@ -153,6 +195,7 @@ export function Modal({
               {showCloseButton && (
                 <button
                   onClick={onClose}
+                  aria-label="Close dialog"
                   className="absolute top-4 right-4 p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors z-10"
                 >
                   <X className="w-5 h-5" />

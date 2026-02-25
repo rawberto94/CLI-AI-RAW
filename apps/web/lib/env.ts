@@ -18,6 +18,11 @@ const optionalUrl = z.string().url().optional();
 const optionalString = z.string().optional();
 const optionalNumber = z.coerce.number().optional();
 
+// In production, critical vars must be present
+const isProd = process.env.NODE_ENV === 'production';
+const requiredInProd = (schema: z.ZodString) =>
+  isProd ? schema : schema.optional();
+
 // ============================================================================
 // Environment Schema
 // ============================================================================
@@ -45,7 +50,7 @@ const envSchema = z.object({
   NEXTAUTH_URL: optionalUrl,
 
   // ── Database ───────────────────────────────────────────────────────────
-  DATABASE_URL: z.string().min(1).optional(),
+  DATABASE_URL: requiredInProd(z.string().min(1)) as z.ZodType<string | undefined>,
   DATABASE_POOL_SIZE: z.coerce.number().min(1).max(100).default(10),
   DATABASE_REPLICA_URLS: optionalString,
   DATABASE_ENCRYPTION_KEY: optionalString,
@@ -61,7 +66,7 @@ const envSchema = z.object({
   UPSTASH_REDIS_REST_TOKEN: optionalString,
 
   // ── Authentication / Session ───────────────────────────────────────────
-  NEXTAUTH_SECRET: z.string().min(32).optional(),
+  NEXTAUTH_SECRET: requiredInProd(z.string().min(32)) as z.ZodType<string | undefined>,
   AUTH_SECRET: optionalString,
   JWT_SECRET: optionalString,
   SESSION_SECRET: optionalString,
@@ -312,12 +317,28 @@ function getEnvConfig(): EnvConfig {
   const result = envSchema.safeParse(process.env);
   
   if (!result.success) {
-    // Return with defaults for missing optional values
-    return envSchema.parse({
-      ...process.env,
-      // Ensure required defaults
-      NODE_ENV: process.env.NODE_ENV || 'development',
-    });
+    const issues = result.error.issues
+      .map(i => `  ${i.path.join('.')}: ${i.message}`)
+      .join('\n');
+    console.error(`[env] Validation errors:\n${issues}`);
+
+    if (isProd) {
+      // In production, fail fast on missing critical env vars
+      throw new Error(`Environment validation failed in production:\n${issues}`);
+    }
+
+    // In dev/test, parse again to apply defaults (will throw on truly invalid values)
+    try {
+      return envSchema.parse({
+        ...process.env,
+        NODE_ENV: process.env.NODE_ENV || 'development',
+      });
+    } catch (parseErr) {
+      console.error('[env] Could not apply defaults, using raw process.env with defaults');
+      return envSchema.parse({
+        NODE_ENV: process.env.NODE_ENV || 'development',
+      });
+    }
   }
   
   return result.data;

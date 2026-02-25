@@ -16,15 +16,21 @@ export class ArtifactService {
   }
 
   /**
-   * Get all artifacts for a contract
+   * Get artifacts for a contract with optional pagination and type filter.
+   *
+   * When `options` is omitted the behaviour is backwards-compatible and
+   * returns *all* artifacts (the previous default).
    */
   async getContractArtifacts(
     contractId: string,
-    tenantId: string
+    tenantId: string,
+    options?: { type?: string; page?: number; limit?: number }
   ): Promise<ServiceResponse<Artifact[]>> {
     try {
-      // Try cache first
-      const cacheKey = `artifacts:${tenantId}:${contractId}`;
+      const { type, page = 1, limit = 500 } = options ?? {};
+
+      // Cache key includes pagination & filter to avoid stale mixes
+      const cacheKey = `artifacts:${tenantId}:${contractId}:${type ?? 'all'}:p${page}:l${limit}`;
       const cached = await cacheAdaptor.get<Artifact[]>(cacheKey);
       if (cached) {
         return {
@@ -33,15 +39,20 @@ export class ArtifactService {
         };
       }
 
-      // Fetch from database
+      // Build where clause
+      const where: Record<string, unknown> = { contractId, tenantId };
+      if (type) {
+        where.type = type;
+      }
+
+      // Fetch from database with pagination
       const artifacts = await dbAdaptor.prisma.artifact.findMany({
-        where: {
-          contractId,
-          tenantId,
-        },
+        where,
         orderBy: {
           createdAt: "desc",
         },
+        skip: (page - 1) * limit,
+        take: limit,
       });
 
       // Transform Prisma types to expected types (Decimal -> number, etc.)

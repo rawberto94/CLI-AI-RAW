@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { compare } from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { logger } from '@/lib/logger';
 
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET;
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Word Add-in login error:', error);
+    logger.error('Word Add-in login error:', error);
     return NextResponse.json(
       { error: { code: 'SERVER_ERROR', message: 'Authentication failed' } },
       { status: 500 }

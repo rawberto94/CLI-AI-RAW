@@ -121,9 +121,11 @@ const QUICK_STARTS = [
   { id: 'nda', label: 'NDA', icon: '🔒', desc: 'Non-Disclosure Agreement' },
   { id: 'msa', label: 'MSA', icon: '📋', desc: 'Master Services Agreement' },
   { id: 'sow', label: 'SOW', icon: '📝', desc: 'Statement of Work' },
+  { id: 'rfx-award', label: 'RFx Award', icon: '🏆', desc: 'Contract from RFx Award' },
   { id: 'employment', label: 'Employment', icon: '👥', desc: 'Employment Contract' },
   { id: 'lease', label: 'Lease', icon: '🏢', desc: 'Lease Agreement' },
   { id: 'vendor', label: 'Vendor', icon: '🤝', desc: 'Vendor Agreement' },
+  { id: 'amendment', label: 'Amendment', icon: '📎', desc: 'Contract Amendment' },
 ]
 
 const colorMap: Record<string, { bg: string; text: string; gradient: string }> = {
@@ -669,6 +671,15 @@ export default function DraftingPage() {
                 whileHover={{ y: -2, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
+                  // Special routes for RFx Award and Amendment flows
+                  if (item.id === 'rfx-award') {
+                    router.push('/rfx?tab=awarded')
+                    return
+                  }
+                  if (item.id === 'amendment') {
+                    router.push('/contracts?action=amend')
+                    return
+                  }
                   const match = templates.find(
                     (t) =>
                       t.name.toLowerCase().includes(item.id) ||

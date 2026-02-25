@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { monitoringService } from 'data-orchestration/services';
 
 // Helper to format metric for Prometheus
@@ -23,7 +23,7 @@ function formatMetricBlock(name: string, help: string, type: string, values: str
   return `# HELP ${name} ${help}\n# TYPE ${name} ${type}\n${values.join('\n')}`;
 }
 
-export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   const startTime = Date.now();
   const metrics: string[] = [];
 

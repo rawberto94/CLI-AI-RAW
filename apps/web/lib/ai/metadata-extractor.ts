@@ -110,9 +110,11 @@ export class SchemaAwareMetadataExtractor {
   };
 
   constructor(apiKey?: string) {
-    this.openai = new OpenAI({
-      apiKey: apiKey || process.env.OPENAI_API_KEY || '',
-    });
+    const key = apiKey || (process.env.OPENAI_API_KEY || '').trim();
+    if (!key) {
+      throw new Error('OPENAI_API_KEY is not configured. Pass apiKey or set the env var.');
+    }
+    this.openai = new OpenAI({ apiKey: key });
   }
 
   // --------------------------------------------------------------------------

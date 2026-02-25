@@ -18,6 +18,144 @@
 
 import { z, ZodType } from 'zod';
 import { EventEmitter } from 'events';
+import { prisma } from './lib/prisma';
+
+// Lazy-loaded OpenAI client for embedding generation
+let _openai: any = null;
+async function getOpenAI() {
+  if (!_openai) {
+    const { default: OpenAI } = await import('openai');
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openai;
+}
+
+/**
+ * Generate an embedding vector for a text query using OpenAI
+ */
+async function generateQueryEmbedding(text: string): Promise<number[] | null> {
+  try {
+    const openai = await getOpenAI();
+    const response = await openai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: text.slice(0, 8000), // Token limit safety
+    });
+    return response.data[0]?.embedding ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Perform a real semantic/hybrid/keyword search against contract embeddings
+ */
+async function executeSearch(
+  query: string,
+  searchType: 'semantic' | 'keyword' | 'hybrid',
+  filters?: Record<string, any>,
+  limit: number = 10,
+  tenantId?: string,
+): Promise<{ results: Array<{ documentId: string; snippet: string; score: number; metadata?: Record<string, any> }>; totalResults: number }> {
+  const results: Array<{ documentId: string; snippet: string; score: number; metadata?: Record<string, any> }> = [];
+
+  // Build tenant filter for WHERE clause
+  const tenantFilter = tenantId ? tenantId : filters?.tenantId || null;
+
+  // --- Semantic search (pgvector cosine similarity) ---
+  if (searchType === 'semantic' || searchType === 'hybrid') {
+    const embedding = await generateQueryEmbedding(query);
+    if (embedding) {
+      const embeddingStr = `[${embedding.join(',')}]`;
+      try {
+        const vectorResults: any[] = tenantFilter
+          ? await prisma.$queryRaw`
+              SELECT ce."contract_id" as "contractId",
+                     ce."chunk_text" as "chunkText",
+                     ce."chunk_type" as "chunkType",
+                     ce.section,
+                     1 - (ce.embedding <=> ${embeddingStr}::vector) as similarity
+              FROM "contract_embeddings" ce
+              WHERE ce."tenant_id" = ${tenantFilter}
+              ORDER BY ce.embedding <=> ${embeddingStr}::vector
+              LIMIT ${limit}
+            `
+          : await prisma.$queryRaw`
+              SELECT ce."contract_id" as "contractId",
+                     ce."chunk_text" as "chunkText",
+                     ce."chunk_type" as "chunkType",
+                     ce.section,
+                     1 - (ce.embedding <=> ${embeddingStr}::vector) as similarity
+              FROM "contract_embeddings" ce
+              ORDER BY ce.embedding <=> ${embeddingStr}::vector
+              LIMIT ${limit}
+            `;
+
+        for (const row of vectorResults) {
+          results.push({
+            documentId: row.contractId,
+            snippet: (row.chunkText || '').slice(0, 500),
+            score: Number(row.similarity) || 0,
+            metadata: {
+              chunkType: row.chunkType,
+              section: row.section,
+              searchMethod: 'vector',
+            },
+          });
+        }
+      } catch (err) {
+        // pgvector extension may not be installed — fall through to keyword
+        console.warn('[SemanticSearch] Vector search failed, falling back to keyword:', (err as Error).message);
+      }
+    }
+  }
+
+  // --- Keyword / fallback search (full-text on chunk text) ---
+  if (searchType === 'keyword' || (searchType === 'hybrid' && results.length === 0)) {
+    try {
+      const whereClause: any = {
+        chunkText: { contains: query, mode: 'insensitive' },
+      };
+      if (tenantFilter) whereClause.tenantId = tenantFilter;
+
+      const textResults = await prisma.contractEmbedding.findMany({
+        where: whereClause,
+        take: limit,
+        select: {
+          contractId: true,
+          chunkText: true,
+          chunkType: true,
+          section: true,
+        },
+      });
+
+      for (const row of textResults) {
+        // Avoid duplicates from hybrid search
+        if (!results.some(r => r.documentId === row.contractId && r.snippet === (row.chunkText || '').slice(0, 500))) {
+          results.push({
+            documentId: row.contractId,
+            snippet: (row.chunkText || '').slice(0, 500),
+            score: 0.5, // Keyword matches get a flat relevance score
+            metadata: {
+              chunkType: row.chunkType,
+              section: row.section,
+              searchMethod: 'keyword',
+            },
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[SemanticSearch] Keyword search failed:', (err as Error).message);
+    }
+  }
+
+  // Sort by score descending
+  results.sort((a, b) => b.score - a.score);
+
+  return {
+    results: results.slice(0, limit),
+    totalResults: results.length,
+  };
+}
 
 // =============================================================================
 // TYPES
@@ -367,14 +505,13 @@ const BUILT_IN_TOOLS: ToolDefinition[] = [
       totalResults: z.number(),
     }),
     execute: async (params, context) => {
-      return {
-        results: [{
-          documentId: 'doc-1',
-          snippet: `Match for: ${params.query}`,
-          score: 0.9,
-        }],
-        totalResults: 1,
-      };
+      return executeSearch(
+        params.query,
+        params.searchType,
+        params.filters,
+        params.limit,
+        context?.tenantId,
+      );
     },
     metadata: {
       author: 'ConTigo Platform',

@@ -14,6 +14,7 @@ import {
 } from "@/lib/integrations/services/batch-operations.service";
 import { withRateLimit } from "@/lib/integrations/middleware/rate-limit";
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 // Validation schemas
 const batchDownloadSchema = z.object({
@@ -67,7 +68,7 @@ async function handleDownload(req: NextRequest): Promise<NextResponse> {
     if (error instanceof z.ZodError) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Validation failed', 400, { details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ') });
     }
-    console.error("[Batch Download Error]", error);
+    logger.error("[Batch Download Error]", error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to download files', 500);
   }
 }
@@ -107,7 +108,7 @@ async function handleImport(req: NextRequest): Promise<NextResponse> {
     if (error instanceof z.ZodError) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Validation failed', 400, { details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ') });
     }
-    console.error("[Batch Import Error]", error);
+    logger.error("[Batch Import Error]", error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to import files', 500);
   }
 }
@@ -146,7 +147,7 @@ async function handleDelete(req: NextRequest): Promise<NextResponse> {
     if (error instanceof z.ZodError) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Validation failed', 400, { details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ') });
     }
-    console.error("[Batch Delete Error]", error);
+    logger.error("[Batch Delete Error]", error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to delete files', 500);
   }
 }

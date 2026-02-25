@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { memoryManager } from 'data-orchestration/services';
-import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type ApiContext, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type ApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
  * GET /api/monitoring/memory
  * Get memory statistics
  */
-export const GET = withApiHandler(async (request: NextRequest, ctx) => {
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const searchParams = request.nextUrl.searchParams;
   const action = searchParams.get('action');
 
@@ -37,7 +37,7 @@ export const GET = withApiHandler(async (request: NextRequest, ctx) => {
  * POST /api/monitoring/memory
  * Perform memory management actions
  */
-export const POST = withApiHandler(async (request: NextRequest, ctx) => {
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const body = await request.json();
   const { action } = body;
 

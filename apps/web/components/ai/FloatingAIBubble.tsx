@@ -471,6 +471,13 @@ export function FloatingAIBubble() {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const pendingAutoMessageRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Abort in-flight SSE stream on component unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
   
   // Request cancellation support
   const cancelCurrentRequest = useCallback(() => {
@@ -853,6 +860,12 @@ export function FloatingAIBubble() {
   // Forward ref for handleSendMessage (declared below due to hook ordering)
   const sendMsgRef = useRef<(content?: string) => void>(() => {});
 
+  // Safe wrapper — prevents concurrent requests when an action triggers while loading
+  const safeSendMsg = useCallback((content: string) => {
+    if (isLoading) return; // Prevent overlapping requests from action buttons
+    sendMsgRef.current(content);
+  }, [isLoading]);
+
   // Handle action button clicks — routes all action types from response-builder
   const handleAction = useCallback((action: string) => {
     // Handle dynamic contract-specific actions (e.g., "view-contract:abc-123")
@@ -884,35 +897,35 @@ export function FloatingAIBubble() {
       // Chat-driven actions — re-send as a message to the AI
       case "set-reminder":
       case "set-reminders":
-        sendMsgRef.current("Set a reminder for upcoming renewals");
+        safeSendMsg("Set a reminder for upcoming renewals");
         break;
       case "start-renewal":
-        sendMsgRef.current("Start the renewal process for expiring contracts");
+        safeSendMsg("Start the renewal process for expiring contracts");
         break;
       case "notify-stakeholders":
-        sendMsgRef.current("Notify relevant stakeholders about upcoming contract renewals");
+        safeSendMsg("Notify relevant stakeholders about upcoming contract renewals");
         break;
       case "deep-analysis":
-        sendMsgRef.current("Perform a deep analysis on the contracts we just discussed");
+        safeSendMsg("Perform a deep analysis on the contracts we just discussed");
         break;
       case "generate-report":
-        sendMsgRef.current("Generate a detailed report on this analysis");
+        safeSendMsg("Generate a detailed report on this analysis");
         break;
       case "refine-search":
-        sendMsgRef.current("Help me refine my search with more specific criteria");
+        safeSendMsg("Help me refine my search with more specific criteria");
         break;
       case "export-list":
-        sendMsgRef.current("Export the list of contracts we just discussed");
+        safeSendMsg("Export the list of contracts we just discussed");
         break;
 
       default:
         // Unknown action — try sending it as a natural language query
         if (action) {
-          sendMsgRef.current(action.replace(/-/g, " "));
+          safeSendMsg(action.replace(/-/g, " "));
         }
         break;
     }
-  }, [router]);
+  }, [router, safeSendMsg]);
 
   // Constants for request handling
   const REQUEST_TIMEOUT_MS = 60000; // 60 seconds
@@ -952,15 +965,8 @@ export function FloatingAIBubble() {
       playSound("send");
     }
 
-    // Persist user message to database (only on first attempt)
-    if (retryCount === 0 && persistence.isAuthenticated && persistence.conversationId) {
-      persistence.addMessage({
-        role: 'user',
-        content: messageContent,
-      }).catch(() => {
-        // Continue even if persistence fails
-      });
-    }
+    // User message persistence is handled server-side in the streaming route
+    // to avoid duplicate writes and orphan conversations.
 
     // Update message status
     setTimeout(() => {
@@ -997,6 +1003,7 @@ export function FloatingAIBubble() {
             })),
             context: {
               ...conversationContext,
+              conversationId: persistence.conversationId || undefined,
               contractId: currentContractId,
               context: currentContractId ? 'contract-detail' : 'global',
               pageContext,
@@ -1014,7 +1021,7 @@ export function FloatingAIBubble() {
             clearTimeout(timeoutId);
             const backoffMs = Math.min(1000 * Math.pow(2, retryCount), 5000);
             await new Promise(resolve => setTimeout(resolve, backoffMs));
-            return handleSendMessage(messageContent, retryCount + 1);
+            return await handleSendMessage(messageContent, retryCount + 1);
           }
           throw new Error(`Stream request failed: ${response.status}`);
         }
@@ -1032,24 +1039,39 @@ export function FloatingAIBubble() {
         const decoder = new TextDecoder();
         let accumulatedContent = "";
         let finalMetadata: Record<string, unknown> = {};
+        // Buffer for incomplete SSE lines split across ReadableStream chunks
+        let lineBuffer = "";
+        // Flag for server-sent error events — checked after loop
+        let streamError: string | null = null;
 
         if (reader) {
           setIsTyping(false); // Start showing streaming content
           
+          try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value);
+            // Append new data to any leftover from previous chunk
+            const chunk = lineBuffer + decoder.decode(value, { stream: true });
             const lines = chunk.split('\n');
+            // Last element may be incomplete — save it for next chunk
+            lineBuffer = lines.pop() || "";
 
             for (const line of lines) {
+              if (streamError) break; // Stop processing if server sent error
               if (line.startsWith('data: ')) {
+                let data: Record<string, unknown>;
                 try {
-                  const data = JSON.parse(line.slice(6));
-                  
+                  data = JSON.parse(line.slice(6));
+                } catch {
+                  // Incomplete or malformed JSON — skip
+                  continue;
+                }
+
+                try {
                   if (data.type === 'content') {
-                    accumulatedContent += data.content;
+                    accumulatedContent += (data.content as string);
                     setStreamingContent(accumulatedContent);
                     setMessages((prev) =>
                       prev.map((m) =>
@@ -1099,7 +1121,7 @@ export function FloatingAIBubble() {
                     if (data.suggestedActions) {
                       finalMetadata.suggestedActions = [
                         ...((finalMetadata.suggestedActions as Array<{ label: string; action: string }>) || []),
-                        ...data.suggestedActions,
+                        ...(data.suggestedActions as Array<{ label: string; action: string }>),
                       ];
                     }
                   } else if (data.type === 'tool_preview') {
@@ -1111,7 +1133,7 @@ export function FloatingAIBubble() {
                               ...m,
                               toolPreviews: [
                                 ...(m.toolPreviews || []),
-                                { toolName: data.toolName, preview: data.preview },
+                                { toolName: data.toolName as string, preview: data.preview },
                               ],
                             }
                           : m
@@ -1119,30 +1141,42 @@ export function FloatingAIBubble() {
                     );
                   } else if (data.type === 'plan') {
                     // Store ReAct plan steps for visualization
-                    const planSteps = (data.steps || []).map((s: { step?: number; description?: string }, i: number) => ({
-                      step: s.step || i + 1,
-                      description: s.description || String(s),
-                      status: 'planned',
-                    }));
-                    setMessages((prev) =>
-                      prev.map((m) =>
-                        m.id === assistantMessageId
-                          ? { ...m, planSteps }
-                          : m
-                      )
-                    );
+                    // Server sends `steps` as a number (iteration count) and
+                    // `reasoning` as string[]. Normalize into plan step objects.
+                    const reasoningArr = Array.isArray(data.reasoning) ? data.reasoning as string[] : [];
+                    const stepCount = typeof data.steps === 'number' ? data.steps : 0;
+                    const planSteps = reasoningArr.length > 0
+                      ? reasoningArr.map((r: string, i: number) => ({
+                          step: i + 1,
+                          description: r,
+                          status: 'planned',
+                        }))
+                      : Array.from({ length: stepCount }, (_, i) => ({
+                          step: i + 1,
+                          description: `Step ${i + 1}`,
+                          status: 'planned',
+                        }));
+                    if (planSteps.length > 0) {
+                      setMessages((prev) =>
+                        prev.map((m) =>
+                          m.id === assistantMessageId
+                            ? { ...m, planSteps }
+                            : m
+                        )
+                      );
+                    }
                   } else if (data.type === 'metadata') {
                     finalMetadata = data || {};
                     // Update token usage for cost widget
-                    if (data.metadata?.usage) {
-                      const usage = data.metadata.usage;
+                    if ((data.metadata as Record<string, unknown>)?.usage) {
+                      const usage = (data.metadata as Record<string, unknown>).usage as Record<string, number>;
                       setCurrentTokenUsage({
                         promptTokens: usage.prompt_tokens || 0,
                         completionTokens: usage.completion_tokens || 0,
                         totalTokens: usage.total_tokens || 0,
-                        model: data.metadata.model || 'gpt-4o-mini',
+                        model: ((data.metadata as Record<string, unknown>).model as string) || 'gpt-4o-mini',
                         cost: calculateCost(
-                          data.metadata.model || 'gpt-4o-mini',
+                          ((data.metadata as Record<string, unknown>).model as string) || 'gpt-4o-mini',
                           usage.prompt_tokens || 0,
                           usage.completion_tokens || 0
                         ),
@@ -1150,6 +1184,11 @@ export function FloatingAIBubble() {
                     }
                   } else if (data.type === 'done') {
                     const processingTime = Date.now() - startTime;
+
+                    // Capture server-created conversationId to prevent orphan conversations
+                    if (data.conversationId && !persistence.conversationId) {
+                      persistence.linkConversationId(data.conversationId as string);
+                    }
                     
                     // Finalize the message with full metadata including tools
                     setMessages((prev) =>
@@ -1157,18 +1196,22 @@ export function FloatingAIBubble() {
                         m.id === assistantMessageId
                           ? {
                               ...m,
-                              content: accumulatedContent,
-                              suggestions: data.suggestions,
-                              actions: (data.suggestedActions || (finalMetadata.suggestedActions as Array<{ label: string; action: string }>))?.map((a: { label: string; action: string }) => ({
+                              content: accumulatedContent || (
+                                (data.toolsUsed as string[])?.length > 0
+                                  ? "I've completed the requested actions. Check the tool results above for details."
+                                  : accumulatedContent
+                              ),
+                              suggestions: data.suggestions as string[] | undefined,
+                              actions: ((data.suggestedActions || finalMetadata.suggestedActions) as Array<{ label: string; action: string }> | undefined)?.map((a: { label: string; action: string }) => ({
                                 label: a.label,
                                 action: a.action,
                               })),
-                              selfCritique: data.selfCritique || undefined,
+                              selfCritique: (data.selfCritique as Record<string, unknown>) || undefined,
                               metadata: {
-                                confidence: data.confidence as number || finalMetadata.confidence as number || 0.95,
+                                confidence: (data.confidence as number) || (finalMetadata.confidence as number) || 0.95,
                                 processingTime,
                                 source: "ai-stream-v2",
-                                usedRAG: (finalMetadata.sources as string[])?.length > 0,
+                                usedRAG: ((finalMetadata.sources as string[])?.length || 0) > 0,
                                 ragSources: finalMetadata.ragSources as RAGSource[],
                                 toolsUsed: data.toolsUsed as string[],
                               },
@@ -1177,27 +1220,33 @@ export function FloatingAIBubble() {
                       )
                     );
                   } else if (data.type === 'error') {
-                    throw new Error(data.message || data.error || 'Stream error');
+                    // Server sent an explicit error — flag it for propagation
+                    streamError = (data.message as string) || (data.error as string) || 'Stream error';
                   }
                 } catch {
-                  // Parse error, continue
+                  // Non-critical event handling error — skip this event
                 }
               }
             }
+            // Exit the reader loop immediately if server sent an error event
+            if (streamError) break;
           }
+          } finally {
+            reader.releaseLock();
+          }
+        }
+
+        // If server sent an error event, propagate it to the outer catch handler
+        if (streamError) {
+          throw new Error(streamError);
         }
 
         setStreamingContent("");
         playSound("receive");
         
-        // Persist assistant message
-        if (persistence.isAuthenticated && persistence.conversationId) {
-          persistence.addMessage({
-            role: 'assistant',
-            content: accumulatedContent,
-            metadata: finalMetadata as Record<string, unknown>,
-          }).catch(() => {});
-        }
+        // Server-side persistence handles message saving in the streaming route
+        // to avoid duplicate writes. The server returns conversationId in the done event
+        // which is captured above via linkConversationId.
         
       } else {
         // Fallback to non-streaming endpoint
@@ -1212,6 +1261,7 @@ export function FloatingAIBubble() {
             })),
             context: {
               ...conversationContext,
+              conversationId: persistence.conversationId || undefined,
               contractId: currentContractId,
               context: currentContractId ? 'contract-detail' : 'global',
               pageContext,
@@ -1219,6 +1269,7 @@ export function FloatingAIBubble() {
               artifactVersion,
               forceRefresh: artifactVersion > 0,
             },
+            conversationId: persistence.conversationId || undefined,
             useRAG: true,
             useMock: false,
           }),
@@ -1230,8 +1281,16 @@ export function FloatingAIBubble() {
         // Update context based on query
         updateContext(messageContent);
 
-        // Check if it's an error response with recovery suggestions
-        const isErrorResponse = data.error === true && data.errorRecovery;
+        // Check if it's an error response — handle both legacy (error: true)
+        // and standardized ({ success: false, error: { code, message } }) formats
+        const isErrorResponse = data.success === false || 
+          data.error === true || 
+          (data.error && typeof data.error === 'object' && !data.response);
+
+        // Extract error message safely — data.error can be boolean, string, or object
+        const errorMessage = typeof data.error === 'string' 
+          ? data.error 
+          : (data.error?.message || data.error?.code || null);
 
         // Parse actions from API response
         const actions: ActionButton[] = data.suggestedActions?.map((a: any) => ({
@@ -1283,7 +1342,7 @@ export function FloatingAIBubble() {
         const assistantMessage: Message = {
           id: assistantMessageId,
           role: "assistant",
-          content: data.response || data.error || "I couldn't process that request.",
+          content: data.response || errorMessage || "I couldn't process that request.",
           timestamp: new Date(),
           suggestions: clarificationNeeded ? clarificationPrompts : data.suggestions,
           clarificationNeeded,
@@ -1347,7 +1406,7 @@ export function FloatingAIBubble() {
           (error.message.includes('network') || error.message.includes('fetch'))) {
         const backoffMs = Math.min(1000 * Math.pow(2, retryCount), 5000);
         await new Promise(resolve => setTimeout(resolve, backoffMs));
-        return handleSendMessage(messageContent, retryCount + 1);
+        return await handleSendMessage(messageContent, retryCount + 1);
       }
       
       // Check if we're offline and queue the request

@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { setCSRFCookie } from '@/lib/csrf';
 import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
       headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
     });
   } catch (error) {
-    console.error('CSRF token generation failed:', error);
+    logger.error('CSRF token generation failed:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to generate CSRF token', 500);
   }
 }

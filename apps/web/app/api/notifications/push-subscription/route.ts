@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { notificationService } from 'data-orchestration/services';
+import { logger } from '@/lib/logger';
 
 // Validation schema
 const subscriptionSchema = z.object({
@@ -91,7 +92,7 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
         details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; '),
       });
     }
-    console.error("[Push Subscription POST Error]", error);
+    logger.error("[Push Subscription POST Error]", error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to register subscription', 500);
   }
 });
@@ -124,7 +125,7 @@ export const DELETE = withAuthApiHandler(async (req: NextRequest, ctx) => {
       message: "Push subscription removed",
     });
   } catch (error) {
-    console.error("[Push Subscription DELETE Error]", error);
+    logger.error("[Push Subscription DELETE Error]", error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to remove subscription', 500);
   }
 });

@@ -13,11 +13,19 @@ import { CONTRACT_METADATA_FIELDS, MetadataFieldDefinition } from '@/lib/types/c
 import type { Prisma } from '@prisma/client';
 import { contractService } from 'data-orchestration/services';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
+// Lazy OpenAI client — fails fast with clear error if key is missing
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    const key = (process.env.OPENAI_API_KEY || '').trim();
+    if (!key) throw new Error('OPENAI_API_KEY is not configured');
+    _openai = new OpenAI({ apiKey: key });
+  }
+  return _openai;
+}
+const openai = new Proxy({} as OpenAI, { get: (_, prop) => (getOpenAI() as any)[prop] });
 
 interface MetadataField {
   key: string;
@@ -300,7 +308,7 @@ export async function PUT(
         });
       }
     } catch (dbError) {
-      console.error('Failed to persist field validation:', dbError);
+      logger.error('Failed to persist field validation:', dbError);
       // Continue with success response for demo
     }
 

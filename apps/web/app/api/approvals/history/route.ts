@@ -12,6 +12,7 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -149,7 +150,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       count: history.length,
     });
   } catch (error) {
-    console.error('[Approval History GET]', error);
+    logger.error('[Approval History GET]', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch approval history', 500);
   }
 });

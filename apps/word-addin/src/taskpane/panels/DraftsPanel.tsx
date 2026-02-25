@@ -152,8 +152,19 @@ export const DraftsPanel: React.FC = () => {
         throw new Error(result.error?.message || 'Failed to load draft');
       }
 
-      // Insert into Word
-      await wordService.insertHtml(result.data.content, 'end');
+      const content = result.data.content as string;
+
+      // Detect content format and insert accordingly
+      if (content.startsWith('UEs') || content.startsWith('PK')) {
+        // Base64-encoded OOXML — insert as OOXML
+        await wordService.insertText(atob(content), { location: 'end', format: 'ooxml' });
+      } else if (content.startsWith('<') || content.includes('<p>') || content.includes('<div>')) {
+        // HTML content — insert as HTML
+        await wordService.insertHtml(content, 'end');
+      } else {
+        // Plain text fallback
+        await wordService.insertText(content, { location: 'end' });
+      }
 
       // Replace variable placeholders if any
       if (result.data.variables && typeof result.data.variables === 'object') {
@@ -179,10 +190,14 @@ export const DraftsPanel: React.FC = () => {
     setIsSaving(true);
     setError(null);
     try {
-      const html = await wordService.getDocumentAsBase64(); // gets OOXML base64
+      // Get document body as text (compatible with insertHtml on load)
+      const bodyText = await wordService.getDocumentBody();
+      if (!bodyText || bodyText.trim().length === 0) {
+        throw new Error('Document is empty — nothing to save');
+      }
       const result = await apiClient.saveContractDraft({
         title: saveTitle,
-        content: html,
+        content: bodyText,
         variables: {},
       });
       if (!result.success) throw new Error(result.error?.message || 'Save failed');

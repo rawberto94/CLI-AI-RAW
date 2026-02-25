@@ -132,7 +132,7 @@ export default function EnhancedContractDetailPage() {
 
   // Auto-refresh for processing contracts
   useEffect(() => {
-    if (contract?.status === 'PROCESSING') {
+    if (contract?.status === 'processing') {
       const interval = setInterval(loadContract, 3000)
       return () => clearInterval(interval)
     }
@@ -192,10 +192,10 @@ export default function EnhancedContractDetailPage() {
   }
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'COMPLETED': return 'bg-green-100 text-green-800 border-green-200'
-      case 'PROCESSING': return 'bg-violet-100 text-violet-800 border-violet-200'
-      case 'FAILED': return 'bg-red-100 text-red-800 border-red-200'
+    switch (status.toLowerCase()) {
+      case 'completed': return 'bg-green-100 text-green-800 border-green-200'
+      case 'processing': return 'bg-violet-100 text-violet-800 border-violet-200'
+      case 'failed': return 'bg-red-100 text-red-800 border-red-200'
       default: return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
@@ -309,7 +309,7 @@ export default function EnhancedContractDetailPage() {
         </div>
 
         {/* Processing Status */}
-        {contract.status === 'PROCESSING' && contract.processing && (
+        {contract.status === 'processing' && contract.processing && (
           <Card className="shadow-xl border-0 border-l-4 border-l-violet-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -439,7 +439,7 @@ export default function EnhancedContractDetailPage() {
         )}
 
         {/* Main Content Tabs */}
-        {contract.status === 'COMPLETED' && (
+        {contract.status === 'completed' && (
           <Card className="shadow-xl border-0">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <CardHeader className="bg-gradient-to-r from-white to-gray-50 border-b">

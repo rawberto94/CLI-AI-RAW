@@ -9,6 +9,7 @@ import {
 import { prisma } from '@/lib/prisma';
 import { triggerArtifactGeneration, PROCESSING_PRIORITY } from '@/lib/artifact-trigger';
 import { StorageService } from '@/lib/storage-service';
+import { logger } from '@/lib/logger';
 
 interface ConnectionConfig {
   host?: string;
@@ -251,7 +252,7 @@ async function ingestContract(
         storageProvider = 's3';
       }
     } catch (err) {
-      console.error(`[DataSync] Failed to upload text to MinIO for ${normalized.externalId}:`, err);
+      logger.error(`[DataSync] Failed to upload text to MinIO for ${normalized.externalId}:`, err);
       // Continue with 'external' storage — the rawText field will still be available
     }
   }
@@ -318,7 +319,7 @@ async function ingestContract(
         }).catch(() => {});
       }
     } catch (err) {
-      console.error(`[DataSync] Failed to trigger processing for ${contract.id}:`, err);
+      logger.error(`[DataSync] Failed to trigger processing for ${contract.id}:`, err);
     }
   }
 

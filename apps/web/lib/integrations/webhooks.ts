@@ -151,7 +151,7 @@ async function logWebhookDelivery(
     // Store in WebhookLog table for audit trail
     // Only persist if we have a real webhook ID (not 'default' from env vars)
     if (webhookId && webhookId !== 'default') {
-      await (prisma as any).webhookLog?.create({
+      await prisma.webhookLog.create({
         data: {
           webhookId,
           event,
@@ -174,8 +174,7 @@ async function getTenantWebhooks(tenantId: string): Promise<WebhookConfig[]> {
   
   // Fetch webhook configurations from database (may not be available in all deployments)
   try {
-    const prismaAny = prisma as any;
-    const dbWebhooks = await prismaAny.webhookConfig?.findMany({
+    const dbWebhooks = await prisma.webhookConfig.findMany({
       where: {
         tenantId,
         isActive: true,

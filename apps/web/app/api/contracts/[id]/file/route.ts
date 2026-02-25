@@ -21,6 +21,7 @@ import cors from '@/lib/security/cors';
 import { getStorageConfig, isDocumentAccessible } from '@/lib/storage/retention-config';
 import { createConnector } from '@/lib/integrations/connectors/factory';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 // Initialize S3 client for MinIO - credentials required in production
 const getS3Client = () => {
@@ -148,7 +149,7 @@ export async function GET(
           // Successfully fetched from source
         }
       } catch (sourceError) {
-        console.error('[File API] Failed to fetch from source:', sourceError);
+        logger.error('[File API] Failed to fetch from source:', sourceError);
         // Fall through to try local storage
       }
     }

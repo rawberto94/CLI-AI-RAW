@@ -14,6 +14,7 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -323,7 +324,7 @@ Respond ONLY with a JSON array of strings.`;
         recommendedActions = Array.isArray(parsed.actions) ? parsed.actions : Array.isArray(parsed) ? parsed : [];
       }
     } catch (llmErr) {
-      console.warn('[Suggestion API] LLM enhancement failed, using fallback', llmErr);
+      logger.warn('[Suggestion API] LLM enhancement failed, using fallback', llmErr);
     }
 
     // Fallback recommended actions
@@ -363,7 +364,7 @@ Respond ONLY with a JSON array of strings.`;
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('[AI Suggestion GET]', error);
+    logger.error('[AI Suggestion GET]', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to generate AI suggestion', 500);
   }
 });

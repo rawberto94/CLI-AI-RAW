@@ -82,6 +82,85 @@ import type {
   InvoiceExtractionResult,
 } from './azure-document-intelligence';
 import { ArtifactQualityValidator, selfCritiqueArtifact } from './utils/artifact-quality-validator';
+import { WorkerCache } from './worker-cache';
+
+// ============================================================================
+// Preprocessing Cache (P3.3)
+// ============================================================================
+
+let preprocessingCache: WorkerCache | null = null;
+
+function getPreprocessingCache(): WorkerCache | null {
+  if (preprocessingCache) return preprocessingCache;
+  try {
+    const host = process.env.REDIS_HOST;
+    if (!host) return null;
+    preprocessingCache = new WorkerCache({
+      host,
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      password: process.env.REDIS_PASSWORD,
+      keyPrefix: 'worker:preprocess:',
+      defaultTTL: 86400, // 24 hours
+    });
+    return preprocessingCache;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Cache key for preprocessing results, derived from a hash of the raw text.
+ */
+function preprocessingCacheKey(rawText: string): string {
+  const crypto = require('crypto');
+  return crypto.createHash('sha256').update(rawText).digest('hex');
+}
+
+interface CachedPreprocessResult {
+  cleanedText: string;
+  tables: string[];
+  metrics: TextMetrics;
+  cachedAt: number;
+}
+
+/**
+ * Preprocessing with cache — returns cached result if available,
+ * otherwise runs preprocessText and caches the result.
+ */
+async function preprocessTextCached(
+  rawText: string,
+  jobLogger: pino.Logger
+): Promise<{ cleanedText: string; tables: string[]; metrics: TextMetrics; fromCache: boolean }> {
+  const cache = getPreprocessingCache();
+  const cacheKey = preprocessingCacheKey(rawText);
+
+  // Try cache first
+  if (cache) {
+    try {
+      const cached = await cache.getAIResponse(cacheKey);
+      if (cached && cached.response) {
+        const parsed = cached.response as CachedPreprocessResult;
+        if (parsed.cleanedText && parsed.metrics) {
+          jobLogger.info({ cacheKey: cacheKey.substring(0, 12) }, 'Preprocessing cache HIT');
+          return { cleanedText: parsed.cleanedText, tables: parsed.tables || [], metrics: parsed.metrics, fromCache: true };
+        }
+      }
+    } catch (err) {
+      jobLogger.warn({ error: err }, 'Preprocessing cache read failed, falling back to compute');
+    }
+  }
+
+  // Cache miss — compute
+  const result = preprocessText(rawText);
+
+  // Store in cache (fire-and-forget)
+  if (cache) {
+    const toCache: CachedPreprocessResult = { ...result, cachedAt: Date.now() };
+    cache.setAIResponse(cacheKey, { response: toCache, model: 'preprocess', tokens: 0 }, 86400).catch(() => {});
+  }
+
+  return { ...result, fromCache: false };
+}
 
 // Check if we're in build mode - skip worker initialization
 const isBuildTime = process.env.NEXT_BUILD === 'true';
@@ -1525,7 +1604,7 @@ export async function processOCRArtifactJob(
 
   try {
     jobLogger.info('Step 1: Updating progress to 5%');
-    await job.updateProgress(5);
+    try { await job.updateProgress(5); } catch { /* best-effort */ }
     
     // Publish processing started event
     await publishJobProgress(job.id || '', contractId, tenantId, 5, 'started', 'OCR processing started');
@@ -1549,7 +1628,7 @@ export async function processOCRArtifactJob(
     });
 
     jobLogger.info({ status: contract.status }, 'Contract found');
-    await job.updateProgress(10);
+    try { await job.updateProgress(10); } catch { /* best-effort */ }
     await publishJobProgress(job.id || '', contractId, tenantId, 10, 'processing', 'Downloading contract file');
 
     // 2. Download file from storage to temp location
@@ -1569,7 +1648,7 @@ export async function processOCRArtifactJob(
       const fileBuffer = await storageCircuitBreaker.execute(() => 
         retryStorage(async () => {
           const getObjectCommand = new GetObjectCommand({
-            Bucket: process.env.MINIO_BUCKET || 'contracts',
+            Bucket: process.env.S3_BUCKET || process.env.MINIO_BUCKET || 'contracts',
             Key: storagePath,
           });
 
@@ -1769,8 +1848,12 @@ export async function processOCRArtifactJob(
       warnings: [],
     };
     
-    // 3.1 Preprocess the extracted text (use enhanced text)
-    const { cleanedText: extractedText, tables, metrics: textMetrics } = preprocessText(enhancedText);
+    // 3.1 Preprocess the extracted text (use enhanced text) — with cache
+    const { cleanedText: extractedText, tables, metrics: textMetrics, fromCache: preprocessFromCache } = 
+      await preprocessTextCached(enhancedText, jobLogger);
+    if (preprocessFromCache) {
+      jobLogger.info('Preprocessing result loaded from cache, skipping recomputation');
+    }
     qualityMetrics.textLength = extractedText.length;
     qualityMetrics.textConfidence = textMetrics.confidenceScore;
     qualityMetrics.tablesDetected = textMetrics.tablesDetected;
@@ -1821,7 +1904,7 @@ export async function processOCRArtifactJob(
       }
     }
 
-    await job.updateProgress(60);
+    try { await job.updateProgress(60); } catch { /* best-effort */ }
     await publishJobProgress(job.id || '', contractId, tenantId, 60, 'artifacts', 'Detecting contract type with AI');
 
     // 3.5 Detect contract type using AI analysis for better accuracy
@@ -1923,25 +2006,51 @@ export async function processOCRArtifactJob(
     // Cost budget enforcement (P2 #11: limit per-contract and per-tenant spend)
     const budgetTracker = new ArtifactCostTracker();
 
-    // Generate relevant artifacts sequentially in priority order (P2 #7)
-    // This ensures high-priority artifacts (OVERVIEW, FINANCIAL) complete first,
-    // handles rate limits gracefully, and enables real-time per-artifact progress.
+    // Generate artifacts in parallel batches for faster processing (~3x speedup)
+    // Priority order preserved within batches; high-priority artifacts complete first.
+    // Batch size configurable via ARTIFACT_BATCH_SIZE env var (default: 3 concurrent).
+    const PARALLEL_BATCH_SIZE = parseInt(process.env.ARTIFACT_BATCH_SIZE || '3', 10);
     const generatedArtifactResults: any[] = [];
+    let completedCount = 0;
+
+    // Store expected artifact count in contract aiMetadata so the SSE stream
+    // can calculate accurate progress (e.g., 3 of 15 instead of 3 of 3).
+    const expectedArtifactCount = allArtifactTypes.length; // includes applicable + not-applicable
+    try {
+      const existingMeta: any = contract.aiMetadata || {};
+      await prisma.contract.update({
+        where: { id: contractId },
+        data: {
+          aiMetadata: {
+            ...existingMeta,
+            expectedArtifactCount,
+            applicableArtifactCount: artifactTypes.length,
+            processingStartedAt: new Date().toISOString(),
+          },
+        },
+      });
+    } catch (metaErr) {
+      jobLogger.warn({ error: (metaErr as Error).message }, 'Failed to store expected artifact count');
+    }
     
-    for (let i = 0; i < artifactTypes.length; i++) {
-      const artifactType = artifactTypes[i];
-      if (!artifactType) continue;
+    for (let batchStart = 0; batchStart < artifactTypes.length; batchStart += PARALLEL_BATCH_SIZE) {
+      const batch = artifactTypes.slice(batchStart, Math.min(batchStart + PARALLEL_BATCH_SIZE, artifactTypes.length));
+      jobLogger.info({ batch: Math.floor(batchStart / PARALLEL_BATCH_SIZE) + 1, batchSize: batch.length, total: artifactTypes.length }, 'Processing artifact batch');
+
+      await Promise.allSettled(batch.map(async (artifactType) => {
+      if (!artifactType) return;
       // Use per-type config from shared module
       const typeConfig = SHARED_ARTIFACT_TYPES.find(c => c.type === artifactType);
       const maxRetries = typeConfig?.maxRetries ?? 2;
-      const maxRegenerations = 1; // Allow 1 quality-based regeneration
+      const isAdvancedCategory = typeConfig?.category === 'advanced';
+      const maxRegenerations = isAdvancedCategory ? 0 : 1; // Skip self-critique for low-priority artifacts
       let lastError: Error | null = null;
       let bestArtifactData: Record<string, any> | null = null;
       let bestQualityScore = 0;
       let tokensUsed = 0;
       let modelUsed = 'unknown';
       
-      jobLogger.info({ artifactType, progress: `${i + 1}/${artifactTypes.length}` }, 'Generating artifact');
+      jobLogger.info({ artifactType, progress: `${completedCount + 1}/${artifactTypes.length}` }, 'Generating artifact');
 
       // Check cost budget before generating (P2 #11)
       const budgetCheck = budgetTracker.canProceed(contractId, tenantId);
@@ -1968,7 +2077,8 @@ export async function processOCRArtifactJob(
           createdAt: new Date(),
           updatedAt: new Date(),
         });
-        continue;
+        completedCount++;
+        return;
       }
       if (budgetCheck.warning) {
         jobLogger.warn({ artifactType, warning: budgetCheck.warning }, 'Approaching cost budget limit');
@@ -2067,7 +2177,7 @@ export async function processOCRArtifactJob(
       // If we got a valid result (even low quality), use it
       if (bestArtifactData) {
         successfulArtifacts.push(artifactType);
-        generatedArtifactResults.push({
+        const artifactRecord = {
           contractId,
           tenantId,
           type: artifactType,
@@ -2085,14 +2195,51 @@ export async function processOCRArtifactJob(
           validationStatus: bestQualityScore >= 0.65 ? 'valid' : 'low-quality',
           createdAt: new Date(),
           updatedAt: new Date(),
-        });
+        };
+        generatedArtifactResults.push(artifactRecord);
+        completedCount++;
+
+        // Write artifact to DB immediately so SSE stream can report real-time progress
+        try {
+          await prisma.artifact.upsert({
+            where: {
+              contractId_type: { contractId, type: artifactType },
+            },
+            create: artifactRecord,
+            update: {
+              data: artifactRecord.data,
+              validationStatus: artifactRecord.validationStatus,
+              updatedAt: new Date(),
+            },
+          });
+          // Update aiMetadata with current processing stage so the contracts list API
+          // can show real-time progress (e.g., "Generating artifacts (5/15)")
+          try {
+            const currentMeta: any = (await prisma.contract.findUnique({ where: { id: contractId }, select: { aiMetadata: true } }))?.aiMetadata || {};
+            await prisma.contract.update({
+              where: { id: contractId },
+              data: {
+                aiMetadata: {
+                  ...currentMeta,
+                  currentStage: `Generating artifacts (${completedCount}/${artifactTypes.length})`,
+                  completedArtifacts: completedCount,
+                },
+              },
+            });
+          } catch (_stageErr) {
+            // Non-critical — progress display only
+          }
+          jobLogger.info({ artifactType, progress: `${completedCount}/${artifactTypes.length}` }, 'Artifact saved incrementally');
+        } catch (incrementalErr) {
+          jobLogger.warn({ artifactType, error: (incrementalErr as Error).message }, 'Incremental artifact save failed — will retry in batch');
+        }
       } else {
         // Track failed artifact for partial success reporting
         failedArtifacts.push(artifactType);
         
         // Generate fallback artifact with retry metadata
         jobLogger.error({ error: lastError, artifactType }, `All attempts failed, creating fallback artifact`);
-        generatedArtifactResults.push({
+        const fallbackRecord = {
           contractId,
           tenantId,
           type: artifactType,
@@ -2111,13 +2258,29 @@ export async function processOCRArtifactJob(
           validationStatus: 'error',
           createdAt: new Date(),
           updatedAt: new Date(),
-        });
+        };
+        generatedArtifactResults.push(fallbackRecord);
+        completedCount++;
+
+        // Write fallback to DB immediately too
+        try {
+          await prisma.artifact.upsert({
+            where: {
+              contractId_type: { contractId, type: artifactType },
+            },
+            create: fallbackRecord,
+            update: {
+              data: fallbackRecord.data,
+              validationStatus: fallbackRecord.validationStatus,
+              updatedAt: new Date(),
+            },
+          });
+        } catch {
+          // Will be retried in the final batch
+        }
       }
 
-      // Brief pause between artifacts to respect rate limits (50ms)
-      if (i < artifactTypes.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
+      })); // End Promise.allSettled(batch.map...)
     }
 
     // Also create "not applicable" placeholder artifacts for skipped types
@@ -2188,6 +2351,13 @@ export async function processOCRArtifactJob(
     
     const artifactDataArray = [...generatedArtifacts, ...notApplicableArtifactData];
     
+    // Verify contract still exists before attempting artifact upsert (handles deleted-while-processing edge case)
+    const contractStillExists = await prisma.contract.findUnique({ where: { id: contractId }, select: { id: true } });
+    if (!contractStillExists) {
+      jobLogger.error({ contractId }, 'Contract was deleted while processing — skipping artifact upsert');
+      throw new Error(`Contract ${contractId} was deleted during processing`);
+    }
+
     // Use transaction to ensure artifacts and contract update are atomic
     const artifacts = await prisma.$transaction(async (tx: any) => {
       // Upsert all artifacts to support both initial processing and reprocessing
@@ -2566,17 +2736,28 @@ export async function processOCRArtifactJob(
       const tenantAlwaysRun = (extractionSettings.alwaysRunGapFilling as boolean) ?? false;
       const tenantAggressive = (extractionSettings.aggressiveGapFilling as boolean) ?? true;
 
-      // 1. Run proactive validation on all artifacts
-      jobLogger.info('Running proactive validation agent');
-      const validationResult = await proactiveValidationAgent.executeWithTracking({
-        contractId,
-        tenantId,
-        context: { 
-          artifacts: artifactDataArray,
-          contractType: detectedContractType,
-        },
-        triggeredBy: 'ocr_pipeline',
-      });
+      // 1. Run proactive validation and health monitor in parallel (independent)
+      jobLogger.info('Running proactive validation agent + health monitor in parallel');
+      const [validationResult, _healthResult] = await Promise.all([
+        proactiveValidationAgent.executeWithTracking({
+          contractId,
+          tenantId,
+          context: { 
+            artifacts: artifactDataArray,
+            contractType: detectedContractType,
+          },
+          triggeredBy: 'ocr_pipeline',
+        }),
+        contractHealthMonitor.executeWithTracking({
+          contractId,
+          tenantId,
+          context: { 
+            artifacts: artifactDataArray,
+            contractType: detectedContractType,
+          },
+          triggeredBy: 'ocr_pipeline',
+        }),
+      ]);
 
       // 2. Run smart gap filling ALWAYS to ensure completeness
       // Triggers: validation issues, partial success, or proactive gap detection
@@ -2657,26 +2838,13 @@ export async function processOCRArtifactJob(
         }
       }
 
-      // 3. Run health monitor to assess contract health
-      jobLogger.info('Running contract health monitor');
-      await contractHealthMonitor.executeWithTracking({
-        contractId,
-        tenantId,
-        context: { 
-          artifacts: artifactDataArray,
-          validationResult: validationResult.output,
-          contractType: detectedContractType,
-        },
-        triggeredBy: 'ocr_pipeline',
-      });
-
       jobLogger.info('Agentic AI integration completed successfully');
     } catch (error) {
       // Don't fail the job if agents fail - just log the error
       jobLogger.error({ error }, 'Agentic AI integration failed (non-fatal)');
     }
 
-    await job.updateProgress(90);
+    try { await job.updateProgress(90); } catch { /* best-effort */ }
 
     // 5. Batch update contract and processing job in parallel
     const updatePromises = [
@@ -2926,7 +3094,7 @@ export async function processOCRArtifactJob(
       }
     }
 
-    await job.updateProgress(100);
+    try { await job.updateProgress(100); } catch { /* best-effort */ }
     
     // Publish completion event
     await redisEventBus.publish(RedisEvents.PROCESSING_COMPLETED, {
@@ -3041,9 +3209,9 @@ export async function processOCRArtifactJob(
  * AI provider configuration for artifact generation
  */
 const AI_RETRY_CONFIG = {
-  maxAttempts: 4,
-  baseDelay: 2000,
-  maxDelay: 30000,
+  maxAttempts: 2,
+  baseDelay: 1500,
+  maxDelay: 15000,
   backoffMultiplier: 2,
   jitter: true,
 };

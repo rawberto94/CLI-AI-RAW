@@ -4,8 +4,18 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+
+const createTemplateSchema = z.object({
+  name: z.string().min(1, 'Template name is required').max(200),
+  description: z.string().max(2000).optional().default(''),
+  category: z.string().max(50).optional().default('OTHER'),
+  content: z.record(z.unknown()).optional(),
+  variables: z.array(z.unknown()).optional(),
+});
 
 export async function GET(req: NextRequest) {
   const apiCtx = getApiContext(req);
@@ -86,7 +96,7 @@ export async function GET(req: NextRequest) {
 
     return createSuccessResponse(ctx, { templates: transformed, total, limit, offset });
   } catch (error) {
-    console.error('Word Add-in templates error:', error);
+    logger.error('Word Add-in templates error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch templates', 500);
   }
 }
@@ -100,11 +110,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, description, category, content, variables } = body;
-
-    if (!name) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Template name is required', 400);
+    const parsed = createTemplateSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.errors[0].message, 400);
     }
+    const { name, description, category, content, variables } = parsed.data;
 
     const template = await prisma.contractTemplate.create({
       data: {
@@ -113,8 +123,8 @@ export async function POST(req: NextRequest) {
         description: description || '',
         category: category || 'OTHER',
         clauses: [],
-        structure: content || { sections: [] },
-        metadata: variables || [],
+        structure: JSON.parse(JSON.stringify(content || { sections: [] })),
+        metadata: JSON.parse(JSON.stringify(variables || [])),
         isActive: true,
         version: 1,
         createdBy: ctx.userId || 'word-addin',
@@ -134,7 +144,7 @@ export async function POST(req: NextRequest) {
       updatedAt: template.updatedAt.toISOString(),
     });
   } catch (error) {
-    console.error('Word Add-in create template error:', error);
+    logger.error('Word Add-in create template error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to create template', 500);
   }
 }

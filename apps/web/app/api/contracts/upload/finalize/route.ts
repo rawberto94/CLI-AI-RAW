@@ -2,23 +2,24 @@
  * Chunked Upload API - Finalize
  * POST /api/contracts/upload/finalize
  * 
- * Combine all chunks into final file and create contract
+ * Combine all chunks into final file and create contract.
+ * Reads chunks via the storage abstraction layer, so chunks may live
+ * on S3/MinIO, Azure Blob, or local filesystem depending on config.
+ * Includes virus scanning before assembly for security.
  */
 
-import { NextRequest } from 'next/server';
-import { readFile, writeFile, mkdir, rm, readdir } from 'fs/promises';
-import { join, basename } from 'path';
-import { existsSync } from 'fs';
+import { basename } from 'path';
+import { createHash } from 'crypto';
 import { prisma } from "@/lib/prisma";
-import { contractService } from 'data-orchestration/services';
-// TODO: Replace prisma.contract.create with contractService.createContractWithIntegrity
+import { createContractWithSideEffects } from '@/lib/transaction-service';
 import { triggerArtifactGeneration } from '@/lib/artifact-trigger';
 import { sanitizePath, hasPathTraversal } from '@/lib/security/sanitize';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
-import { initializeStorage } from '@/lib/storage-service';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
-
-// Using singleton prisma instance from @/lib/prisma
+import { scanBuffer } from '@/lib/security/virus-scan';
+import { uploadToStorage, downloadFromStorage, deleteFromStorage } from '@/lib/storage';
+import { getStorageProvider } from '@/lib/storage/storage-factory';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 export const POST = withAuthApiHandler(async (req, ctx) => {
   const tenantId = ctx.tenantId;
@@ -42,35 +43,58 @@ export const POST = withAuthApiHandler(async (req, ctx) => {
   // Use only the basename to prevent directory traversal
   const safeFileName = basename(sanitizePath(fileName)) || `contract-${Date.now()}`;
 
-  // Get chunks directory
-  const chunksDir = join(process.cwd(), 'uploads', 'chunks', uploadId);
-  
-  if (!existsSync(chunksDir)) {
-    return createErrorResponse(ctx, 'NOT_FOUND', 'Upload session not found', 404);
+  // ── List and download chunks from storage ─────────────────────────────
+  const chunkPrefix = `chunks/${uploadId}/`;
+  const provider = await getStorageProvider();
+  const chunkKeys = await provider.list(chunkPrefix);
+
+  // Filter to only chunk files and sort by index
+  const sortedChunkKeys = chunkKeys
+    .filter((k: string) => k.includes('chunk-'))
+    .sort((a: string, b: string) => {
+      const idxA = parseInt(a.split('chunk-').pop() || '0');
+      const idxB = parseInt(b.split('chunk-').pop() || '0');
+      return idxA - idxB;
+    });
+
+  if (sortedChunkKeys.length === 0) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Upload session not found or chunks missing', 404);
   }
 
-  // Find all chunks
-  const files = await readdir(chunksDir);
-  const chunks = files
-    .filter((f: string) => f.startsWith('chunk-'))
-    .map((f: string) => ({
-      name: f,
-      index: parseInt(f.replace('chunk-', '')),
-    }))
-    .sort((a: { name: string; index: number }, b: { name: string; index: number }) => a.index - b.index);
-
-  // Combine chunks in order
+  // Download and combine chunks in order
   const chunkBuffers: Buffer[] = [];
-  for (const chunk of chunks) {
-    const chunkPath = join(chunksDir, chunk.name);
-    const chunkData = await readFile(chunkPath);
-    chunkBuffers.push(chunkData);
+  for (const key of sortedChunkKeys) {
+    const data = await downloadFromStorage(key);
+    if (!data) {
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to read chunk: ${key}`, 500);
+    }
+    chunkBuffers.push(data);
   }
 
-  // Write combined file
   const finalBuffer = Buffer.concat(chunkBuffers);
-
   const fileSize = finalBuffer.length;
+
+  // ── Virus scan before processing ──────────────────────────────────────
+  const scanResult = await scanBuffer(finalBuffer, safeFileName);
+  if (!scanResult.clean) {
+    // Clean up infected chunks immediately
+    await cleanupChunks(sortedChunkKeys);
+
+    logger.warn(`Virus detected in chunked upload: ${safeFileName}`, {
+      threats: scanResult.threats,
+      tenantId,
+      uploadId,
+    });
+
+    return createErrorResponse(ctx, 'VALIDATION_ERROR',
+      'File rejected by security scan', 422, {
+      details: 'Infected file detected and quarantined',
+      threats: scanResult.threats,
+    });
+  }
+
+  // ── Generate content hash for deduplication ───────────────────────────
+  const contentHash = createHash('sha256').update(finalBuffer).digest('hex');
 
   // Detect MIME type
   const ext = safeFileName.toLowerCase().substring(safeFileName.lastIndexOf('.'));
@@ -82,62 +106,36 @@ export const POST = withAuthApiHandler(async (req, ctx) => {
   };
   const mimeType = mimeTypes[ext] || 'application/octet-stream';
 
-  // Generate object key for storage
+  // ── Upload final assembled file via storage abstraction ───────────────
   const objectKey = `contracts/${tenantId}/${Date.now()}-${safeFileName}`;
+  const uploadResult = await uploadToStorage(objectKey, finalBuffer, mimeType);
 
-  let storagePath = objectKey;
-  let storageProvider = 's3';
-
-  // Try to upload to object storage (MinIO/S3)
-  try {
-    const storageService = initializeStorage();
-    if (storageService) {
-      const uploadResult = await storageService.upload({
-        fileName: objectKey,
-        buffer: finalBuffer,
-        contentType: mimeType,
-        metadata: {
-          tenantId,
-          originalName: fileName,
-          uploadedAt: new Date().toISOString(),
-        },
-      });
-
-      if (!uploadResult.success) {
-        throw new Error(uploadResult.error || 'Upload to object storage failed');
-      }
-      storagePath = objectKey;
-      storageProvider = 's3';
-    } else {
-      throw new Error('Storage service not available');
-    }
-  } catch {
-    // Fallback to local filesystem
-    const uploadsDir = join(process.cwd(), 'uploads', tenantId);
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
-    }
-    const finalFilePath = join(uploadsDir, safeFileName);
-    await writeFile(finalFilePath, finalBuffer);
-    storagePath = finalFilePath;
-    storageProvider = 'local';
+  if (!uploadResult.success) {
+    logger.error('finalize_upload_storage_failed', { tenantId, uploadId, error: uploadResult.error });
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to store assembled file', 500);
   }
 
-  // Create contract in database
-  const contract = await prisma.contract.create({
-    data: {
+  const storagePath = uploadResult.key;
+
+  // Create contract in database using transactional service
+  const { result: txResult } = await createContractWithSideEffects({
+    contractData: {
       tenantId,
-      status: 'PROCESSING',
+      status: 'UPLOADED',
       storagePath,
       fileName: safeFileName,
       fileSize: BigInt(fileSize),
       mimeType,
-      originalName: fileName,  // Keep original for display purposes
+      originalName: fileName,
+      checksum: contentHash,
       uploadedBy: 'system',
       createdAt: new Date(),
       updatedAt: new Date(),
     },
   });
+
+  const contract = txResult.contract;
+  const processingJob = txResult.processingJob;
 
   await publishRealtimeEvent({
     event: 'contract:created',
@@ -158,19 +156,24 @@ export const POST = withAuthApiHandler(async (req, ctx) => {
     useQueue: true,
   });
 
-  // Clean up chunks
-  try {
-    await rm(chunksDir, { recursive: true, force: true });
-  } catch {
-    // Silently continue if cleanup fails
-  }
+  // Clean up chunks (best-effort)
+  await cleanupChunks(sortedChunkKeys);
 
   return createSuccessResponse(ctx, {
     contractId: contract.id,
     fileId: contract.id,
     fileName,
     fileSize,
+    contentHash,
+    processingJobId: processingJob.id,
     status: 'PROCESSING',
     message: 'Upload completed successfully',
   });
 });
+
+/** Best-effort cleanup of chunk keys from storage */
+async function cleanupChunks(chunkKeys: string[]) {
+  for (const key of chunkKeys) {
+    try { await deleteFromStorage(key); } catch { /* silent */ }
+  }
+}

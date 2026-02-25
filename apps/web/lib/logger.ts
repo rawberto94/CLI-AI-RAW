@@ -54,11 +54,17 @@ class Logger {
   }
 
   /**
-   * Create a child logger with additional context
+   * Create a child logger with additional context.
+   * Reuses the parent's config to avoid redundant env checks.
    */
   child(context: LogContext): Logger {
-    const childLogger = new Logger({ ...this.baseContext, ...context });
-    return childLogger;
+    const child = Object.create(Logger.prototype) as Logger;
+    child.isDevelopment = this.isDevelopment;
+    child.isProduction = this.isProduction;
+    child.isTest = this.isTest;
+    child.minLevel = this.minLevel;
+    child.baseContext = { ...this.baseContext, ...context };
+    return child;
   }
 
   /**
@@ -101,9 +107,16 @@ class Logger {
   }
 
   private output(entry: StructuredLogEntry): void {
-    // Logger output is intentionally a no-op
-    // In production, use a proper logging service
-    void entry;
+    try {
+      const json = JSON.stringify(entry);
+      if (entry.level === 'error' || entry.level === 'fatal') {
+        console.error(json);
+      } else {
+        console.log(json);
+      }
+    } catch {
+      // Last-resort: avoid crashing the error boundary when logging fails
+    }
   }
 
   private log(level: LogLevel, message: string, context?: LogContext, error?: Error): void {

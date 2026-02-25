@@ -1,7 +1,19 @@
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+
+const signatureRequestSchema = z.object({
+  signers: z.array(z.object({
+    name: z.string().min(1),
+    email: z.string().email(),
+    role: z.string().min(1),
+  })).min(1, 'At least one signer is required'),
+  provider: z.enum(['docusign', 'adobe_sign']).optional(),
+  message: z.string().optional(),
+  expiresInDays: z.number().int().min(1).max(365).default(30),
+});
 
 // GET /api/contracts/[id]/signatures - Get signature workflows for a contract
 export async function GET(
@@ -64,8 +76,7 @@ export async function POST(
   }
   try {
     const { id: contractId } = await params;
-    const body = await request.json();
-    const { signers, provider, message, expiresInDays = 30 } = body;
+    const { signers, provider, message, expiresInDays } = signatureRequestSchema.parse(await request.json());
 
     const newWorkflow = {
       id: `sig-${Date.now()}`,

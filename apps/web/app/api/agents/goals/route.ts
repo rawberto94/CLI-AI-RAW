@@ -9,6 +9,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 import { monitoringService } from 'data-orchestration/services';
 import { broadcastSSE } from '@/app/api/agents/sse/route';
 import { sendHITLApprovalNotification, sendHITLDecisionNotification } from '@/lib/notifications/hitl-notification.service';
+import { logger } from '@/lib/logger';
 
 /**
  * Add a goal execution job to the queue (BullMQ via shared QueueService or fallback)
@@ -23,16 +24,16 @@ async function queueGoalExecution(goalId: string, tenantId: string): Promise<voi
         attempts: 3,
         delay: 5000,
       });
-      console.warn(`[Agent Goals] Queued goal execution: ${goalId}`);
+      logger.warn(`[Agent Goals] Queued goal execution: ${goalId}`);
       return;
     }
   } catch (error) {
-    console.error('[Agent Goals] QueueService queueing failed:', error);
+    logger.error('[Agent Goals] QueueService queueing failed:', error);
     // Fall through to webhook/logging
   }
 
   // Fallback: Log for manual processing or trigger webhook
-  console.warn(`[Agent Goals] Manual execution needed for goal: ${goalId}`);
+  logger.warn(`[Agent Goals] Manual execution needed for goal: ${goalId}`);
 
   // In production, trigger a webhook or serverless function
   if (process.env.AGENT_WEBHOOK_URL) {
@@ -45,7 +46,7 @@ async function queueGoalExecution(goalId: string, tenantId: string): Promise<voi
         },
         body: JSON.stringify({ event: 'goal.approved', goalId, tenantId }) });
     } catch (err) {
-      console.error('[Agent Goals] Webhook trigger failed:', err);
+      logger.error('[Agent Goals] Webhook trigger failed:', err);
     }
   }
 }

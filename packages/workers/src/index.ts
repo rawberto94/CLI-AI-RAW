@@ -20,6 +20,8 @@ import { registerEmbeddingRefreshScheduler } from './embedding-refresh-scheduler
 import { start as startForecastRefreshWorker } from './forecast-refresh-worker';
 import { createContractSourceSyncWorker, schedulePeriodicCheck as scheduleSourceSync } from './contract-source-sync-worker';
 import { startGoalWorker, stopGoalWorker } from './agents/goal-execution-worker';
+import { registerCleanupWorker } from './cleanup-worker';
+import { registerOutboxPollerWorker } from './outbox-poller-worker';
 import { getMetricsCollector } from './metrics';
 import { startHealthServer } from './health-server';
 import { getDeadLetterQueueManager } from './dead-letter-queue';
@@ -177,6 +179,22 @@ async function startWorkers() {
       logger.warn({ error: goalError }, '⚠️ Goal execution worker failed to start (non-fatal)');
     }
 
+    // Start orphaned chunk cleanup worker (periodic temp file cleanup)
+    try {
+      registerCleanupWorker();
+      logger.info('🧹 Cleanup worker started');
+    } catch (cleanupError) {
+      logger.warn({ error: cleanupError }, '⚠️ Cleanup worker failed to start (non-fatal)');
+    }
+
+    // Start outbox poller worker (transactional outbox relay)
+    try {
+      registerOutboxPollerWorker();
+      logger.info('📮 Outbox poller worker started');
+    } catch (outboxError) {
+      logger.warn({ error: outboxError }, '⚠️ Outbox poller worker failed to start (non-fatal)');
+    }
+
     // Register workers with metrics collector
     metricsCollector.registerWorker('ocr-artifact', ocrArtifactWorker);
     metricsCollector.registerWorker('artifact-generator', artifactWorker);
@@ -195,6 +213,43 @@ async function startWorkers() {
     } catch (triggerError) {
       logger.warn({ error: triggerError }, '⚠️ Autonomous triggers failed to register (non-fatal)');
     }
+
+    // Stale-processing recovery: detect contracts stuck in PROCESSING for >30 min
+    // (e.g., from a crashed worker that never ran its catch block)
+    // Runs at startup and then every 10 minutes.
+    const runStaleProcessingRecovery = async () => {
+      try {
+        const clientsDb = await import('clients-db');
+        const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
+        const prisma = typeof getClient === 'function' ? getClient() : getClient;
+        const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
+        const staleContracts = await prisma.contract.findMany({
+          where: {
+            status: 'PROCESSING',
+            updatedAt: { lt: thirtyMinAgo },
+          },
+          select: { id: true, tenantId: true, updatedAt: true },
+        });
+        if (staleContracts.length > 0) {
+          logger.warn({ count: staleContracts.length, ids: staleContracts.map((c: any) => c.id) },
+            '🔧 Found stale PROCESSING contracts — marking as FAILED');
+          await prisma.contract.updateMany({
+            where: {
+              id: { in: staleContracts.map((c: any) => c.id) },
+              status: 'PROCESSING',
+            },
+            data: { status: 'FAILED' },
+          });
+          logger.info({ count: staleContracts.length }, '✅ Stale contracts marked as FAILED');
+        }
+      } catch (staleErr) {
+        logger.warn({ error: staleErr }, '⚠️ Stale-processing recovery failed (non-fatal)');
+      }
+    };
+    await runStaleProcessingRecovery();
+    const staleRecoveryInterval = setInterval(runStaleProcessingRecovery, 10 * 60 * 1000);
+    // Ensure cleanup on shutdown
+    process.on('beforeExit', () => clearInterval(staleRecoveryInterval));
 
     // Activate obligation monitoring (continuous SLA/deadline checker)
     try {

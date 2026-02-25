@@ -4,8 +4,18 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+
+const partyDefaultsSchema = z.object({
+  type: z.enum(['buyer', 'seller', 'provider', 'client'], { required_error: 'Party type is required' }),
+  name: z.string().max(200).optional().default(''),
+  address: z.string().max(500).optional().default(''),
+  contact: z.string().max(200).optional().default(''),
+  email: z.string().email('Invalid email').max(254).optional().or(z.literal('')).default(''),
+});
 
 export async function GET(req: NextRequest) {
   const apiCtx = getApiContext(req);
@@ -18,15 +28,13 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const partyType = searchParams.get('type') || 'buyer';
 
-    // Look for saved party defaults in user settings
-    const settings = await (prisma as any).userSettings.findFirst({
-      where: {
-        userId: ctx.userId,
-        tenantId: ctx.tenantId,
-      },
+    // Use UserPreferences.customSettings for party defaults
+    const prefs = await prisma.userPreferences.findFirst({
+      where: { userId: ctx.userId },
     });
 
-    const partyDefaults = (settings?.preferences as Record<string, unknown>)?.[`${partyType}Defaults`] as {
+    const customSettings = (prefs?.customSettings as Record<string, unknown>) || {};
+    const partyDefaults = customSettings[`${partyType}Defaults`] as {
       name: string;
       address: string;
       contact: string;
@@ -34,7 +42,6 @@ export async function GET(req: NextRequest) {
     } | undefined;
 
     if (!partyDefaults) {
-      // Return empty defaults
       return createSuccessResponse(ctx, {
         name: '',
         address: '',
@@ -45,7 +52,7 @@ export async function GET(req: NextRequest) {
 
     return createSuccessResponse(ctx, partyDefaults);
   } catch (error) {
-    console.error('Word Add-in party defaults error:', error);
+    logger.error('Word Add-in party defaults error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch party defaults', 500);
   }
 }
@@ -59,51 +66,42 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { type: partyType, name, address, contact, email } = body;
-
-    if (!partyType) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Party type is required', 400);
+    const parsed = partyDefaultsSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.errors[0].message, 400);
     }
 
-    // Get or create user settings
-    const settings = await (prisma as any).userSettings.findFirst({
-      where: {
-        userId: ctx.userId,
-        tenantId: ctx.tenantId,
-      },
+    const { type: partyType, name, address, contact, email } = parsed.data;
+
+    // Get or create user preferences
+    const prefs = await prisma.userPreferences.findFirst({
+      where: { userId: ctx.userId },
     });
 
-    const partyDefaults = {
-      name: name || '',
-      address: address || '',
-      contact: contact || '',
-      email: email || '',
-    };
-
-    const currentPrefs = (settings?.preferences as Record<string, unknown>) || {};
-    const updatedPrefs = {
-      ...currentPrefs,
+    const partyDefaults = { name, address, contact, email };
+    const currentCustom = (prefs?.customSettings as Record<string, unknown>) || {};
+    const updatedCustom = JSON.parse(JSON.stringify({
+      ...currentCustom,
       [`${partyType}Defaults`]: partyDefaults,
-    };
+    }));
 
-    if (settings) {
-      await (prisma as any).userSettings.update({
-        where: { id: settings.id },
-        data: { preferences: updatedPrefs },
+    if (prefs) {
+      await prisma.userPreferences.update({
+        where: { id: prefs.id },
+        data: { customSettings: updatedCustom },
       });
     } else {
-      await (prisma as any).userSettings.create({
+      await prisma.userPreferences.create({
         data: {
           userId: ctx.userId || 'unknown',
-          tenantId: ctx.tenantId,
-          preferences: updatedPrefs,
+          customSettings: updatedCustom,
         },
       });
     }
 
     return createSuccessResponse(ctx, { saved: true });
   } catch (error) {
-    console.error('Word Add-in save party defaults error:', error);
+    logger.error('Word Add-in save party defaults error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to save party defaults', 500);
   }
 }

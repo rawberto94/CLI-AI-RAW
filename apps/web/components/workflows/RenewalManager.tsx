@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -28,9 +28,11 @@ import {
   GitBranch,
   ClipboardCheck,
   FileEdit,
+  Check,
 } from 'lucide-react';
 import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal';
 import { useCrossModuleInvalidation, useRenewals } from '@/hooks/use-queries';
+import { getTenantId } from '@/lib/tenant';
 import { RenewalsCalendar } from '@/components/calendar/RenewalsCalendar';
 
 // ============================================================================
@@ -47,10 +49,12 @@ interface RenewalContract {
   renewalDate: string;
   autoRenewal: boolean;
   noticeDeadline?: string;
-  status: 'upcoming' | 'in-progress' | 'completed' | 'lapsed' | 'terminated';
+  status: 'upcoming' | 'urgent' | 'in-negotiation' | 'pending-review' | 'completed' | 'expired';
   renewalType: 'auto' | 'manual' | 'negotiated';
   healthScore: number;
   daysUntilRenewal: number;
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  riskLevel: 'critical' | 'high' | 'medium' | 'low';
   lastRenewalDate?: string;
   renewalHistory: RenewalEvent[];
   recommendation: 'renew' | 'renegotiate' | 'terminate' | 'review';
@@ -65,6 +69,9 @@ interface RenewalContract {
   };
   approvalStatus?: 'pending' | 'approved' | 'rejected' | 'none';
   approvalProgress?: number;
+  contractType?: string;
+  noticePeriod?: number;
+  noticeStatus?: string;
 }
 
 interface RenewalEvent {
@@ -82,10 +89,11 @@ interface RenewalEvent {
 const getStatusConfig = (status: RenewalContract['status']) => {
   switch (status) {
     case 'upcoming': return { color: 'bg-violet-100 text-violet-700', icon: Calendar, label: 'Upcoming' };
-    case 'in-progress': return { color: 'bg-amber-100 text-amber-700', icon: RefreshCw, label: 'In Progress' };
+    case 'urgent': return { color: 'bg-red-100 text-red-700', icon: AlertTriangle, label: 'Urgent' };
+    case 'in-negotiation': return { color: 'bg-amber-100 text-amber-700', icon: RefreshCw, label: 'In Negotiation' };
+    case 'pending-review': return { color: 'bg-blue-100 text-blue-700', icon: Eye, label: 'Pending Review' };
     case 'completed': return { color: 'bg-green-100 text-green-700', icon: CheckCircle2, label: 'Completed' };
-    case 'lapsed': return { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Lapsed' };
-    case 'terminated': return { color: 'bg-slate-100 text-slate-700', icon: XCircle, label: 'Terminated' };
+    case 'expired': return { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Expired' };
     default: return { color: 'bg-slate-100 text-slate-700', icon: Clock, label: 'Unknown' };
   }
 };
@@ -276,7 +284,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
           
           <div className="flex items-center gap-1">
             {/* Start Renewal Wizard - Primary Action */}
-            {(renewal.status === 'upcoming' || renewal.status === 'in-progress') && (
+            {(renewal.status === 'upcoming' || renewal.status === 'urgent' || renewal.status === 'pending-review' || renewal.status === 'in-negotiation') && (
               <Link
                 href={`/contracts/${renewal.contractId}/renew`}
                 onClick={(e) => e.stopPropagation()}
@@ -287,7 +295,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
               </Link>
             )}
             {/* Draft Renewal in AI Copilot */}
-            {(renewal.status === 'upcoming' || renewal.status === 'in-progress') && (
+            {(renewal.status === 'upcoming' || renewal.status === 'urgent' || renewal.status === 'pending-review' || renewal.status === 'in-negotiation') && (
               <Link
                 href={`/generate?create=renewal&from=${renewal.contractId}`}
                 onClick={(e) => e.stopPropagation()}
@@ -340,7 +348,8 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
 
 export const RenewalManager: React.FC = () => {
   const crossModule = useCrossModuleInvalidation();
-  const { data: rawRenewals = [], isLoading: loading } = useRenewals();
+  const { data: queryData, isLoading: loading, refetch } = useRenewals();
+  const rawRenewals = queryData?.renewals ?? [];
 
   // Map API data to RenewalContract shape
   const renewals: RenewalContract[] = useMemo(() => {
@@ -358,12 +367,17 @@ export const RenewalManager: React.FC = () => {
       renewalType: item.autoRenewal ? 'auto' : 'manual',
       healthScore: item.healthScore || 75,
       daysUntilRenewal: item.daysUntilExpiry ?? item.daysUntilRenewal ?? Math.max(0, Math.round((new Date(item.expiryDate || item.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
+      priority: item.priority || 'low',
+      riskLevel: item.riskLevel || 'low',
       lastRenewalDate: item.lastRenewalDate,
       renewalHistory: item.history || [],
       recommendation: item.recommendation || (item.daysUntilExpiry <= 30 ? 'review' : 'renew'),
       risks: item.risks || (item.riskLevel === 'high' || item.riskLevel === 'critical' ? ['High risk score'] : []),
       savings: item.savings,
       assignee: item.assignedTo,
+      contractType: item.contractType,
+      noticePeriod: item.noticePeriod,
+      noticeStatus: item.noticeStatus,
     }));
   }, [rawRenewals]);
 
@@ -397,14 +411,29 @@ export const RenewalManager: React.FC = () => {
       }
     } else {
       toast.error('No renewals available', {
-        description: 'Please add contracts with upcoming renewals first',
+        description: 'Please add contracts with upcoming renewal dates first',
       });
     }
   };
   
-  const handleConfirmInitiateRenewal = () => {
-    if (selectedRenewalForInitiate) {
-      // Invalidate related caches – the server updates the status
+  const handleConfirmInitiateRenewal = async () => {
+    if (!selectedRenewalForInitiate) return;
+    try {
+      const tenantId = getTenantId();
+      const res = await fetch('/api/renewals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-tenant-id': tenantId },
+        body: JSON.stringify({
+          contractId: selectedRenewalForInitiate.contractId,
+          action: 'initiate',
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        toast.error('Failed to initiate renewal', { description: json.error?.message || 'Please try again' });
+        return;
+      }
+      // Invalidate caches to refetch updated data
       crossModule.onRenewalChange(selectedRenewalForInitiate.contractId);
       
       toast.success('Renewal initiated', {
@@ -416,6 +445,8 @@ export const RenewalManager: React.FC = () => {
       setRenewalForApproval(selectedRenewalForInitiate);
       setApprovalModalOpen(true);
       setSelectedRenewalForInitiate(null);
+    } catch {
+      toast.error('Failed to initiate renewal', { description: 'Network error. Please try again.' });
     }
   };
   
@@ -432,6 +463,104 @@ export const RenewalManager: React.FC = () => {
     setRenewalForApproval(null);
   };
 
+  // === Export renewals as CSV ===
+  const handleExport = useCallback(() => {
+    if (filteredRenewals.length === 0) {
+      toast.error('Nothing to export', { description: 'No renewals match the current filters' });
+      return;
+    }
+    const headers = ['Contract Name', 'Supplier', 'Status', 'Priority', 'Days Until Renewal', 'Current Value', 'Auto-Renewal', 'Health Score', 'Renewal Date', 'Notice Deadline', 'Recommendation'];
+    const rows = filteredRenewals.map(r => [
+      `"${r.contractName}"`,
+      `"${r.supplierName}"`,
+      r.status,
+      r.priority,
+      r.daysUntilRenewal,
+      r.currentValue,
+      r.autoRenewal ? 'Yes' : 'No',
+      r.healthScore,
+      r.renewalDate ? new Date(r.renewalDate).toLocaleDateString() : '',
+      r.noticeDeadline ? new Date(r.noticeDeadline).toLocaleDateString() : '',
+      r.recommendation,
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `renewals-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success('Export complete', { description: `${filteredRenewals.length} renewals exported to CSV` });
+  }, [filteredRenewals]);
+
+  // === Send reminders for urgent renewals ===
+  const [sendingReminders, setSendingReminders] = useState(false);
+  const handleSendReminders = useCallback(async () => {
+    const urgent = filteredRenewals.filter(r => r.daysUntilRenewal <= 30 && r.daysUntilRenewal >= 0 && r.status !== 'completed');
+    if (urgent.length === 0) {
+      toast.info('No urgent renewals', { description: 'No renewals due within 30 days need reminders' });
+      return;
+    }
+    setSendingReminders(true);
+    try {
+      const tenantId = getTenantId();
+      // Send notice for each urgent renewal
+      const results = await Promise.allSettled(
+        urgent.map(r =>
+          fetch('/api/renewals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-tenant-id': tenantId },
+            body: JSON.stringify({ contractId: r.contractId, action: 'send-notice' }),
+          })
+        )
+      );
+      const succeeded = results.filter(r => r.status === 'fulfilled').length;
+      crossModule.onRenewalChange();
+      toast.success(`Reminders sent`, { description: `${succeeded} of ${urgent.length} renewal notices sent` });
+    } catch {
+      toast.error('Failed to send reminders');
+    } finally {
+      setSendingReminders(false);
+    }
+  }, [filteredRenewals, crossModule]);
+
+  // === Bulk actions (multi-select) ===
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
+  const toggleBulkSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const handleBulkAction = useCallback(async (action: 'initiate' | 'toggle-auto-renewal' | 'complete') => {
+    if (selectedIds.size === 0) {
+      toast.error('No renewals selected');
+      return;
+    }
+    const tenantId = getTenantId();
+    const results = await Promise.allSettled(
+      Array.from(selectedIds).map(id => {
+        const renewal = renewals.find(r => r.id === id);
+        if (!renewal) return Promise.reject('not found');
+        return fetch('/api/renewals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-tenant-id': tenantId },
+          body: JSON.stringify({ contractId: renewal.contractId, action }),
+        });
+      })
+    );
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    crossModule.onRenewalChange();
+    setSelectedIds(new Set());
+    setBulkMenuOpen(false);
+    const labels: Record<string, string> = { initiate: 'initiated', 'toggle-auto-renewal': 'toggled auto-renewal', complete: 'completed' };
+    toast.success(`Bulk action complete`, { description: `${succeeded} renewals ${labels[action] || action}` });
+  }, [selectedIds, renewals, crossModule]);
+
   // Fetch renewals from API via React Query (useRenewals hook above)
 
   const selectedRenewal = renewals.find(r => r.id === selectedId);
@@ -440,7 +569,7 @@ export const RenewalManager: React.FC = () => {
     return renewals.filter(r => {
       if (filter === 'urgent' && r.daysUntilRenewal > 30) return false;
       if (filter === 'auto-renew' && !r.autoRenewal) return false;
-      if (filter === 'action-needed' && r.recommendation === 'renew' && !r.risks.length) return false;
+      if (filter === 'action-needed' && r.status !== 'urgent' && r.status !== 'pending-review' && r.priority !== 'critical' && r.priority !== 'high') return false;
       if (searchQuery && !r.contractName.toLowerCase().includes(searchQuery.toLowerCase()) && 
           !r.supplierName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
@@ -498,18 +627,21 @@ export const RenewalManager: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => toast.info('Export coming soon')}
+              onClick={handleExport}
               className="px-3 py-2 bg-white/80 backdrop-blur-sm text-slate-700 rounded-xl border border-slate-200/50 hover:bg-white hover:shadow-md transition-all duration-200 font-medium flex items-center gap-2"
             >
               <Download className="w-4 h-4" />
               Export
             </button>
             <button
-              onClick={() => toast.info('Notification preferences coming soon')}
+              onClick={() => {
+                refetch();
+                toast.success('Refreshed', { description: 'Renewal data updated' });
+              }}
               className="px-3 py-2 bg-white/80 backdrop-blur-sm text-slate-700 rounded-xl border border-slate-200/50 hover:bg-white hover:shadow-md transition-all duration-200 font-medium flex items-center gap-2"
             >
               <Bell className="w-4 h-4" />
-              Notifications
+              Refresh
             </button>
             <button 
               onClick={handleInitiateRenewal}
@@ -601,14 +733,36 @@ export const RenewalManager: React.FC = () => {
         {view === 'list' ? (
           <div className="grid grid-cols-2 gap-4">
             {filteredRenewals.map(renewal => (
-              <RenewalCard
-                key={renewal.id}
-                renewal={renewal}
-                isSelected={selectedId === renewal.id}
-                onSelect={() => setSelectedId(selectedId === renewal.id ? null : renewal.id)}
-                onSubmitForApproval={handleSubmitForApproval}
-              />
+              <div key={renewal.id} className="relative">
+                {selectedIds.size > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleBulkSelect(renewal.id); }}
+                    className={`absolute top-2 left-2 z-10 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                      selectedIds.has(renewal.id) ? 'bg-violet-500 border-violet-500 text-white' : 'border-slate-300 bg-white hover:border-violet-400'
+                    }`}
+                  >
+                    {selectedIds.has(renewal.id) && <Check className="w-3 h-3" />}
+                  </button>
+                )}
+                <RenewalCard
+                  renewal={renewal}
+                  isSelected={selectedId === renewal.id}
+                  onSelect={() => setSelectedId(selectedId === renewal.id ? null : renewal.id)}
+                  onSubmitForApproval={handleSubmitForApproval}
+                />
+              </div>
             ))}
+            {filteredRenewals.length === 0 && (
+              <div className="col-span-2 text-center py-16">
+                <RefreshCw className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <h3 className="text-lg font-semibold text-slate-700 mb-1">No Renewals Found</h3>
+                <p className="text-sm text-slate-500 max-w-md mx-auto">
+                  {searchQuery || filter !== 'all'
+                    ? 'No renewals match your current filters. Try adjusting your search or filter criteria.'
+                    : 'No contracts with upcoming renewal dates were found. Upload contracts with expiration dates to see them here.'}
+                </p>
+              </div>
+            )}
           </div>
         ) : view === 'calendar' ? (
           <RenewalsCalendar
@@ -659,19 +813,68 @@ export const RenewalManager: React.FC = () => {
               View Approvals
             </Link>
             <button
-              onClick={() => toast.info('Bulk reminders coming soon')}
-              className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium flex items-center gap-2"
+              onClick={handleSendReminders}
+              disabled={sendingReminders}
+              className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium flex items-center gap-2 disabled:opacity-50"
             >
-              <Mail className="w-4 h-4" />
+              {sendingReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
               Send Reminders
             </button>
-            <button
-              onClick={() => toast.info('Bulk actions coming soon')}
-              className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors font-medium flex items-center gap-2"
-            >
-              <Zap className="w-4 h-4" />
-              Bulk Actions
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setBulkMenuOpen(!bulkMenuOpen)}
+                className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors font-medium flex items-center gap-2"
+              >
+                <Zap className="w-4 h-4" />
+                Bulk Actions{selectedIds.size > 0 && ` (${selectedIds.size})`}
+              </button>
+              <AnimatePresence>
+                {bulkMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 4 }}
+                    className="absolute bottom-full mb-1 right-0 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50"
+                  >
+                    <button
+                      onClick={() => handleBulkAction('initiate')}
+                      disabled={selectedIds.size === 0}
+                      className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-violet-50 disabled:opacity-40 flex items-center gap-2"
+                    >
+                      <Play className="w-4 h-4" /> Initiate Selected
+                    </button>
+                    <button
+                      onClick={() => handleBulkAction('toggle-auto-renewal')}
+                      disabled={selectedIds.size === 0}
+                      className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-violet-50 disabled:opacity-40 flex items-center gap-2"
+                    >
+                      <RefreshCw className="w-4 h-4" /> Toggle Auto-Renewal
+                    </button>
+                    <button
+                      onClick={() => handleBulkAction('complete')}
+                      disabled={selectedIds.size === 0}
+                      className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-violet-50 disabled:opacity-40 flex items-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> Mark Complete
+                    </button>
+                    <div className="border-t border-slate-100 mt-1 pt-1">
+                      <button
+                        onClick={() => { setSelectedIds(new Set(filteredRenewals.map(r => r.id))); setBulkMenuOpen(false); }}
+                        className="w-full px-4 py-2 text-left text-sm text-slate-500 hover:bg-slate-50 flex items-center gap-2"
+                      >
+                        <Check className="w-4 h-4" /> Select All Visible
+                      </button>
+                      <button
+                        onClick={() => { setSelectedIds(new Set()); setBulkMenuOpen(false); }}
+                        className="w-full px-4 py-2 text-left text-sm text-slate-500 hover:bg-slate-50 flex items-center gap-2"
+                      >
+                        <XCircle className="w-4 h-4" /> Clear Selection
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </div>

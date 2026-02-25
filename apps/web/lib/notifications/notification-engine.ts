@@ -221,21 +221,23 @@ export async function sendNotification(payload: NotificationPayload): Promise<No
 
   // Persist to database (best-effort)
   try {
-    await (prisma as any).notification.create({
+    await prisma.notification.create({
       data: {
         id,
         tenantId: payload.tenantId,
-        userId: payload.userId,
+        userId: payload.userId || 'system',
+        type: payload.category || 'SYSTEM',
         title: payload.title,
         message: payload.message,
-        category: payload.category,
-        priority: payload.priority,
-        channels: channels.join(','),
-        sourceAgent: payload.sourceAgent,
-        contractId: payload.contractId,
-        actionUrl: payload.actionUrl,
-        actionLabel: payload.actionLabel,
-        metadata: payload.metadata ? JSON.stringify(payload.metadata) : undefined,
+        link: payload.actionUrl,
+        metadata: JSON.stringify({
+          ...(payload.metadata || {}),
+          priority: payload.priority,
+          channels: channels.join(','),
+          sourceAgent: payload.sourceAgent,
+          contractId: payload.contractId,
+          actionLabel: payload.actionLabel,
+        }),
       },
     });
   } catch {

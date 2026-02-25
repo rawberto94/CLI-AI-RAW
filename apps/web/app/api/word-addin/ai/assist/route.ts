@@ -4,15 +4,21 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { getAIClient } from '@/lib/ai/ai-client';
+import { logger } from '@/lib/logger';
 
-interface AIAssistRequest {
-  context: string;
-  selection?: string;
-  action: 'suggest' | 'improve' | 'simplify' | 'risk-check' | 'complete';
-  contractType?: string;
-}
+const aiAssistSchema = z.object({
+  context: z.string().max(50000, 'Context too long (max 50,000 chars)').optional().default(''),
+  selection: z.string().max(10000, 'Selection too long (max 10,000 chars)').optional(),
+  action: z.enum(['suggest', 'improve', 'simplify', 'risk-check', 'complete'], {
+    required_error: 'Action is required',
+  }),
+  contractType: z.string().max(50).optional(),
+}).refine(data => data.context || data.selection, {
+  message: 'Context or selection is required',
+});
 
 interface AISuggestion {
   id: string;
@@ -37,12 +43,12 @@ export async function POST(req: NextRequest) {
       return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
-    const body: AIAssistRequest = await req.json();
-    const { context, selection, action, contractType } = body;
-
-    if (!context && !selection) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Context or selection is required', 400);
+    const body = await req.json();
+    const validation = aiAssistSchema.safeParse(body);
+    if (!validation.success) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', validation.error.errors[0].message, 400);
     }
+    const { context, selection, action, contractType } = validation.data;
 
     const textToAnalyze = selection || context;
     const aiClient = await getAIClient();
@@ -157,7 +163,7 @@ export async function POST(req: NextRequest) {
       confidence: parsed.suggestions?.[0]?.confidence || 0.8,
     });
   } catch (error) {
-    console.error('Word Add-in AI assist error:', error);
+    logger.error('Word Add-in AI assist error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'AI assistance failed', 500);
   }
 }

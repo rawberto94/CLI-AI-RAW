@@ -7,15 +7,17 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
-  const body = await request.json();
-  const { contractId, ourRole, negotiationContext } = body;
+const negotiateSchema = z.object({
+  contractId: z.string().min(1, 'contractId is required'),
+  ourRole: z.string().optional(),
+  negotiationContext: z.string().optional(),
+});
 
-  if (!contractId) {
-    return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
-  }
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const { contractId, ourRole, negotiationContext } = negotiateSchema.parse(await request.json());
 
   try {
     const { generateAndStorePlaybook } = await import('@/lib/ai/negotiation-copilot.service');

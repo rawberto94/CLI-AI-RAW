@@ -49,6 +49,37 @@ services:
       timeout: 5s
       retries: 5
 
+  # Neo4j Graph Database
+  neo4j:
+    image: neo4j:5.15-community
+    container_name: contract-intelligence-neo4j-dev
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/password
+      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*,gds.*"
+      NEO4J_dbms_memory_heap_initial__size: 512m
+      NEO4J_dbms_memory_heap_max__size: 1G
+      NEO4J_dbms_memory_pagecache_size: 512m
+    volumes:
+      - neo4j_dev_data:/data
+      - neo4j_dev_logs:/logs
+      - neo4j_dev_plugins:/plugins
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p password 'RETURN 1' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   # MinIO for S3-compatible storage
   minio:
     image: minio/minio:latest
@@ -81,4 +112,10 @@ volumes:
   redis_dev_data:
     driver: local
   minio_dev_data:
+    driver: local
+  neo4j_dev_data:
+    driver: local
+  neo4j_dev_logs:
+    driver: local
+  neo4j_dev_plugins:
     driver: local

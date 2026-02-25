@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 // Contact form submission handler
 // In production, this would send to email service (SendGrid, Resend, etc.)
@@ -35,14 +36,14 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   // Log the submission (in production, send email/store in DB)
-  console.warn('📧 Contact Form Submission:');
-  console.warn('----------------------------');
-  console.warn(`Name: ${data.name}`);
-  console.warn(`Email: ${data.email}`);
-  console.warn(`Company: ${data.company || 'Not provided'}`);
-  console.warn(`Reason: ${REASON_LABELS[data.reason] || data.reason}`);
-  console.warn(`Message: ${data.message}`);
-  console.warn('----------------------------');
+  logger.warn('📧 Contact Form Submission:');
+  logger.warn('----------------------------');
+  logger.warn(`Name: ${data.name}`);
+  logger.warn(`Email: ${data.email}`);
+  logger.warn(`Company: ${data.company || 'Not provided'}`);
+  logger.warn(`Reason: ${REASON_LABELS[data.reason] || data.reason}`);
+  logger.warn(`Message: ${data.message}`);
+  logger.warn('----------------------------');
 
   // Email integration
   const emailHtml = `
@@ -73,7 +74,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
         }),
       });
     } catch (emailError) {
-      console.error('Email send failed:', emailError);
+      logger.error('Email send failed:', emailError);
     }
   }
 
@@ -98,7 +99,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
         }),
       });
     } catch (slackError) {
-      console.error('Slack notification failed:', slackError);
+      logger.error('Slack notification failed:', slackError);
     }
   }
 

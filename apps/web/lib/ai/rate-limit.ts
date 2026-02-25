@@ -76,6 +76,11 @@ export function checkRateLimit(
   endpoint: string,
   config: RateLimitConfig
 ): RateLimitResult {
+  // Guard against missing identity — deny rather than sharing a global bucket
+  if (!tenantId || !userId) {
+    return { allowed: false, remaining: 0, resetAt: Date.now() + 60_000, retryAfterMs: 60_000 };
+  }
+
   const now = Date.now();
   globalCleanup();
 

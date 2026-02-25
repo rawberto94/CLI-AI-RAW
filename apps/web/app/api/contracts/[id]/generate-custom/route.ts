@@ -9,10 +9,17 @@ import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
+// Lazy OpenAI client — fails fast with clear error if key is missing
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    const key = (process.env.OPENAI_API_KEY || '').trim();
+    if (!key) throw new Error('OPENAI_API_KEY is not configured');
+    _openai = new OpenAI({ apiKey: key });
+  }
+  return _openai;
+}
+const openai = new Proxy({} as OpenAI, { get: (_, prop) => (getOpenAI() as any)[prop] });
 
 // Topic-specific system prompts
 const TOPIC_PROMPTS: Record<string, string> = {

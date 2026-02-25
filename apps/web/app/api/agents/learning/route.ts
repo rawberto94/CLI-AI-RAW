@@ -7,6 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, type AuthenticatedApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   try {
@@ -71,7 +72,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
         avgConfidence: Math.round(avgConfidence * 100) / 100,
     });
   } catch (error) {
-    console.error('[Learning API] Error:', error);
+    logger.error('[Learning API] Error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch learning records', 500);
   }
 });

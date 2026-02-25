@@ -7,10 +7,12 @@
 
 'use client';
 
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { useSmartPrefetch } from '@/hooks/useSmartPrefetch';
+import { VirtualScroll } from '@/components/virtual-scroll/VirtualScroll';
 import {
   FileText,
   Building2,
@@ -131,8 +133,18 @@ const getDaysUntilExpiration = (endDate?: string | Date): number | null => {
 };
 
 // ============================================================================
-// Animation Variants
+// Animation Variants & Virtualization Constants
 // ============================================================================
+
+/**
+ * When a list exceeds this threshold, virtualization kicks in and
+ * framer-motion stagger / layout animations are disabled to keep
+ * the DOM lightweight and scrolling smooth.
+ */
+const VIRTUALIZATION_THRESHOLD = 50;
+
+/** Approximate height (px) of a CompactRow including gap/border */
+const COMPACT_ROW_HEIGHT = 72;
 
 const listVariants = {
   hidden: { opacity: 0 },
@@ -235,6 +247,8 @@ interface CompactRowProps {
   onDelete?: () => void;
   onDownload?: () => void;
   onGenerateArtifacts?: () => void;
+  /** Skip framer-motion layout animations (used in virtualized mode) */
+  disableAnimation?: boolean;
 }
 
 const CompactRow = memo(function CompactRow({
@@ -246,15 +260,20 @@ const CompactRow = memo(function CompactRow({
   onDelete,
   onDownload,
   onGenerateArtifacts,
+  disableAnimation = false,
 }: CompactRowProps) {
   const daysUntilExpiration = getDaysUntilExpiration(contract.endDate);
   const isExpiringSoon = daysUntilExpiration !== null && daysUntilExpiration <= 30 && daysUntilExpiration > 0;
   const isExpired = daysUntilExpiration !== null && daysUntilExpiration <= 0;
 
+  const Wrapper = disableAnimation ? 'div' : motion.div;
+  const wrapperProps = disableAnimation
+    ? {}
+    : { variants: itemVariants, layout: true };
+
   return (
-    <motion.div
-      variants={itemVariants}
-      layout
+    <Wrapper
+      {...(wrapperProps as any)}
       className={cn(
         'group flex items-center gap-4 p-4 border rounded-lg bg-card',
         'hover:bg-muted/50 transition-colors cursor-pointer',
@@ -335,7 +354,7 @@ const CompactRow = memo(function CompactRow({
           onGenerateArtifacts={onGenerateArtifacts}
         />
       </div>
-    </motion.div>
+    </Wrapper>
   );
 });
 
@@ -1053,6 +1072,12 @@ export const ContractsList = memo(function ContractsList({
     }
   }, [selectedIds, onSelectionChange]);
 
+  // Smart prefetch: preload contract data on hover for instant navigation
+  const { prefetchContract, cancelPrefetch } = useSmartPrefetch();
+  const handlePrefetch = useCallback((contractId: string) => {
+    prefetchContract(contractId, { priority: 'high' });
+  }, [prefetchContract]);
+
   // Handle select all
   const handleSelectAll = useCallback((checked: boolean) => {
     if (checked) {
@@ -1064,6 +1089,9 @@ export const ContractsList = memo(function ContractsList({
 
   const allSelected = contracts.length > 0 && selectedIds.length === contracts.length;
   const someSelected = selectedIds.length > 0 && selectedIds.length < contracts.length;
+
+  /** Enable virtualization for large lists to keep DOM lean */
+  const useVirtualized = contracts.length > VIRTUALIZATION_THRESHOLD;
 
   if (isLoading) {
     return (
@@ -1095,17 +1123,22 @@ export const ContractsList = memo(function ContractsList({
           </span>
         </div>
 
-        <LayoutGroup>
-          <motion.div
-            variants={listVariants}
-            initial="hidden"
-            animate="visible"
-            className="space-y-2"
-          >
-            <AnimatePresence mode="popLayout">
-              {contracts.map(contract => (
+        {useVirtualized ? (
+          /* ── Virtualized path: only renders visible rows ────────── */
+          <VirtualScroll
+            items={contracts}
+            itemHeight={COMPACT_ROW_HEIGHT}
+            overscan={5}
+            className="h-[calc(100vh-220px)]"
+            renderItem={(contract, _index) => (
+              <div
+                data-contract-id={contract.id}
+                onMouseEnter={() => handlePrefetch(contract.id)}
+                onMouseLeave={cancelPrefetch}
+                onFocus={() => handlePrefetch(contract.id)}
+                onBlur={cancelPrefetch}
+              >
                 <CompactRow
-                  key={contract.id}
                   contract={contract}
                   isSelected={selectedIds.includes(contract.id)}
                   onSelect={(checked) => handleSelect(contract.id, checked)}
@@ -1114,11 +1147,46 @@ export const ContractsList = memo(function ContractsList({
                   onDelete={onContractDelete ? () => onContractDelete(contract) : undefined}
                   onDownload={onContractDownload ? () => onContractDownload(contract) : undefined}
                   onGenerateArtifacts={onGenerateArtifacts ? () => onGenerateArtifacts(contract) : undefined}
+                  disableAnimation
                 />
-              ))}
-            </AnimatePresence>
-          </motion.div>
-        </LayoutGroup>
+              </div>
+            )}
+          />
+        ) : (
+          /* ── Animated path: stagger + layout for smaller lists ──── */
+          <LayoutGroup>
+            <motion.div
+              variants={listVariants}
+              initial="hidden"
+              animate="visible"
+              className="space-y-2"
+            >
+              <AnimatePresence mode="popLayout">
+                {contracts.map(contract => (
+                  <div
+                    key={contract.id}
+                    data-contract-id={contract.id}
+                    onMouseEnter={() => handlePrefetch(contract.id)}
+                    onMouseLeave={cancelPrefetch}
+                    onFocus={() => handlePrefetch(contract.id)}
+                    onBlur={cancelPrefetch}
+                  >
+                  <CompactRow
+                    contract={contract}
+                    isSelected={selectedIds.includes(contract.id)}
+                    onSelect={(checked) => handleSelect(contract.id, checked)}
+                    onClick={() => onContractClick?.(contract)}
+                    onEdit={onContractEdit ? () => onContractEdit(contract) : undefined}
+                    onDelete={onContractDelete ? () => onContractDelete(contract) : undefined}
+                    onDownload={onContractDownload ? () => onContractDownload(contract) : undefined}
+                    onGenerateArtifacts={onGenerateArtifacts ? () => onGenerateArtifacts(contract) : undefined}
+                  />
+                  </div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          </LayoutGroup>
+        )}
       </div>
     );
   }
@@ -1147,8 +1215,13 @@ export const ContractsList = memo(function ContractsList({
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
         >
           {contracts.map(contract => (
-            <ContractCard
+            <div
               key={contract.id}
+              data-contract-id={contract.id}
+              onMouseEnter={() => handlePrefetch(contract.id)}
+              onMouseLeave={cancelPrefetch}
+            >
+            <ContractCard
               contract={contract}
               isSelected={selectedIds.includes(contract.id)}
               onSelect={(checked) => handleSelect(contract.id, checked)}
@@ -1158,6 +1231,7 @@ export const ContractsList = memo(function ContractsList({
               onDownload={onContractDownload ? () => onContractDownload(contract) : undefined}
               onGenerateArtifacts={onGenerateArtifacts ? () => onGenerateArtifacts(contract) : undefined}
             />
+            </div>
           ))}
         </motion.div>
       </div>
@@ -1208,16 +1282,14 @@ export const ContractsList = memo(function ContractsList({
   // Default: compact view fallback
   return (
     <div className={cn('space-y-2', className)}>
-      <LayoutGroup>
-        <motion.div
-          variants={listVariants}
-          initial="hidden"
-          animate="visible"
-          className="space-y-2"
-        >
-          {contracts.map(contract => (
+      {useVirtualized ? (
+        <VirtualScroll
+          items={contracts}
+          itemHeight={COMPACT_ROW_HEIGHT}
+          overscan={5}
+          className="h-[calc(100vh-220px)]"
+          renderItem={(contract) => (
             <CompactRow
-              key={contract.id}
               contract={contract}
               isSelected={selectedIds.includes(contract.id)}
               onSelect={(checked) => handleSelect(contract.id, checked)}
@@ -1226,10 +1298,34 @@ export const ContractsList = memo(function ContractsList({
               onDelete={onContractDelete ? () => onContractDelete(contract) : undefined}
               onDownload={onContractDownload ? () => onContractDownload(contract) : undefined}
               onGenerateArtifacts={onGenerateArtifacts ? () => onGenerateArtifacts(contract) : undefined}
+              disableAnimation
             />
-          ))}
-        </motion.div>
-      </LayoutGroup>
+          )}
+        />
+      ) : (
+        <LayoutGroup>
+          <motion.div
+            variants={listVariants}
+            initial="hidden"
+            animate="visible"
+            className="space-y-2"
+          >
+            {contracts.map(contract => (
+              <CompactRow
+                key={contract.id}
+                contract={contract}
+                isSelected={selectedIds.includes(contract.id)}
+                onSelect={(checked) => handleSelect(contract.id, checked)}
+                onClick={() => onContractClick?.(contract)}
+                onEdit={onContractEdit ? () => onContractEdit(contract) : undefined}
+                onDelete={onContractDelete ? () => onContractDelete(contract) : undefined}
+                onDownload={onContractDownload ? () => onContractDownload(contract) : undefined}
+                onGenerateArtifacts={onGenerateArtifacts ? () => onGenerateArtifacts(contract) : undefined}
+              />
+            ))}
+          </motion.div>
+        </LayoutGroup>
+      )}
     </div>
   );
 });

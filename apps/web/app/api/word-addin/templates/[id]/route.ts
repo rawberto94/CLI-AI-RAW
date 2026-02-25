@@ -4,6 +4,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import {
   getAuthenticatedApiContext,
   getApiContext,
@@ -11,6 +12,16 @@ import {
   createErrorResponse,
 } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+
+const updateTemplateSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  description: z.string().max(2000).optional(),
+  category: z.string().max(50).optional(),
+  content: z.record(z.unknown()).optional(),
+  variables: z.array(z.unknown()).optional(),
+  isActive: z.boolean().optional(),
+});
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -48,7 +59,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       updatedAt: template.updatedAt.toISOString(),
     });
   } catch (error) {
-    console.error('Word Add-in get template error:', error);
+    logger.error('Word Add-in get template error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch template', 500);
   }
 }
@@ -62,7 +73,11 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const body = await req.json();
-    const { name, description, category, content, variables, isActive } = body;
+    const parsed = updateTemplateSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.errors[0].message, 400);
+    }
+    const { name, description, category, content, variables, isActive } = parsed.data;
 
     // Verify ownership
     const existing = await prisma.contractTemplate.findFirst({
@@ -100,7 +115,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       updatedAt: template.updatedAt.toISOString(),
     });
   } catch (error) {
-    console.error('Word Add-in update template error:', error);
+    logger.error('Word Add-in update template error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to update template', 500);
   }
 }
@@ -129,7 +144,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     return createSuccessResponse(ctx, { deleted: true });
   } catch (error) {
-    console.error('Word Add-in delete template error:', error);
+    logger.error('Word Add-in delete template error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to delete template', 500);
   }
 }

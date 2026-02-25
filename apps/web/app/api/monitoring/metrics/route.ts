@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server';
 import { monitoringService } from 'data-orchestration/services';
-import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 /**
  * GET /api/monitoring/metrics
  * Returns current system metrics
  */
-export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   const systemMetrics = monitoringService.getSystemMetrics();
   const performanceMetrics = monitoringService.getPerformanceMetrics();
 

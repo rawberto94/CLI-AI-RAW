@@ -1,18 +1,22 @@
 /**
- * Precise Token Counting using tiktoken
- * Uses OpenAI's tiktoken library for accurate token counting
+ * Precise Token Counting using js-tiktoken
+ * Uses the pure-JS tiktoken implementation (no WASM dependency) for accurate token counting.
+ * Drop-in replacement for the native tiktoken package that works with Turbopack.
  */
 
-import { Tiktoken, get_encoding, encoding_for_model, TiktokenModel } from 'tiktoken';
-import pino from 'pino';
+import { Tiktoken, getEncoding, encodingForModel } from 'js-tiktoken';
 
-const logger = pino({ name: 'token-counter' });
+// Lightweight logger — avoids pino's thread-stream which is incompatible with Turbopack
+const logger = {
+  warn: (ctx: Record<string, unknown>, msg: string) => console.warn(`[token-counter] ${msg}`, ctx),
+  info: (msg: string) => console.info(`[token-counter] ${msg}`),
+};
 
 // Cache encodings to avoid repeated initialization
 const encodingCache: Map<string, Tiktoken> = new Map();
 
-// Model to encoding mapping for models not directly supported by tiktoken
-const MODEL_ENCODING_MAP: Record<string, TiktokenModel> = {
+// Model to encoding mapping for models not directly supported by js-tiktoken
+const MODEL_ENCODING_MAP: Record<string, string> = {
   // GPT-4 variants
   'gpt-4o': 'gpt-4o',
   'gpt-4o-mini': 'gpt-4o',
@@ -106,7 +110,7 @@ function getEncodingForModel(model: string): Tiktoken {
   try {
     // Try to get encoding for the model directly
     const mappedModel = MODEL_ENCODING_MAP[model] ?? model;
-    const encoding = encoding_for_model(mappedModel as TiktokenModel);
+    const encoding = encodingForModel(mappedModel);
     encodingCache.set(model, encoding);
     return encoding;
   } catch {
@@ -114,7 +118,7 @@ function getEncodingForModel(model: string): Tiktoken {
     logger.warn({ model }, 'Model not found, using cl100k_base encoding');
     
     if (!encodingCache.has('cl100k_base')) {
-      encodingCache.set('cl100k_base', get_encoding('cl100k_base'));
+      encodingCache.set('cl100k_base', getEncoding('cl100k_base'));
     }
     return encodingCache.get('cl100k_base')!;
   }
@@ -282,7 +286,7 @@ export function truncateToTokenLimit(
   const truncatedEncoded = encoded.slice(0, targetTokens);
   
   // Decode back to text
-  const truncatedText = new TextDecoder().decode(encoding.decode(truncatedEncoded));
+  const truncatedText = encoding.decode(truncatedEncoded);
   
   // Clean up any partial characters at the end
   const cleanText = truncatedText.replace(/[\uFFFD\uD800-\uDFFF]$/, '');
@@ -326,7 +330,7 @@ export function splitByTokenLimit(
     const chunkEncoded = encoded.slice(currentIndex, chunkEnd);
     
     // Decode chunk
-    const chunkText = new TextDecoder().decode(encoding.decode(chunkEncoded));
+    const chunkText = encoding.decode(chunkEncoded);
     
     chunks.push({
       text: chunkText.trim(),
@@ -351,9 +355,7 @@ export function splitByTokenLimit(
  * Clean up encoding cache (call on process exit)
  */
 export function cleanupEncodings(): void {
-  for (const encoding of encodingCache.values()) {
-    encoding.free();
-  }
+  // js-tiktoken has no WASM to free; just clear the cache
   encodingCache.clear();
   logger.info('Token encoding cache cleared');
 }

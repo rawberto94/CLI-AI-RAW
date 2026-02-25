@@ -1,15 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockGetOverallHealth, mockGetFormattedUptime } = vi.hoisted(() => ({
+const { mockGetOverallHealth, mockGetFormattedUptime, mockGetUptime } = vi.hoisted(() => ({
   mockGetOverallHealth: vi.fn(),
   mockGetFormattedUptime: vi.fn(),
+  mockGetUptime: vi.fn(),
 }));
 
 vi.mock('data-orchestration/services', () => ({
   healthCheckService: {
     getOverallHealth: mockGetOverallHealth,
     getFormattedUptime: mockGetFormattedUptime,
+    getUptime: mockGetUptime,
   },
 }));
 
@@ -31,6 +33,7 @@ describe('GET /api/health', () => {
       version: '1.0.0',
     });
     mockGetFormattedUptime.mockReturnValue('2d 3h 15m');
+    mockGetUptime.mockReturnValue(60000);
 
     const response = await GET(createRequest());
     const data = await response.json();
@@ -50,6 +53,7 @@ describe('GET /api/health', () => {
       version: '1.0.0',
     });
     mockGetFormattedUptime.mockReturnValue('1h 5m');
+    mockGetUptime.mockReturnValue(60000);
 
     const response = await GET(createRequest());
     const data = await response.json();
@@ -66,6 +70,7 @@ describe('GET /api/health', () => {
       version: '1.0.0',
     });
     mockGetFormattedUptime.mockReturnValue('0m');
+    mockGetUptime.mockReturnValue(60000);
 
     const response = await GET(createRequest());
     const data = await response.json();
@@ -79,6 +84,7 @@ describe('GET /api/health', () => {
   it('returns 503 when health check throws', async () => {
     mockGetOverallHealth.mockRejectedValue(new Error('Database connection failed'));
     mockGetFormattedUptime.mockReturnValue('0m');
+    mockGetUptime.mockReturnValue(60000);
 
     const response = await GET(createRequest());
     const data = await response.json();
@@ -96,6 +102,7 @@ describe('GET /api/health', () => {
       version: '1.0.0',
     });
     mockGetFormattedUptime.mockReturnValue('5m');
+    mockGetUptime.mockReturnValue(60000);
 
     const response = await GET(createRequest());
     const data = await response.json();

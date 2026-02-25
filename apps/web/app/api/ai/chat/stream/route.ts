@@ -39,11 +39,22 @@ import { allocateBudget, getBudgetStats } from '@/lib/ai/token-budget';
 import { shouldUseAgent, executeWithAgent } from '@/lib/ai/agent-integration';
 import { routeToModel, recordAICost, estimateTokenCost, type TaskType } from '@/lib/ai/model-router.service';
 import { shouldUseRAG } from '@/lib/ai/chat/response-builder';
-import { getLearningContext, formatLearningContextForPrompt } from '@repo/agents/learning-context';
+import { getLearningContext, formatLearningContextForPrompt } from '@repo/agents';
+import { logger } from '@/lib/logger';
 
 // ─── Clients ────────────────────────────────────────────────────────────
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    const key = (process.env.OPENAI_API_KEY || '').trim();
+    if (!key) throw new Error('OPENAI_API_KEY is not configured');
+    _openai = new OpenAI({ apiKey: key });
+  }
+  return _openai;
+}
+// Keep backward-compat reference (used throughout this file)
+const openai = new Proxy({} as OpenAI, { get: (_, prop) => (getOpenAI() as any)[prop] });
 
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -70,9 +81,9 @@ const MODEL_FAILOVER_CHAIN: ModelConfig[] = [
 
 // Log available models at startup
 if (typeof window === 'undefined') {
-  console.log(`[AI Chat Stream] Available models: ${MODEL_FAILOVER_CHAIN.map(c => `${c.provider}/${c.model}`).join(', ')}`);
+  logger.info(`[AI Chat Stream] Available models: ${MODEL_FAILOVER_CHAIN.map(c => `${c.provider}/${c.model}`).join(', ')}`);
   if (!process.env.ANTHROPIC_API_KEY) {
-    console.log('[AI Chat Stream] Anthropic failover disabled (ANTHROPIC_API_KEY not set)');
+    logger.info('[AI Chat Stream] Anthropic failover disabled (ANTHROPIC_API_KEY not set)');
   }
 }
 
@@ -188,8 +199,8 @@ function buildModelChain(complexity: QueryComplexity, query?: string): ModelConf
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const { tenantId, userId, userRole } = ctx;
 
-  // ── Rate limit: 10 streaming requests/min per user ──
-  const rl = checkRateLimit(tenantId, userId, '/api/ai/chat/stream', AI_RATE_LIMITS.streaming);
+  // ── Rate limit: shared bucket with legacy endpoint (10 req/min) ──
+  const rl = checkRateLimit(tenantId, userId, '/api/ai/chat/stream', { ...AI_RATE_LIMITS.streaming, identifier: 'ai-chat' });
   if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
   const { message, conversationHistory = [], context = {} } = await request.json();
@@ -225,8 +236,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   // STEP 1 — SEMANTIC CACHE CHECK
   // ═══════════════════════════════════════════════════════════════════════
 
-  const cached = await semanticCache.get(message, tenantId);
-  if (cached) {
+  const cached = await semanticCache.get(message, tenantId).catch((err) => {
+    logger.warn('[Stream v2] Semantic cache lookup failed', { action: 'semantic-cache', error: err instanceof Error ? err.message : String(err) });
+    return null;
+  });
+  if (cached && cached.content && cached.content.length > 0) {
     const encoder = new TextEncoder();
     const readable = new ReadableStream({
       start(controller) {
@@ -261,12 +275,16 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
 
   const contextContractId = context?.contractId as string | undefined;
 
-  // Wrap RAG calls with a timeout to prevent hanging when OpenAI is unavailable (quota/auth)
+  // Wrap RAG calls with a timeout AND error catch to prevent hanging/crashing
+  // when OpenAI is unavailable (quota/auth) or any dependency throws
   const withTimeout = <T>(promise: Promise<T>, fallback: T, timeoutMs = 15_000): Promise<T> =>
     Promise.race([
-      promise,
+      promise.catch((err) => {
+        logger.warn('[Stream v2] RAG/memory call failed', { action: 'rag-memory', error: err instanceof Error ? err.message : String(err) });
+        return fallback;
+      }),
       new Promise<T>((resolve) => setTimeout(() => {
-        console.warn('[Stream v2] RAG/memory call timed out after', timeoutMs, 'ms');
+        logger.warn(`[Stream v2] RAG/memory call timed out after ${timeoutMs}ms`);
         resolve(fallback);
       }, timeoutMs)),
     ]);
@@ -387,7 +405,6 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
   let finalMessage = message;
 
   try {
-    // @ts-ignore
     const { extractMention } = await import('@repo/workers/agents/agent-personas');
     const mention = extractMention(message);
     if (mention) {
@@ -408,6 +425,7 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
   
   if (agentDecision.useAgent && agentDecision.agentType === 'react') {
     // Route to ReAct agent for complex queries
+    try {
     const agentResponse = await executeWithAgent({
       query: message,
       tenantId,
@@ -464,6 +482,9 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
         },
       });
     }
+    } catch (agentErr) {
+      logger.warn('[Stream v2] Agent execution failed, falling through to standard flow', { action: 'agent-execution', error: agentErr instanceof Error ? agentErr.message : String(agentErr) });
+    }
   }
   
   // Apply token budget management to prevent context overflow
@@ -482,7 +503,7 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
   
   const budgetStats = getBudgetStats(budgetAllocation.totalUsed, process.env.OPENAI_MODEL || 'gpt-4o-mini');
   if (budgetStats.status === 'warning') {
-    console.warn(`[Stream v2] Token budget at ${budgetStats.percentage}% - approaching limit`);
+    logger.warn(`[Stream v2] Token budget at ${budgetStats.percentage}% - approaching limit`);
   }
 
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -668,7 +689,7 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
               }
             } catch (error) {
               const errMsg = error instanceof Error ? error.message : String(error);
-              console.warn(`[Stream v2] ${config.provider}/${config.model} failed:`, errMsg);
+              logger.warn(`[Stream v2] ${config.provider}/${config.model} failed`, { action: 'model-call', error: errMsg });
               
               // FIX: Fail-fast on quota/auth errors — no point trying other models
               // with the same API key. Prevents cascading 30s timeouts.
@@ -716,7 +737,25 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
             try {
               args = JSON.parse(tc.function.arguments);
             } catch {
-              args = {};
+              // Invalid tool arguments — return an immediate failure instead
+              // of executing with empty args (which produces confusing errors)
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                type: 'tool_done',
+                toolName,
+                success: false,
+                summary: 'Error: Invalid tool arguments',
+                executionTimeMs: 0,
+              })}\n\n`));
+              return {
+                toolCallId: tc.id,
+                result: {
+                  toolName,
+                  success: false,
+                  data: null,
+                  error: 'Invalid tool arguments — could not parse JSON',
+                  executionTimeMs: 0,
+                } as ToolResult,
+              };
             }
 
             // Permission check
@@ -787,16 +826,34 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
             if (result.suggestedActions) allSuggestedActions.push(...result.suggestedActions);
           }
 
-          // Add tool results to messages
+          // Add tool results to messages (T15: cap size to prevent context overflow)
+          const MAX_TOOL_RESULT_CHARS = 30_000;
           for (const { toolCallId, result } of toolResponses) {
+            let resultJson = JSON.stringify(result.data || { error: result.error });
+            if (resultJson.length > MAX_TOOL_RESULT_CHARS) {
+              resultJson = resultJson.slice(0, MAX_TOOL_RESULT_CHARS) + '... [truncated — result too large]';
+            }
             messages.push({
               role: 'tool',
               tool_call_id: toolCallId,
-              content: JSON.stringify(result.data || { error: result.error }),
+              content: resultJson,
             } as OpenAI.Chat.Completions.ChatCompletionMessageParam);
           }
 
           // Continue loop — model will see results and decide next
+        }
+
+        // ── Safety net: if no content was generated AND no tools were used,
+        //    all models failed silently (non-quota errors). Send an explicit
+        //    error rather than an empty message. ──────────────────────────
+        if (fullContent.length === 0 && toolsUsed.length === 0) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'error',
+            error: 'All AI models are currently unavailable. Please try again in a moment.',
+            done: true,
+          })}\n\n`));
+          controller.close();
+          return;
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -850,24 +907,26 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
         // Factor in self-critique score
         const finalAdjustedConfidence = Math.round(adjustedConfidence * selfCritiqueScore * 100) / 100;
 
-        // Cache asynchronously
-        semanticCache
-          .set(message, {
-            content: fullContent,
-            sources: ragSources,
-            ragResults: searchResults.map(r => ({
-              contractId: r.contractId,
-              contractName: r.contractName,
-              score: r.score,
-              text: r.text.slice(0, 300),
-            })),
-            metadata: {
-              intent: context.intent?.type,
-              confidence: finalAdjustedConfidence,
-              tokensUsed: Math.round(fullContent.length / 4),
-            },
-          }, tenantId)
-          .catch(() => { /* ignore */ });
+        // Cache asynchronously — only if there is actual content to cache
+        if (fullContent.length > 0) {
+          semanticCache
+            .set(message, {
+              content: fullContent,
+              sources: ragSources,
+              ragResults: searchResults.map(r => ({
+                contractId: r.contractId,
+                contractName: r.contractName,
+                score: r.score,
+                text: r.text.slice(0, 300),
+              })),
+              metadata: {
+                intent: context.intent?.type,
+                confidence: finalAdjustedConfidence,
+                tokensUsed: Math.round(fullContent.length / 4),
+              },
+            }, tenantId)
+            .catch(() => { /* ignore */ });
+        }
 
         // Store memory
         if (fullContent.length > 100) {
@@ -883,52 +942,53 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
 
         // ── Server-side conversation persistence ──────────────────────
         // Save the exchange to DB so it persists across sessions/devices
+        // We await this so we can return the conversationId in the done event
+        let persistedConversationId: string | null = null;
         if (fullContent.length > 0) {
           const convId = (context as Record<string, unknown>).conversationId as string | undefined;
           const contractId = contextContractId || null;
 
-          (async () => {
-            try {
-              let conversationId = convId;
-              if (!conversationId) {
-                const conv = await prisma.chatConversation.create({
-                  data: {
-                    tenantId,
-                    userId,
-                    title: message.slice(0, 80).replace(/\n/g, ' '),
-                    context: contractId,
-                    contextType: contractId ? 'CONTRACT' : 'GENERAL',
-                    lastMessageAt: new Date(),
-                    messageCount: 2,
-                  },
-                });
-                conversationId = conv.id;
-              }
-              await prisma.chatMessage.createMany({
-                data: [
-                  { conversationId, role: 'user', content: message },
-                  {
-                    conversationId,
-                    role: 'assistant',
-                    content: fullContent,
-                    model: usedModel,
-                    tokensUsed: Math.round(fullContent.length / 4),
-                    confidence: finalAdjustedConfidence,
-                    sources: ragSources.slice(0, 10) as any,
-                  },
-                ],
-              });
-              await prisma.chatConversation.update({
-                where: { id: conversationId },
+          try {
+            let conversationId = convId || null;
+            if (!conversationId) {
+              const conv = await prisma.chatConversation.create({
                 data: {
+                  tenantId,
+                  userId,
+                  title: message.slice(0, 80).replace(/\n/g, ' '),
+                  context: contractId,
+                  contextType: contractId ? 'CONTRACT' : 'GENERAL',
                   lastMessageAt: new Date(),
-                  messageCount: { increment: 2 },
+                  messageCount: 2,
                 },
               });
-            } catch {
-              // Non-critical — don't break streaming
+              conversationId = conv.id;
             }
-          })();
+            await prisma.chatMessage.createMany({
+              data: [
+                { conversationId, role: 'user', content: message },
+                {
+                  conversationId,
+                  role: 'assistant',
+                  content: fullContent,
+                  model: usedModel,
+                  tokensUsed: Math.round(fullContent.length / 4),
+                  confidence: finalAdjustedConfidence,
+                  sources: ragSources.slice(0, 10) as any,
+                },
+              ],
+            });
+            await prisma.chatConversation.update({
+              where: { id: conversationId },
+              data: {
+                lastMessageAt: new Date(),
+                messageCount: { increment: 2 },
+              },
+            });
+            persistedConversationId = conversationId;
+          } catch {
+            // Non-critical — don't break streaming
+          }
         }
 
         // Deduplicate suggested actions
@@ -956,6 +1016,7 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'done',
           done: true,
+          conversationId: persistedConversationId,
           totalTokens: Math.round(fullContent.length / 4),
           confidence: finalAdjustedConfidence,
           confidenceTier: finalConfidence.tier,
@@ -1062,8 +1123,8 @@ function summarizeToolResult(result: ToolResult): string {
     case 'get_agent_insights':
       return `${d.totalInsights || 0} agent insights across ${(d.categories as string[])?.length || 0} categories`;
     case 'get_agent_debate': {
-      const neg = d.negotiation as Record<string, unknown> | undefined;
-      return neg ? `${neg.proposalCount || 0} agent proposals, ${neg.conflictCount || 0} conflicts resolved` : 'Debate complete';
+      const debate = d.debate as Record<string, unknown> | undefined;
+      return debate ? `${(debate.agentsParticipated as string[])?.length || 0} agents debated over ${debate.totalTurns || 0} turns, convergence: ${debate.convergenceScore || 0}%` : 'Debate complete';
     }
     case 'rate_response':
       return `Feedback recorded: ${d.rating}`;
@@ -1139,13 +1200,14 @@ function buildToolPreview(result: ToolResult): Record<string, unknown> | null {
       };
     }
     case 'get_agent_debate': {
-      const negotiation = d.negotiation as Record<string, unknown> | undefined;
-      if (!negotiation) return null;
+      const debate = d.debate as Record<string, unknown> | undefined;
+      if (!debate) return null;
       return {
         type: 'debate_summary',
-        proposalCount: negotiation.proposalCount,
-        conflictCount: negotiation.conflictCount,
-        consensusCount: negotiation.consensusCount,
+        totalTurns: debate.totalTurns,
+        agentsParticipated: debate.agentsParticipated,
+        convergenceScore: debate.convergenceScore,
+        consensusReached: d.consensusReached,
       };
     }
     case 'get_pending_approvals':

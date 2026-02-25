@@ -34,7 +34,20 @@ export const toolArgSchemas: Record<string, z.ZodType<Record<string, unknown>>> 
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 
   get_contract_details: z.object({
-    contractId: uuidString,
+    contractId: uuidString.optional(),
+    contractName: z.string().max(500).optional(),
+    includeArtifacts: z.boolean().optional(),
+  }).passthrough().refine(d => d.contractId || d.contractName, {
+    message: 'Either contractId or contractName must be provided',
+  }) as z.ZodType<Record<string, unknown>>,
+
+  list_expiring_contracts: z.object({
+    days: z.number().min(1).max(365).optional(),
+    supplier: z.string().max(200).optional(),
+  }).passthrough() as z.ZodType<Record<string, unknown>>,
+
+  get_supplier_info: z.object({
+    supplierName: z.string().min(1).max(200),
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 
   create_contract: z.object({
@@ -63,16 +76,48 @@ export const toolArgSchemas: Record<string, z.ZodType<Record<string, unknown>>> 
     workflowType: z.string().max(100).optional(),
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 
+  get_workflow_status: z.object({
+    executionId: uuidString.optional(),
+    contractId: uuidString.optional(),
+  }).passthrough().refine(d => d.executionId || d.contractId, {
+    message: 'Either executionId or contractId must be provided',
+  }) as z.ZodType<Record<string, unknown>>,
+
+  create_workflow: z.object({
+    name: z.string().min(1).max(200),
+    type: z.string().max(100).optional(),
+    steps: z.array(z.object({ name: z.string().min(1).max(200), type: z.string().max(100).optional() })).max(20).optional(),
+  }).passthrough() as z.ZodType<Record<string, unknown>>,
+
+  cancel_workflow: z.object({
+    executionId: uuidString,
+    reason: z.string().max(2000).optional(),
+  }).passthrough() as z.ZodType<Record<string, unknown>>,
+
+  assign_approver: z.object({
+    executionId: uuidString,
+    assignee: z.string().min(1).max(200),
+  }).passthrough() as z.ZodType<Record<string, unknown>>,
+
+  escalate_workflow: z.object({
+    executionId: uuidString,
+    reason: z.string().max(2000).optional(),
+  }).passthrough() as z.ZodType<Record<string, unknown>>,
+
+  suggest_workflow: z.object({
+    contractId: uuidString,
+  }).passthrough() as z.ZodType<Record<string, unknown>>,
+
   approve_or_reject_step: z.object({
-    stepId: uuidString,
-    action: z.enum(['approve', 'reject']),
+    executionId: uuidString,
+    decision: z.enum(['approve', 'reject']),
     comment: z.string().max(2000).optional(),
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 
   rate_response: z.object({
-    messageId: z.string().min(1),
-    rating: z.number().min(1).max(5),
-    feedback: z.string().max(2000).optional(),
+    rating: z.enum(['positive', 'negative']),
+    reason: z.string().max(2000).optional(),
+    messageId: z.string().optional(),
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 };
 

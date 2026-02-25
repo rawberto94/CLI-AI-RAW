@@ -30,6 +30,8 @@ export interface Contract {
   processing?: {
     progress: number;
     currentStage: string;
+    stale?: boolean;
+    autoResolved?: boolean;
   };
   category?: {
     id: string;
@@ -277,8 +279,8 @@ export function useContractStats() {
       const json = await response.json();
       return json.data as ContractStatsData;
     },
-    staleTime: 10000, // 10 seconds
-    refetchOnWindowFocus: true,
+    staleTime: 60000, // 60 seconds — stats don't change frequently
+    refetchOnWindowFocus: false, // Don't refetch on every tab switch
   });
 }
 
@@ -354,8 +356,8 @@ export function useContracts(
         lastUpdated: new Date().toISOString(),
       };
     },
-    staleTime: pollingEnabled ? 10000 : 30000, // Shorter stale time when polling
-    refetchOnWindowFocus: true,
+    staleTime: pollingEnabled ? 5000 : 60000,
+    refetchOnWindowFocus: true,  // Refresh data when user returns to tab
     refetchInterval: pollingEnabled ? pollingInterval : false,
     refetchIntervalInBackground: false, // Don't poll when tab is not active
   });
@@ -919,13 +921,17 @@ export function useRenewals() {
         headers: { 'x-tenant-id': tenantId },
       });
       const json = await res.json();
-      const renewalData =
-        json.data?.renewals || json.data?.contracts || [];
-      if (!json.success) return [];
-      return renewalData;
+      if (!json.success) return { renewals: [], stats: null };
+      // createSuccessResponse wraps payload at json.data
+      const payload = json.data ?? {};
+      return {
+        renewals: payload.renewals ?? payload.contracts ?? [],
+        stats: payload.stats ?? null,
+      };
     },
     staleTime: 30_000,
     refetchOnWindowFocus: true,
+    select: (data) => data,
   });
 }
 

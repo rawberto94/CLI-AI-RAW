@@ -55,6 +55,7 @@
 export {
   hybridSearch,
   crossContractSearch,
+  paginatedCrossContractSearch,
   processContractWithSemanticChunking,
   semanticChunk,
   expandQuery,
@@ -121,9 +122,32 @@ export {
   semanticRerank,
   mmrRerank,
   hybridRerank,
+  progressiveRerank,
   type RerankResult,
   type RerankOptions,
 } from './reranker.service';
+
+// RAG Evaluation Service
+export {
+  evaluateRAGResponse,
+  calculateChunkDiversity,
+  runBatchEvaluation,
+  calculateRecallAtK,
+  calculateNDCGAtK,
+  calculatePrecisionAtK,
+  calculateAveragePrecision,
+  calculateMRR,
+  computeRetrievalMetrics,
+  type RAGEvalResult,
+} from './rag-evaluation.service';
+
+// Golden Evaluation Test Set
+export {
+  GOLDEN_EVAL_SET,
+  getGoldenEvalSubset,
+  scoreChunkAgainstGolden,
+  type GoldenEvalEntry,
+} from './golden-eval-set';
 
 // Semantic Chunking Service
 export {
@@ -139,6 +163,7 @@ export {
   expandQuery as expandQueryAdvanced,
   expandContractQuery,
   decomposeQuery,
+  stepBackQuery,
   getLegalSynonyms,
   type QueryExpansion,
   type ExpansionOptions,

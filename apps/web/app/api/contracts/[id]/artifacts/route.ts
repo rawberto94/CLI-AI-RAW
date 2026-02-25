@@ -30,10 +30,17 @@ export async function GET(
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
+    // Pagination & filtering params
+    const url = new URL(request.url);
+    const type = url.searchParams.get('type') || undefined;
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10)));
+
     // Use data-orchestration service (handles caching automatically)
     const result = await artifactService.getContractArtifacts(
       contractId,
-      tenantId
+      tenantId,
+      { type, page, limit }
     );
 
     if (!result.success) {
@@ -63,20 +70,19 @@ export async function GET(
     });
 
     return createSuccessResponse(ctx, {
-        success: true,
-        data: transformedArtifacts,
-        meta: {
-          count: transformedArtifacts.length,
-          contractId,
-          responseTime: `${responseTime}ms`,
-          cached: responseTime < 50,
-          dataSource: "data-orchestration",
+        artifacts: transformedArtifacts,
+        pagination: {
+          page,
+          limit,
+          total: transformedArtifacts.length,
+          hasMore: transformedArtifacts.length === limit,
         },
       },
       {
         headers: {
           "X-Response-Time": `${responseTime}ms`,
           "X-Data-Source": "data-orchestration",
+          "X-Artifact-Count": String(transformedArtifacts.length),
         },
       });
   } catch (error: unknown) {

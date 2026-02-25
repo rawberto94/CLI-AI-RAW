@@ -1,7 +1,16 @@
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import getDb from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+
+const createCommentSchema = z.object({
+  content: z.string().min(1, 'Content is required'),
+  author: z.string().min(1, 'Author is required'),
+  authorEmail: z.string().email().optional(),
+  parentId: z.string().nullable().optional(),
+  mentions: z.array(z.string()).default([]),
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -121,12 +130,7 @@ export async function POST(
   try {
     const contractId = params.id;
     const tenantId = await getApiTenantId(request);
-    const body = await request.json();
-    const { content, author, authorEmail, parentId, mentions } = body;
-
-    if (!content || !author) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Content and author are required', 400);
-    }
+    const { content, author, authorEmail, parentId, mentions } = createCommentSchema.parse(await request.json());
 
     try {
       const db = await getDb();

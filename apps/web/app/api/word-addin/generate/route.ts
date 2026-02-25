@@ -4,15 +4,17 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
-interface GenerateContractRequest {
-  templateId: string;
-  variables: Record<string, string>;
-  selectedClauses?: string[];
-  format: 'ooxml' | 'html' | 'plain';
-}
+const generateSchema = z.object({
+  templateId: z.string().min(1, 'Template ID is required'),
+  variables: z.record(z.string()).optional().default({}),
+  selectedClauses: z.array(z.string()).max(50).optional(),
+  format: z.enum(['ooxml', 'html', 'plain']).optional().default('html'),
+});
 
 export async function POST(req: NextRequest) {
   const apiCtx = getApiContext(req);
@@ -22,12 +24,12 @@ export async function POST(req: NextRequest) {
       return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
-    const body: GenerateContractRequest = await req.json();
-    const { templateId, variables, selectedClauses, format } = body;
-
-    if (!templateId) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Template ID is required', 400);
+    const body = await req.json();
+    const parsed = generateSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.errors[0].message, 400);
     }
+    const { templateId, variables, selectedClauses, format } = parsed.data;
 
     // Fetch template
     const template = await prisma.contractTemplate.findFirst({
@@ -90,7 +92,7 @@ export async function POST(req: NextRequest) {
       draftId: draft.id,
     });
   } catch (error) {
-    console.error('Word Add-in generate error:', error);
+    logger.error('Word Add-in generate error:', error);
     return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Contract generation failed', 500);
   }
 }

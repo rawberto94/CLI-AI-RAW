@@ -9,6 +9,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 interface RiskItem {
   id: string;
@@ -199,7 +200,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
 
     return createSuccessResponse(ctx, { risks: risks.slice(0, 100), summary });
   } catch (error) {
-    console.error('[Risk Radar] Failed:', error);
+    logger.error('[Risk Radar] Failed:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to compute risk radar data', 500);
   }
 });
