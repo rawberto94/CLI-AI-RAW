@@ -160,24 +160,33 @@ export async function GET(
     logger.info(`[GET /api/contracts/${contractId}] Resolved tenant: ${tenantId}`);
 
     // --- Server-side ETag cache: return cached response without DB query ---
+    // Only serve from cache if the cached contract is in a terminal state
+    // (COMPLETED or FAILED). Processing contracts must always hit the DB.
     const cacheKey = `contract:${tenantId}:${contractId}`;
     const ifNoneMatch = req.headers.get('If-None-Match');
     const cached = contractCache.get(cacheKey);
     if (cached) {
-      if (contractCache.matches(cacheKey, ifNoneMatch)) {
-        return new Response(null, {
-          status: 304,
-          headers: { 'ETag': cached.etag, 'Cache-Control': `private, max-age=${CacheDuration.MEDIUM}` },
+      const cachedStatus = (cached.data as any)?.processing?.status;
+      const isCachedTerminal = cachedStatus === 'COMPLETED' || cachedStatus === 'FAILED';
+      if (isCachedTerminal) {
+        if (contractCache.matches(cacheKey, ifNoneMatch)) {
+          return new Response(null, {
+            status: 304,
+            headers: { 'ETag': cached.etag, 'Cache-Control': `private, max-age=${CacheDuration.MEDIUM}` },
+          });
+        }
+        return createSuccessResponse(ctx, cached.data, {
+          headers: {
+            'X-Response-Time': `${Date.now() - startTime}ms`,
+            'X-Data-Source': 'server-cache',
+            'X-Cache-Status': 'HIT',
+            ...etagHeaders(cached.etag, { maxAge: CacheDuration.MEDIUM }),
+          },
         });
+      } else {
+        // Stale cache from previous non-terminal state — invalidate it
+        contractCache.invalidate(cacheKey);
       }
-      return createSuccessResponse(ctx, cached.data, {
-        headers: {
-          'X-Response-Time': `${Date.now() - startTime}ms`,
-          'X-Data-Source': 'server-cache',
-          'X-Cache-Status': 'HIT',
-          ...etagHeaders(cached.etag, { maxAge: CacheDuration.MEDIUM }),
-        },
-      });
     }
 
     // Get contract with parent and child relationships
@@ -710,26 +719,37 @@ export async function GET(
 
     const responseTime = Date.now() - startTime;
 
-    // Store in server-side cache for future requests
-    const etag = contractCache.set(cacheKey, enrichedData);
+    // Only cache contracts in terminal states (COMPLETED/FAILED).
+    // PROCESSING/UPLOADED contracts change frequently — caching them causes
+    // the polling UI to show stale data for the full TTL (3 min).
+    const isTerminal = contract.status === 'COMPLETED' || contract.status === 'FAILED';
+    let etag: string | undefined;
 
-    // ETag-based conditional response — return 304 if unchanged
-    if (checkETagMatch(req, etag.replace(/"/g, ''))) {
-      return new Response(null, {
-        status: 304,
-        headers: {
-          'ETag': etag,
-          'Cache-Control': `private, max-age=${CacheDuration.MEDIUM}, stale-while-revalidate=${CacheDuration.LONG}`,
-        },
-      });
+    if (isTerminal) {
+      // Store in server-side cache for future requests
+      etag = contractCache.set(cacheKey, enrichedData);
+
+      // ETag-based conditional response — return 304 if unchanged
+      if (checkETagMatch(req, etag.replace(/"/g, ''))) {
+        return new Response(null, {
+          status: 304,
+          headers: {
+            'ETag': etag,
+            'Cache-Control': `private, max-age=${CacheDuration.MEDIUM}, stale-while-revalidate=${CacheDuration.LONG}`,
+          },
+        });
+      }
+    } else {
+      // Actively invalidate any stale cache from a previous PROCESSING response
+      contractCache.invalidate(cacheKey);
     }
 
     return createSuccessResponse(ctx, enrichedData, {
       headers: {
         "X-Response-Time": `${responseTime}ms`,
         "X-Data-Source": "database",
-        "X-Cache-Status": "MISS",
-        ...etagHeaders(etag, { maxAge: CacheDuration.MEDIUM }),
+        "X-Cache-Status": isTerminal ? "MISS" : "BYPASS",
+        ...(etag ? etagHeaders(etag, { maxAge: CacheDuration.MEDIUM }) : { 'Cache-Control': 'no-store' }),
       },
     });
   } catch (error: unknown) {

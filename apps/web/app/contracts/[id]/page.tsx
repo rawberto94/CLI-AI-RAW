@@ -1032,7 +1032,7 @@ export default function ContractDetailPage() {
                                 : stage === 'extracting_metadata' ? 'Extracting contract metadata'
                                 : stage === 'complete' || stage === 'completed' ? 'Completing'
                                 : stage.startsWith('artifact_') ? `Analyzing ${stage.replace('artifact_', '').replace(/_/g, ' ')}`
-                                : stage === 'processing' ? 'Generating artifacts'
+                                : stage === 'processing' || stage === 'uploaded' ? 'Preparing contract analysis'
                                 : stage
                               return `${stageLabel}... (${progress}%)`
                             })()}
