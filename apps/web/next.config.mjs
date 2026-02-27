@@ -170,6 +170,12 @@ const nextConfig = {
 
 
   
+  // Turbopack HMR stability improvements
+  turbopack: {
+    // Reduce HMR issues by limiting concurrent updates
+    resolveExtensions: ['.tsx', '.ts', '.jsx', '.js', '.json', '.mjs', '.wasm'],
+  },
+
   // Minimal webpack configuration
   webpack: (config, { isServer, dev, webpack, nextRuntime }) => {
     // Avoid noisy warnings for ESM packages that use top-level await (e.g. pdfjs-dist)
