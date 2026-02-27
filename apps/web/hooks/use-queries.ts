@@ -1021,9 +1021,15 @@ export function useCrossModuleInvalidation() {
      */
     onContractChange: async (contractId?: string) => {
       // Force refetch all contract queries immediately
+      // Invalidate queries (mark as stale)
       await queryClient.invalidateQueries({ 
         queryKey: queryKeys.contracts.all,
         refetchType: 'all',
+      });
+      // Also force immediate refetch regardless of stale time
+      await queryClient.refetchQueries({
+        queryKey: queryKeys.contracts.all,
+        type: 'active',
       });
       await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       await queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
