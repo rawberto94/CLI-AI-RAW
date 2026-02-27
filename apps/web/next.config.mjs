@@ -41,7 +41,18 @@ const nextConfig = {
     // Type checking done via turbo task
     ignoreBuildErrors: true,
   },
-  output: "standalone",
+  // output: "standalone",
+  
+  // Prevent static generation timeout issues
+  staticPageGenerationTimeout: 30,
+  
+  // Disable image optimization during build
+  images: {
+    unoptimized: true,
+  },
+  
+  // Disable static export for all pages (force SSR)
+  trailingSlash: false,
   
   // External packages that should not be bundled (native modules)
   serverExternalPackages: [
@@ -117,10 +128,10 @@ const nextConfig = {
   },
 
   experimental: {
-    // Enable for Next.js 15.5+
-    webpackBuildWorker: true,
-    parallelServerBuildTraces: true,
-    parallelServerCompiles: true,
+    // Disabled worker threads to prevent build hangs
+    // webpackBuildWorker: true,
+    // parallelServerBuildTraces: true,
+    // parallelServerCompiles: true,
     externalDir: true,
     // Partial Pre-Rendering – requires Next.js canary; enable when upgrading:
     // ppr: 'incremental',
@@ -157,6 +168,8 @@ const nextConfig = {
     },
   },
 
+
+  
   // Minimal webpack configuration
   webpack: (config, { isServer, dev, webpack, nextRuntime }) => {
     // Avoid noisy warnings for ESM packages that use top-level await (e.g. pdfjs-dist)
@@ -394,6 +407,12 @@ const nextConfig = {
       test: /\.node$/,
       use: "null-loader",
     });
+
+    // Fix readable-stream/passthrough import issue with archiver
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'readable-stream/passthrough': 'readable-stream/lib/_stream_passthrough.js',
+    };
 
     return config;
   },

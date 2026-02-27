@@ -458,10 +458,17 @@ export default function ContractsPage() {
         issues: contract.riskScore && contract.riskScore >= 70 ? ['High risk score detected'] : [],
         lastChecked: new Date(),
       },
-      parties: contract.parties ? [
-        ...(contract.parties.client ? [{ name: contract.parties.client, role: 'client' as const }] : []),
-        ...(contract.parties.supplier ? [{ name: contract.parties.supplier, role: 'vendor' as const }] : []),
-      ] : [],
+      parties: contract.externalParties && contract.externalParties.length > 0
+        ? contract.externalParties.map(p => ({
+            name: p.legalName,
+            role: (p.role?.toLowerCase() === 'client' ? 'client' : 
+                   p.role?.toLowerCase() === 'supplier' || p.role?.toLowerCase() === 'vendor' ? 'vendor' : 
+                   'other') as const,
+          }))
+        : contract.parties ? [
+            ...(contract.parties.client ? [{ name: contract.parties.client, role: 'client' as const }] : []),
+            ...(contract.parties.supplier ? [{ name: contract.parties.supplier, role: 'vendor' as const }] : []),
+          ] : [],
       isFavorite: false,
       isPinned: false,
       completeness: contract.status === 'completed' ? 100 : contract.status === 'processing' ? (contract.processing?.progress || 50) : 0,
@@ -472,6 +479,9 @@ export default function ContractsPage() {
       parentContract: contract.parentContract ? { ...contract.parentContract, contractType: contract.parentContract.contractType ?? undefined } : undefined,
       childContracts: contract.childContracts?.map(c => ({ ...c, contractType: c.contractType ?? undefined })),
       hasHierarchy: contract.hasHierarchy,
+      // Include signature status
+      signatureStatus: contract.signatureStatus,
+      signatureRequiredFlag: contract.signatureRequiredFlag,
     } satisfies EnhancedContract));
   }, [paginatedContracts]);
 
@@ -487,22 +497,32 @@ export default function ContractsPage() {
     effectiveDate: contract.effectiveDate,
     createdAt: contract.createdAt,
     riskScore: contract.riskScore,
-    parties: contract.parties ? [
-      ...(contract.parties.client ? [{ 
-        id: 'client-1',
-        name: contract.parties.client, 
-        role: 'client' as const, 
-        email: '',
-        phone: '',
-      }] : []),
-      ...(contract.parties.supplier ? [{ 
-        id: 'vendor-1',
-        name: contract.parties.supplier, 
-        role: 'vendor' as const, 
-        email: '',
-        phone: '',
-      }] : []),
-    ] : [],
+    parties: contract.externalParties && contract.externalParties.length > 0
+      ? contract.externalParties.map((p, i) => ({
+          id: `party-${i}`,
+          name: p.legalName,
+          role: (p.role?.toLowerCase() === 'client' ? 'client' : 
+                 p.role?.toLowerCase() === 'supplier' || p.role?.toLowerCase() === 'vendor' ? 'vendor' : 
+                 'other') as const,
+          email: p.email || '',
+          phone: '',
+        }))
+      : contract.parties ? [
+          ...(contract.parties.client ? [{ 
+            id: 'client-1',
+            name: contract.parties.client, 
+            role: 'client' as const, 
+            email: '',
+            phone: '',
+          }] : []),
+          ...(contract.parties.supplier ? [{ 
+            id: 'vendor-1',
+            name: contract.parties.supplier, 
+            role: 'vendor' as const, 
+            email: '',
+            phone: '',
+          }] : []),
+        ] : [],
     clauses: [],
     attachments: [],
     activities: [],

@@ -58,6 +58,10 @@ export const viewport = {
   themeColor: "#7C3AED",
 };
 
+// Force dynamic rendering to prevent static generation hangs during build
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
 export default function RootLayout({
   children,
 }: {

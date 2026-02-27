@@ -581,13 +581,13 @@ export class MetadataEditorService {
         logger.error({ error, contractId }, 'Failed to update search index');
       }
 
-      // Update RAG knowledge base
-      try {
-        const { ragIntegrationService } = await import('./rag-integration.service');
-        await ragIntegrationService.reindexContract(contractId);
-      } catch (error) {
-        logger.error({ error, contractId }, 'Failed to update RAG');
-      }
+      // Update RAG knowledge base (disabled - rag-integration.service.ts excluded from build)
+      // try {
+      //   const { ragIntegrationService } = await import('./rag-integration.service');
+      //   await ragIntegrationService.reindexContract(contractId);
+      // } catch (error) {
+      //   logger.error({ error, contractId }, 'Failed to update RAG');
+      // }
 
       // Update metadata summary in contract_metadata
       await this.updateMetadataSummary(contractId);

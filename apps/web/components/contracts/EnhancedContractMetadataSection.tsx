@@ -55,7 +55,8 @@ import {
   FileCheck,
   Settings2,
   PartyPopper,
-  Undo2
+  Undo2,
+  Briefcase
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -574,139 +575,103 @@ function CopyableValue({ value, className }: { value: string; className?: string
   );
 }
 
-// ============ PARTY CARD ============
+// ============ CLEAN PARTY CARD ============
 
-function PartyCard({ 
-  party, 
-  index,
-  isEditing, 
-  onChange, 
-  onRemove 
-}: { 
-  party: ExternalParty; 
+interface PartyDisplayProps {
+  party: ExternalParty;
   index: number;
   isEditing: boolean;
   onChange: (updated: ExternalParty) => void;
   onRemove: () => void;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -20, scale: 0.95 }}
-      transition={{ delay: index * 0.05, type: "spring", stiffness: 300, damping: 25 }}
-      className={cn(
-        "relative p-5 rounded-2xl border-2 transition-all group",
-        isEditing 
-          ? "bg-white border-indigo-300 shadow-xl shadow-violet-100/50 ring-2 ring-indigo-100" 
-          : "bg-gradient-to-br from-white via-white to-violet-50/30 border-slate-200 hover:border-violet-300 hover:shadow-lg"
-      )}
-    >
-      {/* Role Badge */}
-      {party.role && !isEditing && (
-        <Badge className="absolute -top-2.5 right-4 bg-gradient-to-r from-violet-500 to-purple-500 text-white border-0 shadow-lg shadow-violet-200/50 px-3 py-0.5">
-          {party.role}
-        </Badge>
-      )}
-      
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4 flex-1 min-w-0">
-          <div className={cn(
-            "p-3 rounded-xl shrink-0 transition-colors",
-            isEditing ? "bg-gradient-to-br from-violet-100 to-purple-100" : "bg-gradient-to-br from-violet-100 to-purple-100"
-          )}>
-            <Building2 className={cn(
-              "h-6 w-6",
-              isEditing ? "text-violet-600" : "text-violet-600"
-            )} />
+}
+
+function PartyCard({ party, index, isEditing, onChange, onRemove }: PartyDisplayProps) {
+  const displayName = party.legalName || party.name || '';
+  const displayRole = party.role || 'Party';
+  
+  if (isEditing) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm"
+      >
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-violet-50 rounded-lg shrink-0">
+            <Building2 className="h-5 w-5 text-violet-600" />
           </div>
-          
-          <div className="flex-1 min-w-0 pt-1">
-            {isEditing ? (
-              <Input 
-                value={party.legalName}
-                onChange={(e) => onChange({ ...party, legalName: e.target.value })}
-                placeholder="Legal entity name"
-                className="h-10 text-base font-semibold border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 bg-slate-50/50"
+          <div className="flex-1 space-y-3">
+            <Input
+              value={displayName}
+              onChange={(e) => onChange({ ...party, legalName: e.target.value })}
+              placeholder="Company name"
+              className="h-9 font-medium"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                value={party.role || ''}
+                onChange={(e) => onChange({ ...party, role: e.target.value })}
+                placeholder="Role (e.g., Client)"
+                className="h-8 text-sm"
               />
-            ) : (
-              <h4 className="font-bold text-slate-900 text-lg truncate">{party.legalName || 'Unnamed Party'}</h4>
-            )}
-            
-            {!isEditing && (party.legalForm || party.registeredSeat) && (
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                {party.legalForm && (
-                  <span className="inline-flex items-center gap-1.5 text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium">
-                    <Hash className="h-3 w-3" />
-                    {party.legalForm}
-                  </span>
-                )}
-                {party.registeredSeat && (
-                  <span className="inline-flex items-center gap-1.5 text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium">
-                    <MapPin className="h-3 w-3" />
-                    {party.registeredSeat}
-                  </span>
-                )}
-              </div>
-            )}
+              <Input
+                value={party.legalForm || ''}
+                onChange={(e) => onChange({ ...party, legalForm: e.target.value })}
+                placeholder="Legal form (e.g., GmbH)"
+                className="h-8 text-sm"
+              />
+            </div>
           </div>
-        </div>
-        
-        {isEditing && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onRemove}
-            className="h-9 w-9 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl shrink-0 transition-all"
+            className="h-8 w-8 p-0 text-slate-400 hover:text-red-500"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // View mode - clean and minimal
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-xl hover:border-violet-200 hover:shadow-sm transition-all"
+    >
+      <div className="p-2.5 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl shrink-0">
+        {party.role?.toLowerCase().includes('client') ? (
+          <Briefcase className="h-5 w-5 text-violet-600" />
+        ) : (
+          <Building2 className="h-5 w-5 text-violet-600" />
         )}
       </div>
       
-      <AnimatePresence>
-        {isEditing && (
-          <motion.div key="editing" 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-200/60"
-          >
-            <div className="space-y-1.5">
-              <Label className="text-xs text-slate-500">Legal Form</Label>
-              <Input 
-                value={party.legalForm || ''}
-                onChange={(e) => onChange({ ...party, legalForm: e.target.value })}
-                placeholder="e.g., LLC, Inc., GmbH"
-                className="h-9 text-sm bg-slate-50/50"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-slate-500">Role</Label>
-              <Input 
-                value={party.role || ''}
-                onChange={(e) => onChange({ ...party, role: e.target.value })}
-                placeholder="e.g., Supplier, Client"
-                className="h-9 text-sm bg-slate-50/50"
-              />
-            </div>
-            <div className="space-y-1.5 col-span-2">
-              <Label className="text-xs text-slate-500">Registered Seat</Label>
-              <Input 
-                value={party.registeredSeat || ''}
-                onChange={(e) => onChange({ ...party, registeredSeat: e.target.value })}
-                placeholder="City, Country"
-                className="h-9 text-sm bg-slate-50/50"
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <h4 className="font-semibold text-slate-900 truncate">
+            {displayName || <span className="text-slate-400 italic">Unnamed Party</span>}
+          </h4>
+        </div>
+        <div className="flex items-center gap-2 mt-0.5">
+          <Badge variant="secondary" className="text-xs font-normal bg-slate-100 text-slate-600 hover:bg-slate-100">
+            {displayRole}
+          </Badge>
+          {party.legalForm && (
+            <span className="text-xs text-slate-500">{party.legalForm}</span>
+          )}
+        </div>
+      </div>
     </motion.div>
   );
 }
 
-// ============ EMPTY STATE ============
+// ============ CLEAN EMPTY STATE ============
 
 function EmptyState({ icon: Icon, title, description, action }: {
   icon: React.ElementType;
@@ -716,15 +681,15 @@ function EmptyState({ icon: Icon, title, description, action }: {
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col items-center justify-center py-12 px-6 text-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex flex-col items-center justify-center py-10 px-6 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50"
     >
-      <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 mb-4">
-        <Icon className="h-8 w-8 text-slate-400" />
+      <div className="p-3 bg-white rounded-xl shadow-sm mb-3">
+        <Icon className="h-5 w-5 text-slate-400" />
       </div>
-      <h3 className="text-base font-semibold text-slate-700 mb-1">{title}</h3>
-      <p className="text-sm text-slate-500 max-w-sm mb-4">{description}</p>
+      <h3 className="text-sm font-medium text-slate-700 mb-1">{title}</h3>
+      <p className="text-xs text-slate-500 max-w-sm mb-3">{description}</p>
       {action}
     </motion.div>
   );
@@ -840,126 +805,90 @@ function MetadataSection({
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger asChild>
-        <motion.div 
+        <div 
           className={cn(
-            "flex items-center justify-between p-4 rounded-xl transition-all cursor-pointer",
+            "flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer border",
             isOpen 
-              ? `bg-gradient-to-r ${config.bgGradient} border-2 ${config.borderColor} shadow-sm`
-              : "bg-slate-50/80 hover:bg-slate-100 border-2 border-transparent"
+              ? "bg-white border-slate-200 shadow-sm"
+              : "bg-slate-50/80 hover:bg-white border-transparent hover:border-slate-200"
           )}
-          whileHover={{ scale: 1.005 }}
-          whileTap={{ scale: 0.995 }}
         >
-            <div className="flex items-center gap-4">
-              <div className={cn(
-                "p-2.5 rounded-xl transition-all",
-                config.iconBg
-              )}>
-                <Icon className={cn("h-5 w-5", config.iconColor)} />
-              </div>
-              <div className="text-left">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-800">{config.label}</span>
-                  {attentionFields.length > 0 ? (
-                    <Badge variant="outline" className="bg-amber-50/80 text-amber-700 border-amber-200 text-xs px-2 py-0 font-medium">
-                      {attentionFields.length} needs review
-                    </Badge>
-                  ) : verifiedFields.length > 0 && verifiedCount === totalFields ? (
-                    <Badge variant="outline" className="bg-violet-50/80 text-violet-700 border-violet-200 text-xs px-2 py-0 font-medium">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      Complete
-                    </Badge>
-                  ) : null}
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5 hidden sm:block">{config.description}</p>
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "p-2 rounded-lg",
+              isOpen ? "bg-violet-50" : "bg-slate-100"
+            )}>
+              <Icon className={cn("h-4 w-4", isOpen ? "text-violet-600" : "text-slate-500")} />
+            </div>
+            <div className="text-left">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-slate-800 text-sm">{config.label}</span>
+                {attentionFields.length > 0 ? (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">
+                    {attentionFields.length}
+                  </Badge>
+                ) : verifiedCount === totalFields && totalFields > 0 ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                ) : null}
               </div>
             </div>
-            
-            <div className="flex items-center gap-3">
-              {/* Progress indicator */}
-              {totalFields > 0 && !isOpen && (
-                <div className="hidden sm:flex items-center gap-2">
-                  <ProgressRing progress={progressPercent} size={32} strokeWidth={3} showLabel={false} />
-                  <span className="text-xs text-slate-500 font-medium">{verifiedCount}/{totalFields}</span>
-                </div>
-              )}
-            
-            <motion.div
-              animate={{ rotate: isOpen ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
-              className={cn(
-                "p-1.5 rounded-lg",
-                isOpen ? config.iconBg : "bg-slate-200/50"
-              )}
-            >
-              <ChevronDown className={cn(
-                "h-4 w-4",
-                isOpen ? config.iconColor : "text-slate-400"
-              )} />
-            </motion.div>
           </div>
-        </motion.div>
+          
+          <div className="flex items-center gap-2">
+            {!isOpen && totalFields > 0 && (
+              <span className="text-xs text-slate-400">{verifiedCount}/{totalFields}</span>
+            )}
+            <ChevronDown className={cn(
+              "h-4 w-4 text-slate-400 transition-transform",
+              isOpen && "rotate-180"
+            )} />
+          </div>
+        </div>
       </CollapsibleTrigger>
       
       <CollapsibleContent>
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.2 }}
-          className="mt-3 px-2"
-        >
-          {/* Section progress bar with Verify All button */}
+        <div className="mt-3 pl-2 pr-2 pb-2">
+          {/* Clean verification progress */}
           {totalFields > 0 && (
-            <div className="mb-4 p-3 bg-slate-50 rounded-xl">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-slate-600">Verification Progress</span>
-                <div className="flex items-center gap-3">
-                  <span className={cn(
-                    "text-xs font-bold",
-                    progressPercent >= 80 ? "text-violet-600" : progressPercent >= 50 ? "text-amber-600" : "text-slate-500"
-                  )}>
-                    {verifiedCount} of {totalFields} fields verified
-                  </span>
-                  {unverifiedFields.length > 0 && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleVerifyAll}
-                      disabled={isVerifyingAll}
-                      className="h-7 px-2 text-xs border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300"
-                    >
-                      {isVerifyingAll ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <>
-                          <CheckCircle2 className="h-3 w-3 mr-1" />
-                          Verify All ({unverifiedFields.length})
-                        </>
-                      )}
-                    </Button>
-                  )}
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-16 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      progressPercent >= 80 ? "bg-emerald-500" :
+                      progressPercent >= 50 ? "bg-amber-500" :
+                      "bg-slate-400"
+                    )}
+                    style={{ width: `${progressPercent}%` }}
+                  />
                 </div>
+                <span className="text-xs text-slate-500">
+                  {verifiedCount}/{totalFields} verified
+                </span>
               </div>
-              <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                <motion.div
-                  className={cn(
-                    "h-full rounded-full",
-                    progressPercent >= 80 ? "bg-gradient-to-r from-violet-500 to-purple-400" :
-                    progressPercent >= 50 ? "bg-gradient-to-r from-amber-500 to-yellow-400" :
-                    "bg-gradient-to-r from-slate-400 to-slate-300"
+              {unverifiedFields.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleVerifyAll}
+                  disabled={isVerifyingAll}
+                  className="h-7 px-2 text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50"
+                >
+                  {isVerifyingAll ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <>Verify all</>
                   )}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progressPercent}%` }}
-                  transition={{ duration: 0.5, ease: "easeOut" }}
-                />
-              </div>
+                </Button>
+              )}
             </div>
           )}
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {section === 'parties' ? (
-              <div className="col-span-2 space-y-4">
-                <AnimatePresence>
+              <div className="col-span-2 space-y-2">
+                <AnimatePresence mode="popLayout">
                   {(metadata.external_parties || []).map((party, idx) => (
                     <PartyCard 
                       key={idx}
@@ -981,31 +910,26 @@ function MetadataSection({
                 </AnimatePresence>
                 
                 {isEditing && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      const parties = [...(metadata.external_parties || [])];
+                      parties.push({ legalName: '' });
+                      onChange('external_parties', parties);
+                    }}
+                    className="w-full h-10 border-dashed border-slate-300 text-slate-600 hover:bg-slate-50"
                   >
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        const parties = [...(metadata.external_parties || [])];
-                        parties.push({ legalName: '' });
-                        onChange('external_parties', parties);
-                      }}
-                      className="w-full h-12 border-dashed border-2 border-violet-200 text-violet-600 hover:bg-violet-50 hover:border-violet-300 rounded-xl font-medium transition-all"
-                    >
-                      <Plus className="h-5 w-5 mr-2" />
-                      Add Party
-                    </Button>
-                  </motion.div>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add party
+                  </Button>
                 )}
                 
                 {!isEditing && (metadata.external_parties || []).length === 0 && (
                   <EmptyState
                     icon={Users}
-                    title="No parties defined"
-                    description="Add contracting parties to track stakeholders involved in this contract."
+                    title="No parties extracted"
+                    description="Parties will appear here after AI processing or manual entry."
                   />
                 )}
               </div>
@@ -1028,7 +952,7 @@ function MetadataSection({
               ))
             )}
           </div>
-        </motion.div>
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
@@ -1382,147 +1306,76 @@ function MetadataField({
   const showEditMode = isEditing || isFieldEditing;
   
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03 }}
+    <div 
       className={cn(
-        "relative flex flex-col p-4 rounded-xl transition-all group",
+        "relative flex flex-col p-3 rounded-lg transition-all",
         needsAttention 
-          ? 'bg-gradient-to-br from-amber-50/80 to-orange-50/40 border-2 border-amber-200/60 shadow-sm' 
+          ? 'bg-amber-50/50 border border-amber-200' 
           : isVerified 
-            ? 'bg-gradient-to-br from-violet-50/60 to-purple-50/40 border-2 border-violet-200/60 shadow-sm' 
-            : 'bg-slate-50/80 border-2 border-transparent hover:border-slate-200 hover:bg-white hover:shadow-md',
+            ? 'bg-violet-50/30 border border-violet-100' 
+            : 'bg-slate-50 border border-transparent hover:border-slate-200',
         colSpan
       )}
     >
       {/* Field Label Row */}
-      <div className="flex items-center gap-2 mb-2">
-        <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-          {field.label}
-        </Label>
-        {field.required && (
-          <span className="text-red-400 text-xs font-bold">*</span>
-        )}
-        {field.system_generated && (
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-slate-100 text-slate-500 border-slate-200">
-            <Settings2 className="h-2.5 w-2.5 mr-0.5" />
-            System
-          </Badge>
-        )}
-        
-        <div className="flex-1" />
-        
-        {confidence && <ConfidenceIndicator confidence={confidence.value} source={confidence.source} />}
-        {isVerified ? (
-          <VerifiedBadge validatedAt={savedValidation?.validatedAt} />
-        ) : needsAttention ? (
-          <AttentionBadge 
-            attention={getAttentionLevel()} 
-            message={getAttentionMessage()} 
-            onMarkVerified={handleMarkVerified}
-            isVerifying={isVerifying}
-          />
-        ) : (
-          /* Show verify button on hover for fields that don't need attention but aren't verified yet */
-          <TooltipProvider>
-            <Tooltip delayDuration={150}>
-              <TooltipTrigger asChild>
-                <motion.button
-                  onClick={handleMarkVerified}
-                  disabled={isVerifying}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-violet-50 rounded-lg transition-all border border-transparent hover:border-violet-200"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {isVerifying ? (
-                    <Loader2 className="h-3.5 w-3.5 text-violet-500 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-slate-400 hover:text-violet-600" />
-                  )}
-                </motion.button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="bg-slate-900 text-white text-xs px-2 py-1 rounded">
-                Mark as verified
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-        
-        {/* Inline edit button - only show if not in global edit mode */}
-        {!isEditing && canEdit && !isFieldEditing && (
-          <motion.button
-            onClick={() => setIsFieldEditing(true)}
-            className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200 hover:shadow-sm"
-            title="Edit this field"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Pencil className="h-3.5 w-3.5 text-slate-400 hover:text-violet-600" />
-          </motion.button>
-        )}
-        
-        {/* Inline save/cancel buttons */}
-        <AnimatePresence>
-          {isFieldEditing && (
-            <motion.div key="field-editing" 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="flex items-center gap-1"
-            >
-              <button
-                onClick={handleSaveField}
-                className="p-1.5 bg-violet-100 hover:bg-violet-200 rounded-lg transition-colors"
-                title="Save"
-              >
-                <Check className="h-3.5 w-3.5 text-violet-600" />
-              </button>
-              <button
-                onClick={handleCancelField}
-                className="p-1.5 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
-                title="Cancel"
-              >
-                <X className="h-3.5 w-3.5 text-red-500" />
-              </button>
-            </motion.div>
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-1.5">
+          <Label className="text-xs font-medium text-slate-600">
+            {field.label}
+          </Label>
+          {field.required && <span className="text-red-400 text-xs">*</span>}
+          {isVerified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+          {needsAttention && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger><AlertTriangle className="h-3 w-3 text-amber-500" /></TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">{getAttentionMessage()}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
-        </AnimatePresence>
+        </div>
+        
+        <div className="flex items-center gap-1">
+          {!isVerified && !needsAttention && !isEditing && (
+            <button onClick={handleMarkVerified} disabled={isVerifying} className="p-1 hover:bg-violet-50 rounded text-slate-400 hover:text-violet-600">
+              {isVerifying ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+            </button>
+          )}
+          {!isEditing && canEdit && !isFieldEditing && (
+            <button onClick={() => setIsFieldEditing(true)} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600">
+              <Pencil className="h-3 w-3" />
+            </button>
+          )}
+          {isFieldEditing && (
+            <div className="flex items-center gap-0.5">
+              <button onClick={handleSaveField} className="p-1 hover:bg-emerald-50 rounded text-emerald-600"><Check className="h-3 w-3" /></button>
+              <button onClick={handleCancelField} className="p-1 hover:bg-red-50 rounded text-red-500"><X className="h-3 w-3" /></button>
+            </div>
+          )}
+        </div>
       </div>
       
       {/* Field Value/Input */}
-      <AnimatePresence mode="wait">
-        {showEditMode && canEdit ? (
-          <motion.div
-            key="input"
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 5 }}
-          >
-            {renderInput()}
-          </motion.div>
-        ) : (
-          <motion.div 
-            key="value"
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 5 }}
-            className={cn(
-              "text-sm mt-0.5",
-              canEdit && !isEditing && "cursor-pointer hover:bg-white p-2 rounded-lg -m-2 transition-all"
-            )}
-            onClick={() => {
-              if (canEdit && !isEditing) {
-                setIsFieldEditing(true);
-              }
-            }}
-            title={canEdit && !isEditing ? "Click to edit" : undefined}
-          >
-            {renderValue()}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      {showEditMode && canEdit ? (
+        <div className="mt-1.5">
+          {renderInput()}
+        </div>
+      ) : (
+        <div 
+          className={cn(
+            "text-sm mt-0.5 text-slate-700",
+            canEdit && !isEditing && "cursor-pointer hover:text-slate-900"
+          )}
+          onClick={() => {
+            if (canEdit && !isEditing) {
+              setIsFieldEditing(true);
+            }
+          }}
+        >
+          {renderValue()}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1626,13 +1479,79 @@ export function EnhancedContractMetadataSection({
       Object.assign(base, metadataFromAPI);
     }
     
-    // Map legacy fields
+    // Map fields from API response (high priority)
     if (contract) {
       if (!base.document_number) base.document_number = String(contract.id || contractId);
       if (!base.document_title) base.document_title = String(contract.contractTitle || contract.filename || '');
       if (!base.currency) base.currency = String(contract.currency || 'USD');
       if (!base.start_date) base.start_date = String(contract.effectiveDate || contract.startDate || '');
       if (!base.end_date) base.end_date = contract.expirationDate || contract.endDate ? String(contract.expirationDate || contract.endDate) : null;
+      
+      // Financial data (from DB or API-built)
+      if (!base.tcv_amount && (contract.totalValue !== undefined || contract.tcv_amount !== undefined)) {
+        const val = contract.totalValue !== undefined ? contract.totalValue : contract.tcv_amount;
+        base.tcv_amount = typeof val === 'number' ? val : typeof val === 'string' ? parseFloat(val) || 0 : 0;
+      }
+      
+      // Use external_parties from API (built from artifacts)
+      if (contract.external_parties && Array.isArray(contract.external_parties) && contract.external_parties.length > 0) {
+        base.external_parties = contract.external_parties.filter((p: any) => p.legalName || p.name);
+      }
+      
+      // Fallback: Create parties from clientName/supplierName if external_parties is empty
+      if (!base.external_parties || base.external_parties.length === 0) {
+        const fallbackParties: ExternalParty[] = [];
+        
+        if (contract.clientName) {
+          fallbackParties.push({
+            legalName: contract.clientName,
+            role: 'Client',
+          });
+        }
+        
+        if (contract.supplierName) {
+          fallbackParties.push({
+            legalName: contract.supplierName,
+            role: 'Supplier',
+          });
+        }
+        
+        if (fallbackParties.length > 0) {
+          base.external_parties = fallbackParties;
+        }
+      }
+      
+      // Description/summary (built by API from artifacts)
+      if (!base.contract_short_description && contract.contract_short_description) {
+        base.contract_short_description = String(contract.contract_short_description);
+      }
+      
+      // Jurisdiction (from DB or AI extraction)
+      if (!base.jurisdiction && contract.jurisdiction) {
+        base.jurisdiction = String(contract.jurisdiction);
+      }
+      
+      // Contract type
+      if (!base.contract_type && contract.contractType) {
+        base.contract_type = String(contract.contractType);
+      }
+      
+      // Signature info (from DB columns)
+      if (contract.signature_date) base.signature_date = String(contract.signature_date);
+      if (contract.signature_status) base.signature_status = String(contract.signature_status);
+      if (contract.signature_required_flag !== undefined) base.signature_required_flag = Boolean(contract.signature_required_flag);
+      
+      // Document classification (from DB columns)
+      if (contract.document_classification) base.document_classification = String(contract.document_classification);
+      if (contract.document_classification_warning) base.document_classification_warning = String(contract.document_classification_warning);
+      
+      // Notice period (from DB)
+      if (contract.notice_period) base.notice_period = String(contract.notice_period);
+      if (contract.notice_period_days) base.notice_period_days = Number(contract.notice_period_days);
+      
+      // Reminder settings (if available)
+      if (contract.reminder_enabled !== undefined) base.reminder_enabled = Boolean(contract.reminder_enabled);
+      if (contract.reminder_days_before_end !== undefined) base.reminder_days_before_end = Number(contract.reminder_days_before_end);
     }
     
     // Map overview data from AI extraction (lowest priority) - handle wrapped values
@@ -2043,186 +1962,98 @@ export function EnhancedContractMetadataSection({
     {/* Celebration confetti */}
     <ConfettiCelebration show={showCelebration} />
     
-    <Card className="overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-      {/* Header with gradient */}
-      <CardHeader className="pb-6 bg-gradient-to-r from-slate-50 via-purple-50/50 to-purple-50/30 border-b border-slate-200/50">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          
-          {/* 100% completion badge */}
-          <AnimatePresence>
-            {overallProgress === 100 && (
-              <motion.div key="overall-progress"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="absolute top-4 right-4 z-10"
-              >
-                <Badge className="bg-gradient-to-r from-violet-500 to-violet-500 text-white border-0 px-3 py-1.5 shadow-lg">
-                  <PartyPopper className="h-4 w-4 mr-1.5" />
-                  Fully Verified!
-                </Badge>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <div className="flex items-start gap-4">
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-200/50">
-              <FileCheck className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <CardTitle className="text-xl font-bold text-slate-800">
-                Contract Metadata
-              </CardTitle>
-              <CardDescription className="mt-1 text-slate-500">
-                {isEditing ? 'Editing metadata - changes will be saved' : 'Core contract information and verification status'}
-              </CardDescription>
-            </div>
+    <Card className="overflow-hidden border border-slate-200 shadow-sm bg-white">
+      {/* Clean header */}
+      <CardHeader className="pb-4 border-b border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <CardTitle className="text-lg font-semibold text-slate-800">
+              Contract Metadata
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-500 mt-0.5">
+              {isEditing ? 'Make changes and click Save' : `${verifiedFieldsCount} of ${totalFieldsCount} fields verified`}
+            </CardDescription>
           </div>
           
-          {/* Stats Row */}
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* Progress Ring */}
-            <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
-              <ProgressRing progress={overallProgress} size={40} strokeWidth={3} />
-              <div className="text-sm">
-                <p className="font-semibold text-slate-700">{verifiedFieldsCount}/{totalFieldsCount}</p>
-                <p className="text-xs text-slate-500">Verified</p>
-              </div>
-            </div>
-            
-            {fieldsNeedingAttention.length > 0 && !isEditing && (
-              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 px-3 py-1.5 text-sm font-medium shadow-sm">
-                <AlertTriangle className="h-4 w-4 mr-1.5" />
-                {fieldsNeedingAttention.length} needs review
-              </Badge>
-            )}
-          </div>
-        </div>
-        
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 mt-4 flex-wrap">
-          {!isEditing ? (
-            <>
-              {allUnverifiedFields.length > 0 && (
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
+            {!isEditing ? (
+              <>
+                {fieldsNeedingAttention.length > 0 && (
+                  <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                    {fieldsNeedingAttention.length} need review
+                  </Badge>
+                )}
                 <Button 
                   size="sm"
                   variant="outline"
-                  onClick={handleVerifyAllFields}
-                  disabled={isVerifyingAll}
-                  className="border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300 rounded-xl px-4 h-10 font-medium shadow-sm"
+                  onClick={handleAIExtraction}
+                  disabled={isExtractingAI}
+                  className="h-8 text-xs"
                 >
-                  {isVerifyingAll ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Verifying...
-                    </>
+                  {isExtractingAI ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Verify All ({allUnverifiedFields.length})
-                    </>
+                    <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  AI Extract
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={() => setIsEditing(true)}
+                  className="h-8 text-xs bg-violet-600 hover:bg-violet-700"
+                >
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  Edit
+                </Button>
+              </>
+            ) : (
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                  className="h-8 text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="h-8 text-xs bg-violet-600 hover:bg-violet-700"
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    'Save'
                   )}
                 </Button>
-              )}
-              <Button 
-                size="sm"
-                variant="outline"
-                onClick={handleAIExtraction}
-                disabled={isExtractingAI}
-                className="border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300 rounded-xl px-4 h-10 font-medium shadow-sm"
-              >
-                {isExtractingAI ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Extracting...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    AI Extract
-                  </>
-                )}
-              </Button>
-              {verifiedFieldsCount > 0 && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        size="sm"
-                        variant="ghost"
-                        onClick={handleResetAllVerifications}
-                        disabled={isResettingAll}
-                        className="text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl h-10 font-medium"
-                      >
-                        {isResettingAll ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Undo2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Reset all verifications</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              <Button 
-                size="sm" 
-                onClick={() => setIsEditing(true)}
-                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white rounded-xl px-4 h-10 font-medium shadow-lg shadow-violet-200/50"
-              >
-                <Pencil className="h-4 w-4 mr-2" />
-                Edit Metadata
-              </Button>
-            </>
-          ) : (
-            <div className="flex gap-2">
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={handleCancel}
-                disabled={isSaving}
-                className="rounded-xl px-4 h-10 font-medium"
-              >
-                <X className="h-4 w-4 mr-2" />
-                Cancel
-              </Button>
-              <Button 
-                size="sm" 
-                onClick={handleSave}
-                disabled={isSaving}
-                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white rounded-xl px-4 h-10 font-medium shadow-lg shadow-violet-200/50"
-              >
-                {isSaving ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                Save Changes
-              </Button>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       </CardHeader>
       
-      <CardContent className="p-6 space-y-4">
+      <CardContent className="p-4 space-y-3">
         {/* Success Message */}
         <AnimatePresence>
           {saveSuccess && (
             <motion.div key="save-success"
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              className="p-4 bg-gradient-to-r from-violet-50 to-purple-50 border-2 border-violet-200 rounded-xl flex items-center gap-3 shadow-lg shadow-violet-100/50"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2"
             >
-              <div className="p-2 rounded-lg bg-violet-100">
-                <CheckCircle2 className="h-5 w-5 text-violet-600" />
-              </div>
-              <p className="text-sm font-semibold text-violet-700">Metadata saved successfully</p>
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <p className="text-sm text-emerald-700">Saved successfully</p>
             </motion.div>
           )}
         </AnimatePresence>
         
         {/* Sections */}
-        <div className="space-y-4">
+        <div className="space-y-2">
           <MetadataSection 
             section="identification" 
             metadata={metadata} 

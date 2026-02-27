@@ -492,6 +492,9 @@ model Contract {
   contractEmbeddings  ContractEmbedding[]
   contractMetadata    ContractMetadata?
   versions            ContractVersion[]
+  sourceRelationships ContractRelationship[]   @relation("SourceRelationships")
+  targetRelationships ContractRelationship[]   @relation("TargetRelationships")
+  alerts              ContractAlert[]
   embeddings          Embedding[]
   financialAnalysis   FinancialAnalysis[]
   overviewAnalysis    OverviewAnalysis[]
@@ -945,6 +948,76 @@ model ContractVersion {
   @@index([contractId])
   @@index([tenantId])
   @@index([isActive])
+}
+
+/// Contract Relationship - Links related contracts (SOWs to MSAs, Amendments, etc.)
+model ContractRelationship {
+  id               String @id @default(cuid())
+  tenantId         String @map("tenant_id")
+  sourceContractId String @map("source_contract_id")
+  targetContractId String @map("target_contract_id")
+  relationshipType String @map("relationship_type") // SOW_UNDER_MSA, AMENDMENT_TO_ORIGINAL, etc.
+  direction        String @default("bidirectional") @map("direction") // parent, child, sibling, bidirectional
+  confidence       Float  @default(0.5) @map("confidence") // 0-1
+  status           String @default("pending") @map("status") // pending, confirmed, auto_confirmed, rejected
+  detectedBy       String @default("manual") @map("detected_by") // ai, pattern, entity_match, manual, hybrid
+  evidence         Json?  @map("evidence") // Array of relationship evidence
+  metadata         Json?  @map("metadata") // Additional relationship data
+
+  // Confirmation tracking
+  confirmedBy String?   @map("confirmed_by")
+  confirmedAt DateTime? @map("confirmed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  sourceContract Contract @relation("SourceRelationships", fields: [sourceContractId], references: [id], onDelete: Cascade)
+  targetContract Contract @relation("TargetRelationships", fields: [targetContractId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceContractId, targetContractId, relationshipType])
+  @@index([tenantId])
+  @@index([sourceContractId])
+  @@index([targetContractId])
+  @@index([relationshipType])
+  @@index([status])
+  @@index([confidence])
+  @@index([tenantId, sourceContractId])
+  @@index([tenantId, targetContractId])
+  @@map("contract_relationships")
+}
+
+/// Contract Alert - Scheduled alerts for renewals, expirations, etc.
+model ContractAlert {
+  id            String    @id @default(cuid()) @map("id")
+  tenantId      String    @map("tenant_id")
+  contractId    String    @map("contract_id")
+  type          String    @map("type") // renewal, opt_out, notice, review, expiration
+  scheduledDate DateTime  @map("scheduled_date")
+  sentAt        DateTime? @map("sent_at")
+  priority      String    @default("medium") @map("priority") // critical, high, medium, low
+  status        String    @default("scheduled") @map("status") // scheduled, sent, dismissed, failed
+  channels      Json      @default("[]") @map("channels") // email, in_app, slack, sms
+  recipients    Json      @default("[]") @map("recipients") // Array of user IDs
+  message       String?   @map("message")
+  metadata      Json?     @map("metadata")
+  error         String?   @map("error")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([scheduledDate])
+  @@index([status])
+  @@index([type])
+  @@index([priority])
+  @@index([tenantId, status])
+  @@index([tenantId, scheduledDate])
+  @@map("contract_alerts")
 }
 
 model Artifact {
@@ -5821,12 +5894,13 @@ model AgentMemory {
 
 /// RFx Event — Request for Proposal/Quote/Information events
 model RFxEvent {
-  id          String  @id @default(uuid())
-  tenantId    String  @map("tenant_id")
-  title       String
-  description String? @db.Text
-  type        String // RFP, RFQ, RFI, Auction, RFT
-  status      String  @default("draft") // draft, published, open, closed, awarded, cancelled
+  id               String  @id @default(uuid())
+  tenantId         String  @map("tenant_id")
+  sourceContractId String? @map("source_contract_id") // Reference to contract being renewed/replaced
+  title            String
+  description      String? @db.Text
+  type             String // RFP, RFQ, RFI, Auction, RFT
+  status           String  @default("draft") // draft, published, open, closed, awarded, cancelled
 
   // Scope
   category       String?
@@ -5859,6 +5933,7 @@ model RFxEvent {
 
   @@index([tenantId, status])
   @@index([tenantId, type])
+  @@index([sourceContractId])
   @@index([responseDeadline])
   @@index([status, responseDeadline])
   @@map("rfx_events")

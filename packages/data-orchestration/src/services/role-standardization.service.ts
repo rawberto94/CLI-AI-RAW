@@ -393,7 +393,7 @@ Return JSON format:
         orderBy: [{ source: 'asc' }, { createdAt: 'desc' }],
       });
 
-      return mapping as RoleMapping | null;
+      return mapping as unknown as RoleMapping | null;
     } catch {
       return null;
     }

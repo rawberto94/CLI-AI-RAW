@@ -138,6 +138,6 @@ export const cacheAdaptor = new Proxy({} as CacheAdaptor, {
     if (!_lazyInstance) {
       _lazyInstance = CacheAdaptor.getInstance();
     }
-    return (_lazyInstance as Record<string, unknown>)[prop as string];
+    return (_lazyInstance as unknown as Record<string, unknown>)[prop as string];
   }
 });

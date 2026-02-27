@@ -629,3 +629,60 @@ export { SpendManagementService } from './spend-management.service';
 export { EnterpriseSecurityService } from './enterprise-security.service';
 export { AIGovernanceService } from './ai-governance.service';
 export { DocumentExpiryService } from './document-expiry.service';
+
+// ============================================================================
+// RELATIONSHIP & RENEWAL INTELLIGENCE SERVICES (Enhanced Features 5 & 6)
+// ============================================================================
+
+// AI-Powered Relationship Detection Service - Automatic contract linking
+export {
+  RelationshipDetectionService,
+  relationshipDetectionService,
+  type RelationshipType,
+  type RelationshipDirection,
+  type DetectedRelationship,
+  type RelationshipEvidence,
+  type RelationshipQuery,
+  type RelationshipGraph,
+  type ContractNode,
+  type RelationshipEdge,
+  type ContractCluster,
+  type NavigationSuggestion,
+} from './relationship-detection.service';
+
+// Renewal Intelligence Service - Comprehensive renewal management
+export {
+  RenewalIntelligenceService,
+  renewalIntelligenceService,
+  type RenewalRadarItem,
+  type RenewalCalendar,
+  type RenewalCalendarItem,
+  type PortfolioAnalytics,
+  type NegotiationOpportunity,
+  type AlertSchedule,
+  type RenewalPrediction,
+} from './renewal-intelligence.service';
+
+// Contract Hierarchy Service - Advanced tree operations and visual layouts
+export {
+  ContractHierarchyService,
+  contractHierarchyService,
+  type AncestorInfo,
+  type DescendantInfo,
+  type NodeRelationship,
+  type ContractTree,
+  type TreeStats,
+  type BreadcrumbItem,
+  type AmendmentChain,
+  type AmendmentVersion,
+  type AmendmentChange,
+  type ImpactAnalysis,
+  type DirectImpact,
+  type IndirectImpact,
+  type CascadeOperation,
+  type CascadeResult,
+  type VisualLayout,
+  type VisualNode,
+  type VisualEdge,
+  type LayoutConfig,
+} from './contract-hierarchy.service';

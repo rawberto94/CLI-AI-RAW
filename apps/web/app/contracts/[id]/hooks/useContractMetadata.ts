@@ -80,6 +80,8 @@ export function useContractMetadata(contract: ContractData | null) {
   // Support multiple possible locations for artifact data
   const overviewData = contract?.extractedData?.overview || contract?.extractedData?.metadata || contract?.metadata || contract?.overview
   const financialData = contract?.extractedData?.financial || contract?.financial
+  // Dedicated parties artifact (separate from overview)
+  const partiesData = contract?.extractedData?.parties
   
   // Helper to extract value from wrapped or direct values
   // AI may return { value: X, source: '...' } or just X
@@ -118,17 +120,28 @@ export function useContractMetadata(contract: ContractData | null) {
     
     // First check if contract has external_parties array (built by API from artifacts)
     if (contract.external_parties && Array.isArray(contract.external_parties) && contract.external_parties.length > 0) {
-      return contract.external_parties.filter((p: any) => p.legalName)
+      return contract.external_parties.filter((p: any) => p.legalName || p.name)
+    }
+    
+    // Check for dedicated PARTIES artifact (where AI often stores extracted parties)
+    // This can be: extractedData.parties (object with .parties array) or extractedData.parties (direct array)
+    const partiesArtifact = partiesData?.parties || partiesData
+    if (partiesArtifact && Array.isArray(partiesArtifact) && partiesArtifact.length > 0) {
+      return partiesArtifact
+        .filter((p: any) => unwrapValue(p.name) || unwrapValue(p.legalName) || p.legalName || p.name)
+        .map((p: any) => ({
+          legalName: unwrapValue(p.legalName) || unwrapValue(p.name) || p.legalName || p.name || '',
+          role: unwrapValue(p.role) || unwrapValue(p.type) || p.role || p.partyType || 'Party',
+          legalForm: unwrapValue(p.legalForm) || unwrapValue(p.entityType) || p.legalForm || ''
+        }))
     }
     
     // Fallback to AI-extracted parties from overview artifact
-    // Handle various possible structures
-    const partiesData = overviewData?.parties
-    if (partiesData && Array.isArray(partiesData) && partiesData.length > 0) {
-      return partiesData
+    const overviewParties = overviewData?.parties
+    if (overviewParties && Array.isArray(overviewParties) && overviewParties.length > 0) {
+      return overviewParties
         .filter((p: any) => unwrapValue(p.name) || unwrapValue(p.legalName) || p.value?.name)
         .map((p: any) => ({
-          // Handle wrapped values (e.g., { value: 'Name', source: '...' })
           legalName: unwrapValue(p.legalName) || unwrapValue(p.name) || p.value?.name || unwrapValue(p.value) || '',
           role: unwrapValue(p.role) || unwrapValue(p.type) || '',
           legalForm: unwrapValue(p.legalForm) || unwrapValue(p.entityType) || ''
@@ -179,7 +192,7 @@ export function useContractMetadata(contract: ContractData | null) {
     }
     
     return parties
-  }, [contract, overviewData, unwrapValue])
+  }, [contract, overviewData, partiesData, unwrapValue])
   
   const metadata: ContractMetadata = useMemo(() => {
     if (!contract) {

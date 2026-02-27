@@ -7,7 +7,7 @@
 
 declare const self: ServiceWorkerGlobalScope;
 
-const CACHE_NAME = 'contigo-v1';
+const CACHE_NAME = 'contigo-v2';
 const OFFLINE_URL = '/offline';
 
 // Static assets to cache

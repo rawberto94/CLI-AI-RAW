@@ -1,337 +1,422 @@
 /**
  * Contract Hierarchy API
- * PUT /api/contracts/[id]/hierarchy - Link to parent contract
- * DELETE /api/contracts/[id]/hierarchy - Unlink from parent contract
+ * 
+ * Advanced tree operations for contract relationships:
+ * - Full hierarchy building with multi-level parent/child support
+ * - Amendment chain tracking
+ * - Visual layout generation for UI
+ * - Impact analysis and cascade operations
+ * - Breadcrumb navigation
+ * 
+ * GET /api/contracts/[id]/hierarchy?action=tree - Get full tree
+ * GET /api/contracts/[id]/hierarchy?action=ancestors - Get ancestry chain
+ * GET /api/contracts/[id]/hierarchy?action=descendants - Get all descendants
+ * GET /api/contracts/[id]/hierarchy?action=siblings - Get siblings
+ * GET /api/contracts/[id]/hierarchy?action=amendments - Get amendment chain
+ * GET /api/contracts/[id]/hierarchy?action=impact - Get impact analysis
+ * GET /api/contracts/[id]/hierarchy?action=layout - Get visual layout
+ * GET /api/contracts/[id]/hierarchy?action=ui-data - Get UI-ready data
+ * POST /api/contracts/[id]/hierarchy?action=cascade - Execute cascade operation
+ * POST /api/contracts/[id]/hierarchy?action=amend - Create amendment
  */
 
 import { NextRequest } from 'next/server';
-import { prisma } from "@/lib/prisma";
-import { contractService } from 'data-orchestration/services';
-import { getServerTenantId } from "@/lib/tenant-server";
-import { publishRealtimeEvent } from "@/lib/realtime/publish";
-import { queueRAGReindex } from "@/lib/rag/reindex-helper";
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { contractHierarchyService } from 'data-orchestration/services';
+import { z } from 'zod';
 
-export const runtime = "nodejs";
+// Validation schemas
+const getHierarchySchema = z.object({
+  action: z.enum([
+    'tree',
+    'ancestors',
+    'descendants',
+    'siblings',
+    'amendments',
+    'impact',
+    'layout',
+    'ui-data',
+    'breadcrumb',
+    'family',
+  ]).default('tree'),
+  maxDepth: z.coerce.number().min(1).max(10).optional().default(3),
+  includeSiblings: z.coerce.boolean().optional().default(true),
+  minConfidence: z.coerce.number().min(0).max(1).optional().default(0.6),
+  view: z.enum(['tree', 'timeline', 'cluster', 'minimap']).optional().default('tree'),
+  expandLevel: z.coerce.number().optional().default(2),
+  orientation: z.enum(['vertical', 'horizontal', 'radial']).optional().default('vertical'),
+  operation: z.enum(['terminate', 'renew', 'amend', 'expire']).optional(),
+});
 
-// Link contract to a parent
-export async function PUT(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(req);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-  try {
-    const params = await context.params;
-    const contractId = params.id;
-    const tenantId = await getServerTenantId();
-    
-    if (!contractId) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
-    }
-    
-    const body = await req.json();
-    const { parentContractId, relationshipType, relationshipNote } = body;
-    
-    if (!parentContractId) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Parent contract ID is required', 400);
-    }
-    
-    // Verify both contracts exist and belong to the same tenant via service layer
-    const [contractResult, parentResult] = await Promise.all([
-      contractService.getContract(contractId, tenantId!),
-      contractService.getContract(parentContractId, tenantId!),
-    ]);
+const cascadeOperationSchema = z.object({
+  action: z.literal('cascade'),
+  operationType: z.enum(['notify', 'update_status', 'extend_dates', 'terminate']),
+  targetFilter: z.enum(['children', 'descendants', 'siblings', 'family']),
+  params: z.record(z.any()).optional().default({}),
+  dryRun: z.boolean().optional().default(true),
+});
 
-    const contract = contractResult.data;
-    const parentContract = parentResult.data;
-    
-    if (!contract) {
-      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
-    }
-    
-    if (!parentContract) {
-      return createErrorResponse(ctx, 'NOT_FOUND', 'Parent contract not found', 404);
-    }
-    
-    // Prevent self-linking
-    if (contractId === parentContractId) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract cannot be linked to itself', 400);
-    }
-    
-    // Prevent circular references - check if parent is already a child of this contract
-    const wouldCreateCycle = await checkForCycle(contractId, parentContractId, tenantId);
-    if (wouldCreateCycle) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'This link would create a circular reference', 400);
-    }
-    
-    // Update the contract with parent reference
-    const updatedContract = await prisma.contract.update({
-      where: { id: contractId },
-      data: {
-        parentContractId,
-        relationshipType: relationshipType || 'OTHER',
-        relationshipNote: relationshipNote || null,
-        linkedAt: new Date(),
-      },
-      include: {
-        parentContract: {
-          select: {
-            id: true,
-            contractTitle: true,
-            contractType: true,
-            status: true,
-            clientName: true,
-            supplierName: true,
-            effectiveDate: true,
-            expirationDate: true,
-          },
-        },
-      },
-    });
+const createAmendmentSchema = z.object({
+  action: z.literal('amend'),
+  title: z.string(),
+  description: z.string().optional(),
+  changes: z.array(z.object({
+    field: z.string(),
+    oldValue: z.string(),
+    newValue: z.string(),
+    type: z.enum(['added', 'modified', 'removed']),
+    significance: z.enum(['critical', 'major', 'minor']),
+  })).optional().default([]),
+  effectiveDate: z.string().datetime().optional(),
+});
 
-    await publishRealtimeEvent({
-      event: "contract:updated",
-      data: {
-        tenantId,
-        contractId,
-        parentContractId,
-      },
-      source: "api:contracts/[id]/hierarchy",
-    });
-
-    // Queue RAG re-indexing when hierarchy changes
-    await queueRAGReindex({
-      contractId,
-      tenantId: tenantId ?? '',
-      reason: 'hierarchy relationship linked',
-    });
-    
-    return createSuccessResponse(ctx, {
-      success: true,
-      contract: {
-        id: updatedContract.id,
-        parentContractId: updatedContract.parentContractId,
-        relationshipType: updatedContract.relationshipType,
-        relationshipNote: updatedContract.relationshipNote,
-        linkedAt: updatedContract.linkedAt?.toISOString(),
-        parentContract: updatedContract.parentContract ? {
-          id: updatedContract.parentContract.id,
-          title: updatedContract.parentContract.contractTitle || 'Untitled',
-          type: updatedContract.parentContract.contractType,
-          status: updatedContract.parentContract.status,
-          clientName: updatedContract.parentContract.clientName,
-          supplierName: updatedContract.parentContract.supplierName,
-          effectiveDate: updatedContract.parentContract.effectiveDate?.toISOString(),
-          expirationDate: updatedContract.parentContract.expirationDate?.toISOString(),
-        } : null,
-      },
-    });
-  } catch (error) {
-    return handleApiError(ctx, error);
-  }
-}
-
-// Unlink contract from parent
-export async function DELETE(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(req);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-  try {
-    const params = await context.params;
-    const contractId = params.id;
-    const tenantId = await getServerTenantId();
-    
-    if (!contractId) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
-    }
-    
-    // Verify contract exists via service layer
-    const contractResult = await contractService.getContract(contractId, tenantId!);
-    const contract = contractResult.data;
-    
-    if (!contract) {
-      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
-    }
-    
-    if (!(contract as any).parentContractId) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract is not linked to a parent', 400);
-    }
-    
-    // Remove the parent reference via service layer
-    const updateResult = await contractService.updateContract(contractId, tenantId!, {
-      parentContractId: null,
-      relationshipType: null,
-      relationshipNote: null,
-      linkedAt: null,
-    } as any);
-    const updatedContract = updateResult.data;
-
-    if (!updatedContract) {
-      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update contract', 500);
-    }
-
-    await publishRealtimeEvent({
-      event: "contract:updated",
-      data: {
-        tenantId,
-        contractId,
-        parentContractId: null,
-      },
-      source: "api:contracts/[id]/hierarchy",
-    });
-
-    // Queue RAG re-indexing when hierarchy changes
-    await queueRAGReindex({
-      contractId,
-      tenantId: tenantId ?? '',
-      reason: 'hierarchy relationship unlinked',
-    });
-    
-    return createSuccessResponse(ctx, {
-      success: true,
-      contract: {
-        id: updatedContract.id,
-        parentContractId: null,
-        relationshipType: null,
-        relationshipNote: null,
-        linkedAt: null,
-      },
-    });
-  } catch (error) {
-    return handleApiError(ctx, error);
-  }
-}
-
-// GET - Get hierarchy information
-export async function GET(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(req);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-  try {
-    const params = await context.params;
-    const contractId = params.id;
-    const tenantId = await getServerTenantId();
-    
-    if (!contractId) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
-    }
-    
-    const contract = await prisma.contract.findFirst({
-      where: { id: contractId, tenantId },
-      include: {
-        parentContract: {
-          select: {
-            id: true,
-            contractTitle: true,
-            contractType: true,
-            status: true,
-            clientName: true,
-            supplierName: true,
-            effectiveDate: true,
-            expirationDate: true,
-          },
-        },
-        childContracts: {
-          select: {
-            id: true,
-            contractTitle: true,
-            contractType: true,
-            status: true,
-            relationshipType: true,
-            clientName: true,
-            supplierName: true,
-            effectiveDate: true,
-            expirationDate: true,
-            totalValue: true,
-            createdAt: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
-      },
-    });
-    
-    if (!contract) {
-      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
-    }
-    
-    return createSuccessResponse(ctx, {
-      contractId: contract.id,
-      parentContractId: contract.parentContractId,
-      relationshipType: contract.relationshipType,
-      relationshipNote: contract.relationshipNote,
-      linkedAt: contract.linkedAt?.toISOString(),
-      parentContract: contract.parentContract ? {
-        id: contract.parentContract.id,
-        title: contract.parentContract.contractTitle || 'Untitled',
-        type: contract.parentContract.contractType,
-        status: contract.parentContract.status,
-        clientName: contract.parentContract.clientName,
-        supplierName: contract.parentContract.supplierName,
-        effectiveDate: contract.parentContract.effectiveDate?.toISOString(),
-        expirationDate: contract.parentContract.expirationDate?.toISOString(),
-      } : null,
-      childContracts: contract.childContracts?.map((child) => ({
-        id: child.id,
-        title: child.contractTitle || 'Untitled',
-        type: child.contractType,
-        status: child.status,
-        relationshipType: child.relationshipType,
-        clientName: child.clientName,
-        supplierName: child.supplierName,
-        effectiveDate: child.effectiveDate?.toISOString(),
-        expirationDate: child.expirationDate?.toISOString(),
-        totalValue: child.totalValue,
-        createdAt: child.createdAt?.toISOString(),
-      })) || [],
-    });
-  } catch (error) {
-    return handleApiError(ctx, error);
-  }
-}
-
-// Helper function to check for circular references
-async function checkForCycle(
-  contractId: string, 
-  potentialParentId: string, 
-  tenantId: string
-): Promise<boolean> {
-  // Walk up the ancestor chain of the potential parent
-  // If we find the current contract, we have a cycle
-  let currentId: string | null = potentialParentId;
-  const visited = new Set<string>();
+/**
+ * GET /api/contracts/[id]/hierarchy
+ */
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const { searchParams } = new URL(request.url);
   
-  while (currentId) {
-    if (visited.has(currentId)) {
-      // Already visited, break to avoid infinite loop
-      break;
-    }
-    visited.add(currentId);
-    
-    if (currentId === contractId) {
-      // Found the contract in the ancestor chain - would create a cycle
-      return true;
-    }
-    
-    const parent = await prisma.contract.findFirst({
-      where: { id: currentId, tenantId },
-      select: { parentContractId: true },
-    });
-    
-    currentId = parent?.parentContractId || null;
+  const validated = getHierarchySchema.safeParse({
+    action: searchParams.get('action') || 'tree',
+    maxDepth: searchParams.get('maxDepth') || undefined,
+    includeSiblings: searchParams.get('includeSiblings') || undefined,
+    minConfidence: searchParams.get('minConfidence') || undefined,
+    view: searchParams.get('view') || undefined,
+    expandLevel: searchParams.get('expandLevel') || undefined,
+    orientation: searchParams.get('orientation') || undefined,
+    operation: searchParams.get('operation') || undefined,
+  });
+
+  if (!validated.success) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', validated.error.message, 400);
   }
+
+  const params = validated.data;
   
-  return false;
-}
+  // Extract contract ID from URL
+  const urlParts = request.url.split('/');
+  const contractId = urlParts[urlParts.indexOf('contracts') + 1];
+
+  if (!contractId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
+  }
+
+  const tenantId = ctx.tenantId;
+
+  try {
+    switch (params.action) {
+      case 'tree': {
+        const tree = await contractHierarchyService.buildTree(contractId, tenantId, {
+          maxDepth: params.maxDepth,
+          includeSiblings: params.includeSiblings,
+          minConfidence: params.minConfidence,
+        });
+
+        return createSuccessResponse(ctx, {
+          tree: {
+            root: tree.root,
+            stats: tree.stats,
+            levels: tree.levels.map(level => level.map(n => n.id)),
+          },
+          breadcrumbs: tree.breadcrumbs,
+          metadata: {
+            totalNodes: tree.stats.totalNodes,
+            maxDepth: tree.stats.maxDepth,
+            totalValue: tree.stats.totalValue,
+            riskDistribution: tree.stats.riskDistribution,
+          },
+        });
+      }
+
+      case 'ancestors': {
+        const ancestors = await contractHierarchyService.getAncestry(contractId, tenantId, {
+          maxLevels: params.maxDepth,
+        });
+
+        return createSuccessResponse(ctx, {
+          ancestors,
+          count: ancestors.length,
+          rootId: ancestors.length > 0 ? ancestors[ancestors.length - 1].id : contractId,
+        });
+      }
+
+      case 'descendants': {
+        const descendants = await contractHierarchyService.getDescendants(contractId, tenantId, {
+          maxLevels: params.maxDepth,
+        });
+
+        return createSuccessResponse(ctx, {
+          descendants,
+          count: descendants.length,
+          byLevel: descendants.reduce((acc, d) => {
+            acc[d.level] = (acc[d.level] || 0) + 1;
+            return acc;
+          }, {} as Record<number, number>),
+        });
+      }
+
+      case 'siblings': {
+        const siblings = await contractHierarchyService.getSiblings(contractId, tenantId);
+
+        return createSuccessResponse(ctx, {
+          siblings,
+          count: siblings.length,
+        });
+      }
+
+      case 'amendments': {
+        const chain = await contractHierarchyService.buildAmendmentChain(contractId, tenantId);
+
+        return createSuccessResponse(ctx, {
+          chain,
+          currentVersion: chain.currentVersion,
+          isLatest: chain.isLatest,
+          hasPending: chain.hasPendingAmendments,
+        });
+      }
+
+      case 'impact': {
+        if (!params.operation) {
+          return createErrorResponse(ctx, 'VALIDATION_ERROR', 'operation parameter required', 400);
+        }
+
+        const impact = await contractHierarchyService.analyzeImpact(
+          contractId,
+          params.operation,
+          tenantId
+        );
+
+        return createSuccessResponse(ctx, {
+          impact,
+          riskLevel: impact.riskLevel,
+          directImpactCount: impact.directImpacts.length,
+          hasCriticalImpacts: impact.directImpacts.some(i => i.impact === 'critical'),
+        });
+      }
+
+      case 'layout': {
+        const layout = await contractHierarchyService.generateVisualLayout(
+          contractId,
+          tenantId,
+          {
+            orientation: params.orientation,
+          }
+        );
+
+        return createSuccessResponse(ctx, {
+          layout: {
+            nodes: layout.nodes,
+            edges: layout.edges,
+            bounds: layout.bounds,
+          },
+          config: layout.config,
+        });
+      }
+
+      case 'ui-data': {
+        const uiData = await contractHierarchyService.getUITreeData(
+          contractId,
+          tenantId,
+          {
+            view: params.view,
+            expandLevel: params.expandLevel,
+          }
+        );
+
+        return createSuccessResponse(ctx, {
+          view: params.view,
+          data: uiData,
+        });
+      }
+
+      case 'breadcrumb': {
+        const tree = await contractHierarchyService.buildTree(contractId, tenantId, {
+          maxDepth: 1,
+        });
+
+        return createSuccessResponse(ctx, {
+          breadcrumbs: tree.breadcrumbs,
+          currentLevel: tree.breadcrumbs.findIndex(b => b.isActive),
+          totalLevels: tree.breadcrumbs.length,
+        });
+      }
+
+      case 'family': {
+        const tree = await contractHierarchyService.buildTree(contractId, tenantId, {
+          maxDepth: 5,
+          includeSiblings: true,
+        });
+
+        // Extract contract family (MSA + all SOWs)
+        const root = tree.root;
+        const family = {
+          root: {
+            id: root.id,
+            title: root.title,
+            type: root.type,
+            value: root.value,
+          },
+          children: root.children.map(c => ({
+            id: c.id,
+            title: c.title,
+            type: c.type,
+            value: c.value,
+            relationship: c.relationships.find(r => r.targetId === root.id)?.type,
+          })),
+          siblings: root.siblings.map(s => ({
+            id: s.id,
+            title: s.title,
+            type: s.type,
+          })),
+          totalValue: root.children.reduce((sum, c) => sum + (c.value || 0), root.value || 0),
+          contractCount: 1 + root.children.length + root.siblings.length,
+        };
+
+        return createSuccessResponse(ctx, {
+          family,
+          stats: tree.stats,
+        });
+      }
+
+      default:
+        return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${params.action}`, 400);
+    }
+  } catch (error) {
+    console.error('[Hierarchy API] Error:', error);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to process request', 500);
+  }
+});
+
+/**
+ * POST /api/contracts/[id]/hierarchy
+ */
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const body = await request.json();
+  const action = body.action;
+
+  // Extract contract ID from URL
+  const urlParts = request.url.split('/');
+  const contractId = urlParts[urlParts.indexOf('contracts') + 1];
+
+  if (!contractId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
+  }
+
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
+
+  try {
+    // Cascade operation
+    if (action === 'cascade') {
+      const validated = cascadeOperationSchema.safeParse(body);
+      if (!validated.success) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', validated.error.message, 400);
+      }
+
+      const { operationType, targetFilter, params, dryRun } = validated.data;
+
+      const results = await contractHierarchyService.cascade(
+        contractId,
+        tenantId,
+        {
+          type: operationType,
+          targetFilter,
+          params,
+          dryRun,
+        }
+      );
+
+      return createSuccessResponse(ctx, {
+        results,
+        operation: operationType,
+        targetFilter,
+        dryRun,
+        affectedCount: results.length,
+        successCount: results.filter(r => r.success).length,
+        failureCount: results.filter(r => !r.success).length,
+      });
+    }
+
+    // Create amendment
+    if (action === 'amend') {
+      const validated = createAmendmentSchema.safeParse(body);
+      if (!validated.success) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', validated.error.message, 400);
+      }
+
+      const { title, description, changes, effectiveDate } = validated.data;
+
+      const result = await contractHierarchyService.createAmendment(
+        contractId,
+        tenantId,
+        userId,
+        {
+          title,
+          description,
+          changes,
+          effectiveDate: effectiveDate ? new Date(effectiveDate) : undefined,
+        }
+      );
+
+      return createSuccessResponse(ctx, {
+        amendment: {
+          id: result.amendmentId,
+          version: result.version,
+          parentContractId: contractId,
+        },
+        message: `Amendment v${result.version} created successfully`,
+      });
+    }
+
+    return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
+  } catch (error) {
+    console.error('[Hierarchy API] Error:', error);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 
+      error instanceof Error ? error.message : 'Failed to process request', 
+      500
+    );
+  }
+});
+
+/**
+ * DELETE /api/contracts/[id]/hierarchy
+ * Remove contract from hierarchy (unlink)
+ */
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const { searchParams } = new URL(request.url);
+  const relationshipId = searchParams.get('relationshipId');
+
+  if (!relationshipId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'relationshipId is required', 400);
+  }
+
+  const tenantId = ctx.tenantId;
+
+  try {
+    // Verify relationship belongs to tenant
+    const relationship = await prisma.contractRelationship.findFirst({
+      where: {
+        id: relationshipId,
+        tenantId,
+      },
+    });
+
+    if (!relationship) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Relationship not found', 404);
+    }
+
+    await prisma.contractRelationship.delete({
+      where: { id: relationshipId },
+    });
+
+    return createSuccessResponse(ctx, {
+      message: 'Contract unlinked from hierarchy',
+      relationshipId,
+      sourceContractId: relationship.sourceContractId,
+      targetContractId: relationship.targetContractId,
+    });
+  } catch (error) {
+    console.error('[Hierarchy API] Error:', error);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to unlink contract', 500);
+  }
+});

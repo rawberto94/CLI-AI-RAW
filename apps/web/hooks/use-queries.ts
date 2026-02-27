@@ -21,6 +21,14 @@ export interface Contract {
   };
   clientName?: string;
   supplierName?: string;
+  // External parties from AI extraction (array format with legalName and role)
+  externalParties?: Array<{
+    legalName: string;
+    role?: string;
+    legalForm?: string;
+    address?: string;
+    email?: string;
+  }>;
   value?: number;
   effectiveDate?: string;
   expirationDate?: string;

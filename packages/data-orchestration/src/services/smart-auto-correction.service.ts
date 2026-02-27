@@ -155,7 +155,7 @@ export class SmartAutoCorrectionService {
   
   constructor() {
     this.initializeBuiltInRules();
-    logger.info('Smart auto-correction service initialized', { ruleCount: this.rules.size });
+    logger.info('Smart auto-correction service initialized');
   }
   
   /**
@@ -165,7 +165,7 @@ export class SmartAutoCorrectionService {
     data: Record<string, unknown>,
     context: Partial<CorrectionContext> = {}
   ): CorrectionResult {
-    logger.debug('Applying corrections', { fieldCount: Object.keys(data).length });
+    logger.debug('Applying corrections');
     
     const corrections: AppliedCorrection[] = [];
     const confidenceAdjustments: Record<string, number> = {};
@@ -229,7 +229,7 @@ export class SmartAutoCorrectionService {
             }
           }
         } catch (error) {
-          logger.warn('Correction rule failed', { ruleId: rule.id, field, error });
+          logger.warn('Correction rule failed');
         }
       }
       
@@ -956,7 +956,7 @@ export class SmartAutoCorrectionService {
     existing.push(rule);
     this.fieldSpecificRules.set(fieldKey, existing);
     
-    logger.debug('Added correction rule', { ruleId: rule.id, field: rule.field });
+    logger.debug('Added correction rule');
   }
   
   /**
@@ -997,7 +997,7 @@ export class SmartAutoCorrectionService {
     
     this.learnedPatterns.set(field, existing);
     
-    logger.debug('Learned correction pattern', { field, pattern: pattern.originalPattern });
+    logger.debug('Learned correction pattern');
   }
   
   /**

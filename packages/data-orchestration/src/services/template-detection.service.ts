@@ -424,7 +424,7 @@ export class TemplateDetectionService {
       this.familySignatures.set(sig.family, familyList);
     }
     
-    logger.info('Template detection service initialized', { signatureCount: this.signatures.size });
+    logger.info('Template detection service initialized');
   }
   
   /**
@@ -733,7 +733,7 @@ export class TemplateDetectionService {
     family: TemplateFamily,
     fieldMappings?: TemplateFieldMapping[]
   ): TemplateSignature {
-    logger.info('Learning new template signature', { templateName, family });
+    logger.info('Learning new template signature');
     
     // Extract structure from document
     const sections = this.extractDocumentStructure(documentText);
