@@ -155,9 +155,10 @@ export function useContractsPageActions({
       }).finally(() => clearTimeout(timeoutId));
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error || data?.details || "Delete failed");
+      // Invalidate cache FIRST, then refetch
+      await crossModule.onContractChange(contractId);
       await refetch();
       await refetchStats();
-      crossModule.onContractChange(contractId);
       toast.success("Contract deleted successfully");
     } catch (error) {
       if (error instanceof Error) {
@@ -198,10 +199,11 @@ export function useContractsPageActions({
       }
       const failedCount = data?.failed ?? 0;
       const deletedCount = data?.deleted ?? selectedContracts.size;
+      // Invalidate cache FIRST, then refetch
+      await crossModule.onContractChange();
       await queryClient.invalidateQueries({ queryKey: queryKeys.contracts.all, refetchType: "all" });
       await refetchStats();
       await refetch();
-      crossModule.onContractChange();
       if (failedCount > 0) {
         toast.warning(`Deleted ${deletedCount} contracts, ${failedCount} failed`);
       } else {

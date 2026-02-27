@@ -1019,20 +1019,20 @@ export function useCrossModuleInvalidation() {
      * Call when a contract is uploaded or updated
      * Updates: contracts, dashboard, rate cards (if applicable), analytics
      */
-    onContractChange: (contractId?: string) => {
+    onContractChange: async (contractId?: string) => {
       // Force refetch all contract queries immediately
-      queryClient.invalidateQueries({ 
+      await queryClient.invalidateQueries({ 
         queryKey: queryKeys.contracts.all,
         refetchType: 'all',
       });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['renewals'] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.dashboard() });
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      await queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
+      await queryClient.invalidateQueries({ queryKey: ['renewals'] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.analytics.dashboard() });
       if (contractId) {
-        queryClient.invalidateQueries({ queryKey: ['contract-rate-cards', contractId] });
-        queryClient.invalidateQueries({ queryKey: ['contract-artifacts', contractId] });
-        queryClient.invalidateQueries({ queryKey: ['contract-health', contractId] });
+        await queryClient.invalidateQueries({ queryKey: ['contract-rate-cards', contractId] });
+        await queryClient.invalidateQueries({ queryKey: ['contract-artifacts', contractId] });
+        await queryClient.invalidateQueries({ queryKey: ['contract-health', contractId] });
       }
     },
     
