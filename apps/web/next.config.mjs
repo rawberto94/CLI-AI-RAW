@@ -41,7 +41,7 @@ const nextConfig = {
     // Type checking done via turbo task
     ignoreBuildErrors: true,
   },
-  // output: "standalone",
+  output: "standalone",
   
   // Prevent static generation timeout issues
   staticPageGenerationTimeout: 30,
