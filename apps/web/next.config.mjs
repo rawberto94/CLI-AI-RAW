@@ -130,11 +130,10 @@ const nextConfig = {
   },
 
   experimental: {
-    // Disabled worker threads to prevent build hangs
-    // webpackBuildWorker: true,
-    // Re-enable parallelServerBuildTraces - required for standalone output tracing
+    // Build workers required for parallelServerBuildTraces and standalone output tracing
+    webpackBuildWorker: true,
     parallelServerBuildTraces: true,
-    // parallelServerCompiles: true,
+    parallelServerCompiles: true,
     externalDir: true,
     // Partial Pre-Rendering – requires Next.js canary; enable when upgrading:
     // ppr: 'incremental',
