@@ -150,8 +150,26 @@ export default function PlatformAdminPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to create tenant");
+        // Handle empty or non-JSON responses gracefully
+        let errorMessage = "Failed to create tenant";
+        try {
+          const text = await res.text();
+          if (text) {
+            const data = JSON.parse(text);
+            errorMessage = data.error || data.message || errorMessage;
+          } else {
+            // Empty response - check status code
+            if (res.status === 403) {
+              errorMessage = "Access denied. Please ensure you are logged in and refresh your session.";
+            } else if (res.status === 401) {
+              errorMessage = "Authentication required. Please sign in again.";
+            }
+          }
+        } catch {
+          // Response was not JSON - might be HTML error page
+          errorMessage = `Server error (${res.status}). Please try again.`;
+        }
+        throw new Error(errorMessage);
       }
 
       toast.success("Client organization created successfully");
