@@ -43,6 +43,9 @@ RUN pnpm --filter clients-db exec prisma generate
 RUN pnpm --filter @repo/data-orchestration build
 RUN pnpm --filter clients-db build || true
 
+# Cache bust ARG - changes invalidate all subsequent layers
+ARG CACHE_BUST=default
+
 # Build Next.js app with increased memory
 WORKDIR /app/apps/web
 ENV NEXT_TELEMETRY_DISABLED=1
