@@ -239,3 +239,23 @@ export async function broadcastOpportunity(tenantId: string, opportunity: any) {
     logger.error('Broadcast error:', error);
   }
 }
+
+/**
+ * Generic SSE broadcast function
+ * Used by goals API and orchestrator for HITL events
+ */
+export async function broadcastSSE(tenantId: string, event: string, data: any) {
+  try {
+    if (tenantId === '*') {
+      // Broadcast to all tenants - get all tenant keys and broadcast
+      const tenantKeys = Array.from(clients.keys());
+      await Promise.all(tenantKeys.map(tid => 
+        redis.publish(`sse:${tid}`, JSON.stringify({ event, data }))
+      ));
+    } else {
+      await redis.publish(`sse:${tenantId}`, JSON.stringify({ event, data }));
+    }
+  } catch (error) {
+    logger.error('Broadcast SSE error:', error);
+  }
+}

@@ -43,16 +43,16 @@ const cache = new Map<string, PatternCache>();
  */
 function getPrisma(): any | null {
   try {
-    // Workers package
-     
-    const clientsDb = require('clients-db');
-    const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
-    return getClient();
+    // Next.js app — try this first since it's the primary use case
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('@/lib/prisma').prisma;
   } catch {
     try {
-      // Next.js app — dynamic import style
-       
-      return require('@/lib/prisma').prisma;
+      // Workers package - dynamic import to avoid webpack bundling
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const clientsDb = require('clients-db');
+      const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
+      return getClient();
     } catch {
       return null;
     }

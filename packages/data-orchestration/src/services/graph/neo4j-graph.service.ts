@@ -114,19 +114,41 @@ export interface TemporalEvent {
 // ============================================================================
 
 export class Neo4jGraphService {
-  private driver: Driver;
-  private openai: OpenAI;
+  private _driver: Driver | null = null;
+  private _openai: OpenAI | null = null;
   private embeddingCache: Map<string, number[]> = new Map();
+  private initialized: boolean = false;
+
+  // Lazy getter for driver - only creates connection when actually needed
+  private get driver(): Driver {
+    if (!this._driver) {
+      const uri = process.env.NEO4J_URI;
+      if (!uri) {
+        throw new Error('Neo4j not configured: NEO4J_URI environment variable is required');
+      }
+      const user = process.env.NEO4J_USER || 'neo4j';
+      const password = process.env.NEO4J_PASSWORD || 'password';
+      
+      this._driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
+      
+      // Initialize schema on first connection
+      if (!this.initialized) {
+        this.initialized = true;
+        this.initializeSchema().catch(console.error);
+      }
+    }
+    return this._driver;
+  }
+
+  private get openai(): OpenAI {
+    if (!this._openai) {
+      this._openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    }
+    return this._openai;
+  }
   
   constructor() {
-    const uri = process.env.NEO4J_URI || 'bolt://localhost:7687';
-    const user = process.env.NEO4J_USER || 'neo4j';
-    const password = process.env.NEO4J_PASSWORD || 'password';
-    
-    this.driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
-    this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    
-    this.initializeSchema().catch(console.error);
+    // Lazy initialization - no connection created until first use
   }
 
   // ============================================================================
@@ -974,9 +996,19 @@ export class Neo4jGraphService {
   }
 
   async close(): Promise<void> {
-    await this.driver.close();
+    if (this._driver) {
+      await this._driver.close();
+      this._driver = null;
+    }
+  }
+
+  /**
+   * Check if Neo4j is configured (has URI)
+   */
+  isConfigured(): boolean {
+    return !!process.env.NEO4J_URI;
   }
 }
 
-// Export singleton instance
+// Export singleton instance - no connection made until first actual use
 export const neo4jGraphService = new Neo4jGraphService();
