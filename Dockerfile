@@ -30,6 +30,9 @@ RUN apk add --no-cache libc6-compat openssl
 # Install pnpm
 RUN npm install -g pnpm@8.9.0
 
+# Cache bust ARG - invalidates all subsequent layers when changed
+ARG CACHE_BUST=default
+
 # Copy source code first
 COPY . .
 
@@ -42,9 +45,6 @@ RUN pnpm --filter clients-db exec prisma generate
 # Build packages that the web app depends on
 RUN pnpm --filter @repo/data-orchestration build
 RUN pnpm --filter clients-db build || true
-
-# Cache bust ARG - changes invalidate all subsequent layers
-ARG CACHE_BUST=default
 
 # Build Next.js app with increased memory
 WORKDIR /app/apps/web
