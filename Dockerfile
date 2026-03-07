@@ -32,6 +32,7 @@ RUN npm install -g pnpm@8.9.0
 
 # Cache bust ARG - invalidates all subsequent layers when changed
 ARG CACHE_BUST=default
+RUN echo "Cache bust: ${CACHE_BUST}"
 
 # Copy source code first
 COPY . .

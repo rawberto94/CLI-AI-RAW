@@ -43,17 +43,6 @@ const nextConfig = {
   },
   output: "standalone",
   
-  // Prevent static generation timeout issues
-  staticPageGenerationTimeout: 30,
-  
-  // Disable image optimization during build
-  images: {
-    unoptimized: true,
-  },
-  
-  // Disable static export for all pages (force SSR)
-  trailingSlash: false,
-  
   // External packages that should not be bundled (native modules)
   serverExternalPackages: [
     'ssh2',
@@ -62,17 +51,12 @@ const nextConfig = {
     'sharp',
     '@prisma/client',
     '@repo/db',
-    'clients-db',
     'pino',
     'pino-pretty',
-    'thread-stream',
-    'sonic-boom',
-    'tiktoken',
     'bullmq',
     'ioredis',
     'perf_hooks',
     'crypto',
-    'neo4j-driver',
     '@opentelemetry/sdk-node',
     '@opentelemetry/auto-instrumentations-node',
     '@opentelemetry/exporter-trace-otlp-http',
@@ -130,13 +114,11 @@ const nextConfig = {
   },
 
   experimental: {
-    // Build workers required for parallelServerBuildTraces and standalone output tracing
+    // Enable for Next.js 15.5+
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
     externalDir: true,
-    // Partial Pre-Rendering – requires Next.js canary; enable when upgrading:
-    // ppr: 'incremental',
     // Optimized package imports - reduces bundle size significantly
     optimizePackageImports: [
       'lucide-react',
@@ -168,14 +150,6 @@ const nextConfig = {
     fetches: {
       fullUrl: process.env.NODE_ENV === 'development',
     },
-  },
-
-
-  
-  // Turbopack HMR stability improvements
-  turbopack: {
-    // Reduce HMR issues by limiting concurrent updates
-    resolveExtensions: ['.tsx', '.ts', '.jsx', '.js', '.json', '.mjs', '.wasm'],
   },
 
   // Minimal webpack configuration
@@ -221,62 +195,41 @@ const nextConfig = {
       if (!existingHotModuleReplacementPlugin) {
         config.plugins.push(new webpack.HotModuleReplacementPlugin());
       }
+
+      // Add better error overlay configuration
+      config.devServer = {
+        ...config.devServer,
+        client: {
+          overlay: {
+            errors: true,
+            warnings: false,
+            runtimeErrors: false,
+          },
+          reconnect: 5,
+        },
+      };
     }
 
+    // Only apply optimizations in development mode to reduce memory usage
     // Skip for Edge Runtime — it needs its own ESM-compatible chunk format
-    if (nextRuntime !== 'edge') {
-      const isProd = process.env.NODE_ENV === 'production';
+    if (process.env.NODE_ENV !== 'production' && nextRuntime !== 'edge') {
       config.optimization = {
         ...config.optimization,
-        minimize: isProd,
+        minimize: false,
         moduleIds: 'deterministic',
-        usedExports: isProd, // Only in production — conflicts with cacheUnaffected in dev
-        ...(isProd ? {} : { runtimeChunk: 'single' }),
+        runtimeChunk: 'single',
         splitChunks: {
           chunks: 'all',
-          minSize: 20000,
-          maxSize: 244000, // Stay under 250KB for HTTP/2
-          maxInitialRequests: 25,
+          maxSize: 244000, // Split large chunks
           cacheGroups: {
             default: false,
             vendors: false,
-            // Core framework — stable, cached long-term
-            framework: {
-              test: /[\\/]node_modules[\\/](react|react-dom|next|scheduler)[\\/]/,
-              name: 'framework',
-              chunks: 'all',
-              priority: 50,
-              enforce: true,
-            },
-            // UI component libraries
-            ui: {
-              test: /[\\/]node_modules[\\/](@radix-ui|@headlessui|class-variance-authority|clsx)[\\/]/,
-              name: 'ui-vendor',
-              chunks: 'all',
-              priority: 40,
-            },
-            // AI/ML libraries — async loaded
-            ai: {
-              test: /[\\/]node_modules[\\/](langchain|@langchain|openai|anthropic)[\\/]/,
-              name: 'ai-vendor',
-              chunks: 'async',
-              priority: 30,
-            },
-            // Charts and visualization — async loaded
-            viz: {
-              test: /[\\/]node_modules[\\/](recharts|d3|chart\.js)[\\/]/,
-              name: 'viz-vendor',
-              chunks: 'async',
-              priority: 30,
-            },
-            // Common shared code
             commons: {
               name: 'commons',
               minChunks: 2,
               priority: 20,
               reuseExistingChunk: true,
             },
-            // Remaining vendor code
             lib: {
               test: /[\\/]node_modules[\\/]/,
               name(module) {
@@ -286,9 +239,10 @@ const nextConfig = {
                 return `lib.${packageName.replace('@', '')}`;
               },
               priority: 10,
-              reuseExistingChunk: true,
             },
           },
+          maxInitialRequests: 25,
+          minSize: 20000,
         },
       };
       
@@ -416,12 +370,6 @@ const nextConfig = {
       use: "null-loader",
     });
 
-    // Fix readable-stream/passthrough import issue with archiver
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      'readable-stream/passthrough': 'readable-stream/lib/_stream_passthrough.js',
-    };
-
     return config;
   },
 
@@ -475,26 +423,6 @@ const nextConfig = {
       {
         // Cache static assets aggressively
         source: "/static/(.*)",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
-        ],
-      },
-      {
-        // Cache contract artifact API responses (private, short TTL with SWR)
-        source: "/api/contracts/:id/artifacts",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "private, max-age=300, stale-while-revalidate=86400",
-          },
-        ],
-      },
-      {
-        // Cache _next/static immutably (hashed filenames)
-        source: "/_next/static/(.*)",
         headers: [
           {
             key: "Cache-Control",
