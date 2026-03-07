@@ -81,6 +81,7 @@ jobs:
           NEXT_BUILD: true
           LOG_LEVEL: silent
           DATABASE_URL: postgresql://user:pass@localhost:5432/test
+          DIRECT_DATABASE_URL: postgresql://user:pass@localhost:5432/test
           SKIP_ENV_VALIDATION: true
         continue-on-error: true
         
@@ -133,6 +134,7 @@ jobs:
         run: cd packages/clients/db && pnpm prisma migrate deploy
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+          DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
           
       - name: Verify agent tables
         run: |
