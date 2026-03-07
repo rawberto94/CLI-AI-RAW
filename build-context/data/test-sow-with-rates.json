@@ -1,0 +1,178 @@
+{
+  "filename": "Acme-IT-Services-SOW-2024.pdf",
+  "tenantId": "demo",
+  "originalContent": "STATEMENT OF WORK\n\nProject: Digital Transformation Initiative\nClient: Acme Corporation\nVendor: GlobalTech Consulting LLC\nEffective Date: January 1, 2024\nEnd Date: December 31, 2024\n\nSCOPE OF WORK:\nGlobalTech will provide IT professional services for Acme's digital transformation project including software development, cloud architecture, data engineering, and project management.\n\nRATE CARD:\n\nSoftware Development:\n- Senior Software Developer: $950/day (8 resources)\n- Software Developer: $750/day (15 resources)\n- Junior Software Developer: $450/day (10 resources)\n\nCloud & Infrastructure:\n- Senior Cloud Architect: $1,100/day (4 resources)\n- Cloud Engineer: $850/day (8 resources)\n- DevOps Engineer: $800/day (6 resources)\n\nData & Analytics:\n- Senior Data Engineer: $1,000/day (5 resources)\n- Data Engineer: $750/day (10 resources)\n- Data Analyst: $600/day (8 resources)\n\nProject Management:\n- Senior Project Manager: $1,200/day (3 resources)\n- Project Manager: $900/day (5 resources)\n- Scrum Master: $750/day (6 resources)\n\nQuality Assurance:\n- Senior QA Engineer: $800/day (4 resources)\n- QA Engineer: $600/day (8 resources)\n- Test Automation Engineer: $700/day (6 resources)\n\nBusiness Analysis:\n- Senior Business Analyst: $950/day (4 resources)\n- Business Analyst: $700/day (8 resources)\n\nSecurity:\n- Security Architect: $1,300/day (2 resources)\n- Security Engineer: $950/day (4 resources)\n\nTOTAL CONTRACT VALUE: $45,000,000\nESTIMATED FTE DAYS: 50,000\nPAYMENT TERMS: Net 30\nLOCATION: USA (Mixed onshore/nearshore)\nCURRENCY: USD\n\nTERMS AND CONDITIONS:\n- All rates are daily rates based on 8-hour workdays\n- Resources will be assigned based on project needs\n- Rates are fixed for the contract duration\n- Travel expenses will be billed separately\n- Resources can be scaled up or down with 2 weeks notice\n\nSigned: John Anderson, VP of IT, Acme Corporation\nDate: January 1, 2024\n\nSigned: Maria Rodriguez, Managing Director, GlobalTech Consulting\nDate: January 1, 2024",
+  "rateCardEntries": [
+    {
+      "role": "Senior Software Developer",
+      "seniority": "SENIOR",
+      "dailyRate": 950,
+      "quantity": 8,
+      "categoryL1": "Information Technology",
+      "categoryL2": "Software Development",
+      "country": "USA"
+    },
+    {
+      "role": "Software Developer",
+      "seniority": "MID",
+      "dailyRate": 750,
+      "quantity": 15,
+      "categoryL1": "Information Technology",
+      "categoryL2": "Software Development",
+      "country": "USA"
+    },
+    {
+      "role": "Junior Software Developer",
+      "seniority": "JUNIOR",
+      "dailyRate": 450,
+      "quantity": 10,
+      "categoryL1": "Information Technology",
+      "categoryL2": "Software Development",
+      "country": "USA"
+    },
+    {
+      "role": "Senior Cloud Architect",
+      "seniority": "SENIOR",
+      "dailyRate": 1100,
+      "quantity": 4,
+      "categoryL1": "Information Technology",
+      "categoryL2": "Cloud Services",
+      "country": "USA"
+    },
+    {
+      "role": "Cloud Engineer",
+      "seniority": "MID",
+      "dailyRate": 850,
+      "quantity": 8,
+      "categoryL1": "Information Technology",
+      "categoryL2": "Cloud Services",
+      "country": "USA"
+    },
+    {
+      "role": "DevOps Engineer",
+      "seniority": "MID",
+      "dailyRate": 800,
+      "quantity": 6,
+      "categoryL1": "Information Technology",
+      "categoryL2": "DevOps",
+      "country": "USA"
+    },
+    {
+      "role": "Senior Data Engineer",
+      "seniority": "SENIOR",
+      "dailyRate": 1000,
+      "quantity": 5,
+      "categoryL1": "Information Technology",
+      "categoryL2": "Data Engineering",
+      "country": "USA"
+    },
+    {
+      "role": "Data Engineer",
+      "seniority": "MID",
+      "dailyRate": 750,
+      "quantity": 10,
+      "categoryL1": "Information Technology",
+      "categoryL2": "Data Engineering",
+      "country": "USA"
+    },
+    {
+      "role": "Data Analyst",
+      "seniority": "MID",
+      "dailyRate": 600,
+      "quantity": 8,
+      "categoryL1": "Information Technology",
+      "categoryL2": "Data Analytics",
+      "country": "USA"
+    },
+    {
+      "role": "Senior Project Manager",
+      "seniority": "SENIOR",
+      "dailyRate": 1200,
+      "quantity": 3,
+      "categoryL1": "Professional Services",
+      "categoryL2": "Project Management",
+      "country": "USA"
+    },
+    {
+      "role": "Project Manager",
+      "seniority": "MID",
+      "dailyRate": 900,
+      "quantity": 5,
+      "categoryL1": "Professional Services",
+      "categoryL2": "Project Management",
+      "country": "USA"
+    },
+    {
+      "role": "Scrum Master",
+      "seniority": "MID",
+      "dailyRate": 750,
+      "quantity": 6,
+      "categoryL1": "Professional Services",
+      "categoryL2": "Agile Coaching",
+      "country": "USA"
+    },
+    {
+      "role": "Senior QA Engineer",
+      "seniority": "SENIOR",
+      "dailyRate": 800,
+      "quantity": 4,
+      "categoryL1": "Information Technology",
+      "categoryL2": "Quality Assurance",
+      "country": "USA"
+    },
+    {
+      "role": "QA Engineer",
+      "seniority": "MID",
+      "dailyRate": 600,
+      "quantity": 8,
+      "categoryL1": "Information Technology",
+      "categoryL2": "Quality Assurance",
+      "country": "USA"
+    },
+    {
+      "role": "Test Automation Engineer",
+      "seniority": "MID",
+      "dailyRate": 700,
+      "quantity": 6,
+      "categoryL1": "Information Technology",
+      "categoryL2": "Test Automation",
+      "country": "USA"
+    },
+    {
+      "role": "Senior Business Analyst",
+      "seniority": "SENIOR",
+      "dailyRate": 950,
+      "quantity": 4,
+      "categoryL1": "Professional Services",
+      "categoryL2": "Business Analysis",
+      "country": "USA"
+    },
+    {
+      "role": "Business Analyst",
+      "seniority": "MID",
+      "dailyRate": 700,
+      "quantity": 8,
+      "categoryL1": "Professional Services",
+      "categoryL2": "Business Analysis",
+      "country": "USA"
+    },
+    {
+      "role": "Security Architect",
+      "seniority": "SENIOR",
+      "dailyRate": 1300,
+      "quantity": 2,
+      "categoryL1": "Information Technology",
+      "categoryL2": "Security",
+      "country": "USA"
+    },
+    {
+      "role": "Security Engineer",
+      "seniority": "MID",
+      "dailyRate": 950,
+      "quantity": 4,
+      "categoryL1": "Information Technology",
+      "categoryL2": "Security",
+      "country": "USA"
+    }
+  ]
+}

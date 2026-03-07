@@ -1,0 +1,75 @@
+{
+  "name": "next-gen-contract-intelligence",
+  "version": "2.0.0",
+  "packageManager": "pnpm@8.9.0",
+  "description": "Next-Generation Contract Intelligence System with Advanced Integration",
+  "type": "module",
+  "prisma": {
+    "schema": "packages/clients/db/schema.prisma"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=web",
+    "dev:workers": "turbo run dev --filter=workers",
+    "dev:all": "bash scripts/start-all.sh",
+    "stop:all": "bash scripts/stop-all.sh",
+    "build": "turbo run build",
+    "build:web": "turbo run build --filter=web",
+    "build:workers": "turbo run build --filter=workers",
+    "build:clients": "bash scripts/build-clients.sh",
+    "start": "pnpm --filter web run start",
+    "websocket": "pnpm --filter web run ws:server",
+    "workers:start": "pnpm --filter workers run start",
+    "api": "cd packages/data-orchestration && node api-server.js",
+    "test": "bash scripts/start-test-services.sh && turbo run test --filter=web",
+    "test:unit": "turbo run test:unit",
+    "test:e2e": "turbo run test:e2e --filter=web",
+    "test:e2e:ui": "pnpm --filter web run test:e2e:ui",
+    "test:rag-integration": "tsx scripts/test-rag-integration.ts",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run type-check",
+    "services": "bash .devcontainer/start-services.sh",
+    "services:test": "bash scripts/start-test-services.sh",
+    "setup": "bash .devcontainer/setup.sh",
+    "verify": "bash scripts/verify-production-readiness.sh",
+    "db:migrate": "pnpm exec prisma migrate deploy --schema packages/clients/db/schema.prisma",
+    "db:generate": "pnpm exec prisma generate --schema packages/clients/db/schema.prisma",
+    "db:studio": "pnpm exec prisma studio --schema packages/clients/db/schema.prisma",
+    "db:push": "pnpm exec prisma db push --schema packages/clients/db/schema.prisma",
+    "db:seed": "pnpm exec prisma db seed --schema packages/clients/db/schema.prisma"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/jspdf": "^2.0.0",
+    "dotenv-cli": "^10.0.0",
+    "nodemon": "^3.0.0",
+    "turbo": "^2.7.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "zod": "3.23.8",
+      "zod-to-json-schema": "3.23.5"
+    },
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "@sentry/cli",
+      "@vercel/speed-insights",
+      "aws-sdk",
+      "bcrypt",
+      "core-js",
+      "es5-ext",
+      "esbuild",
+      "fsevents",
+      "keytar",
+      "msgpackr-extract",
+      "node-sass",
+      "prisma",
+      "protobufjs",
+      "puppeteer",
+      "sharp",
+      "tesseract.js",
+      "unrs-resolver"
+    ]
+  }
+}

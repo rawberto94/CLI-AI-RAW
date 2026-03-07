@@ -1,0 +1,5417 @@
+// Note: This project uses Prisma 5.x. The datasource URL uses env() which is the
+// standard approach for Prisma 5.x. Prisma 7+ requires different configuration.
+// If using VS Code Prisma extension with Prisma 7 defaults, you can ignore the warning
+// or pin to Prisma 6 mode in extension settings.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x", "linux-musl"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+model Tenant {
+  id                      String                   @id @default(cuid())
+  name                    String                   @unique
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  slug                    String                   @unique
+  status                  TenantStatus             @default(ACTIVE)
+  auditLogs               AuditLog[]
+  contracts               Contract[]
+  templates               ContractTemplate[]
+  metrics                 Metric[]
+  configuration           TenantConfig?
+  subscription            TenantSubscription?
+  usage                   TenantUsage?
+  users                   User[]
+  invitations             TeamInvitation[]
+  contractDrafts          ContractDraft[]
+  chatConversations       ChatConversation[]
+  obligationNotifications ObligationNotification[]
+  obligations             Obligation[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Team invitation for multi-tenant user onboarding
+model TeamInvitation {
+  id         String           @id @default(cuid())
+  tenantId   String
+  email      String
+  role       String           @default("member")
+  token      String           @unique
+  status     InvitationStatus @default(PENDING)
+  invitedBy  String?
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([email])
+  @@index([tenantId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+model TenantConfig {
+  id                 String   @id @default(cuid())
+  tenantId           String   @unique
+  aiModels           Json     @default("{}")
+  aiCostBudget       Decimal? @db.Decimal(10, 2)
+  aiCostAlerts       Boolean  @default(true)
+  securitySettings   Json     @default("{}")
+  integrations       Json     @default("{}")
+  workflowSettings   Json     @default("{}")
+  // AI Extraction Configuration
+  extractionSettings Json     @default("{\"contractTypeConfidenceThreshold\": 0.75, \"autoApplyContractType\": true, \"gapFillingCompletenessThreshold\": 0.85, \"alwaysRunGapFilling\": false, \"aggressiveGapFilling\": true, \"ocrProvider\": \"openai\", \"preferredModel\": \"gpt-4o-mini\"}")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+// Tenant-level custom settings storage (for data connections, preferences, etc.)
+model TenantSettings {
+  id           String   @id @default(cuid())
+  tenantId     String
+  customFields Json?    @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// IP Allowlist for tenant security
+model IpAllowlist {
+  id          String    @id @default(cuid())
+  tenantId    String
+  ipAddress   String // IP address or CIDR range
+  description String?
+  isActive    Boolean   @default(true)
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  expiresAt   DateTime?
+
+  @@unique([tenantId, ipAddress])
+  @@index([tenantId])
+  @@index([isActive])
+  @@map("ip_allowlist")
+}
+
+// Tenant Security Settings
+model TenantSecuritySettings {
+  id                     String   @id @default(cuid())
+  tenantId               String   @unique
+  mfaRequired            Boolean  @default(false)
+  sessionTimeout         Int      @default(480) // minutes
+  passwordPolicy         Json     @default("{\"minLength\": 8, \"requireUppercase\": true, \"requireLowercase\": true, \"requireNumbers\": true, \"requireSpecialChars\": false}")
+  ipAllowlistEnabled     Boolean  @default(false)
+  allowedLoginMethods    String[] @default(["email", "google"])
+  maxFailedLoginAttempts Int      @default(5)
+  lockoutDuration        Int      @default(15) // minutes
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("tenant_security_settings")
+}
+
+model TenantSubscription {
+  id           String             @id @default(cuid())
+  tenantId     String             @unique
+  plan         SubscriptionPlan
+  status       SubscriptionStatus
+  startDate    DateTime
+  endDate      DateTime?
+  billingCycle BillingCycle
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([endDate])
+}
+
+model TenantUsage {
+  id                   String   @id @default(cuid())
+  tenantId             String   @unique
+  contractsProcessed   Int      @default(0)
+  aiTokensUsed         BigInt   @default(0)
+  storageUsed          BigInt   @default(0)
+  apiCallsCount        Int      @default(0)
+  monthlyContractLimit Int?
+  monthlyTokenLimit    BigInt?
+  monthlyStorageLimit  BigInt?
+  monthlyApiLimit      Int?
+  resetDate            DateTime
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([resetDate])
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  avatar        String?
+  emailVerified Boolean    @default(false)
+  firstName     String?
+  lastLoginAt   DateTime?
+  lastName      String?
+  passwordHash  String? // Nullable for SSO-only users
+  status        UserStatus @default(ACTIVE)
+  tenantId      String
+  role          String     @default("user") // Added for auth compatibility
+
+  // MFA fields
+  mfaEnabled            Boolean   @default(false)
+  mfaSecret             String? // Encrypted TOTP secret
+  mfaBackupCodes        String[]  @default([]) // Hashed backup codes
+  mfaPendingSecret      String? // Temporary secret during setup
+  mfaPendingBackupCodes String[]  @default([]) // Temporary codes during setup
+  mfaEnabledAt          DateTime?
+
+  auditLogs           AuditLog[]
+  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  roles               UserRole[]
+  sessions            UserSession[]
+  preferences         UserPreferences?
+  onboardingAnalytics OnboardingAnalytics[]
+  backgroundJobs      BackgroundJob[]
+  helpAnalytics       HelpAnalytics[]
+  widgetAnalytics     WidgetAnalytics[]
+  rateCardSegments    RateCardSegment[]
+  uploadedVersions    ContractVersion[]     @relation("VersionUploader")
+  createdDrafts       ContractDraft[]       @relation("DraftCreator")
+  chatConversations   ChatConversation[]
+  departments         UserDepartment[]
+  groupMemberships    UserGroupMember[]
+  contractAccess      ContractUserAccess[]
+  assignedObligations Obligation[]          @relation("ObligationAssignee")
+  calendarSyncTokens  CalendarSyncToken[]
+  accounts            Account[]
+  authSessions        Session[]
+
+  // OCR Review relations
+  ocrReviewsAssigned OcrReviewItem[] @relation("OcrReviewAssignee")
+  ocrReviewsCreated  OcrReviewItem[] @relation("OcrReviewCreator")
+
+  @@index([email])
+  @@index([tenantId])
+  @@index([status])
+}
+
+// NextAuth PrismaAdapter required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  email     String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  createdAt   DateTime         @default(now())
+  description String?
+  isSystem    Boolean          @default(false)
+  updatedAt   DateTime         @updatedAt
+  permissions RolePermission[]
+  users       UserRole[]
+}
+
+model Permission {
+  id         String           @id @default(cuid())
+  action     String
+  subject    String
+  conditions Json?
+  roles      RolePermission[]
+
+  @@unique([action, subject])
+}
+
+model UserRole {
+  userId     String
+  roleId     String
+  assignedAt DateTime @default(now())
+  assignedBy String?
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  assignedAt   DateTime   @default(now())
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserSession {
+  id            String    @id @default(cuid())
+  userId        String
+  token         String    @unique
+  sessionToken  String?   @unique // Alternative session identifier
+  refreshToken  String?   @unique
+  expiresAt     DateTime
+  ipAddress     String?
+  userAgent     String?
+  location      String? // Geographic location
+  deviceType    String? // desktop, mobile, tablet
+  lastActive    DateTime  @default(now())
+  revokedAt     DateTime?
+  revokedReason String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([sessionToken])
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([lastActive])
+}
+
+model Contract {
+  id          String   @id @default(cuid())
+  tenantId    String
+  storagePath String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  checksum    String?
+  mimeType    String   @map("contentType")
+
+  // Legacy contract type (deprecated - use contractCategoryId)
+  contractType String?
+
+  // New Taxonomy Classification
+  contractCategoryId String? // References contract_categories.id from taxonomy
+  contractSubtype    String? // Specific subtype from taxonomy
+  documentRole       String? // Document role from taxonomy
+  classificationConf Float? // Classification confidence 0-1
+  classificationMeta Json?     @default("{}") // Classification metadata, alternatives, reasoning
+  classifiedAt       DateTime?
+
+  effectiveDate  DateTime?
+  expirationDate DateTime?
+  fileName       String    @map("filename")
+  jurisdiction   String?
+  lastAnalyzedAt DateTime?
+  originalName   String?
+  processedAt    DateTime?
+  searchMetadata Json?     @default("{}")
+  metadata       Json?     @default("{}") // General metadata storage
+  aiMetadata     Json?     @default("{}") // AI-generated metadata
+
+  // Contract Tags (from taxonomy dimensions)
+  pricingModels   Json?                    @default("[]") // Array of pricing_model values
+  deliveryModels  Json?                    @default("[]") // Array of delivery_model values
+  dataProfiles    Json?                    @default("[]") // Array of data_profile values
+  riskFlags       Json?                    @default("[]") // Array of risk_flag values
+  fileSize        BigInt                   @map("size")
+  storageProvider String?                  @default("local")
+  uploadedBy      String?
+  status          ContractStatus           @default(PROCESSING)
+  uploadedAt      DateTime                 @default(now())
+  rawText         String?
+  startDate       DateTime?
+  endDate         DateTime?
+  totalValue      Decimal?                 @db.Decimal(15, 2)
+  currency        String?
+  clientId        String?
+  supplierId      String?
+  category        String?
+  clientName      String?
+  contractTitle   String?
+  description     String?
+  keywords        Json?
+  lastViewedAt    DateTime?
+  lastViewedBy    String?
+  searchableText  String?
+  supplierName    String?
+  tags            Json?                    @default("[]")
+  textVector      Unsupported("tsvector")?
+  viewCount       Int                      @default(0)
+
+  // Soft Delete Support
+  deletedAt DateTime?
+  deletedBy String?
+  isDeleted Boolean   @default(false)
+
+  // Procurement Classification
+  procurementCategoryId String?
+  categoryL1            String?
+  categoryL2            String?
+  spendType             String? @default("INDIRECT")
+
+  // Financial Breakdown
+  annualValue      Decimal? @db.Decimal(15, 2)
+  monthlyValue     Decimal? @db.Decimal(15, 2)
+  paymentTerms     String? // Net30, Net60, Net90, etc.
+  paymentFrequency String? // MONTHLY, QUARTERLY, ANNUALLY, ONE_TIME
+  billingCycle     String? // ADVANCE, ARREARS
+
+  // Renewal & Expiration Tracking
+  renewalTerms        Json? // { periods: 2, duration: 12, noticeDays: 90 }
+  terminationClause   String?   @db.Text
+  noticePeriodDays    Int?
+  autoRenewalEnabled  Boolean   @default(false)
+  renewalStatus       String?   @default("PENDING") // PENDING, UPCOMING, INITIATED, IN_PROGRESS, COMPLETED, DECLINED, EXPIRED
+  renewalInitiatedAt  DateTime?
+  renewalInitiatedBy  String?
+  renewalCompletedAt  DateTime?
+  renewalNotes        String?   @db.Text
+  expirationAlertSent Boolean   @default(false)
+  expirationAlertAt   DateTime?
+
+  // Expiration Status (computed/tracked)
+  isExpired       Boolean   @default(false)
+  expiredAt       DateTime?
+  daysUntilExpiry Int? // Cached for performance, updated by job
+  expirationRisk  String?   @default("LOW") // LOW, MEDIUM, HIGH, CRITICAL, EXPIRED
+
+  // Source Tracking
+  importSource   String? // UPLOAD, GOOGLE_DRIVE, SHAREPOINT, EMAIL, API, OCR
+  externalId     String? // ID from source system
+  externalUrl    String? // Link to source document
+  sourceMetadata Json? // Source-specific data
+  importedAt     DateTime?
+  lastSyncedAt   DateTime?
+
+  // OCR Provider Tracking
+  ocrProvider    String? // openai, azure-ch, azure-di-layout, azure-di-contract, azure-di-invoice, mistral, tesseract
+  ocrModel       String? // e.g. prebuilt-layout, prebuilt-contract, prebuilt-invoice, gpt-4o
+  ocrProcessedAt DateTime? // When OCR was last run
+
+  // Contract Hierarchy (Parent-Child Relationships)
+  parentContractId String? // Reference to parent contract (e.g., MSA for a SoW)
+  parentContract   Contract?  @relation("ContractHierarchy", fields: [parentContractId], references: [id])
+  childContracts   Contract[] @relation("ContractHierarchy")
+
+  // Relationship metadata
+  relationshipType String? // SOW_UNDER_MSA, AMENDMENT, ADDENDUM, RENEWAL, CHANGE_ORDER
+  relationshipNote String?   @db.Text
+  linkedAt         DateTime? // When the link was established
+
+  // Signature & Document Classification
+  signatureStatus               String?   @default("unknown") // signed, partially_signed, unsigned, unknown
+  signatureDate                 DateTime? // Date of final execution
+  signatureRequiredFlag         Boolean   @default(false) // Flag for contracts needing signature attention
+  documentClassification        String?   @default("contract") // contract, purchase_order, invoice, quote, proposal, etc.
+  documentClassificationConf    Float? // Classification confidence 0-1
+  documentClassificationWarning String? // Warning message if not a proper contract
+
+  artifacts           Artifact[]
+  clauses             Clause[]
+  client              Party?                   @relation("ClientContracts", fields: [clientId], references: [id])
+  supplier            Party?                   @relation("SupplierContracts", fields: [supplierId], references: [id])
+  tenant              Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  procurementCategory ProcurementCategory?     @relation("ContractProcurementCategory", fields: [procurementCategoryId], references: [id])
+  contractArtifacts   ContractArtifact[]
+  contractEmbeddings  ContractEmbedding[]
+  contractMetadata    ContractMetadata?
+  versions            ContractVersion[]
+  embeddings          Embedding[]
+  financialAnalysis   FinancialAnalysis[]
+  overviewAnalysis    OverviewAnalysis[]
+  processingJobs      ProcessingJob[]
+  runs                Run[]
+  templateAnalysis    TemplateAnalysis[]
+  costSavings         CostSavingsOpportunity[]
+  rateCardEntries     RateCardEntry[]
+  workflowExecutions  WorkflowExecution[]
+  signatureRequests   SignatureRequest[]
+  legalReviews        LegalReview[]
+  sourcedDrafts       ContractDraft[]          @relation("DraftSourceContract")
+  obligations         Obligation[]
+
+  // Extraction corrections relation
+  extractionCorrections ExtractionCorrection[]
+
+  // Synced files relation (for pull model integrations)
+  syncedFiles SyncedFile[]
+
+  // Access control relations
+  userAccess         ContractUserAccess[]
+  groupAccess        ContractGroupAccess[]
+  collaboratorAccess CollaboratorContractAccess[]
+
+  // OCR Review relation
+  ocrReviewItems OcrReviewItem[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([contractType]) // Legacy index
+  @@index([contractCategoryId]) // New taxonomy index
+  @@index([documentRole])
+  @@index([createdAt])
+  @@index([startDate, endDate])
+  @@index([clientId])
+  @@index([supplierId])
+  @@index([clientName])
+  @@index([supplierName])
+  @@index([category])
+  @@index([procurementCategoryId])
+  @@index([categoryL1])
+  @@index([categoryL2])
+  @@index([tenantId, status])
+  @@index([tenantId, contractType]) // Legacy
+  @@index([tenantId, contractCategoryId]) // New taxonomy
+  @@index([tenantId, documentRole])
+  @@index([tenantId, clientName])
+  @@index([tenantId, supplierName])
+  @@index([tenantId, categoryL1, categoryL2])
+  // Enhanced indexes for better sorting and filtering
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, uploadedAt(sort: Desc)])
+  @@index([tenantId, totalValue(sort: Desc)])
+  @@index([tenantId, expirationDate])
+  @@index([tenantId, effectiveDate])
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@index([tenantId, contractType, createdAt(sort: Desc)]) // Legacy
+  @@index([tenantId, contractCategoryId, createdAt(sort: Desc)]) // New taxonomy
+  @@index([tenantId, category, createdAt(sort: Desc)])
+  @@index([uploadedAt(sort: Desc)])
+  @@index([totalValue(sort: Desc)])
+  @@index([expirationDate])
+  @@index([effectiveDate])
+  @@index([viewCount(sort: Desc)])
+  @@index([lastViewedAt(sort: Desc)])
+  @@index([checksum])
+  // Soft delete & full-text search indexes
+  @@index([tenantId, isDeleted])
+  @@index([tenantId, isDeleted, status])
+  @@index([tenantId, isDeleted, createdAt(sort: Desc)])
+  @@index([deletedAt])
+  // Renewal & Expiration indexes
+  @@index([renewalStatus])
+  @@index([tenantId, renewalStatus])
+  @@index([tenantId, isExpired])
+  @@index([tenantId, expirationRisk])
+  @@index([tenantId, daysUntilExpiry])
+  @@index([autoRenewalEnabled])
+  // Contract Hierarchy indexes
+  @@index([parentContractId])
+  @@index([tenantId, parentContractId])
+  @@index([relationshipType])
+  @@index([tenantId, relationshipType])
+  @@index([renewalInitiatedAt])
+  @@index([importSource])
+  @@index([externalId])
+  // Signature & Document Classification indexes
+  @@index([signatureStatus])
+  @@index([documentClassification])
+  @@index([tenantId, signatureStatus])
+  @@index([tenantId, documentClassification])
+  @@index([tenantId, signatureStatus, documentClassification])
+  // === SCALABILITY INDEXES ===
+  // Multi-column composite indexes for complex dashboard queries
+  @@index([tenantId, status, totalValue(sort: Desc)])
+  @@index([tenantId, status, expirationDate])
+  @@index([tenantId, category, status, createdAt(sort: Desc)])
+  @@index([tenantId, clientName, status])
+  @@index([tenantId, supplierName, status])
+  // Indexes for time-series analytics
+  @@index([tenantId, uploadedAt, status])
+  @@index([tenantId, effectiveDate, expirationDate])
+  @@index([tenantId, createdAt, totalValue])
+  // Indexes for comparison queries (group comparisons)
+  @@index([tenantId, clientName, category, createdAt])
+  @@index([tenantId, supplierName, category, createdAt])
+  @@index([tenantId, category, effectiveDate, totalValue])
+  // Indexes for search performance
+  @@index([tenantId, contractTitle])
+  @@index([tenantId, description])
+  @@index([tenantId, fileName])
+}
+
+// Extraction Corrections for AI Learning Loop
+model ExtractionCorrection {
+  id             String   @id @default(cuid())
+  tenantId       String   @map("tenant_id")
+  contractId     String   @map("contract_id")
+  fieldName      String   @map("field_name")
+  originalValue  String?  @map("original_value") @db.Text
+  correctedValue String?  @map("corrected_value") @db.Text
+  confidence     Decimal? @db.Decimal(3, 2)
+  wasCorrect     Boolean  @default(false) @map("was_correct")
+  source         String   @default("ai") // ai, ocr, user
+  feedbackType   String   @map("feedback_type") // confirmation, correction, rejection
+  contractType   String?  @map("contract_type")
+  documentLength Int?     @map("document_length")
+  modelUsed      String?  @map("model_used")
+  promptVersion  String?  @map("prompt_version")
+  metadata       Json?    @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([fieldName])
+  @@index([feedbackType])
+  @@index([wasCorrect])
+  @@index([contractType])
+  @@index([createdAt])
+  @@index([tenantId, fieldName])
+  @@index([tenantId, contractType, fieldName])
+  @@index([tenantId, wasCorrect])
+  @@map("extraction_corrections")
+}
+
+model ContractMetadata {
+  id           String   @id @default(cuid())
+  contractId   String   @unique
+  tenantId     String
+  categoryId   String?
+  tags         String[]
+  systemFields Json     @default("{}")
+  customFields Json     @default("{}")
+  lastUpdated  DateTime @default(now())
+  updatedBy    String
+  createdAt    DateTime @default(now())
+
+  // Enhanced fields for artifact repository
+  artifactSummary    Json?     @default("{}")
+  searchKeywords     String[]  @default([])
+  relatedContracts   String[]  @default([])
+  dataQualityScore   Int?      @default(0)
+  indexedAt          DateTime?
+  ragSyncedAt        DateTime?
+  analyticsUpdatedAt DateTime?
+
+  // Organization & Classification
+  priority     Int     @default(0) // 0=normal, 1=low, 2=medium, 3=high, 4=critical
+  importance   String? // low, medium, high, critical
+  department   String? // Finance, Legal, HR, IT, etc.
+  projectCode  String? // For project association
+  costCenter   String? // For financial tracking
+  businessUnit String? // For organizational structure
+
+  // Lifecycle tracking
+  renewalReminder DateTime?
+  reviewDate      DateTime?
+  archiveDate     DateTime?
+  retentionPeriod Int? // Days to retain after expiration
+
+  // Compliance & Audit
+  complianceStatus String?   @default("pending") // pending, compliant, non-compliant, needs-review
+  lastAuditDate    DateTime?
+  nextAuditDate    DateTime?
+  auditNotes       String?
+
+  // Analytics
+  riskScore       Int? @default(0) // 0-100
+  valueScore      Int? @default(0) // 0-100 importance/value score
+  complexityScore Int? @default(0) // 0-100
+  accessCount     Int  @default(0)
+
+  // Renewal Tracking (extended)
+  renewalPriority      String?   @default("NORMAL") // LOW, NORMAL, HIGH, CRITICAL
+  renewalOwner         String? // User ID responsible for renewal
+  renewalDeadline      DateTime? // Internal deadline before contract expires
+  renewalChecklistDone Boolean   @default(false)
+  renewalChecklist     Json?     @default("[]") // { item: string, done: boolean, doneAt: DateTime }[]
+  lastRenewalDate      DateTime?
+  renewalCount         Int       @default(0) // How many times renewed
+
+  // Negotiation Tracking
+  negotiationStatus    String? // DRAFT, IN_NEGOTIATION, PENDING_SIGNATURE, EXECUTED, TERMINATED
+  negotiationStartedAt DateTime?
+  negotiationRound     Int       @default(0)
+  negotiationNotes     String?   @db.Text
+  lastNegotiatedBy     String?
+  lastNegotiatedAt     DateTime?
+
+  // Performance Tracking
+  performanceScore  Int?      @default(0) // 0-100 based on SLA compliance
+  slaComplianceRate Decimal?  @db.Decimal(5, 2) // Percentage
+  issueCount        Int       @default(0)
+  activeIssues      Int       @default(0)
+  resolvedIssues    Int       @default(0)
+  lastIssueAt       DateTime?
+  performanceNotes  String?   @db.Text
+
+  // AI/RAG Metadata
+  aiSummary         String?   @db.Text // Cached AI-generated summary
+  aiKeyInsights     Json?     @default("[]") // Key points extracted by AI
+  aiRiskFactors     Json?     @default("[]") // AI-identified risks
+  aiRecommendations Json?     @default("[]") // AI suggestions
+  lastAiAnalysis    DateTime?
+  aiAnalysisVersion String? // Model version used
+  embeddingVersion  String? // Track embedding model version
+  embeddingCount    Int       @default(0)
+  lastEmbeddingAt   DateTime?
+
+  // Expiration & Archive
+  expirationHandled  Boolean   @default(false)
+  expirationAction   String? // RENEWED, TERMINATED, ARCHIVED, EXTENDED
+  expirationActionAt DateTime?
+  expirationActionBy String?
+  archiveReason      String?
+  archivedAt         DateTime?
+  archivedBy         String?
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([categoryId])
+  @@index([tags])
+  @@index([dataQualityScore])
+  @@index([indexedAt])
+  @@index([tenantId, priority(sort: Desc)])
+  @@index([tenantId, department])
+  @@index([tenantId, projectCode])
+  @@index([tenantId, complianceStatus])
+  @@index([renewalReminder])
+  @@index([reviewDate])
+  @@index([riskScore(sort: Desc)])
+  @@index([valueScore(sort: Desc)])
+  // Enhanced indexes
+  @@index([renewalPriority])
+  @@index([renewalOwner])
+  @@index([renewalDeadline])
+  @@index([negotiationStatus])
+  @@index([performanceScore(sort: Desc)])
+  @@index([tenantId, renewalPriority])
+  @@index([tenantId, negotiationStatus])
+  @@index([tenantId, performanceScore(sort: Desc)])
+  @@index([lastAiAnalysis])
+  @@index([expirationHandled])
+  @@index([archivedAt])
+  @@map("contract_metadata")
+}
+
+model TaxonomyCategory {
+  id                     String             @id @default(cuid())
+  tenantId               String
+  name                   String
+  description            String?
+  parentId               String?
+  level                  Int                @default(0)
+  path                   String
+  color                  String             @default("#3B82F6")
+  icon                   String             @default("folder")
+  sortOrder              Int                @default(0)
+  isActive               Boolean            @default(true)
+  keywords               String[]           @default([])
+  aiClassificationPrompt String?
+  metadata               Json               @default("{}")
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  parent                 TaxonomyCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children               TaxonomyCategory[] @relation("CategoryHierarchy")
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([parentId])
+  @@index([path])
+  @@map("taxonomy_categories")
+}
+
+model TaxonomyPreset {
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  description   String?
+  categories    Json // Hierarchical category structure
+  categoryCount Int      @default(0)
+  isShared      Boolean  @default(false) // If true, other tenants can use this preset
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([isShared])
+  @@map("taxonomy_presets")
+}
+
+model Party {
+  id                String     @id @default(cuid())
+  name              String
+  type              PartyType
+  email             String?
+  phone             String?
+  address           Json?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  clientContracts   Contract[] @relation("ClientContracts")
+  supplierContracts Contract[] @relation("SupplierContracts")
+
+  @@unique([name, type])
+  @@index([type])
+}
+
+model ContractArtifact {
+  id         String   @id @default(cuid())
+  contractId String
+  type       String
+  key        String
+  value      Json
+  confidence Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([contractId, type])
+  @@index([type])
+}
+
+model ContractEmbedding {
+  id           String                 @id @default(cuid())
+  contractId   String
+  chunkIndex   Int
+  chunkText    String
+  embedding    Unsupported("vector")?
+  chunkType    String?
+  section      String?
+  tenantId     String?
+  contractType String?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  contract     Contract               @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, chunkIndex])
+  @@index([contractId])
+  @@index([chunkType])
+  @@index([tenantId])
+  @@index([contractType])
+}
+
+model Clause {
+  id              String   @id @default(cuid())
+  contractId      String
+  category        String
+  text            String
+  riskLevel       String?
+  position        Int?
+  libraryClauseId String?
+  similarity      Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  contract        Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([contractId, category])
+  @@index([category])
+  @@index([riskLevel])
+}
+
+model ProcessingJob {
+  id                    String    @id @default(cuid())
+  contractId            String
+  tenantId              String
+  jobType               String?   @map("job_type") // FULL_EXTRACTION, INCREMENTAL, REPROCESS
+  status                JobStatus @default(PENDING)
+  progress              Int       @default(0)
+  currentStep           String?
+  totalStages           Int       @default(5)
+  error                 String?
+  errorStack            String?
+  errorCategory         String?
+  retryCount            Int       @default(0)
+  maxRetries            Int       @default(3)
+  nextRetryAt           DateTime?
+  priority              Int       @default(0)
+  queuePosition         Int?
+  queueId               String? // BullMQ job ID for tracking
+  lastCheckpoint        String?
+  checkpointData        Json?
+  metadata              Json?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  estimatedCompletionAt DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  contract              Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([priority])
+  @@index([nextRetryAt])
+  @@index([status, priority, createdAt])
+}
+
+model ContractVersion {
+  id              String    @id @default(cuid())
+  contractId      String
+  tenantId        String? // Added for multi-tenant filtering
+  versionNumber   Int
+  parentVersionId String?
+  changes         Json?
+  summary         String? // Added for version summary
+  fileUrl         String? // Added for version file URL
+  uploadedBy      String?
+  uploadedAt      DateTime  @default(now())
+  isActive        Boolean   @default(true)
+  supersededAt    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  contract        Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  uploadedByUser  User?     @relation("VersionUploader", fields: [uploadedBy], references: [id], onDelete: SetNull)
+
+  @@unique([contractId, versionNumber])
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([isActive])
+}
+
+model Artifact {
+  id              String       @id @default(cuid())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  contractId      String
+  tenantId        String
+  type            ArtifactType
+  title           String? // Display title for the artifact
+  status          String?      @default("active") // Status tracking
+  data            Json
+  schemaVersion   String       @default("v1")
+  hash            String?
+  location        String?
+  confidence      Decimal?     @db.Decimal(3, 2)
+  processingTime  Int?
+  size            Int?
+  storageProvider String?      @default("database")
+
+  // Editability fields
+  isEdited         Boolean   @default(false)
+  editCount        Int       @default(0)
+  lastEditedBy     String?
+  lastEditedAt     DateTime?
+  validationStatus String?   @default("valid")
+  validationIssues Json?     @default("[]")
+
+  // Integration tracking
+  consumedBy        String[]  @default([])
+  lastPropagatedAt  DateTime?
+  propagationStatus String?   @default("synced")
+
+  // Version Tracking
+  generationVersion  Int       @default(1)
+  parentArtifactId   String? // For derived artifacts
+  regeneratedAt      DateTime?
+  regeneratedBy      String?
+  regenerationReason String?
+
+  // Quality Metrics
+  qualityScore      Int? @default(0) // 0-100
+  completenessScore Int? @default(0) // How complete is the extraction
+  accuracyScore     Int? @default(0) // Accuracy of extracted data
+
+  // User Feedback
+  userRating     Int? // 1-5 stars
+  feedbackNotes  String?   @db.Text
+  feedbackBy     String?
+  feedbackAt     DateTime?
+  isUserVerified Boolean   @default(false)
+  verifiedBy     String?
+  verifiedAt     DateTime?
+
+  // Processing Context
+  modelUsed      String? // gpt-4o-mini, gpt-4, claude-3, etc.
+  promptVersion  String? // Track prompt template version
+  tokensUsed     Int?
+  processingCost Decimal?  @db.Decimal(10, 6) // Cost in USD
+  errorCount     Int       @default(0)
+  lastError      String?
+  lastErrorAt    DateTime?
+
+  // Relations
+  contract    Contract                 @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  editHistory ArtifactEdit[]
+  costSavings CostSavingsOpportunity[]
+
+  @@unique([contractId, type])
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([type])
+  @@index([contractId, type])
+  @@index([tenantId, type])
+  @@index([isEdited])
+  @@index([validationStatus])
+  @@index([lastPropagatedAt])
+  @@index([propagationStatus])
+  @@index([lastEditedAt])
+  // Enhanced indexes
+  @@index([generationVersion])
+  @@index([qualityScore(sort: Desc)])
+  @@index([userRating(sort: Desc)])
+  @@index([isUserVerified])
+  @@index([modelUsed])
+  @@index([tenantId, qualityScore(sort: Desc)])
+  @@index([tenantId, isUserVerified])
+}
+
+model ArtifactEdit {
+  id                 String   @id @default(cuid())
+  artifactId         String
+  version            Int
+  editedBy           String
+  editedAt           DateTime @default(now())
+  changeType         String
+  changes            Json
+  reason             String?
+  affectedEngines    String[] @default([])
+  propagationResults Json?    @default("[]")
+
+  artifact Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+
+  @@unique([artifactId, version])
+  @@index([artifactId])
+  @@index([editedAt])
+  @@index([editedBy])
+  @@index([artifactId, version])
+}
+
+model TemplateAnalysis {
+  id                String   @id @default(cuid())
+  contractId        String
+  tenantId          String
+  detectedTemplates Json
+  complianceScore   Decimal? @db.Decimal(3, 2)
+  deviations        Json
+  recommendations   Json
+  processingTime    Int?
+  confidence        Decimal? @db.Decimal(3, 2)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  contract          Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([complianceScore])
+}
+
+model FinancialAnalysis {
+  id                String   @id @default(cuid())
+  contractId        String
+  tenantId          String
+  totalValue        Json?
+  paymentTerms      Json?
+  costBreakdown     Json?
+  pricingTables     Json?
+  discounts         Json?
+  escalationClauses Json?
+  financialRisks    Json?
+  recommendations   Json?
+  processingTime    Int?
+  confidence        Decimal? @db.Decimal(3, 2)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  contract          Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([tenantId])
+}
+
+model OverviewAnalysis {
+  id                 String    @id @default(cuid())
+  contractId         String
+  tenantId           String
+  summary            String?
+  parties            Json?
+  keyTerms           Json?
+  contractType       String?
+  jurisdiction       String?
+  effectiveDate      DateTime?
+  expirationDate     DateTime?
+  renewalTerms       Json?
+  terminationClauses Json?
+  processingTime     Int?
+  confidence         Decimal?  @db.Decimal(3, 2)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  contract           Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([contractType])
+}
+
+model Run {
+  id             String    @id @default(cuid())
+  runId          String    @unique
+  contractId     String?
+  tenantId       String
+  status         RunStatus @default(PENDING)
+  startedAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  completedAt    DateTime?
+  summary        String?
+  completedSteps Int?      @default(0)
+  currentStep    String?
+  errorDetails   Json?
+  errorMessage   String?
+  jobType        String?
+  priority       Int       @default(0)
+  processingTime Int?
+  totalSteps     Int?
+  contract       Contract? @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([startedAt])
+  @@index([tenantId, status])
+}
+
+model Embedding {
+  id         String   @id @default(cuid())
+  contractId String
+  tenantId   String
+  chunkIndex Int
+  text       String
+  chunkType  String?
+  confidence Decimal? @db.Decimal(3, 2)
+  createdAt  DateTime @default(now())
+  embedding  Json?
+  section    String?
+  updatedAt  DateTime @updatedAt
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, chunkIndex])
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([chunkType])
+}
+
+model ContractTemplate {
+  id          String          @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  category    String?
+  clauses     Json
+  structure   Json
+  metadata    Json
+  version     Int             @default(1)
+  isActive    Boolean         @default(true)
+  parentId    String?
+  usageCount  Int             @default(0)
+  lastUsedAt  DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  createdBy   String?
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  drafts      ContractDraft[]
+
+  @@unique([tenantId, name, version])
+  @@index([tenantId])
+  @@index([category])
+  @@index([isActive])
+  @@index([tenantId, category])
+}
+
+/// Contract Draft - Stores in-progress contract generation drafts
+model ContractDraft {
+  id               String  @id @default(cuid())
+  tenantId         String
+  templateId       String?
+  title            String
+  type             String  @default("MSA") // MSA, SOW, NDA, AMENDMENT, RENEWAL
+  sourceType       String  @default("NEW") // NEW, TEMPLATE, RENEWAL, AMENDMENT
+  sourceContractId String? // For renewals/amendments, reference to original contract
+
+  // Draft content
+  content   String? @db.Text
+  clauses   Json    @default("[]")
+  variables Json    @default("{}")
+  structure Json    @default("{}")
+
+  // Status tracking
+  status   String    @default("DRAFT") // DRAFT, IN_REVIEW, PENDING_APPROVAL, APPROVED, REJECTED, FINALIZED
+  version  Int       @default(1)
+  isLocked Boolean   @default(false)
+  lockedBy String?
+  lockedAt DateTime?
+
+  // Financial details
+  estimatedValue    Decimal?  @db.Decimal(15, 2)
+  currency          String    @default("USD")
+  proposedStartDate DateTime?
+  proposedEndDate   DateTime?
+
+  // Parties
+  externalParties Json @default("[]") // Array of { name, role, contact }
+
+  // AI Generation metadata
+  aiPrompt         String? @db.Text
+  aiModel          String?
+  generationParams Json?   @default("{}")
+
+  // Workflow
+  currentStep       String?
+  completionPercent Int     @default(0)
+  approvalWorkflow  Json?   @default("[]")
+
+  // Audit
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  template       ContractTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  sourceContract Contract?         @relation("DraftSourceContract", fields: [sourceContractId], references: [id], onDelete: SetNull)
+  createdByUser  User?             @relation("DraftCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([templateId])
+  @@index([status])
+  @@index([type])
+  @@index([sourceType])
+  @@index([tenantId, status])
+  @@index([tenantId, type])
+  @@index([createdAt(sort: Desc)])
+  @@map("contract_drafts")
+}
+
+/// AI Chat Conversation - Stores chat history for AI Copilot
+model ChatConversation {
+  id          String  @id @default(cuid())
+  tenantId    String
+  userId      String
+  title       String?
+  context     String? // Contract ID or other context
+  contextType String? // CONTRACT, GENERAL, ANALYSIS
+
+  // Conversation metadata
+  messageCount  Int       @default(0)
+  lastMessageAt DateTime?
+  isArchived    Boolean   @default(false)
+  isPinned      Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([tenantId, userId])
+  @@index([contextType])
+  @@index([createdAt(sort: Desc)])
+  @@map("chat_conversations")
+}
+
+/// AI Chat Message - Individual messages in a conversation
+model ChatMessage {
+  id             String @id @default(cuid())
+  conversationId String
+  role           String // user, assistant, system
+  content        String @db.Text
+
+  // AI metadata
+  model          String?
+  tokensUsed     Int?
+  processingTime Int? // ms
+  confidence     Float?
+
+  // Sources and references
+  sources     Json? @default("[]")
+  suggestions Json? @default("[]")
+
+  // Feedback
+  feedback     String? // positive, negative
+  feedbackNote String?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([role])
+  @@index([createdAt])
+  @@map("chat_messages")
+}
+
+// ============================================================================
+// OBLIGATION MANAGEMENT SYSTEM
+// ============================================================================
+
+/// Obligation Status Enum
+enum ObligationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  AT_RISK
+  WAIVED
+  CANCELLED
+  DISPUTED
+}
+
+/// Obligation Priority Enum
+enum ObligationPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+/// Obligation Type Enum
+enum ObligationType {
+  PAYMENT
+  DELIVERY
+  PERFORMANCE
+  REPORTING
+  COMPLIANCE
+  NOTIFICATION
+  RENEWAL
+  TERMINATION
+  AUDIT
+  INSURANCE
+  MILESTONE
+  WARRANTY
+  CONFIDENTIALITY
+  INDEMNIFICATION
+  SERVICE_LEVEL
+  OTHER
+}
+
+/// Obligation Owner Enum
+enum ObligationOwner {
+  US
+  COUNTERPARTY
+  BOTH
+  THIRD_PARTY
+}
+
+/// Recurrence Frequency Enum
+enum RecurrenceFrequency {
+  ONCE
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+  SEMIANNUALLY
+  ANNUALLY
+}
+
+/// Contract Obligation - Dedicated table for tracking obligations
+model Obligation {
+  id       String @id @default(cuid())
+  tenantId String
+
+  // Contract relationship
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  // Core details
+  title       String
+  description String?            @db.Text
+  type        ObligationType     @default(OTHER)
+  owner       ObligationOwner    @default(US)
+  priority    ObligationPriority @default(MEDIUM)
+  status      ObligationStatus   @default(PENDING)
+
+  // Timing
+  dueDate     DateTime?
+  startDate   DateTime?
+  endDate     DateTime?
+  completedAt DateTime?
+  completedBy String?
+
+  // Recurrence
+  isRecurring         Boolean              @default(false)
+  recurrenceFrequency RecurrenceFrequency?
+  recurrenceInterval  Int? // Every N frequency (e.g., every 2 months)
+  recurrenceEndDate   DateTime?
+  nextOccurrenceDate  DateTime?
+  parentObligationId  String? // For recurring instances
+  parentObligation    Obligation?          @relation("ObligationRecurrence", fields: [parentObligationId], references: [id])
+  recurringInstances  Obligation[]         @relation("ObligationRecurrence")
+
+  // Reminders
+  reminderDays   Json      @default("[]") // Array of days before due date [30, 14, 7, 1]
+  lastReminderAt DateTime?
+  remindersSent  Int       @default(0)
+
+  // Source extraction
+  clauseReference      String?
+  sourceSection        String?
+  sourcePageNumber     Int?
+  sourceExcerpt        String? @db.Text
+  extractionMethod     String? // AI, MANUAL, IMPORT
+  extractionConfidence Float? // 0-1 confidence score
+
+  // Risk & Compliance
+  riskScore         Int? // 0-100
+  riskFactors       Json     @default("[]") // Array of risk factor strings
+  penaltyForMissing String?  @db.Text
+  financialImpact   Decimal? @db.Decimal(15, 2)
+  currency          String?
+
+  // Evidence & Completion
+  completionCriteria String? @db.Text
+  requiredEvidence   Json    @default("[]") // Array of required evidence types
+  attachedEvidence   Json    @default("[]") // Array of { id, name, url, uploadedAt, uploadedBy }
+  completionNotes    String? @db.Text
+
+  // Assignment
+  assignedToUserId String?
+  assignedToUser   User?   @relation("ObligationAssignee", fields: [assignedToUserId], references: [id])
+  assignedToTeam   String?
+  escalationPath   Json    @default("[]") // Array of { userId, level, notifyAfterDays }
+
+  // Dependencies
+  dependsOn Json @default("[]") // Array of obligation IDs that must complete first
+  blockedBy Json @default("[]") // Array of obligation IDs currently blocking this
+
+  // Tags & Custom Fields
+  tags         Json @default("[]")
+  customFields Json @default("{}")
+  metadata     Json @default("{}")
+
+  // Audit trail
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  notifications ObligationNotification[] @relation("ObligationNotifications")
+  history       ObligationHistory[]
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([status])
+  @@index([priority])
+  @@index([type])
+  @@index([owner])
+  @@index([dueDate])
+  @@index([completedAt])
+  @@index([assignedToUserId])
+  @@index([parentObligationId])
+  @@index([tenantId, status])
+  @@index([tenantId, contractId])
+  @@index([tenantId, dueDate])
+  @@index([tenantId, status, dueDate])
+  @@index([tenantId, priority, status])
+  @@index([tenantId, type, status])
+  @@index([tenantId, owner, status])
+  @@index([tenantId, assignedToUserId, status])
+  @@index([contractId, status])
+  @@index([contractId, dueDate])
+  @@index([isRecurring])
+  @@index([nextOccurrenceDate])
+  @@map("obligations")
+}
+
+/// Obligation History - Audit trail for obligation changes
+model ObligationHistory {
+  id           String     @id @default(cuid())
+  obligationId String
+  obligation   Obligation @relation(fields: [obligationId], references: [id], onDelete: Cascade)
+
+  action        String // CREATED, STATUS_CHANGED, ASSIGNED, COMPLETED, WAIVED, ESCALATED, etc.
+  description   String? @db.Text
+  previousValue Json? // Previous state
+  newValue      Json? // New state
+
+  performedBy     String?
+  performedByName String?
+  performedAt     DateTime @default(now())
+
+  metadata Json @default("{}")
+
+  @@index([obligationId])
+  @@index([performedAt])
+  @@index([action])
+  @@map("obligation_history")
+}
+
+/// Obligation Notification - Tracks obligation reminders
+model ObligationNotification {
+  id           String @id @default(cuid())
+  tenantId     String
+  contractId   String
+  obligationId String
+
+  // Notification details
+  type         String // EMAIL, IN_APP, SMS
+  status       String    @default("PENDING") // PENDING, SENT, FAILED, CANCELLED
+  scheduledFor DateTime
+  sentAt       DateTime?
+
+  // Content
+  subject    String?
+  message    String? @db.Text
+  recipients Json    @default("[]") // Array of { email, name, userId }
+
+  // Retry tracking
+  attempts      Int       @default(0)
+  lastAttemptAt DateTime?
+  errorMessage  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  obligation Obligation? @relation("ObligationNotifications", fields: [obligationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([obligationId])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([tenantId, status])
+  @@map("obligation_notifications")
+}
+
+/// Calendar Sync Token - For syncing obligations to external calendars
+model CalendarSyncToken {
+  id       String @id @default(cuid())
+  token    String @unique // Unique token for accessing the calendar feed
+  tenantId String
+  userId   String
+
+  name     String @default("ConTigo Obligations") // Name of the calendar feed
+  provider String @default("ical") // ical, google, outlook, apple
+  filters  Json   @default("{}") // Optional filters for what obligations to sync
+
+  isActive     Boolean   @default(true)
+  lastSyncedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([isActive])
+  @@map("calendar_sync_tokens")
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  tenantId     String
+  userId       String?
+  action       String
+  resource     String?
+  resourceId   String? // Added for resource ID tracking (alias for entityId)
+  resourceType String?
+  entityType   String? // Alias for resourceType (compatibility)
+  entityId     String? // Added for entity ID tracking
+  changes      Json? // Added for change tracking
+  metadata     Json? // Added for additional metadata
+  details      Json?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User?    @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([action])
+  @@index([resourceType])
+  @@index([resourceId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+  @@index([tenantId, action])
+}
+
+model Metric {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  name      String
+  value     Decimal  @db.Decimal(15, 4)
+  unit      String?
+  tags      Json?
+  timestamp DateTime @default(now())
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([name])
+  @@index([tenantId])
+  @@index([timestamp])
+  @@index([name, timestamp])
+  @@index([tenantId, name, timestamp])
+}
+
+model ImportJob {
+  id                String           @id @default(cuid())
+  tenantId          String
+  source            ImportSource
+  status            ImportStatus     @default(PENDING)
+  priority          ImportPriority   @default(NORMAL)
+  fileName          String?
+  fileSize          BigInt?
+  fileType          FileTypeImport
+  emailFrom         String?
+  emailSubject      String?
+  apiSource         String?
+  storagePath       String?
+  createdAt         DateTime         @default(now())
+  startedAt         DateTime?
+  completedAt       DateTime?
+  processedBy       String?
+  rowsProcessed     Int              @default(0)
+  rowsSucceeded     Int              @default(0)
+  rowsFailed        Int              @default(0)
+  errors            Json             @default("[]")
+  warnings          Json             @default("[]")
+  mappingTemplateId String?
+  columnMappings    Json             @default("[]")
+  mappingConfidence Decimal          @default(0) @db.Decimal(3, 2)
+  extractedData     Json
+  normalizedData    Json?
+  requiresReview    Boolean          @default(false)
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  reviewNotes       String?
+  mappingTemplate   MappingTemplate? @relation(fields: [mappingTemplateId], references: [id])
+  rateCards         RateCard[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([source])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([tenantId, status])
+  @@index([tenantId, source])
+}
+
+model RateCard {
+  id               String         @id @default(cuid())
+  tenantId         String
+  importJobId      String
+  supplierId       String
+  supplierName     String
+  supplierTier     SupplierTier
+  contractId       String?
+  effectiveDate    DateTime
+  expiryDate       DateTime?
+  originalCurrency String
+  baseCurrency     String         @default("CHF")
+  exchangeRate     Decimal?       @db.Decimal(10, 6)
+  exchangeRateDate DateTime?
+  source           String
+  importedAt       DateTime       @default(now())
+  importedBy       String
+  version          Int            @default(1)
+  status           RateCardStatus @default(DRAFT)
+  dataQuality      Json
+  importJob        ImportJob      @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+  roles            RoleRate[]
+
+  @@index([tenantId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([effectiveDate])
+  @@index([tenantId, supplierId])
+  @@index([tenantId, status])
+}
+
+model RoleRate {
+  id               String           @id @default(cuid())
+  rateCardId       String
+  originalRoleName String
+  standardizedRole String
+  roleCategory     String
+  seniorityLevel   SeniorityLevel
+  serviceLine      String
+  subCategory      String?
+  skills           Json             @default("[]")
+  certifications   Json             @default("[]")
+  originalLocation String
+  geography        String
+  region           String
+  country          String
+  city             String?
+  originalRate     Decimal          @db.Decimal(10, 2)
+  originalPeriod   RatePeriod
+  originalCurrency String
+  hourlyRate       Decimal          @db.Decimal(10, 2)
+  dailyRate        Decimal          @db.Decimal(10, 2)
+  monthlyRate      Decimal          @db.Decimal(10, 2)
+  annualRate       Decimal          @db.Decimal(10, 2)
+  baseCurrency     String
+  volumeDiscounts  Json?
+  minimumHours     Int?
+  minimumDays      Int?
+  confidence       Decimal          @db.Decimal(3, 2)
+  dataQuality      DataQualityLevel
+  issues           Json             @default("[]")
+  warnings         Json             @default("[]")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  rateCard         RateCard         @relation(fields: [rateCardId], references: [id], onDelete: Cascade)
+
+  @@index([rateCardId])
+  @@index([standardizedRole])
+  @@index([seniorityLevel])
+  @@index([country])
+  @@index([serviceLine])
+  @@index([rateCardId, standardizedRole])
+}
+
+model MappingTemplate {
+  id              String      @id @default(cuid())
+  tenantId        String
+  name            String
+  supplierId      String?
+  supplierName    String?
+  description     String
+  mappings        Json
+  requiredFields  Json        @default("[]")
+  optionalFields  Json        @default("[]")
+  fileNamePattern String?
+  headerPatterns  Json        @default("[]")
+  usageCount      Int         @default(0)
+  successRate     Decimal     @default(0) @db.Decimal(3, 2)
+  lastUsed        DateTime?
+  version         Int         @default(1)
+  createdBy       String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  importJobs      ImportJob[]
+
+  @@unique([tenantId, name, version])
+  @@index([tenantId])
+  @@index([supplierId])
+  @@index([tenantId, supplierId])
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+  DELETED
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIAL
+  EXPIRED
+  CANCELLED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum PartyType {
+  CLIENT
+  SUPPLIER
+  VENDOR
+  PARTNER
+}
+
+enum ContractStatus {
+  UPLOADED
+  PROCESSING
+  COMPLETED
+  FAILED
+  ARCHIVED
+  DELETED
+  ACTIVE
+  PENDING
+  DRAFT
+  EXPIRED
+  CANCELLED
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  RETRYING
+  CANCELLED
+}
+
+enum ProcessingStatus {
+  PENDING
+  INGESTION
+  TEMPLATE_ANALYSIS
+  FINANCIAL_ANALYSIS
+  OVERVIEW_ANALYSIS
+  CLAUSES_ANALYSIS
+  COMPLIANCE_ANALYSIS
+  RISK_ANALYSIS
+  RATES_ANALYSIS
+  BENCHMARK_ANALYSIS
+  REPORT_GENERATION
+  COMPLETED
+  FAILED
+}
+
+enum ArtifactType {
+  INGESTION
+  OVERVIEW
+  CLAUSES
+  RATES
+  COMPLIANCE
+  BENCHMARK
+  RISK
+  REPORT
+  TEMPLATE
+  FINANCIAL
+  TERMINATION_CLAUSE
+  LIABILITY_CLAUSE
+  SLA_TERMS
+  OBLIGATIONS
+  RENEWAL
+  NEGOTIATION_POINTS
+  AMENDMENTS
+  CONTACTS
+  // Additional artifact types for comprehensive analysis
+  PROACTIVE_RISKS
+  PARTIES
+  TIMELINE
+  DELIVERABLES
+  PRICING
+  INTELLECTUAL_PROPERTY
+  DATA_PRIVACY
+  AUDIT_TRAIL
+  EXECUTIVE_SUMMARY
+  ACTION_ITEMS
+}
+
+enum RunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  TIMEOUT
+}
+
+enum ImportSource {
+  UPLOAD
+  EMAIL
+  API
+  SCHEDULED
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  MAPPING
+  VALIDATING
+  COMPLETED
+  FAILED
+  REQUIRES_REVIEW
+}
+
+enum ImportPriority {
+  HIGH
+  NORMAL
+  LOW
+}
+
+enum FileTypeImport {
+  XLSX
+  XLS
+  CSV
+  PDF
+  JSON
+}
+
+enum SupplierTier {
+  BIG_4
+  TIER_2
+  BOUTIQUE
+  OFFSHORE
+}
+
+enum RateCardStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum SeniorityLevel {
+  JUNIOR
+  MID
+  SENIOR
+  PRINCIPAL
+  PARTNER
+}
+
+enum RatePeriod {
+  HOURLY
+  DAILY
+  MONTHLY
+  ANNUAL
+}
+
+enum DataQualityLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum RateCardSource {
+  PDF_EXTRACTION
+  MANUAL
+  CSV_UPLOAD
+  API
+  EMAIL
+}
+
+enum SavingsCategory {
+  RATE_REDUCTION
+  SUPPLIER_SWITCH
+  VOLUME_DISCOUNT
+  TERM_RENEGOTIATION
+  GEOGRAPHIC_ARBITRAGE
+  SKILL_OPTIMIZATION
+}
+
+enum EffortLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum OpportunityStatus {
+  IDENTIFIED
+  UNDER_REVIEW
+  APPROVED
+  IN_PROGRESS
+  IMPLEMENTED
+  REJECTED
+  EXPIRED
+}
+
+enum ComparisonType {
+  SUPPLIER_VS_SUPPLIER
+  YEAR_OVER_YEAR
+  ROLE_VS_ROLE
+  REGION_VS_REGION
+  CUSTOM
+}
+
+enum SpendType {
+  DIRECT
+  INDIRECT
+  CAPEX
+  OPEX
+}
+
+enum BaselineType {
+  TARGET_RATE // Internal target rate set by procurement
+  MARKET_BENCHMARK // External market benchmark data
+  HISTORICAL_BEST // Best rate achieved historically
+  COMPETITIVE_BID // From competitive bidding process
+  NEGOTIATED_CAP // Negotiated maximum rate
+  INDUSTRY_STANDARD // Industry standard rates
+  REGULATORY_LIMIT // Regulatory or compliance limit
+  CUSTOM // Custom baseline
+}
+
+enum BaselineSource {
+  INTERNAL // Internal data/analysis
+  EXTERNAL_PROVIDER // Third-party data provider
+  COMPETITIVE_BID // Bid process
+  MARKET_RESEARCH // Market research
+  HISTORICAL_DATA // Company historical data
+  INDUSTRY_REPORT // Industry report/study
+  MANUAL_ENTRY // Manual entry by user
+  IMPORTED_FILE // CSV/Excel import
+}
+
+enum ApprovalStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+// ============================================================================
+// UX Quick Wins Models
+// ============================================================================
+
+model UserPreferences {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  role                  String?
+  goals                 Json      @default("[]")
+  dashboardLayout       Json?
+  theme                 String    @default("light")
+  notifications         Json      @default("{}")
+  onboardingState       Json?
+  onboardingCompleted   Boolean   @default(false)
+  onboardingSkipped     Boolean   @default(false)
+  onboardingCompletedAt DateTime?
+  helpToursCompleted    Json      @default("[]")
+  customSettings        Json      @default("{}")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model OnboardingAnalytics {
+  id        String   @id @default(cuid())
+  userId    String
+  stepId    String
+  action    String
+  timeSpent Int?
+  metadata  Json?
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([stepId])
+  @@index([timestamp])
+}
+
+model ProgressEvent {
+  id            String   @id @default(cuid())
+  jobId         String
+  stage         String
+  status        String
+  progress      Int
+  details       String?
+  error         String?
+  estimatedTime Int?
+  metadata      Json     @default("{}")
+  timestamp     DateTime @default(now())
+
+  @@index([jobId])
+  @@index([jobId, timestamp])
+}
+
+model BackgroundJob {
+  id          String    @id @default(cuid())
+  userId      String
+  type        String
+  title       String
+  status      String
+  progress    Int       @default(0)
+  result      Json?
+  error       String?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  metadata    Json      @default("{}")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([userId, status])
+}
+
+model HelpAnalytics {
+  id        String   @id @default(cuid())
+  userId    String
+  tourId    String?
+  stepId    String?
+  contentId String?
+  action    String
+  query     String?
+  metadata  Json?
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tourId])
+  @@index([action])
+  @@index([timestamp])
+}
+
+model WidgetAnalytics {
+  id         String   @id @default(cuid())
+  userId     String
+  widgetType String
+  action     String
+  duration   Int?
+  metadata   Json?
+  timestamp  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([widgetType])
+  @@index([timestamp])
+}
+
+model CostSavingsOpportunity {
+  id         String @id @default(uuid())
+  artifactId String
+  contractId String
+  tenantId   String
+
+  category    String
+  title       String
+  description String? @db.Text
+
+  potentialSavingsAmount     Decimal  @db.Decimal(15, 2)
+  potentialSavingsCurrency   String   @default("USD") @db.VarChar(3)
+  potentialSavingsPercentage Decimal? @db.Decimal(5, 2)
+  timeframe                  String?  @db.VarChar(20)
+
+  confidence String @db.VarChar(20)
+  effort     String @db.VarChar(20)
+  priority   Int    @default(3)
+
+  actionItems            Json?   @default("[]")
+  implementationTimeline String? @db.VarChar(100)
+  risks                  Json?   @default("[]")
+
+  status        String    @default("identified") @db.VarChar(20)
+  implementedAt DateTime?
+  actualSavings Decimal?  @db.Decimal(15, 2)
+  notes         String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  artifact Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([artifactId])
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([category])
+  @@index([confidence])
+  @@index([potentialSavingsAmount(sort: Desc)])
+  @@index([tenantId, status])
+  @@map("cost_savings_opportunities")
+}
+
+// ============================================================================
+// Rate Card Benchmarking Models
+// ============================================================================
+
+model RateCardSupplier {
+  id       String @id @default(cuid())
+  tenantId String
+
+  name      String
+  legalName String?
+  tier      SupplierTier
+  country   String
+  region    String
+
+  // Performance Metrics
+  averageRate          Decimal? @db.Decimal(10, 2)
+  competitivenessScore Decimal? @db.Decimal(5, 2)
+  reliabilityScore     Decimal? @db.Decimal(5, 2)
+  savingsPotential     Decimal? @db.Decimal(10, 2)
+
+  // Statistics
+  totalContracts Int @default(0)
+  totalRateCards Int @default(0)
+  activeRates    Int @default(0)
+
+  // Contract Terms
+  typicalPaymentTerms   String?
+  typicalContractLength String?
+  volumeDiscounts       Json?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rateCards  RateCardEntry[]
+  benchmarks SupplierBenchmark[]
+  scores     SupplierScore[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([competitivenessScore])
+  @@map("rate_card_suppliers")
+}
+
+model SupplierScore {
+  id         String @id @default(cuid())
+  supplierId String
+  tenantId   String
+
+  // Overall Score
+  overallScore Decimal @db.Decimal(5, 2)
+
+  // Multi-Factor Scores
+  priceCompetitiveness Decimal @db.Decimal(5, 2)
+  geographicCoverage   Decimal @db.Decimal(5, 2)
+  rateStability        Decimal @db.Decimal(5, 2)
+  growthTrajectory     Decimal @db.Decimal(5, 2)
+
+  // Ranking
+  ranking        Int
+  totalSuppliers Int
+
+  // Trend Analysis
+  trend         String // improving, declining, stable
+  previousScore Decimal? @db.Decimal(5, 2)
+  scoreChange   Decimal? @db.Decimal(5, 2)
+
+  // Calculation Metadata
+  calculationDate DateTime @default(now())
+  dataPointsUsed  Int
+  confidenceLevel Decimal  @db.Decimal(5, 2)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  // Relations
+  supplier RateCardSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId, calculationDate])
+  @@index([tenantId, overallScore])
+  @@index([tenantId, calculationDate])
+  @@index([ranking])
+  @@map("supplier_scores")
+}
+
+model RateCardEntry {
+  id       String @id @default(cuid())
+  tenantId String
+
+  // Source Information
+  source      RateCardSource
+  contractId  String?
+  importJobId String?
+  enteredBy   String?
+
+  // Supplier Information
+  supplierId      String
+  supplierName    String
+  supplierTier    SupplierTier
+  supplierCountry String
+  supplierRegion  String
+
+  // Role Information
+  roleOriginal     String
+  roleStandardized String
+  roleCategory     String
+  seniority        SeniorityLevel
+  lineOfService    String
+  subCategory      String?
+  unit             String?        @default("daily") // Rate unit: hourly, daily, monthly, fixed
+
+  // Rate Information
+  dailyRate    Decimal @db.Decimal(10, 2)
+  currency     String
+  dailyRateUSD Decimal @db.Decimal(10, 2)
+  dailyRateCHF Decimal @db.Decimal(10, 2)
+
+  // Geographic Information
+  country       String
+  region        String
+  city          String?
+  remoteAllowed Boolean @default(false)
+
+  // Contract Context
+  contractType    String?
+  effectiveDate   DateTime
+  expiryDate      DateTime?
+  contractValue   Decimal?  @db.Decimal(15, 2)
+  volumeCommitted Int?
+
+  // Benchmarking Fields (Auto-calculated)
+  marketRateAverage Decimal? @db.Decimal(10, 2)
+  marketRateMedian  Decimal? @db.Decimal(10, 2)
+  marketRateP25     Decimal? @db.Decimal(10, 2)
+  marketRateP75     Decimal? @db.Decimal(10, 2)
+  marketRateP90     Decimal? @db.Decimal(10, 2)
+
+  percentileRank    Int?
+  savingsAmount     Decimal? @db.Decimal(10, 2)
+  savingsPercentage Decimal? @db.Decimal(5, 2)
+
+  // Client/Tenant Information
+  clientName String?
+  clientId   String?
+
+  // Baseline & Negotiation Status
+  isBaseline       Boolean   @default(false)
+  baselineType     String?
+  isNegotiated     Boolean   @default(false)
+  negotiationDate  DateTime?
+  negotiatedBy     String?
+  negotiationNotes String?
+  msaReference     String?
+
+  // Editability & Audit
+  isEditable  Boolean   @default(true)
+  editedBy    String?
+  editedAt    DateTime?
+  editHistory Json?     @default("[]")
+
+  // Quality & Validation
+  confidence  Decimal          @db.Decimal(3, 2)
+  dataQuality DataQualityLevel
+  validatedBy String?
+  validatedAt DateTime?
+
+  // Additional Information
+  additionalInfo    Json?
+  skills            Json? @default("[]")
+  certifications    Json? @default("[]")
+  minimumCommitment Json?
+
+  // Metadata
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  lastBenchmarkedAt DateTime?
+
+  // Relations
+  contract             Contract?                @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  supplier             RateCardSupplier         @relation(fields: [supplierId], references: [id])
+  benchmarkSnapshots   BenchmarkSnapshot[]
+  savingsOpportunities RateSavingsOpportunity[]
+  comparisonsAsTarget  RateComparison[]
+  baselineComparisons  BaselineComparison[]
+  forecasts            RateForecast[]
+  outlierFlag          OutlierFlag?
+
+  @@index([tenantId])
+  @@index([supplierId])
+  @@index([roleStandardized])
+  @@index([country])
+  @@index([lineOfService])
+  @@index([seniority])
+  @@index([effectiveDate])
+  @@index([tenantId, roleStandardized, country])
+  @@index([tenantId, supplierId])
+  @@index([dailyRateUSD])
+  @@index([clientName])
+  @@index([clientId])
+  @@index([isBaseline])
+  @@index([isNegotiated])
+  @@index([tenantId, clientName])
+  @@index([isBaseline, isNegotiated])
+  @@index([tenantId, clientName, isBaseline, isNegotiated])
+  @@map("rate_card_entries")
+}
+
+model BenchmarkSnapshot {
+  id              String @id @default(cuid())
+  tenantId        String
+  rateCardEntryId String
+
+  // Snapshot Metadata
+  snapshotDate DateTime @default(now())
+  periodStart  DateTime
+  periodEnd    DateTime
+
+  // Benchmark Cohort Definition
+  cohortDefinition Json
+  cohortSize       Int
+
+  // Rate Values (for direct comparison in API routes)
+  rateValue    Decimal @db.Decimal(10, 2)
+  marketMedian Decimal @db.Decimal(10, 2)
+
+  // Statistical Analysis
+  average           Decimal  @db.Decimal(10, 2)
+  median            Decimal  @db.Decimal(10, 2)
+  mode              Decimal? @db.Decimal(10, 2)
+  standardDeviation Decimal  @db.Decimal(10, 2)
+
+  percentile25 Decimal @db.Decimal(10, 2)
+  percentile50 Decimal @db.Decimal(10, 2)
+  percentile75 Decimal @db.Decimal(10, 2)
+  percentile90 Decimal @db.Decimal(10, 2)
+  percentile95 Decimal @db.Decimal(10, 2)
+
+  min Decimal @db.Decimal(10, 2)
+  max Decimal @db.Decimal(10, 2)
+
+  // Position Analysis
+  positionInMarket String
+  percentileRank   Int
+
+  // Savings Analysis
+  potentialSavings Decimal? @db.Decimal(10, 2)
+  savingsToMedian  Decimal? @db.Decimal(10, 2)
+  savingsToP25     Decimal? @db.Decimal(10, 2)
+
+  // Market Intelligence
+  marketTrend     String?
+  trendPercentage Decimal? @db.Decimal(5, 2)
+
+  competitorCount   Int
+  competitorAverage Decimal? @db.Decimal(10, 2)
+
+  rateCardEntry RateCardEntry @relation(fields: [rateCardEntryId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([rateCardEntryId])
+  @@index([snapshotDate])
+  @@map("benchmark_snapshots")
+}
+
+model MarketRateIntelligence {
+  id       String @id @default(cuid())
+  tenantId String
+
+  // Market Segment
+  roleStandardized String
+  seniority        SeniorityLevel
+  lineOfService    String
+  country          String
+  region           String
+
+  // Time Period
+  periodStart DateTime
+  periodEnd   DateTime
+
+  // Aggregated Statistics
+  sampleSize  Int
+  averageRate Decimal @db.Decimal(10, 2)
+  medianRate  Decimal @db.Decimal(10, 2)
+  p25Rate     Decimal @db.Decimal(10, 2)
+  p75Rate     Decimal @db.Decimal(10, 2)
+  minRate     Decimal @db.Decimal(10, 2)
+  maxRate     Decimal @db.Decimal(10, 2)
+
+  // Supplier Breakdown
+  supplierDistribution Json
+  topSuppliers         Json
+
+  // Trend Analysis
+  trendDirection String
+  monthOverMonth Decimal? @db.Decimal(5, 2)
+  yearOverYear   Decimal? @db.Decimal(5, 2)
+
+  // Insights
+  insights Json
+
+  calculatedAt DateTime @default(now())
+
+  @@unique([tenantId, roleStandardized, seniority, country, periodStart])
+  @@index([tenantId])
+  @@index([roleStandardized])
+  @@index([country])
+  @@index([periodStart])
+  @@map("market_rate_intelligence")
+}
+
+model RateSavingsOpportunity {
+  id              String @id @default(cuid())
+  tenantId        String
+  rateCardEntryId String
+
+  // Opportunity Details
+  title       String
+  description String
+  category    SavingsCategory
+
+  // Financial Impact
+  currentAnnualCost      Decimal @db.Decimal(15, 2)
+  projectedAnnualCost    Decimal @db.Decimal(15, 2)
+  annualSavingsPotential Decimal @db.Decimal(15, 2)
+  savingsPercentage      Decimal @db.Decimal(5, 2)
+
+  // Effort & Risk
+  effort     EffortLevel
+  risk       RiskLevel
+  confidence Decimal     @db.Decimal(3, 2)
+
+  // Recommendations
+  recommendedAction    String
+  alternativeSuppliers Json?
+  negotiationPoints    Json?
+
+  // Timeline
+  implementationTime  String?
+  expectedRealization DateTime?
+
+  // Status
+  status        OpportunityStatus @default(IDENTIFIED)
+  assignedTo    String?
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  implementedAt DateTime?
+
+  actualSavingsRealized Decimal? @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rateCardEntry RateCardEntry @relation(fields: [rateCardEntryId], references: [id])
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([annualSavingsPotential(sort: Desc)])
+  @@index([category])
+  @@map("rate_savings_opportunities")
+}
+
+model RateComparison {
+  id       String @id @default(cuid())
+  tenantId String
+
+  // Comparison Metadata
+  comparisonName String
+  comparisonType ComparisonType
+  createdBy      String
+
+  // Target Rate
+  targetRateId String
+
+  // Comparison Rates
+  comparisonRates Json
+
+  // Analysis Results
+  results         Json
+  summary         String
+  recommendations Json?
+
+  // Sharing
+  isShared   Boolean @default(false)
+  sharedWith Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  targetRate RateCardEntry @relation(fields: [targetRateId], references: [id])
+
+  @@index([tenantId])
+  @@index([createdBy])
+  @@map("rate_comparisons")
+}
+
+model SupplierBenchmark {
+  id         String @id @default(cuid())
+  tenantId   String
+  supplierId String
+
+  // Time Period
+  periodStart DateTime
+  periodEnd   DateTime
+
+  // Rate Competitiveness
+  averageRate          Decimal @db.Decimal(10, 2)
+  medianRate           Decimal @db.Decimal(10, 2)
+  marketAverage        Decimal @db.Decimal(10, 2)
+  competitivenessScore Decimal @db.Decimal(5, 2)
+
+  // Volume & Coverage
+  totalRoles          Int
+  totalContracts      Int
+  geographicCoverage  Json
+  serviceLineCoverage Json
+
+  // Quality Metrics
+  dataQualityScore       Decimal  @db.Decimal(5, 2)
+  responseTime           Int?
+  negotiationFlexibility Decimal? @db.Decimal(3, 2)
+
+  // Financial
+  totalAnnualValue Decimal @db.Decimal(15, 2)
+  potentialSavings Decimal @db.Decimal(15, 2)
+
+  // Rankings
+  costRank    Int?
+  qualityRank Int?
+  overallRank Int?
+
+  calculatedAt DateTime @default(now())
+
+  supplier RateCardSupplier @relation(fields: [supplierId], references: [id])
+
+  @@index([tenantId])
+  @@index([supplierId])
+  @@index([periodStart])
+  @@map("supplier_benchmarks")
+}
+
+// ============================================================================
+// Procurement Taxonomy Models
+// ============================================================================
+
+model ProcurementCategory {
+  id       String @id @default(cuid())
+  tenantId String
+
+  // Category Hierarchy
+  categoryL1   String
+  categoryL2   String
+  categoryL3   String?
+  categoryPath String // Full path: L1/L2/L3
+
+  // Category Details
+  displayName String
+  description String?
+  icon        String?
+  color       String?
+
+  // Spend Category Classification
+  isDirectSpend   Boolean   @default(false)
+  isIndirectSpend Boolean   @default(true)
+  spendType       SpendType @default(INDIRECT)
+
+  // Benchmarking Configuration
+  enableBenchmarking  Boolean @default(true)
+  defaultCurrency     String  @default("USD")
+  typicalPricingModel String? // e.g., "per unit", "daily rate", "monthly fee"
+
+  // Keywords for auto-classification
+  keywords               String[] @default([])
+  aiClassificationPrompt String?
+
+  // Metadata
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  // Relations
+  rateCardBaselines RateCardBaseline[]
+  contracts         Contract[]         @relation("ContractProcurementCategory")
+
+  @@unique([tenantId, categoryL1, categoryL2])
+  @@index([tenantId])
+  @@index([categoryL1])
+  @@index([categoryL2])
+  @@index([spendType])
+  @@index([isActive])
+  @@index([tenantId, categoryL1, categoryL2])
+  @@map("procurement_categories")
+}
+
+// ============================================================================
+// Baseline & Target Rate Models
+// ============================================================================
+
+model RateCardBaseline {
+  id       String @id @default(cuid())
+  tenantId String
+
+  // Baseline Identification
+  baselineName String
+  baselineType BaselineType
+  description  String?
+
+  // Category Association
+  procurementCategoryId String?
+  categoryL1            String?
+  categoryL2            String?
+
+  // Role & Service Definition
+  roleStandardized String
+  roleCategory     String?
+  seniority        SeniorityLevel?
+  lineOfService    String?
+
+  // Geographic Scope
+  country  String?
+  region   String?
+  isGlobal Boolean @default(false)
+
+  // Baseline Rate
+  targetRate    Decimal @db.Decimal(10, 2)
+  currency      String
+  targetRateUSD Decimal @db.Decimal(10, 2)
+  rateUnit      String  @default("daily") // daily, hourly, monthly, annual
+
+  // Range & Tolerance
+  minimumRate         Decimal? @db.Decimal(10, 2)
+  maximumRate         Decimal? @db.Decimal(10, 2)
+  tolerancePercentage Decimal? @db.Decimal(5, 2)
+
+  // Baseline Source
+  source        BaselineSource
+  sourceDetails String?
+  importJobId   String?
+  contractId    String? // Reference contract if based on historical best
+
+  // Validity Period
+  effectiveDate DateTime
+  expiryDate    DateTime?
+  isActive      Boolean   @default(true)
+
+  // Approval & Governance
+  approvalStatus ApprovalStatus @default(PENDING)
+  approvedBy     String?
+  approvedAt     DateTime?
+  reviewedBy     String?
+  reviewedAt     DateTime?
+
+  // Usage Statistics
+  appliedCount    Int       @default(0)
+  savingsRealized Decimal?  @db.Decimal(15, 2)
+  lastAppliedAt   DateTime?
+
+  // Metadata
+  tags     String[] @default([])
+  notes    String?
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  // Relations
+  category            ProcurementCategory? @relation(fields: [procurementCategoryId], references: [id])
+  baselineComparisons BaselineComparison[]
+
+  @@unique([tenantId, baselineName])
+  @@index([tenantId])
+  @@index([baselineType])
+  @@index([roleStandardized])
+  @@index([country])
+  @@index([isActive])
+  @@index([effectiveDate])
+  @@index([approvalStatus])
+  @@index([tenantId, roleStandardized, country])
+  @@index([tenantId, categoryL1, categoryL2])
+  @@map("rate_card_baselines")
+}
+
+model BaselineComparison {
+  id       String @id @default(cuid())
+  tenantId String
+
+  // Comparison Identification
+  comparisonName String
+  comparisonDate DateTime @default(now())
+
+  // Baseline Reference
+  baselineId String
+
+  // Rate Card Reference
+  rateCardEntryId String?
+
+  // Or Manual Entry
+  actualRate       Decimal? @db.Decimal(10, 2)
+  actualRateSource String?
+
+  // Comparison Results
+  variance           Decimal @db.Decimal(10, 2) // Positive = over baseline, Negative = under
+  variancePercentage Decimal @db.Decimal(5, 2)
+  isWithinTolerance  Boolean
+
+  // Savings Calculation
+  potentialSavings    Decimal? @db.Decimal(10, 2)
+  annualSavingsImpact Decimal? @db.Decimal(15, 2)
+  volumeImpacted      Int?
+
+  // Analysis
+  riskLevel      RiskLevel @default(MEDIUM)
+  recommendation String?
+  actionRequired Boolean   @default(false)
+  priority       Int       @default(3)
+
+  // Status Tracking
+  status      OpportunityStatus @default(IDENTIFIED)
+  assignedTo  String?
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  // Notes
+  notes         String?
+  internalNotes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  // Relations
+  baseline      RateCardBaseline @relation(fields: [baselineId], references: [id])
+  rateCardEntry RateCardEntry?   @relation(fields: [rateCardEntryId], references: [id])
+
+  @@index([tenantId])
+  @@index([baselineId])
+  @@index([rateCardEntryId])
+  @@index([status])
+  @@index([comparisonDate])
+  @@index([variance(sort: Desc)])
+  @@index([potentialSavings(sort: Desc)])
+  @@map("baseline_comparisons")
+}
+
+// ============================================================================
+// Bulk Import & Data Management
+// ============================================================================
+
+model BaselineImportJob {
+  id       String @id @default(cuid())
+  tenantId String
+
+  // Import Details
+  jobName    String
+  importType String // csv, excel, api, manual
+  fileName   String?
+  fileSize   BigInt?
+  filePath   String?
+
+  // Processing Status
+  status         JobStatus
+  progress       Int       @default(0)
+  totalRows      Int?
+  processedRows  Int       @default(0)
+  successfulRows Int       @default(0)
+  failedRows     Int       @default(0)
+
+  // Results
+  importedBaselines Int     @default(0)
+  errors            Json?
+  warnings          Json?
+  summary           String?
+
+  // Metadata
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  startedBy   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("baseline_import_jobs")
+}
+
+// ============================================================================
+// Role Standardization & Taxonomy
+// ============================================================================
+
+model RoleTaxonomy {
+  id               String   @id @default(cuid())
+  standardizedName String   @unique @map("standardized_name")
+  category         String
+  subCategory      String?  @map("sub_category")
+  aliases          String[] @default([])
+  keywords         String[] @default([])
+  industry         String?
+  lineOfService    String?  @map("line_of_service")
+  seniorityLevel   String?  @map("seniority_level")
+  usageCount       Int      @default(0) @map("usage_count")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@index([usageCount(sort: Desc)])
+  @@index([standardizedName])
+  @@map("role_taxonomy")
+}
+
+model RoleMapping {
+  id               String   @id @default(cuid())
+  tenantId         String   @map("tenant_id")
+  originalRole     String   @map("original_role")
+  standardizedRole String   @map("standardized_role")
+  confidence       Decimal  @default(0.70) @db.Decimal(3, 2)
+  source           String // AI, USER_CORRECTION, MANUAL
+  userId           String?  @map("user_id")
+  context          Json     @default("{}")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([originalRole])
+  @@index([standardizedRole])
+  @@index([source])
+  @@index([tenantId, originalRole])
+  @@map("role_mappings")
+}
+
+// =============================================================================
+// Predictive Analytics Models
+// =============================================================================
+
+model RateForecast {
+  id              String @id @default(cuid())
+  rateCardEntryId String @map("rate_card_entry_id")
+  tenantId        String @map("tenant_id")
+
+  // Current State
+  currentRate  Decimal  @map("current_rate") @db.Decimal(10, 2)
+  forecastDate DateTime @default(now()) @map("forecast_date")
+
+  // Predictions
+  threeMonthRate       Decimal @map("three_month_rate") @db.Decimal(10, 2)
+  threeMonthConfidence Decimal @map("three_month_confidence") @db.Decimal(5, 2)
+  threeMonthLower      Decimal @map("three_month_lower") @db.Decimal(10, 2)
+  threeMonthUpper      Decimal @map("three_month_upper") @db.Decimal(10, 2)
+
+  sixMonthRate       Decimal @map("six_month_rate") @db.Decimal(10, 2)
+  sixMonthConfidence Decimal @map("six_month_confidence") @db.Decimal(5, 2)
+  sixMonthLower      Decimal @map("six_month_lower") @db.Decimal(10, 2)
+  sixMonthUpper      Decimal @map("six_month_upper") @db.Decimal(10, 2)
+
+  twelveMonthRate       Decimal @map("twelve_month_rate") @db.Decimal(10, 2)
+  twelveMonthConfidence Decimal @map("twelve_month_confidence") @db.Decimal(5, 2)
+  twelveMonthLower      Decimal @map("twelve_month_lower") @db.Decimal(10, 2)
+  twelveMonthUpper      Decimal @map("twelve_month_upper") @db.Decimal(10, 2)
+
+  // Trend Analysis
+  trendDirection   String  @map("trend_direction") // increasing, decreasing, stable
+  trendCoefficient Decimal @map("trend_coefficient") @db.Decimal(10, 6)
+  riskLevel        String  @map("risk_level") // low, medium, high
+
+  // Model Metadata
+  confidence           Decimal @db.Decimal(5, 2)
+  historicalDataPoints Int     @map("historical_data_points")
+  modelVersion         String  @map("model_version")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  rateCardEntry RateCardEntry @relation(fields: [rateCardEntryId], references: [id], onDelete: Cascade)
+
+  @@index([rateCardEntryId])
+  @@index([tenantId, forecastDate])
+  @@index([riskLevel])
+  @@index([trendDirection])
+  @@map("rate_forecasts")
+}
+
+// =============================================================================
+// Data Quality & Outlier Detection Models
+// =============================================================================
+
+model OutlierFlag {
+  id              String @id @default(cuid())
+  rateCardEntryId String @unique @map("rate_card_entry_id")
+  tenantId        String @map("tenant_id")
+
+  // Outlier Detection
+  outlierType       String  @map("outlier_type") // HIGH, LOW
+  deviationSigma    Decimal @map("deviation_sigma") @db.Decimal(10, 4)
+  marketMean        Decimal @map("market_mean") @db.Decimal(10, 2)
+  marketMedian      Decimal @map("market_median") @db.Decimal(10, 2)
+  standardDeviation Decimal @map("standard_deviation") @db.Decimal(10, 2)
+  severity          String // EXTREME, MODERATE, MILD
+
+  // Review Status
+  reviewStatus String    @default("PENDING") @map("review_status") // PENDING, REVIEWED, RESOLVED, DISMISSED
+  reviewedBy   String?   @map("reviewed_by")
+  reviewedAt   DateTime? @map("reviewed_at")
+  reviewAction String?   @map("review_action")
+  reviewNotes  String?   @map("review_notes")
+
+  // Resolution
+  resolvedBy String?   @map("resolved_by")
+  resolvedAt DateTime? @map("resolved_at")
+  resolution String?
+
+  // Timestamps
+  detectedAt DateTime @default(now()) @map("detected_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  rateCardEntry RateCardEntry         @relation(fields: [rateCardEntryId], references: [id], onDelete: Cascade)
+  reviewActions OutlierReviewAction[]
+
+  @@index([tenantId])
+  @@index([reviewStatus])
+  @@index([severity])
+  @@index([deviationSigma(sort: Desc)])
+  @@index([tenantId, reviewStatus])
+  @@map("outlier_flags")
+}
+
+model OutlierReviewAction {
+  id              String  @id @default(cuid())
+  rateCardEntryId String  @map("rate_card_entry_id")
+  outlierFlagId   String? @map("outlier_flag_id")
+
+  // Review Details
+  reviewedBy String   @map("reviewed_by")
+  reviewedAt DateTime @default(now()) @map("reviewed_at")
+  action     String // CORRECT_DATA, ACCEPT_AS_VALID, MARK_INACTIVE, MERGE_DUPLICATE, INVESTIGATE_FURTHER
+  notes      String?
+
+  // Relations
+  outlierFlag OutlierFlag? @relation(fields: [outlierFlagId], references: [id])
+
+  @@index([rateCardEntryId])
+  @@index([outlierFlagId])
+  @@index([reviewedAt])
+  @@map("outlier_review_actions")
+}
+
+model DuplicateResolution {
+  id               String @id @default(cuid())
+  duplicateGroupId String @map("duplicate_group_id")
+
+  // Resolution Details
+  action     String // MERGED, DELETED, KEPT_SEPARATE
+  resolvedBy String   @map("resolved_by")
+  resolvedAt DateTime @default(now()) @map("resolved_at")
+  notes      String?
+
+  // Merge/Delete Details
+  mergedIntoId String?  @map("merged_into_id")
+  deletedIds   String[] @default([]) @map("deleted_ids")
+
+  @@index([duplicateGroupId])
+  @@index([resolvedAt])
+  @@map("duplicate_resolutions")
+}
+
+// =============================================================================
+// Clustering & Consolidation Models
+// =============================================================================
+
+model RateCardCluster {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+
+  // Cluster Identification
+  name        String
+  clusterType String @default("K_MEANS") @map("cluster_type") // K_MEANS, HIERARCHICAL, DBSCAN
+
+  // Cluster Characteristics
+  memberCount Int     @map("member_count")
+  avgRate     Decimal @map("avg_rate") @db.Decimal(10, 2)
+  minRate     Decimal @map("min_rate") @db.Decimal(10, 2)
+  maxRate     Decimal @map("max_rate") @db.Decimal(10, 2)
+
+  // Cluster Metadata
+  characteristics Json // Common roles, geographies, etc.
+  centroid        Json // Normalized feature centroid
+
+  // Consolidation Analysis
+  consolidationSavings Decimal @map("consolidation_savings") @db.Decimal(15, 2)
+  supplierCount        Int     @map("supplier_count")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  members ClusterMember[]
+
+  @@index([tenantId])
+  @@index([consolidationSavings(sort: Desc)])
+  @@index([createdAt])
+  @@map("rate_card_clusters")
+}
+
+model ClusterMember {
+  id              String @id @default(cuid())
+  clusterId       String @map("cluster_id")
+  rateCardEntryId String @map("rate_card_entry_id")
+
+  // Membership Details
+  similarityScore    Decimal @map("similarity_score") @db.Decimal(5, 2) // 0-100
+  distanceToCentroid Decimal @map("distance_to_centroid") @db.Decimal(10, 6)
+
+  // Timestamps
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  // Relations
+  cluster RateCardCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  @@unique([clusterId, rateCardEntryId])
+  @@index([clusterId])
+  @@index([rateCardEntryId])
+  @@map("cluster_members")
+}
+
+model ConsolidationOpportunity {
+  id        String @id @default(cuid())
+  tenantId  String @map("tenant_id")
+  clusterId String @map("cluster_id")
+
+  // Opportunity Details
+  opportunityName String  @map("opportunity_name")
+  description     String?
+
+  // Supplier Analysis
+  currentSupplierCount    Int      @map("current_supplier_count")
+  recommendedSupplierId   String   @map("recommended_supplier_id")
+  recommendedSupplierName String   @map("recommended_supplier_name")
+  suppliersToConsolidate  String[] @default([]) @map("suppliers_to_consolidate")
+
+  // Financial Impact
+  currentAnnualCost      Decimal @map("current_annual_cost") @db.Decimal(15, 2)
+  projectedAnnualCost    Decimal @map("projected_annual_cost") @db.Decimal(15, 2)
+  annualSavings          Decimal @map("annual_savings") @db.Decimal(15, 2)
+  annualSavingsPotential Decimal @map("annual_savings_potential") @db.Decimal(15, 2)
+  savingsPercentage      Decimal @map("savings_percentage") @db.Decimal(5, 2)
+
+  // Volume Analysis
+  totalVolume      Int  @map("total_volume")
+  volumeBySupplier Json @map("volume_by_supplier")
+
+  // Risk & Implementation
+  riskLevel                String   @map("risk_level") // LOW, MEDIUM, HIGH
+  riskFactors              String[] @default([]) @map("risk_factors")
+  implementationComplexity String   @map("implementation_complexity") // LOW, MEDIUM, HIGH
+  estimatedTimeframe       String   @map("estimated_timeframe")
+  actionItems              String[] @default([]) @map("action_items")
+
+  // Quality Metrics
+  confidence  Decimal @db.Decimal(5, 2)
+  dataQuality Decimal @map("data_quality") @db.Decimal(5, 2)
+
+  // Status Tracking
+  status        String    @default("IDENTIFIED") // IDENTIFIED, UNDER_REVIEW, APPROVED, IN_PROGRESS, IMPLEMENTED, REJECTED
+  assignedTo    String?   @map("assigned_to")
+  reviewedBy    String?   @map("reviewed_by")
+  reviewedAt    DateTime? @map("reviewed_at")
+  implementedAt DateTime? @map("implemented_at")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([clusterId])
+  @@index([status])
+  @@index([annualSavings(sort: Desc)])
+  @@index([tenantId, status])
+  @@map("consolidation_opportunities")
+}
+
+model GeographicArbitrageOpportunity {
+  id        String @id @default(cuid())
+  tenantId  String @map("tenant_id")
+  clusterId String @map("cluster_id")
+
+  // Geographic Details
+  sourceCountry String @map("source_country")
+  sourceRegion  String @map("source_region")
+  targetCountry String @map("target_country")
+  targetRegion  String @map("target_region")
+
+  // Rate Analysis
+  currentAverageRate Decimal @map("current_average_rate") @db.Decimal(10, 2)
+  targetAverageRate  Decimal @map("target_average_rate") @db.Decimal(10, 2)
+  rateDifference     Decimal @map("rate_difference") @db.Decimal(10, 2)
+  savingsPercentage  Decimal @map("savings_percentage") @db.Decimal(5, 2)
+
+  // Financial Impact
+  annualSavingsPotential Decimal @map("annual_savings_potential") @db.Decimal(15, 2)
+  affectedRoles          Int     @map("affected_roles")
+  estimatedFTEs          Int     @map("estimated_ftes")
+
+  // Quality & Risk
+  qualityDifference String   @map("quality_difference") // SAME, BETTER, WORSE
+  riskLevel         String   @map("risk_level") // LOW, MEDIUM, HIGH
+  riskFactors       String[] @default([]) @map("risk_factors")
+  feasibility       String // HIGH, MEDIUM, LOW
+
+  // Implementation
+  considerations  String[] @default([])
+  recommendations String[] @default([])
+
+  // Quality Metrics
+  confidence       Decimal @db.Decimal(5, 2)
+  sourceSampleSize Int     @map("source_sample_size")
+  targetSampleSize Int     @map("target_sample_size")
+
+  // Status Tracking
+  status        String    @default("IDENTIFIED") // IDENTIFIED, UNDER_REVIEW, APPROVED, IN_PROGRESS, IMPLEMENTED, REJECTED
+  assignedTo    String?   @map("assigned_to")
+  reviewedBy    String?   @map("reviewed_by")
+  reviewedAt    DateTime? @map("reviewed_at")
+  implementedAt DateTime? @map("implemented_at")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([clusterId])
+  @@index([status])
+  @@index([annualSavingsPotential(sort: Desc)])
+  @@index([sourceCountry])
+  @@index([targetCountry])
+  @@index([tenantId, status])
+  @@map("geographic_arbitrage_opportunities")
+}
+
+// =============================================================================
+// Advanced Filtering & Segmentation Models
+// =============================================================================
+
+model RateCardSegment {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  userId   String @map("user_id")
+
+  // Segment Details
+  name        String
+  description String?
+
+  // Filter Definition
+  filters Json // Complex filter definition with boolean logic
+
+  // Sharing
+  shared Boolean @default(false)
+
+  // Usage Tracking
+  usageCount Int @default(0) @map("usage_count")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([tenantId, shared])
+  @@index([usageCount(sort: Desc)])
+  @@map("rate_card_segments")
+}
+
+// =============================================================================
+// Alerts & Notifications Models
+// =============================================================================
+
+model RateCardAlert {
+  id       String  @id @default(cuid())
+  tenantId String  @map("tenant_id")
+  userId   String? @map("user_id")
+
+  // Alert Details
+  type        String // rate_increase, market_shift, opportunity, quality_issue, supplier_alert
+  severity    String // low, medium, high, critical
+  title       String
+  description String
+  data        Json   @default("{}")
+
+  // Status
+  read Boolean @default(false)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, read, createdAt])
+  @@index([userId, read])
+  @@index([type])
+  @@index([severity])
+  @@index([tenantId, type, read])
+  @@map("rate_card_alerts")
+}
+
+model ScheduledReport {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  userId   String @map("user_id")
+
+  // Report Details
+  name       String
+  type       String // executive, detailed, opportunities, suppliers
+  frequency  String // daily, weekly, monthly
+  recipients Json // Array of email addresses
+  filters    Json   @default("{}")
+
+  // Schedule
+  lastRun DateTime? @map("last_run")
+  nextRun DateTime  @map("next_run")
+  enabled Boolean   @default(true)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId, enabled, nextRun])
+  @@index([userId])
+  @@index([type])
+  @@index([nextRun])
+  @@map("scheduled_reports")
+}
+
+// =============================================================================
+// Multi-Currency Advanced Support Models
+// =============================================================================
+
+model ExchangeRate {
+  id           String   @id @default(cuid())
+  fromCurrency String   @map("from_currency")
+  toCurrency   String   @map("to_currency")
+  rate         Decimal  @db.Decimal(10, 6)
+  timestamp    DateTime @default(now())
+  source       String   @default("exchangerate-api.io")
+
+  @@index([fromCurrency, toCurrency, timestamp])
+  @@index([timestamp])
+  @@map("exchange_rates")
+}
+
+model CurrencyVolatilityAlert {
+  id            String  @id @default(cuid())
+  tenantId      String  @map("tenant_id")
+  currency      String
+  baseCurrency  String  @map("base_currency")
+  changePercent Decimal @map("change_percent") @db.Decimal(5, 2)
+  previousRate  Decimal @map("previous_rate") @db.Decimal(10, 6)
+  currentRate   Decimal @map("current_rate") @db.Decimal(10, 6)
+  affectedRates Int     @default(0) @map("affected_rates")
+
+  // Status
+  acknowledged   Boolean   @default(false)
+  acknowledgedBy String?   @map("acknowledged_by")
+  acknowledgedAt DateTime? @map("acknowledged_at")
+
+  // Timestamps
+  detectedAt DateTime @default(now()) @map("detected_at")
+
+  @@index([tenantId, acknowledged])
+  @@index([currency])
+  @@index([detectedAt])
+  @@index([changePercent(sort: Desc)])
+  @@map("currency_volatility_alerts")
+}
+
+model NegotiationScenario {
+  id          String  @id @default(cuid())
+  tenantId    String  @map("tenant_id")
+  name        String
+  description String?
+
+  // Scenario parameters
+  targetRate        Decimal @map("target_rate") @db.Decimal(10, 2)
+  currentRate       Decimal @map("current_rate") @db.Decimal(10, 2)
+  savings           Decimal @db.Decimal(15, 2)
+  savingsPercentage Decimal @map("savings_percentage") @db.Decimal(5, 2)
+
+  // Volume and cost
+  annualVolume Int     @map("annual_volume")
+  annualCost   Decimal @map("annual_cost") @db.Decimal(15, 2)
+
+  // Associated data
+  rateCardId String? @map("rate_card_id")
+  supplierId String? @map("supplier_id")
+
+  // Status
+  status    String @default("DRAFT") // DRAFT, ACTIVE, IMPLEMENTED, REJECTED
+  createdBy String @map("created_by")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([rateCardId])
+  @@map("negotiation_scenarios")
+}
+
+// Contract Collaboration Models
+
+model ContractComment {
+  id         String  @id @default(cuid())
+  contractId String  @map("contract_id")
+  tenantId   String  @map("tenant_id")
+  userId     String  @map("user_id")
+  parentId   String? @map("parent_id")
+
+  // Comment content
+  content  String   @db.Text
+  mentions String[] // Array of user IDs mentioned with @
+
+  // Status
+  isResolved Boolean   @default(false) @map("is_resolved")
+  resolvedBy String?   @map("resolved_by")
+  resolvedAt DateTime? @map("resolved_at")
+
+  // Engagement
+  reactions Json @default("[]") // Array of { emoji, userId, userName }
+  likes     Int  @default(0)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  parent  ContractComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies ContractComment[] @relation("CommentReplies")
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([parentId])
+  @@index([createdAt])
+  @@map("contract_comments")
+}
+
+model ContractActivity {
+  id         String @id @default(cuid())
+  contractId String @map("contract_id")
+  tenantId   String @map("tenant_id")
+  userId     String @map("user_id")
+
+  // Activity details
+  type     String // upload, edit, comment, approval, rejection, share, download, workflow, metadata
+  action   String // Human-readable action description
+  details  String? @db.Text
+  metadata Json? // Type-specific data
+
+  // Timestamps
+  timestamp DateTime @default(now())
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([type])
+  @@index([timestamp(sort: Desc)])
+  @@map("contract_activities")
+}
+
+// ============================================
+// Production Infrastructure Models
+// ============================================
+
+// Webhook Configuration
+model Webhook {
+  id         String            @id @default(cuid())
+  tenantId   String
+  name       String
+  url        String
+  secret     String? // HMAC secret for signature verification
+  events     String[] // Array of event types to listen for
+  enabled    Boolean           @default(true)
+  maxRetries Int               @default(5)
+  timeout    Int               @default(10000) // milliseconds
+  metadata   Json?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  createdBy  String?
+  deliveries WebhookDelivery[]
+
+  @@index([tenantId])
+  @@index([enabled])
+  @@map("webhooks")
+}
+
+// Webhook Delivery Tracking
+model WebhookDelivery {
+  id          String    @id @default(cuid())
+  webhookId   String
+  tenantId    String
+  event       String
+  payload     Json
+  status      String    @default("pending") // pending, success, failed
+  attempt     Int       @default(1)
+  maxAttempts Int       @default(5)
+  statusCode  Int?
+  response    String?   @db.Text
+  error       String?   @db.Text
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  webhook     Webhook   @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("webhook_deliveries")
+}
+
+// Idempotency Key for preventing duplicate operations
+model IdempotencyKey {
+  id          String   @id @default(cuid())
+  key         String
+  tenantId    String
+  operation   String? // Operation name for tracking
+  requestHash String // Hash of request parameters
+  response    Json? // Cached response
+  statusCode  Int?
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime // Keys expire after 24 hours
+
+  @@unique([key, tenantId])
+  @@index([tenantId])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+// Transactional Outbox Pattern for reliable event publishing
+model OutboxEvent {
+  id            String    @id @default(cuid())
+  tenantId      String
+  eventType     String
+  aggregateType String // Type of entity (Contract, RateCard, etc.)
+  aggregateId   String // ID of the entity that triggered the event
+  payload       Json
+  status        String    @default("pending") // pending, published, failed
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(3)
+  error         String?   @db.Text
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status])
+  @@index([tenantId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("outbox_events")
+}
+
+// ============================================
+// Workflow Models
+// ============================================
+
+model Workflow {
+  id          String  @id @default(cuid())
+  tenantId    String  @map("tenant_id")
+  name        String
+  description String?
+  type        String  @default("APPROVAL") // APPROVAL, REVIEW, CUSTOM
+  isActive    Boolean @default(true) @map("is_active")
+  isDefault   Boolean @default(false) @map("is_default")
+  config      Json?
+  metadata    Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+
+  steps      WorkflowStep[]
+  executions WorkflowExecution[]
+
+  @@index([tenantId])
+  @@index([isActive])
+  @@index([type])
+  @@map("workflows")
+}
+
+model WorkflowStep {
+  id           String  @id @default(cuid())
+  workflowId   String  @map("workflow_id")
+  name         String
+  description  String?
+  order        Int     @default(0)
+  type         String  @default("APPROVAL") // APPROVAL, REVIEW, NOTIFICATION, CUSTOM
+  assignedRole String? @map("assigned_role")
+  assignedUser String? @map("assigned_user")
+  config       Json?
+  isRequired   Boolean @default(true) @map("is_required")
+  timeout      Int? // timeout in hours
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  workflow   Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  executions WorkflowStepExecution[]
+
+  @@index([workflowId])
+  @@index([order])
+  @@map("workflow_steps")
+}
+
+model WorkflowExecution {
+  id          String    @id @default(cuid())
+  workflowId  String    @map("workflow_id")
+  contractId  String    @map("contract_id")
+  tenantId    String?   @map("tenant_id")
+  status      String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
+  currentStep String?   @map("current_step") // Step ID or number as string
+  initiatedBy String?   @map("initiated_by") // Keep backward compatible
+  startedBy   String?   @map("started_by")
+  dueDate     DateTime? @map("due_date")
+  metadata    Json?
+  error       String?
+
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  workflow       Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  contract       Contract                @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  stepExecutions WorkflowStepExecution[]
+
+  @@index([workflowId])
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("workflow_executions")
+}
+
+model WorkflowStepExecution {
+  id          String  @id @default(cuid())
+  executionId String  @map("execution_id")
+  stepId      String  @map("step_id")
+  stepOrder   Int     @default(0) @map("step_order")
+  stepName    String  @default("") @map("step_name")
+  status      String  @default("PENDING") // PENDING, WAITING, IN_PROGRESS, COMPLETED, FAILED, SKIPPED, REJECTED
+  assignedTo  String? @map("assigned_to")
+  completedBy String? @map("completed_by")
+  result      Json? // Approval result with comments
+  metadata    Json?
+
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  execution WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  step      WorkflowStep      @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+  @@index([stepId])
+  @@index([status])
+  @@index([stepOrder])
+  @@map("workflow_step_executions")
+}
+
+// ============================================
+// Integration Hub Models
+// ============================================
+
+model Integration {
+  id          String  @id @default(cuid())
+  tenantId    String  @map("tenant_id")
+  name        String
+  description String?
+  type        String // ERP, PROCUREMENT, SIGNATURE, CLM, ANALYTICS, AI, CLOUD, STORAGE
+  provider    String // SAP, Coupa, DocuSign, google-drive, sharepoint, dropbox, etc.
+  status      String  @default("disconnected") // connected, disconnected, error, syncing
+  version     String?
+  config      Json? // Connection configuration (encrypted credentials)
+  credentials Json? // Encrypted credentials
+
+  // OAuth tokens for cloud storage integrations
+  accessToken    String?   @map("access_token")
+  refreshToken   String?   @map("refresh_token")
+  tokenExpiresAt DateTime? @map("token_expires_at")
+  scope          String?
+  accountEmail   String?   @map("account_email")
+  accountName    String?   @map("account_name")
+  connectedAt    DateTime? @map("connected_at")
+  connectedBy    String?   @map("connected_by")
+
+  lastSyncAt         DateTime? @map("last_sync_at")
+  lastHealthCheck    DateTime? @map("last_health_check")
+  healthStatus       String?   @default("UNKNOWN") // HEALTHY, DEGRADED, DOWN, UNKNOWN
+  errorMessage       String?   @map("error_message")
+  recordsProcessed   Int       @default(0) @map("records_processed")
+  documentsProcessed Int       @default(0) @map("documents_processed")
+  uptime             Float?    @default(100) // Percentage uptime
+  errors24h          Int       @default(0) @map("errors_24h")
+  metadata           Json?
+  capabilities       String[]  @default([])
+  isActive           Boolean   @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+
+  syncLogs SyncLog[]
+
+  @@unique([tenantId, provider])
+  @@index([tenantId])
+  @@index([status])
+  @@index([type])
+  @@index([provider])
+  @@map("integrations")
+}
+
+model SyncLog {
+  id             String  @id @default(cuid())
+  integrationId  String  @map("integration_id")
+  tenantId       String  @map("tenant_id")
+  direction      String  @default("INBOUND") // INBOUND, OUTBOUND, BIDIRECTIONAL
+  status         String  @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED
+  syncType       String  @default("FULL") // FULL, INCREMENTAL, DELTA
+  recordsTotal   Int     @default(0) @map("records_total")
+  recordsSuccess Int     @default(0) @map("records_success")
+  recordsFailed  Int     @default(0) @map("records_failed")
+  recordsSkipped Int     @default(0) @map("records_skipped")
+  duration       Int? // Duration in milliseconds
+  errorMessage   String? @map("error_message")
+  errorDetails   Json?   @map("error_details")
+  metadata       Json?
+
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("sync_logs")
+}
+
+// ============================================
+// Contract Source Sync Models (Pull Model)
+// ============================================
+
+// Represents a configured contract source for automatic sync
+model ContractSource {
+  id          String                 @id @default(cuid())
+  tenantId    String                 @map("tenant_id")
+  name        String
+  description String?
+  provider    ContractSourceProvider
+  status      ContractSourceStatus   @default(DISCONNECTED)
+  isActive    Boolean                @default(true) @map("is_active")
+
+  // Connection configuration (encrypted)
+  credentials   Json? // Encrypted: API keys, tokens, etc.
+  connectionUrl String?  @map("connection_url") // Base URL or endpoint
+  syncFolder    String?  @map("sync_folder") // Remote folder/container to sync
+  filePatterns  String[] @default(["*.pdf", "*.docx", "*.doc"]) @map("file_patterns")
+
+  // OAuth tokens (for cloud providers)
+  accessToken    String?   @map("access_token")
+  refreshToken   String?   @map("refresh_token")
+  tokenExpiresAt DateTime? @map("token_expires_at")
+  scope          String?
+
+  // Account info
+  accountEmail String? @map("account_email")
+  accountName  String? @map("account_name")
+
+  // Sync configuration
+  syncEnabled   Boolean  @default(true) @map("sync_enabled")
+  syncInterval  Int      @default(60) @map("sync_interval") // Minutes between syncs
+  syncMode      SyncMode @default(INCREMENTAL) @map("sync_mode")
+  autoProcess   Boolean  @default(true) @map("auto_process") // Auto-start AI processing
+  maxFileSizeMb Int      @default(50) @map("max_file_size_mb")
+
+  // Sync state
+  lastSyncAt       DateTime? @map("last_sync_at")
+  lastSyncStatus   String?   @map("last_sync_status")
+  lastErrorMessage String?   @map("last_error_message")
+  lastErrorAt      DateTime? @map("last_error_at")
+  syncCursor       String?   @map("sync_cursor") // For incremental sync (delta token, etc.)
+  totalFilesSynced Int       @default(0) @map("total_files_synced")
+  totalBytesSynced BigInt    @default(0) @map("total_bytes_synced")
+
+  // Audit
+  connectedAt DateTime? @map("connected_at")
+  connectedBy String?   @map("connected_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  createdBy   String?   @map("created_by")
+
+  // Relations
+  syncedFiles SyncedFile[]
+  sourceSyncs SourceSync[]
+
+  @@unique([tenantId, provider, syncFolder])
+  @@index([tenantId])
+  @@index([provider])
+  @@index([status])
+  @@index([isActive])
+  @@index([syncEnabled])
+  @@map("contract_sources")
+}
+
+// Tracks individual files that have been synced from a source
+model SyncedFile {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  sourceId String @map("source_id")
+
+  // Remote file info
+  remoteId   String  @map("remote_id") // ID in the remote system
+  remotePath String  @map("remote_path") // Full path in remote system
+  remoteHash String? @map("remote_hash") // Hash/ETag for change detection
+  fileName   String  @map("file_name")
+  mimeType   String? @map("mime_type")
+  fileSize   BigInt  @map("file_size")
+
+  // Remote timestamps
+  remoteCreatedAt  DateTime? @map("remote_created_at")
+  remoteModifiedAt DateTime? @map("remote_modified_at")
+
+  // Local processing
+  contractId       String?        @map("contract_id")
+  processingStatus SyncFileStatus @default(PENDING) @map("processing_status")
+  errorMessage     String?        @map("error_message")
+  processedAt      DateTime?      @map("processed_at")
+
+  // Sync tracking
+  firstSyncedAt DateTime @default(now()) @map("first_synced_at")
+  lastSyncedAt  DateTime @default(now()) @map("last_synced_at")
+  syncCount     Int      @default(1) @map("sync_count")
+  isDeleted     Boolean  @default(false) @map("is_deleted") // Deleted in remote
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  source   ContractSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  contract Contract?      @relation(fields: [contractId], references: [id], onDelete: SetNull)
+
+  @@unique([sourceId, remoteId])
+  @@index([tenantId])
+  @@index([sourceId])
+  @@index([contractId])
+  @@index([processingStatus])
+  @@index([remoteModifiedAt])
+  @@map("synced_files")
+}
+
+// Tracks each sync run for a source
+model SourceSync {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  sourceId String @map("source_id")
+
+  status      SourceSyncStatus @default(PENDING)
+  syncMode    SyncMode
+  triggeredBy String?          @map("triggered_by") // SCHEDULER, MANUAL, WEBHOOK
+
+  // Progress tracking
+  filesFound       Int    @default(0) @map("files_found")
+  filesProcessed   Int    @default(0) @map("files_processed")
+  filesSkipped     Int    @default(0) @map("files_skipped")
+  filesFailed      Int    @default(0) @map("files_failed")
+  bytesTransferred BigInt @default(0) @map("bytes_transferred")
+
+  // Timing
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  duration    Int? // Milliseconds
+
+  // Error handling
+  errorMessage String? @map("error_message")
+  errorDetails Json?   @map("error_details")
+
+  // Sync state
+  syncCursor     String? @map("sync_cursor")
+  nextSyncCursor String? @map("next_sync_cursor")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  source ContractSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([sourceId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("source_syncs")
+}
+
+enum ContractSourceProvider {
+  SHAREPOINT
+  ONEDRIVE
+  GOOGLE_DRIVE
+  AZURE_BLOB
+  AWS_S3
+  SFTP
+  FTP
+  DROPBOX
+  BOX
+  CUSTOM_API
+}
+
+enum ContractSourceStatus {
+  CONNECTED
+  DISCONNECTED
+  SYNCING
+  ERROR
+  AUTH_EXPIRED
+}
+
+enum SyncMode {
+  FULL // Re-sync everything
+  INCREMENTAL // Only new/changed files
+  DELTA // Use provider's delta API if available
+}
+
+enum SyncFileStatus {
+  PENDING
+  DOWNLOADING
+  PROCESSING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+enum SourceSyncStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ============================================
+// Collaboration Models
+// ============================================
+
+model Notification {
+  id        String    @id @default(cuid())
+  tenantId  String    @map("tenant_id")
+  userId    String    @map("user_id")
+  type      String    @default("SYSTEM") // APPROVAL_REQUEST, APPROVAL_COMPLETED, COMMENT_MENTION, CONTRACT_DEADLINE, WORKFLOW_STEP, SHARE_INVITE, SYSTEM
+  title     String
+  message   String
+  body      String? // Additional notification body content
+  link      String?
+  metadata  Json?
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at")
+  expiresAt DateTime? @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId, userId])
+  @@index([userId, isRead])
+  @@index([type])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model DocumentShare {
+  id           String    @id @default(cuid())
+  tenantId     String    @map("tenant_id")
+  documentId   String    @map("document_id")
+  documentType String    @map("document_type") // contract, rate_card, template, workflow
+  sharedWith   String    @map("shared_with") // userId or email
+  sharedBy     String    @map("shared_by")
+  permission   String    @default("VIEW") // VIEW, COMMENT, EDIT, ADMIN
+  accessToken  String?   @unique @map("access_token") // For secure link sharing
+  expiresAt    DateTime? @map("expires_at")
+  isActive     Boolean   @default(true) @map("is_active")
+  accessedAt   DateTime? @map("accessed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([documentId, documentType, sharedWith])
+  @@index([tenantId])
+  @@index([documentId, documentType])
+  @@index([sharedWith])
+  @@index([accessToken])
+  @@map("document_shares")
+}
+
+// ============================================
+// Contract Health & Expiration Tracking Models
+// ============================================
+
+model ContractHealthScore {
+  id         String @id @default(cuid())
+  contractId String @unique @map("contract_id")
+  tenantId   String @map("tenant_id")
+
+  // Component Scores (0-100)
+  overallScore     Int @default(0) @map("overall_score")
+  riskScore        Int @default(0) @map("risk_score")
+  complianceScore  Int @default(0) @map("compliance_score")
+  financialScore   Int @default(0) @map("financial_score")
+  operationalScore Int @default(0) @map("operational_score")
+  renewalReadiness Int @default(0) @map("renewal_readiness") // How ready for renewal
+  documentQuality  Int @default(0) @map("document_quality") // Quality of contract doc
+
+  // Score Breakdown
+  factors       Json @default("[]") // Detailed factor breakdown
+  strengths     Json @default("[]") // Contract strengths
+  weaknesses    Json @default("[]") // Areas of concern
+  opportunities Json @default("[]") // Improvement opportunities
+
+  // Trend Tracking
+  previousScore  Int?   @map("previous_score")
+  scoreChange    Int    @default(0) @map("score_change")
+  trendDirection String @default("stable") @map("trend_direction") // improving, declining, stable
+  trendHistory   Json   @default("[]") @map("trend_history") // Last 12 scores
+
+  // Alerts
+  alertLevel   String    @default("none") @map("alert_level") // none, low, medium, high, critical
+  activeAlerts Json      @default("[]") @map("active_alerts")
+  alertCount   Int       @default(0) @map("alert_count")
+  lastAlertAt  DateTime? @map("last_alert_at")
+
+  // Benchmarking
+  industryAverage Int? @map("industry_average")
+  percentileRank  Int? @map("percentile_rank") // Where this contract ranks
+
+  calculatedAt DateTime @default(now()) @map("calculated_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([overallScore(sort: Desc)])
+  @@index([alertLevel])
+  @@index([calculatedAt])
+  @@index([tenantId, overallScore(sort: Desc)])
+  @@index([tenantId, alertLevel])
+  @@index([trendDirection])
+  @@index([riskScore(sort: Desc)])
+  @@index([renewalReadiness(sort: Desc)])
+  @@map("contract_health_scores")
+}
+
+model ContractExpiration {
+  id         String @id @default(cuid())
+  contractId String @unique @map("contract_id")
+  tenantId   String @map("tenant_id")
+
+  // Expiration Details
+  expirationDate  DateTime  @map("expiration_date")
+  daysUntilExpiry Int       @map("days_until_expiry")
+  isExpired       Boolean   @default(false) @map("is_expired")
+  expiredAt       DateTime? @map("expired_at")
+
+  // Risk Assessment
+  expirationRisk String @default("LOW") @map("expiration_risk") // LOW, MEDIUM, HIGH, CRITICAL, EXPIRED
+  riskFactors    Json   @default("[]") @map("risk_factors")
+  impactScore    Int    @default(0) @map("impact_score") // Business impact 0-100
+
+  // Value at Risk
+  contractValue Decimal? @map("contract_value") @db.Decimal(15, 2)
+  annualValue   Decimal? @map("annual_value") @db.Decimal(15, 2)
+  valueAtRisk   Decimal? @map("value_at_risk") @db.Decimal(15, 2)
+
+  // Renewal Status
+  renewalStatus      String   @default("PENDING") @map("renewal_status") // PENDING, UPCOMING, INITIATED, IN_PROGRESS, COMPLETED, DECLINED, EXPIRED, NOT_RENEWING
+  renewalProbability Decimal? @map("renewal_probability") @db.Decimal(5, 2) // AI-predicted probability
+  recommendedAction  String?  @map("recommended_action") // RENEW, RENEGOTIATE, TERMINATE, REPLACE
+
+  // Ownership & Assignment
+  ownerId    String?   @map("owner_id")
+  ownerName  String?   @map("owner_name")
+  assignedTo String?   @map("assigned_to")
+  assignedAt DateTime? @map("assigned_at")
+
+  // Alert Tracking
+  alertsSent    Json      @default("[]") @map("alerts_sent") // { type, sentAt, sentTo }[]
+  lastAlertSent DateTime? @map("last_alert_sent")
+  nextAlertDue  DateTime? @map("next_alert_due")
+  alertsEnabled Boolean   @default(true) @map("alerts_enabled")
+
+  // Notice Period
+  noticePeriodDays Int?      @map("notice_period_days")
+  noticeDeadline   DateTime? @map("notice_deadline")
+  noticeGiven      Boolean   @default(false) @map("notice_given")
+  noticeGivenAt    DateTime? @map("notice_given_at")
+  noticeGivenBy    String?   @map("notice_given_by")
+
+  // Auto-Renewal
+  autoRenewalEnabled Boolean @default(false) @map("auto_renewal_enabled")
+  autoRenewalTerms   Json?   @map("auto_renewal_terms")
+
+  // Resolution
+  resolution      String? // RENEWED, TERMINATED, REPLACED, ARCHIVED, EXTENDED
+  resolutionDate  DateTime? @map("resolution_date")
+  resolutionBy    String?   @map("resolution_by")
+  resolutionNotes String?   @map("resolution_notes") @db.Text
+  newContractId   String?   @map("new_contract_id") // If replaced/renewed
+
+  // Contract Reference
+  contractTitle String? @map("contract_title")
+  supplierName  String? @map("supplier_name")
+  clientName    String? @map("client_name")
+  contractType  String? @map("contract_type")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([expirationDate])
+  @@index([daysUntilExpiry])
+  @@index([isExpired])
+  @@index([expirationRisk])
+  @@index([renewalStatus])
+  @@index([ownerId])
+  @@index([assignedTo])
+  @@index([resolution])
+  @@index([tenantId, isExpired])
+  @@index([tenantId, expirationRisk])
+  @@index([tenantId, renewalStatus])
+  @@index([tenantId, daysUntilExpiry])
+  @@index([tenantId, expirationDate])
+  @@index([noticePeriodDays])
+  @@index([noticeDeadline])
+  @@index([nextAlertDue])
+  @@index([valueAtRisk(sort: Desc)])
+  @@map("contract_expirations")
+}
+
+model ExpirationAlert {
+  id         String @id @default(cuid())
+  contractId String @map("contract_id")
+  tenantId   String @map("tenant_id")
+
+  // Alert Details
+  alertType String @map("alert_type") // EXPIRATION_30_DAYS, EXPIRATION_60_DAYS, EXPIRATION_90_DAYS, NOTICE_DEADLINE, EXPIRED, CUSTOM
+  severity  String @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  title     String
+  message   String @db.Text
+
+  // Recipients
+  recipients Json @default("[]") // { userId, email, name }[]
+  sentTo     Json @default("[]") @map("sent_to") // Actual recipients
+
+  // Delivery Status
+  status        String    @default("PENDING") // PENDING, SENT, DELIVERED, FAILED, ACKNOWLEDGED
+  sentAt        DateTime? @map("sent_at")
+  deliveredAt   DateTime? @map("delivered_at")
+  failedAt      DateTime? @map("failed_at")
+  failureReason String?   @map("failure_reason")
+
+  // Acknowledgment
+  acknowledgedBy     String?   @map("acknowledged_by")
+  acknowledgedAt     DateTime? @map("acknowledged_at")
+  acknowledgedAction String?   @map("acknowledged_action") // DISMISS, SNOOZE, ASSIGN, TAKE_ACTION
+  snoozeUntil        DateTime? @map("snooze_until")
+
+  // Scheduling
+  scheduledFor     DateTime @map("scheduled_for")
+  daysBeforeExpiry Int      @map("days_before_expiry")
+
+  // Metadata
+  metadata Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([alertType])
+  @@index([severity])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([tenantId, status])
+  @@index([tenantId, alertType])
+  @@index([acknowledgedAt])
+  @@map("expiration_alerts")
+}
+
+model RenewalHistory {
+  id         String @id @default(cuid())
+  contractId String @map("contract_id")
+  tenantId   String @map("tenant_id")
+
+  // Renewal Details
+  renewalNumber Int    @map("renewal_number") // 1st renewal, 2nd renewal, etc.
+  renewalType   String @map("renewal_type") // STANDARD, RENEGOTIATED, EXTENDED, AUTO_RENEWED
+
+  // Previous Terms
+  previousStartDate DateTime? @map("previous_start_date")
+  previousEndDate   DateTime? @map("previous_end_date")
+  previousValue     Decimal?  @map("previous_value") @db.Decimal(15, 2)
+  previousTerms     Json?     @map("previous_terms")
+
+  // New Terms
+  newStartDate DateTime @map("new_start_date")
+  newEndDate   DateTime @map("new_end_date")
+  newValue     Decimal? @map("new_value") @db.Decimal(15, 2)
+  newTerms     Json?    @map("new_terms")
+
+  // Value Change
+  valueChange        Decimal? @map("value_change") @db.Decimal(15, 2)
+  valueChangePercent Decimal? @map("value_change_percent") @db.Decimal(5, 2)
+  termExtension      Int?     @map("term_extension") // Days extended
+
+  // Negotiation Summary
+  negotiationDays   Int?  @map("negotiation_days")
+  negotiationRounds Int?  @map("negotiation_rounds")
+  keyChanges        Json? @default("[]") @map("key_changes")
+
+  // People
+  initiatedBy String?   @map("initiated_by")
+  initiatedAt DateTime? @map("initiated_at")
+  approvedBy  String?   @map("approved_by")
+  approvedAt  DateTime? @map("approved_at")
+  completedBy String?   @map("completed_by")
+  completedAt DateTime  @map("completed_at")
+
+  // Status
+  status String  @default("COMPLETED") // COMPLETED, CANCELLED, SUPERSEDED
+  notes  String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([renewalType])
+  @@index([completedAt])
+  @@index([tenantId, contractId])
+  @@index([valueChange(sort: Desc)])
+  @@map("renewal_history")
+}
+
+// ==================== AGENTIC AI MODELS ====================
+
+model AgentEvent {
+  id          String   @id @default(cuid())
+  contractId  String   @map("contract_id")
+  tenantId    String   @map("tenant_id")
+  agentName   String   @map("agent_name")
+  eventType   String   @map("event_type")
+  timestamp   DateTime @default(now())
+  outcome     String // success, failure, partial, pending
+  metadata    Json?    @default("{}")
+  reasoning   String?  @db.Text
+  confidence  Decimal? @db.Decimal(3, 2)
+  duration    Int? // milliseconds
+  triggeredBy String?  @map("triggered_by")
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([agentName])
+  @@index([eventType])
+  @@index([timestamp])
+  @@index([outcome])
+  @@index([tenantId, agentName])
+  @@index([contractId, agentName])
+  @@map("agent_events")
+}
+
+model AgentRecommendation {
+  id              String    @id @default(cuid())
+  contractId      String    @map("contract_id")
+  tenantId        String    @map("tenant_id")
+  agentName       String    @map("agent_name")
+  action          String
+  description     String    @db.Text
+  priority        String // low, medium, high, urgent
+  automated       Boolean   @default(false)
+  estimatedImpact Json?     @default("{}") @map("estimated_impact")
+  potentialValue  Decimal?  @map("potential_value") @db.Decimal(15, 2)
+  confidence      Decimal   @db.Decimal(3, 2)
+  status          String    @default("pending") // pending, in_progress, completed, dismissed
+  reason          String?   @db.Text
+  executedAt      DateTime? @map("executed_at")
+  executedBy      String?   @map("executed_by")
+  result          Json?     @default("{}")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([agentName])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([tenantId, status])
+  @@index([contractId, status])
+  @@map("agent_recommendations")
+}
+
+model LearningRecord {
+  id             String   @id @default(cuid())
+  tenantId       String   @map("tenant_id")
+  artifactType   String   @map("artifact_type")
+  contractType   String?  @map("contract_type")
+  field          String
+  aiExtracted    String?  @map("ai_extracted") @db.Text
+  userCorrected  String?  @map("user_corrected") @db.Text
+  confidence     Decimal? @db.Decimal(3, 2)
+  contractLength Int?     @map("contract_length")
+  ocrQuality     Decimal? @map("ocr_quality") @db.Decimal(3, 2)
+  modelUsed      String?  @map("model_used")
+  promptVersion  String?  @map("prompt_version")
+  correctionType String?  @map("correction_type") // typo, format, value, missing
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([artifactType])
+  @@index([contractType])
+  @@index([field])
+  @@index([createdAt])
+  @@index([tenantId, artifactType, field])
+  @@map("learning_records")
+}
+
+model OpportunityDiscovery {
+  id               String    @id @default(cuid())
+  tenantId         String    @map("tenant_id")
+  contractId       String?   @map("contract_id")
+  opportunityType  String    @map("opportunity_type") // consolidation, renegotiation, optimization, duplicate, autorenewal
+  title            String
+  description      String    @db.Text
+  potentialValue   Decimal   @map("potential_value") @db.Decimal(15, 2)
+  confidence       Decimal   @db.Decimal(3, 2)
+  effort           String // low, medium, high
+  timeframe        String
+  relatedContracts Json?     @default("[]") @map("related_contracts")
+  actionPlan       Json?     @default("[]") @map("action_plan")
+  status           String    @default("new") // new, reviewing, in_progress, completed, dismissed
+  reviewedBy       String?   @map("reviewed_by")
+  reviewedAt       DateTime? @map("reviewed_at")
+  completedAt      DateTime? @map("completed_at")
+  actualValue      Decimal?  @map("actual_value") @db.Decimal(15, 2)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([opportunityType])
+  @@index([status])
+  @@index([createdAt])
+  @@index([potentialValue(sort: Desc)])
+  @@index([tenantId, status])
+  @@map("opportunity_discoveries")
+}
+
+// ============================================================================
+// E-SIGNATURE INTEGRATION
+// ============================================================================
+
+/// Tracks e-signature requests for contracts
+model SignatureRequest {
+  id                String    @id @default(cuid())
+  tenantId          String    @map("tenant_id")
+  contractId        String    @map("contract_id")
+  provider          String // docusign, adobe_sign, hellosign
+  externalId        String?   @map("external_id") // Provider's envelope/agreement ID
+  status            String    @default("draft") // draft, sent, viewed, signed, declined, expired, voided
+  subject           String?
+  message           String?   @db.Text
+  createdBy         String    @map("created_by")
+  sentAt            DateTime? @map("sent_at")
+  completedAt       DateTime? @map("completed_at")
+  expiresAt         DateTime? @map("expires_at")
+  signers           Json      @default("[]") // Array of signer objects with status
+  webhookEvents     Json?     @default("[]") @map("webhook_events")
+  documentUrl       String?   @map("document_url")
+  signedDocumentUrl String?   @map("signed_document_url")
+  metadata          Json?     @default("{}")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([status])
+  @@index([provider])
+  @@index([externalId])
+  @@index([tenantId, status])
+  @@map("signature_requests")
+}
+
+// ============================================================================
+// CLAUSE LIBRARY
+// ============================================================================
+
+/// Standard clause library for contract authoring
+model ClauseLibrary {
+  id              String    @id @default(cuid())
+  tenantId        String    @map("tenant_id")
+  name            String // Unique identifier within tenant
+  title           String
+  category        String // INDEMNIFICATION, CONFIDENTIALITY, LIABILITY, etc.
+  content         String    @db.Text
+  plainText       String?   @map("plain_text") @db.Text // For search
+  riskLevel       String    @default("MEDIUM") @map("risk_level") // LOW, MEDIUM, HIGH
+  isStandard      Boolean   @default(false) @map("is_standard")
+  isMandatory     Boolean   @default(false) @map("is_mandatory")
+  isNegotiable    Boolean   @default(true) @map("is_negotiable")
+  tags            Json      @default("[]")
+  usageCount      Int       @default(0) @map("usage_count")
+  version         Int       @default(1)
+  parentId        String?   @map("parent_id") // For version tracking
+  jurisdiction    String? // US, EU, GLOBAL
+  contractTypes   Json      @default("[]") @map("contract_types") // MSA, NDA, SOW, etc.
+  alternativeText String?   @map("alternative_text") @db.Text // Fallback language
+  aiEmbedding     Bytes?    @map("ai_embedding") // Vector for semantic search
+  createdBy       String    @map("created_by")
+  approvedBy      String?   @map("approved_by")
+  approvedAt      DateTime? @map("approved_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([tenantId, name, version])
+  @@index([tenantId])
+  @@index([category])
+  @@index([riskLevel])
+  @@index([isStandard])
+  @@index([isMandatory])
+  @@index([tenantId, category])
+  @@index([usageCount(sort: Desc)])
+  @@map("clause_library")
+}
+
+// ============================================================================
+// LEGAL REVIEW & PLAYBOOK MODELS
+// ============================================================================
+
+/// Legal playbook for contract review automation
+model Playbook {
+  id            String  @id @default(cuid())
+  tenantId      String  @map("tenant_id")
+  name          String
+  description   String? @db.Text
+  contractTypes Json    @default("[]") @map("contract_types") // MSA, NDA, SOW, etc.
+  isDefault     Boolean @default(false) @map("is_default")
+  isActive      Boolean @default(true) @map("is_active")
+  version       Int     @default(1)
+
+  // Risk thresholds
+  criticalCountThreshold   Int @default(2) @map("critical_count_threshold")
+  highRiskScoreThreshold   Int @default(70) @map("high_risk_score_threshold")
+  acceptableScoreThreshold Int @default(40) @map("acceptable_score_threshold")
+
+  // Preferred language settings (JSON map of category -> preferred text)
+  preferredLanguage Json @default("{}") @map("preferred_language")
+
+  createdBy String   @map("created_by")
+  updatedBy String?  @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  clauses           PlaybookClause[]
+  redFlags          PlaybookRedFlag[]
+  fallbackPositions PlaybookFallback[]
+  reviews           LegalReview[]
+
+  @@unique([tenantId, name, version])
+  @@index([tenantId])
+  @@index([isDefault])
+  @@index([isActive])
+  @@index([tenantId, isDefault])
+  @@map("playbooks")
+}
+
+/// Playbook clause definitions
+model PlaybookClause {
+  id                  String   @id @default(cuid())
+  playbookId          String   @map("playbook_id")
+  category            String // liability, indemnification, termination, etc.
+  name                String
+  preferredText       String   @map("preferred_text") @db.Text
+  minimumAcceptable   String?  @map("minimum_acceptable") @db.Text
+  walkawayTriggers    Json     @default("[]") @map("walkaway_triggers") // String array
+  riskLevel           String   @default("medium") @map("risk_level") // critical, high, medium, low
+  notes               String?  @db.Text
+  negotiationGuidance String?  @map("negotiation_guidance") @db.Text
+  sortOrder           Int      @default(0) @map("sort_order")
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  playbook Playbook @relation(fields: [playbookId], references: [id], onDelete: Cascade)
+
+  @@index([playbookId])
+  @@index([category])
+  @@index([playbookId, category])
+  @@map("playbook_clauses")
+}
+
+/// Playbook red flags for automatic detection
+model PlaybookRedFlag {
+  id          String   @id @default(cuid())
+  playbookId  String   @map("playbook_id")
+  pattern     String // Regex or text pattern
+  category    String // Risk category
+  severity    String   @default("medium") // critical, high, medium, low
+  explanation String   @db.Text
+  suggestion  String   @db.Text
+  isRegex     Boolean  @default(false) @map("is_regex")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  playbook Playbook @relation(fields: [playbookId], references: [id], onDelete: Cascade)
+
+  @@index([playbookId])
+  @@index([category])
+  @@map("playbook_red_flags")
+}
+
+/// Playbook fallback negotiation positions
+model PlaybookFallback {
+  id         String   @id @default(cuid())
+  playbookId String   @map("playbook_id")
+  category   String // Risk category this fallback applies to
+  initial    String   @db.Text // Best position
+  fallback1  String   @db.Text // First fallback
+  fallback2  String?  @db.Text // Second fallback
+  walkaway   String   @db.Text // Minimum acceptable / walkaway
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  playbook Playbook @relation(fields: [playbookId], references: [id], onDelete: Cascade)
+
+  @@unique([playbookId, category])
+  @@index([playbookId])
+  @@map("playbook_fallbacks")
+}
+
+/// Legal review results
+model LegalReview {
+  id         String  @id @default(cuid())
+  tenantId   String  @map("tenant_id")
+  contractId String? @map("contract_id")
+  playbookId String  @map("playbook_id")
+
+  // Overall assessment
+  overallRiskScore     Float   @map("overall_risk_score")
+  overallRiskLevel     String  @map("overall_risk_level") // critical, high, medium, low
+  recommendation       String // accept, reject, negotiate, escalate, review
+  recommendationReason String? @map("recommendation_reason") @db.Text
+
+  // Summary stats
+  totalClauses      Int @default(0) @map("total_clauses")
+  criticalIssues    Int @default(0) @map("critical_issues")
+  highRiskClauses   Int @default(0) @map("high_risk_clauses")
+  redlinesGenerated Int @default(0) @map("redlines_generated")
+
+  // Full results stored as JSON
+  clauseAssessments Json @default("[]") @map("clause_assessments")
+  redlines          Json @default("[]")
+  redFlagsFound     Json @default("[]") @map("red_flags_found")
+  summary           Json @default("{}")
+
+  reviewedBy String?   @map("reviewed_by")
+  reviewedAt DateTime? @map("reviewed_at")
+  status     String    @default("pending") // pending, in_review, approved, rejected
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  playbook Playbook  @relation(fields: [playbookId], references: [id])
+  contract Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([playbookId])
+  @@index([status])
+  @@index([tenantId, status])
+  @@map("legal_reviews")
+}
+
+// =============================================================================
+// AGENT GOAL PERSISTENCE
+// =============================================================================
+
+/// Agent goals for persistent execution tracking
+model AgentGoal {
+  id       String  @id @default(cuid())
+  tenantId String  @map("tenant_id")
+  userId   String? @map("user_id")
+
+  // Goal details
+  type        String // Goal type (analyze_contract, cost_optimization, etc.)
+  title       String // Human-readable title
+  description String? @db.Text
+  priority    Int     @default(5) // 1 = highest, 10 = lowest
+
+  // Execution state
+  status   AgentGoalStatus @default(PENDING)
+  progress Int             @default(0) // 0-100
+
+  // Related entities
+  contractId  String?  @map("contract_id")
+  artifactIds String[] @default([]) @map("artifact_ids")
+
+  // Planning and execution
+  plan        Json? // Execution plan steps
+  currentStep Int   @default(0) @map("current_step")
+  totalSteps  Int   @default(0) @map("total_steps")
+
+  // Results and context
+  context Json    @default("{}") // Input context
+  result  Json? // Final result
+  error   String? @db.Text // Error message if failed
+
+  // Approval workflow
+  requiresApproval Boolean   @default(false) @map("requires_approval")
+  approvedBy       String?   @map("approved_by")
+  approvedAt       DateTime? @map("approved_at")
+
+  // Timing
+  scheduledFor DateTime? @map("scheduled_for")
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  steps    AgentGoalStep[]
+  triggers AgentTrigger[]
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([contractId])
+  @@index([tenantId, status])
+  @@index([scheduledFor])
+  @@map("agent_goals")
+}
+
+/// Individual steps within an agent goal
+model AgentGoalStep {
+  id     String @id @default(cuid())
+  goalId String @map("goal_id")
+
+  // Step details
+  name  String
+  type  String // Action type
+  order Int // Execution order
+
+  // Execution state
+  status   AgentGoalStepStatus @default(PENDING)
+  progress Int                 @default(0)
+
+  // Input/output
+  input  Json?
+  output Json?
+  error  String? @db.Text
+
+  // Timing
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  duration    Int? // Duration in milliseconds
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  goal AgentGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId])
+  @@index([status])
+  @@map("agent_goal_steps")
+}
+
+/// Triggers that can start agent goals
+model AgentTrigger {
+  id       String  @id @default(cuid())
+  tenantId String  @map("tenant_id")
+  goalId   String? @map("goal_id") // Template goal to execute
+
+  // Trigger configuration
+  name     String
+  type     AgentTriggerType
+  isActive Boolean          @default(true) @map("is_active")
+
+  // Schedule (for SCHEDULE type)
+  cronExpression String? @map("cron_expression")
+
+  // Event (for EVENT type)
+  eventType   String? @map("event_type")
+  eventFilter Json?   @map("event_filter")
+
+  // Threshold (for THRESHOLD type)
+  metric    String?
+  operator  String? // gt, lt, eq, gte, lte
+  threshold Float?
+
+  // Execution tracking
+  lastTriggeredAt DateTime? @map("last_triggered_at")
+  triggerCount    Int       @default(0) @map("trigger_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  goal AgentGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([type])
+  @@index([isActive])
+  @@map("agent_triggers")
+}
+
+enum AgentGoalStatus {
+  PENDING
+  PLANNING
+  AWAITING_APPROVAL
+  EXECUTING
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum AgentGoalStepStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+enum AgentTriggerType {
+  SCHEDULE // Cron-based
+  EVENT // Event-driven
+  THRESHOLD // Metric-based
+  MANUAL // User-initiated
+}
+
+// ============================================
+// Notification Preferences & Push Subscriptions
+// ============================================
+
+model NotificationPreferences {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  userId   String @unique @map("user_id")
+
+  // Email notifications
+  emailEnabled Boolean @default(true) @map("email_enabled")
+  emailDigest  String  @default("INSTANT") // INSTANT, DAILY, WEEKLY, NONE
+
+  // Push notifications
+  pushEnabled Boolean @default(true) @map("push_enabled")
+
+  // Notification types
+  contractDeadlines Boolean @default(true) @map("contract_deadlines")
+  approvalRequests  Boolean @default(true) @map("approval_requests")
+  commentMentions   Boolean @default(true) @map("comment_mentions")
+  workflowUpdates   Boolean @default(true) @map("workflow_updates")
+  systemAlerts      Boolean @default(true) @map("system_alerts")
+  systemUpdates     Boolean @default(true) @map("system_updates")
+  shareInvites      Boolean @default(true) @map("share_invites")
+
+  // Quiet hours (UTC)
+  quietHoursStart    String? @map("quiet_hours_start") // e.g. "22:00"
+  quietHoursEnd      String? @map("quiet_hours_end") // e.g. "07:00"
+  quietHoursTimezone String? @default("UTC") @map("quiet_hours_timezone")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@map("notification_preferences")
+}
+
+model PushSubscription {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  userId   String @map("user_id")
+
+  // Web Push subscription data
+  endpoint       String  @unique
+  p256dh         String  @map("p256dh_key") // Public key
+  auth           String  @map("auth_key") // Auth secret
+  expirationTime BigInt? @map("expiration_time") // Subscription expiration timestamp
+
+  // Device info
+  userAgent  String? @map("user_agent")
+  deviceName String? @map("device_name")
+
+  // Status
+  isActive Boolean   @default(true) @map("is_active")
+  lastUsed DateTime? @map("last_used")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([isActive])
+  @@map("push_subscriptions")
+}
+
+// ============================================
+// AI Episodic Memory (Long-term conversational memory)
+// ============================================
+
+model AiMemory {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  userId   String @map("user_id")
+
+  // Memory content
+  type       String // insight, preference, fact, decision, interaction
+  content    String   @db.Text
+  context    String?  @db.Text
+  tags       String[] @default([])
+  importance Float    @default(0.5)
+
+  // Memory metadata
+  sourceConversationId String?                      @map("source_conversation_id")
+  embedding            Unsupported("vector(1024)")? // For semantic retrieval
+
+  // Timestamps
+  lastAccessedAt DateTime @default(now()) @map("last_accessed_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([type])
+  @@index([importance])
+  @@index([lastAccessedAt])
+  @@map("ai_memories")
+}
+
+// ============================================
+// Contract Analysis (Multi-modal vision analysis results)
+// ============================================
+
+model ContractAnalysis {
+  id         String @id @default(cuid())
+  contractId String @map("contract_id")
+  tenantId   String @map("tenant_id")
+  pageNumber Int    @map("page_number")
+
+  // Extracted content
+  extractedText String? @map("extracted_text") @db.Text
+  tables        String? @db.Text // JSON string of extracted tables
+  signatures    String? @db.Text // JSON string of detected signatures
+  layout        String? @db.Text // JSON string of document layout
+  entities      String? @db.Text // JSON string of extracted entities
+
+  // Analysis metadata
+  analysisType     String @default("multimodal_vision") @map("analysis_type")
+  confidence       Float  @default(0.0)
+  processingTimeMs Int    @default(0) @map("processing_time_ms")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([contractId, pageNumber])
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([analysisType])
+  @@map("contract_analyses")
+}
+
+// ============================================
+// GDPR Data Subject Rights Models
+// ============================================
+
+/// Data Export Request - Tracks GDPR data export (Right to Access) requests
+model DataExportRequest {
+  id       String            @id @default(cuid())
+  tenantId String            @map("tenant_id")
+  userId   String            @map("user_id")
+  status   GdprRequestStatus @default(PENDING)
+  format   String            @default("json") // json, csv
+
+  // Options
+  includeContracts Boolean @default(true) @map("include_contracts")
+  includeActivity  Boolean @default(true) @map("include_activity")
+  includeChats     Boolean @default(true) @map("include_chats")
+
+  // Result
+  downloadUrl String?   @map("download_url")
+  expiresAt   DateTime? @map("expires_at")
+  fileSize    BigInt?   @map("file_size")
+
+  // Processing
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  error       String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("data_export_requests")
+}
+
+/// Deletion Request - Tracks GDPR account deletion (Right to Erasure) requests
+model DeletionRequest {
+  id       String                @id @default(cuid())
+  tenantId String                @map("tenant_id")
+  userId   String                @map("user_id")
+  status   DeletionRequestStatus @default(PENDING)
+
+  // Request details
+  reason            String?
+  confirmationToken String?   @unique @map("confirmation_token")
+  scheduledFor      DateTime  @map("scheduled_for")
+  gracePeriodEnds   DateTime? @map("grace_period_ends")
+
+  // Processing
+  cancelledAt  DateTime? @map("cancelled_at")
+  cancelReason String?   @map("cancel_reason")
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  error        String?
+
+  // Audit
+  deletedData Json? @map("deleted_data") // Summary of what was deleted
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([confirmationToken])
+  @@map("deletion_requests")
+}
+
+enum GdprRequestStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum DeletionRequestStatus {
+  PENDING
+  SCHEDULED
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+// ============================================================================
+// AI ANALYTICS & MONITORING MODELS
+// ============================================================================
+
+/// AI Usage Log - Tracks all AI API calls for analytics
+model AIUsageLog {
+  id         String  @id @default(cuid())
+  tenantId   String? @map("tenant_id")
+  userId     String? @map("user_id")
+  contractId String? @map("contract_id")
+
+  // Request details
+  model    String
+  endpoint String
+  feature  String
+
+  // Token usage
+  inputTokens  Int @map("input_tokens")
+  outputTokens Int @map("output_tokens")
+  totalTokens  Int @map("total_tokens")
+
+  // Performance
+  latencyMs Int   @map("latency_ms")
+  cost      Float @default(0)
+
+  // Status
+  success   Boolean @default(true)
+  errorType String? @map("error_type")
+
+  // Metadata
+  metadata String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([model])
+  @@index([endpoint])
+  @@index([feature])
+  @@index([createdAt])
+  @@map("ai_usage_logs")
+}
+
+/// Webhook Config - Stores webhook configurations for notifications
+model WebhookConfig {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  name        String
+  url         String
+  secret      String // HMAC secret for webhook signature verification
+  events      String[] // Array of event types
+  isActive    Boolean  @default(true) @map("is_active")
+  description String?
+
+  // Delivery tracking
+  failureCount   Int       @default(0) @map("failure_count")
+  lastDeliveryAt DateTime? @map("last_delivery_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  logs WebhookLog[]
+
+  @@index([tenantId])
+  @@index([isActive])
+  @@map("webhook_configs")
+}
+
+/// Webhook Log - Tracks webhook delivery attempts
+model WebhookLog {
+  id         String  @id @default(cuid())
+  webhookId  String  @map("webhook_id")
+  event      String
+  success    Boolean
+  statusCode Int?    @map("status_code")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  webhook WebhookConfig @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@index([event])
+  @@index([createdAt])
+  @@map("webhook_logs")
+}
+
+/// Cost Threshold - Stores cost alert thresholds per tenant
+model CostThreshold {
+  id            String    @id @default(cuid())
+  tenantId      String    @map("tenant_id")
+  period        String // daily, weekly, monthly
+  threshold     Float
+  enabled       Boolean   @default(true)
+  notifyEmail   String?   @map("notify_email")
+  notifyWebhook Boolean   @default(true) @map("notify_webhook")
+  lastAlertAt   DateTime? @map("last_alert_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, period])
+  @@index([tenantId])
+  @@map("cost_thresholds")
+}
+
+/// Cost Alert - Records cost alert events
+model CostAlert {
+  id           String  @id @default(cuid())
+  tenantId     String  @map("tenant_id")
+  type         String // threshold_exceeded, unusual_spike, budget_warning
+  currentCost  Float   @map("current_cost")
+  threshold    Float?
+  period       String
+  message      String  @db.Text
+  acknowledged Boolean @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([type])
+  @@index([acknowledged])
+  @@index([createdAt])
+  @@map("cost_alerts")
+}
+
+/// A/B Test - Stores A/B test configurations
+model ABTest {
+  id          String  @id @default(cuid())
+  tenantId    String? @map("tenant_id")
+  name        String
+  description String? @db.Text
+  modelA      String  @map("model_a")
+  modelB      String  @map("model_b")
+  promptType  String  @map("prompt_type")
+  active      Boolean @default(true)
+
+  // Results
+  runsCount Int @default(0) @map("runs_count")
+  winsA     Int @default(0) @map("wins_a")
+  winsB     Int @default(0) @map("wins_b")
+  ties      Int @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  results ABTestResult[]
+
+  @@index([tenantId])
+  @@index([active])
+  @@map("ab_tests")
+}
+
+/// A/B Test Result - Individual test run results
+model ABTestResult {
+  id     String  @id @default(cuid())
+  testId String  @map("test_id")
+  userId String? @map("user_id")
+
+  // Inputs
+  prompt String @db.Text
+
+  // Outputs
+  responseA String? @map("response_a") @db.Text
+  responseB String? @map("response_b") @db.Text
+  latencyA  Int?    @map("latency_a")
+  latencyB  Int?    @map("latency_b")
+  tokensA   Int?    @map("tokens_a")
+  tokensB   Int?    @map("tokens_b")
+
+  // Rating
+  winner   String? // 'a', 'b', 'tie'
+  rating   Int? // 1-5 stars
+  feedback String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  test ABTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@index([testId])
+  @@index([userId])
+  @@index([winner])
+  @@index([createdAt])
+  @@map("ab_test_results")
+}
+
+// ============================================================================
+// USER MANAGEMENT - Groups, Departments, and External Collaborators
+// ============================================================================
+
+/// User Group - Organize users into teams/groups with shared permissions
+model UserGroup {
+  id                  String   @id @default(cuid())
+  tenantId            String   @map("tenant_id")
+  name                String
+  description         String?  @db.Text
+  color               String   @default("#8B5CF6") // Hex color for UI (violet)
+  permissions         Json     @default("{}") // Group-level permissions
+  departmentAccess    String[] @default([]) // Department IDs this group can access
+  contractAccessLevel String   @default("assigned") // all, assigned, department, none
+  isSystem            Boolean  @default(false) @map("is_system")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  createdBy           String?  @map("created_by")
+
+  members        UserGroupMember[]
+  contractAccess ContractGroupAccess[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([isSystem])
+  @@map("user_groups")
+}
+
+/// User Group Member - Junction table for user-group relationships
+model UserGroupMember {
+  id       String   @id @default(cuid())
+  groupId  String   @map("group_id")
+  userId   String   @map("user_id")
+  role     String   @default("member") // leader, member
+  joinedAt DateTime @default(now()) @map("joined_at")
+  addedBy  String?  @map("added_by")
+
+  group UserGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@index([groupId])
+  @@index([userId])
+  @@map("user_group_members")
+}
+
+/// Department - Organizational departments for access control
+model Department {
+  id            String   @id @default(cuid())
+  tenantId      String   @map("tenant_id")
+  name          String
+  description   String?  @db.Text
+  parentId      String?  @map("parent_id") // For hierarchical departments
+  contractTypes String[] @default([]) @map("contract_types") // Types this dept can access
+  accessRules   Json     @default("{}") @map("access_rules") // Additional access rules
+  isSystem      Boolean  @default(false) @map("is_system")
+  color         String   @default("#8B5CF6") // UI display color (violet)
+  icon          String   @default("folder") // UI display icon
+  createdById   String?  @map("created_by_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  parent   Department?      @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children Department[]     @relation("DepartmentHierarchy")
+  members  UserDepartment[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([parentId])
+  @@index([isSystem])
+  @@map("departments")
+}
+
+/// User Department - Junction table for user-department relationships
+model UserDepartment {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  departmentId String   @map("department_id")
+  isPrimary    Boolean  @default(false) @map("is_primary")
+  accessLevel  String   @default("member") // admin, manager, member, viewer
+  assignedAt   DateTime @default(now()) @map("assigned_at")
+  assignedBy   String?  @map("assigned_by")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, departmentId])
+  @@index([userId])
+  @@index([departmentId])
+  @@map("user_departments")
+}
+
+/// Contract User Access - Per-contract user permissions
+model ContractUserAccess {
+  id          String    @id @default(cuid())
+  contractId  String    @map("contract_id")
+  userId      String    @map("user_id")
+  accessLevel String    @map("access_level") // view, edit, manage, admin
+  grantedAt   DateTime  @default(now()) @map("granted_at")
+  grantedBy   String?   @map("granted_by")
+  expiresAt   DateTime? @map("expires_at")
+  notes       String?   @db.Text
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, userId])
+  @@index([contractId])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("contract_user_access")
+}
+
+/// Contract Group Access - Per-contract group permissions
+model ContractGroupAccess {
+  id          String    @id @default(cuid())
+  contractId  String    @map("contract_id")
+  groupId     String    @map("group_id")
+  accessLevel String    @map("access_level") // view, edit, manage, admin
+  grantedAt   DateTime  @default(now()) @map("granted_at")
+  grantedBy   String?   @map("granted_by")
+  expiresAt   DateTime? @map("expires_at")
+
+  group    UserGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  contract Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, groupId])
+  @@index([contractId])
+  @@index([groupId])
+  @@index([expiresAt])
+  @@map("contract_group_access")
+}
+
+/// External Collaborator - External parties with limited access
+model ExternalCollaborator {
+  id           String    @id @default(cuid())
+  tenantId     String    @map("tenant_id")
+  email        String
+  name         String?
+  organization String?
+  company      String? // Alias for organization (compatibility)
+  type         String    @default("client") // client, vendor, partner, consultant, auditor
+  accessToken  String    @unique @map("access_token")
+  status       String    @default("pending") // pending, active, expired, revoked
+  permissions  Json      @default("{}") // canView, canDownload, canComment
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  lastAccessAt DateTime? @map("last_access_at")
+  invitedBy    String    @map("invited_by")
+  invitedAt    DateTime  @default(now()) @map("invited_at") // Alias for createdAt
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  contractAccess CollaboratorContractAccess[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([accessToken])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("external_collaborators")
+}
+
+/// Collaborator Contract Access - Links collaborators to specific contracts
+model CollaboratorContractAccess {
+  id             String   @id @default(cuid())
+  collaboratorId String   @map("collaborator_id")
+  contractId     String   @map("contract_id")
+  accessLevel    String   @default("view") // view, comment, download
+  grantedAt      DateTime @default(now()) @map("granted_at")
+
+  collaborator ExternalCollaborator @relation(fields: [collaboratorId], references: [id], onDelete: Cascade)
+  contract     Contract             @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([collaboratorId, contractId])
+  @@index([collaboratorId])
+  @@index([contractId])
+  @@map("collaborator_contract_access")
+}
+
+/// OCR Review Queue Item - Documents flagged for human review
+model OcrReviewItem {
+  id            String @id @default(cuid())
+  tenantId      String @map("tenant_id")
+  contractId    String @map("contract_id")
+  type          String @default("ocr_quality") // ocr_quality, handwriting, mixed_language, legal_entity, sensitive_content
+  status        String @default("pending") // pending, in_progress, completed, escalated
+  priority      String @default("medium") // low, medium, high, critical
+  ocrConfidence Float  @map("ocr_confidence")
+
+  // Document info
+  documentName String  @map("document_name")
+  documentType String? @map("document_type")
+
+  // Low confidence regions
+  lowConfidenceRegions Json? @default("[]") @map("low_confidence_regions")
+
+  // Review tracking
+  assignedTo       String?   @map("assigned_to")
+  assignedAt       DateTime? @map("assigned_at")
+  completedAt      DateTime? @map("completed_at")
+  completedBy      String?   @map("completed_by")
+  escalatedAt      DateTime? @map("escalated_at")
+  escalatedBy      String?   @map("escalated_by")
+  escalationReason String?   @map("escalation_reason") @db.Text
+
+  // Corrections made
+  corrections Json? @default("[]") // Array of { field, original, corrected, confidence }
+
+  // Metadata
+  notes     String?  @db.Text
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  contract      Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  assignedUser  User?    @relation("OcrReviewAssignee", fields: [assignedTo], references: [id])
+  createdByUser User?    @relation("OcrReviewCreator", fields: [createdBy], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, priority])
+  @@index([contractId])
+  @@index([assignedTo])
+  @@index([status, priority])
+  @@map("ocr_review_items")
+}
+
+// ============================================
+// AI Cost Tracking (Persistent cost logs for model router)
+// ============================================
+
+model AiCostLog {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+
+  // Request details
+  model        String // gpt-4o, gpt-4o-mini, gpt-4.1-nano
+  taskType     String @map("task_type") // chat, analysis, extraction, etc.
+  inputTokens  Int    @map("input_tokens")
+  outputTokens Int    @map("output_tokens")
+  cost         Float // USD cost of this request
+
+  // Routing metadata
+  routedFrom  String? @map("routed_from") // Original model before routing
+  savingsVs4o Float   @default(0) @map("savings_vs_4o") // % savings vs gpt-4o
+  complexity  String? // low, medium, high, critical
+
+  // Request context
+  requestId String? @map("request_id")
+  userId    String? @map("user_id")
+  latencyMs Int?    @map("latency_ms")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
+  @@index([model])
+  @@index([taskType])
+  @@index([createdAt])
+  @@map("ai_cost_logs")
+}

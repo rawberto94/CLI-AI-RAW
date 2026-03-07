@@ -1,0 +1,88 @@
+# Azure Production Values - Switzerland North
+# Cost-optimized configuration
+
+replicaCount: 2
+
+image:
+  repository: acrcontigoprod.azurecr.io/contigo-web
+  tag: latest
+  pullPolicy: Always
+
+web:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+workers:
+  replicaCount: 2
+  image:
+    repository: acrcontigoprod.azurecr.io/contigo-workers
+    tag: latest
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+websocket:
+  replicaCount: 1
+  image:
+    repository: acrcontigoprod.azurecr.io/contigo-websocket
+    tag: latest
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+service:
+  type: ClusterIP
+  port: 3000
+  websocketPort: 3001
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: contigo-websocket
+  # UPDATE THIS with your domain
+  host: contigo.yourdomain.ch
+  tls:
+    enabled: true
+    secretName: contigo-tls
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+env:
+  NODE_ENV: production
+  NEXT_TELEMETRY_DISABLED: "1"
+  STORAGE_PROVIDER: azure
+
+# Azure Key Vault integration
+azure:
+  enabled: true
+  keyVaultName: kv-contigo-prod
+  tenantId: ""  # Set via --set azure.tenantId=xxx
+  storageAccount: stcontigoprod
+  storageContainer: contracts
+
+externalSecrets:
+  enabled: true

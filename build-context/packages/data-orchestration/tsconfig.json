@@ -1,0 +1,41 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "downlevelIteration": true,
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": false,
+    "noEmitOnError": false,
+    "types": []
+  },
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "src/providers/negotiation-prep-providers.ts",
+    "src/providers/rate-benchmarking-providers.ts",
+    "src/providers/renewal-radar-providers.ts",
+    "src/providers/savings-pipeline-providers.ts",
+    "src/providers/supplier-analytics-providers.ts",
+    "src/providers/unified-factory.ts",
+    "src/scripts/**",
+    "src/services/rag/**",
+    "src/services/rag-integration.service.ts",
+    "src/services/enhanced-artifact.service.ts",
+    "src/services/hybrid-artifact-storage.service.ts",
+    "src/services/processing-job.service.ts",
+    "src/middleware/rate-limiter.ts"
+  ]
+}

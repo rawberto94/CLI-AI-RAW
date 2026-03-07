@@ -23,12 +23,14 @@ const ENVIRONMENT = process.env.NODE_ENV || 'development';
 
 /**
  * Initialize OpenTelemetry SDK
- * Returns null in development unless OTEL_ENABLED=true.
+ * Returns null unless OTEL_ENABLED=true is set.
+ * This is opt-in because OTEL packages are in serverExternalPackages
+ * and not included in the standalone Docker build.
  */
 export async function initTelemetry(): Promise<any | null> {
-  // Skip in development unless explicitly enabled
-  if (ENVIRONMENT === 'development' && process.env.OTEL_ENABLED !== 'true') {
-    console.log('OpenTelemetry disabled in development. Set OTEL_ENABLED=true to enable.');
+  // Only initialize if explicitly enabled (packages not bundled in standalone build)
+  if (process.env.OTEL_ENABLED !== 'true') {
+    console.log('OpenTelemetry disabled. Set OTEL_ENABLED=true to enable.');
     return null;
   }
 

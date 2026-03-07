@@ -1,0 +1,21 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "module": "CommonJS",
+    "target": "ES2020",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": false,
+    "noUncheckedIndexedAccess": false,
+    "declaration": true,
+    "incremental": false,
+    "composite": false,
+    "lib": ["ES2020"],
+    "types": ["node"]
+  },
+  "include": ["index.ts"],
+  "exclude": ["dist", "node_modules", "test"]
+}

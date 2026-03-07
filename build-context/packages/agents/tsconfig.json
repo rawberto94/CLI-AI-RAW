@@ -1,0 +1,30 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "verbatimModuleSyntax": false,
+    "baseUrl": ".",
+    "paths": {
+      "@repo/data-orchestration": ["../data-orchestration/src"],
+      "@repo/data-orchestration/*": ["../data-orchestration/src/*"],
+      "utils": ["../utils/src"],
+      "utils/*": ["../utils/src/*"],
+      "schemas": ["../schemas/src"],
+      "schemas/*": ["../schemas/src/*"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "node_modules", "test"],
+  "references": [
+    { "path": "../utils" },
+    { "path": "../schemas" },
+    { "path": "../data-orchestration" }
+  ]
+}

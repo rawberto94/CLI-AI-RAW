@@ -1,0 +1,81 @@
+name: Codespaces Precheck
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - '.devcontainer/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '.devcontainer/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+
+jobs:
+  validate-devcontainer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Validate devcontainer.json
+        run: |
+          if [ ! -f .devcontainer/devcontainer.json ]; then
+            echo "❌ devcontainer.json not found"
+            exit 1
+          fi
+          echo "✅ devcontainer.json exists"
+          
+      - name: Check setup scripts
+        run: |
+          if [ ! -f .devcontainer/setup.sh ]; then
+            echo "❌ setup.sh not found"
+            exit 1
+          fi
+          if [ ! -x .devcontainer/setup.sh ]; then
+            echo "❌ setup.sh not executable"
+            exit 1
+          fi
+          echo "✅ Setup scripts are valid"
+          
+      - name: Validate docker-compose
+        run: |
+          if [ ! -f .devcontainer/docker-compose.codespaces.yml ]; then
+            echo "❌ docker-compose.codespaces.yml not found"
+            exit 1
+          fi
+          echo "✅ Docker compose file exists"
+          
+      - name: Check documentation
+        run: |
+          if [ ! -f CODESPACES_SETUP.md ]; then
+            echo "⚠️  CODESPACES_SETUP.md not found"
+          fi
+          if [ ! -f QUICK_START.md ]; then
+            echo "⚠️  QUICK_START.md not found"
+          fi
+          echo "✅ Documentation check complete"
+
+  test-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8.6.1
+          
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Verify installation
+        run: |
+          echo "✅ Dependencies installed successfully"
+          pnpm list --depth=0

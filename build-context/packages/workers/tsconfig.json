@@ -1,0 +1,33 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "noEmit": false,
+    "composite": false,
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "utils": ["../utils/src"],
+      "utils/*": ["../utils/src/*"],
+      "@repo/utils": ["../utils/src"],
+      "@repo/utils/*": ["../utils/src/*"],
+      "clients-db": ["../clients/db"],
+      "clients-db/*": ["../clients/db/*"],
+      "clients-openai": ["../clients/openai/src"],
+      "clients-openai/*": ["../clients/openai/src/*"],
+      "@repo/db": ["../clients/db"],
+      "@repo/db/*": ["../clients/db/*"],
+      "@/*": ["../../apps/web/*"],
+      "@/lib/*": ["../../apps/web/lib/*"]
+    }
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

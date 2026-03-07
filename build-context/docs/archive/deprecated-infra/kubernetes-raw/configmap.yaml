@@ -1,0 +1,46 @@
+# ==============================================
+# ConfigMap for ConTigo Platform
+# ==============================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contigo-config
+  namespace: contigo
+  labels:
+    app.kubernetes.io/name: contigo
+data:
+  # Application
+  NODE_ENV: "production"
+  PORT: "3000"
+  LOG_LEVEL: "info"
+  
+  # URLs (update with your domain)
+  NEXT_PUBLIC_APP_URL: "https://contigo.your-domain.com"
+  NEXTAUTH_URL: "https://contigo.your-domain.com"
+  
+  # Feature Flags
+  ENABLE_RAG_SEARCH: "true"
+  ENABLE_KNOWLEDGE_GRAPH: "true"
+  ENABLE_AGENTIC_FEATURES: "true"
+  ENABLE_REAL_TIME_COLLABORATION: "true"
+  
+  # Rate Limiting
+  RATE_LIMIT_WINDOW_MS: "60000"
+  RATE_LIMIT_MAX_REQUESTS: "100"
+  
+  # Storage
+  AZURE_STORAGE_CONTAINER: "contracts"
+---
+# ConfigMap for Nginx/Ingress
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: contigo
+data:
+  proxy-body-size: "100m"
+  proxy-read-timeout: "300"
+  proxy-send-timeout: "300"
+  proxy-connect-timeout: "60"
+  use-gzip: "true"
+  gzip-types: "application/json application/javascript text/css text/plain"

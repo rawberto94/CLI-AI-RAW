@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "contigo.fullname" . }}-workers
+  labels:
+    {{- include "contigo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workers
+spec:
+  replicas: {{ .Values.workers.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "contigo.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: workers
+  template:
+    metadata:
+      labels:
+        {{- include "contigo.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: workers
+    spec:
+      containers:
+        - name: workers
+          {{- if .Values.workers.image }}
+          image: "{{ .Values.workers.image.repository }}:{{ .Values.workers.image.tag }}"
+          {{- else }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["node", "workers/index.js"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "contigo.fullname" . }}-config
+            - secretRef:
+                name: {{ include "contigo.fullname" . }}-secrets
+          {{- if .Values.azure.enabled }}
+          volumeMounts:
+            - name: secrets-store
+              mountPath: "/mnt/secrets-store"
+              readOnly: true
+          {{- end }}
+          resources:
+            {{- toYaml .Values.workers.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "process.exit(0)"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      {{- if .Values.azure.enabled }}
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ include "contigo.fullname" . }}-secrets
+      {{- end }}

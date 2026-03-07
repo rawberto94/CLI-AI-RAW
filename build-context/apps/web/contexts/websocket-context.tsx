@@ -1,0 +1,478 @@
+'use client';
+
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
+import { io, type Socket } from 'socket.io-client';
+import { toast } from 'sonner';
+
+// =====================
+// Types
+// =====================
+
+export interface Presence {
+  userId: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  color: string;
+  cursor?: { x: number; y: number };
+  selection?: { start: number; end: number };
+  lastSeen: Date;
+}
+
+export interface CollaborationEvent {
+  type: 'join' | 'leave' | 'cursor' | 'selection' | 'edit' | 'comment' | 'lock' | 'unlock' | 'approval_update' | 'approval_submitted' | 'approval_completed';
+  userId: string;
+  documentId: string;
+  data?: unknown;
+  timestamp: Date;
+}
+
+export interface ApprovalNotification {
+  id: string;
+  type: 'new_approval' | 'approval_completed' | 'approval_rejected' | 'step_completed' | 'deadline_reminder';
+  title: string;
+  message: string;
+  approvalId: string;
+  contractId?: string;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  timestamp: Date;
+}
+
+export interface DocumentLock {
+  sectionId: string;
+  userId: string;
+  userName: string;
+  lockedAt: Date;
+  expiresAt: Date;
+}
+
+interface WebSocketContextValue {
+  socket: Socket | null;
+  connected: boolean;
+  presence: Map<string, Presence>;
+  locks: Map<string, DocumentLock>;
+  approvalNotifications: ApprovalNotification[];
+  joinDocument: (documentId: string, documentType: 'contract' | 'rate_card' | 'template' | 'workflow') => void;
+  leaveDocument: () => void;
+  updateCursor: (position: { x: number; y: number }) => void;
+  updateSelection: (selection: { start: number; end: number }) => void;
+  broadcastEdit: (sectionId: string, content: string) => void;
+  lockSection: (sectionId: string) => Promise<boolean>;
+  unlockSection: (sectionId: string) => void;
+  sendComment: (sectionId: string, content: string, parentId?: string) => void;
+  onEvent: (callback: (event: CollaborationEvent) => void) => () => void;
+  subscribeToApprovals: () => void;
+  clearApprovalNotification: (id: string) => void;
+}
+
+// =====================
+// Context
+// =====================
+
+const WebSocketContext = createContext<WebSocketContextValue | null>(null);
+
+// Generate a consistent color for a user
+function getUserColor(userId: string): string {
+  const colors = [
+    '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e',
+    '#8B5CF6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
+    '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e',
+  ];
+  const hash = userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[hash % colors.length]!;
+}
+
+// Helper to dispatch real-time events to query cache sync
+function dispatchRealTimeEvent(type: string, data?: Record<string, unknown>) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('realtime-event', { 
+      detail: { type, data } 
+    }));
+  }
+}
+
+// =====================
+// Provider
+// =====================
+
+export function WebSocketProvider({ children }: { children: ReactNode }) {
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [presence, setPresence] = useState<Map<string, Presence>>(new Map());
+  const [locks, setLocks] = useState<Map<string, DocumentLock>>(new Map());
+  const [approvalNotifications, setApprovalNotifications] = useState<ApprovalNotification[]>([]);
+  const [currentDocument, setCurrentDocument] = useState<string | null>(null);
+  const [eventCallbacks, setEventCallbacks] = useState<Set<(event: CollaborationEvent) => void>>(new Set());
+
+  // Initialize socket connection
+  useEffect(() => {
+    // Skip WebSocket connection if server URL is not configured
+    const socketUrl = process.env.NEXT_PUBLIC_WS_URL;
+    if (!socketUrl) {
+      // WebSocket is optional - don't connect if not configured
+      return;
+    }
+    
+    const newSocket = io(socketUrl, {
+      path: '/api/socket',
+      transports: ['websocket', 'polling'],
+      autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: 2,
+      reconnectionDelay: 5000,
+    });
+
+    newSocket.on('connect', () => {
+      setConnected(true);
+    });
+
+    newSocket.on('disconnect', () => {
+      setConnected(false);
+    });
+
+    newSocket.on('connect_error', (error) => {
+      // Only log in development, and use debug level since WS is optional
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('[WebSocket] Connection unavailable (optional feature):', error.message);
+      }
+    });
+
+    // Handle presence updates
+    newSocket.on('presence:update', (data: { users: Presence[] }) => {
+      const newPresence = new Map<string, Presence>();
+      data.users.forEach(user => newPresence.set(user.userId, user));
+      setPresence(newPresence);
+    });
+
+    newSocket.on('presence:join', (user: Presence) => {
+      setPresence(prev => new Map(prev).set(user.userId, user));
+    });
+
+    newSocket.on('presence:leave', (userId: string) => {
+      setPresence(prev => {
+        const next = new Map(prev);
+        next.delete(userId);
+        return next;
+      });
+    });
+
+    newSocket.on('presence:cursor', (data: { userId: string; cursor: { x: number; y: number } }) => {
+      setPresence(prev => {
+        const user = prev.get(data.userId);
+        if (user) {
+          return new Map(prev).set(data.userId, { ...user, cursor: data.cursor });
+        }
+        return prev;
+      });
+    });
+
+    // Handle locks
+    newSocket.on('lock:acquired', (lock: DocumentLock) => {
+      setLocks(prev => new Map(prev).set(lock.sectionId, lock));
+    });
+
+    newSocket.on('lock:released', (sectionId: string) => {
+      setLocks(prev => {
+        const next = new Map(prev);
+        next.delete(sectionId);
+        return next;
+      });
+    });
+
+    newSocket.on('locks:sync', (data: { locks: DocumentLock[] }) => {
+      const newLocks = new Map<string, DocumentLock>();
+      data.locks.forEach(lock => newLocks.set(lock.sectionId, lock));
+      setLocks(newLocks);
+    });
+
+    // Handle collaboration events
+    newSocket.on('collaboration:event', (event: CollaborationEvent) => {
+      eventCallbacks.forEach(callback => callback(event));
+    });
+
+    // Handle approval notifications
+    newSocket.on('approval:new', (notification: ApprovalNotification) => {
+      setApprovalNotifications(prev => [notification, ...prev].slice(0, 50)); // Keep last 50
+      eventCallbacks.forEach(callback => callback({
+        type: 'approval_submitted',
+        userId: 'system',
+        documentId: notification.approvalId,
+        data: notification,
+        timestamp: new Date(),
+      }));
+      // Dispatch to query cache sync
+      dispatchRealTimeEvent('approval:submitted', { 
+        approvalId: notification.approvalId,
+        contractId: notification.contractId,
+      });
+      // Show toast notification
+      toast.info(notification.title, {
+        description: notification.message,
+        action: notification.contractId ? {
+          label: 'View',
+          onClick: () => window.location.href = `/contracts/${notification.contractId}`,
+        } : undefined,
+      });
+    });
+
+    newSocket.on('approval:completed', (notification: ApprovalNotification) => {
+      setApprovalNotifications(prev => [notification, ...prev].slice(0, 50));
+      eventCallbacks.forEach(callback => callback({
+        type: 'approval_completed',
+        userId: 'system',
+        documentId: notification.approvalId,
+        data: notification,
+        timestamp: new Date(),
+      }));
+      // Dispatch to query cache sync
+      dispatchRealTimeEvent('approval:completed', { 
+        approvalId: notification.approvalId,
+        contractId: notification.contractId,
+      });
+      // Show success toast
+      toast.success(notification.title, {
+        description: notification.message,
+        action: notification.contractId ? {
+          label: 'View',
+          onClick: () => window.location.href = `/contracts/${notification.contractId}`,
+        } : undefined,
+      });
+    });
+
+    newSocket.on('approval:update', (notification: ApprovalNotification) => {
+      setApprovalNotifications(prev => [notification, ...prev].slice(0, 50));
+      eventCallbacks.forEach(callback => callback({
+        type: 'approval_update',
+        userId: 'system',
+        documentId: notification.approvalId,
+        data: notification,
+        timestamp: new Date(),
+      }));
+      // Dispatch to query cache sync
+      dispatchRealTimeEvent('approval:completed', { 
+        approvalId: notification.approvalId,
+        contractId: notification.contractId,
+      });
+      // Show update toast
+      toast(notification.title, {
+        description: notification.message,
+        action: notification.contractId ? {
+          label: 'View',
+          onClick: () => window.location.href = `/contracts/${notification.contractId}`,
+        } : undefined,
+      });
+    });
+
+    // Handle signature notifications
+    newSocket.on('signature:requested', (data: { contractId: string; signerEmail: string; title: string }) => {
+      toast.info('Signature Requested', {
+        description: `${data.signerEmail} has been invited to sign "${data.title}"`,
+        action: {
+          label: 'View',
+          onClick: () => window.location.href = `/contracts/${data.contractId}/sign`,
+        },
+      });
+    });
+
+    newSocket.on('signature:completed', (data: { contractId: string; signerName: string; title: string }) => {
+      toast.success('Signature Received', {
+        description: `${data.signerName} has signed "${data.title}"`,
+        action: {
+          label: 'View',
+          onClick: () => window.location.href = `/contracts/${data.contractId}/sign`,
+        },
+      });
+    });
+
+    newSocket.on('signature:all_completed', (data: { contractId: string; title: string }) => {
+      toast.success('All Signatures Complete! 🎉', {
+        description: `"${data.title}" is ready to be finalized`,
+        action: {
+          label: 'Finalize',
+          onClick: () => window.location.href = `/contracts/${data.contractId}/store`,
+        },
+      });
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
+
+  // Join a document for collaboration
+  const joinDocument = useCallback((documentId: string, documentType: 'contract' | 'rate_card' | 'template' | 'workflow') => {
+    if (!socket) return;
+    
+    // Leave current document if any
+    if (currentDocument) {
+      socket.emit('document:leave', { documentId: currentDocument });
+    }
+
+    socket.emit('document:join', { 
+      documentId, 
+      documentType,
+      color: getUserColor(socket.id || 'default'),
+    });
+    setCurrentDocument(documentId);
+  }, [socket, currentDocument]);
+
+  const leaveDocument = useCallback(() => {
+    if (!socket || !currentDocument) return;
+    socket.emit('document:leave', { documentId: currentDocument });
+    setCurrentDocument(null);
+    setPresence(new Map());
+    setLocks(new Map());
+  }, [socket, currentDocument]);
+
+  const updateCursor = useCallback((position: { x: number; y: number }) => {
+    if (!socket || !currentDocument) return;
+    socket.emit('cursor:move', { documentId: currentDocument, position });
+  }, [socket, currentDocument]);
+
+  const updateSelection = useCallback((selection: { start: number; end: number }) => {
+    if (!socket || !currentDocument) return;
+    socket.emit('selection:update', { documentId: currentDocument, selection });
+  }, [socket, currentDocument]);
+
+  const broadcastEdit = useCallback((sectionId: string, content: string) => {
+    if (!socket || !currentDocument) return;
+    socket.emit('edit:broadcast', { 
+      documentId: currentDocument, 
+      sectionId, 
+      content,
+      timestamp: new Date(),
+    });
+  }, [socket, currentDocument]);
+
+  const lockSection = useCallback(async (sectionId: string): Promise<boolean> => {
+    if (!socket || !currentDocument) return false;
+    
+    return new Promise((resolve) => {
+      socket.emit('lock:acquire', { documentId: currentDocument, sectionId }, (response: { success: boolean }) => {
+        resolve(response.success);
+      });
+    });
+  }, [socket, currentDocument]);
+
+  const unlockSection = useCallback((sectionId: string) => {
+    if (!socket || !currentDocument) return;
+    socket.emit('lock:release', { documentId: currentDocument, sectionId });
+  }, [socket, currentDocument]);
+
+  const sendComment = useCallback((sectionId: string, content: string, parentId?: string) => {
+    if (!socket || !currentDocument) return;
+    socket.emit('comment:add', { 
+      documentId: currentDocument, 
+      sectionId, 
+      content,
+      parentId,
+      timestamp: new Date(),
+    });
+  }, [socket, currentDocument]);
+
+  const onEvent = useCallback((callback: (event: CollaborationEvent) => void) => {
+    setEventCallbacks(prev => new Set(prev).add(callback));
+    return () => {
+      setEventCallbacks(prev => {
+        const next = new Set(prev);
+        next.delete(callback);
+        return next;
+      });
+    };
+  }, []);
+
+  const subscribeToApprovals = useCallback(() => {
+    if (!socket) return;
+    socket.emit('approval:subscribe');
+  }, [socket]);
+
+  const clearApprovalNotification = useCallback((id: string) => {
+    setApprovalNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    socket,
+    connected,
+    presence,
+    locks,
+    approvalNotifications,
+    joinDocument,
+    leaveDocument,
+    updateCursor,
+    updateSelection,
+    broadcastEdit,
+    lockSection,
+    unlockSection,
+    sendComment,
+    onEvent,
+    subscribeToApprovals,
+    clearApprovalNotification,
+  }), [
+    socket,
+    connected,
+    presence,
+    locks,
+    approvalNotifications,
+    joinDocument,
+    leaveDocument,
+    updateCursor,
+    updateSelection,
+    broadcastEdit,
+    lockSection,
+    unlockSection,
+    sendComment,
+    onEvent,
+    subscribeToApprovals,
+    clearApprovalNotification,
+  ]);
+
+  return (
+    <WebSocketContext.Provider value={contextValue}>
+      {children}
+    </WebSocketContext.Provider>
+  );
+}
+
+// =====================
+// Hook
+// =====================
+
+export function useWebSocket() {
+  const context = useContext(WebSocketContext);
+  // Return null instead of throwing - WebSocket is optional
+  return context;
+}
+
+// =====================
+// Collaboration Hook
+// =====================
+
+export function useCollaboration(documentId: string, documentType: 'contract' | 'template' | 'workflow') {
+  const ws = useWebSocket();
+  
+  useEffect(() => {
+    if (ws) {
+      ws.joinDocument(documentId, documentType);
+      return () => ws.leaveDocument();
+    }
+  }, [documentId, documentType, ws]);
+
+  // Provide safe defaults when ws is null
+  const noop = () => {};
+  const noopAsync = async () => false;
+  
+  return {
+    connected: ws?.connected ?? false,
+    collaborators: ws ? Array.from(ws.presence.values()) : [],
+    locks: ws?.locks ?? new Map(),
+    updateCursor: ws?.updateCursor ?? noop,
+    updateSelection: ws?.updateSelection ?? noop,
+    broadcastEdit: ws?.broadcastEdit ?? noop,
+    lockSection: ws?.lockSection ?? noopAsync,
+    unlockSection: ws?.unlockSection ?? noop,
+    sendComment: ws?.sendComment ?? noop,
+    onEvent: ws?.onEvent ?? (() => noop),
+  };
+}

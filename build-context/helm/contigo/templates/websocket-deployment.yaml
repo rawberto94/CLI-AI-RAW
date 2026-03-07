@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "contigo.fullname" . }}-websocket
+  labels:
+    {{- include "contigo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: websocket
+spec:
+  replicas: {{ .Values.websocket.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "contigo.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: websocket
+  template:
+    metadata:
+      labels:
+        {{- include "contigo.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: websocket
+    spec:
+      containers:
+        - name: websocket
+          {{- if .Values.websocket.image }}
+          image: "{{ .Values.websocket.image.repository }}:{{ .Values.websocket.image.tag }}"
+          {{- else }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: ws
+              containerPort: 3001
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "contigo.fullname" . }}-config
+            - secretRef:
+                name: {{ include "contigo.fullname" . }}-secrets
+          {{- if .Values.azure.enabled }}
+          volumeMounts:
+            - name: secrets-store
+              mountPath: "/mnt/secrets-store"
+              readOnly: true
+          {{- end }}
+          resources:
+            {{- toYaml .Values.websocket.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: ws
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: ws
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      {{- if .Values.azure.enabled }}
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ include "contigo.fullname" . }}-secrets
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "contigo.fullname" . }}-websocket
+  labels:
+    {{- include "contigo.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.websocketPort }}
+      targetPort: ws
+      protocol: TCP
+      name: ws
+  selector:
+    {{- include "contigo.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: websocket
