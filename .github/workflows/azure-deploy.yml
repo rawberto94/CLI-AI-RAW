@@ -55,6 +55,7 @@ jobs:
             --image contigo-web:${{ steps.prep.outputs.tag }} \
             --image contigo-web:latest \
             --file Dockerfile \
+            --no-cache \
             .
 
   deploy:
