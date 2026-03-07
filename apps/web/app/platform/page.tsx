@@ -126,7 +126,13 @@ export default function PlatformAdminPage() {
       if (!res.ok) {
         throw new Error("Failed to load tenants");
       }
-      const data = await res.json();
+      // Handle empty responses gracefully
+      const text = await res.text();
+      if (!text) {
+        setTenants([]);
+        return;
+      }
+      const data = JSON.parse(text);
       setTenants(data.tenants || []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unknown error');

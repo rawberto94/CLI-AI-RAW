@@ -42,8 +42,6 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   output: "standalone",
-  // Required for monorepo: trace dependencies from workspace root
-  outputFileTracingRoot: path.join(__dirname, '../../'),
   
   // Prevent static generation timeout issues
   staticPageGenerationTimeout: 30,
@@ -134,7 +132,8 @@ const nextConfig = {
   experimental: {
     // Disabled worker threads to prevent build hangs
     // webpackBuildWorker: true,
-    // parallelServerBuildTraces: true,
+    // Re-enable parallelServerBuildTraces - required for standalone output tracing
+    parallelServerBuildTraces: true,
     // parallelServerCompiles: true,
     externalDir: true,
     // Partial Pre-Rendering – requires Next.js canary; enable when upgrading:
