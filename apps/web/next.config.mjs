@@ -42,6 +42,8 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   output: "standalone",
+  // Required for monorepo: trace dependencies from workspace root
+  outputFileTracingRoot: path.join(__dirname, '../../'),
   
   // Prevent static generation timeout issues
   staticPageGenerationTimeout: 30,
