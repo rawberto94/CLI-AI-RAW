@@ -70,6 +70,10 @@ const nextConfig = {
     '@opentelemetry/resources',
     '@opentelemetry/semantic-conventions',
     '@opentelemetry/api',
+    // Archiver and its stream dependencies (native Node.js streams)
+    'archiver',
+    'lazystream',
+    'readable-stream',
   ],
   
   // Optimized static generation

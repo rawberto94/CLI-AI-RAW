@@ -173,6 +173,7 @@
     "jsdom": "^25.0.1",
     "postcss": "^8.4.49",
     "prisma": "^5.22.0",
+    "readable-stream": "^4.7.0",
     "start-server-and-test": "^2.0.10",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
