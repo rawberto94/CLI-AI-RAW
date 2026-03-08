@@ -105,6 +105,7 @@ const nextConfig = {
 
   // Turbopack configuration (dev only)
   turbopack: {
+    resolveExtensions: ['.tsx', '.ts', '.jsx', '.js', '.json', '.mjs', '.wasm'],
     rules: {
       '*.svg': {
         loaders: ['@svgr/webpack'],
@@ -212,42 +213,85 @@ const nextConfig = {
 
     // Only apply optimizations in development mode to reduce memory usage
     // Skip for Edge Runtime — it needs its own ESM-compatible chunk format
-    if (process.env.NODE_ENV !== 'production' && nextRuntime !== 'edge') {
-      config.optimization = {
-        ...config.optimization,
-        minimize: false,
-        moduleIds: 'deterministic',
-        runtimeChunk: 'single',
-        splitChunks: {
-          chunks: 'all',
-          maxSize: 244000, // Split large chunks
-          cacheGroups: {
-            default: false,
-            vendors: false,
-            commons: {
-              name: 'commons',
-              minChunks: 2,
-              priority: 20,
-              reuseExistingChunk: true,
-            },
-            lib: {
-              test: /[\\/]node_modules[\\/]/,
-              name(module) {
-                const match = module.context?.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
-                if (!match) return 'lib.unknown';
-                const packageName = match[1];
-                return `lib.${packageName.replace('@', '')}`;
+    if (nextRuntime !== 'edge') {
+      const isProd = process.env.NODE_ENV === 'production';
+      
+      if (isProd) {
+        // Production-only: aggressive chunk splitting for optimal caching & HTTP/2
+        config.optimization = {
+          ...config.optimization,
+          minimize: true,
+          moduleIds: 'deterministic',
+          usedExports: true,
+          splitChunks: {
+            chunks: 'all',
+            minSize: 20000,
+            maxSize: 244000, // Stay under 250KB for HTTP/2
+            maxInitialRequests: 25,
+            cacheGroups: {
+              default: false,
+              vendors: false,
+              // Core framework — stable, cached long-term
+              framework: {
+                test: /[\\/]node_modules[\\/](react|react-dom|next|scheduler)[\\/]/,
+                name: 'framework',
+                chunks: 'all',
+                priority: 50,
+                enforce: true,
               },
-              priority: 10,
+              // UI component libraries
+              ui: {
+                test: /[\\/]node_modules[\\/](@radix-ui|@headlessui|class-variance-authority|clsx)[\\/]/,
+                name: 'ui-vendor',
+                chunks: 'all',
+                priority: 40,
+              },
+              // AI/ML libraries — async loaded
+              ai: {
+                test: /[\\/]node_modules[\\/](langchain|@langchain|openai|anthropic)[\\/]/,
+                name: 'ai-vendor',
+                chunks: 'async',
+                priority: 30,
+              },
+              // Charts and visualization — async loaded
+              viz: {
+                test: /[\\/]node_modules[\\/](recharts|d3|chart\.js)[\\/]/,
+                name: 'viz-vendor',
+                chunks: 'async',
+                priority: 30,
+              },
+              // Common shared code
+              commons: {
+                name: 'commons',
+                minChunks: 2,
+                priority: 20,
+                reuseExistingChunk: true,
+              },
+              // Remaining vendor code
+              lib: {
+                test: /[\\/]node_modules[\\/]/,
+                name(module) {
+                  const match = module.context?.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
+                  if (!match) return 'lib.unknown';
+                  const packageName = match[1];
+                  return `lib.${packageName.replace('@', '')}`;
+                },
+                priority: 10,
+                reuseExistingChunk: true,
+              },
             },
           },
-          maxInitialRequests: 25,
-          minSize: 20000,
-        },
-      };
-      
-      // Reduce module resolution overhead
-      config.resolve.symlinks = false;
+        };
+        
+        // Reduce module resolution overhead
+        config.resolve.symlinks = false;
+      } else {
+        // Dev mode: use Next.js defaults — only set deterministic moduleIds
+        config.optimization = {
+          ...config.optimization,
+          moduleIds: 'deterministic',
+        };
+      }
     }
 
     // Mark problematic packages as external to prevent webpack from bundling them
