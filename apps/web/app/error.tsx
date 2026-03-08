@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import * as Sentry from '@sentry/nextjs';
 import { 
@@ -45,25 +44,19 @@ export default function Error({
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-red-50/30 dark:from-slate-900 dark:to-red-950/20">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="max-w-md w-full motion-reduce:transition-none"
+      <div 
+        className="max-w-md w-full animate-[fadeInUp_0.4s_ease-out_both]"
       >
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-red-500 to-orange-500 px-6 py-8 text-center">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', damping: 10, delay: 0.1 }}
-              className="motion-reduce:transition-none"
+            <div
+              className="animate-[scaleIn_0.3s_ease-out_0.1s_both]"
             >
               <div className="inline-flex p-3 bg-white/20 rounded-full mb-4">
                 <AlertCircle className="w-8 h-8 text-white" aria-hidden="true" />
               </div>
-            </motion.div>
+            </div>
             <h1 className="text-xl font-bold text-white mb-1">
               Oops! Something went wrong
             </h1>
@@ -138,7 +131,12 @@ export default function Error({
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
+      {/* Inline keyframes — no external deps, guaranteed to work in error state */}
+      <style>{`
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scaleIn  { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+      `}</style>
     </div>
   );
 }

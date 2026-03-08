@@ -44,9 +44,15 @@ WORKDIR /app
 
 RUN apk add --no-cache openssl
 
+# Install sharp for Next.js image optimization (standalone doesn't copy it)
+RUN npm install --cpu=x64 --os=linux --libc=musl sharp@0.34.5 && \
+    rm -rf /root/.npm
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+# Azure Container Apps / App Service: leave ~512MB headroom for OS
+# Enable DNS result caching for Azure private endpoints
+ENV NODE_OPTIONS="--max-old-space-size=3584 --dns-result-order=ipv4first"
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs

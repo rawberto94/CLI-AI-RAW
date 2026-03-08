@@ -43,6 +43,9 @@ const nextConfig = {
   },
   output: "standalone",
   
+  // Disable X-Powered-By header (security)
+  poweredByHeader: false,
+  
   // External packages that should not be bundled (native modules)
   serverExternalPackages: [
     'ssh2',
@@ -115,10 +118,10 @@ const nextConfig = {
   },
 
   experimental: {
-    // Enable for Next.js 15.5+
-    webpackBuildWorker: true,
-    parallelServerBuildTraces: true,
-    parallelServerCompiles: true,
+    // Disabled worker threads to prevent build/HMR instability
+    // webpackBuildWorker: true,
+    // parallelServerBuildTraces: true,
+    // parallelServerCompiles: true,
     externalDir: true,
     // Optimized package imports - reduces bundle size significantly
     optimizePackageImports: [
@@ -168,46 +171,6 @@ const nextConfig = {
       config.experiments = {
         ...config.experiments,
         lazyCompilation: false,
-      };
-      
-      // Use filesystem cache for better stability
-      config.cache = {
-        type: 'filesystem',
-        buildDependencies: {
-          config: [__filename],
-        },
-        // Add compression to reduce memory usage
-        compression: 'gzip',
-      };
-      
-      // Improve HMR stability with better watch options
-      config.watchOptions = {
-        ...config.watchOptions,
-        poll: false,
-        aggregateTimeout: 300,
-        ignored: ['**/node_modules/**', '**/.git/**', '**/.next/**'],
-      };
-
-      // Improve HMR plugin configuration
-      const existingHotModuleReplacementPlugin = config.plugins.find(
-        (plugin) => plugin.constructor.name === 'HotModuleReplacementPlugin'
-      );
-      
-      if (!existingHotModuleReplacementPlugin) {
-        config.plugins.push(new webpack.HotModuleReplacementPlugin());
-      }
-
-      // Add better error overlay configuration
-      config.devServer = {
-        ...config.devServer,
-        client: {
-          overlay: {
-            errors: true,
-            warnings: false,
-            runtimeErrors: false,
-          },
-          reconnect: 5,
-        },
       };
     }
 
@@ -285,13 +248,8 @@ const nextConfig = {
         
         // Reduce module resolution overhead
         config.resolve.symlinks = false;
-      } else {
-        // Dev mode: use Next.js defaults — only set deterministic moduleIds
-        config.optimization = {
-          ...config.optimization,
-          moduleIds: 'deterministic',
-        };
       }
+      // Dev mode: let Next.js handle all optimization defaults
     }
 
     // Mark problematic packages as external to prevent webpack from bundling them
@@ -467,6 +425,16 @@ const nextConfig = {
       {
         // Cache static assets aggressively
         source: "/static/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        // Cache Next.js hashed static assets (JS, CSS, media) — immutable
+        source: "/_next/static/(.*)",
         headers: [
           {
             key: "Cache-Control",

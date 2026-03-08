@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { 
   Home, 
@@ -15,34 +14,26 @@ import {
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-violet-50/30 dark:from-slate-900 dark:via-violet-950/30 dark:to-violet-950/30 flex items-center justify-center p-6">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-lg w-full text-center motion-reduce:transition-none"
+      <div 
+        className="max-w-lg w-full text-center animate-[fadeInUp_0.5s_ease-out_both]"
       >
         {/* Animated 404 */}
-        <motion.div 
-          initial={{ scale: 0.8 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', damping: 10, stiffness: 100 }}
-          className="mb-8 motion-reduce:transition-none"
+        <div 
+          className="mb-8 animate-[scaleIn_0.4s_ease-out_both]"
         >
           <div className="relative inline-block">
             <span className="text-[150px] font-black bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 bg-clip-text text-transparent leading-none">
               404
             </span>
-            <motion.div
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-              className="absolute -top-4 -right-4 motion-reduce:animate-none"
+            <div
+              className="absolute -top-4 -right-4 animate-[wiggle_2s_ease-in-out_infinite] motion-reduce:animate-none"
             >
               <div className="p-3 bg-amber-100 dark:bg-amber-900/50 rounded-full">
                 <HelpCircle className="w-8 h-8 text-amber-600 dark:text-amber-400" aria-hidden="true" />
               </div>
-            </motion.div>
+            </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Message */}
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-3">
@@ -115,7 +106,13 @@ export default function NotFound() {
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           Go back to previous page
         </button>
-      </motion.div>
+      </div>
+      {/* Inline keyframes — no external deps */}
+      <style>{`
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scaleIn  { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        @keyframes wiggle   { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(10deg); } 75% { transform: rotate(-10deg); } }
+      `}</style>
     </div>
   );
 }

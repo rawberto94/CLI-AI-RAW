@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import * as Sentry from '@sentry/nextjs';
 import { 
@@ -12,7 +11,6 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { useState } from 'react';
 
 export default function GlobalError({
   error,
@@ -44,23 +42,17 @@ export default function GlobalError({
     <html>
       <body className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50/20 to-orange-50/20 dark:from-slate-900 dark:via-red-950/20 dark:to-orange-950/20">
         <div className="min-h-screen flex items-center justify-center p-6">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="max-w-lg w-full text-center motion-reduce:transition-none"
+          <div 
+            className="max-w-lg w-full text-center animate-[fadeInUp_0.5s_ease-out_both]"
           >
             {/* Error Icon */}
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', damping: 10, delay: 0.2 }}
-              className="mb-6 inline-flex motion-reduce:transition-none"
+            <div
+              className="mb-6 inline-flex animate-[scaleIn_0.4s_ease-out_0.2s_both]"
             >
               <div className="p-4 bg-red-100 dark:bg-red-900/50 rounded-full">
                 <AlertTriangle className="w-12 h-12 text-red-600 dark:text-red-400" aria-hidden="true" />
               </div>
-            </motion.div>
+            </div>
 
             {/* Message */}
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-3">
@@ -133,8 +125,13 @@ export default function GlobalError({
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
         </div>
+        {/* Inline keyframes — no external deps, guaranteed to work in error state */}
+        <style>{`
+          @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+          @keyframes scaleIn  { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+        `}</style>
       </body>
     </html>
   );
