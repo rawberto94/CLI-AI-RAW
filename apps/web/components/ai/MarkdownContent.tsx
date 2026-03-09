@@ -51,7 +51,7 @@ const MarkdownCode: Components['code'] = ({ className, children, ...props }) => 
   if (!isBlock) {
     return (
       <code
-        className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-800 text-[13px] font-mono"
+        className="px-1.5 py-0.5 rounded bg-black/10 text-inherit text-[13px] font-mono"
         {...props}
       >
         {children}

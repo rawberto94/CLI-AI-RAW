@@ -1942,34 +1942,59 @@ export function FloatingAIBubble() {
                   <AnimatePresence>
                     {showHistoryPanel && (
                       <ConversationHistoryPanel key="history-panel"
-                        conversations={persistence.conversationList?.map(c => ({
-                          id: c.id,
-                          title: c.title,
-                          preview: c.messages?.[0]?.content?.slice(0, 100) || 'New conversation',
-                          messageCount: c.messages?.length || 0,
-                          createdAt: new Date(c.createdAt),
-                          updatedAt: new Date(c.updatedAt),
-                          context: c.context,
-                          contextType: c.contextType as 'global' | 'contract' | undefined,
-                          starred: false,
-                        })) || []}
+                        conversations={(() => {
+                          // For authenticated users, use conversations array (has messageCount)
+                          if (persistence.isAuthenticated && persistence.conversations.length > 0) {
+                            return persistence.conversations.map(c => ({
+                              id: c.id,
+                              title: c.title || 'Untitled conversation',
+                              preview: c.title || 'New conversation',
+                              messageCount: c.messageCount || 0,
+                              createdAt: new Date(c.createdAt),
+                              updatedAt: new Date(c.lastMessageAt || c.createdAt),
+                              context: c.context,
+                              contextType: c.contextType as 'global' | 'contract' | undefined,
+                              starred: c.isPinned || false,
+                            }));
+                          }
+                          // For unauthenticated users, build from conversationList (has messages)
+                          if (persistence.conversationList && persistence.conversationList.length > 0) {
+                            return persistence.conversationList.map(c => ({
+                              id: c.id,
+                              title: c.title || 'Current conversation',
+                              preview: c.messages?.[0]?.content?.slice(0, 100) || c.title || 'New conversation',
+                              messageCount: c.messages?.length || 0,
+                              createdAt: new Date(c.createdAt),
+                              updatedAt: new Date(c.updatedAt),
+                              context: c.context,
+                              contextType: c.contextType as 'global' | 'contract' | undefined,
+                              starred: false,
+                            }));
+                          }
+                          return [];
+                        })()}
                         currentConversationId={persistence.conversationId || undefined}
                         isLoading={persistence.isLoading}
                         onSelectConversation={(id) => {
-                          if (persistence.switchConversation) {
-                            persistence.switchConversation(id);
-                          }
+                          persistence.switchConversation(id).then(() => {
+                            // Sync restored messages from the hook
+                            if (persistence.messages.length > 0) {
+                              const restoredMessages = persistence.messages.map((m) => ({
+                                ...m,
+                                timestamp: new Date(m.timestamp),
+                                suggestions: m.suggestions || [],
+                                actions: m.actions || [],
+                              })) as Message[];
+                              setMessages([INITIAL_MESSAGE, ...restoredMessages]);
+                            }
+                          });
                           setShowHistoryPanel(false);
                         }}
                         onDeleteConversation={(id) => {
-                          if (persistence.deleteConversation) {
-                            persistence.deleteConversation(id);
-                          }
+                          persistence.deleteConversation(id);
                         }}
                         onNewConversation={() => {
-                          if (persistence.startNewConversation) {
-                            persistence.startNewConversation();
-                          }
+                          handleClearChat();
                           setShowHistoryPanel(false);
                         }}
                         onClose={() => setShowHistoryPanel(false)}
@@ -2097,7 +2122,7 @@ export function FloatingAIBubble() {
 
                                   <MarkdownContent
                                     content={message.content}
-                                    className="text-[15px] leading-relaxed"
+                                    className={`text-[15px] leading-relaxed ${message.role === "user" ? "prose-invert text-white" : ""}`}
                                   />
                                   
                                   {/* Metadata footer - Enhanced */}

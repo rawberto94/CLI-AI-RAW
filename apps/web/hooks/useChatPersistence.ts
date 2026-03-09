@@ -11,7 +11,7 @@
  * - Context-aware conversations (e.g., contract-specific)
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 // Types
 export interface ChatMessage {
@@ -348,12 +348,13 @@ export function useChatPersistence(
     setIsLoading(false);
   }, [isAuthenticated, fetchConversation, loadFromLocalStorage]);
 
-  const deleteConversation = useCallback(async () => {
-    if (!conversationId) return;
+  const deleteConversation = useCallback(async (targetId?: string) => {
+    const idToDelete = targetId || conversationId;
+    if (!idToDelete) return;
 
-    if (isAuthenticated && !conversationId.startsWith('local-')) {
+    if (isAuthenticated && !idToDelete.startsWith('local-')) {
       try {
-        await fetch(`/api/chat/conversations/${conversationId}`, {
+        await fetch(`/api/chat/conversations/${idToDelete}`, {
           method: 'DELETE',
         });
       } catch {
@@ -361,11 +362,12 @@ export function useChatPersistence(
       }
     }
 
-    // Clear local storage
-    localStorage.removeItem(getLocalStorageKey());
-    
-    setConversationId(null);
-    setMessages([]);
+    // Clear local storage if deleting current conversation
+    if (!targetId || targetId === conversationId) {
+      localStorage.removeItem(getLocalStorageKey());
+      setConversationId(null);
+      setMessages([]);
+    }
     
     // Refresh conversations
     if (isAuthenticated) {
@@ -490,10 +492,48 @@ export function useChatPersistence(
     setConversationId(id);
   }, []);
 
+  // Start a new conversation (convenience wrapper)
+  const startNewConversation = useCallback(async () => {
+    await createConversation();
+  }, [createConversation]);
+
+  // Build conversationList from conversations for UI components
+  const conversationList: ConversationListItem[] = useMemo(() => {
+    // For authenticated users, map DB conversations
+    if (isAuthenticated && conversations.length > 0) {
+      return conversations.map(c => ({
+        id: c.id,
+        title: c.title,
+        context: c.context,
+        contextType: c.contextType,
+        messages: [], // Messages loaded on demand via switchConversation
+        createdAt: c.createdAt,
+        updatedAt: c.lastMessageAt,
+      }));
+    }
+
+    // For unauthenticated users, create a synthetic entry from localStorage messages
+    if (!isAuthenticated && messages.length > 0) {
+      const firstUserMsg = messages.find(m => m.role === 'user');
+      return [{
+        id: conversationId || 'local-current',
+        title: firstUserMsg?.content?.slice(0, 60) || 'Current conversation',
+        context: opts.context || undefined,
+        contextType: opts.contextType,
+        messages,
+        createdAt: messages[0]?.timestamp || new Date(),
+        updatedAt: messages[messages.length - 1]?.timestamp || new Date(),
+      }];
+    }
+
+    return [];
+  }, [isAuthenticated, conversations, messages, conversationId, opts.context, opts.contextType]);
+
   return {
     conversationId,
     messages,
     conversations,
+    conversationList,
     isLoading,
     isAuthenticated,
     addMessage,
@@ -502,6 +542,7 @@ export function useChatPersistence(
     switchConversation,
     deleteConversation,
     clearChat,
+    startNewConversation,
     refreshConversations,
     togglePin,
     archiveConversation,
