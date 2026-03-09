@@ -511,6 +511,36 @@ export default function ContractDetailPage() {
   const [extensionDate, setExtensionDate] = useState('')
   const [extensionNote, setExtensionNote] = useState('')
   const [extensionValue, setExtensionValue] = useState('')
+  const [aiExtensionRec, setAiExtensionRec] = useState<{
+    recommendedAction: string;
+    reasoning: string;
+    suggestedExtensionMonths?: number;
+    valueRecommendation: { adjustValue: boolean; suggestedValue?: number; adjustmentReason: string };
+    risks: Array<{ risk: string; severity: string; mitigation: string }>;
+    advantages: string[];
+  } | null>(null)
+  const [aiExtensionLoading, setAiExtensionLoading] = useState(false)
+  
+  const fetchAiExtensionRec = useCallback(async () => {
+    if (aiExtensionLoading) return
+    setAiExtensionLoading(true)
+    try {
+      const response = await fetch(`/api/contracts/${params.id}/extend/ai-recommend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
+        body: JSON.stringify({}),
+      })
+      if (response.ok) {
+        const raw = await response.json()
+        const data = raw.data ?? raw
+        setAiExtensionRec(data.recommendation)
+      }
+    } catch {
+      // AI recommendation is optional
+    } finally {
+      setAiExtensionLoading(false)
+    }
+  }, [params.id, aiExtensionLoading])
 
   const handleExtendContract = useCallback(async () => {
     if (!extensionDate) {
@@ -981,7 +1011,7 @@ export default function ContractDetailPage() {
         onShare={() => setShowShareDialog(true)}
         onCompare={() => setShowComparison(true)}
         onCreateRenewal={() => router.push(`/contracts/${params.id}/renew`)}
-        onExtendContract={() => setShowExtendDialog(true)}
+        onExtendContract={() => { setShowExtendDialog(true); fetchAiExtensionRec(); }}
       />
 
       {/* Main Content */}
@@ -1894,12 +1924,12 @@ export default function ContractDetailPage() {
         }}
         onPrint={() => window.print()}
         onCreateRenewal={() => router.push(`/contracts/${params.id}/renew`)}
-        onExtendContract={() => setShowExtendDialog(true)}
+        onExtendContract={() => { setShowExtendDialog(true); fetchAiExtensionRec(); }}
       />
 
       {/* Extend Contract Dialog */}
       <Dialog open={showExtendDialog} onOpenChange={setShowExtendDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-semibold">
               <Calendar className="h-5 w-5 text-blue-600" />
@@ -1907,6 +1937,59 @@ export default function ContractDetailPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
+            {/* AI Recommendation Panel */}
+            {aiExtensionLoading && (
+              <div className="rounded-lg border border-violet-200 bg-violet-50/50 p-3">
+                <div className="flex items-center gap-2 text-sm text-violet-700">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="font-medium">AI is analyzing this contract...</span>
+                </div>
+              </div>
+            )}
+            {aiExtensionRec && !aiExtensionLoading && (
+              <div className="rounded-lg border border-violet-200 bg-gradient-to-br from-violet-50 to-blue-50 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-violet-600" />
+                  <span className="text-sm font-semibold text-violet-800">AI Recommendation</span>
+                  <Badge variant="outline" className={cn('ml-auto text-xs', {
+                    'border-green-300 text-green-700 bg-green-50': aiExtensionRec.recommendedAction === 'extend',
+                    'border-amber-300 text-amber-700 bg-amber-50': aiExtensionRec.recommendedAction === 'renew',
+                    'border-red-300 text-red-700 bg-red-50': aiExtensionRec.recommendedAction === 'renegotiate',
+                  })}>
+                    {aiExtensionRec.recommendedAction === 'extend' ? 'Extend' :
+                     aiExtensionRec.recommendedAction === 'renew' ? 'Consider Renewal' : 'Renegotiate'}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">{aiExtensionRec.reasoning}</p>
+                {aiExtensionRec.suggestedExtensionMonths && (
+                  <p className="text-xs"><strong>Suggested duration:</strong> {aiExtensionRec.suggestedExtensionMonths} months</p>
+                )}
+                {aiExtensionRec.valueRecommendation?.adjustValue && (
+                  <p className="text-xs"><strong>Value suggestion:</strong> {aiExtensionRec.valueRecommendation.adjustmentReason}
+                    {aiExtensionRec.valueRecommendation.suggestedValue != null && (
+                      <> &mdash; ${Number(aiExtensionRec.valueRecommendation.suggestedValue).toLocaleString()}</>
+                    )}
+                  </p>
+                )}
+                {aiExtensionRec.risks?.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-red-700">Risks</p>
+                    {aiExtensionRec.risks.slice(0, 2).map((r, i) => (
+                      <p key={i} className="text-xs text-muted-foreground">• {r.risk} — <em>{r.mitigation}</em></p>
+                    ))}
+                  </div>
+                )}
+                {aiExtensionRec.advantages?.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-green-700">Advantages</p>
+                    {aiExtensionRec.advantages.slice(0, 2).map((a, i) => (
+                      <p key={i} className="text-xs text-muted-foreground">• {a}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <p className="text-sm text-muted-foreground">
               Extend the current contract&apos;s expiration date without creating a new contract.
               {metadata.end_date && (

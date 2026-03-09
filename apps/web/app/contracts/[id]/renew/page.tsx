@@ -38,6 +38,12 @@ import {
   BookOpen,
   FolderKanban,
   Search,
+  Brain,
+  ShieldCheck,
+  Wand2,
+  Zap,
+  TrendingUp,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -120,6 +126,44 @@ interface RenewalTemplate {
   usageCount?: number;
 }
 
+// AI Analysis result from the backend
+interface AIRenewalAnalysis {
+  overallRiskScore: number;
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  executiveSummary: string;
+  clauseSuggestions: Array<{
+    clauseId: string;
+    type: 'improve' | 'warning' | 'add' | 'update';
+    title: string;
+    description: string;
+    suggestedContent?: string;
+    priority: 'critical' | 'high' | 'medium' | 'low';
+    category: 'risk' | 'compliance' | 'commercial' | 'operational' | 'legal';
+  }>;
+  missingClauses: Array<{
+    title: string;
+    reason: string;
+    priority: 'critical' | 'high' | 'medium' | 'low';
+    suggestedContent: string;
+  }>;
+  termRecommendations: Array<{
+    area: string;
+    currentState: string;
+    recommendation: string;
+    impact: 'positive' | 'neutral' | 'negative';
+  }>;
+  complianceFlags: Array<{
+    regulation: string;
+    status: 'compliant' | 'at-risk' | 'non-compliant' | 'not-applicable';
+    detail: string;
+  }>;
+  negotiationInsights: {
+    leveragePoints: string[];
+    watchAreas: string[];
+    suggestedApproach: string;
+  };
+}
+
 // Steps configuration
 const STEPS = [
   { id: 'review', title: 'Review Original', icon: FileText },
@@ -149,6 +193,48 @@ export default function ContractRenewalPage() {
   
   // Approval workflow
   const [submitForApproval, setSubmitForApproval] = useState(false);
+  
+  // AI analysis state — shared across wizard steps
+  const [aiAnalysis, setAiAnalysis] = useState<AIRenewalAnalysis | null>(null);
+  const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
+  
+  // Trigger AI analysis (called from ReviewStep or ContentStep)
+  const runAiAnalysis = useCallback(async () => {
+    if (!draft || !originalContract || aiAnalysisLoading) return;
+    setAiAnalysisLoading(true);
+    try {
+      const response = await fetch(`/api/contracts/${contractId}/renew/ai-analysis`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': getTenantId(),
+        },
+        body: JSON.stringify({
+          clauses: draft.clauses,
+          renewalTerms: {
+            effectiveDate: draft.effectiveDate.toISOString(),
+            expirationDate: draft.expirationDate.toISOString(),
+            totalValue: draft.totalValue,
+            originalValue: originalContract.totalValue,
+            adjustForInflation: draft.adjustForInflation,
+            inflationRate: draft.inflationRate,
+          },
+          analysisType: 'full',
+        }),
+      });
+      if (response.ok) {
+        const raw = await response.json();
+        const data = raw.data ?? raw;
+        setAiAnalysis(data.analysis);
+      } else {
+        toast.error('AI analysis unavailable — using local suggestions');
+      }
+    } catch {
+      // Graceful fallback — AI is optional
+    } finally {
+      setAiAnalysisLoading(false);
+    }
+  }, [draft, originalContract, contractId, aiAnalysisLoading]);
   
   // Load templates for renewal
   useEffect(() => {
@@ -501,16 +587,19 @@ export default function ContractRenewalPage() {
                 templatesLoading={templatesLoading}
                 selectedTemplate={selectedTemplate}
                 onApplyTemplate={applyTemplate}
+                aiAnalysis={aiAnalysis}
+                aiAnalysisLoading={aiAnalysisLoading}
+                onRunAiAnalysis={runAiAnalysis}
               />
             )}
             {currentStep === 1 && (
               <TermsStep draft={draft} onUpdate={updateDraft} original={originalContract} />
             )}
             {currentStep === 2 && (
-              <ContentStep draft={draft} onUpdate={updateDraft} original={originalContract} />
+              <ContentStep draft={draft} onUpdate={updateDraft} original={originalContract} contractId={contractId} aiAnalysis={aiAnalysis} aiAnalysisLoading={aiAnalysisLoading} onRunAiAnalysis={runAiAnalysis} />
             )}
             {currentStep === 3 && (
-              <PreviewStep draft={draft} original={originalContract} />
+              <PreviewStep draft={draft} original={originalContract} aiAnalysis={aiAnalysis} />
             )}
             {currentStep === 4 && (
               <ConfirmStep
@@ -574,12 +663,18 @@ function ReviewStep({
   templatesLoading,
   selectedTemplate,
   onApplyTemplate,
+  aiAnalysis,
+  aiAnalysisLoading,
+  onRunAiAnalysis,
 }: { 
   original: OriginalContract;
   templates: RenewalTemplate[];
   templatesLoading: boolean;
   selectedTemplate: RenewalTemplate | null;
   onApplyTemplate: (template: RenewalTemplate) => void;
+  aiAnalysis: AIRenewalAnalysis | null;
+  aiAnalysisLoading: boolean;
+  onRunAiAnalysis: () => void;
 }) {
   const [showTemplates, setShowTemplates] = useState(false);
   const [templateSearch, setTemplateSearch] = useState('');
@@ -833,6 +928,133 @@ function ReviewStep({
                 <p className="text-sm text-muted-foreground">{original.description}</p>
               </div>
             </>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* AI Risk Assessment Panel */}
+      <Card className="border-violet-200 bg-gradient-to-br from-violet-50/50 to-white">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-violet-600" />
+              AI Renewal Intelligence
+            </CardTitle>
+            <Button
+              size="sm"
+              onClick={onRunAiAnalysis}
+              disabled={aiAnalysisLoading}
+              className="bg-gradient-to-r from-violet-500 to-violet-600"
+            >
+              {aiAnalysisLoading ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</>
+              ) : aiAnalysis ? (
+                <><RefreshCw className="h-4 w-4 mr-2" />Re-analyze</>
+              ) : (
+                <><Sparkles className="h-4 w-4 mr-2" />Run AI Analysis</>
+              )}
+            </Button>
+          </div>
+          <CardDescription>
+            AI-powered risk assessment, compliance checks, and negotiation intelligence
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!aiAnalysis && !aiAnalysisLoading && (
+            <div className="text-center py-8">
+              <Brain className="h-10 w-10 mx-auto text-violet-300 mb-3" />
+              <p className="text-sm text-muted-foreground">
+                Click &quot;Run AI Analysis&quot; to get intelligent insights about this renewal
+              </p>
+            </div>
+          )}
+          
+          {aiAnalysisLoading && (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center justify-center gap-3">
+                <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+                <p className="text-sm text-muted-foreground">Analyzing contract with AI...</p>
+              </div>
+              <Progress value={65} className="h-1" />
+            </div>
+          )}
+          
+          {aiAnalysis && !aiAnalysisLoading && (
+            <div className="space-y-4">
+              {/* Risk Score */}
+              <div className="flex items-center gap-4 p-3 rounded-lg bg-white border">
+                <div className={cn(
+                  "h-14 w-14 rounded-full flex items-center justify-center text-lg font-bold",
+                  aiAnalysis.riskLevel === 'low' && "bg-green-100 text-green-700",
+                  aiAnalysis.riskLevel === 'medium' && "bg-amber-100 text-amber-700",
+                  aiAnalysis.riskLevel === 'high' && "bg-red-100 text-red-700",
+                  aiAnalysis.riskLevel === 'critical' && "bg-red-200 text-red-800",
+                )}>
+                  {aiAnalysis.overallRiskScore}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">Risk Score</span>
+                    <Badge variant="outline" className={cn(
+                      "text-xs",
+                      aiAnalysis.riskLevel === 'low' && "border-green-300 text-green-700",
+                      aiAnalysis.riskLevel === 'medium' && "border-amber-300 text-amber-700",
+                      aiAnalysis.riskLevel === 'high' && "border-red-300 text-red-700",
+                      aiAnalysis.riskLevel === 'critical' && "border-red-400 text-red-800",
+                    )}>
+                      {aiAnalysis.riskLevel}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">{aiAnalysis.executiveSummary}</p>
+                </div>
+              </div>
+              
+              {/* Compliance Flags */}
+              {aiAnalysis.complianceFlags.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-blue-600" />
+                    Compliance Check
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {aiAnalysis.complianceFlags.map((flag, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs p-2 rounded bg-white border">
+                        {flag.status === 'compliant' && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />}
+                        {flag.status === 'at-risk' && <AlertTriangle className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />}
+                        {flag.status === 'non-compliant' && <AlertCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />}
+                        {flag.status === 'not-applicable' && <div className="h-3.5 w-3.5 rounded-full bg-gray-200 flex-shrink-0" />}
+                        <span className="font-medium">{flag.regulation}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Negotiation Insights */}
+              {aiAnalysis.negotiationInsights && (
+                <div>
+                  <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-violet-600" />
+                    Negotiation Intelligence
+                  </h4>
+                  <p className="text-xs text-muted-foreground mb-2">{aiAnalysis.negotiationInsights.suggestedApproach}</p>
+                  {aiAnalysis.negotiationInsights.leveragePoints.length > 0 && (
+                    <div className="space-y-1">
+                      {aiAnalysis.negotiationInsights.leveragePoints.slice(0, 3).map((point, i) => (
+                        <div key={i} className="flex items-start gap-2 text-xs">
+                          <Zap className="h-3 w-3 text-violet-500 mt-0.5 flex-shrink-0" />
+                          <span>{point}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <p className="text-[10px] text-muted-foreground text-center">
+                Detailed suggestions available in Step 3 (Edit Content)
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -1162,12 +1384,19 @@ interface LibraryClause {
 function ContentStep({ 
   draft, 
   onUpdate,
-  
   original,
+  contractId,
+  aiAnalysis,
+  aiAnalysisLoading,
+  onRunAiAnalysis,
 }: { 
   draft: RenewalDraft; 
   onUpdate: (updates: Partial<RenewalDraft>) => void;
   original: OriginalContract;
+  contractId: string;
+  aiAnalysis: AIRenewalAnalysis | null;
+  aiAnalysisLoading: boolean;
+  onRunAiAnalysis: () => void;
 }) {
   const [activeClauseId, setActiveClauseId] = useState<string | null>(
     draft.clauses.length > 0 ? draft.clauses[0].id : null
@@ -1179,85 +1408,91 @@ function ContentStep({
   const [librarySearch, setLibrarySearch] = useState('');
   const [libraryCategory, setLibraryCategory] = useState('all');
   const [addingClauseId, setAddingClauseId] = useState<string | null>(null);
+  const [aiClauseLoading, setAiClauseLoading] = useState<string | null>(null); // clause ID being AI-generated
   
-  // Generate AI suggestions based on renewal context
-  const [aiSuggestions] = useState<AISuggestion[]>(() => {
+  // Derive AI suggestions from analysis, falling back to basic local hints
+  const aiSuggestions: AISuggestion[] = (() => {
+    // If we have real AI analysis, use its clause suggestions
+    if (aiAnalysis) {
+      const suggestions: AISuggestion[] = aiAnalysis.clauseSuggestions.map(s => ({
+        id: `ai-${s.clauseId}-${s.type}`,
+        type: s.type === 'improve' ? 'update' as const : s.type === 'warning' ? 'warning' as const : s.type === 'add' ? 'add' as const : 'update' as const,
+        title: s.title,
+        description: s.description,
+        clauseId: s.clauseId !== 'new' ? s.clauseId : undefined,
+        suggestedContent: s.suggestedContent,
+        priority: s.priority === 'critical' ? 'high' as const : s.priority as 'high' | 'medium' | 'low',
+      }));
+      // Add missing clause suggestions
+      for (const mc of aiAnalysis.missingClauses) {
+        suggestions.push({
+          id: `ai-missing-${mc.title.replace(/\s+/g, '-').toLowerCase()}`,
+          type: 'add',
+          title: `Add: ${mc.title}`,
+          description: mc.reason,
+          suggestedContent: mc.suggestedContent,
+          priority: mc.priority === 'critical' ? 'high' : mc.priority as 'high' | 'medium' | 'low',
+        });
+      }
+      return suggestions;
+    }
+    
+    // Fallback: basic local suggestions when AI is unavailable
     const suggestions: AISuggestion[] = [];
-    
-    // Check for price escalation suggestion
     if (draft.adjustForInflation && draft.inflationRate > 0) {
-      suggestions.push({
-        id: 'price-escalation',
-        type: 'tip',
-        title: 'Update Payment Terms',
-        description: `Contract value increased by ${draft.inflationRate}%. Consider updating payment clause to reflect new pricing structure.`,
-        priority: 'medium',
-      });
+      suggestions.push({ id: 'price-escalation', type: 'tip', title: 'Update Payment Terms', description: `Contract value increased by ${draft.inflationRate}%. Consider updating payment clause to reflect new pricing structure.`, priority: 'medium' });
     }
-    
-    // Check for date-sensitive clauses
-    const termClause = draft.clauses.find(c => 
-      c.title.toLowerCase().includes('term') || 
-      c.title.toLowerCase().includes('duration')
-    );
+    const termClause = draft.clauses.find(c => c.title.toLowerCase().includes('term') || c.title.toLowerCase().includes('duration'));
     if (termClause) {
-      suggestions.push({
-        id: 'term-update',
-        type: 'update',
-        title: 'Update Term Clause',
-        description: 'The term/duration clause should reflect the new contract dates.',
-        clauseId: termClause.id,
-        priority: 'high',
-      });
+      suggestions.push({ id: 'term-update', type: 'update', title: 'Update Term Clause', description: 'The term/duration clause should reflect the new contract dates.', clauseId: termClause.id, priority: 'high' });
     }
-    
-    // Check for auto-renewal language
-    const hasAutoRenewal = draft.clauses.some(c => 
-      c.content.toLowerCase().includes('auto-renewal') ||
-      c.content.toLowerCase().includes('automatically renew')
-    );
-    if (hasAutoRenewal) {
-      suggestions.push({
-        id: 'auto-renewal-review',
-        type: 'warning',
-        title: 'Review Auto-Renewal Terms',
-        description: 'This contract has auto-renewal language. Verify the terms are appropriate for the renewal period.',
-        priority: 'high',
-      });
-    }
-    
-    // Suggest adding common renewal clauses
-    const hasConfidentiality = draft.clauses.some(c => 
-      c.title.toLowerCase().includes('confidential')
-    );
-    if (!hasConfidentiality) {
-      suggestions.push({
-        id: 'add-confidentiality',
-        type: 'add',
-        title: 'Add Confidentiality Clause',
-        description: 'Consider adding a confidentiality clause to protect sensitive information during the renewal period.',
-        priority: 'medium',
-      });
-    }
-    
-    // Data protection suggestion for modern compliance
-    const hasDataProtection = draft.clauses.some(c =>
-      c.title.toLowerCase().includes('data') ||
-      c.content.toLowerCase().includes('gdpr') ||
-      c.content.toLowerCase().includes('privacy')
-    );
-    if (!hasDataProtection) {
-      suggestions.push({
-        id: 'add-data-protection',
-        type: 'add',
-        title: 'Add Data Protection Clause',
-        description: 'Modern contracts should include GDPR/CCPA compliant data protection terms.',
-        priority: 'medium',
-      });
-    }
-    
     return suggestions;
-  });
+  })();
+  
+  // AI clause generation — improve/generate/simplify
+  const generateAiClause = async (clauseId: string, action: 'improve' | 'generate' | 'simplify' | 'strengthen') => {
+    const clause = draft.clauses.find(c => c.id === clauseId);
+    if (!clause) return;
+    setAiClauseLoading(clauseId);
+    try {
+      const response = await fetch(`/api/contracts/${contractId}/renew/ai-clause`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': getTenantId(),
+        },
+        body: JSON.stringify({
+          action,
+          clauseTitle: clause.title,
+          currentContent: clause.content,
+        }),
+      });
+      if (response.ok) {
+        const raw = await response.json();
+        const data = raw.data ?? raw;
+        const generated = data.clause;
+        updateClause(clauseId, generated.content);
+        toast.success(`AI ${action}: ${generated.changesSummary}`);
+      } else {
+        toast.error('AI generation failed — try again');
+      }
+    } catch {
+      toast.error('AI service unavailable');
+    } finally {
+      setAiClauseLoading(null);
+    }
+  };
+  
+  // Add missing clause from AI suggestion (with pre-filled content)
+  const addAiSuggestedClause = (suggestion: AISuggestion) => {
+    if (suggestion.suggestedContent) {
+      const title = suggestion.title.replace(/^Add:\s*/, '');
+      addNewClause(title, suggestion.suggestedContent);
+      toast.success(`Added AI-suggested clause: ${title}`);
+    } else {
+      applySuggestion(suggestion);
+    }
+  };
   
   const activeClause = draft.clauses.find(c => c.id === activeClauseId);
   
@@ -1349,12 +1584,22 @@ function ContentStep({
   };
   
   const applySuggestion = (suggestion: AISuggestion) => {
+    if (suggestion.suggestedContent && suggestion.type === 'add') {
+      addAiSuggestedClause(suggestion);
+      return;
+    }
     if (suggestion.clauseId) {
       setActiveClauseId(suggestion.clauseId);
+      // If there's suggested content and it's an improvement, apply it
+      if (suggestion.suggestedContent && suggestion.type === 'update') {
+        updateClause(suggestion.clauseId, suggestion.suggestedContent);
+        toast.success(`Applied AI improvement: ${suggestion.title}`);
+        return;
+      }
     }
-    if (suggestion.type === 'add') {
+    if (suggestion.type === 'add' && !suggestion.suggestedContent) {
       setShowClauseLibrary(true);
-      setLibrarySearch(suggestion.title.replace('Add ', ''));
+      setLibrarySearch(suggestion.title.replace('Add ', '').replace('Add: ', ''));
     }
     toast.info(`Applied: ${suggestion.title}`);
   };
@@ -1443,13 +1688,27 @@ function ContentStep({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {!aiAnalysis && (
+            <Button
+              size="sm"
+              onClick={onRunAiAnalysis}
+              disabled={aiAnalysisLoading}
+              className="bg-gradient-to-r from-violet-500 to-violet-600 text-white"
+            >
+              {aiAnalysisLoading ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</>
+              ) : (
+                <><Brain className="h-4 w-4 mr-2" />Run AI Analysis</>
+              )}
+            </Button>
+          )}
           <Button 
             variant={showAiSuggestions ? "secondary" : "outline"}
             size="sm"
             onClick={() => setShowAiSuggestions(!showAiSuggestions)}
           >
             <Sparkles className="h-4 w-4 mr-2" />
-            AI Hints
+            AI Suggestions
             {aiSuggestions.length > 0 && (
               <Badge variant="secondary" className="ml-2 bg-yellow-100 text-yellow-700">
                 {aiSuggestions.length}
@@ -1549,7 +1808,7 @@ function ContentStep({
                 <Textarea
                   value={activeClause.content}
                   onChange={(e) => updateClause(activeClause.id, e.target.value)}
-                  className="min-h-[380px] font-mono text-sm resize-none"
+                  className="min-h-[330px] font-mono text-sm resize-none"
                   placeholder="Enter clause content..."
                 />
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -1560,6 +1819,32 @@ function ContentStep({
                       Modified from original
                     </span>
                   )}
+                </div>
+                
+                {/* AI Clause Actions */}
+                <div className="flex items-center gap-2 pt-1 border-t">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Wand2 className="h-3 w-3" /> AI:
+                  </span>
+                  {(['improve', 'simplify', 'strengthen'] as const).map(action => (
+                    <Button
+                      key={action}
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      disabled={aiClauseLoading === activeClause.id}
+                      onClick={() => generateAiClause(activeClause.id, action)}
+                    >
+                      {aiClauseLoading === activeClause.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <>{action === 'improve' && <Sparkles className="h-3 w-3 mr-1" />}
+                          {action === 'simplify' && <Edit3 className="h-3 w-3 mr-1" />}
+                          {action === 'strengthen' && <ShieldCheck className="h-3 w-3 mr-1" />}
+                          {action.charAt(0).toUpperCase() + action.slice(1)}</>
+                      )}
+                    </Button>
+                  ))}
                 </div>
               </div>
             ) : (
@@ -1574,19 +1859,41 @@ function ContentStep({
         </Card>
         
         {/* AI Suggestions Panel */}
-        {showAiSuggestions && !showClauseLibrary && aiSuggestions.length > 0 && (
+        {showAiSuggestions && !showClauseLibrary && (
           <Card className="lg:col-span-4">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-yellow-500" />
                 AI Suggestions
+                {aiAnalysis && (
+                  <Badge variant="secondary" className="text-[10px] bg-violet-100 text-violet-700">
+                    AI-Powered
+                  </Badge>
+                )}
               </CardTitle>
               <CardDescription>
-                Smart recommendations for your renewal
+                {aiAnalysis ? 'Intelligent recommendations from AI analysis' : 'Smart recommendations for your renewal'}
               </CardDescription>
+              {!aiAnalysis && !aiAnalysisLoading && (
+                <Button size="sm" variant="outline" className="mt-2" onClick={onRunAiAnalysis}>
+                  <Brain className="h-3 w-3 mr-1" />
+                  Get AI-powered suggestions
+                </Button>
+              )}
+              {aiAnalysisLoading && (
+                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Generating AI suggestions...
+                </div>
+              )}
             </CardHeader>
             <CardContent className="p-0">
               <ScrollArea className="h-[400px]">
+                {aiSuggestions.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    {aiAnalysisLoading ? 'AI is analyzing your clauses...' : 'No suggestions available. Run AI analysis to get started.'}
+                  </div>
+                ) : (
                 <div className="space-y-2 p-4">
                   {aiSuggestions.map((suggestion) => (
                     <motion.div
@@ -1639,6 +1946,7 @@ function ContentStep({
                     </motion.div>
                   ))}
                 </div>
+                )}
               </ScrollArea>
             </CardContent>
           </Card>
@@ -1741,10 +2049,12 @@ function ContentStep({
 
 function PreviewStep({ 
   draft, 
-  original 
+  original,
+  aiAnalysis,
 }: { 
   draft: RenewalDraft; 
   original: OriginalContract;
+  aiAnalysis: AIRenewalAnalysis | null;
 }) {
   const finalValue = draft.adjustForInflation 
     ? draft.totalValue * (1 + draft.inflationRate / 100)
@@ -2047,6 +2357,60 @@ function PreviewStep({
           </Tabs>
         </CardContent>
       </Card>
+      
+      {/* AI Risk Summary (if analysis was run) */}
+      {aiAnalysis && (
+        <Card className={cn(
+          "border-l-4",
+          aiAnalysis.riskLevel === 'low' && "border-l-green-500",
+          aiAnalysis.riskLevel === 'medium' && "border-l-amber-500",
+          aiAnalysis.riskLevel === 'high' && "border-l-red-500",
+          aiAnalysis.riskLevel === 'critical' && "border-l-red-700",
+        )}>
+          <CardContent className="py-4">
+            <div className="flex items-center gap-4">
+              <div className={cn(
+                "h-12 w-12 rounded-full flex items-center justify-center text-sm font-bold",
+                aiAnalysis.riskLevel === 'low' && "bg-green-100 text-green-700",
+                aiAnalysis.riskLevel === 'medium' && "bg-amber-100 text-amber-700",
+                aiAnalysis.riskLevel === 'high' && "bg-red-100 text-red-700",
+                aiAnalysis.riskLevel === 'critical' && "bg-red-200 text-red-800",
+              )}>
+                {aiAnalysis.overallRiskScore}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-violet-600" />
+                  <span className="font-semibold text-sm">AI Risk Assessment</span>
+                  <Badge variant="outline" className={cn(
+                    "text-xs",
+                    aiAnalysis.riskLevel === 'low' && "border-green-300 text-green-700",
+                    aiAnalysis.riskLevel === 'medium' && "border-amber-300 text-amber-700",
+                    aiAnalysis.riskLevel === 'high' && "border-red-300 text-red-700",
+                    aiAnalysis.riskLevel === 'critical' && "border-red-400 text-red-800",
+                  )}>
+                    {aiAnalysis.riskLevel} risk
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{aiAnalysis.executiveSummary}</p>
+              </div>
+            </div>
+            {aiAnalysis.termRecommendations.length > 0 && (
+              <div className="mt-3 pt-3 border-t space-y-1">
+                {aiAnalysis.termRecommendations.slice(0, 3).map((rec, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    {rec.impact === 'positive' && <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />}
+                    {rec.impact === 'neutral' && <AlertCircle className="h-3 w-3 text-blue-500 flex-shrink-0" />}
+                    {rec.impact === 'negative' && <AlertTriangle className="h-3 w-3 text-red-500 flex-shrink-0" />}
+                    <span className="font-medium">{rec.area}:</span>
+                    <span className="text-muted-foreground">{rec.recommendation}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
