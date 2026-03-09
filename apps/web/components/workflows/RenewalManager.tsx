@@ -431,13 +431,13 @@ export const RenewalManager: React.FC = () => {
     return grouped;
   }, [filteredRenewals]);
 
-  // ---- Handlers ----
-  const handleSubmitForApproval = (renewal: RenewalContract) => {
+  // ---- Handlers (all useCallback to avoid TDZ / stale-closure issues) ----
+  const handleSubmitForApproval = useCallback((renewal: RenewalContract) => {
     setRenewalForApproval(renewal);
     setApprovalModalOpen(true);
-  };
-  
-  const handleInitiateRenewal = () => {
+  }, []);
+
+  const handleInitiateRenewal = useCallback(() => {
     if (selectedRenewal) {
       setSelectedRenewalForInitiate(selectedRenewal);
       setInitiateModalOpen(true);
@@ -452,9 +452,9 @@ export const RenewalManager: React.FC = () => {
         description: 'Please add contracts with upcoming renewal dates first',
       });
     }
-  };
+  }, [selectedRenewal, filteredRenewals]);
   
-  const handleConfirmInitiateRenewal = async () => {
+  const handleConfirmInitiateRenewal = useCallback(async () => {
     if (!selectedRenewalForInitiate) return;
     try {
       const tenantId = getTenantId();
@@ -472,11 +472,11 @@ export const RenewalManager: React.FC = () => {
         return;
       }
       crossModule.onRenewalChange(selectedRenewalForInitiate.contractId);
-      
+
       toast.success('Renewal initiated', {
         description: `${selectedRenewalForInitiate.contractName} renewal process started`,
       });
-      
+
       setInitiateModalOpen(false);
       setRenewalForApproval(selectedRenewalForInitiate);
       setApprovalModalOpen(true);
@@ -484,19 +484,19 @@ export const RenewalManager: React.FC = () => {
     } catch {
       toast.error('Failed to initiate renewal', { description: 'Network error. Please try again.' });
     }
-  };
+  }, [selectedRenewalForInitiate, crossModule]);
   
-  const handleApprovalSubmit = () => {
+  const handleApprovalSubmit = useCallback(() => {
     if (renewalForApproval) {
       crossModule.onRenewalChange(renewalForApproval.contractId);
-      
+
       toast.success('Renewal submitted for approval', {
         description: `${renewalForApproval.contractName} has been sent for review`,
       });
     }
     setApprovalModalOpen(false);
     setRenewalForApproval(null);
-  };
+  }, [renewalForApproval, crossModule]);
 
   const handleExport = useCallback(() => {
     if (filteredRenewals.length === 0) {
