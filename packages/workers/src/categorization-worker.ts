@@ -547,6 +547,8 @@ export async function processCategorizationJob(
           contractType: result.contractType.value,
           // Primary category is L2 if available, otherwise L1
           contractCategoryId: matchedCategoryL2?.id || matchedCategoryL1?.id || null,
+          // Set category name so the contracts list API can resolve it
+          category: matchedCategoryL2?.name || matchedCategoryL1?.name || null,
           // Store L1/L2 names for quick access
           categoryL1: matchedCategoryL1?.name || null,
           categoryL2: matchedCategoryL2?.name || null,

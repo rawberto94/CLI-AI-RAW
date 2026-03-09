@@ -196,6 +196,8 @@ async function handler(request: NextRequest) {
             clientName: true,
             supplierName: true,
             category: true,
+            categoryL1: true,
+            categoryL2: true,
             totalValue: true,
             currency: true,
             effectiveDate: true,
@@ -240,7 +242,7 @@ async function handler(request: NextRequest) {
       const totalPages = Math.ceil(total / limit);
 
       // Fetch category details for contracts that have categories
-      const categoryNames = [...new Set(contracts.filter(c => c.category).map(c => c.category!))];
+      const categoryNames = [...new Set(contracts.filter(c => c.category || (c as any).categoryL1).map(c => c.category || (c as any).categoryL1!))];
       const categoryMap: Map<string, { id: string; name: string; color: string; icon: string; path: string }> = new Map();
       
       if (categoryNames.length > 0) {
@@ -346,7 +348,7 @@ async function handler(request: NextRequest) {
         success: true,
         data: {
           contracts: contracts.map((contract) => {
-            const categoryInfo = contract.category ? categoryMap.get(contract.category) : null;
+            const categoryInfo = (contract.category ? categoryMap.get(contract.category) : null) || ((contract as any).categoryL1 ? categoryMap.get((contract as any).categoryL1) : null);
             // If this contract was just auto-resolved, reflect the correct status immediately
             let effectiveStatus = contract.status.toLowerCase();
             if (staleIdSet.has(contract.id)) {
@@ -354,7 +356,7 @@ async function handler(request: NextRequest) {
             }
             return {
               id: contract.id,
-              title: contract.contractTitle || contract.originalName || contract.fileName,
+              title: contract.originalName || contract.fileName,
               filename: contract.fileName,
               originalName: contract.originalName || contract.fileName,
               status: effectiveStatus,
@@ -407,7 +409,7 @@ async function handler(request: NextRequest) {
               relationshipType: (contract as any).relationshipType || null,
               parentContract: (contract as any).parentContract ? {
                 id: (contract as any).parentContract.id,
-                title: (contract as any).parentContract.contractTitle || (contract as any).parentContract.fileName,
+                title: (contract as any).parentContract.originalName || (contract as any).parentContract.fileName,
                 type: (contract as any).parentContract.contractType,
               } : null,
               childContractCount: (contract as any)._count?.childContracts || 0,
