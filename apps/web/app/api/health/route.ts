@@ -1,6 +1,5 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { healthCheckService } from 'data-orchestration/services';
-import { withApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -8,8 +7,12 @@ export const dynamic = 'force-dynamic';
 /**
  * Basic health check endpoint
  * Returns simple status for load balancers and monitoring tools
+ * 
+ * NOTE: This endpoint does NOT use withApiHandler because health checks
+ * should not require authentication or tenant headers. Load balancers,
+ * Kubernetes probes, and monitoring tools need unauthenticated access.
  */
-export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
+export async function GET(_request: NextRequest) {
   try {
     const health = await healthCheckService.getOverallHealth();
     
@@ -26,11 +29,16 @@ export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
     const uptimeMs = healthCheckService.getUptime();
     const statusCode = health.status === 'unhealthy' && uptimeMs > 30000 ? 503 : 200;
     
-    if (statusCode === 503) {
-      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'System unhealthy', 503);
-    }
-    return createSuccessResponse(ctx, response, { status: statusCode });
+    return NextResponse.json(response, { 
+      status: statusCode,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      }
+    });
   } catch (error) {
-    return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', (error as Error).message, 503);
+    return NextResponse.json(
+      { status: 'unhealthy', error: (error as Error).message },
+      { status: 503 }
+    );
   }
-});
+}
