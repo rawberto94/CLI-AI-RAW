@@ -165,93 +165,38 @@ const nextConfig = {
       asyncFunction: true,
     };
 
-    // Improve dev server stability and HMR
+    // Dev-mode stability: disable lazy compilation to prevent HMR crashes
     if (dev && !isServer) {
-      // Disable problematic lazy compilation
       config.experiments = {
         ...config.experiments,
         lazyCompilation: false,
       };
-      
-      // Use filesystem cache for better stability
-      config.cache = {
-        type: 'filesystem',
-        buildDependencies: {
-          config: [__filename],
-        },
-        // Add compression to reduce memory usage
-        compression: 'gzip',
-      };
-      
-      // Improve HMR stability with better watch options
-      config.watchOptions = {
-        ...config.watchOptions,
-        poll: false,
-        aggregateTimeout: 300,
-        ignored: ['**/node_modules/**', '**/.git/**', '**/.next/**'],
-      };
-
-      // Improve HMR plugin configuration
-      const existingHotModuleReplacementPlugin = config.plugins.find(
-        (plugin) => plugin.constructor.name === 'HotModuleReplacementPlugin'
-      );
-      
-      if (!existingHotModuleReplacementPlugin) {
-        config.plugins.push(new webpack.HotModuleReplacementPlugin());
-      }
-
-      // Add better error overlay configuration
-      config.devServer = {
-        ...config.devServer,
-        client: {
-          overlay: {
-            errors: true,
-            warnings: false,
-            runtimeErrors: false,
-          },
-          reconnect: 5,
-        },
-      };
     }
 
-    // Only apply optimizations in development mode to reduce memory usage
-    // Skip for Edge Runtime — it needs its own ESM-compatible chunk format
-    if (process.env.NODE_ENV !== 'production' && nextRuntime !== 'edge') {
+    // Production: optimize chunk splitting for better caching
+    if (!dev && !isServer && nextRuntime !== 'edge') {
       config.optimization = {
         ...config.optimization,
-        minimize: false,
-        moduleIds: 'deterministic',
-        runtimeChunk: 'single',
         splitChunks: {
-          chunks: 'all',
-          maxSize: 244000, // Split large chunks
+          ...config.optimization.splitChunks,
           cacheGroups: {
-            default: false,
-            vendors: false,
+            ...config.optimization.splitChunks?.cacheGroups,
+            framework: {
+              test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              name: 'framework',
+              chunks: 'all',
+              priority: 40,
+              enforce: true,
+            },
             commons: {
               name: 'commons',
               minChunks: 2,
               priority: 20,
               reuseExistingChunk: true,
             },
-            lib: {
-              test: /[\\/]node_modules[\\/]/,
-              name(module) {
-                const match = module.context?.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
-                if (!match) return 'lib.unknown';
-                const packageName = match[1];
-                return `lib.${packageName.replace('@', '')}`;
-              },
-              priority: 10,
-            },
           },
-          maxInitialRequests: 25,
-          minSize: 20000,
         },
       };
-      
-      // Reduce module resolution overhead
-      config.resolve.symlinks = false;
     }
 
     // Mark problematic packages as external to prevent webpack from bundling them
@@ -427,6 +372,16 @@ const nextConfig = {
       {
         // Cache static assets aggressively
         source: "/static/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        // Cache Next.js build assets (JS/CSS chunks) for CDN
+        source: "/_next/static/(.*)",
         headers: [
           {
             key: "Cache-Control",

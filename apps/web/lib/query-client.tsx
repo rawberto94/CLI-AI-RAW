@@ -1,9 +1,10 @@
 'use client';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, type Mutation } from '@tanstack/react-query';
 import { useState, useEffect, lazy, Suspense, type ReactNode } from 'react';
 import { setGlobalQueryClient } from './propagation';
 import { getTenantId } from '@/lib/tenant';
+import { toast } from 'sonner';
 
 // Lazy load devtools to reduce initial memory footprint
 const ReactQueryDevtools = lazy(() =>
@@ -50,8 +51,8 @@ const defaultQueryClientOptions = {
     // Retry failed requests 3 times with exponential backoff
     retry: 3,
     retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    // Only refetch on window focus if data is stale (avoid burst of requests on every alt-tab)
-    refetchOnWindowFocus: 'always' as const,
+    // Only refetch on window focus if data is stale (avoids burst of requests on every alt-tab)
+    refetchOnWindowFocus: true,
     // Refetch on reconnect
     refetchOnReconnect: true,
     // Don't refetch on mount if data is fresh
@@ -70,6 +71,17 @@ const defaultQueryClientOptions = {
     networkMode: 'online' as const,
     // Optimistic updates should not throw
     throwOnError: false,
+    // Global mutation error handler – show toast for unhandled mutation failures
+    onError: (error: Error, _variables: unknown, _context: unknown, mutation: Mutation) => {
+      // Skip if the mutation already has its own onError handler
+      if (mutation.options.onError) return;
+
+      const message =
+        (error as { status?: number }).status === 401
+          ? 'Session expired — please sign in again'
+          : error.message || 'Something went wrong';
+      toast.error(message);
+    },
   },
 };
 
