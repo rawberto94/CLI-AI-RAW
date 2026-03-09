@@ -165,7 +165,7 @@ function getProcessingMessage(stage: string, artifactCount: number, apiStatus?: 
     return 'Waiting in queue...';
   }
   switch (stage) {
-    case 'upload': return 'Uploading file...';
+    case 'upload': return 'Preparing document...';
     case 'extract': return 'Extracting text from document...';
     case 'analyze': return artifactCount > 0 
       ? `Analyzing with AI (${artifactCount} insights)...`
@@ -310,7 +310,9 @@ export function EnhancedUploadProgress({
         // Update stages
         const currentApiStep = data.currentStep;
         const currentStageId = API_STEP_TO_STAGE[currentApiStep] || 'upload';
-        const stageIndex = STAGES.findIndex(s => s.id === currentStageId);
+        let stageIndex = STAGES.findIndex(s => s.id === currentStageId);
+        // If API says 'upload'/'queued' but we have a contractId, upload is done — show extract
+        if (stageIndex === 0 && contractId) stageIndex = 1;
 
         setStages(STAGES.map((s, i) => ({
           ...s,
@@ -364,6 +366,17 @@ export function EnhancedUploadProgress({
         ...s,
         status: i === 0 ? 'in-progress' as const : 'pending' as const
       })));
+    } else if (contractId && (status === 'uploading' || status === 'processing')) {
+      // Upload succeeded (contractId assigned) — mark upload completed, show extract starting
+      setStages(prev => {
+        // Only advance if polling hasn't already moved us beyond upload
+        const hasAdvanced = prev.findIndex(s => s.status === 'completed') > 0;
+        if (hasAdvanced) return prev;
+        return STAGES.map((s, i) => ({
+          ...s,
+          status: i === 0 ? 'completed' as const : i === 1 ? 'in-progress' as const : 'pending' as const
+        }));
+      });
     }
   }, [status, contractId]);
 
@@ -387,7 +400,8 @@ export function EnhancedUploadProgress({
   const artifactCount = apiStatus?.artifactsGenerated ?? 0;
   const estimatedRemaining = apiStatus?.timing?.estimatedRemainingMs;
   const currentStage = stages.find(s => s.status === 'in-progress');
-  const processingMessage = getProcessingMessage(currentStage?.id || 'upload', artifactCount, apiStatus);
+  const activeStageId = currentStage?.id || (contractId ? 'extract' : 'upload');
+  const processingMessage = getProcessingMessage(activeStageId, artifactCount, apiStatus);
 
   // Handle duplicate
   if (isDuplicate && existingContractId) {
@@ -437,9 +451,9 @@ export function EnhancedUploadProgress({
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        'rounded-lg border bg-white overflow-hidden transition-all relative',
-        status === 'error' && 'border-red-200 bg-red-50',
-        (status === 'completed' || isCompleted) && 'border-green-200 bg-green-50',
+        'rounded-lg border bg-white dark:bg-slate-800 overflow-hidden transition-all relative',
+        status === 'error' && 'border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900/30',
+        (status === 'completed' || isCompleted) && 'border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/30',
         showSuccess && 'ring-2 ring-green-400 ring-offset-2'
       )}
     >

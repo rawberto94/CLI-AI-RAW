@@ -579,14 +579,22 @@ export function RealtimeArtifactViewer({
 
       {/* Completion Summary */}
       {isEffectivelyComplete && (
-        <Card className="border-green-200 bg-green-50">
+        <Card className={cn(
+          completedCount > 0
+            ? 'border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/30'
+            : 'border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/30'
+        )}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-6 w-6 text-green-600" />
+              <CheckCircle2 className={cn('h-6 w-6', completedCount > 0 ? 'text-green-600' : 'text-blue-600')} />
               <div>
-                <p className="font-semibold text-green-900">All artifacts generated successfully!</p>
-                <p className="text-sm text-green-700">
-                  {completedCount} artifacts are ready to view
+                <p className={cn('font-semibold', completedCount > 0 ? 'text-green-900 dark:text-green-100' : 'text-blue-900 dark:text-blue-100')}>
+                  {completedCount > 0 ? 'All artifacts generated successfully!' : 'Processing complete'}
+                </p>
+                <p className={cn('text-sm', completedCount > 0 ? 'text-green-700 dark:text-green-300' : 'text-blue-700 dark:text-blue-300')}>
+                  {completedCount > 0
+                    ? `${completedCount} artifact${completedCount !== 1 ? 's' : ''} ready to view`
+                    : 'View the contract for full details'}
                 </p>
               </div>
             </div>
