@@ -18,10 +18,16 @@ import {
   Trash2,
   Loader2,
   AlertCircle,
+  Sparkles,
+  Wand2,
+  Brain,
+  ShieldCheck,
+  Variable,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { getTenantId } from '@/lib/tenant'
 
 interface Clause {
   id: string
@@ -69,7 +75,121 @@ export default function TemplateEditorPage() {
   const [error, setError] = useState<string | null>(null)
   const [existingTemplateId, setExistingTemplateId] = useState<string | null>(null)
 
-  const clauseLibrary: Clause[] = [
+  // AI State
+  const [aiLoading, setAiLoading] = useState<string | null>(null) // tracks which AI action is running
+  const [aiClauses, setAiClauses] = useState<Clause[]>([])
+
+  const callTemplateAI = useCallback(async (body: Record<string, unknown>) => {
+    const response = await fetch('/api/templates/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
+      body: JSON.stringify(body),
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}))
+      throw new Error(err.error?.message || `AI request failed (${response.status})`)
+    }
+    const json = await response.json()
+    return json.data ?? json
+  }, [])
+
+  const handleGenerateClauses = useCallback(async () => {
+    if (!templateName.trim()) { toast.error('Enter a template name first'); return }
+    setAiLoading('generate-clauses')
+    try {
+      const result = await callTemplateAI({
+        action: 'generate-clauses',
+        templateName,
+        category: templateCategory,
+        description: templateDescription,
+      })
+      const clauses = (result.clauses || []).map((c: { title: string; category: string; content: string; variables: string[] }, i: number) => ({
+        id: `ai-${i}`,
+        ...c,
+      }))
+      setAiClauses(clauses)
+      setShowClauseLibrary(true)
+      toast.success(`Generated ${clauses.length} AI clauses`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to generate clauses')
+    } finally {
+      setAiLoading(null)
+    }
+  }, [templateName, templateCategory, templateDescription, callTemplateAI])
+
+  const handleImproveContent = useCallback(async (instruction: 'improve' | 'simplify' | 'strengthen' | 'make-compliant') => {
+    if (!templateContent.trim()) { toast.error('No content to improve'); return }
+    setAiLoading(instruction)
+    try {
+      const result = await callTemplateAI({
+        action: 'improve-clause',
+        clauseTitle: templateName || 'Template Content',
+        clauseContent: templateContent,
+        templateCategory,
+        instruction,
+      })
+      setTemplateContent(result.content)
+      toast.success(`Content ${instruction === 'make-compliant' ? 'made compliant' : instruction + 'd'} — ${result.changesSummary}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'AI improvement failed')
+    } finally {
+      setAiLoading(null)
+    }
+  }, [templateContent, templateName, templateCategory, callTemplateAI])
+
+  const handleGenerateTemplate = useCallback(async () => {
+    if (!templateDescription.trim() || templateDescription.length < 10) {
+      toast.error('Enter a description (at least 10 characters) to generate a template')
+      return
+    }
+    setAiLoading('generate-template')
+    try {
+      const result = await callTemplateAI({
+        action: 'generate-template',
+        description: templateDescription,
+        category: templateCategory,
+        language: templateLanguage,
+      })
+      if (result.name && !templateName) setTemplateName(result.name)
+      setTemplateContent(result.content)
+      setVariables((result.variables || []).map((v: TemplateVariable) => ({
+        ...v,
+        defaultValue: '',
+      })))
+      toast.success('Template generated with AI')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Template generation failed')
+    } finally {
+      setAiLoading(null)
+    }
+  }, [templateDescription, templateCategory, templateLanguage, templateName, callTemplateAI])
+
+  const handleExtractVariables = useCallback(async () => {
+    if (!templateContent.trim()) { toast.error('No content to analyze'); return }
+    setAiLoading('extract-variables')
+    try {
+      const result = await callTemplateAI({
+        action: 'extract-variables',
+        content: templateContent,
+      })
+      const newVars = (result.variables || []).map((v: TemplateVariable) => ({
+        ...v,
+        defaultValue: v.defaultValue || '',
+      }))
+      setVariables(prev => {
+        const existing = new Set(prev.map(p => p.name))
+        const additions = newVars.filter((v: TemplateVariable) => !existing.has(v.name))
+        return [...prev, ...additions]
+      })
+      toast.success(`Found ${result.variables.length} variables (${result.variables.length - variables.length} new)`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Variable extraction failed')
+    } finally {
+      setAiLoading(null)
+    }
+  }, [templateContent, variables.length, callTemplateAI])
+
+  const defaultClauseLibrary: Clause[] = [
     {
       id: '1',
       category: 'Payment Terms',
@@ -307,6 +427,8 @@ export default function TemplateEditorPage() {
     return preview
   }
 
+  const clauseLibrary = aiClauses.length > 0 ? aiClauses : defaultClauseLibrary
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/30 p-6 flex items-center justify-center">
@@ -366,7 +488,23 @@ export default function TemplateEditorPage() {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {isNew && (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleGenerateTemplate}
+                disabled={!!aiLoading || templateDescription.length < 10}
+                className="border-violet-300 text-violet-700 hover:bg-violet-50"
+              >
+                {aiLoading === 'generate-template' ? (
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="h-5 w-5 mr-2" />
+                )}
+                Generate with AI
+              </Button>
+            )}
             <Button
               variant="outline"
               size="lg"
@@ -485,10 +623,26 @@ export default function TemplateEditorPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">Variables ({variables.length})</CardTitle>
-                  <Button size="sm" variant="outline" onClick={addVariable}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleExtractVariables}
+                      disabled={!!aiLoading || !templateContent.trim()}
+                      className="border-violet-300 text-violet-700 hover:bg-violet-50"
+                    >
+                      {aiLoading === 'extract-variables' ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <Variable className="h-4 w-4 mr-1" />
+                      )}
+                      AI Extract
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={addVariable}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -533,17 +687,45 @@ export default function TemplateEditorPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">Template Content</CardTitle>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowClauseLibrary(!showClauseLibrary)}
-                  >
-                    <Library className="h-4 w-4 mr-2" />
-                    Clause Library
-                  </Button>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowClauseLibrary(!showClauseLibrary)}
+                    >
+                      <Library className="h-4 w-4 mr-2" />
+                      Clause Library
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
+                {!showPreview && templateContent.trim() && (
+                  <div className="flex gap-2 mb-3 flex-wrap">
+                    {[
+                      { key: 'improve', label: 'Improve', icon: Sparkles },
+                      { key: 'simplify', label: 'Simplify', icon: Wand2 },
+                      { key: 'strengthen', label: 'Strengthen', icon: ShieldCheck },
+                      { key: 'make-compliant', label: 'Make Compliant', icon: Brain },
+                    ].map(({ key, label, icon: Icon }) => (
+                      <Button
+                        key={key}
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleImproveContent(key as 'improve' | 'simplify' | 'strengthen' | 'make-compliant')}
+                        disabled={!!aiLoading}
+                        className="border-violet-300 text-violet-700 hover:bg-violet-50"
+                      >
+                        {aiLoading === key ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        ) : (
+                          <Icon className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                )}
                 {showPreview ? (
                   <div className="min-h-[600px] p-6 bg-white border border-gray-200 rounded-lg prose prose-sm max-w-none">
                     <pre className="whitespace-pre-wrap font-sans">{renderPreview()}</pre>
@@ -563,10 +745,29 @@ export default function TemplateEditorPage() {
             {showClauseLibrary && (
               <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Library className="h-5 w-5" />
-                    Clause Library
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Library className="h-5 w-5" />
+                      Clause Library
+                      {aiClauses.length > 0 && (
+                        <Badge className="bg-violet-100 text-violet-700 text-xs">AI Generated</Badge>
+                      )}
+                    </CardTitle>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleGenerateClauses}
+                      disabled={!!aiLoading || !templateName.trim()}
+                      className="border-violet-300 text-violet-700 hover:bg-violet-50"
+                    >
+                      {aiLoading === 'generate-clauses' ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4 mr-1" />
+                      )}
+                      AI Generate
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
