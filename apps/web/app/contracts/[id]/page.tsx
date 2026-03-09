@@ -37,6 +37,7 @@ import {
   Download,
   PenTool,
   CheckCircle2,
+  Calendar,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -503,6 +504,50 @@ export default function ContractDetailPage() {
   // Signature workflow state
   const [showUploadSignedDialog, setShowUploadSignedDialog] = useState(false)
   const [isUploadingSigned, setIsUploadingSigned] = useState(false)
+
+  // Extension workflow state
+  const [showExtendDialog, setShowExtendDialog] = useState(false)
+  const [isExtending, setIsExtending] = useState(false)
+  const [extensionDate, setExtensionDate] = useState('')
+  const [extensionNote, setExtensionNote] = useState('')
+  const [extensionValue, setExtensionValue] = useState('')
+
+  const handleExtendContract = useCallback(async () => {
+    if (!extensionDate) {
+      toast.error('Please select a new expiration date')
+      return
+    }
+    setIsExtending(true)
+    try {
+      const response = await fetch(`/api/contracts/${params.id}/extend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
+        body: JSON.stringify({
+          newExpirationDate: new Date(extensionDate).toISOString(),
+          ...(extensionValue ? { newTotalValue: parseFloat(extensionValue) } : {}),
+          extensionNote: extensionNote || undefined,
+        }),
+      })
+      if (!response.ok) {
+        const errResp = await response.json()
+        const err = errResp.error
+        throw new Error((typeof err === 'object' ? err?.message : err) || 'Failed to extend contract')
+      }
+      const result = await response.json()
+      const ext = (result.data ?? result).extension
+      toast.success(`Contract extended by ${ext?.extensionDays || ''} days`)
+      setShowExtendDialog(false)
+      setExtensionDate('')
+      setExtensionNote('')
+      setExtensionValue('')
+      await crossModule.onContractChange(params.id as string)
+      await loadContract()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to extend contract')
+    } finally {
+      setIsExtending(false)
+    }
+  }, [extensionDate, extensionNote, extensionValue, params.id, crossModule, loadContract])
   const signedFileRef = React.useRef<HTMLInputElement>(null)
 
   const handleDownload = useCallback(async () => {
@@ -936,6 +981,7 @@ export default function ContractDetailPage() {
         onShare={() => setShowShareDialog(true)}
         onCompare={() => setShowComparison(true)}
         onCreateRenewal={() => router.push(`/contracts/${params.id}/renew`)}
+        onExtendContract={() => setShowExtendDialog(true)}
       />
 
       {/* Main Content */}
@@ -1848,7 +1894,83 @@ export default function ContractDetailPage() {
         }}
         onPrint={() => window.print()}
         onCreateRenewal={() => router.push(`/contracts/${params.id}/renew`)}
+        onExtendContract={() => setShowExtendDialog(true)}
       />
+
+      {/* Extend Contract Dialog */}
+      <Dialog open={showExtendDialog} onOpenChange={setShowExtendDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-semibold">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              Extend Contract
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-muted-foreground">
+              Extend the current contract&apos;s expiration date without creating a new contract.
+              {metadata.end_date && (
+                <> Current expiration: <strong>{new Date(metadata.end_date).toLocaleDateString()}</strong></>
+              )}
+            </p>
+
+            <div className="space-y-2">
+              <Label htmlFor="ext-date">New Expiration Date</Label>
+              <Input
+                id="ext-date"
+                type="date"
+                value={extensionDate}
+                onChange={(e) => setExtensionDate(e.target.value)}
+                min={metadata.end_date
+                  ? new Date(new Date(metadata.end_date).getTime() + 86400000).toISOString().split('T')[0]
+                  : new Date().toISOString().split('T')[0]
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ext-value">Adjusted Total Value (optional)</Label>
+              <Input
+                id="ext-value"
+                type="number"
+                placeholder={contract?.totalValue ? `Current: ${Number(contract.totalValue).toLocaleString()}` : 'Contract value'}
+                value={extensionValue}
+                onChange={(e) => setExtensionValue(e.target.value)}
+                min="0"
+                step="0.01"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="ext-note">Extension Note (optional)</Label>
+              <Input
+                id="ext-note"
+                placeholder="Reason for extension..."
+                value={extensionNote}
+                onChange={(e) => setExtensionNote(e.target.value)}
+                maxLength={2000}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowExtendDialog(false)} disabled={isExtending}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleExtendContract}
+                disabled={isExtending || !extensionDate}
+                className="bg-gradient-to-r from-blue-500 to-blue-600"
+              >
+                {isExtending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Extending...</>
+                ) : (
+                  <><Calendar className="h-4 w-4 mr-2" /> Extend Contract</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   )

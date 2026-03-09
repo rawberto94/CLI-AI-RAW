@@ -38,6 +38,7 @@ import {
   Edit3,
   ClipboardList,
   Loader2,
+  CalendarPlus,
 } from 'lucide-react'
 
 interface ContractHeaderProps {
@@ -59,6 +60,7 @@ interface ContractHeaderProps {
   onShare: () => void
   onCompare: () => void
   onCreateRenewal?: () => void
+  onExtendContract?: () => void
 }
 
 export const ContractHeader = memo(function ContractHeader({
@@ -80,6 +82,7 @@ export const ContractHeader = memo(function ContractHeader({
   onShare,
   onCompare,
   onCreateRenewal,
+  onExtendContract,
 }: ContractHeaderProps) {
   return (
     <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50 sticky top-0 z-40 shadow-sm dark:shadow-slate-900/50">
@@ -243,6 +246,13 @@ export const ContractHeader = memo(function ContractHeader({
                     >
                       <RefreshCcw className="h-4 w-4 mr-2" />
                       {isExpiredOrExpiring ? 'Initiate Renewal' : 'Create Renewal'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={onExtendContract}
+                      className="cursor-pointer text-blue-600 dark:text-blue-400 focus:text-blue-600 dark:focus:text-blue-400 focus:bg-blue-50 dark:focus:bg-blue-900/30"
+                    >
+                      <CalendarPlus className="h-4 w-4 mr-2" />
+                      Extend Contract
                     </DropdownMenuItem>
                   </>
                 )}

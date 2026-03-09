@@ -45,6 +45,7 @@ import {
   Archive,
   ArchiveRestore,
   RefreshCw,
+  CalendarPlus,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -62,6 +63,7 @@ interface ContractFloatingActionsProps {
   onExport: (format: 'pdf' | 'docx' | 'xlsx' | 'json') => Promise<void>
   onPrint: () => void
   onCreateRenewal?: () => void
+  onExtendContract?: () => void
 }
 
 export const ContractFloatingActions = memo(function ContractFloatingActions({
@@ -78,6 +80,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
   onExport,
   onPrint,
   onCreateRenewal,
+  onExtendContract,
 }: ContractFloatingActionsProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showArchiveDialog, setShowArchiveDialog] = useState(false)
@@ -287,6 +290,23 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Create Renewal</TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Extend Contract */}
+            {onExtendContract && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onExtendContract}
+                    className="h-9 w-9 rounded-full transition-colors text-blue-500 hover:text-blue-600"
+                  >
+                    <CalendarPlus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Extend Contract</TooltipContent>
               </Tooltip>
             )}
 

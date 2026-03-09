@@ -336,7 +336,9 @@ export default function ContractRenewalPage() {
           title: draft.title,
           effectiveDate: draft.effectiveDate.toISOString(),
           expirationDate: draft.expirationDate.toISOString(),
-          totalValue: draft.totalValue,
+          totalValue: draft.adjustForInflation
+            ? Math.round(draft.totalValue * (1 + draft.inflationRate / 100) * 100) / 100
+            : draft.totalValue,
           renewalNote: draft.notes,
           copyParties: true,
           copyTerms: draft.keepTerms,

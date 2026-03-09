@@ -54,6 +54,13 @@ export async function POST(
     const body = await request.json();
     const validatedData = renewalRequestSchema.parse(body);
 
+    // Validate date ordering if both provided
+    if (validatedData.effectiveDate && validatedData.expirationDate) {
+      if (new Date(validatedData.expirationDate) <= new Date(validatedData.effectiveDate)) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Expiration date must be after effective date', 400);
+      }
+    }
+
     // Fetch the original contract with all relevant data
     const originalContract = await prisma.contract.findFirst({
       where: {
@@ -207,7 +214,7 @@ export async function POST(
         data: {
           contractId: renewalContract.id,
           tenantId,
-          updatedBy: 'system',
+          updatedBy: ctx.userId,
           // Copy relevant metadata fields
           customFields: originalContract.contractMetadata.customFields as object,
           aiSummary: `Renewal of contract ${originalContractId}`,
@@ -220,7 +227,7 @@ export async function POST(
       data: [
         {
           tenantId,
-          userId: null, // In production, get from session
+          userId: ctx.userId,
           action: 'CONTRACT_RENEWAL_CREATED',
           resourceType: 'Contract',
           entityType: 'Contract',
@@ -248,7 +255,7 @@ export async function POST(
         },
         {
           tenantId,
-          userId: null,
+          userId: ctx.userId,
           action: 'CONTRACT_RENEWAL_STATUS_UPDATED',
           resourceType: 'Contract',
           entityType: 'Contract',
