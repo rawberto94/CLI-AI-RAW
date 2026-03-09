@@ -252,7 +252,7 @@ export default function ContractRenewalPage() {
         if (data.supplierName) {
           parties.push({ name: data.supplierName, role: 'Supplier' });
         }
-        if (data.external_parties) {
+        if (Array.isArray(data.external_parties)) {
           data.external_parties.forEach((p: { legalName: string; role?: string }) => {
             if (!parties.find(existing => existing.name === p.legalName)) {
               parties.push({ name: p.legalName, role: p.role || 'Party' });
@@ -261,12 +261,15 @@ export default function ContractRenewalPage() {
         }
         
         // Extract clauses if available
-        const clauses = data.extractedData?.clauses?.map((c: { id: string; title: string; content: string }) => ({
-          id: c.id,
-          title: c.title,
-          content: c.content,
-          isModified: false,
-        })) || [];
+        const rawClauses = data.extractedData?.clauses;
+        const clauses = Array.isArray(rawClauses)
+          ? rawClauses.map((c: { id: string; title: string; content: string }) => ({
+              id: c.id,
+              title: c.title,
+              content: c.content,
+              isModified: false,
+            }))
+          : [];
         
         setDraft({
           title: `${data.document_title || data.filename || 'Contract'} - Renewal`,
