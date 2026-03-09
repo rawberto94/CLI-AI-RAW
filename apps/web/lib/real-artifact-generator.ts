@@ -43,8 +43,8 @@ interface ArtifactData {
 }
 
 /**
- * Use GPT-4o Vision to extract text from a scanned/image-based PDF.
- * Sends the PDF as base64 to the vision endpoint.
+ * Use GPT-4o to extract text from a scanned/image-based PDF.
+ * Uses native PDF file input (NOT image_url which rejects application/pdf MIME).
  */
 async function extractScannedPDFWithVision(fileContent: Buffer): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -72,12 +72,12 @@ Include all headings, paragraphs, lists, tables (as markdown), headers, footers,
 Return the extracted text in clean markdown format.`,
             },
             {
-              type: 'image_url',
-              image_url: {
-                url: `data:application/pdf;base64,${base64}`,
-                detail: 'high',
+              type: 'file',
+              file: {
+                filename: 'document.pdf',
+                file_data: `data:application/pdf;base64,${base64}`,
               },
-            },
+            } as any,
           ],
         },
       ],
@@ -86,7 +86,7 @@ Return the extracted text in clean markdown format.`,
     });
     
     const text = response.choices[0]?.message?.content || '';
-    logger.info({ textLength: text.length }, 'GPT-4o Vision OCR completed for scanned PDF');
+    logger.info({ textLength: text.length }, 'GPT-4o native PDF OCR completed for scanned PDF');
     return text;
   } catch (error) {
     logger.error({ error }, 'GPT-4o Vision OCR failed for scanned PDF');

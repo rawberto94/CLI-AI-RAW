@@ -1466,12 +1466,14 @@ async function performGPT4OCR(filePath: string): Promise<string> {
       
       logger.info({ textLength: rawText.length, meaningfulLength: meaningfulText.length, pages: pdfData.numpages }, 'PDF text extracted');
       
-      // Scanned / image-based PDF: very little extractable text → use GPT-4o Vision
+      // Scanned / image-based PDF: very little extractable text → use GPT-4o native PDF file input
       if (meaningfulText.length < 50) {
-        logger.info({ pages: pdfData.numpages, extractedChars: meaningfulText.length }, 'Scanned/image PDF detected — using GPT-4o Vision OCR');
+        logger.info({ pages: pdfData.numpages, extractedChars: meaningfulText.length }, 'Scanned/image PDF detected — using GPT-4o native PDF file input');
         const visionModel = WORKER_CONFIG.ai.visionModel || 'gpt-4o';
         const base64 = fileBuffer.toString('base64');
+        const fileName = path.basename(filePath);
         
+        // Use native PDF file content type (NOT image_url which rejects application/pdf MIME)
         const response = await openai.chat.completions.create({
           model: visionModel,
           messages: [
@@ -1493,12 +1495,12 @@ Include:
 Return the extracted text in clean markdown format.`,
                 },
                 {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:application/pdf;base64,${base64}`,
-                    detail: 'high',
+                  type: 'file',
+                  file: {
+                    filename: fileName,
+                    file_data: `data:application/pdf;base64,${base64}`,
                   },
-                },
+                } as any,
               ],
             },
           ],

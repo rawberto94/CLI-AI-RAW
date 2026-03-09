@@ -150,8 +150,10 @@ export async function runAgentOrchestrationJob(
       supplierName: true,
       contractTitle: true,
       autoRenewalEnabled: true,
-      department: true,
       renewalInitiatedAt: true,
+      contractMetadata: {
+        select: { department: true },
+      },
     },
   });
 
@@ -504,7 +506,7 @@ export async function runAgentOrchestrationJob(
           supplierName: contract?.supplierName || '',
           parties: [contract?.supplierName].filter(Boolean),
           autoRenewalEnabled: contract?.autoRenewalEnabled ?? false,
-          department: contract?.department || '',
+          department: contract?.contractMetadata?.department || '',
           renewalInitiated: !!contract?.renewalInitiatedAt,
         },
       };
