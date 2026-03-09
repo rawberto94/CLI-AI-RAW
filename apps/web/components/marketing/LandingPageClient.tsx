@@ -385,13 +385,7 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
       <div className={`fixed right-0 top-0 bottom-0 z-50 w-[280px] sm:w-[320px] bg-white shadow-2xl lg:hidden transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <svg width="28" height="28" viewBox="0 0 48 48" fill="none">
-              <g transform="translate(4, 8)">
-                <rect x="0" y="0" width="40" height="9" rx="4.5" fill="#6D28D9"/>
-                <rect x="0" y="13" width="40" height="9" rx="4.5" fill="#8B5CF6"/>
-                <rect x="0" y="26" width="40" height="9" rx="4.5" fill="#C4B5FD"/>
-              </g>
-            </svg>
+            <img src="/contigo-logo-stack.png" alt="ConTigo" width={28} height={28} className="object-contain" />
             <span className="text-lg font-bold">
               <span className="text-violet-700">con</span>
               <span className="text-slate-900">tigo</span>
@@ -485,13 +479,7 @@ export default function LandingPageClient() {
         }`}>
           {/* Mobile Brand */}
           <a href="#" className="md:hidden flex items-center gap-1.5 pl-1 pr-2 flex-shrink-0">
-            <svg width="24" height="24" viewBox="0 0 48 48" fill="none">
-              <g transform="translate(4, 8)">
-                <rect x="0" y="0" width="40" height="9" rx="4.5" fill="#6D28D9"/>
-                <rect x="0" y="13" width="40" height="9" rx="4.5" fill="#8B5CF6"/>
-                <rect x="0" y="26" width="40" height="9" rx="4.5" fill="#C4B5FD"/>
-              </g>
-            </svg>
+            <img src="/contigo-logo-stack.png" alt="ConTigo" width={24} height={24} className="object-contain" />
             <span className="text-sm font-bold">
               <span className="text-violet-700">con</span>
               <span className="text-slate-900">tigo</span>
@@ -573,19 +561,9 @@ export default function LandingPageClient() {
             {/* Logo - Hero Size */}
             <div className="flex justify-center mb-6 sm:mb-8 relative">
               <div className="absolute inset-0 bg-gradient-to-r from-violet-400/30 via-purple-400/30 to-fuchsia-400/30 blur-3xl scale-150" />
-              {/* New Contigo Logo - Stacked Bars */}
+              {/* Contigo Logo */}
               <div className="relative z-10 flex items-center gap-3 sm:gap-6">
-                <svg width="60" height="60" viewBox="0 0 48 48" fill="none" className="sm:w-[90px] sm:h-[90px] lg:w-[120px] lg:h-[120px] drop-shadow-2xl">
-                  <g transform="translate(4, 8)">
-                    <rect x="0" y="0" width="40" height="9" rx="4.5" fill="#6D28D9"/>
-                    <rect x="0" y="13" width="40" height="9" rx="4.5" fill="#8B5CF6"/>
-                    <rect x="0" y="26" width="40" height="9" rx="4.5" fill="#C4B5FD"/>
-                  </g>
-                </svg>
-                <span className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl tracking-tight">
-                  <span className="font-bold text-violet-700">con</span>
-                  <span className="font-light text-slate-900">tigo</span>
-                </span>
+                <img src="/contigo-logo.jpg" alt="ConTigo" className="w-[200px] h-auto sm:w-[300px] lg:w-[420px] drop-shadow-2xl rounded-lg" />
               </div>
             </div>
             
@@ -1953,13 +1931,7 @@ export default function LandingPageClient() {
             <div className="lg:col-span-2">
               {/* Footer Logo */}
               <div className="flex items-center gap-3 mb-6">
-                <svg width="40" height="40" viewBox="0 0 48 48" fill="none">
-                  <g transform="translate(8, 10)">
-                    <rect x="0" y="0" width="32" height="8" rx="4" fill="white"/>
-                    <rect x="0" y="12" width="32" height="8" rx="4" fill="rgba(255,255,255,0.7)"/>
-                    <rect x="0" y="24" width="32" height="8" rx="4" fill="rgba(255,255,255,0.5)"/>
-                  </g>
-                </svg>
+                <img src="/contigo-logo-stack.png" alt="ConTigo" width={40} height={40} className="object-contain brightness-0 invert" />
                 <span className="text-2xl font-bold">
                   <span className="text-violet-400">con</span>
                   <span className="text-white">tigo</span>

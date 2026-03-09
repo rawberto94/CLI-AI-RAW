@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface ConTigoLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -10,18 +11,17 @@ interface ConTigoLogoProps {
 }
 
 /**
- * Official ConTigo Logo — 3 stacked bars + "contigo" text
+ * Official ConTigo Logo
  *
- * Bar colors (top→bottom): violet-700 (#6D28D9) → violet-500 (#8B5CF6) → violet-300 (#C4B5FD)
- * Text: "con" bold + "tigo" light/thin weight, all lowercase
- * No background box — bare SVG bars
+ * Uses /contigo-logo-stack.png (transparent background stacked logo).
+ * Falls back to "con" + "tigo" text if image not available.
  */
 
-const ICON_SIZES = {
-  sm: 28,
-  md: 36,
-  lg: 44,
-  xl: 56,
+const IMG_SIZES = {
+  sm: { width: 28, height: 28 },
+  md: { width: 36, height: 36 },
+  lg: { width: 44, height: 44 },
+  xl: { width: 56, height: 56 },
 } as const;
 
 const TEXT_SIZES = {
@@ -30,25 +30,6 @@ const TEXT_SIZES = {
   lg: 'text-2xl',
   xl: 'text-3xl',
 } as const;
-
-function LogoBars({ color = 'brand' }: { color?: 'brand' | 'white' }) {
-  if (color === 'white') {
-    return (
-      <g transform="translate(4, 8)">
-        <rect x="0" y="0" width="40" height="9" rx="4.5" fill="white" />
-        <rect x="0" y="13" width="40" height="9" rx="4.5" fill="white" fillOpacity="0.65" />
-        <rect x="0" y="26" width="40" height="9" rx="4.5" fill="white" fillOpacity="0.35" />
-      </g>
-    );
-  }
-  return (
-    <g transform="translate(4, 8)">
-      <rect x="0" y="0" width="40" height="9" rx="4.5" fill="#6D28D9" />
-      <rect x="0" y="13" width="40" height="9" rx="4.5" fill="#8B5CF6" />
-      <rect x="0" y="26" width="40" height="9" rx="4.5" fill="#C4B5FD" />
-    </g>
-  );
-}
 
 function LogoText({ variant = 'color', textClass }: { variant?: 'color' | 'white'; textClass: string }) {
   if (variant === 'white') {
@@ -87,20 +68,18 @@ function LogoWrapper({
 }
 
 export function ConTigoLogo({ size = 'md', showText = true, className = '', href = '/' }: ConTigoLogoProps) {
-  const iconSize = ICON_SIZES[size];
+  const { width, height } = IMG_SIZES[size];
 
   return (
     <LogoWrapper href={href} className={`flex items-center gap-2.5 ${className}`}>
-      <svg
-        width={iconSize}
-        height={iconSize}
-        viewBox="0 0 48 48"
-        fill="none"
-        aria-hidden="true"
-        className="flex-shrink-0"
-      >
-        <LogoBars color="brand" />
-      </svg>
+      <Image
+        src="/contigo-logo-stack.png"
+        alt="ConTigo"
+        width={width}
+        height={height}
+        className="flex-shrink-0 object-contain"
+        priority
+      />
       {showText && <LogoText textClass={TEXT_SIZES[size]} variant="color" />}
     </LogoWrapper>
   );
@@ -113,20 +92,18 @@ export function ConTigoLogoSVG(props: ConTigoLogoProps) {
 
 // White version for dark/gradient backgrounds
 export function ConTigoLogoWhite({ size = 'md', showText = true, className = '', href = '/' }: ConTigoLogoProps) {
-  const iconSize = ICON_SIZES[size];
+  const { width, height } = IMG_SIZES[size];
 
   return (
     <LogoWrapper href={href} className={`flex items-center gap-2.5 ${className}`}>
-      <svg
-        width={iconSize}
-        height={iconSize}
-        viewBox="0 0 48 48"
-        fill="none"
-        aria-hidden="true"
-        className="flex-shrink-0"
-      >
-        <LogoBars color="white" />
-      </svg>
+      <Image
+        src="/contigo-logo-stack.png"
+        alt="ConTigo"
+        width={width}
+        height={height}
+        className="flex-shrink-0 object-contain brightness-0 invert"
+        priority
+      />
       {showText && <LogoText textClass={TEXT_SIZES[size]} variant="white" />}
     </LogoWrapper>
   );
