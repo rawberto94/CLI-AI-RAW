@@ -120,6 +120,40 @@ const getUrgencyColor = (days: number, hasAutoRenewal: boolean, noticeDeadline?:
   return 'text-slate-600 bg-slate-50';
 };
 
+/**
+ * Pure filter function defined at module scope so it is ALWAYS available
+ * (hoisted before any component body executes). Handlers call this directly
+ * instead of referencing the in-component `filteredRenewals` const binding,
+ * which eliminates any possibility of a TDZ ReferenceError.
+ */
+function filterRenewals(
+  renewals: RenewalContract[],
+  filter: string,
+  searchQuery: string,
+): RenewalContract[] {
+  return renewals
+    .filter(r => {
+      if (filter === 'urgent' && r.daysUntilRenewal > 30) return false;
+      if (filter === 'auto-renew' && !r.autoRenewal) return false;
+      if (
+        filter === 'action-needed' &&
+        r.status !== 'urgent' &&
+        r.status !== 'pending-review' &&
+        r.priority !== 'critical' &&
+        r.priority !== 'high'
+      )
+        return false;
+      if (
+        searchQuery &&
+        !r.contractName.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !r.supplierName.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+        return false;
+      return true;
+    })
+    .sort((a, b) => a.daysUntilRenewal - b.daysUntilRenewal);
+}
+
 // ============================================================================
 // Renewal Card Component
 // ============================================================================
@@ -397,16 +431,10 @@ export const RenewalManager: React.FC = () => {
   // ---- Derived / memoised values (must precede callbacks that reference them) ----
   const selectedRenewal = renewals.find(r => r.id === selectedId);
 
-  const filteredRenewals = useMemo(() => {
-    return renewals.filter(r => {
-      if (filter === 'urgent' && r.daysUntilRenewal > 30) return false;
-      if (filter === 'auto-renew' && !r.autoRenewal) return false;
-      if (filter === 'action-needed' && r.status !== 'urgent' && r.status !== 'pending-review' && r.priority !== 'critical' && r.priority !== 'high') return false;
-      if (searchQuery && !r.contractName.toLowerCase().includes(searchQuery.toLowerCase()) && 
-          !r.supplierName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      return true;
-    }).sort((a, b) => a.daysUntilRenewal - b.daysUntilRenewal);
-  }, [renewals, filter, searchQuery]);
+  const filteredRenewals = useMemo(
+    () => filterRenewals(renewals, filter, searchQuery),
+    [renewals, filter, searchQuery],
+  );
 
   const stats = useMemo(() => {
     const totalValue = renewals.reduce((sum, r) => sum + r.currentValue, 0);
@@ -441,18 +469,21 @@ export const RenewalManager: React.FC = () => {
     if (selectedRenewal) {
       setSelectedRenewalForInitiate(selectedRenewal);
       setInitiateModalOpen(true);
-    } else if (filteredRenewals.length > 0) {
-      const mostUrgent = filteredRenewals[0];
-      if (mostUrgent) {
-        setSelectedRenewalForInitiate(mostUrgent);
-        setInitiateModalOpen(true);
-      }
     } else {
-      toast.error('No renewals available', {
-        description: 'Please add contracts with upcoming renewal dates first',
-      });
+      const current = filterRenewals(renewals, filter, searchQuery);
+      if (current.length > 0) {
+        const mostUrgent = current[0];
+        if (mostUrgent) {
+          setSelectedRenewalForInitiate(mostUrgent);
+          setInitiateModalOpen(true);
+        }
+      } else {
+        toast.error('No renewals available', {
+          description: 'Please add contracts with upcoming renewal dates first',
+        });
+      }
     }
-  }, [selectedRenewal, filteredRenewals]);
+  }, [selectedRenewal, renewals, filter, searchQuery]);
   
   const handleConfirmInitiateRenewal = useCallback(async () => {
     if (!selectedRenewalForInitiate) return;
@@ -499,12 +530,13 @@ export const RenewalManager: React.FC = () => {
   }, [renewalForApproval, crossModule]);
 
   const handleExport = useCallback(() => {
-    if (filteredRenewals.length === 0) {
+    const current = filterRenewals(renewals, filter, searchQuery);
+    if (current.length === 0) {
       toast.error('Nothing to export', { description: 'No renewals match the current filters' });
       return;
     }
     const headers = ['Contract Name', 'Supplier', 'Status', 'Priority', 'Days Until Renewal', 'Current Value', 'Auto-Renewal', 'Health Score', 'Renewal Date', 'Notice Deadline', 'Recommendation'];
-    const rows = filteredRenewals.map(r => [
+    const rows = current.map(r => [
       `"${r.contractName}"`,
       `"${r.supplierName}"`,
       r.status,
@@ -525,11 +557,12 @@ export const RenewalManager: React.FC = () => {
     link.download = `renewals-export-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-    toast.success('Export complete', { description: `${filteredRenewals.length} renewals exported to CSV` });
-  }, [filteredRenewals]);
+    toast.success('Export complete', { description: `${current.length} renewals exported to CSV` });
+  }, [renewals, filter, searchQuery]);
 
   const handleSendReminders = useCallback(async () => {
-    const urgent = filteredRenewals.filter(r => r.daysUntilRenewal <= 30 && r.daysUntilRenewal >= 0 && r.status !== 'completed');
+    const current = filterRenewals(renewals, filter, searchQuery);
+    const urgent = current.filter(r => r.daysUntilRenewal <= 30 && r.daysUntilRenewal >= 0 && r.status !== 'completed');
     if (urgent.length === 0) {
       toast.info('No urgent renewals', { description: 'No renewals due within 30 days need reminders' });
       return;
@@ -554,7 +587,7 @@ export const RenewalManager: React.FC = () => {
     } finally {
       setSendingReminders(false);
     }
-  }, [filteredRenewals, crossModule]);
+  }, [renewals, filter, searchQuery, crossModule]);
 
   const toggleBulkSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
