@@ -43,6 +43,58 @@ interface ArtifactData {
 }
 
 /**
+ * Use GPT-4o Vision to extract text from a scanned/image-based PDF.
+ * Sends the PDF as base64 to the vision endpoint.
+ */
+async function extractScannedPDFWithVision(fileContent: Buffer): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    logger.warn('OPENAI_API_KEY not set — cannot use Vision OCR for scanned PDF');
+    return '';
+  }
+  
+  try {
+    const OpenAI = (await import('openai')).default;
+    const openai = new OpenAI({ apiKey });
+    const base64 = fileContent.toString('base64');
+    
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Extract ALL text from this scanned PDF document with high accuracy.
+Preserve the exact structure, formatting, and layout.
+Include all headings, paragraphs, lists, tables (as markdown), headers, footers, and any signatures.
+Return the extracted text in clean markdown format.`,
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:application/pdf;base64,${base64}`,
+                detail: 'high',
+              },
+            },
+          ],
+        },
+      ],
+      max_tokens: 8192,
+      temperature: 0.1,
+    });
+    
+    const text = response.choices[0]?.message?.content || '';
+    logger.info({ textLength: text.length }, 'GPT-4o Vision OCR completed for scanned PDF');
+    return text;
+  } catch (error) {
+    logger.error({ error }, 'GPT-4o Vision OCR failed for scanned PDF');
+    return '';
+  }
+}
+
+/**
  * Extract text content from a buffer based on file type
  */
 async function extractTextFromBuffer(
@@ -57,9 +109,25 @@ async function extractTextFromBuffer(
     try {
       const pdfParse = (await import('pdf-parse')).default;
       const data = await pdfParse(fileContent);
-      logger.info({ pages: data.numpages, chars: data.text.length }, 'PDF parsed successfully');
+      const meaningfulText = (data.text || '').replace(/\s+/g, ' ').trim();
+      logger.info({ pages: data.numpages, chars: data.text.length, meaningfulChars: meaningfulText.length }, 'PDF parsed successfully');
+      
+      // Scanned / image-based PDF — very little extractable text
+      if (meaningfulText.length < 50) {
+        logger.info({ extractedChars: meaningfulText.length }, 'Scanned/image PDF detected — attempting GPT-4o Vision OCR');
+        const ocrText = await extractScannedPDFWithVision(fileContent);
+        if (ocrText && ocrText.length > 10) {
+          return ocrText;
+        }
+        // If Vision OCR also fails, return whatever pdf-parse found
+        if (meaningfulText.length > 0) return data.text;
+        throw new Error('Scanned PDF with no extractable text and Vision OCR unavailable');
+      }
+      
       return data.text;
     } catch (error) {
+      // If the error is from our scanned PDF handling, rethrow
+      if (error instanceof Error && error.message.includes('Scanned PDF')) throw error;
       logger.warn({ error }, 'pdf-parse failed, trying alternative method');
       // Fallback: Try extracting text patterns from raw PDF
       const rawText = fileContent.toString('utf8');

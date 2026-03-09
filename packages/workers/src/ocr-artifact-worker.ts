@@ -1306,7 +1306,13 @@ async function performMistralOCR(filePath: string): Promise<string> {
       const pdfData = await pdfParse(fileBuffer);
       
       const rawText = pdfData.text;
-      logger.info({ textLength: rawText.length, pages: pdfData.numpages }, 'PDF text extracted');
+      const meaningfulText = rawText.replace(/\s+/g, ' ').trim();
+      logger.info({ textLength: rawText.length, meaningfulLength: meaningfulText.length, pages: pdfData.numpages }, 'PDF text extracted');
+      
+      // Scanned/image PDF: Mistral chat can't handle these — throw so fallback chain tries OpenAI Vision
+      if (meaningfulText.length < 50) {
+        throw new Error('Scanned/image PDF detected — Mistral text enhancement requires extractable text, falling back to next OCR provider');
+      }
       
       // Optimize: Skip AI enhancement for small/medium documents to improve speed
       if (rawText.length < 5000) {
@@ -1450,17 +1456,68 @@ async function performGPT4OCR(filePath: string): Promise<string> {
     }
     
     // For PDFs, use pdf-parse first, then GPT for enhancement
-    
-    // For PDFs, use pdf-parse first, then GPT for enhancement
     if (isPDF) {
       logger.info({ filePath, size: fileBuffer.length }, 'Processing PDF with pdf-parse + GPT enhancement');
       
       const pdfParse = pdfParseModule || (await import('pdf-parse')).default;
       const pdfData = await pdfParse(fileBuffer);
       const rawText = pdfData.text;
+      const meaningfulText = rawText.replace(/\s+/g, ' ').trim();
       
-      logger.info({ textLength: rawText.length, pages: pdfData.numpages }, 'PDF text extracted');
+      logger.info({ textLength: rawText.length, meaningfulLength: meaningfulText.length, pages: pdfData.numpages }, 'PDF text extracted');
       
+      // Scanned / image-based PDF: very little extractable text → use GPT-4o Vision
+      if (meaningfulText.length < 50) {
+        logger.info({ pages: pdfData.numpages, extractedChars: meaningfulText.length }, 'Scanned/image PDF detected — using GPT-4o Vision OCR');
+        const visionModel = WORKER_CONFIG.ai.visionModel || 'gpt-4o';
+        const base64 = fileBuffer.toString('base64');
+        
+        const response = await openai.chat.completions.create({
+          model: visionModel,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: `Extract ALL text from this scanned PDF document with high accuracy.
+Preserve the exact structure, formatting, and layout.
+Include:
+- All headings and subheadings
+- All paragraphs with proper spacing
+- All lists (numbered and bulleted)
+- Table data in markdown table format
+- Headers and footers
+- Any signatures or handwritten annotations
+
+Return the extracted text in clean markdown format.`,
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:application/pdf;base64,${base64}`,
+                    detail: 'high',
+                  },
+                },
+              ],
+            },
+          ],
+          max_tokens: 8192,
+          temperature: 0.1,
+        });
+        
+        const visionText = response.choices[0]?.message?.content || '';
+        logger.info({ textLength: visionText.length, model: visionModel }, 'GPT-4o Vision OCR completed for scanned PDF');
+        
+        if (visionText.length > 50) {
+          return visionText;
+        }
+        // If vision also returned little text, fall through to return whatever we have
+        logger.warn({ visionTextLength: visionText.length }, 'GPT-4o Vision returned minimal text for scanned PDF');
+        return visionText || rawText;
+      }
+      
+      // Text-based PDF with sufficient content
       // For small documents, skip GPT enhancement
       if (rawText.length < 3000) {
         return rawText;
