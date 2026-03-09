@@ -111,14 +111,14 @@ export const NoContracts = memo(function NoContracts({
         {/* Animated rings */}
         <div className="absolute inset-0 flex items-center justify-center">
           <motion.div
-            className="w-32 h-32 rounded-full border-2 border-slate-200"
+            className="w-32 h-32 rounded-full border-2 border-slate-200 dark:border-slate-700"
             animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           />
         </div>
         <div className="absolute inset-0 flex items-center justify-center">
           <motion.div
-            className="w-24 h-24 rounded-full border-2 border-slate-300"
+            className="w-24 h-24 rounded-full border-2 border-slate-300 dark:border-slate-600"
             animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0, 0.3] }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
           />
@@ -146,7 +146,7 @@ export const NoContracts = memo(function NoContracts({
       
       <motion.p
         variants={itemVariants}
-        className="text-slate-600 max-w-lg mb-8 text-base leading-relaxed"
+        className="text-slate-600 dark:text-slate-400 max-w-lg mb-8 text-base leading-relaxed"
       >
         Upload your first contract and let our AI automatically extract key terms, 
         identify risks, and organize everything for you. It&apos;s like having a 
@@ -171,7 +171,7 @@ export const NoContracts = memo(function NoContracts({
           <Button 
             variant="outline" 
             size="lg"
-            className="h-12 px-8 border-2 border-slate-200 hover:border-violet-300 hover:bg-violet-50 text-base font-semibold gap-3"
+            className="h-12 px-8 border-2 border-slate-200 dark:border-slate-600 hover:border-violet-300 dark:hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/30 text-base font-semibold gap-3"
           >
             <Sparkles className="h-5 w-5 text-violet-600" />
             Generate with AI
@@ -190,11 +190,11 @@ export const NoContracts = memo(function NoContracts({
           { icon: '🔍', label: 'AI Analysis', desc: 'Extract key terms automatically' },
           { icon: '🛡️', label: 'Risk Detection', desc: 'Identify potential issues' },
         ].map((feature, i) => (
-          <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/80 border border-slate-100">
+          <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
             <span className="text-2xl">{feature.icon}</span>
             <div className="text-left">
-              <p className="font-medium text-slate-900 text-sm">{feature.label}</p>
-              <p className="text-xs text-slate-500">{feature.desc}</p>
+              <p className="font-medium text-slate-900 dark:text-slate-100 text-sm">{feature.label}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{feature.desc}</p>
             </div>
           </div>
         ))}
@@ -230,11 +230,11 @@ export const NoResults = memo(function NoResults({
       >
         {/* Background glow */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 blur-xl" />
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 blur-xl" />
         </div>
         
         {/* Icon container */}
-        <div className="relative w-[4.5rem] h-[4.5rem] rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center p-5 shadow-inner">
+        <div className="relative w-[4.5rem] h-[4.5rem] rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center p-5 shadow-inner">
           {searchTerm ? (
             <Search className="h-8 w-8 text-slate-400" />
           ) : (
@@ -252,11 +252,11 @@ export const NoResults = memo(function NoResults({
       
       <motion.p
         variants={itemVariants}
-        className="text-slate-500 max-w-md mb-6 leading-relaxed"
+        className="text-slate-500 dark:text-slate-400 max-w-md mb-6 leading-relaxed"
       >
         {searchTerm ? (
           <>
-            We couldn&apos;t find any contracts matching &ldquo;<span className="font-semibold text-slate-700">{searchTerm}</span>&rdquo;.
+            We couldn&apos;t find any contracts matching &ldquo;<span className="font-semibold text-slate-700 dark:text-slate-200">{searchTerm}</span>&rdquo;.
             Try different keywords or check your spelling.
           </>
         ) : hasFilters ? (
@@ -282,16 +282,7 @@ export const NoResults = memo(function NoResults({
             onClick={onClearSearch}
             className="gap-2 border-2 hover:border-slate-300 hover:bg-slate-50"
           >
-            <Search className="h-4 w-4" />
-            Clear search
-          </Button>
-        )}
-        {hasFilters && onClearFilters && (
-          <Button 
-            variant="outline" 
-            onClick={onClearFilters}
-            className="gap-2 border-2 hover:border-slate-300 hover:bg-slate-50"
-          >
+
             <Filter className="h-4 w-4" />
             Clear all filters
           </Button>
@@ -301,10 +292,10 @@ export const NoResults = memo(function NoResults({
       {/* Suggestions */}
       <motion.div
         variants={itemVariants}
-        className="mt-8 p-4 rounded-xl bg-slate-50 border border-slate-100 max-w-md"
+        className="mt-8 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 max-w-md"
       >
-        <p className="text-sm font-medium text-slate-700 mb-2">💡 Search tips:</p>
-        <ul className="text-sm text-slate-500 space-y-1 text-left">
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">💡 Search tips:</p>
+        <ul className="text-sm text-slate-500 dark:text-slate-400 space-y-1 text-left">
           <li>• Try searching for contract type (e.g., &quot;NDA&quot;, &quot;MSA&quot;)</li>
           <li>• Search by party name or company</li>
           <li>• Use broader terms if specific ones don&apos;t work</li>
@@ -343,7 +334,7 @@ export const ErrorState = memo(function ErrorState({
           animate={{ opacity: [0.5, 0.8, 0.5] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          <div className="w-24 h-24 rounded-full bg-red-100 blur-xl" />
+          <div className="w-24 h-24 rounded-full bg-red-100 dark:bg-red-900/30 blur-xl" />
         </motion.div>
         
         <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-xl shadow-red-500/25">
@@ -353,14 +344,14 @@ export const ErrorState = memo(function ErrorState({
       
       <motion.h3
         variants={itemVariants}
-        className="text-xl font-bold text-slate-800 mb-2"
+        className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2"
       >
         Oops! Something went wrong
       </motion.h3>
       
       <motion.p
         variants={itemVariants}
-        className="text-slate-500 max-w-md mb-6 leading-relaxed"
+        className="text-slate-500 dark:text-slate-400 max-w-md mb-6 leading-relaxed"
       >
         {error || 'We couldn\'t load your contracts. This might be a temporary issue. Please try again.'}
       </motion.p>
@@ -380,7 +371,7 @@ export const ErrorState = memo(function ErrorState({
       {/* Help section */}
       <motion.div
         variants={itemVariants}
-        className="mt-8 text-xs text-slate-400"
+        className="mt-8 text-xs text-slate-400 dark:text-slate-500"
       >
         If this problem persists, please contact support.
       </motion.div>
@@ -434,14 +425,14 @@ export const LoadingState = memo(function LoadingState({
       </div>
       
       <motion.p 
-        className="text-slate-600 font-medium"
+        className="text-slate-600 dark:text-slate-400 font-medium"
         animate={{ opacity: [0.5, 1, 0.5] }}
         transition={{ duration: 1.5, repeat: Infinity }}
       >
         {message}
       </motion.p>
       
-      <p className="mt-2 text-sm text-slate-400">
+      <p className="mt-2 text-sm text-slate-400 dark:text-slate-500">
         This usually takes a few seconds
       </p>
     </motion.div>
@@ -464,7 +455,7 @@ export const ContractsSkeleton = memo(function ContractsSkeleton({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.05 }}
-          className="flex items-center gap-4 p-4 border border-slate-100 rounded-xl bg-white"
+          className="flex items-center gap-4 p-4 border border-slate-100 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800"
         >
           <div className="h-5 w-5 rounded bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse" />
           <div className="flex-1 space-y-2">

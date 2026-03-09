@@ -36,7 +36,7 @@ export function GlobalErrorFallback({ error, reset }: GlobalErrorFallbackProps) 
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-950 dark:to-slate-900">
       <Card className="max-w-2xl w-full shadow-lg">
         <CardHeader>
           <div className="flex items-center gap-3 text-destructive mb-2">
@@ -61,19 +61,19 @@ export function GlobalErrorFallback({ error, reset }: GlobalErrorFallbackProps) 
           </Alert>
 
           {isDevelopment && (
-            <div className="mt-4 p-4 bg-gray-100 rounded-md border border-gray-200">
-              <p className="text-sm font-semibold text-gray-700 mb-2">
+            <div className="mt-4 p-4 bg-gray-100 dark:bg-slate-800 rounded-md border border-gray-200 dark:border-slate-700">
+              <p className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-2">
                 Development Error Details:
               </p>
-              <p className="text-sm font-mono text-gray-700 break-all mb-2">
+              <p className="text-sm font-mono text-gray-700 dark:text-slate-300 break-all mb-2">
                 {error.message}
               </p>
               {error.stack && (
                 <details className="mt-2">
-                  <summary className="text-sm text-gray-600 cursor-pointer hover:text-gray-800 font-medium">
+                  <summary className="text-sm text-gray-600 dark:text-slate-400 cursor-pointer hover:text-gray-800 dark:hover:text-slate-200 font-medium">
                     View Stack Trace
                   </summary>
-                  <pre className="mt-2 text-xs text-gray-600 overflow-auto max-h-60 p-2 bg-white rounded border border-gray-200">
+                  <pre className="mt-2 text-xs text-gray-600 dark:text-slate-400 overflow-auto max-h-60 p-2 bg-white dark:bg-slate-900 rounded border border-gray-200 dark:border-slate-700">
                     {error.stack}
                   </pre>
                 </details>
@@ -81,11 +81,11 @@ export function GlobalErrorFallback({ error, reset }: GlobalErrorFallbackProps) 
             </div>
           )}
 
-          <div className="bg-violet-50 border border-violet-200 rounded-md p-4">
-            <h4 className="text-sm font-semibold text-violet-900 mb-2">
+          <div className="bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 rounded-md p-4">
+            <h4 className="text-sm font-semibold text-violet-900 dark:text-violet-200 mb-2">
               What can you do?
             </h4>
-            <ul className="text-sm text-violet-800 space-y-1 list-disc list-inside">
+            <ul className="text-sm text-violet-800 dark:text-violet-300 space-y-1 list-disc list-inside">
               <li>Try refreshing the page</li>
               <li>Go back to the home page</li>
               <li>Clear your browser cache and cookies</li>

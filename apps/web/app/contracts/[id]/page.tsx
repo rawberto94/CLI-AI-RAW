@@ -969,7 +969,7 @@ export default function ContractDetailPage() {
 
   // ============ MAIN RENDER ============
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 print-container">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 print-container">
       {/* Skip to main content link for accessibility */}
       <SkipToContent targetId="main-content" />
       
@@ -1028,7 +1028,7 @@ export default function ContractDetailPage() {
           <>
             <div 
               className={cn(
-                "bg-slate-100 flex-shrink-0 relative",
+                "bg-slate-100 dark:bg-slate-800 flex-shrink-0 relative",
                 isMobile ? "w-full h-[50vh]" : "h-full"
               )}
               style={isMobile ? undefined : { width: `${pdfSplitRatio}%`, minWidth: '280px' }}
@@ -1046,7 +1046,7 @@ export default function ContractDetailPage() {
             {!isMobile && (
             <div
               className={cn(
-                "w-1.5 cursor-col-resize bg-slate-300 hover:bg-violet-500 transition-colors flex-shrink-0",
+                "w-1.5 cursor-col-resize bg-slate-300 dark:bg-slate-600 hover:bg-violet-500 transition-colors flex-shrink-0",
                 "flex items-center justify-center group",
                 isResizingPanel && "bg-violet-500"
               )}

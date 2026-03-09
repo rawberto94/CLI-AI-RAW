@@ -354,7 +354,7 @@ function SignUpForm() {
       </div>
 
       {/* Right side - Signup Form with animated background */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-gradient-to-br from-slate-50 via-white to-violet-50/30 relative overflow-hidden">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-gradient-to-br from-slate-50 via-white to-violet-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-violet-950/30 relative overflow-hidden">
         {/* Animated gradient mesh background */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-100/40 via-transparent to-transparent" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-violet-100/30 via-transparent to-transparent" />
@@ -380,7 +380,7 @@ function SignUpForm() {
           transition={{ duration: 0.5, type: "spring", damping: 20 }}
           className="w-full max-w-md relative z-10"
         >
-        <Card className="w-full p-6 sm:p-8 shadow-2xl shadow-violet-200/30 border border-slate-100/80 bg-white/90 backdrop-blur-xl rounded-2xl">
+        <Card className="w-full p-6 sm:p-8 shadow-2xl shadow-violet-200/30 dark:shadow-violet-900/30 border border-slate-100/80 dark:border-slate-700/80 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl">
           {/* Mobile Logo */}
           <motion.div 
             className="lg:hidden flex justify-center mb-8"
@@ -412,10 +412,10 @@ function SignUpForm() {
                   <Building2 className="w-7 h-7 text-white" />
                 )}
               </motion.div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2">
                 {step === "account" ? "Create Account" : "Organization Setup"}
               </h1>
-              <p className="text-slate-500 text-sm sm:text-base">
+              <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base">
                 {inviteInfo
                   ? `You've been invited to join ${inviteInfo.tenantName}`
                   : step === "account"
@@ -808,7 +808,7 @@ function SignUpForm() {
 export default function SignUpPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-violet-50/30 relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-violet-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-violet-950/30 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-100/40 via-transparent to-transparent" />
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}

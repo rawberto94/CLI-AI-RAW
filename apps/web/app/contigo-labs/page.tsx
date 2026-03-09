@@ -15,7 +15,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -276,9 +276,9 @@ export default function ContigoLabsPage() {
   }, [activeTab]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 sticky top-0 z-50">
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -289,7 +289,7 @@ export default function ContigoLabsPage() {
                 <h1 className="text-2xl font-black bg-gradient-to-r from-violet-700 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                   Contigo Labs
                 </h1>
-                <p className="text-sm font-medium text-slate-500">
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
                   AI-Powered Contract Intelligence Hub
                 </p>
               </div>
@@ -338,7 +338,7 @@ export default function ContigoLabsPage() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           {/* Navigation Tabs */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-1.5">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-1.5">
             <TabsList className="w-full justify-start bg-transparent h-auto p-0 gap-1 flex-wrap">
               <TabsTrigger 
                 value="dashboard" 
@@ -522,16 +522,16 @@ function DashboardOverview({ status, loading }: { status: any; loading: boolean 
       </div>
 
       {/* Quick Actions */}
-      <Card className="border-transparent shadow-sm bg-white rounded-2xl overflow-hidden">
+      <Card className="border-transparent shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
         <div className="h-1 bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500" />
-        <CardHeader className="pb-4 border-b border-slate-100">
-          <CardTitle className="flex items-center gap-3 text-xl font-bold text-slate-900">
-            <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center shadow-sm">
+        <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
+          <CardTitle className="flex items-center gap-3 text-xl font-bold text-slate-900 dark:text-white">
+            <div className="w-10 h-10 bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 rounded-xl flex items-center justify-center shadow-sm">
               <Zap className="w-5 h-5" />
             </div>
             Quick Actions
           </CardTitle>
-          <CardDescription className="text-sm font-medium text-slate-500">Common tasks and shortcuts</CardDescription>
+          <CardDescription className="text-sm font-medium text-slate-500 dark:text-slate-400">Common tasks and shortcuts</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -575,11 +575,11 @@ function DashboardOverview({ status, loading }: { status: any; loading: boolean 
       </Card>
 
       {/* Recent Activity */}
-      <Card className="border-transparent shadow-sm bg-white rounded-2xl overflow-hidden">
+      <Card className="border-transparent shadow-sm bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
         <div className="h-1 bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500" />
-        <CardHeader className="pb-4 border-b border-slate-100">
-          <CardTitle className="flex items-center gap-3 text-xl font-bold text-slate-900">
-            <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center shadow-sm">
+        <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
+          <CardTitle className="flex items-center gap-3 text-xl font-bold text-slate-900 dark:text-white">
+            <div className="w-10 h-10 bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 rounded-xl flex items-center justify-center shadow-sm">
               <Clock className="w-5 h-5" />
             </div>
             Recent Activity
@@ -595,11 +595,11 @@ function DashboardOverview({ status, loading }: { status: any; loading: boolean 
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center py-16">
-                <div className="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
-                  <Bot className="w-10 h-10 text-slate-300" />
+                <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
+                  <Bot className="w-10 h-10 text-slate-300 dark:text-slate-600" />
                 </div>
-                <p className="font-bold text-slate-700">No recent activity</p>
-                <p className="text-sm font-medium text-slate-500 mt-1">Agents are currently idle</p>
+                <p className="font-bold text-slate-700 dark:text-slate-300">No recent activity</p>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Agents are currently idle</p>
               </div>
             )}
           </ScrollArea>
@@ -621,18 +621,18 @@ function StatCard({ title, value, total, icon: Icon, color, description, alert }
 
   return (
     <Card className={cn(
-      "border-l-4 border-transparent shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-2xl bg-white overflow-hidden", 
+      "border-l-4 border-transparent shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 rounded-2xl bg-white dark:bg-slate-900 overflow-hidden", 
       alert ? "border-l-red-500" : c.border
     )}>
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{title}</p>
-            <p className="text-4xl font-black tracking-tight text-slate-900">
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{title}</p>
+            <p className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">
               {value}
-              {total && <span className="text-lg text-slate-400 font-semibold ml-1">/{total}</span>}
+              {total && <span className="text-lg text-slate-400 dark:text-slate-500 font-semibold ml-1">/{total}</span>}
             </p>
-            <p className="text-sm font-medium text-slate-500 mt-2 flex items-center gap-1.5">
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1.5">
               {alert && <AlertTriangle className="w-3.5 h-3.5 text-red-500" />}
               {description}
             </p>
@@ -648,7 +648,7 @@ function StatCard({ title, value, total, icon: Icon, color, description, alert }
 
 function ClusterCard({ cluster }: { cluster: any }) {
   return (
-    <Card className="group hover:shadow-xl transition-all duration-300 border-transparent hover:border-violet-200 bg-white rounded-2xl overflow-hidden">
+    <Card className="group hover:shadow-xl transition-all duration-300 border-transparent hover:border-violet-200 dark:hover:border-violet-700 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
       <CardContent className="p-0">
         <div className={cn("h-1.5 bg-gradient-to-r", cluster.gradient)} />
         <div className="p-6">
@@ -657,8 +657,8 @@ function ClusterCard({ cluster }: { cluster: any }) {
               {cluster.emoji}
             </div>
             <div>
-              <h3 className="font-bold text-lg text-slate-900">{cluster.name}</h3>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{cluster.description}</p>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">{cluster.name}</h3>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{cluster.description}</p>
             </div>
           </div>
           
@@ -666,24 +666,28 @@ function ClusterCard({ cluster }: { cluster: any }) {
             {cluster.agents.map((agent: any) => (
               <div 
                 key={agent.id}
-                className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 hover:shadow-sm transition-all duration-200 cursor-pointer border border-transparent hover:border-slate-100 group/agent"
+                className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-sm transition-all duration-200 cursor-pointer border border-transparent hover:border-slate-100 dark:hover:border-slate-700 group/agent"
               >
-                <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center text-xl group-hover/agent:scale-110 transition-transform shadow-sm">
+                <div className="w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-xl group-hover/agent:scale-110 transition-transform shadow-sm">
                   {agent.avatar}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm text-slate-900 group-hover/agent:text-violet-700 transition-colors">{agent.codename}</p>
-                  <p className="text-xs font-medium text-slate-500 truncate">{agent.description}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-sm text-slate-900 dark:text-white group-hover/agent:text-violet-700 dark:group-hover/agent:text-violet-400 transition-colors">{agent.codename}</p>
+                    <span className="text-[10px] font-mono text-violet-500 dark:text-violet-400 opacity-0 group-hover/agent:opacity-100 transition-opacity">@{agent.codename.toLowerCase()}</span>
+                  </div>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">{agent.description}</p>
                 </div>
                 <Badge className={cn(
                   "text-[10px] uppercase tracking-wider font-bold border-transparent px-2 py-0.5 rounded-md",
-                  agent.status === 'active' ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                  agent.status === 'active' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                 )}>
                   {agent.status}
                 </Badge>
               </div>
             ))}
           </div>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-3 text-center">Hover an agent to see its @mention — use it in Chat to invoke directly</p>
         </div>
       </CardContent>
     </Card>
@@ -705,7 +709,7 @@ function QuickActionButton({ icon: Icon, label, description, href, color }: any)
     <Link
       href={href}
       className={cn(
-        "group flex flex-col items-center text-center p-6 rounded-2xl border border-slate-100 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-lg",
+        "group flex flex-col items-center text-center p-6 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg",
         c.hover
       )}
     >
@@ -715,18 +719,18 @@ function QuickActionButton({ icon: Icon, label, description, href, color }: any)
       )}>
         <Icon className="w-6 h-6" />
       </div>
-      <p className="font-bold text-slate-900 mb-1.5">{label}</p>
-      <p className="text-xs font-medium text-slate-500 leading-relaxed">{description}</p>
+      <p className="font-bold text-slate-900 dark:text-white mb-1.5">{label}</p>
+      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 leading-relaxed">{description}</p>
     </Link>
   );
 }
 
 function ActivityRow({ activity }: { activity: any }) {
   return (
-    <div className="group flex items-start gap-4 p-4 rounded-xl hover:bg-slate-50/50 transition-all duration-200 border border-transparent hover:border-slate-100">
+    <div className="group flex items-start gap-4 p-4 rounded-xl hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-all duration-200 border border-transparent hover:border-slate-100 dark:hover:border-slate-700">
       <div className="relative">
-        <Avatar className="w-11 h-11 border-2 border-white shadow-sm group-hover:scale-105 transition-transform">
-          <AvatarFallback className="text-lg bg-gradient-to-br from-slate-100 to-slate-200">{activity.agentAvatar}</AvatarFallback>
+        <Avatar className="w-11 h-11 border-2 border-white dark:border-slate-800 shadow-sm group-hover:scale-105 transition-transform">
+          <AvatarFallback className="text-lg bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600">{activity.agentAvatar}</AvatarFallback>
         </Avatar>
         {activity.importance === 'high' && (
           <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 border-2 border-white rounded-full animate-pulse" />
@@ -734,16 +738,16 @@ function ActivityRow({ activity }: { activity: any }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
-          <p className="font-bold text-sm text-slate-900 group-hover:text-violet-700 transition-colors">{activity.title}</p>
+          <p className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors">{activity.title}</p>
           <Badge className={cn(
             "text-[10px] uppercase tracking-wider px-2 py-0.5 border-transparent font-bold rounded-md",
-            activity.importance === 'high' ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-600"
+            activity.importance === 'high' ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
           )}>
             {activity.importance}
           </Badge>
         </div>
-        <p className="text-sm font-medium text-slate-500 truncate mb-2">{activity.description}</p>
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 truncate mb-2">{activity.description}</p>
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 dark:text-slate-500">
           <Clock className="w-3 h-3" />
           {new Date(activity.timestamp).toLocaleString(undefined, { 
             month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
@@ -3554,21 +3558,21 @@ function EmbeddedAIBubble() {
   const router = useRouter();
   
   return (
-    <Card className="h-full flex flex-col overflow-hidden border-transparent shadow-sm rounded-2xl bg-white">
-      <CardHeader className="flex-shrink-0 border-b border-slate-100 bg-gradient-to-r from-violet-50/80 to-purple-50/80">
+    <Card className="h-full flex flex-col overflow-hidden border-transparent shadow-sm rounded-2xl bg-white dark:bg-slate-900">
+      <CardHeader className="flex-shrink-0 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-violet-50/80 to-purple-50/80 dark:from-violet-950/40 dark:to-purple-950/40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
-              <CardTitle className="flex items-center gap-2 text-lg font-bold text-slate-900">
+              <CardTitle className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
                 ConTigo AI
                 <Badge className="text-xs bg-violet-100 text-violet-700 border-transparent font-bold px-2 py-0.5 rounded-md">
                   RAG Powered
                 </Badge>
               </CardTitle>
-              <CardDescription className="text-sm font-medium text-slate-500">
+              <CardDescription className="text-sm font-medium text-slate-500 dark:text-slate-400">
                 Your intelligent contract assistant
               </CardDescription>
             </div>
@@ -3594,6 +3598,32 @@ function EmbeddedAIBubble() {
  * EmbeddedChatInterface - Inline version of the chatbot UI
  * Mirrors the FloatingAIBubble functionality but embedded in the page
  */
+
+// Flat list of all agents for @mention autocomplete
+const ALL_AGENTS = Object.values(AGENT_CLUSTERS).flatMap(cluster =>
+  cluster.agents.map(agent => ({
+    ...agent,
+    cluster: cluster.name,
+    clusterEmoji: cluster.emoji,
+    mention: `@${agent.codename.toLowerCase()}`,
+    example: agent.codename === 'Sage' ? 'Find all NDAs expiring this quarter'
+      : agent.codename === 'Vigil' ? 'Check compliance status of my contracts'
+      : agent.codename === 'Warden' ? 'What are the top risks in my portfolio?'
+      : agent.codename === 'Sentinel' ? 'Validate this contract for errors'
+      : agent.codename === 'Prospector' ? 'Where can I save money on renewals?'
+      : agent.codename === 'Scout' ? 'Are there any open RFx opportunities?'
+      : agent.codename === 'Clockwork' ? 'What deadlines are coming up?'
+      : agent.codename === 'Steward' ? 'Track all outstanding obligations'
+      : agent.codename === 'Artificer' ? 'Fill missing metadata across contracts'
+      : agent.codename === 'Architect' ? 'Design an approval workflow'
+      : agent.codename === 'Merchant' ? 'Start an RFx procurement process'
+      : agent.codename === 'Conductor' ? 'Coordinate a multi-agent analysis'
+      : agent.codename === 'Mnemosyne' ? 'What have I asked about recently?'
+      : agent.codename === 'Swarm' ? 'Run a full portfolio deep-dive'
+      : 'Help me with contract management',
+  }))
+);
+
 function EmbeddedChatInterface() {
   const [messages, setMessages] = useState<Message[]>([{
     id: 'welcome',
@@ -3601,14 +3631,15 @@ function EmbeddedChatInterface() {
     content: `👋 Hey! I'm **ConTigo AI**, your intelligent contract assistant powered by RAG technology.
 
 **What I can do:**
-• 🔍 **Smart Search** - Find contracts by supplier, type, value, or any criteria
-• 📊 **Deep Analysis** - Get summaries, spending insights, and duration patterns  
-• 🔄 **Compare Contracts** - Side-by-side supplier comparison with rates and clauses
-• ⚠️ **Risk Alerts** - Track expirations, auto-renewals, and compliance
+• 🔍 **Smart Search** — Find contracts by supplier, type, value, or any criteria
+• 📊 **Deep Analysis** — Get summaries, spending insights, and duration patterns  
+• 🔄 **Compare Contracts** — Side-by-side supplier comparison with rates and clauses
+• ⚠️ **Risk Alerts** — Track expirations, auto-renewals, and compliance
 
 **Pro Tips:**
-• Try: "Compare Deloitte vs Accenture contracts"
-• Ask follow-ups: I remember our conversation context
+• Type **@** to see all available AI agents with specialties
+• Try: "@sage Find all NDAs expiring this quarter"
+• Ask follow-ups: I remember your conversation context
 • Click suggestions below or type anything!
 
 What would you like to explore?`,
@@ -3618,8 +3649,66 @@ What would you like to explore?`,
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [showAgentList, setShowAgentList] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState('');
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [showAgentSidebar, setShowAgentSidebar] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const mentionRef = useRef<HTMLDivElement>(null);
+
+  // Filter agents based on @mention text
+  const filteredAgents = useMemo(() => {
+    if (!mentionFilter) return ALL_AGENTS;
+    const q = mentionFilter.toLowerCase();
+    return ALL_AGENTS.filter(a => 
+      a.codename.toLowerCase().includes(q) || 
+      a.description.toLowerCase().includes(q) ||
+      a.cluster.toLowerCase().includes(q)
+    );
+  }, [mentionFilter]);
+
+  // Handle @mention detection in input
+  const handleInputChange = (value: string) => {
+    setInput(value);
+    const atIdx = value.lastIndexOf('@');
+    if (atIdx !== -1 && (atIdx === 0 || value[atIdx - 1] === ' ')) {
+      const afterAt = value.slice(atIdx + 1);
+      if (!afterAt.includes(' ')) {
+        setMentionFilter(afterAt);
+        setShowAgentList(true);
+        setMentionIndex(0);
+        return;
+      }
+    }
+    setShowAgentList(false);
+  };
+
+  // Insert agent mention
+  const insertMention = (agent: typeof ALL_AGENTS[0]) => {
+    const atIdx = input.lastIndexOf('@');
+    const before = input.slice(0, atIdx);
+    setInput(`${before}@${agent.codename.toLowerCase()} `);
+    setShowAgentList(false);
+    inputRef.current?.focus();
+  };
+
+  // Keyboard navigation for mention dropdown
+  const handleMentionKeyDown = (e: React.KeyboardEvent) => {
+    if (!showAgentList || filteredAgents.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setMentionIndex(i => Math.min(i + 1, filteredAgents.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setMentionIndex(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      insertMention(filteredAgents[mentionIndex]);
+    } else if (e.key === 'Escape') {
+      setShowAgentList(false);
+    }
+  };
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -3699,7 +3788,7 @@ What would you like to explore?`,
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-900">
       {/* Messages Area */}
       <ScrollArea ref={scrollRef} className="flex-1 p-4">
         <div className="space-y-4 max-w-4xl mx-auto">
@@ -3721,7 +3810,7 @@ What would you like to explore?`,
                   "max-w-[85%] rounded-2xl px-4 py-3",
                   msg.role === 'user'
                     ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-br-md"
-                    : "bg-slate-100 text-slate-800 rounded-bl-md"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-md"
                 )}
               >
                 {msg.agent && (
@@ -3740,7 +3829,7 @@ What would you like to explore?`,
                       <button
                         key={idx}
                         onClick={() => handleQuickAction(suggestion.replace(/^[📊🔄⏰💰]\s*/, ''))}
-                        className="px-3 py-1.5 text-xs rounded-full bg-white/80 hover:bg-white border border-slate-200 transition-colors"
+                        className="px-3 py-1.5 text-xs rounded-full bg-white/80 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition-colors"
                       >
                         {suggestion}
                       </button>
@@ -3769,9 +3858,9 @@ What would you like to explore?`,
       </ScrollArea>
 
       {/* Quick Actions */}
-      <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/80">
+      <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50">
         <div className="max-w-4xl mx-auto">
-          <p className="text-xs text-slate-500 mb-2 font-bold uppercase tracking-wider">Quick Actions</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 font-bold uppercase tracking-wider">Quick Actions</p>
           <div className="flex flex-wrap gap-2">
             {[
               { icon: FileText, label: 'Contract Summary', query: 'Give me a summary of my contracts', color: 'from-violet-500 to-purple-500' },
@@ -3782,12 +3871,12 @@ What would you like to explore?`,
               <button
                 key={action.label}
                 onClick={() => handleQuickAction(action.query)}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-violet-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-sm group"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 text-sm group"
               >
                 <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${action.color} flex items-center justify-center shadow-sm`}>
                   <action.icon className="w-3 h-3 text-white" />
                 </div>
-                <span className="font-semibold text-slate-700 group-hover:text-violet-700 transition-colors">{action.label}</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-200 group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors">{action.label}</span>
               </button>
             ))}
           </div>
@@ -3795,31 +3884,115 @@ What would you like to explore?`,
       </div>
 
       {/* Input Area */}
-      <div className="p-4 border-t border-slate-100 bg-white">
-        <div className="max-w-4xl mx-auto flex gap-3">
-          <Input
-            ref={inputRef}
-            placeholder="Ask anything about your contracts... (e.g., 'Compare Deloitte vs Accenture')"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-            className="flex-1 h-12 rounded-xl bg-slate-50/50 border-slate-200 focus-visible:ring-violet-500/20 focus-visible:border-violet-500 transition-all duration-200 text-base font-medium"
-          />
-          <Button 
-            onClick={() => sendMessage()} 
-            disabled={isLoading || !input.trim()}
-            className="h-12 w-12 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-md shadow-violet-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all"
-          >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
-          </Button>
+      <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 relative">
+        {/* @mention autocomplete dropdown */}
+        {showAgentList && filteredAgents.length > 0 && (
+          <div ref={mentionRef} className="absolute bottom-full left-4 right-4 mb-1 max-w-4xl mx-auto z-50">
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden max-h-64 overflow-y-auto">
+              <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Agents — type to filter</p>
+              </div>
+              {filteredAgents.map((agent, idx) => (
+                <button
+                  key={agent.id}
+                  onClick={() => insertMention(agent)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors",
+                    idx === mentionIndex ? "bg-violet-50 dark:bg-violet-900/30" : "hover:bg-slate-50 dark:hover:bg-slate-700"
+                  )}
+                >
+                  <span className="text-lg flex-shrink-0">{agent.avatar}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-slate-900 dark:text-white">{agent.mention}</span>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{agent.cluster}</Badge>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{agent.description}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="max-w-4xl mx-auto">
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowAgentSidebar(!showAgentSidebar)}
+              className={cn(
+                "h-12 w-12 rounded-xl border flex items-center justify-center transition-all flex-shrink-0",
+                showAgentSidebar
+                  ? "bg-violet-100 border-violet-300 text-violet-700"
+                  : "bg-slate-50/50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              )}
+              title="Show available agents"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
+            <Input
+              ref={inputRef}
+              placeholder="Ask anything... Type @ to mention an agent (e.g. @sage find NDAs)"
+              value={input}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={(e) => {
+                handleMentionKeyDown(e);
+                if (e.key === 'Enter' && !e.shiftKey && !showAgentList) sendMessage();
+              }}
+              className="flex-1 h-12 rounded-xl bg-slate-50/50 border-slate-200 focus-visible:ring-violet-500/20 focus-visible:border-violet-500 transition-all duration-200 text-base font-medium"
+            />
+            <Button 
+              onClick={() => sendMessage()} 
+              disabled={isLoading || !input.trim()}
+              className="h-12 w-12 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-md shadow-violet-500/20 hover:shadow-lg hover:-translate-y-0.5 transition-all"
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+            </Button>
+          </div>
+          <p className="text-center text-xs font-medium text-slate-400 mt-2.5">
+            Press Enter to send • Type <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-mono">@</kbd> to mention an agent
+          </p>
         </div>
-        <p className="text-center text-xs font-medium text-slate-400 mt-2.5">
-          Press Enter to send • ConTigo AI remembers your conversation context
-        </p>
+
+        {/* Agent sidebar panel */}
+        <AnimatePresence>
+          {showAgentSidebar && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="max-w-4xl mx-auto mt-3 overflow-hidden"
+            >
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Available Agents — type @ in chat to mention</h4>
+                  <button onClick={() => setShowAgentSidebar(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {ALL_AGENTS.map((agent) => (
+                    <button
+                      key={agent.id}
+                      onClick={() => { setInput(`@${agent.codename.toLowerCase()} `); setShowAgentSidebar(false); inputRef.current?.focus(); }}
+                      className="flex items-start gap-2.5 p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 hover:border-violet-200 dark:hover:border-violet-500 hover:shadow-sm transition-all text-left group"
+                    >
+                      <span className="text-base mt-0.5">{agent.avatar}</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-violet-700 group-hover:text-violet-800">{agent.mention}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{agent.description}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 italic truncate">e.g. "{agent.example}"</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
