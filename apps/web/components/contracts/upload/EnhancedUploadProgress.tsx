@@ -462,10 +462,10 @@ export function EnhancedUploadProgress({
         {/* Icon with pulse animation */}
         <div className={cn(
           'p-2 rounded-lg shrink-0 relative',
-          (status === 'completed' || isCompleted) ? 'bg-green-100' :
-          status === 'error' ? 'bg-red-100' :
-          status === 'processing' || status === 'uploading' ? 'bg-violet-100' :
-          'bg-gray-100'
+          (status === 'completed' || isCompleted) ? 'bg-green-100 dark:bg-green-900/30' :
+          status === 'error' ? 'bg-red-100 dark:bg-red-900/30' :
+          status === 'processing' || status === 'uploading' ? 'bg-violet-100 dark:bg-violet-900/30' :
+          'bg-gray-100 dark:bg-slate-700'
         )}>
           {(status === 'processing' || status === 'uploading') && !isCompleted && (
             <motion.div
@@ -490,8 +490,8 @@ export function EnhancedUploadProgress({
         {/* File Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-gray-900 truncate">{fileName}</p>
-            <span className="text-xs text-gray-400 shrink-0">{formatFileSize(fileSize)}</span>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{fileName}</p>
+            <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{formatFileSize(fileSize)}</span>
           </div>
           
           {/* Status Line */}
@@ -584,19 +584,19 @@ export function EnhancedUploadProgress({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-t border-gray-100"
+            className="overflow-hidden border-t border-gray-100 dark:border-slate-700"
           >
-            <div className={cn("p-4", status === 'error' ? 'bg-red-50' : 'bg-gray-50')}>
+            <div className={cn("p-4", status === 'error' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-gray-50 dark:bg-slate-800/50')}>
               {/* Error Details */}
               {status === 'error' && error && (
-                <div className="mb-4 p-3 rounded-lg bg-red-100 border border-red-200">
-                  <p className="text-sm text-red-800">{error}</p>
-                  <p className="text-xs text-red-600 mt-1">Please try again or contact support if the issue persists.</p>
+                <div className="mb-4 p-3 rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700">
+                  <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">Please try again or contact support if the issue persists.</p>
                 </div>
               )}
 
               {/* Stage Progress */}
-              <div className="flex items-center justify-between max-w-sm mx-auto">
+              <div className="flex items-center justify-between max-w-sm mx-auto" role="progressbar" aria-label="Processing stages">
                 {stages.map((stage, i) => (
                   <div key={stage.id} className="flex items-center">
                     {/* Stage Circle */}
@@ -607,7 +607,7 @@ export function EnhancedUploadProgress({
                           stage.status === 'completed' && 'bg-green-500 border-green-500 text-white',
                           stage.status === 'in-progress' && 'bg-violet-500 border-violet-500 text-white',
                           stage.status === 'error' && 'bg-red-500 border-red-500 text-white',
-                          stage.status === 'pending' && 'bg-white border-gray-200 text-gray-400'
+                          stage.status === 'pending' && 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-400 dark:text-slate-400'
                         )}
                         animate={stage.status === 'in-progress' ? { scale: [1, 1.05, 1] } : {}}
                         transition={{ duration: 2, repeat: Infinity }}
@@ -629,7 +629,7 @@ export function EnhancedUploadProgress({
                         stage.status === 'completed' && 'text-green-600',
                         stage.status === 'in-progress' && 'text-violet-600',
                         stage.status === 'error' && 'text-red-600',
-                        stage.status === 'pending' && 'text-gray-400'
+                        stage.status === 'pending' && 'text-gray-400 dark:text-slate-500'
                       )}>
                         {stage.shortName}
                       </span>
@@ -640,8 +640,8 @@ export function EnhancedUploadProgress({
                       <div className={cn(
                         'w-10 h-0.5 mx-2 -mt-4 transition-colors',
                         stage.status === 'completed' ? 'bg-green-400' :
-                        stage.status === 'in-progress' ? 'bg-violet-200' :
-                        'bg-gray-200'
+                        stage.status === 'in-progress' ? 'bg-violet-200 dark:bg-violet-700' :
+                        'bg-gray-200 dark:bg-slate-600'
                       )} />
                     )}
                   </div>
@@ -649,7 +649,7 @@ export function EnhancedUploadProgress({
               </div>
 
               {/* Stats Row */}
-              <div className="flex items-center justify-center gap-6 mt-4 text-xs text-gray-500">
+              <div className="flex items-center justify-center gap-6 mt-4 text-xs text-gray-500 dark:text-gray-400">
                 <div className="flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
                   <span>{formatDuration(displayTime)}</span>
@@ -677,7 +677,7 @@ export function EnhancedUploadProgress({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-green-50/90 flex items-center justify-center pointer-events-none rounded-lg"
+            className="absolute inset-0 bg-green-50/90 dark:bg-green-900/80 flex items-center justify-center pointer-events-none rounded-lg"
           >
             <motion.div
               initial={{ scale: 0 }}

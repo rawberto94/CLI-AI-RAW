@@ -14,6 +14,7 @@ import { Readable } from 'stream';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { createHash } from 'crypto';
 import { 
   CircuitBreaker, 
   CircuitState, 
@@ -112,8 +113,7 @@ function getPreprocessingCache(): WorkerCache | null {
  * Cache key for preprocessing results, derived from a hash of the raw text.
  */
 function preprocessingCacheKey(rawText: string): string {
-  const crypto = require('crypto');
-  return crypto.createHash('sha256').update(rawText).digest('hex');
+  return createHash('sha256').update(rawText).digest('hex');
 }
 
 interface CachedPreprocessResult {
