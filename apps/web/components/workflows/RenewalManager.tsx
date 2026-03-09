@@ -381,29 +381,67 @@ export const RenewalManager: React.FC = () => {
     }));
   }, [rawRenewals]);
 
+  // ---- State ----
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'urgent' | 'auto-renew' | 'action-needed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [view, setView] = useState<'list' | 'calendar' | 'timeline'>('list');
-  
-  // Approval modal state
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [renewalForApproval, setRenewalForApproval] = useState<RenewalContract | null>(null);
   const [initiateModalOpen, setInitiateModalOpen] = useState(false);
   const [selectedRenewalForInitiate, setSelectedRenewalForInitiate] = useState<RenewalContract | null>(null);
-  
+  const [sendingReminders, setSendingReminders] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
+
+  // ---- Derived / memoised values (must precede callbacks that reference them) ----
+  const selectedRenewal = renewals.find(r => r.id === selectedId);
+
+  const filteredRenewals = useMemo(() => {
+    return renewals.filter(r => {
+      if (filter === 'urgent' && r.daysUntilRenewal > 30) return false;
+      if (filter === 'auto-renew' && !r.autoRenewal) return false;
+      if (filter === 'action-needed' && r.status !== 'urgent' && r.status !== 'pending-review' && r.priority !== 'critical' && r.priority !== 'high') return false;
+      if (searchQuery && !r.contractName.toLowerCase().includes(searchQuery.toLowerCase()) && 
+          !r.supplierName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      return true;
+    }).sort((a, b) => a.daysUntilRenewal - b.daysUntilRenewal);
+  }, [renewals, filter, searchQuery]);
+
+  const stats = useMemo(() => {
+    const totalValue = renewals.reduce((sum, r) => sum + r.currentValue, 0);
+    const potentialSavings = renewals.reduce((sum, r) => sum + (r.savings?.potential || 0), 0);
+    return {
+      total: renewals.length,
+      urgent: renewals.filter(r => r.daysUntilRenewal <= 30).length,
+      autoRenewal: renewals.filter(r => r.autoRenewal).length,
+      totalValue,
+      potentialSavings,
+      atRisk: renewals.filter(r => r.recommendation === 'terminate' || r.recommendation === 'renegotiate').length,
+    };
+  }, [renewals]);
+
+  const renewalsByMonth = useMemo(() => {
+    const grouped: Record<string, RenewalContract[]> = {};
+    filteredRenewals.forEach(r => {
+      const month = new Date(r.renewalDate).toLocaleString('default', { month: 'long', year: 'numeric' });
+      if (!grouped[month]) grouped[month] = [];
+      grouped[month].push(r);
+    });
+    return grouped;
+  }, [filteredRenewals]);
+
+  // ---- Handlers ----
   const handleSubmitForApproval = (renewal: RenewalContract) => {
     setRenewalForApproval(renewal);
     setApprovalModalOpen(true);
   };
   
   const handleInitiateRenewal = () => {
-    // If a specific renewal is selected, use that; otherwise, show picker
     if (selectedRenewal) {
       setSelectedRenewalForInitiate(selectedRenewal);
       setInitiateModalOpen(true);
     } else if (filteredRenewals.length > 0) {
-      // Auto-select the most urgent renewal
       const mostUrgent = filteredRenewals[0];
       if (mostUrgent) {
         setSelectedRenewalForInitiate(mostUrgent);
@@ -433,14 +471,12 @@ export const RenewalManager: React.FC = () => {
         toast.error('Failed to initiate renewal', { description: json.error?.message || 'Please try again' });
         return;
       }
-      // Invalidate caches to refetch updated data
       crossModule.onRenewalChange(selectedRenewalForInitiate.contractId);
       
       toast.success('Renewal initiated', {
         description: `${selectedRenewalForInitiate.contractName} renewal process started`,
       });
       
-      // Automatically open approval modal after initiating
       setInitiateModalOpen(false);
       setRenewalForApproval(selectedRenewalForInitiate);
       setApprovalModalOpen(true);
@@ -452,7 +488,6 @@ export const RenewalManager: React.FC = () => {
   
   const handleApprovalSubmit = () => {
     if (renewalForApproval) {
-      // Invalidate approvals and related caches — server persists the change
       crossModule.onRenewalChange(renewalForApproval.contractId);
       
       toast.success('Renewal submitted for approval', {
@@ -463,7 +498,6 @@ export const RenewalManager: React.FC = () => {
     setRenewalForApproval(null);
   };
 
-  // === Export renewals as CSV ===
   const handleExport = useCallback(() => {
     if (filteredRenewals.length === 0) {
       toast.error('Nothing to export', { description: 'No renewals match the current filters' });
@@ -494,8 +528,6 @@ export const RenewalManager: React.FC = () => {
     toast.success('Export complete', { description: `${filteredRenewals.length} renewals exported to CSV` });
   }, [filteredRenewals]);
 
-  // === Send reminders for urgent renewals ===
-  const [sendingReminders, setSendingReminders] = useState(false);
   const handleSendReminders = useCallback(async () => {
     const urgent = filteredRenewals.filter(r => r.daysUntilRenewal <= 30 && r.daysUntilRenewal >= 0 && r.status !== 'completed');
     if (urgent.length === 0) {
@@ -505,7 +537,6 @@ export const RenewalManager: React.FC = () => {
     setSendingReminders(true);
     try {
       const tenantId = getTenantId();
-      // Send notice for each urgent renewal
       const results = await Promise.allSettled(
         urgent.map(r =>
           fetch('/api/renewals', {
@@ -525,9 +556,6 @@ export const RenewalManager: React.FC = () => {
     }
   }, [filteredRenewals, crossModule]);
 
-  // === Bulk actions (multi-select) ===
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkMenuOpen, setBulkMenuOpen] = useState(false);
   const toggleBulkSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -536,6 +564,7 @@ export const RenewalManager: React.FC = () => {
       return next;
     });
   }, []);
+
   const handleBulkAction = useCallback(async (action: 'initiate' | 'toggle-auto-renewal' | 'complete') => {
     if (selectedIds.size === 0) {
       toast.error('No renewals selected');
@@ -560,45 +589,6 @@ export const RenewalManager: React.FC = () => {
     const labels: Record<string, string> = { initiate: 'initiated', 'toggle-auto-renewal': 'toggled auto-renewal', complete: 'completed' };
     toast.success(`Bulk action complete`, { description: `${succeeded} renewals ${labels[action] || action}` });
   }, [selectedIds, renewals, crossModule]);
-
-  // Fetch renewals from API via React Query (useRenewals hook above)
-
-  const selectedRenewal = renewals.find(r => r.id === selectedId);
-
-  const filteredRenewals = useMemo(() => {
-    return renewals.filter(r => {
-      if (filter === 'urgent' && r.daysUntilRenewal > 30) return false;
-      if (filter === 'auto-renew' && !r.autoRenewal) return false;
-      if (filter === 'action-needed' && r.status !== 'urgent' && r.status !== 'pending-review' && r.priority !== 'critical' && r.priority !== 'high') return false;
-      if (searchQuery && !r.contractName.toLowerCase().includes(searchQuery.toLowerCase()) && 
-          !r.supplierName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      return true;
-    }).sort((a, b) => a.daysUntilRenewal - b.daysUntilRenewal);
-  }, [renewals, filter, searchQuery]);
-
-  const stats = useMemo(() => {
-    const totalValue = renewals.reduce((sum, r) => sum + r.currentValue, 0);
-    const potentialSavings = renewals.reduce((sum, r) => sum + (r.savings?.potential || 0), 0);
-    return {
-      total: renewals.length,
-      urgent: renewals.filter(r => r.daysUntilRenewal <= 30).length,
-      autoRenewal: renewals.filter(r => r.autoRenewal).length,
-      totalValue,
-      potentialSavings,
-      atRisk: renewals.filter(r => r.recommendation === 'terminate' || r.recommendation === 'renegotiate').length,
-    };
-  }, [renewals]);
-
-  // Group by month for timeline
-  const renewalsByMonth = useMemo(() => {
-    const grouped: Record<string, RenewalContract[]> = {};
-    filteredRenewals.forEach(r => {
-      const month = new Date(r.renewalDate).toLocaleString('default', { month: 'long', year: 'numeric' });
-      if (!grouped[month]) grouped[month] = [];
-      grouped[month].push(r);
-    });
-    return grouped;
-  }, [filteredRenewals]);
 
   if (loading) {
     return (
