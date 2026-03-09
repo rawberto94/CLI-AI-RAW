@@ -122,10 +122,10 @@ const nextConfig = {
   },
 
   experimental: {
-    // Disabled worker threads to prevent build/HMR instability
-    // webpackBuildWorker: true,
-    // parallelServerBuildTraces: true,
-    // parallelServerCompiles: true,
+    // Required for standalone output tracing in monorepo
+    webpackBuildWorker: true,
+    parallelServerBuildTraces: true,
+    parallelServerCompiles: true,
     externalDir: true,
     // Optimized package imports - reduces bundle size significantly
     optimizePackageImports: [
