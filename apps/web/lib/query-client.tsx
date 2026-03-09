@@ -1,6 +1,6 @@
 'use client';
 
-import { QueryClient, QueryClientProvider, type Mutation } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, MutationCache } from '@tanstack/react-query';
 import { useState, useEffect, lazy, Suspense, type ReactNode } from 'react';
 import { setGlobalQueryClient } from './propagation';
 import { getTenantId } from '@/lib/tenant';
@@ -71,17 +71,6 @@ const defaultQueryClientOptions = {
     networkMode: 'online' as const,
     // Optimistic updates should not throw
     throwOnError: false,
-    // Global mutation error handler – show toast for unhandled mutation failures
-    onError: (error: Error, _variables: unknown, _context: unknown, mutation: Mutation) => {
-      // Skip if the mutation already has its own onError handler
-      if (mutation.options.onError) return;
-
-      const message =
-        (error as { status?: number }).status === 401
-          ? 'Session expired — please sign in again'
-          : error.message || 'Something went wrong';
-      toast.error(message);
-    },
   },
 };
 
@@ -94,6 +83,18 @@ let browserQueryClient: QueryClient | undefined;
 function createQueryClient() {
   return new QueryClient({
     defaultOptions: defaultQueryClientOptions,
+    mutationCache: new MutationCache({
+      onError: (error, _variables, _context, mutation) => {
+        // Skip if the individual mutation has its own onError handler
+        if (mutation.options.onError) return;
+
+        const message =
+          (error as { status?: number }).status === 401
+            ? 'Session expired — please sign in again'
+            : error.message || 'Something went wrong';
+        toast.error(message);
+      },
+    }),
   });
 }
 
