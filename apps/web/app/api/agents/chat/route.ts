@@ -15,6 +15,9 @@ import { Prisma } from '@prisma/client';
 import { redis } from '@/lib/redis';
 import { z } from 'zod';
 import pino from 'pino';
+import { agenticChat } from '@/lib/ai/agentic-chat.service';
+import { shouldUseAgent } from '@/lib/ai/agent-integration';
+import { hybridSearch } from '@/lib/rag/advanced-rag.service';
 
 // ── Structured logger ─────────────────────────────────────────────────
 const log = pino({ name: 'agent-chat', level: process.env.LOG_LEVEL ?? 'info' });
@@ -64,6 +67,58 @@ async function withRetry<T>(
     }
   }
   throw lastError!;
+}
+
+// ── AI Enhancement Helper ─────────────────────────────────────────────
+/**
+ * Enhance agent response with GPT reasoning.
+ * Takes raw DB data + user query and produces intelligent, contextual responses.
+ * Falls back to the template response if AI is unavailable.
+ */
+async function enhanceWithAI(
+  agentName: string,
+  agentRole: string,
+  message: string,
+  dbData: any,
+  templateResponse: string,
+): Promise<string> {
+  if (!process.env.OPENAI_API_KEY) return templateResponse;
+
+  try {
+    const OpenAI = (await import('openai')).default;
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    const completion = await withTimeout(
+      openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are ${agentName}, a specialized AI agent in ConTigo (a contract management platform). Your specialty: ${agentRole}.
+
+Analyze the data provided and respond to the user's query with specific, actionable insights.
+Use markdown formatting. Link contracts as [Contract Name](/contracts/CONTRACT_ID).
+Be concise but insightful — provide analysis and recommendations, not just data dumps.
+If the data is empty or limited, acknowledge that and suggest next steps.`,
+          },
+          {
+            role: 'user',
+            content: `User query: "${message}"\n\nAvailable data:\n${JSON.stringify(dbData, null, 2).slice(0, 4000)}`,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 1500,
+      }),
+      null,
+      LLM_TIMEOUT_MS,
+      `${agentName}-enhance`,
+    );
+
+    return completion?.choices[0]?.message?.content || templateResponse;
+  } catch (err) {
+    log.warn({ err, agentName }, 'AI enhancement failed, using template response');
+    return templateResponse;
+  }
 }
 
 // Agent @mention handlers mapping
@@ -346,6 +401,48 @@ async function processWithAgent(
   // Build context-enriched input
   const enrichedContext = await buildEnrichedContext(context, tenantId);
 
+  // ── Intelligence Gate ───────────────────────────────────────────────
+  // Complex multi-step queries bypass individual handlers for full AI reasoning.
+  // The agentic loop has 8 tools (search, details, expiring, spend, risk, compare,
+  // supplier info, clause extraction) and can call them iteratively.
+  const decision = shouldUseAgent(message);
+  if (decision.useAgent && process.env.OPENAI_API_KEY) {
+    const codename = AGENT_CODENAMES[agentId];
+    log.info({ agentId, complexity: decision.complexity, steps: decision.estimatedSteps }, 'Routing to agentic AI reasoning');
+
+    try {
+      const conversationHistory = history.slice(-6).map((h: any) => ({
+        role: (h.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+        content: String(h.content || ''),
+      }));
+
+      const aiResult = await withTimeout(
+        agenticChat(message, tenantId, conversationHistory, {
+          maxIterations: Math.min(decision.estimatedSteps, 5),
+          model: decision.complexity === 'high' ? 'gpt-4o' : undefined,
+        }),
+        null,
+        LLM_TIMEOUT_MS * 2,
+        'agentic-reasoning',
+      );
+
+      if (aiResult) {
+        return {
+          content: `${codename?.avatar || '🤖'} **${codename?.name || 'AI'}** _(deep analysis)_\n\n${aiResult.content}`,
+          data: {
+            toolsUsed: aiResult.toolsUsed,
+            iterations: aiResult.totalIterations,
+            confidence: aiResult.confidence,
+            sources: aiResult.sources,
+          },
+          confidence: aiResult.confidence,
+        };
+      }
+    } catch (err) {
+      log.warn({ err, agentId }, 'Agentic reasoning failed, falling back to handler');
+    }
+  }
+
   // Route to appropriate agent handler
   switch (agentId) {
     case 'intelligent-search-agent':
@@ -408,23 +505,60 @@ async function handleSageQuery(
   context: any,
   tenantId: string
 ): Promise<AgentResponse> {
-  // Sage: Intelligent search across contracts, clauses, and data
-  
-  // Extract search intent
+  // Sage: AI-powered contract intelligence — uses full agentic reasoning loop
+  // with 8 tools (search, details, expiring, spend, risk, compare, supplier, clause)
+
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const conversationHistory = history.slice(-6).map((h: any) => ({
+        role: (h.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+        content: String(h.content || ''),
+      }));
+
+      const aiResult = await withTimeout(
+        agenticChat(message, tenantId, conversationHistory),
+        null,
+        LLM_TIMEOUT_MS * 2,
+        'sage-agentic',
+      );
+
+      if (aiResult) {
+        return {
+          content: aiResult.content,
+          data: {
+            toolsUsed: aiResult.toolsUsed,
+            iterations: aiResult.totalIterations,
+            sources: aiResult.sources,
+          },
+          actions: aiResult.sources?.slice(0, 3).map(s => ({
+            type: 'navigate',
+            label: `View: ${s}`,
+            payload: { path: '/contracts' },
+          })),
+          confidence: aiResult.confidence,
+        };
+      }
+    } catch (err) {
+      log.warn({ err }, 'Sage AI reasoning failed, falling back to search');
+    }
+  }
+
+  // Fallback: use hybrid search (semantic + keyword via RAG) or basic Prisma
   const isQuestion = message.match(/^(what|how|when|where|why|who|is|are|can|does)/i);
   const isSearch = message.match(/\b(find|search|show|list|get|look for)\b/i);
   
   if (isSearch || isQuestion) {
-    // Perform semantic search
     const searchResults = await performContractSearch(message, tenantId, context.contractId);
     
     return {
-      content: `I found ${searchResults.count} relevant results:\n\n${searchResults.summary}`,
+      content: searchResults.count > 0
+        ? `I found **${searchResults.count}** relevant results:\n\n${searchResults.summary}`
+        : `I couldn't find contracts matching "${message}". Try different keywords or ask me a broader question about your portfolio.`,
       data: searchResults.results,
       actions: searchResults.results.slice(0, 3).map((r: any) => ({
         type: 'navigate',
-        label: `View ${r.title || r.contractTitle}`,
-        payload: { contractId: r.id },
+        label: `View ${r.title || r.contractTitle || r.contractName}`,
+        payload: { contractId: r.id || r.contractId },
       })),
       confidence: searchResults.confidence,
     };
@@ -432,7 +566,7 @@ async function handleSageQuery(
 
   // General conversation
   return {
-    content: "I'm Sage, your contract intelligence assistant. I can help you search across contracts, find clauses, analyze terms, and answer questions about your contract portfolio. Try asking me things like:\n\n• \"Find all NDAs expiring this quarter\"\n• \"What's the average contract value for IT services?\"\n• \"Show me contracts with auto-renewal clauses\"",
+    content: "I'm **Sage** 🔮, your AI-powered contract intelligence assistant. I can search, analyze, and reason across your entire contract portfolio.\n\nTry asking me:\n• \"What are our riskiest contracts?\"\n• \"Compare spending across IT vendors\"\n• \"Find contracts with auto-renewal clauses expiring soon\"\n• \"Analyze our supplier concentration risk\"\n\nI use advanced AI reasoning with multiple tools to give you deep insights, not just search results.",
     confidence: 0.95,
   };
 }
@@ -687,8 +821,14 @@ async function handleVigilQuery(
 
   const criticalCount = pendingAlerts.filter(a => a.severity === 'CRITICAL').length;
 
+  const templateContent = `I found ${pendingAlerts.length} compliance items requiring attention${criticalCount > 0 ? `, including ${criticalCount} critical alerts` : ''}:\n\n${pendingAlerts.map(a => `• ${contractMap.get(a.contractId) || 'Contract'}: ${a.riskType}`).join('\n') || 'No pending compliance alerts. Great job staying compliant!'}`;
+
+  const content = pendingAlerts.length > 0
+    ? await enhanceWithAI('Vigil', 'compliance monitoring, regulatory risk detection, and obligation tracking', message, { alerts: pendingAlerts.map(a => ({ ...a, contractTitle: contractMap.get(a.contractId) })), criticalCount }, templateContent)
+    : templateContent;
+
   return {
-    content: `I found ${pendingAlerts.length} compliance items requiring attention${criticalCount > 0 ? `, including ${criticalCount} critical alerts` : ''}:\n\n${pendingAlerts.map(a => `• ${contractMap.get(a.contractId) || 'Contract'}: ${a.riskType}`).join('\n') || 'No pending compliance alerts. Great job staying compliant!'}`,
+    content,
     data: { alerts: pendingAlerts },
     actions: pendingAlerts.length > 0 ? [
       { type: 'navigate', label: 'Review All Alerts', payload: { path: '/contigo-lab?tab=alerts' } },
@@ -721,8 +861,14 @@ async function handleWardenQuery(
   }) : [];
   const riskContractMap = new Map(riskContracts.map(c => [c.id, c.contractTitle]));
 
+  const templateContent = `I've detected ${risks.length} risk items in your portfolio:\n\n${risks.map(r => `• ${riskContractMap.get(r.contractId) || 'Contract'}: ${r.description}`).join('\n') || 'No active risk detections. Your portfolio risk profile looks good.'}`;
+
+  const content = risks.length > 0
+    ? await enhanceWithAI('Warden', 'proactive risk detection, financial/legal/operational risk analysis, and mitigation recommendations', message, { risks: risks.map(r => ({ ...r, contractTitle: riskContractMap.get(r.contractId) })) }, templateContent)
+    : templateContent;
+
   return {
-    content: `I've detected ${risks.length} risk items in your portfolio:\n\n${risks.map(r => `• ${riskContractMap.get(r.contractId) || 'Contract'}: ${r.description}`).join('\n') || 'No active risk detections. Your portfolio risk profile looks good.'}`,
+    content,
     data: { risks },
     actions: risks.length > 0 ? [
       { type: 'navigate', label: 'View Risk Dashboard', payload: { path: '/contigo-lab?tab=risks' } },
@@ -750,11 +896,19 @@ async function handleClockworkQuery(
     take: 5,
   });
 
+  const deadlineData = upcomingDeadlines.map(c => {
+    const days = c.expirationDate ? Math.ceil((c.expirationDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
+    return { id: c.id, title: c.contractTitle, daysRemaining: days, expirationDate: c.expirationDate, status: c.status, value: (c as any).totalValue };
+  });
+
+  const templateContent = `I found ${upcomingDeadlines.length} contracts with upcoming deadlines:\n\n${deadlineData.map(d => `• ${d.title}: ${d.daysRemaining} days remaining`).join('\n') || 'No upcoming deadlines in the next 60 days.'}`;
+
+  const content = upcomingDeadlines.length > 0
+    ? await enhanceWithAI('Clockwork', 'deadline management, expiration tracking, and proactive renewal/action recommendations', message, { deadlines: deadlineData }, templateContent)
+    : templateContent;
+
   return {
-    content: `I found ${upcomingDeadlines.length} contracts with upcoming deadlines:\n\n${upcomingDeadlines.map(c => {
-      const days = c.expirationDate ? Math.ceil((c.expirationDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
-      return `• ${c.contractTitle}: ${days} days remaining`;
-    }).join('\n') || 'No upcoming deadlines in the next 60 days.'}`,
+    content,
     data: { deadlines: upcomingDeadlines },
     actions: upcomingDeadlines.length > 0 ? [
       { type: 'navigate', label: 'View Calendar', payload: { path: '/contigo-lab?tab=calendar' } },
@@ -769,10 +923,58 @@ async function handleProspectorQuery(
   context: any,
   tenantId: string
 ): Promise<AgentResponse> {
-  // Prospector: Opportunity discovery
+  // Prospector: Opportunity discovery — analyze portfolio for hidden value
+
+  const [contracts, opportunities] = await Promise.all([
+    prisma.contract.findMany({
+      where: { tenantId, status: 'ACTIVE' },
+      select: {
+        id: true, contractTitle: true, supplierName: true, totalValue: true,
+        expirationDate: true, contractType: true, categoryL1: true, category: true,
+      },
+      take: 100,
+    }),
+    prisma.opportunityDiscovery.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    }).catch(() => [] as any[]),
+  ]);
+
+  // Consolidation analysis: group by supplier
+  const supplierSpend = new Map<string, { count: number; total: number }>();
+  contracts.forEach(c => {
+    const key = c.supplierName || 'Unknown';
+    const existing = supplierSpend.get(key) || { count: 0, total: 0 };
+    existing.count++;
+    existing.total += Number(c.totalValue || 0);
+    supplierSpend.set(key, existing);
+  });
+
+  const dbData = {
+    activeContracts: contracts.length,
+    supplierBreakdown: Object.fromEntries(
+      [...supplierSpend.entries()].sort((a, b) => b[1].total - a[1].total).slice(0, 10)
+    ),
+    opportunities: opportunities.slice(0, 5),
+    totalPortfolioValue: contracts.reduce((s, c) => s + Number(c.totalValue || 0), 0),
+  };
+
+  const templateContent = `I'm **Prospector**, scanning your portfolio of ${contracts.length} active contracts for hidden opportunities.\n\nTop suppliers by spend:\n${[...supplierSpend.entries()].sort((a, b) => b[1].total - a[1].total).slice(0, 5).map(([name, data]) => `• **${name}**: ${data.count} contracts, $${data.total.toLocaleString()}`).join('\n')}`;
+
+  const content = await enhanceWithAI(
+    'Prospector',
+    'opportunity discovery — finding consolidation opportunities, volume discounts, underutilized contracts, savings potential, and alternative vendors',
+    message, dbData, templateContent,
+  );
+
   return {
-    content: "I'm Prospector, always scanning for hidden opportunities in your contract data. I analyze spending patterns, vendor relationships, and market conditions to find ways to optimize your portfolio.\n\nI can help you:\n• Identify consolidation opportunities\n• Find underutilized contracts\n• Spot volume discount potential\n• Discover alternative vendors\n\nCurrently monitoring your portfolio for new opportunities.",
-    confidence: 0.95,
+    content,
+    data: dbData,
+    actions: [
+      { type: 'navigate', label: 'View Opportunities', payload: { path: '/contigo-lab?tab=opportunities' } },
+    ],
+    confidence: 0.9,
   };
 }
 
@@ -895,12 +1097,31 @@ async function handleConductorQuery(
       categories.set(cat, (categories.get(cat) || 0) + 1);
     });
 
-    return {
-      content: `I'm **Conductor**, analyzing clause relationships in your contract.\n\nFound ${clauses.length} clauses across ${categories.size} categories:\n` +
+    const clauseData = {
+      clauseCount: clauses.length,
+      categories: Object.fromEntries(categories),
+      clauses: clauses.slice(0, 15).map(c => ({
+        id: c.id,
+        title: (c as any).title || (c as any).clauseTitle,
+        category: (c as any).category || 'general',
+        text: (c as any).text?.slice(0, 300) || (c as any).content?.slice(0, 300),
+      })),
+    };
+
+    const templateContent = `I'm **Conductor**, analyzing clause relationships in your contract.\n\nFound ${clauses.length} clauses across ${categories.size} categories:\n` +
         Array.from(categories.entries()).map(([cat, count]) => `• **${cat}**: ${count} clause(s)`).join('\n') +
-        '\n\nI can identify:\n• Conflicting terms across clauses\n• Redundant provisions\n• Missing standard protections\n\nAsk me to "check for conflicts" or "find redundancies".',
+        '\n\nI can identify:\n• Conflicting terms across clauses\n• Redundant provisions\n• Missing standard protections';
+
+    const content = await enhanceWithAI(
+      'Conductor',
+      'clause conflict detection — finding contradictions, redundancies, gaps, and potential legal risks between contract clauses and provisions',
+      message, clauseData, templateContent,
+    );
+
+    return {
+      content,
       data: { clauseCount: clauses.length, categories: Object.fromEntries(categories) },
-      confidence: 0.85,
+      confidence: 0.88,
     };
   }
 
@@ -1147,14 +1368,23 @@ async function handleSynthesizerQuery(
       ? `$${(totalVal / 1_000).toFixed(0)}K`
       : `$${totalVal.toFixed(0)}`;
 
-  return {
-    content: `I'm **Synthesizer**, your data analyst. Here's your portfolio snapshot:\n\n` +
+  const portfolioData = { totalContracts, activeContracts, totalValue: totalVal, formattedValue, expiringContracts };
+
+  const templateContent = `I'm **Synthesizer**, your data analyst. Here's your portfolio snapshot:\n\n` +
       `| Metric | Value |\n|--------|-------|\n` +
       `| Total contracts | **${totalContracts}** |\n` +
       `| Active | **${activeContracts}** |\n` +
       `| Portfolio value | **${formattedValue}** |\n` +
-      `| Expiring (90 days) | **${expiringContracts}** |\n\n` +
-      'I can generate deeper analysis on:\n• **Spend** by vendor, category, or department\n• **Risk** distribution across portfolio\n• **Compliance** health metrics\n• **Trend** analysis over time\n\nAsk me for a specific report!',
+      `| Expiring (90 days) | **${expiringContracts}** |\n`;
+
+  const content = await enhanceWithAI(
+    'Synthesizer',
+    'portfolio data analysis and reporting — generating insights about spend distribution, risk concentration, contract health trends, and actionable recommendations',
+    message, portfolioData, templateContent,
+  );
+
+  return {
+    content,
     data: { totalContracts, activeContracts, totalValue: totalVal, expiringContracts },
     confidence: 0.92,
   };
@@ -1245,15 +1475,58 @@ async function performContractSearch(
   tenantId: string,
   contractId?: string
 ): Promise<{ count: number; summary: string; results: any[]; confidence: number }> {
-  // This would integrate with vector search service
-  // For now, return basic search results
-  
+  // ── Try hybrid search (semantic + keyword via RAG) first ──────────
+  try {
+    if (process.env.OPENAI_API_KEY) {
+      const ragResults = await withTimeout(
+        hybridSearch(query, {
+          mode: 'hybrid',
+          k: 10,
+          minScore: 0.3,
+          filters: {
+            tenantId,
+            ...(contractId ? { contractIds: [contractId] } : {}),
+          },
+          rerank: true,
+          expandQuery: true,
+        }),
+        null,
+        10_000,
+        'hybrid-search',
+      );
+
+      if (ragResults && ragResults.length > 0) {
+        return {
+          count: ragResults.length,
+          summary: ragResults.map(r =>
+            `• **${r.contractName}** (${r.status || 'N/A'}) — relevance: ${(r.score * 100).toFixed(0)}%${r.highlights?.length ? `\n  _"${r.highlights[0]}"_` : ''}`
+          ).join('\n'),
+          results: ragResults.map(r => ({
+            id: r.contractId,
+            contractId: r.contractId,
+            contractName: r.contractName,
+            contractTitle: r.contractName,
+            supplierName: r.supplierName,
+            status: r.status,
+            totalValue: r.totalValue,
+            score: r.score,
+            matchType: r.matchType,
+            text: r.text?.slice(0, 300),
+          })),
+          confidence: Math.max(...ragResults.map(r => r.score)),
+        };
+      }
+    }
+  } catch (err) {
+    log.warn({ err, query }, 'Hybrid search failed, falling back to database search');
+  }
+
+  // ── Fallback: basic Prisma text search ────────────────────────────
   const whereClause: any = { tenantId };
   if (contractId) {
     whereClause.id = contractId;
   }
 
-  // Simple text search on title
   const contracts = await prisma.contract.findMany({
     where: {
       ...whereClause,
@@ -1267,8 +1540,8 @@ async function performContractSearch(
 
   return {
     count: contracts.length,
-    summary: contracts.map(c => `${c.contractTitle} (${c.status})`).join('\n'),
+    summary: contracts.map(c => `• **${c.contractTitle}** (${c.status})`).join('\n'),
     results: contracts,
-    confidence: contracts.length > 0 ? 0.85 : 0.5,
+    confidence: contracts.length > 0 ? 0.75 : 0.3,
   };
 }
