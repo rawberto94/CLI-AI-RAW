@@ -78,8 +78,8 @@ RUN apk add --no-cache libc6-compat openssl openssl-dev
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-# Use 2.5GB heap to leave 1.5GB for OS/Alpine overhead (container has 4GB)
-ENV NODE_OPTIONS="--max-old-space-size=2560"
+# Use 4GB heap for 6GB container (leaves 2GB for OS overhead)
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs
