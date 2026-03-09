@@ -43,9 +43,6 @@ const nextConfig = {
   },
   output: "standalone",
   
-  // Disable X-Powered-By header (security)
-  poweredByHeader: false,
-  
   // External packages that should not be bundled (native modules)
   serverExternalPackages: [
     'ssh2',
@@ -70,7 +67,7 @@ const nextConfig = {
     '@opentelemetry/resources',
     '@opentelemetry/semantic-conventions',
     '@opentelemetry/api',
-    // Archiver and its stream dependencies (native Node.js streams)
+    // Archiver and stream dependencies for batch operations
     'archiver',
     'lazystream',
     'readable-stream',
@@ -112,7 +109,6 @@ const nextConfig = {
 
   // Turbopack configuration (dev only)
   turbopack: {
-    resolveExtensions: ['.tsx', '.ts', '.jsx', '.js', '.json', '.mjs', '.wasm'],
     rules: {
       '*.svg': {
         loaders: ['@svgr/webpack'],
@@ -122,7 +118,7 @@ const nextConfig = {
   },
 
   experimental: {
-    // Required for standalone output tracing in monorepo
+    // Enable for Next.js 15.5+
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
@@ -176,84 +172,86 @@ const nextConfig = {
         ...config.experiments,
         lazyCompilation: false,
       };
+      
+      // Use filesystem cache for better stability
+      config.cache = {
+        type: 'filesystem',
+        buildDependencies: {
+          config: [__filename],
+        },
+        // Add compression to reduce memory usage
+        compression: 'gzip',
+      };
+      
+      // Improve HMR stability with better watch options
+      config.watchOptions = {
+        ...config.watchOptions,
+        poll: false,
+        aggregateTimeout: 300,
+        ignored: ['**/node_modules/**', '**/.git/**', '**/.next/**'],
+      };
+
+      // Improve HMR plugin configuration
+      const existingHotModuleReplacementPlugin = config.plugins.find(
+        (plugin) => plugin.constructor.name === 'HotModuleReplacementPlugin'
+      );
+      
+      if (!existingHotModuleReplacementPlugin) {
+        config.plugins.push(new webpack.HotModuleReplacementPlugin());
+      }
+
+      // Add better error overlay configuration
+      config.devServer = {
+        ...config.devServer,
+        client: {
+          overlay: {
+            errors: true,
+            warnings: false,
+            runtimeErrors: false,
+          },
+          reconnect: 5,
+        },
+      };
     }
 
     // Only apply optimizations in development mode to reduce memory usage
     // Skip for Edge Runtime — it needs its own ESM-compatible chunk format
-    if (nextRuntime !== 'edge') {
-      const isProd = process.env.NODE_ENV === 'production';
-      
-      if (isProd) {
-        // Production-only: aggressive chunk splitting for optimal caching & HTTP/2
-        config.optimization = {
-          ...config.optimization,
-          minimize: true,
-          moduleIds: 'deterministic',
-          usedExports: true,
-          splitChunks: {
-            chunks: 'all',
-            minSize: 20000,
-            maxSize: 244000, // Stay under 250KB for HTTP/2
-            maxInitialRequests: 25,
-            cacheGroups: {
-              default: false,
-              vendors: false,
-              // Core framework — stable, cached long-term
-              framework: {
-                test: /[\\/]node_modules[\\/](react|react-dom|next|scheduler)[\\/]/,
-                name: 'framework',
-                chunks: 'all',
-                priority: 50,
-                enforce: true,
+    if (process.env.NODE_ENV !== 'production' && nextRuntime !== 'edge') {
+      config.optimization = {
+        ...config.optimization,
+        minimize: false,
+        moduleIds: 'deterministic',
+        runtimeChunk: 'single',
+        splitChunks: {
+          chunks: 'all',
+          maxSize: 244000, // Split large chunks
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            commons: {
+              name: 'commons',
+              minChunks: 2,
+              priority: 20,
+              reuseExistingChunk: true,
+            },
+            lib: {
+              test: /[\\/]node_modules[\\/]/,
+              name(module) {
+                const match = module.context?.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
+                if (!match) return 'lib.unknown';
+                const packageName = match[1];
+                return `lib.${packageName.replace('@', '')}`;
               },
-              // UI component libraries
-              ui: {
-                test: /[\\/]node_modules[\\/](@radix-ui|@headlessui|class-variance-authority|clsx)[\\/]/,
-                name: 'ui-vendor',
-                chunks: 'all',
-                priority: 40,
-              },
-              // AI/ML libraries — async loaded
-              ai: {
-                test: /[\\/]node_modules[\\/](langchain|@langchain|openai|anthropic)[\\/]/,
-                name: 'ai-vendor',
-                chunks: 'async',
-                priority: 30,
-              },
-              // Charts and visualization — async loaded
-              viz: {
-                test: /[\\/]node_modules[\\/](recharts|d3|chart\.js)[\\/]/,
-                name: 'viz-vendor',
-                chunks: 'async',
-                priority: 30,
-              },
-              // Common shared code
-              commons: {
-                name: 'commons',
-                minChunks: 2,
-                priority: 20,
-                reuseExistingChunk: true,
-              },
-              // Remaining vendor code
-              lib: {
-                test: /[\\/]node_modules[\\/]/,
-                name(module) {
-                  const match = module.context?.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/);
-                  if (!match) return 'lib.unknown';
-                  const packageName = match[1];
-                  return `lib.${packageName.replace('@', '')}`;
-                },
-                priority: 10,
-                reuseExistingChunk: true,
-              },
+              priority: 10,
             },
           },
-        };
-        
-        // Reduce module resolution overhead
-        config.resolve.symlinks = false;
-      }
-      // Dev mode: let Next.js handle all optimization defaults
+          maxInitialRequests: 25,
+          minSize: 20000,
+        },
+      };
+      
+      // Reduce module resolution overhead
+      config.resolve.symlinks = false;
     }
 
     // Mark problematic packages as external to prevent webpack from bundling them
@@ -429,16 +427,6 @@ const nextConfig = {
       {
         // Cache static assets aggressively
         source: "/static/(.*)",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
-        ],
-      },
-      {
-        // Cache Next.js hashed static assets (JS, CSS, media) — immutable
-        source: "/_next/static/(.*)",
         headers: [
           {
             key: "Cache-Control",
