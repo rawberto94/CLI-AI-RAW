@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import bundleAnalyzer from "@next/bundle-analyzer";
 import createNextIntlPlugin from "next-intl/plugin";
@@ -160,6 +161,20 @@ const nextConfig = {
 
   // Minimal webpack configuration
   webpack: (config, { isServer, dev, webpack, nextRuntime }) => {
+    // Tie webpack persistent cache to the lockfile so that any dependency change
+    // (pnpm install / update) automatically invalidates stale cached modules.
+    // This prevents "Cannot read properties of undefined (reading 'call')" crashes
+    // caused by webpack serving chunks compiled against a different dependency tree.
+    if (config.cache && config.cache.type === 'filesystem') {
+      try {
+        const lockfilePath = path.resolve(__dirname, '..', '..', 'pnpm-lock.yaml');
+        const lockfileMtime = fs.statSync(lockfilePath).mtimeMs;
+        config.cache.version = `${config.cache.version || ''}|lock:${lockfileMtime}`;
+      } catch (_) {
+        // Lockfile read failed — leave cache version unchanged
+      }
+    }
+
     // Avoid noisy warnings for ESM packages that use top-level await (e.g. pdfjs-dist)
     // by declaring async/await support in the target environment.
     config.output.environment = {

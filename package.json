@@ -36,7 +36,8 @@
     "db:generate": "pnpm exec prisma generate --schema packages/clients/db/schema.prisma",
     "db:studio": "pnpm exec prisma studio --schema packages/clients/db/schema.prisma",
     "db:push": "pnpm exec prisma db push --schema packages/clients/db/schema.prisma",
-    "db:seed": "pnpm exec prisma db seed --schema packages/clients/db/schema.prisma"
+    "db:seed": "pnpm exec prisma db seed --schema packages/clients/db/schema.prisma",
+    "postinstall": "rm -rf apps/web/.next/cache/webpack"
   },
   "dependencies": {},
   "devDependencies": {

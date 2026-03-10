@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "NODE_OPTIONS=\"--max-old-space-size=4096 --max-http-header-size=80000\" NEXT_TELEMETRY_DISABLED=1 WATCHPACK_POLLING=false next dev -H 0.0.0.0 -p 3005",
+    "dev:clean": "rm -rf .next && NODE_OPTIONS=\"--max-old-space-size=4096 --max-http-header-size=80000\" NEXT_TELEMETRY_DISABLED=1 WATCHPACK_POLLING=false next dev -H 0.0.0.0 -p 3005",
     "dev:turbo": "NODE_OPTIONS=\"--max-old-space-size=4096 --max-http-header-size=80000\" NEXT_TELEMETRY_DISABLED=1 WATCHPACK_POLLING=false next dev -H 0.0.0.0 -p 3005 --turbo",
     "dev:stable": "NODE_OPTIONS=\"--max-old-space-size=4096 --max-http-header-size=80000\" NEXT_TELEMETRY_DISABLED=1 next dev -H 0.0.0.0 -p 3005",
     "dev:custom": "NODE_OPTIONS=\"--expose-gc --max-old-space-size=4096 --max-http-header-size=80000\" node dev-server.js",
@@ -105,7 +106,7 @@
     "mssql": "^12.2.0",
     "mysql2": "^3.15.3",
     "nanoid": "^5.1.6",
-    "next": "^15.1.4",
+    "next": "15.5.9",
     "next-auth": "5.0.0-beta.30",
     "next-intl": "^4.8.2",
     "next-themes": "^0.4.6",
