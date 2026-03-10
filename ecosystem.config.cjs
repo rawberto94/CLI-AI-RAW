@@ -80,9 +80,6 @@ module.exports = {
       merge_logs: true,
       
       kill_timeout: 30000, // Give workers more time to finish jobs
-      
-      // Cron restart - restart workers daily at 3AM to prevent memory leaks
-      cron_restart: '0 3 * * *'
     },
     
     // === WEBSOCKET SERVER ===

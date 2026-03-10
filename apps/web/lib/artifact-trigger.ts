@@ -14,6 +14,7 @@ import 'server-only';
 
 import { getContractQueue } from '@/lib/queue/contract-queue';
 import { logger } from '@/lib/logger';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Priority levels matching queue configuration
@@ -140,24 +141,16 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
   (async () => {
     try {
       const { generateRealArtifacts } = await import('@/lib/real-artifact-generator');
-      const { PrismaClient } = await import('@prisma/client');
       
-      // Use a separate Prisma client to avoid connection pool contention
-      const workerPrisma = new PrismaClient();
+      const result = await generateRealArtifacts(
+        contractId,
+        tenantId,
+        filePath,
+        mimeType || 'application/octet-stream',
+        prisma
+      );
       
-      try {
-        const result = await generateRealArtifacts(
-          contractId,
-          tenantId,
-          filePath,
-          mimeType || 'application/octet-stream',
-          workerPrisma
-        );
-        
-        logger.info({ contractId, ...result }, 'Inline artifact generation completed');
-      } finally {
-        await workerPrisma.$disconnect();
-      }
+      logger.info({ contractId, ...result }, 'Inline artifact generation completed');
     } catch (err) {
       logger.error({ contractId, error: (err as Error).message }, 'Inline artifact generation failed');
     }
@@ -174,33 +167,27 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
 function scheduleInlineFallback(options: TriggerOptions, delayMs: number) {
   setTimeout(async () => {
     try {
-      const { PrismaClient } = await import('@prisma/client');
-      const checkPrisma = new PrismaClient();
-      try {
-        const contract = await checkPrisma.contract.findUnique({
-          where: { id: options.contractId },
-          select: {
-            status: true,
-            rawText: true,
-            _count: { select: { artifacts: true } },
-          },
-        });
-        // Only process if contract exists, has 0 artifacts, no rawText (BullMQ worker sets this early),
-        // and is still in a non-terminal state. If rawText is set, the BullMQ worker is actively processing.
-        if (
-          contract &&
-          contract._count.artifacts === 0 &&
-          !contract.rawText &&
-          ['PROCESSING', 'QUEUED', 'PENDING'].includes(contract.status)
-        ) {
-          logger.warn(
-            { contractId: options.contractId },
-            'No artifacts after queue delay — triggering inline fallback processing'
-          );
-          await triggerLegacyProcessing(options);
-        }
-      } finally {
-        await checkPrisma.$disconnect();
+      const contract = await prisma.contract.findUnique({
+        where: { id: options.contractId },
+        select: {
+          status: true,
+          rawText: true,
+          _count: { select: { artifacts: true } },
+        },
+      });
+      // Only process if contract exists, has 0 artifacts, no rawText (BullMQ worker sets this early),
+      // and is still in a non-terminal state. If rawText is set, the BullMQ worker is actively processing.
+      if (
+        contract &&
+        contract._count.artifacts === 0 &&
+        !contract.rawText &&
+        ['PROCESSING', 'QUEUED', 'PENDING'].includes(contract.status)
+      ) {
+        logger.warn(
+          { contractId: options.contractId },
+          'No artifacts after queue delay — triggering inline fallback processing'
+        );
+        await triggerLegacyProcessing(options);
       }
     } catch (err) {
       logger.error(

@@ -3282,7 +3282,7 @@ export async function processOCRArtifactJob(
         missingMandatoryFields: missingFields.length,
       }, 'ContractMetadata populated with AI insights');
     } catch (metadataPopulateError) {
-      jobLogger.warn({ error: metadataPopulateError }, 'Failed to populate ContractMetadata, continuing');
+      jobLogger.error({ error: metadataPopulateError }, 'CRITICAL: Failed to populate ContractMetadata — AI insights may be missing for this contract');
     }
 
     // Clean up temp file if we created one
@@ -3306,7 +3306,7 @@ export async function processOCRArtifactJob(
           { contractId, tenantId, artifactIds: [], traceId: trace.traceId } as any,
           {
             priority: 15,
-            delay: 100, // Minimal delay - transaction is committed
+            delay: 3000, // Allow 3s for DB transaction to fully commit before RAG worker reads
             jobId: `rag-${contractId}`,
           }
         );
@@ -3626,7 +3626,7 @@ async function callOpenAIForArtifact(
         max_tokens: currentModel === 'gpt-4o-mini' ? 4096 : 8192,
         temperature: 0.2,
         response_format: { type: 'json_object' }
-      });
+      }, { signal: AbortSignal.timeout(90_000) });
 
       const content = response.choices[0]?.message?.content;
       if (!content) {

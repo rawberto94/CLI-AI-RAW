@@ -338,13 +338,10 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
     
     await job.updateProgress(85);
     
-    // Store in database
-    jobLogger.info('Storing embeddings in database');
+    // Store in database — atomic delete+reinsert inside a transaction
+    // to prevent zero-embedding window if worker crashes mid-reindex
+    jobLogger.info('Storing embeddings in database (atomic transaction)');
     
-    // Delete existing embeddings
-    await prisma.contractEmbedding.deleteMany({ where: { contractId } });
-    
-    // Prepare batch insert using raw SQL for vector type
     const { toSql } = await import('pgvector/utils');
     
     const records = chunks.map((chunk, i) => ({
@@ -356,28 +353,33 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
       section: chunk.metadata.section || null,
     }));
     
-    // Insert in batches to avoid parameter limits
-    const INSERT_BATCH = 50;
-    for (let i = 0; i < records.length; i += INSERT_BATCH) {
-      const batch = records.slice(i, i + INSERT_BATCH);
+    await prisma.$transaction(async (tx) => {
+      // Delete existing embeddings
+      await tx.contractEmbedding.deleteMany({ where: { contractId } });
       
-      // Build fully-parameterized values list (no string interpolation)
-      const paramParts: string[] = [];
-      const params: unknown[] = [];
-      for (let idx = 0; idx < batch.length; idx++) {
-        const offset = idx * 6;
-        paramParts.push(
-          `(gen_random_uuid(), $${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}::vector, $${offset + 5}, $${offset + 6}, NOW(), NOW())`
+      // Insert in batches to avoid parameter limits
+      const INSERT_BATCH = 50;
+      for (let i = 0; i < records.length; i += INSERT_BATCH) {
+        const batch = records.slice(i, i + INSERT_BATCH);
+        
+        // Build fully-parameterized values list (no string interpolation)
+        const paramParts: string[] = [];
+        const params: unknown[] = [];
+        for (let idx = 0; idx < batch.length; idx++) {
+          const offset = idx * 6;
+          paramParts.push(
+            `(gen_random_uuid(), $${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}::vector, $${offset + 5}, $${offset + 6}, NOW(), NOW())`
+          );
+          const r = batch[idx]!;
+          params.push(r.contractId, r.chunkIndex, r.chunkText, r.embedding, r.chunkType, r.section ?? null);
+        }
+        
+        await tx.$executeRawUnsafe(
+          `INSERT INTO "ContractEmbedding" ("id", "contractId", "chunkIndex", "chunkText", "embedding", "chunkType", "section", "createdAt", "updatedAt") VALUES ${paramParts.join(', ')}`,
+          ...params,
         );
-        const r = batch[idx]!;
-        params.push(r.contractId, r.chunkIndex, r.chunkText, r.embedding, r.chunkType, r.section ?? null);
       }
-      
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO "ContractEmbedding" ("id", "contractId", "chunkIndex", "chunkText", "embedding", "chunkType", "section", "createdAt", "updatedAt") VALUES ${paramParts.join(', ')}`,
-        ...params,
-      );
-    }
+    }, { timeout: 60000 });
     
     await job.updateProgress(95);
     
@@ -477,21 +479,22 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
           if (fallbackChunks.length > 0) {
             jobLogger.info({ chunkCount: fallbackChunks.length }, 'Storing chunks WITHOUT embeddings for BM25 keyword search fallback');
             
-            // Delete existing embeddings
-            await prisma.contractEmbedding.deleteMany({ where: { contractId } });
-            
-            // Insert chunks without vector embeddings (embedding column is nullable)
-            for (const chunk of fallbackChunks) {
-              await prisma.contractEmbedding.create({
-                data: {
-                  contractId,
-                  chunkIndex: chunk.index,
-                  chunkText: chunk.text,
-                  chunkType: chunk.metadata.chunkType,
-                  section: chunk.metadata.section || null,
-                },
-              });
-            }
+            // Atomic delete+reinsert for fallback path too
+            await prisma.$transaction(async (tx) => {
+              await tx.contractEmbedding.deleteMany({ where: { contractId } });
+              
+              for (const chunk of fallbackChunks) {
+                await tx.contractEmbedding.create({
+                  data: {
+                    contractId,
+                    chunkIndex: chunk.index,
+                    chunkText: chunk.text,
+                    chunkType: chunk.metadata.chunkType,
+                    section: chunk.metadata.section || null,
+                  },
+                });
+              }
+            }, { timeout: 30000 });
             
             // Mark as partially indexed (chunks stored, no vectors)
             await prisma.contractMetadata.upsert({

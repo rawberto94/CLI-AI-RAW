@@ -202,6 +202,44 @@ function validateFileType(file: File): FileValidationResult {
 }
 
 /**
+ * Magic-bytes map: extension → expected file header bytes.
+ * Prevents renamed executables / mismatched files from being accepted.
+ */
+const MAGIC_BYTES: Record<string, { offset: number; bytes: number[] }[]> = {
+  '.pdf':  [{ offset: 0, bytes: [0x25, 0x50, 0x44, 0x46] }],           // %PDF
+  '.docx': [{ offset: 0, bytes: [0x50, 0x4B, 0x03, 0x04] }],           // PK (ZIP)
+  '.xlsx': [{ offset: 0, bytes: [0x50, 0x4B, 0x03, 0x04] }],           // PK (ZIP)
+  '.pptx': [{ offset: 0, bytes: [0x50, 0x4B, 0x03, 0x04] }],           // PK (ZIP)
+  '.png':  [{ offset: 0, bytes: [0x89, 0x50, 0x4E, 0x47] }],           // .PNG
+  '.jpg':  [{ offset: 0, bytes: [0xFF, 0xD8, 0xFF] }],                  // JPEG SOI
+  '.jpeg': [{ offset: 0, bytes: [0xFF, 0xD8, 0xFF] }],                  // JPEG SOI
+  '.tif':  [{ offset: 0, bytes: [0x49, 0x49] }, { offset: 0, bytes: [0x4D, 0x4D] }], // TIFF LE or BE
+  '.tiff': [{ offset: 0, bytes: [0x49, 0x49] }, { offset: 0, bytes: [0x4D, 0x4D] }],
+};
+
+/**
+ * Validate file content against magic bytes to prevent extension spoofing.
+ * Returns valid:true for extensions without a signature rule (e.g. .txt, .csv).
+ */
+function validateMagicBytes(buffer: Buffer, extension: string): FileValidationResult {
+  const rules = MAGIC_BYTES[extension];
+  if (!rules || rules.length === 0) return { valid: true };
+
+  const matches = rules.some(rule =>
+    rule.bytes.every((b, i) => buffer[rule.offset + i] === b)
+  );
+
+  if (!matches) {
+    return {
+      valid: false,
+      error: 'File content mismatch',
+      details: `File content does not match expected format for ${extension}. The file may have been renamed.`,
+    };
+  }
+  return { valid: true };
+}
+
+/**
  * Validate file size
  */
 function validateFileSize(file: File): FileValidationResult {
@@ -358,6 +396,15 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
   
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
+
+  // Validate file content matches claimed extension (magic bytes check)
+  const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+  const magicValidation = validateMagicBytes(buffer, fileExtension);
+  if (!magicValidation.valid) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', magicValidation.error || 'File content mismatch', 400, {
+      details: magicValidation.details,
+    });
+  }
 
   // Virus/malware scan before processing
   const scanResult = await scanBuffer(buffer, file.name);
