@@ -829,6 +829,12 @@ export function registerArtifactGeneratorWorker() {
     {
       concurrency,
       limiter,
+      lockDuration: 240_000,    // 4 min — artifact generation is AI-heavy
+      lockRenewTime: 60_000,
+      stalledInterval: 60_000,
+      maxStalledCount: 2,
+      removeOnComplete: { age: 86400, count: 500 },
+      removeOnFail: { age: 604800, count: 1000 },
     }
   );
 

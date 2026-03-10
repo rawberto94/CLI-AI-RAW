@@ -103,11 +103,24 @@ async function startWorkers() {
 
   try {
     // Initialize queue service
-    const redisConfig = {
+    const SHUTDOWN_TIMEOUT_MS = parseInt(process.env.SHUTDOWN_TIMEOUT_MS || '15000', 10);
+    const redisConfig: Record<string, any> = {
       host: process.env.REDIS_HOST,
       port: parseInt(process.env.REDIS_PORT || '6379'),
       password: process.env.REDIS_PASSWORD,
       maxRetriesPerRequest: null, // Required for BullMQ
+      enableReadyCheck: true,
+      keepAlive: 30_000,           // TCP keepalive every 30s — detects dead connections
+      connectTimeout: 10_000,      // Fail fast on initial connect
+      retryStrategy: (times: number) => {
+        if (times > 20) return null; // Give up after 20 retries (~60s)
+        return Math.min(times * 200, 5_000); // Exponential cap at 5s
+      },
+      reconnectOnError: (err: Error) => {
+        const targetErrors = ['READONLY', 'ECONNRESET', 'ETIMEDOUT'];
+        return targetErrors.some(e => err.message.includes(e));
+      },
+      ...(process.env.REDIS_TLS === 'true' && { tls: {} }),
     };
 
     logger.info({ redis: redisConfig.host }, 'Connecting to Redis...');
@@ -332,8 +345,18 @@ async function startWorkers() {
     }, 'Active workers');
 
     // Graceful shutdown
+    let isShuttingDown = false;
     const shutdown = async (signal: string) => {
-      logger.info({ signal }, 'Received shutdown signal, closing workers...');
+      if (isShuttingDown) return; // Prevent double shutdown
+      isShuttingDown = true;
+      logger.info({ signal }, 'Received shutdown signal, draining workers...');
+
+      // Force-exit safety net: if graceful drain takes too long, exit anyway
+      const forceTimer = setTimeout(() => {
+        logger.error('Graceful shutdown timed out — forcing exit');
+        process.exit(1);
+      }, SHUTDOWN_TIMEOUT_MS);
+      forceTimer.unref();
 
       // Stop background handlers
       clearInterval(staleRecoveryInterval);
@@ -375,11 +398,22 @@ async function startWorkers() {
       }
 
       logger.info('✅ Workers shutdown complete');
+      clearTimeout(forceTimer);
       process.exit(0);
     };
 
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
+
+    // Catch unhandled errors so one bad job doesn't kill the whole process
+    process.on('uncaughtException', (err) => {
+      logger.error({ error: err }, '⚠️ Uncaught exception — workers will continue');
+      // Don't exit: BullMQ handles per-job failures. Only truly fatal errors
+      // (e.g. OOM) should kill the process, and those bypass this handler anyway.
+    });
+    process.on('unhandledRejection', (reason) => {
+      logger.error({ reason }, '⚠️ Unhandled rejection — workers will continue');
+    });
 
     logger.info('✅ Workers started successfully and ready to process jobs');
   } catch (error) {

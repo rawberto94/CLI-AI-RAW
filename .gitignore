@@ -70,6 +70,16 @@ ARTIFACT_*.md
 package-lock.json
 yarn.lock
 
+# Archives and build snapshots
+source.tar
+*.tar
+build-context/
+
+# Temporary files
+tmp/
+nohup.out
+*.deb
+
 # Misc
 .turbo
 .vercel

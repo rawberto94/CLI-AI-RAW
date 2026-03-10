@@ -336,7 +336,14 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     logger.warn({ tenantId, error: quotaError }, 'Failed to check tenant quota, allowing upload');
   }
 
-  const formData = await request.formData();
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid request format', 400, {
+      details: 'Request must be multipart/form-data with a file field',
+    });
+  }
   const file = formData.get("file") as File;
 
   if (!file) {

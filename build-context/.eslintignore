@@ -1,9 +1,0 @@
-.next
-dist
-node_modules
-.turbo
-test-results
-tmp
-coverage
-**/*.d.ts
-**/next-env.d.ts

@@ -1,1 +1,0 @@
-export { TeamCollaboration } from './TeamCollaboration';

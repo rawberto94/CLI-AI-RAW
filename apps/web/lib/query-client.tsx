@@ -6,9 +6,10 @@ import { setGlobalQueryClient } from './propagation';
 import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner';
 
-// Lazy load devtools to reduce initial memory footprint
+// Lazy load devtools to reduce initial memory footprint — catch import errors gracefully
 const ReactQueryDevtools = lazy(() =>
   import('@tanstack/react-query-devtools').then(mod => ({ default: mod.ReactQueryDevtools }))
+    .catch(() => ({ default: () => null }))
 );
 
 // =====================

@@ -41,6 +41,8 @@ const nextConfig = {
     // Type checking done via turbo task
     ignoreBuildErrors: true,
   },
+  // Disable dev-mode devtools overlay to prevent segment-explorer context errors
+  devIndicators: false,
   output: "standalone",
   
   // External packages that should not be bundled (native modules)

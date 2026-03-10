@@ -29,6 +29,13 @@ export interface WorkerOptions {
   connection?: ConnectionOptions;
   concurrency?: number;
   limiter?: { max: number; duration: number };
+  lockDuration?: number;
+  lockRenewTime?: number;
+  stalledInterval?: number;
+  maxStalledCount?: number;
+  drainDelay?: number;
+  removeOnComplete?: boolean | number | { count?: number; age?: number };
+  removeOnFail?: boolean | number | { count?: number; age?: number };
 }
 
 // Runtime imports
@@ -195,10 +202,10 @@ export class QueueService {
           attempts: 3,
           backoff: {
             type: 'exponential',
-            delay: 1000,
+            delay: 2000,
           },
-          removeOnComplete: 100, // Keep last 100 completed jobs
-          removeOnFail: 500, // Keep last 500 failed jobs
+          removeOnComplete: { age: 86400, count: 500 }, // 24h or 500 jobs
+          removeOnFail: { age: 604800, count: 1000 },   // 7d or 1000 jobs
         },
       }) as QueueType<T>;
 
@@ -265,6 +272,12 @@ export class QueueService {
         max: number;
         duration: number;
       };
+      lockDuration?: number;
+      lockRenewTime?: number;
+      stalledInterval?: number;
+      maxStalledCount?: number;
+      removeOnComplete?: boolean | number | { count?: number; age?: number };
+      removeOnFail?: boolean | number | { count?: number; age?: number };
     }
   ): WorkerType {
     if (this.workers.has(queueName)) {
@@ -316,6 +329,13 @@ export class QueueService {
         connection: this.connection,
         concurrency: options?.concurrency || 5,
         limiter: options?.limiter,
+        // Lock & stall hardening — prevents jobs from getting permanently stuck
+        lockDuration: options?.lockDuration ?? 120_000,       // 2 min (default 30s too low for AI/OCR)
+        lockRenewTime: options?.lockRenewTime ?? 30_000,      // renew lock every 30s (half of lockDuration)
+        stalledInterval: options?.stalledInterval ?? 30_000,   // check for stalled jobs every 30s
+        maxStalledCount: options?.maxStalledCount ?? 2,        // allow 2 stalls before failing (default: 1)
+        ...(options?.removeOnComplete !== undefined && { removeOnComplete: options.removeOnComplete }),
+        ...(options?.removeOnFail !== undefined && { removeOnFail: options.removeOnFail }),
       }
     );
 
@@ -344,7 +364,18 @@ export class QueueService {
     });
 
     worker.on('error', (error: Error) => {
-      logger.error({ queueName, error }, 'Worker error');
+      // Only log as error if it's not a transient connection issue
+      const msg = error?.message || String(error);
+      if (msg.includes('ECONNREFUSED') || msg.includes('ECONNRESET') || msg.includes('ETIMEDOUT')) {
+        logger.warn({ queueName, error: msg }, 'Worker connection issue (transient)');
+      } else {
+        logger.error({ queueName, error: msg }, 'Worker error');
+      }
+    });
+
+    // Log stalled jobs for visibility (BullMQ emits this before auto-retry)
+    worker.on('stalled', (jobId: string) => {
+      logger.warn({ queueName, jobId }, 'Job stalled — BullMQ will auto-retry if maxStalledCount not exceeded');
     });
 
     this.workers.set(queueName, worker as WorkerType);

@@ -3886,6 +3886,13 @@ export function registerOCRArtifactWorker() {
         max: maxJobsPerMinute,
         duration: 60000, // Rate limit per minute
       },
+      // OCR + AI artifact generation can take 2–5 min per contract
+      lockDuration: 300_000,    // 5 min lock (prevents premature stall detection)
+      lockRenewTime: 60_000,    // renew every 60s while still processing
+      stalledInterval: 60_000,  // check stalls every 60s
+      maxStalledCount: 2,       // 2 stalls before failing (covers transient pauses)
+      removeOnComplete: { age: 86400, count: 1000 },  // keep 24h / 1k completed
+      removeOnFail: { age: 604800, count: 5000 },      // keep 7d / 5k failed
     }
   );
 

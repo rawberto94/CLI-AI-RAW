@@ -333,7 +333,7 @@ export class AutonomousDeadlineManager extends BaseAgent {
       const activeJobs = await prisma.processingJob.count({
         where: {
           tenantId: contract.tenantId,
-          status: { in: ['PENDING', 'PROCESSING'] },
+          status: { in: ['PENDING', 'QUEUED', 'RUNNING'] },
         },
       });
 

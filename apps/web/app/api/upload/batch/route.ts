@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server'
-import { API_BASE_URL } from "@/lib/config"
 import { getErrorMessage, isUploadedFile } from "@/lib/types/common"
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware'
 import { uploadRequestSchema } from 'schemas'
@@ -67,6 +66,9 @@ export async function POST(req: NextRequest) {
 
     const results: Array<{ name: string; error?: string; docId?: string; status: string }> = []
     
+    // Build absolute URL for server-side fetch to the single upload endpoint
+    const origin = new URL(req.url).origin
+    
     // Process files sequentially using the working single upload endpoint
     for (const item of items) {
       try {
@@ -76,10 +78,18 @@ export async function POST(req: NextRequest) {
         const controller = new AbortController()
         const timer = setTimeout(() => controller.abort(), 60_000) // 60s timeout per file
         
-        const resp = await fetch(`${API_BASE_URL}/uploads`, {
+        // Forward auth cookies and CSRF token for internal request
+        const cookieHeader = req.headers.get('cookie') || ''
+        const csrfToken = req.headers.get('x-csrf-token') || ''
+        
+        const resp = await fetch(`${origin}/api/contracts/upload`, {
           method: "POST",
           body: uploadFormData,
-          headers: tenant ? { 'x-tenant-id': tenant } : {},
+          headers: {
+            ...(tenant ? { 'x-tenant-id': tenant } : {}),
+            ...(cookieHeader ? { 'cookie': cookieHeader } : {}),
+            ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+          },
           signal: controller.signal,
         })
         

@@ -675,6 +675,10 @@ export function registerAgentOrchestratorWorker() {
     {
       concurrency,
       limiter,
+      lockDuration: 180_000,    // 3 min — agent ticks involve multiple AI calls
+      lockRenewTime: 45_000,
+      stalledInterval: 45_000,
+      maxStalledCount: 2,
     }
   );
 

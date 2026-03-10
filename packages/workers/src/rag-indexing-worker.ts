@@ -590,8 +590,10 @@ export function registerRAGIndexingWorker() {
     {
       concurrency,
       limiter,
-      // Note: BullMQ settings like maxStalledCount and stalledInterval are configured
-      // at the BullMQ Worker level, not through our queue-service wrapper
+      lockDuration: 180_000,    // 3 min — embedding generation can be slow
+      lockRenewTime: 45_000,
+      stalledInterval: 45_000,
+      maxStalledCount: 2,
     }
   );
   

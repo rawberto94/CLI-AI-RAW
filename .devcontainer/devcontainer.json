@@ -33,21 +33,25 @@
     }
   },
 
-  "forwardPorts": [3005, 5432, 6379, 9324],
+  "forwardPorts": [3005, 5432, 6379, 7474, 7687, 9000, 9001],
   "portsAttributes": {
     "3005": { "label": "App", "onAutoForward": "openBrowser" },
     "5432": { "label": "Postgres" },
     "6379": { "label": "Redis" },
-    "9324": { "label": "Tests" }
+    "7474": { "label": "Neo4j Browser" },
+    "7687": { "label": "Neo4j Bolt" },
+    "9000": { "label": "MinIO API" },
+    "9001": { "label": "MinIO Console" }
   },
 
   "remoteEnv": {
     "PNPM_HOME": "/home/node/.local/share/pnpm",
-    "PATH": "/home/node/.local/share/pnpm:$PATH"
+    "PATH": "/home/node/.local/share/pnpm:$PATH",
+    "NODE_OPTIONS": "--max-old-space-size=4096"
   },
 
   "postCreateCommand": "corepack enable && pnpm --version && pnpm install --frozen-lockfile",
-  "postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} || true",
+  "postStartCommand": "bash scripts/codespace-startup.sh",
 
   "remoteUser": "node",
   "updateRemoteUserUID": true
