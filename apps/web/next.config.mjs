@@ -251,28 +251,8 @@ const nextConfig = {
       },
     });
     
-    // Pin React to the single root React 19 instance to prevent the word-addin's
-    // React 18 (hoisted by pnpm shamefully-hoist) from leaking into client bundles.
-    // Without this, mixed React versions cause "Cannot read properties of undefined
-    // (reading 'call')" crashes in the JSX runtime.
-    // Applied CLIENT-SIDE ONLY — SSR uses Next.js's internally bundled React.
-    const reactDir = path.resolve(__dirname, '..', '..', 'node_modules', 'react');
-    const reactDomDir = path.resolve(__dirname, '..', '..', 'node_modules', 'react-dom');
-    const schedulerDir = path.resolve(__dirname, '..', '..', 'node_modules', 'scheduler');
-    const clientReactAliases = !isServer ? {
-      'react': reactDir,
-      'react-dom': reactDomDir,
-      'react/jsx-runtime': path.join(reactDir, 'jsx-runtime.js'),
-      'react/jsx-dev-runtime': path.join(reactDir, 'jsx-dev-runtime.js'),
-      'react-dom/client': path.join(reactDomDir, 'client.js'),
-      'react-dom/server': path.join(reactDomDir, 'server.js'),
-      'react-dom/server.browser': path.join(reactDomDir, 'server.browser.js'),
-      'scheduler': schedulerDir,
-    } : {};
-
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
-      ...clientReactAliases,
       // Fix LangChain 0.3.x compatibility with Zod 3.x
       "zod/v3": "zod",
       "zod/v4/core": "zod",
