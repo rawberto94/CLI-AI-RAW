@@ -66,11 +66,11 @@ export const STREAMING_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: 'function',
     function: {
       name: 'get_contract_details',
-      description: 'Get detailed information about a specific contract by ID or name. Use when the user references a particular contract.',
+      description: 'Get detailed information about a specific contract by ID or name, including payment terms, jurisdiction, and termination clauses. Use when the user references a particular contract.',
       parameters: {
         type: 'object',
         properties: {
-          contractId: { type: 'string', description: 'Exact contract ID (UUID)' },
+          contractId: { type: 'string', description: 'Exact contract ID' },
           contractName: { type: 'string', description: 'Contract name/title to search for' },
           includeArtifacts: { type: 'boolean', description: 'Include extracted artifacts', default: true },
         },
@@ -618,6 +618,10 @@ async function executeGetContractDetails(args: Record<string, unknown>, tenantId
       effectiveDate: contract.effectiveDate,
       expirationDate: contract.expirationDate,
       autoRenewal: contract.autoRenewalEnabled,
+      contractType: contract.contractType,
+      jurisdiction: contract.jurisdiction,
+      paymentTerms: contract.paymentTerms,
+      terminationClause: contract.terminationClause,
       daysUntilExpiry: contract.expirationDate
         ? Math.ceil((new Date(contract.expirationDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
         : null,

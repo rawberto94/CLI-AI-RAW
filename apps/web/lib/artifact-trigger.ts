@@ -82,7 +82,7 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
       
       // Calculate delay based on source and whether it's a reprocess
       // Using 2 seconds to ensure DB transaction is committed before worker picks up the job
-      const delay = isReprocess ? 500 : 2000;
+      const delay = isReprocess ? 200 : 500;
       
       // Queue the contract for processing with priority
       const jobId = await contractQueue.queueContractProcessing(

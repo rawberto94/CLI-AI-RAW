@@ -2066,7 +2066,7 @@ export async function processOCRArtifactJob(
     // Generate artifacts in parallel batches for faster processing (~3x speedup)
     // Priority order preserved within batches; high-priority artifacts complete first.
     // Batch size configurable via ARTIFACT_BATCH_SIZE env var (default: 3 concurrent).
-    const PARALLEL_BATCH_SIZE = parseInt(process.env.ARTIFACT_BATCH_SIZE || '3', 10);
+    const PARALLEL_BATCH_SIZE = parseInt(process.env.ARTIFACT_BATCH_SIZE || '5', 10);
     const generatedArtifactResults: any[] = [];
     let completedCount = 0;
 
@@ -2226,7 +2226,7 @@ export async function processOCRArtifactJob(
           jobLogger.warn({ error, artifactType, attempt }, `Artifact generation attempt ${attempt} failed`);
           
           if (attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+            await new Promise(resolve => setTimeout(resolve, 200 * attempt));
           }
         }
       }
@@ -3306,7 +3306,7 @@ export async function processOCRArtifactJob(
           { contractId, tenantId, artifactIds: [], traceId: trace.traceId } as any,
           {
             priority: 15,
-            delay: 500, // Minimal delay - transaction is committed
+            delay: 100, // Minimal delay - transaction is committed
             jobId: `rag-${contractId}`,
           }
         );
@@ -3337,7 +3337,7 @@ export async function processOCRArtifactJob(
           },
           {
             priority: 20, // Higher priority number = processed later
-            delay: 1000, // Minimal delay
+            delay: 200, // Minimal delay
             jobId: `metadata-${contractId}`,
           }
         );
@@ -3367,7 +3367,7 @@ export async function processOCRArtifactJob(
           },
           {
             priority: 25, // Higher priority number = processed later
-            delay: 1500, // Minimal delay
+            delay: 300, // Minimal delay
             jobId: `categorize-${contractId}`,
           }
         );
@@ -3424,7 +3424,7 @@ export async function processOCRArtifactJob(
         } as any,
         {
           priority: 40,
-          delay: 2000,
+          delay: 500,
           jobId: `agent-${contractId}-0`,
         }
       );
@@ -3512,8 +3512,8 @@ export async function processOCRArtifactJob(
  */
 const AI_RETRY_CONFIG = {
   maxAttempts: 2,
-  baseDelay: 1500,
-  maxDelay: 15000,
+  baseDelay: 800,
+  maxDelay: 8000,
   backoffMultiplier: 2,
   jitter: true,
 };

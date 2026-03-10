@@ -15,7 +15,11 @@ import { z } from 'zod';
 // =============================================================================
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const uuidString = z.string().regex(UUID_REGEX, 'Must be a valid UUID');
+const CUID_REGEX = /^c[a-z0-9]{24,}$/;
+const idString = z.string().refine(
+  (val) => UUID_REGEX.test(val) || CUID_REGEX.test(val),
+  { message: 'Must be a valid UUID or CUID' },
+);
 
 export const ALLOWED_UPDATE_FIELDS = [
   'status', 'totalValue', 'effectiveDate', 'expirationDate',
@@ -34,7 +38,7 @@ export const toolArgSchemas: Record<string, z.ZodType<Record<string, unknown>>> 
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 
   get_contract_details: z.object({
-    contractId: uuidString.optional(),
+    contractId: idString.optional(),
     contractName: z.string().max(500).optional(),
     includeArtifacts: z.boolean().optional(),
   }).passthrough().refine(d => d.contractId || d.contractName, {
@@ -61,24 +65,24 @@ export const toolArgSchemas: Record<string, z.ZodType<Record<string, unknown>>> 
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 
   update_contract: z.object({
-    contractId: uuidString,
+    contractId: idString,
     field: z.enum(ALLOWED_UPDATE_FIELDS),
     value: z.string().min(1).max(1000),
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 
   navigate_to_page: z.object({
     page: z.string().min(1).max(100),
-    contractId: uuidString.optional(),
+    contractId: idString.optional(),
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 
   start_workflow: z.object({
-    contractId: uuidString,
+    contractId: idString,
     workflowType: z.string().max(100).optional(),
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 
   get_workflow_status: z.object({
-    executionId: uuidString.optional(),
-    contractId: uuidString.optional(),
+    executionId: idString.optional(),
+    contractId: idString.optional(),
   }).passthrough().refine(d => d.executionId || d.contractId, {
     message: 'Either executionId or contractId must be provided',
   }) as z.ZodType<Record<string, unknown>>,
@@ -90,26 +94,26 @@ export const toolArgSchemas: Record<string, z.ZodType<Record<string, unknown>>> 
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 
   cancel_workflow: z.object({
-    executionId: uuidString,
+    executionId: idString,
     reason: z.string().max(2000).optional(),
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 
   assign_approver: z.object({
-    executionId: uuidString,
+    executionId: idString,
     assignee: z.string().min(1).max(200),
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 
   escalate_workflow: z.object({
-    executionId: uuidString,
+    executionId: idString,
     reason: z.string().max(2000).optional(),
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 
   suggest_workflow: z.object({
-    contractId: uuidString,
+    contractId: idString,
   }).passthrough() as z.ZodType<Record<string, unknown>>,
 
   approve_or_reject_step: z.object({
-    executionId: uuidString,
+    executionId: idString,
     decision: z.enum(['approve', 'reject']),
     comment: z.string().max(2000).optional(),
   }).passthrough() as z.ZodType<Record<string, unknown>>,
