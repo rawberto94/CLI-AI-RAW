@@ -1650,8 +1650,6 @@ export async function processOCRArtifactJob(
 
   let qualityMetrics: ExtractionQualityMetrics | undefined;
 
-  jobLogger.info({ jobData: job.data }, '🔍 RAW JOB DATA RECEIVED');
-
   jobLogger.info({ filePath }, 'Starting OCR + artifact processing');
 
   // Connect to Redis event bus for real-time updates
@@ -2565,6 +2563,32 @@ export async function processOCRArtifactJob(
           }
         }
         
+        // If we have an effective date but no expiration, try to derive from duration text
+        if (effectiveDate && !expirationDate) {
+          const termText = unwrap(overviewData.termAndTermination) || '';
+          if (typeof termText === 'string') {
+            // Match patterns like "two years", "3 years", "24 months", "six months"
+            const wordToNum: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12, eighteen: 18, twenty: 20 };
+            const yearMatch = termText.match(/(?:for|of|period of)\s+(?:a\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:\(\d+\)\s+)?year/i);
+            const monthMatch = termText.match(/(?:for|of|period of)\s+(?:a\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve|eighteen|twenty)\s+(?:\(\d+\)\s+)?month/i);
+            if (yearMatch) {
+              const num = parseInt(yearMatch[1]!) || wordToNum[yearMatch[1]!.toLowerCase()] || 0;
+              if (num > 0) {
+                const computed = new Date(effectiveDate);
+                computed.setFullYear(computed.getFullYear() + num);
+                expirationDate = computed;
+              }
+            } else if (monthMatch) {
+              const num = parseInt(monthMatch[1]!) || wordToNum[monthMatch[1]!.toLowerCase()] || 0;
+              if (num > 0) {
+                const computed = new Date(effectiveDate);
+                computed.setMonth(computed.getMonth() + num);
+                expirationDate = computed;
+              }
+            }
+          }
+        }
+
         if (effectiveDate) {
           contractUpdate.effectiveDate = effectiveDate;
         }
@@ -2572,7 +2596,7 @@ export async function processOCRArtifactJob(
           contractUpdate.expirationDate = expirationDate;
         }
         
-        // Extract jurisdiction from OVERVIEW
+        // Extract jurisdiction from OVERVIEW (fallback: CLAUSES governing-law clause)
         const jurisdiction = unwrap(overviewData.jurisdiction) || unwrap(overviewData.governingLaw);
         if (jurisdiction && typeof jurisdiction === 'string') {
           contractUpdate.jurisdiction = jurisdiction;
@@ -2811,6 +2835,25 @@ export async function processOCRArtifactJob(
         null,
       contract_end_date: unwrapVal(overviewArtifactData.expirationDate) || 
         resolveFromKeyDates(overviewArtifactData.keyDates, ['expir', 'term end', 'end date', 'termination date'], unwrapVal) ||
+        (() => {
+          // Derive from duration text (e.g., "two years", "24 months") + effective date
+          const effDate = unwrapVal(overviewArtifactData.effectiveDate) ||
+            resolveFromKeyDates(overviewArtifactData.keyDates, ['effective', 'commencement', 'start date'], unwrapVal);
+          if (!effDate) return null;
+          const termText = unwrapVal(overviewArtifactData.termAndTermination) || '';
+          if (typeof termText !== 'string') return null;
+          const wordToNum: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12, eighteen: 18, twenty: 20 };
+          const yearMatch = termText.match(/(?:for|of|period of)\s+(?:a\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:\(\d+\)\s+)?year/i);
+          const monthMatch = termText.match(/(?:for|of|period of)\s+(?:a\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve|eighteen|twenty)\s+(?:\(\d+\)\s+)?month/i);
+          if (yearMatch) {
+            const num = parseInt(yearMatch[1]!) || wordToNum[yearMatch[1]!.toLowerCase()] || 0;
+            if (num > 0) { const d = new Date(effDate); d.setFullYear(d.getFullYear() + num); return d.toISOString(); }
+          } else if (monthMatch) {
+            const num = parseInt(monthMatch[1]!) || wordToNum[monthMatch[1]!.toLowerCase()] || 0;
+            if (num > 0) { const d = new Date(effDate); d.setMonth(d.getMonth() + num); return d.toISOString(); }
+          }
+          return null;
+        })() ||
         null,
       
       // Signature status (from CONTACTS artifact)
@@ -2877,6 +2920,7 @@ export async function processOCRArtifactJob(
           updatedAt: new Date(),
         },
       });
+      
       jobLogger.info({ 
         fieldsPopulated: Object.keys(enterpriseMetadata).filter(k => !k.startsWith('_')).length,
         partiesCount: externalParties.length,
@@ -3018,6 +3062,80 @@ export async function processOCRArtifactJob(
                 },
               });
             }
+          }
+
+          // Re-map gap-filled OVERVIEW/FINANCIAL data to contract record
+          // The initial transaction mapped from the original OVERVIEW, but gap-filling
+          // may have added fields like jurisdiction, totalValue, effectiveDate, etc.
+          const gapFilledContractUpdate: Record<string, any> = {};
+          const gapUnwrap = (val: any) => val?.value !== undefined ? val.value : val;
+          const gapUnwrapDate = (val: any): Date | null => {
+            const v = gapUnwrap(val);
+            if (!v) return null;
+            try { const d = new Date(v); return isNaN(d.getTime()) ? null : d; } catch { return null; }
+          };
+          const gapUnwrapNumber = (val: any): number | null => {
+            const v = gapUnwrap(val);
+            if (typeof v === 'number') return v;
+            if (typeof v === 'string') { const p = parseFloat(v.replace(/[$€£¥,]/g, '').trim()); return isNaN(p) ? null : p; }
+            return null;
+          };
+
+          for (const filled of gapFillingResult.output.filledFields) {
+            if (filled.artifactType === 'OVERVIEW') {
+              switch (filled.field) {
+                case 'effectiveDate': {
+                  const d = gapUnwrapDate(filled.value);
+                  if (d) gapFilledContractUpdate.effectiveDate = d;
+                  break;
+                }
+                case 'expirationDate': {
+                  const d = gapUnwrapDate(filled.value);
+                  if (d) gapFilledContractUpdate.expirationDate = d;
+                  break;
+                }
+                case 'jurisdiction':
+                case 'governingLaw': {
+                  const v = gapUnwrap(filled.value);
+                  if (v && typeof v === 'string') gapFilledContractUpdate.jurisdiction = v;
+                  break;
+                }
+                case 'totalValue': {
+                  const n = gapUnwrapNumber(filled.value);
+                  if (n && n > 0) gapFilledContractUpdate.totalValue = n;
+                  break;
+                }
+                case 'currency': {
+                  const v = gapUnwrap(filled.value);
+                  if (v && typeof v === 'string') gapFilledContractUpdate.currency = v;
+                  break;
+                }
+                case 'termAndTermination': {
+                  const v = gapUnwrap(filled.value);
+                  if (v && typeof v === 'string') {
+                    gapFilledContractUpdate.terminationClause = v;
+                    const noticeMatch = v.match(/(\d+)\s*(?:calendar\s+)?day/i);
+                    const monthMatch = v.match(/(\d+)\s*month/i);
+                    if (noticeMatch) gapFilledContractUpdate.noticePeriodDays = parseInt(noticeMatch[1]!, 10);
+                    else if (monthMatch) gapFilledContractUpdate.noticePeriodDays = parseInt(monthMatch[1]!, 10) * 30;
+                  }
+                  break;
+                }
+              }
+            } else if (filled.artifactType === 'FINANCIAL' && filled.field === 'paymentTerms') {
+              const v = gapUnwrap(filled.value);
+              if (v && typeof v === 'string') gapFilledContractUpdate.paymentTerms = v;
+            }
+          }
+
+          if (Object.keys(gapFilledContractUpdate).length > 0) {
+            await prisma.contract.updateMany({
+              where: { id: contractId, tenantId },
+              data: { ...gapFilledContractUpdate, updatedAt: new Date() },
+            });
+            jobLogger.info({
+              gapFilledFields: Object.keys(gapFilledContractUpdate),
+            }, 'Re-mapped gap-filled data to contract record');
           }
         }
       }

@@ -55,10 +55,26 @@ class ContractQueueManager {
      */
     async queueContractProcessing(data, options) {
         logger.info({ data, options }, '🔍 queueContractProcessing called with data');
+        const jobId = `contract-${data.contractId}`;
+        // Remove any existing completed/failed job with the same ID to allow reprocessing
+        try {
+            const queue = this.queueService.getQueue(exports.QUEUE_NAMES.CONTRACT_PROCESSING);
+            const existingJob = await queue.getJob(jobId);
+            if (existingJob) {
+                const state = await existingJob.getState();
+                if (state === 'completed' || state === 'failed') {
+                    await existingJob.remove();
+                    logger.info({ jobId, state }, 'Removed stale job to allow reprocessing');
+                }
+            }
+        }
+        catch (err) {
+            logger.warn({ err, jobId }, 'Failed to check/remove stale job (non-fatal)');
+        }
         const job = await this.queueService.addJob(exports.QUEUE_NAMES.CONTRACT_PROCESSING, exports.JOB_NAMES.PROCESS_CONTRACT, data, {
             priority: options?.priority || 10,
             delay: options?.delay,
-            jobId: `contract-${data.contractId}`,
+            jobId,
         });
         logger.info({ jobId: job?.id, jobData: job?.data }, '✅ Job created');
         return job?.id || null;

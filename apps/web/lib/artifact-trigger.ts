@@ -101,9 +101,12 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
       
       const estimatedWaitMs = estimateWaitTime(priority);
       
-      // Safety net: if no worker picks up the job within 30 seconds, process inline.
+      // Safety net: if no worker picks up the job within 120 seconds, process inline.
       // This handles the common dev scenario where Redis is running but no BullMQ workers are active.
-      scheduleInlineFallback(options, 30_000);
+      // Skip for reprocesses — the worker is already running and artifact generation can take >30s.
+      if (!isReprocess) {
+        scheduleInlineFallback(options, 120_000);
+      }
       
       return {
         success: true,
@@ -178,14 +181,16 @@ function scheduleInlineFallback(options: TriggerOptions, delayMs: number) {
           where: { id: options.contractId },
           select: {
             status: true,
+            rawText: true,
             _count: { select: { artifacts: true } },
           },
         });
-        // Only process if contract exists, has 0 artifacts,
-        // and is still in a non-terminal state
+        // Only process if contract exists, has 0 artifacts, no rawText (BullMQ worker sets this early),
+        // and is still in a non-terminal state. If rawText is set, the BullMQ worker is actively processing.
         if (
           contract &&
           contract._count.artifacts === 0 &&
+          !contract.rawText &&
           ['PROCESSING', 'QUEUED', 'PENDING'].includes(contract.status)
         ) {
           logger.warn(
