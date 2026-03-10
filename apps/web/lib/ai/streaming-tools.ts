@@ -445,6 +445,61 @@ export const STREAMING_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+
+  // ── Contract Comparison ────────────────────────────────────────────────
+  {
+    type: 'function',
+    function: {
+      name: 'compare_contracts',
+      description: 'Compare two contracts side by side on key dimensions: value, dates, clauses, risk, terms, and obligations. Use when the user asks to compare, contrast, or find differences between contracts.',
+      parameters: {
+        type: 'object',
+        properties: {
+          contractIdA: { type: 'string', description: 'ID of the first contract' },
+          contractIdB: { type: 'string', description: 'ID of the second contract' },
+          contractNameA: { type: 'string', description: 'Name of the first contract (alternative to ID)' },
+          contractNameB: { type: 'string', description: 'Name of the second contract (alternative to ID)' },
+        },
+      },
+    },
+  },
+
+  // ── Clause Extraction ─────────────────────────────────────────────────
+  {
+    type: 'function',
+    function: {
+      name: 'extract_clauses',
+      description: 'Extract and list clauses from a specific contract, optionally filtered by category (e.g., indemnification, limitation of liability, termination, confidentiality, IP, non-compete). Use when the user asks about specific clauses, legal terms, or contract provisions.',
+      parameters: {
+        type: 'object',
+        properties: {
+          contractId: { type: 'string', description: 'Contract ID to extract clauses from' },
+          category: { type: 'string', description: 'Optional clause category filter (e.g., "indemnification", "termination", "confidentiality")' },
+          riskLevel: { type: 'string', enum: ['low', 'medium', 'high'], description: 'Optional risk level filter' },
+        },
+        required: ['contractId'],
+      },
+    },
+  },
+
+  // ── Obligation Tracking ───────────────────────────────────────────────
+  {
+    type: 'function',
+    function: {
+      name: 'list_obligations',
+      description: 'List obligations and deadlines for a contract or across all contracts. Use when the user asks about obligations, deliverables, deadlines, SLAs, compliance requirements, or what needs to be done.',
+      parameters: {
+        type: 'object',
+        properties: {
+          contractId: { type: 'string', description: 'Optional: filter to a specific contract' },
+          status: { type: 'string', enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE', 'WAIVED'], description: 'Filter by obligation status' },
+          priority: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], description: 'Filter by priority level' },
+          dueBefore: { type: 'string', description: 'ISO date string — only obligations due before this date' },
+          owner: { type: 'string', enum: ['US', 'THEM', 'BOTH'], description: 'Filter by obligation owner' },
+        },
+      },
+    },
+  },
 ];
 
 // =============================================================================
@@ -524,6 +579,12 @@ export async function executeTool(
         return await executeAgentDebate(validArgs, tenantId, start);
       case 'rate_response':
         return await executeRateResponse(validArgs, tenantId, userId, start);
+      case 'compare_contracts':
+        return await executeCompareContracts(validArgs, tenantId, start);
+      case 'extract_clauses':
+        return await executeExtractClauses(validArgs, tenantId, start);
+      case 'list_obligations':
+        return await executeListObligations(validArgs, tenantId, start);
       default:
         return { toolName, success: false, data: null, error: `Unknown tool: ${toolName}`, executionTimeMs: Date.now() - start };
     }
@@ -1832,5 +1893,248 @@ async function executeRateResponse(args: Record<string, unknown>, tenantId: stri
       message: rating === 'positive' ? 'Thanks for the positive feedback! I\'ll continue this approach.' : 'Thanks for the feedback. I\'ll adjust my responses accordingly.',
     },
     executionTimeMs: Date.now() - start,
+  };
+}
+
+// ── Compare Contracts ──────────────────────────────────────────────────
+
+async function executeCompareContracts(args: Record<string, unknown>, tenantId: string, start: number): Promise<ToolResult> {
+  const contractIdA = args.contractIdA as string | undefined;
+  const contractIdB = args.contractIdB as string | undefined;
+  const contractNameA = args.contractNameA as string | undefined;
+  const contractNameB = args.contractNameB as string | undefined;
+
+  const whereA = contractIdA
+    ? { id: contractIdA, tenantId }
+    : contractNameA
+    ? { tenantId, OR: [
+        { contractTitle: { contains: contractNameA, mode: 'insensitive' as const } },
+        { fileName: { contains: contractNameA, mode: 'insensitive' as const } },
+      ] }
+    : null;
+
+  const whereB = contractIdB
+    ? { id: contractIdB, tenantId }
+    : contractNameB
+    ? { tenantId, OR: [
+        { contractTitle: { contains: contractNameB, mode: 'insensitive' as const } },
+        { fileName: { contains: contractNameB, mode: 'insensitive' as const } },
+      ] }
+    : null;
+
+  if (!whereA || !whereB) {
+    return { toolName: 'compare_contracts', success: false, data: null, error: 'Two contracts required. Provide contractIdA+contractIdB or contractNameA+contractNameB.', executionTimeMs: Date.now() - start };
+  }
+
+  const selectFields = {
+    id: true, contractTitle: true, contractType: true, status: true,
+    supplierName: true, clientName: true, totalValue: true, currency: true,
+    effectiveDate: true, expirationDate: true, jurisdiction: true,
+    paymentTerms: true, terminationClause: true, renewalTerms: true,
+    noticePeriodDays: true, autoRenewalEnabled: true, daysUntilExpiry: true,
+    expirationRisk: true, riskFlags: true, category: true,
+    _count: { select: { clauses: true, obligations: true, versions: true } },
+  } as const;
+
+  const [contractA, contractB] = await Promise.all([
+    prisma.contract.findFirst({ where: whereA, select: selectFields }),
+    prisma.contract.findFirst({ where: whereB, select: selectFields }),
+  ]);
+
+  if (!contractA || !contractB) {
+    const missing = !contractA ? (contractNameA || contractIdA) : (contractNameB || contractIdB);
+    return { toolName: 'compare_contracts', success: false, data: null, error: `Contract not found: ${missing}`, executionTimeMs: Date.now() - start };
+  }
+
+  // Build comparison dimensions
+  const comparison = {
+    contracts: {
+      A: { id: contractA.id, title: contractA.contractTitle, supplier: contractA.supplierName },
+      B: { id: contractB.id, title: contractB.contractTitle, supplier: contractB.supplierName },
+    },
+    dimensions: {
+      value: {
+        A: contractA.totalValue ? `${contractA.currency || 'USD'} ${Number(contractA.totalValue).toLocaleString()}` : 'Not specified',
+        B: contractB.totalValue ? `${contractB.currency || 'USD'} ${Number(contractB.totalValue).toLocaleString()}` : 'Not specified',
+        difference: contractA.totalValue && contractB.totalValue
+          ? Number(contractA.totalValue) - Number(contractB.totalValue)
+          : null,
+      },
+      type: { A: contractA.contractType, B: contractB.contractType },
+      status: { A: contractA.status, B: contractB.status },
+      duration: {
+        A: contractA.effectiveDate && contractA.expirationDate
+          ? `${new Date(contractA.effectiveDate).toLocaleDateString()} — ${new Date(contractA.expirationDate).toLocaleDateString()}`
+          : 'Not specified',
+        B: contractB.effectiveDate && contractB.expirationDate
+          ? `${new Date(contractB.effectiveDate).toLocaleDateString()} — ${new Date(contractB.expirationDate).toLocaleDateString()}`
+          : 'Not specified',
+      },
+      jurisdiction: { A: contractA.jurisdiction, B: contractB.jurisdiction },
+      paymentTerms: { A: contractA.paymentTerms, B: contractB.paymentTerms },
+      terminationClause: { A: contractA.terminationClause, B: contractB.terminationClause },
+      renewalTerms: { A: contractA.renewalTerms, B: contractB.renewalTerms },
+      autoRenewal: { A: contractA.autoRenewalEnabled, B: contractB.autoRenewalEnabled },
+      noticePeriod: { A: contractA.noticePeriodDays ? `${contractA.noticePeriodDays} days` : null, B: contractB.noticePeriodDays ? `${contractB.noticePeriodDays} days` : null },
+      expirationRisk: { A: contractA.expirationRisk, B: contractB.expirationRisk },
+      clauseCount: { A: contractA._count.clauses, B: contractB._count.clauses },
+      obligationCount: { A: contractA._count.obligations, B: contractB._count.obligations },
+      riskFlags: { A: contractA.riskFlags, B: contractB.riskFlags },
+    },
+  };
+
+  return {
+    toolName: 'compare_contracts',
+    success: true,
+    data: comparison,
+    executionTimeMs: Date.now() - start,
+    suggestedActions: [
+      { label: `📄 View ${contractA.contractTitle?.slice(0, 20) || 'Contract A'}`, action: `navigate:/contracts/${contractA.id}` },
+      { label: `📄 View ${contractB.contractTitle?.slice(0, 20) || 'Contract B'}`, action: `navigate:/contracts/${contractB.id}` },
+    ],
+  };
+}
+
+// ── Extract Clauses ────────────────────────────────────────────────────
+
+async function executeExtractClauses(args: Record<string, unknown>, tenantId: string, start: number): Promise<ToolResult> {
+  const contractId = args.contractId as string;
+  const category = args.category as string | undefined;
+  const riskLevel = args.riskLevel as string | undefined;
+
+  // Verify contract belongs to tenant
+  const contract = await prisma.contract.findFirst({
+    where: { id: contractId, tenantId },
+    select: { id: true, contractTitle: true },
+  });
+
+  if (!contract) {
+    return { toolName: 'extract_clauses', success: false, data: null, error: 'Contract not found', executionTimeMs: Date.now() - start };
+  }
+
+  const clauseWhere: Record<string, unknown> = { contractId };
+  if (category) clauseWhere.category = { contains: category, mode: 'insensitive' };
+  if (riskLevel) clauseWhere.riskLevel = riskLevel;
+
+  const clauses = await prisma.clause.findMany({
+    where: clauseWhere,
+    orderBy: { position: 'asc' },
+    take: 30,
+  });
+
+  // Compute risk distribution
+  const riskDistribution = { high: 0, medium: 0, low: 0, unrated: 0 };
+  for (const c of clauses) {
+    if (c.riskLevel === 'high') riskDistribution.high++;
+    else if (c.riskLevel === 'medium') riskDistribution.medium++;
+    else if (c.riskLevel === 'low') riskDistribution.low++;
+    else riskDistribution.unrated++;
+  }
+
+  // Get unique categories
+  const categories = [...new Set(clauses.map(c => c.category))];
+
+  return {
+    toolName: 'extract_clauses',
+    success: true,
+    data: {
+      contractTitle: contract.contractTitle,
+      totalClauses: clauses.length,
+      categories,
+      riskDistribution,
+      clauses: clauses.map(c => ({
+        id: c.id,
+        category: c.category,
+        text: c.text,
+        riskLevel: c.riskLevel,
+        position: c.position,
+        libraryClauseId: c.libraryClauseId,
+        similarity: c.similarity,
+      })),
+    },
+    executionTimeMs: Date.now() - start,
+    navigation: { url: `/contracts/${contractId}`, label: contract.contractTitle || 'View Contract' },
+    suggestedActions: [
+      { label: '📋 View Contract', action: `navigate:/contracts/${contractId}` },
+      { label: '⚖️ Clause Library', action: 'navigate:/clause-library' },
+    ],
+  };
+}
+
+// ── List Obligations ───────────────────────────────────────────────────
+
+async function executeListObligations(args: Record<string, unknown>, tenantId: string, start: number): Promise<ToolResult> {
+  const contractId = args.contractId as string | undefined;
+  const status = args.status as string | undefined;
+  const priority = args.priority as string | undefined;
+  const dueBefore = args.dueBefore as string | undefined;
+  const owner = args.owner as string | undefined;
+
+  const where: Record<string, unknown> = { tenantId };
+  if (contractId) where.contractId = contractId;
+  if (status) where.status = status;
+  if (priority) where.priority = priority;
+  if (owner) where.owner = owner;
+  if (dueBefore) where.dueDate = { lte: new Date(dueBefore) };
+
+  const obligations = await prisma.obligation.findMany({
+    where,
+    include: {
+      contract: { select: { contractTitle: true, supplierName: true } },
+    },
+    orderBy: [{ priority: 'desc' }, { dueDate: 'asc' }],
+    take: 25,
+  });
+
+  // Compute summary stats
+  const summary = {
+    total: obligations.length,
+    byStatus: {} as Record<string, number>,
+    byPriority: {} as Record<string, number>,
+    overdue: 0,
+    dueSoon: 0,
+    totalFinancialImpact: 0,
+  };
+
+  const now = new Date();
+  const soonThreshold = new Date();
+  soonThreshold.setDate(soonThreshold.getDate() + 14);
+
+  for (const o of obligations) {
+    summary.byStatus[o.status] = (summary.byStatus[o.status] || 0) + 1;
+    summary.byPriority[o.priority] = (summary.byPriority[o.priority] || 0) + 1;
+    if (o.dueDate && o.dueDate < now && o.status !== 'COMPLETED' && o.status !== 'WAIVED') summary.overdue++;
+    if (o.dueDate && o.dueDate >= now && o.dueDate <= soonThreshold && o.status !== 'COMPLETED') summary.dueSoon++;
+    if (o.financialImpact) summary.totalFinancialImpact += Number(o.financialImpact);
+  }
+
+  return {
+    toolName: 'list_obligations',
+    success: true,
+    data: {
+      summary,
+      obligations: obligations.map(o => ({
+        id: o.id,
+        title: o.title,
+        description: o.description?.slice(0, 200),
+        type: o.type,
+        owner: o.owner,
+        priority: o.priority,
+        status: o.status,
+        dueDate: o.dueDate,
+        contractTitle: o.contract.contractTitle,
+        supplierName: o.contract.supplierName,
+        isRecurring: o.isRecurring,
+        financialImpact: o.financialImpact,
+        penaltyForMissing: o.penaltyForMissing?.slice(0, 150),
+        riskScore: o.riskScore,
+        daysUntilDue: o.dueDate ? Math.ceil((new Date(o.dueDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null,
+      })),
+    },
+    executionTimeMs: Date.now() - start,
+    suggestedActions: [
+      { label: '📅 Obligations Dashboard', action: 'navigate:/obligations' },
+      ...(contractId ? [{ label: '📋 View Contract', action: `navigate:/contracts/${contractId}` }] : []),
+    ],
   };
 }

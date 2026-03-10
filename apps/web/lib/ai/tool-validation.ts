@@ -123,6 +123,29 @@ export const toolArgSchemas: Record<string, z.ZodType<Record<string, unknown>>> 
     reason: z.string().max(2000).optional(),
     messageId: z.string().optional(),
   }).passthrough() as z.ZodType<Record<string, unknown>>,
+
+  compare_contracts: z.object({
+    contractIdA: idString.optional(),
+    contractIdB: idString.optional(),
+    contractNameA: z.string().max(500).optional(),
+    contractNameB: z.string().max(500).optional(),
+  }).passthrough().refine(d => (d.contractIdA || d.contractNameA) && (d.contractIdB || d.contractNameB), {
+    message: 'Must provide identifiers for both contracts (contractIdA/contractNameA and contractIdB/contractNameB)',
+  }) as z.ZodType<Record<string, unknown>>,
+
+  extract_clauses: z.object({
+    contractId: idString,
+    category: z.string().max(200).optional(),
+    riskLevel: z.enum(['low', 'medium', 'high']).optional(),
+  }).passthrough() as z.ZodType<Record<string, unknown>>,
+
+  list_obligations: z.object({
+    contractId: idString.optional(),
+    status: z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE', 'WAIVED']).optional(),
+    priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
+    dueBefore: z.string().optional(),
+    owner: z.enum(['US', 'THEM', 'BOTH']).optional(),
+  }).passthrough() as z.ZodType<Record<string, unknown>>,
 };
 
 // =============================================================================

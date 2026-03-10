@@ -306,10 +306,114 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         }).catch(() => []), [])
       : Promise.resolve([]),
     withTimeout(retrieveRelevantMemories(userId, tenantId, message, conversationHistory, {
-      maxMemories: 3,
-      types: ['preference', 'fact', 'decision'],
+      maxMemories: 5,
+      types: ['preference', 'fact', 'decision', 'insight'],
     }), []),
   ]);
+
+  // ── Contract Profile + Artifact Intelligence (when on a contract page) ──
+  let contractProfileContext = '';
+  if (contextContractId) {
+    try {
+      const [contractProfile, contractArtifacts, contractClauses, contractObligations] = await Promise.all([
+        prisma.contract.findFirst({
+          where: { id: contextContractId, tenantId },
+          select: {
+            id: true, contractTitle: true, contractType: true, status: true,
+            supplierName: true, clientName: true, totalValue: true, currency: true,
+            effectiveDate: true, expirationDate: true, jurisdiction: true,
+            paymentTerms: true, terminationClause: true, renewalTerms: true,
+            noticePeriodDays: true, autoRenewalEnabled: true, expirationRisk: true,
+            daysUntilExpiry: true, riskFlags: true, category: true,
+            signatureStatus: true, documentClassification: true,
+            description: true, categoryL1: true, categoryL2: true,
+          },
+        }),
+        prisma.contractArtifact.findMany({
+          where: { contractId: contextContractId },
+          select: { type: true, key: true, value: true, confidence: true },
+          orderBy: { confidence: 'desc' },
+          take: 30,
+        }),
+        prisma.clause.findMany({
+          where: { contractId: contextContractId },
+          select: { category: true, text: true, riskLevel: true },
+          orderBy: { position: 'asc' },
+          take: 20,
+        }),
+        prisma.obligation.findMany({
+          where: { contractId: contextContractId, tenantId },
+          select: { title: true, type: true, status: true, priority: true, dueDate: true, owner: true },
+          orderBy: { dueDate: 'asc' },
+          take: 10,
+        }).catch(() => []),
+      ]);
+
+      if (contractProfile) {
+        const cp = contractProfile;
+        contractProfileContext += `\n\n**📋 Active Contract Profile — ${cp.contractTitle || 'Untitled'}:**\n`;
+        contractProfileContext += `| Field | Value |\n|-------|-------|\n`;
+        if (cp.supplierName) contractProfileContext += `| Supplier | ${cp.supplierName} |\n`;
+        if (cp.clientName) contractProfileContext += `| Client | ${cp.clientName} |\n`;
+        if (cp.contractType) contractProfileContext += `| Type | ${cp.contractType} |\n`;
+        if (cp.status) contractProfileContext += `| Status | ${cp.status} |\n`;
+        if (cp.totalValue) contractProfileContext += `| Value | ${cp.currency || 'USD'} ${Number(cp.totalValue).toLocaleString()} |\n`;
+        if (cp.effectiveDate) contractProfileContext += `| Effective | ${new Date(cp.effectiveDate).toLocaleDateString()} |\n`;
+        if (cp.expirationDate) contractProfileContext += `| Expires | ${new Date(cp.expirationDate).toLocaleDateString()} |\n`;
+        if (cp.daysUntilExpiry != null) contractProfileContext += `| Days Until Expiry | ${cp.daysUntilExpiry} |\n`;
+        if (cp.jurisdiction) contractProfileContext += `| Jurisdiction | ${cp.jurisdiction} |\n`;
+        if (cp.paymentTerms) contractProfileContext += `| Payment Terms | ${cp.paymentTerms} |\n`;
+        if (cp.terminationClause) contractProfileContext += `| Termination | ${cp.terminationClause} |\n`;
+        if (cp.renewalTerms) contractProfileContext += `| Renewal Terms | ${cp.renewalTerms} |\n`;
+        if (cp.noticePeriodDays) contractProfileContext += `| Notice Period | ${cp.noticePeriodDays} days |\n`;
+        if (cp.autoRenewalEnabled) contractProfileContext += `| Auto-Renewal | Yes |\n`;
+        if (cp.expirationRisk) contractProfileContext += `| Expiration Risk | ${cp.expirationRisk} |\n`;
+        if (cp.signatureStatus) contractProfileContext += `| Signature | ${cp.signatureStatus} |\n`;
+        if (cp.riskFlags && typeof cp.riskFlags === 'object' && Array.isArray(cp.riskFlags) && (cp.riskFlags as string[]).length > 0) {
+          contractProfileContext += `| Risk Flags | ${(cp.riskFlags as string[]).join(', ')} |\n`;
+        }
+        if (cp.categoryL1) contractProfileContext += `| Category | ${cp.categoryL1}${cp.categoryL2 ? ' > ' + cp.categoryL2 : ''} |\n`;
+      }
+
+      if (contractArtifacts.length > 0) {
+        // Group artifacts by type for clean presentation
+        const byType = new Map<string, Array<{ key: string; value: unknown; confidence: number }>>();
+        for (const a of contractArtifacts) {
+          if (!byType.has(a.type)) byType.set(a.type, []);
+          byType.get(a.type)!.push({ key: a.key, value: a.value, confidence: a.confidence });
+        }
+        contractProfileContext += `\n**🔍 Extracted Artifacts (${contractArtifacts.length} items):**\n`;
+        for (const [type, items] of byType) {
+          contractProfileContext += `- **${type}** (${items.length}): ${items.slice(0, 3).map(i => {
+            const val = typeof i.value === 'string' ? i.value.slice(0, 100) : JSON.stringify(i.value).slice(0, 100);
+            return `${i.key}: ${val} (${Math.round(i.confidence * 100)}%)`;
+          }).join('; ')}${items.length > 3 ? ` + ${items.length - 3} more` : ''}\n`;
+        }
+      }
+
+      if (contractClauses.length > 0) {
+        contractProfileContext += `\n**⚖️ Extracted Clauses (${contractClauses.length}):**\n`;
+        for (const c of contractClauses.slice(0, 10)) {
+          const riskBadge = c.riskLevel === 'high' ? '🔴' : c.riskLevel === 'medium' ? '🟡' : '🟢';
+          contractProfileContext += `- ${riskBadge} **${c.category}**: ${c.text.slice(0, 150)}${c.text.length > 150 ? '...' : ''}\n`;
+        }
+        if (contractClauses.length > 10) {
+          contractProfileContext += `  _(${contractClauses.length - 10} more clauses available via extract_clauses tool)_\n`;
+        }
+      }
+
+      if (contractObligations.length > 0) {
+        contractProfileContext += `\n**📅 Obligations (${contractObligations.length}):**\n`;
+        for (const o of contractObligations.slice(0, 5)) {
+          const priorityIcon = o.priority === 'CRITICAL' ? '🔴' : o.priority === 'HIGH' ? '🟠' : o.priority === 'MEDIUM' ? '🟡' : '🟢';
+          const dueDateStr = o.dueDate ? new Date(o.dueDate).toLocaleDateString() : 'No due date';
+          contractProfileContext += `- ${priorityIcon} **${o.title}** [${o.status}] — ${o.type}, ${o.owner}, Due: ${dueDateStr}\n`;
+        }
+      }
+    } catch (err) {
+      logger.warn('[Stream v2] Contract profile injection failed', { action: 'contract-profile', error: err instanceof Error ? err.message : String(err) });
+    }
+  }
 
   // ── Cross-conversation learning context (#6) ──────────────────────────
   let learningContextStr = '';
@@ -359,7 +463,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   const systemPrompt = `You are ConTigo AI, an autonomous contract management assistant.
 
 **Capabilities:**
-You have access to tools that let you search contracts, view details, analyze spend & risk, fully manage workflows (start/approve/reject/cancel/escalate/assign/create/check status/suggest), create and update contracts, check compliance, retrieve AI intelligence insights (health scores, risk insights, portfolio analytics), navigate the user to any page, query background AI agent findings (risk alerts, compliance issues, learning patterns), run multi-agent debates on contracts (getting specialist perspectives from legal/pricing/compliance/risk/operations agents), and record user feedback on response quality.
+You have access to tools that let you search contracts, view details, analyze spend & risk, compare two contracts side by side, extract and analyze clauses, track obligations and deadlines, fully manage workflows (start/approve/reject/cancel/escalate/assign/create/check status/suggest), create and update contracts, check compliance, retrieve AI intelligence insights (health scores, risk insights, portfolio analytics), navigate the user to any page, query background AI agent findings (risk alerts, compliance issues, learning patterns), run multi-agent debates on contracts (getting specialist perspectives from legal/pricing/compliance/risk/operations agents), and record user feedback on response quality.
+${contextContractId ? `\n**IMPORTANT — Active Contract Context:** The user is currently viewing contract ID: ${contextContractId}. When they ask about "this contract", "the contract", or refer to details without specifying which contract, use this ID. Full contract profile, artifacts, clauses, and obligations are included below in this prompt.` : ''}
 
 **When to use tools:**
 - ALWAYS use a tool when the user asks for data, actions, or navigation — do NOT guess or make up data.
@@ -381,6 +486,9 @@ You have access to tools that let you search contracts, view details, analyze sp
 - For agent insights ("what have the agents found", "proactive alerts", "what should I know"), use get_agent_insights.
 - For multi-agent debate ("second opinion", "multi-agent analysis", "comprehensive review"), use get_agent_debate with the contract ID.
 - For user feedback ("good answer", "thumbs up", "bad response"), use rate_response.
+- For contract comparison ("compare contract A with B", "what's different"), use compare_contracts.
+- For clause extraction or analysis ("show me the clauses", "what clauses are in this contract", "indemnification clause"), use extract_clauses.
+- For obligation tracking ("what are the obligations", "deadlines", "what do we need to do"), use list_obligations.
 
 **Response rules:**
 1. Be concise and actionable.
@@ -393,6 +501,7 @@ You have access to tools that let you search contracts, view details, analyze sp
 8. If you used get_agent_debate, present each agent's perspective, highlight key conflicts and the consensus, then recommend action.
 9. When users give feedback (positive/negative), acknowledge it warmly and adjust your approach.
 
+${contractProfileContext}
 ${ragContext}
 ${memoryContext}
 ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${learningContextStr}` : ''}`;
@@ -655,36 +764,98 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
                 }
                 break;
               } else if (config.provider === 'anthropic' && anthropic) {
-                // Anthropic fallback — true streaming, content-only (no tool calling)
-                const anthropicMessages = conversationHistory.slice(-10).map((msg: { role: string; content: string }) => ({
+                // Anthropic fallback — true streaming WITH tool calling
+                const anthropicMessages: Anthropic.MessageParam[] = conversationHistory.slice(-10).map((msg: { role: string; content: string }) => ({
                   role: msg.role === 'assistant' ? 'assistant' as const : 'user' as const,
                   content: msg.content,
                 }));
+                // Also add tool-result messages from prior iterations
+                for (const m of messages) {
+                  if ((m as { role: string }).role === 'tool') {
+                    const toolMsg = m as { role: string; tool_call_id: string; content: string };
+                    anthropicMessages.push({
+                      role: 'user' as const,
+                      content: [{ type: 'tool_result' as const, tool_use_id: toolMsg.tool_call_id, content: toolMsg.content }],
+                    });
+                  }
+                }
                 anthropicMessages.push({ role: 'user' as const, content: finalMessage });
+
+                // Convert OpenAI tools to Anthropic format
+                const anthropicTools: Anthropic.Tool[] = STREAMING_TOOLS.map(t => ({
+                  name: t.function.name,
+                  description: t.function.description || '',
+                  input_schema: t.function.parameters as Anthropic.Tool.InputSchema,
+                }));
 
                 const anthropicStream = anthropic.messages.stream({
                   model: config.model,
                   max_tokens: 2000,
                   system: finalSystemPrompt,
                   messages: anthropicMessages,
+                  tools: anthropicTools,
+                  tool_choice: { type: 'auto' },
                 }, { signal: AbortSignal.timeout(30_000) });
 
                 usedModel = config.model;
                 usedProvider = 'anthropic';
 
-                // Stream Anthropic tokens in real-time
+                // Accumulate streamed content and tool-use blocks
+                let anthropicContent = '';
+                const anthropicToolCalls: Array<{ id: string; name: string; input: string }> = [];
+                let currentToolUseId = '';
+                let currentToolUseName = '';
+                let currentToolUseInput = '';
+
                 for await (const event of anthropicStream) {
                   if (cancelled) break;
-                  if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-                    const token = event.delta.text;
-                    fullContent += token;
-                    controller.enqueue(encoder.encode(
-                      `data: ${JSON.stringify({ type: 'content', content: token })}\n\n`
-                    ));
+                  if (event.type === 'content_block_start') {
+                    if (event.content_block.type === 'tool_use') {
+                      currentToolUseId = event.content_block.id;
+                      currentToolUseName = event.content_block.name;
+                      currentToolUseInput = '';
+                    }
+                  } else if (event.type === 'content_block_delta') {
+                    if (event.delta.type === 'text_delta') {
+                      const token = event.delta.text;
+                      anthropicContent += token;
+                      fullContent += token;
+                      controller.enqueue(encoder.encode(
+                        `data: ${JSON.stringify({ type: 'content', content: token })}\n\n`
+                      ));
+                    } else if (event.delta.type === 'input_json_delta') {
+                      currentToolUseInput += event.delta.partial_json;
+                    }
+                  } else if (event.type === 'content_block_stop') {
+                    if (currentToolUseId) {
+                      anthropicToolCalls.push({
+                        id: currentToolUseId,
+                        name: currentToolUseName,
+                        input: currentToolUseInput,
+                      });
+                      currentToolUseId = '';
+                      currentToolUseName = '';
+                      currentToolUseInput = '';
+                    }
                   }
                 }
-                iteration = MAX_TOOL_ITERATIONS; // Exit agentic loop
-                assistantMessage = null;
+
+                // If Anthropic requested tool calls, convert to OpenAI format
+                if (anthropicToolCalls.length > 0) {
+                  assistantMessage = {
+                    role: 'assistant',
+                    content: anthropicContent || null,
+                    tool_calls: anthropicToolCalls.map(tc => ({
+                      id: tc.id,
+                      type: 'function' as const,
+                      function: { name: tc.name, arguments: tc.input },
+                    })),
+                    refusal: null,
+                  } as OpenAI.Chat.Completions.ChatCompletionMessage;
+                } else {
+                  // Content-only response, no tools needed
+                  assistantMessage = null;
+                }
                 break;
               }
             } catch (error) {
@@ -1128,6 +1299,16 @@ function summarizeToolResult(result: ToolResult): string {
     }
     case 'rate_response':
       return `Feedback recorded: ${d.rating}`;
+    case 'compare_contracts': {
+      const contracts = d.contracts as Record<string, Record<string, unknown>> | undefined;
+      return contracts ? `Compared: "${contracts.A?.title}" vs "${contracts.B?.title}"` : 'Comparison complete';
+    }
+    case 'extract_clauses':
+      return `${d.totalClauses || 0} clauses extracted from ${d.contractTitle || 'contract'}`;
+    case 'list_obligations': {
+      const summary = d.summary as Record<string, unknown> | undefined;
+      return `${summary?.total || 0} obligations (${summary?.overdue || 0} overdue, ${summary?.dueSoon || 0} due soon)`;
+    }
     default:
       return 'Complete';
   }
@@ -1219,6 +1400,35 @@ function buildToolPreview(result: ToolResult): Record<string, unknown> | null {
           return started && (Date.now() - new Date(started).getTime() > 3 * 86400000);
         }).length || 0,
       };
+    case 'compare_contracts': {
+      const contracts = d.contracts as Record<string, Record<string, unknown>> | undefined;
+      const dimensions = d.dimensions as Record<string, Record<string, unknown>> | undefined;
+      if (!contracts) return null;
+      return {
+        type: 'contract_comparison',
+        contractA: contracts.A?.title,
+        contractB: contracts.B?.title,
+        valueDifference: dimensions?.value?.difference,
+      };
+    }
+    case 'extract_clauses': {
+      const riskDist = d.riskDistribution as Record<string, number> | undefined;
+      return {
+        type: 'clause_extraction',
+        totalClauses: d.totalClauses,
+        categories: d.categories,
+        highRisk: riskDist?.high || 0,
+      };
+    }
+    case 'list_obligations': {
+      const summary = d.summary as Record<string, unknown> | undefined;
+      return {
+        type: 'obligations_summary',
+        total: summary?.total,
+        overdue: summary?.overdue,
+        dueSoon: summary?.dueSoon,
+      };
+    }
     default:
       return null;
   }
