@@ -241,6 +241,19 @@ async function startWorkers() {
             data: { status: 'FAILED' },
           });
           logger.info({ count: staleContracts.length }, '✅ Stale contracts marked as FAILED');
+
+          // Re-queue stale contracts for automatic retry
+          const queueSvc = getQueueService();
+          for (const stale of staleContracts) {
+            try {
+              await queueSvc.addJob('contract-processing', 'process-contract', {
+                contractId: stale.id,
+                tenantId: stale.tenantId,
+                isRetry: true,
+              }, { priority: 10, jobId: `stale-retry-${stale.id}-${Date.now()}` });
+              logger.info({ contractId: stale.id }, '♻️ Stale contract re-queued for retry');
+            } catch { /* non-fatal — contract stays FAILED for manual retry */ }
+          }
         }
       } catch (staleErr) {
         logger.warn({ error: staleErr }, '⚠️ Stale-processing recovery failed (non-fatal)');
@@ -248,8 +261,7 @@ async function startWorkers() {
     };
     await runStaleProcessingRecovery();
     const staleRecoveryInterval = setInterval(runStaleProcessingRecovery, 10 * 60 * 1000);
-    // Ensure cleanup on shutdown
-    process.on('beforeExit', () => clearInterval(staleRecoveryInterval));
+    staleRecoveryInterval.unref();
 
     // Activate obligation monitoring (continuous SLA/deadline checker)
     try {
@@ -322,6 +334,10 @@ async function startWorkers() {
     // Graceful shutdown
     const shutdown = async (signal: string) => {
       logger.info({ signal }, 'Received shutdown signal, closing workers...');
+
+      // Stop background handlers
+      clearInterval(staleRecoveryInterval);
+      backpressure.stop();
 
       // Close health server first
       healthServer.close();

@@ -178,12 +178,15 @@ export async function processMetadataExtractionJob(
     const schema = await schemaService.getSchema(tenantId);
 
     const extractor = new SchemaAwareMetadataExtractor();
-    const extractionResult = await extractor.extractMetadata(contract.rawText, schema, {
-      enableMultiPass: true,
-      maxPasses: 2,
-      confidenceThreshold: 0.7,
-      includeAlternatives: true,
-    });
+    const extractionResult = await Promise.race([
+      extractor.extractMetadata(contract.rawText, schema, {
+        enableMultiPass: true,
+        maxPasses: 2,
+        confidenceThreshold: 0.7,
+        includeAlternatives: true,
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Metadata extraction timeout (120s)')), 120_000)),
+    ]);
 
     await job.updateProgress(70);
 

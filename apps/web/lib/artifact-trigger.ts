@@ -136,6 +136,14 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
   
   logger.info({ contractId, filePath }, 'Starting inline artifact generation (legacy fallback)');
   
+  // Ensure contract is in PROCESSING state before fire-and-forget
+  try {
+    await prisma.contract.update({
+      where: { id: contractId },
+      data: { status: 'PROCESSING' },
+    });
+  } catch { /* may already be PROCESSING */ }
+  
   // Fire-and-forget: run generateRealArtifacts directly in-process
   // We don't await it so the upload response returns immediately
   (async () => {
@@ -153,6 +161,13 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
       logger.info({ contractId, ...result }, 'Inline artifact generation completed');
     } catch (err) {
       logger.error({ contractId, error: (err as Error).message }, 'Inline artifact generation failed');
+      // Mark contract as failed so it doesn't stay stuck in PROCESSING
+      try {
+        await prisma.contract.update({
+          where: { id: contractId },
+          data: { status: 'FAILED' },
+        });
+      } catch { /* best effort */ }
     }
   })();
   
@@ -165,7 +180,7 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
  * stuck when BullMQ workers are not running (common in dev).
  */
 function scheduleInlineFallback(options: TriggerOptions, delayMs: number) {
-  setTimeout(async () => {
+  const timer = setTimeout(async () => {
     try {
       const contract = await prisma.contract.findUnique({
         where: { id: options.contractId },
@@ -196,6 +211,7 @@ function scheduleInlineFallback(options: TriggerOptions, delayMs: number) {
       );
     }
   }, delayMs);
+  timer.unref(); // Don't prevent graceful shutdown
 }
 
 export async function triggerProcessing(_contractId: string, _options?: Record<string, unknown>) {

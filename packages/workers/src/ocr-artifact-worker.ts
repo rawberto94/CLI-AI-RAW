@@ -898,13 +898,6 @@ function s3Client(): S3Client {
   return _s3Client;
 }
 
-// Keep old const for backward compatibility - will be initialized lazily
-const s3ClientLegacy = new Proxy({} as S3Client, {
-  get(_, prop) {
-    return (s3Client() as Record<string, unknown>)[prop as string];
-  }
-});
-
 // For references that need a client object
 const getS3ClientInstance = () => s3Client();
 
@@ -1288,6 +1281,14 @@ async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
 async function performMistralOCR(filePath: string): Promise<string> {
   try {
     const fileBuffer = await fs.readFile(filePath);
+
+    // Guard against OOM: base64 encoding doubles memory. Cap at 20MB for Vision OCR.
+    const MAX_VISION_OCR_SIZE = 20 * 1024 * 1024;
+    if (fileBuffer.length > MAX_VISION_OCR_SIZE) {
+      logger.warn({ size: fileBuffer.length, maxSize: MAX_VISION_OCR_SIZE, filePath }, 'File too large for Mistral Vision OCR — falling back to text extraction');
+      throw new Error(`File size ${(fileBuffer.length / 1024 / 1024).toFixed(1)}MB exceeds Vision OCR limit of 20MB`);
+    }
+
     const ext = filePath.toLowerCase().split('.').pop() || '';
     const isPDF = ext === 'pdf';
     const isTextFile = ['txt', 'text', 'md', 'html', 'htm', 'xml', 'json', 'csv'].includes(ext);
@@ -1444,6 +1445,14 @@ async function performGPT4OCR(filePath: string): Promise<string> {
     
     const openai = new OpenAI({ apiKey });
     const fileBuffer = await fs.readFile(filePath);
+
+    // Guard against OOM: base64 encoding doubles memory. Cap at 20MB for Vision OCR.
+    const MAX_VISION_OCR_SIZE = 20 * 1024 * 1024;
+    if (fileBuffer.length > MAX_VISION_OCR_SIZE) {
+      logger.warn({ size: fileBuffer.length, maxSize: MAX_VISION_OCR_SIZE, filePath }, 'File too large for Vision OCR — falling back to text extraction');
+      throw new Error(`File size ${(fileBuffer.length / 1024 / 1024).toFixed(1)}MB exceeds Vision OCR limit of 20MB`);
+    }
+
     const ext = filePath.toLowerCase().split('.').pop() || '';
     const isPDF = ext === 'pdf';
     const isTextFile = ['txt', 'text', 'md', 'html', 'htm', 'xml', 'json', 'csv'].includes(ext);
@@ -3540,16 +3549,19 @@ async function callMistralForArtifact(
       
       logger.info({ type, attempt }, 'Calling Mistral for artifact generation');
       
-      const response = await client.chat.complete({
-        model: 'mistral-large-latest',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.2,
-        maxTokens: 8192,
-        responseFormat: { type: 'json_object' },
-      });
+      const response = await Promise.race([
+        client.chat.complete({
+          model: 'mistral-large-latest',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.2,
+          maxTokens: 8192,
+          responseFormat: { type: 'json_object' },
+        }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Mistral request timeout (90s)')), 90_000)),
+      ]);
 
       const content = response.choices?.[0]?.message?.content;
       if (!content || typeof content !== 'string') {

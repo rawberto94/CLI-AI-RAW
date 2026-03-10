@@ -37,8 +37,8 @@ export class DeadLetterQueueManager {
     this.dlq = new Queue('dead-letter-queue', {
       connection,
       defaultJobOptions: {
-        removeOnComplete: false, // Keep for analysis
-        removeOnFail: false,
+        removeOnComplete: { count: 10000, age: 30 * 24 * 60 * 60 }, // Retain up to 10k / 30 days
+        removeOnFail: { count: 5000, age: 30 * 24 * 60 * 60 },
       },
     });
     

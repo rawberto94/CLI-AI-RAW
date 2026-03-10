@@ -46,12 +46,13 @@ async function getUploadRedisClient(): Promise<any> {
 
 const _memRateStore = new Map<string, { count: number; resetAt: number }>();
 // Clean up expired entries every 2 minutes
-setInterval(() => {
+const _cleanupInterval = setInterval(() => {
   const now = Date.now();
   for (const [key, val] of _memRateStore.entries()) {
     if (val.resetAt < now) _memRateStore.delete(key);
   }
 }, 120_000);
+_cleanupInterval.unref();
 
 async function checkUploadRateLimit(tenantId: string): Promise<{ allowed: boolean; retryAfter?: number }> {
   const config = rateLimitConfigs['/api/contracts/upload'] || { windowMs: 60000, maxRequests: 10, keyPrefix: 'ratelimit:upload:' };
@@ -669,8 +670,11 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     
     const { quickClassifyContract } = await import("@/lib/ai/contract-classifier-taxonomy");
     
-    // Run classification in background
-    quickClassifyContract(textContent, file.name)
+    // Run classification in background with timeout
+    Promise.race([
+      quickClassifyContract(textContent, file.name),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Classification timeout')), 30_000)),
+    ])
       .then(async (classification) => {
         // Validate category ownership before assignment
         const category = await prisma.taxonomyCategory.findFirst({

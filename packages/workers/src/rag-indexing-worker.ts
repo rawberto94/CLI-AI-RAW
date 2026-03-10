@@ -292,9 +292,12 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
     async function retryWithBackoff<T>(
       fn: () => Promise<T>,
       retries = MAX_RETRIES,
-      baseDelay = 1000
+      baseDelay = 1000,
+      maxTotalMs = 60_000
     ): Promise<T> {
+      const deadline = Date.now() + maxTotalMs;
       for (let attempt = 1; attempt <= retries; attempt++) {
+        if (Date.now() > deadline) throw new Error('Retry deadline exceeded');
         try {
           return await fn();
         } catch (error: any) {
@@ -327,7 +330,7 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
       const embParams: any = { model, input: texts };
       if (embDims > 0 && model.includes('text-embedding-3')) embParams.dimensions = embDims;
       const response = await retryWithBackoff(() => 
-        openai.embeddings.create(embParams)
+        openai.embeddings.create(embParams, { signal: AbortSignal.timeout(30_000) })
       ) as any;
       embeddings.push(...response.data.map((d: any) => d.embedding));
       

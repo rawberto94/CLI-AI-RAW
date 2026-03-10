@@ -413,6 +413,7 @@ async function analyzeDocument(
       'Content-Type': 'application/octet-stream',
     },
     body: new Uint8Array(fileBuffer),
+    signal: AbortSignal.timeout(120_000),
   });
 
   if (!submitResponse.ok) {
@@ -444,6 +445,7 @@ async function analyzeDocument(
 
     const statusResponse = await fetch(operationLocation, {
       headers: { 'Ocp-Apim-Subscription-Key': config.apiKey },
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!statusResponse.ok) {

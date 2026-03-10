@@ -83,7 +83,7 @@ Return the extracted text in clean markdown format.`,
       ],
       max_tokens: 8192,
       temperature: 0.1,
-    });
+    }, { signal: AbortSignal.timeout(90_000) });
     
     const text = response.choices[0]?.message?.content || '';
     logger.info({ textLength: text.length }, 'GPT-4o native PDF OCR completed for scanned PDF');
@@ -364,7 +364,7 @@ async function extractContractMetadata(
   // Try AI extraction if available
   if (apiKey) {
     try {
-      const { OpenAI } = await import('openai');
+      const OpenAI = (await import('openai')).default;
       const openai = new OpenAI({ apiKey });
 
       const truncatedText = contractText.substring(0, 50000); // First 50k chars for metadata
@@ -396,7 +396,7 @@ ${truncatedText}`,
         temperature: 0.2,
         max_tokens: 1000,
         response_format: { type: 'json_object' },
-      });
+      }, { signal: AbortSignal.timeout(30_000) });
 
       const content = response.choices[0]?.message?.content;
       if (content) {
@@ -779,7 +779,7 @@ async function generateAIArtifact(
   }
 
   try {
-    const { OpenAI } = await import('openai');
+    const OpenAI = (await import('openai')).default;
     const openai = new OpenAI({ apiKey });
 
     // Truncate text if too long (approximately 100k tokens ~ 400k chars)
@@ -895,7 +895,7 @@ async function generateAIArtifact(
       temperature: 0.3,
       max_tokens: 4000,
       response_format: { type: 'json_object' },
-    });
+    }, { signal: AbortSignal.timeout(60_000) });
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
