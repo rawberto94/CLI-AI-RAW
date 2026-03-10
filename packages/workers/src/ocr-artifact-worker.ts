@@ -2572,6 +2572,38 @@ export async function processOCRArtifactJob(
           contractUpdate.expirationDate = expirationDate;
         }
         
+        // Extract jurisdiction from OVERVIEW
+        const jurisdiction = unwrap(overviewData.jurisdiction) || unwrap(overviewData.governingLaw);
+        if (jurisdiction && typeof jurisdiction === 'string') {
+          contractUpdate.jurisdiction = jurisdiction;
+        }
+
+        // Extract termination clause from OVERVIEW
+        const termAndTermination = unwrap(overviewData.termAndTermination);
+        if (termAndTermination && typeof termAndTermination === 'string') {
+          contractUpdate.terminationClause = termAndTermination;
+        }
+
+        // Extract notice period days from termAndTermination text
+        if (termAndTermination && typeof termAndTermination === 'string') {
+          const noticeMatch = termAndTermination.match(/(\d+)\s*(?:calendar\s+)?day/i);
+          const monthMatch = termAndTermination.match(/(\d+)\s*month/i);
+          if (noticeMatch) {
+            contractUpdate.noticePeriodDays = parseInt(noticeMatch[1]!, 10);
+          } else if (monthMatch) {
+            contractUpdate.noticePeriodDays = parseInt(monthMatch[1]!, 10) * 30;
+          }
+        }
+
+        // Extract payment terms from FINANCIAL artifact
+        const financialArt = artifactDataArray.find((a: any) => a.type === 'FINANCIAL') as any;
+        if (financialArt?.data?.paymentTerms) {
+          const pt = unwrap(financialArt.data.paymentTerms);
+          if (pt && typeof pt === 'string') {
+            contractUpdate.paymentTerms = pt;
+          }
+        }
+
         // Extract contract title if we have a summary
         if (overviewData.summary && !contract.contractTitle) {
           // Use first sentence of summary as title, max 100 chars
@@ -2736,13 +2768,46 @@ export async function processOCRArtifactJob(
       periodicity: billingFrequency || '',
       currency: unwrapVal(overviewArtifactData.currency) || unwrapVal(financialData.currency) || 'USD',
       
-      // Dates - with keyDates fallback
+      // Dates - with keyDates fallback (use latest signing date, not first)
       execution_date: unwrapVal(overviewArtifactData.executionDate) || 
         unwrapVal(overviewArtifactData.effectiveDate) || 
-        resolveFromKeyDates(overviewArtifactData.keyDates, ['effective', 'commencement', 'start date', 'sign', 'execution'], unwrapVal) ||
+        resolveFromKeyDates(overviewArtifactData.keyDates, ['effective', 'commencement', 'start date'], unwrapVal) ||
+        (() => {
+          // Last resort: find the latest signing/execution date
+          if (!Array.isArray(overviewArtifactData.keyDates)) return null;
+          let latest: string | null = null;
+          let latestTime = 0;
+          for (const kd of overviewArtifactData.keyDates) {
+            const event = (unwrapVal(kd.event) || '').toLowerCase();
+            if (event.includes('sign') || event.includes('execution')) {
+              const dateVal = unwrapVal(kd.date);
+              if (dateVal && typeof dateVal === 'string') {
+                const t = new Date(dateVal).getTime();
+                if (!isNaN(t) && t > latestTime) { latest = dateVal; latestTime = t; }
+              }
+            }
+          }
+          return latest;
+        })() ||
         null,
       contract_effective_date: unwrapVal(overviewArtifactData.effectiveDate) || 
-        resolveFromKeyDates(overviewArtifactData.keyDates, ['effective', 'commencement', 'start date', 'sign', 'execution'], unwrapVal) ||
+        resolveFromKeyDates(overviewArtifactData.keyDates, ['effective', 'commencement', 'start date'], unwrapVal) ||
+        (() => {
+          if (!Array.isArray(overviewArtifactData.keyDates)) return null;
+          let latest: string | null = null;
+          let latestTime = 0;
+          for (const kd of overviewArtifactData.keyDates) {
+            const event = (unwrapVal(kd.event) || '').toLowerCase();
+            if (event.includes('sign') || event.includes('execution')) {
+              const dateVal = unwrapVal(kd.date);
+              if (dateVal && typeof dateVal === 'string') {
+                const t = new Date(dateVal).getTime();
+                if (!isNaN(t) && t > latestTime) { latest = dateVal; latestTime = t; }
+              }
+            }
+          }
+          return latest;
+        })() ||
         null,
       contract_end_date: unwrapVal(overviewArtifactData.expirationDate) || 
         resolveFromKeyDates(overviewArtifactData.keyDates, ['expir', 'term end', 'end date', 'termination date'], unwrapVal) ||
