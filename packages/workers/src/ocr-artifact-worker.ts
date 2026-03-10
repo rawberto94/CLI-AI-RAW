@@ -2527,12 +2527,47 @@ export async function processOCRArtifactJob(
           contractUpdate.currency = currency;
         }
         
-        // Extract dates - handle wrapped values
-        const effectiveDate = unwrapDate(overviewData.effectiveDate);
+        // Extract dates - handle wrapped values, with keyDates fallback
+        let effectiveDate = unwrapDate(overviewData.effectiveDate);
+        let expirationDate = unwrapDate(overviewData.expirationDate);
+        
+        // Fallback: derive dates from keyDates array if top-level fields are empty
+        if ((!effectiveDate || !expirationDate) && Array.isArray(overviewData.keyDates)) {
+          for (const kd of overviewData.keyDates) {
+            const eventName = (unwrap(kd.event) || '').toLowerCase();
+            const kdDate = unwrapDate(kd.date);
+            if (!kdDate) continue;
+            
+            if (!effectiveDate) {
+              if (eventName.includes('effective') || eventName.includes('commencement') || eventName.includes('start date')) {
+                effectiveDate = kdDate;
+              }
+            }
+            if (!expirationDate) {
+              if (eventName.includes('expir') || eventName.includes('term end') || eventName.includes('end date') || eventName.includes('termination date')) {
+                expirationDate = kdDate;
+              }
+            }
+          }
+          // Last resort: use the latest signing date as effective date
+          if (!effectiveDate) {
+            let latestSigning: Date | null = null;
+            for (const kd of overviewData.keyDates) {
+              const eventName = (unwrap(kd.event) || '').toLowerCase();
+              if (eventName.includes('sign') || eventName.includes('execution')) {
+                const kdDate = unwrapDate(kd.date);
+                if (kdDate && (!latestSigning || kdDate > latestSigning)) {
+                  latestSigning = kdDate;
+                }
+              }
+            }
+            if (latestSigning) effectiveDate = latestSigning;
+          }
+        }
+        
         if (effectiveDate) {
           contractUpdate.effectiveDate = effectiveDate;
         }
-        const expirationDate = unwrapDate(overviewData.expirationDate);
         if (expirationDate) {
           contractUpdate.expirationDate = expirationDate;
         }
@@ -2560,6 +2595,9 @@ export async function processOCRArtifactJob(
           });
           jobLogger.info({ 
             fieldsApplied: Object.keys(contractUpdate),
+            effectiveDateExtracted: contractUpdate.effectiveDate || null,
+            expirationDateExtracted: contractUpdate.expirationDate || null,
+            keyDatesCount: Array.isArray(overviewData.keyDates) ? overviewData.keyDates.length : 0,
           }, 'Applied OVERVIEW data to contract record (transactional)');
         }
       }
@@ -2588,6 +2626,22 @@ export async function processOCRArtifactJob(
 
     // Helper to unwrap values (AI may return { value: X, source: '...' } or just X)
     const unwrapVal = (val: any) => val?.value !== undefined ? val.value : val;
+
+    // Helper to resolve a date from keyDates array by matching event keywords
+    const resolveFromKeyDates = (keyDates: any, keywords: string[], unwrapFn: (v: any) => any): string | null => {
+      if (!Array.isArray(keyDates)) return null;
+      // First pass: look for exact keyword match
+      for (const kd of keyDates) {
+        const event = (unwrapFn(kd.event) || '').toLowerCase();
+        const dateVal = unwrapFn(kd.date);
+        if (!dateVal || typeof dateVal !== 'string') continue;
+        // Validate it looks like a date string
+        const parsed = new Date(dateVal);
+        if (isNaN(parsed.getTime())) continue;
+        if (keywords.some(kw => event.includes(kw))) return dateVal;
+      }
+      return null;
+    };
 
     // Build external parties array from overview
     const externalParties: Array<{legalName: string; role: string; registeredAddress?: string}> = [];
@@ -2682,11 +2736,17 @@ export async function processOCRArtifactJob(
       periodicity: billingFrequency || '',
       currency: unwrapVal(overviewArtifactData.currency) || unwrapVal(financialData.currency) || 'USD',
       
-      // Dates
+      // Dates - with keyDates fallback
       execution_date: unwrapVal(overviewArtifactData.executionDate) || 
-        unwrapVal(overviewArtifactData.effectiveDate) || null,
-      contract_effective_date: unwrapVal(overviewArtifactData.effectiveDate) || null,
-      contract_end_date: unwrapVal(overviewArtifactData.expirationDate) || null,
+        unwrapVal(overviewArtifactData.effectiveDate) || 
+        resolveFromKeyDates(overviewArtifactData.keyDates, ['effective', 'commencement', 'start date', 'sign', 'execution'], unwrapVal) ||
+        null,
+      contract_effective_date: unwrapVal(overviewArtifactData.effectiveDate) || 
+        resolveFromKeyDates(overviewArtifactData.keyDates, ['effective', 'commencement', 'start date', 'sign', 'execution'], unwrapVal) ||
+        null,
+      contract_end_date: unwrapVal(overviewArtifactData.expirationDate) || 
+        resolveFromKeyDates(overviewArtifactData.keyDates, ['expir', 'term end', 'end date', 'termination date'], unwrapVal) ||
+        null,
       
       // Signature status (from CONTACTS artifact)
       signature_status: unwrapVal(contactsData.signatureStatus) || 'unknown',
