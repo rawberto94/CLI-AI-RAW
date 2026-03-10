@@ -130,9 +130,19 @@ export function QueryProvider({ children }: { children: ReactNode }) {
       queryClient.prefetchQuery({
         queryKey: ['dashboard-summary'],
         queryFn: async () => {
+          const tenantId = getTenantId();
+          // Skip prefetch if no tenant (user needs to authenticate)
+          if (!tenantId || tenantId === 'unknown') {
+            return { contracts: [], summary: null };
+          }
           const res = await fetch('/api/contracts/summary', {
-            headers: { 'x-tenant-id': getTenantId() },
+            headers: { 'x-tenant-id': tenantId },
           });
+          // Handle non-JSON responses gracefully
+          if (!res.ok) {
+            console.warn('[QueryProvider] Dashboard prefetch failed:', res.status);
+            return { contracts: [], summary: null };
+          }
           return res.json();
         },
         staleTime: STALE_TIMES.realtime,

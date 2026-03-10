@@ -80,7 +80,10 @@ function SignUpForm() {
   useEffect(() => {
     if (inviteToken) {
       fetch(`/api/auth/verify-invite?token=${inviteToken}`)
-        .then((res) => res.json())
+        .then((res) => {
+          if (!res.ok) throw new Error('Invalid invite');
+          return res.json();
+        })
         .then((data) => {
           if (data.valid) {
             setInviteInfo(data);

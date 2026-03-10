@@ -141,11 +141,12 @@ export class HealthCheckService {
       const stats = multiLevelCache.getStats();
       
       // Determine status based on latency and hit rate
+      // Note: Redis (L2 cache) is optional - missing Redis = degraded, not unhealthy
       let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
-      if (latency > 100) {
+      if (latency > 100 || !stats.l2Connected) {
         status = 'degraded';
       }
-      if (latency > 500 || !stats.l2Connected) {
+      if (latency > 500) {
         status = 'unhealthy';
       }
       
