@@ -24,13 +24,13 @@ RUN pnpm install
 COPY . .
 
 # Generate Prisma client
-RUN cd packages/clients/db && pnpm exec prisma generate
+RUN cd packages/clients/db && pnpm dlx prisma@5.22.0 generate
 
 # Build packages (tsc emits JS even with non-critical type errors)
 RUN pnpm --filter @repo/utils build
 RUN pnpm --filter clients-db build
 # data-orchestration: build TS with strict=false (its own tsconfig) but DO fail on real errors
-RUN cd packages/data-orchestration && pnpm exec tsc --noEmitOnError false
+RUN cd packages/data-orchestration && pnpm dlx typescript --noEmitOnError false
 
 # Build Next.js app with increased memory
 ENV NEXT_TELEMETRY_DISABLED=1
