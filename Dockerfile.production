@@ -7,25 +7,11 @@ WORKDIR /app
 # Install pnpm (match version in package.json packageManager field)
 RUN npm install -g pnpm@8.9.0
 
-# Copy all package files for monorepo
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/web/package.json ./apps/web/
-COPY packages/clients/db/package.json ./packages/clients/db/
-COPY packages/data-orchestration/package.json ./packages/data-orchestration/
-COPY packages/utils/package.json ./packages/utils/
-COPY packages/workers/package.json ./packages/workers/
-COPY packages/agents/package.json ./packages/agents/
-COPY packages/schemas/package.json ./packages/schemas/
-
-# Install all dependencies
-RUN pnpm install
-
-# Fix permissions for pnpm binaries
-RUN chmod -R +x node_modules/.bin || true
-RUN find node_modules -name "*.js" -path "*/bin/*" -exec chmod +x {} \; || true
-
-# Copy all source code
+# Copy ALL source code first (including package files)
 COPY . .
+
+# Install dependencies after source is in place
+RUN pnpm install
 
 # Build packages - clients-db build runs prisma generate internally
 RUN pnpm --filter @repo/utils build
