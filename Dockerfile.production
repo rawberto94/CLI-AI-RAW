@@ -20,6 +20,10 @@ COPY packages/schemas/package.json ./packages/schemas/
 # Install all dependencies
 RUN pnpm install
 
+# Fix permissions for pnpm binaries
+RUN chmod -R +x node_modules/.bin || true
+RUN find node_modules -name "*.js" -path "*/bin/*" -exec chmod +x {} \; || true
+
 # Copy all source code
 COPY . .
 
