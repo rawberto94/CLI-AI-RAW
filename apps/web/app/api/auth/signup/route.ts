@@ -277,9 +277,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Log the actual error for debugging
+    console.error('[Signup Error]', error);
+    
+    // Extract useful error message
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : "Failed to create account";
+    
     return createErrorResponse(
       ctx, 'INTERNAL_ERROR',
-      "Failed to create account",
+      errorMessage,
       500
     );
   }
