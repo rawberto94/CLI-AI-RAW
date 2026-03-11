@@ -17,8 +17,8 @@ COPY packages/workers/package.json ./packages/workers/
 COPY packages/agents/package.json ./packages/agents/
 COPY packages/schemas/package.json ./packages/schemas/
 
-# Install all dependencies (frozen-lockfile ensures reproducible builds)
-RUN pnpm install --frozen-lockfile
+# Install all dependencies
+RUN pnpm install
 
 # Copy all source code
 COPY . .
