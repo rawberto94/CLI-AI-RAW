@@ -8,7 +8,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
-import { getApiContext, createSuccessResponse, createErrorResponse } from "@/lib/api-middleware";
+import { getPublicApiContext, createSuccessResponse, createErrorResponse } from "@/lib/api-middleware";
 import { auth } from "@/lib/auth";
 import { logger } from '@/lib/logger';
 
@@ -16,7 +16,7 @@ import { logger } from '@/lib/logger';
  * GET — Verify email with token (public, from email link)
  */
 export async function GET(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getPublicApiContext(request);
 
   try {
     const token = request.nextUrl.searchParams.get("token");
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
  * POST — Request a new verification email (authenticated)
  */
 export async function POST(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getPublicApiContext(request);
 
   try {
     const session = await auth();

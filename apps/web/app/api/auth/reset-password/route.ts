@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { hash } from "bcryptjs";
 import { z } from "zod";
 import { auditLog, AuditAction } from "@/lib/security/audit";
-import { getApiContext, createSuccessResponse, createErrorResponse } from "@/lib/api-middleware";
+import { getPublicApiContext, createSuccessResponse, createErrorResponse } from "@/lib/api-middleware";
 import { logger } from '@/lib/logger';
 
 const resetPasswordSchema = z.object({
@@ -26,7 +26,7 @@ const resetPasswordSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getPublicApiContext(request);
 
   try {
     const body = await request.json();

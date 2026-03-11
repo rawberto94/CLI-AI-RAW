@@ -114,6 +114,19 @@ export function getApiContext(request: NextRequest): ApiContext {
 }
 
 /**
+ * Extract API context for PUBLIC routes (signup, forgot-password, etc.)
+ * Does NOT require tenant ID - these routes are unauthenticated by design.
+ */
+export function getPublicApiContext(request: NextRequest): ApiContext {
+  return {
+    requestId: request.headers.get('x-request-id') || nanoid(),
+    tenantId: request.headers.get('x-tenant-id') || 'public',
+    startTime: Date.now(),
+    dataMode: (request.headers.get('x-data-mode') || 'real') as 'real' | 'mock',
+  };
+}
+
+/**
  * Extract authenticated API context (defense-in-depth).
  * Reads user identity from middleware-injected headers.
  * Returns null if no user identity present.

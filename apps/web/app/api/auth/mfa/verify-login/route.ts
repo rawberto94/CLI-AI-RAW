@@ -12,11 +12,11 @@ import { NextRequest } from "next/server";
 import { auth, generateMfaVerificationToken } from "@/lib/auth";
 import { verifyMFAToken } from "@/lib/security/mfa";
 import { auditLog, AuditAction, getAuditContext } from "@/lib/security/audit";
-import { getApiContext, createSuccessResponse, createErrorResponse } from "@/lib/api-middleware";
+import { getPublicApiContext, createSuccessResponse, createErrorResponse } from "@/lib/api-middleware";
 import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getPublicApiContext(request);
 
   try {
     // User must be authenticated (even if MFA-pending)

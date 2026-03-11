@@ -8,7 +8,7 @@ import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { auditTrailService } from 'data-orchestration/services';
-import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { getPublicApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -26,7 +26,7 @@ const signupSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getPublicApiContext(request);
   try {
     const body = await request.json();
     const validated = signupSchema.parse(body);

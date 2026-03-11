@@ -6,10 +6,10 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auditTrailService } from 'data-orchestration/services';
-import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { getPublicApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 export async function GET(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getPublicApiContext(request);
   try {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get("token");
