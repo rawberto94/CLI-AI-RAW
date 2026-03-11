@@ -185,7 +185,11 @@ function SignUpForm() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create account");
+        // API returns { error: { code, message, ... } } structure
+        const errorMessage = typeof data.error === 'object' 
+          ? data.error?.message || data.error?.code || "Failed to create account"
+          : data.error || "Failed to create account";
+        throw new Error(errorMessage);
       }
 
       setStep("complete");
