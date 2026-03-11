@@ -9,13 +9,18 @@ import EmailService from '@/lib/services/email.service';
 import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 // Internal API secret for authentication - MUST be set in production
-const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;
-
-if (process.env.NODE_ENV === 'production' && !INTERNAL_API_SECRET) {
-  throw new Error('INTERNAL_API_SECRET must be set in production environment');
+// Checked at runtime, not at build time, so build completes successfully
+function getInternalApiSecret(): string {
+  const secret = process.env.INTERNAL_API_SECRET;
+  if (process.env.NODE_ENV === 'production' && !secret && typeof window === 'undefined') {
+    throw new Error('INTERNAL_API_SECRET must be set in production environment');
+  }
+  return secret || '';
 }
 
 export const POST = withApiHandler(async (request: NextRequest, ctx) => {
+  const INTERNAL_API_SECRET = getInternalApiSecret();
+  
   // Validate internal API secret
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
