@@ -57,11 +57,12 @@ class WebhookNotificationService {
       await prisma.webhookConfig.create({
         data: {
           id,
+          name: `webhook-${id}`,
           tenantId,
           url: config.url,
-          secret: config.secret,
+          secret: config.secret ?? '',
           events: config.events,
-          active: config.active,
+          isActive: config.active,
         },
       });
     } catch (error) {
@@ -110,7 +111,7 @@ class WebhookNotificationService {
           url: w.url,
           secret: w.secret || undefined,
           events: w.events as string[],
-          active: w.active,
+          active: w.isActive,
         }));
         webhookStore.set(tenantId, configs);
         return configs;

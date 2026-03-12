@@ -1125,7 +1125,7 @@ class ContractHierarchyService {
       title: contract.contractTitle || contract.fileName || 'Untitled',
       type: contract.contractType || 'Unknown',
       status: contract.status,
-      party: contract.supplierName,
+      party: contract.supplierName ?? undefined,
       value: Number(contract.totalValue || 0),
       currency: contract.currency || 'USD',
       startDate: contract.startDate || undefined,

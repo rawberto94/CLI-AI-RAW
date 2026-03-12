@@ -6,6 +6,8 @@
 
 import Redis from 'ioredis';
 
+type RedisInstance = InstanceType<typeof Redis>;
+
 const redisUrl = process.env.REDIS_URL;
 
 // Null Redis client for build time when REDIS_URL is not available
@@ -24,10 +26,10 @@ class NullRedis {
   on(): this { return this; }
 }
 
-function createRedisClient(): Redis | NullRedis {
+function createRedisClient(): RedisInstance | NullRedis {
   if (!redisUrl) {
     console.warn('[Redis] REDIS_URL not configured, using null Redis client');
-    return new NullRedis() as unknown as Redis;
+    return new NullRedis() as unknown as RedisInstance;
   }
   
   const client = new Redis(redisUrl, {

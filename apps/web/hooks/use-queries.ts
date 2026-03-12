@@ -349,6 +349,8 @@ export function useContracts(
           'x-data-mode': 'real',
           'x-tenant-id': getTenantId(),
         },
+        // Always revalidate with server so mutations (delete/update) take effect immediately
+        cache: 'no-cache',
       });
       
       if (!response.ok) {

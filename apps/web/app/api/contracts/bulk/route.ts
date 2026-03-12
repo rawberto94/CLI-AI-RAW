@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { publishRealtimeEvent } from '@/lib/realtime/publish'
 import { safeDeleteContract } from '@/lib/services/contract-deletion.service'
+import { deleteCachedByPattern } from '@/lib/cache'
 import { bulkOperationSchema } from '@/lib/validation/contract.validation'
 import { ZodError } from 'zod'
 import { addActivityLogEntry } from '@/lib/activity-log'
@@ -125,6 +126,10 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         (r) => r.status === 'fulfilled' && r.value.success
       ).length
       const failedCount = deleteResults.length - successCount
+
+      // Invalidate Redis cache so list endpoint returns fresh data
+      await deleteCachedByPattern('contracts:list:*').catch(() => {})
+      await deleteCachedByPattern('contracts:stats').catch(() => {})
 
       // Realtime events already published by safeDeleteContract
       return createSuccessResponse(ctx, {

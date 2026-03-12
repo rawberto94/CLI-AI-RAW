@@ -13,7 +13,7 @@ interface ConTigoLogoProps {
 /**
  * Official ConTigo Logo
  *
- * Uses /contigo-logo-stack.png (transparent background stacked logo).
+ * Uses /logo-icon.svg (three stacked bars icon).
  * Falls back to "con" + "tigo" text if image not available.
  */
 
@@ -73,7 +73,7 @@ export function ConTigoLogo({ size = 'md', showText = true, className = '', href
   return (
     <LogoWrapper href={href} className={`flex items-center gap-2.5 ${className}`}>
       <Image
-        src="/contigo-logo-stack.png"
+        src="/logo-icon.svg"
         alt="ConTigo"
         width={width}
         height={height}
@@ -97,11 +97,11 @@ export function ConTigoLogoWhite({ size = 'md', showText = true, className = '',
   return (
     <LogoWrapper href={href} className={`flex items-center gap-2.5 ${className}`}>
       <Image
-        src="/contigo-logo-stack.png"
+        src="/logo-icon-white.svg"
         alt="ConTigo"
         width={width}
         height={height}
-        className="flex-shrink-0 object-contain brightness-0 invert"
+        className="flex-shrink-0 object-contain"
         priority
       />
       {showText && <LogoText textClass={TEXT_SIZES[size]} variant="white" />}

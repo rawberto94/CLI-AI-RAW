@@ -248,7 +248,7 @@ export function RichTextEditor({
         data-placeholder={placeholder}
       />
 
-      <style jsx>{`
+      <style>{`
         [data-placeholder]:empty::before {
           content: attr(data-placeholder);
           color: #9ca3af;

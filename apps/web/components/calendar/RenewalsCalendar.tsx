@@ -45,7 +45,7 @@ interface RenewalContract {
   renewalDate: string;
   autoRenewal: boolean;
   noticeDeadline?: string;
-  status: 'upcoming' | 'in-progress' | 'completed' | 'lapsed' | 'terminated';
+  status: 'upcoming' | 'urgent' | 'in-progress' | 'in-negotiation' | 'pending-review' | 'completed' | 'lapsed' | 'expired' | 'terminated';
   renewalType: 'auto' | 'manual' | 'negotiated';
   healthScore: number;
   daysUntilRenewal: number;
@@ -64,19 +64,27 @@ interface RenewalsCalendarProps {
 }
 
 // Status colors
-const statusColors = {
+const statusColors: Record<string, string> = {
   'upcoming': 'bg-violet-500',
+  'urgent': 'bg-orange-500',
   'in-progress': 'bg-violet-500',
+  'in-negotiation': 'bg-blue-500',
+  'pending-review': 'bg-amber-500',
   'completed': 'bg-green-500',
   'lapsed': 'bg-red-500',
+  'expired': 'bg-red-500',
   'terminated': 'bg-slate-500',
 };
 
-const statusBadgeColors = {
+const statusBadgeColors: Record<string, string> = {
   'upcoming': 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
+  'urgent': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
   'in-progress': 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
+  'in-negotiation': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  'pending-review': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
   'completed': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   'lapsed': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  'expired': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   'terminated': 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
 };
 

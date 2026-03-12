@@ -548,9 +548,11 @@ export const config = {
      * Match all request paths except:
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * - _dev-* (dev-mode asset prefix for cache busting)
+     * - favicon.ico / favicon.svg
+     * - Static assets (logo-*, grid.svg, etc.)
      * - public folder
      */
-    "/((?!_next/static|_next/image|favicon.ico|public).*)",
+    "/((?!_next/static|_next/image|_dev-|favicon\\.ico|favicon\\.svg|logo-|grid\\.svg|public).*)",
   ],
 };

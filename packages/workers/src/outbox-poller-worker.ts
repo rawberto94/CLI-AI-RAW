@@ -13,6 +13,9 @@
  */
 
 import { Worker as BullWorker, Queue as BullQueue } from 'bullmq';
+
+type BullWorkerType = InstanceType<typeof BullWorker>;
+type BullQueueType = InstanceType<typeof BullQueue>;
 import pino from 'pino';
 
 const isBuildTime = process.env.NEXT_BUILD === 'true';
@@ -286,8 +289,8 @@ async function pollOutboxEvents(): Promise<PollResult> {
 // Worker Registration
 // ============================================================================
 
-let outboxWorker: BullWorker | null = null;
-let outboxQueue: BullQueue | null = null;
+let outboxWorker: BullWorkerType | null = null;
+let outboxQueue: BullQueueType | null = null;
 
 export function registerOutboxPollerWorker() {
   if (isBuildTime) return null;

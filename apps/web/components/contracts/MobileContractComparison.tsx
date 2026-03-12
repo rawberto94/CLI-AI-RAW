@@ -163,7 +163,7 @@ function ContractCard({
         <MetaRow
           icon={<Shield className="w-4 h-4" />}
           label="Risk"
-          value={contract.riskLevel ?? (contract as Record<string, unknown>).riskScore as string | undefined}
+          value={contract.riskLevel ?? (contract as unknown as Record<string, unknown>).riskScore as string | undefined}
         />
         <MetaRow
           icon={<Shield className="w-4 h-4" />}

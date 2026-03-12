@@ -77,7 +77,7 @@ function ParticleField() {
           }}
         />
       ))}
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0) translateX(0) scale(1); opacity: 0.3; }
           50% { transform: translateY(-20px) translateX(10px) scale(1.5); opacity: 0.6; }
@@ -102,7 +102,7 @@ function AnimatedGrid() {
           animation: 'gridMove 20s linear infinite',
         }}
       />
-      <style jsx>{`
+      <style>{`
         @keyframes gridMove {
           0% { transform: translate(0, 0); }
           100% { transform: translate(60px, 60px); }
@@ -385,7 +385,7 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
       <div className={`fixed right-0 top-0 bottom-0 z-50 w-[280px] sm:w-[320px] bg-white shadow-2xl lg:hidden transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <img src="/contigo-logo-stack.png" alt="ConTigo" width={28} height={28} className="object-contain" />
+            <img src="/logo-icon.svg" alt="ConTigo" width={28} height={28} className="object-contain" />
             <span className="text-lg font-bold">
               <span className="text-violet-700">con</span>
               <span className="text-slate-900">tigo</span>
@@ -479,7 +479,7 @@ export default function LandingPageClient() {
         }`}>
           {/* Mobile Brand */}
           <a href="#" className="md:hidden flex items-center gap-1.5 pl-1 pr-2 flex-shrink-0">
-            <img src="/contigo-logo-stack.png" alt="ConTigo" width={24} height={24} className="object-contain" />
+            <img src="/logo-icon.svg" alt="ConTigo" width={24} height={24} className="object-contain" />
             <span className="text-sm font-bold">
               <span className="text-violet-700">con</span>
               <span className="text-slate-900">tigo</span>
@@ -559,11 +559,14 @@ export default function LandingPageClient() {
             </div>
 
             {/* Logo - Hero Size */}
-            <div className="flex justify-center mb-6 sm:mb-8 relative">
+            <div className="flex justify-center mb-8 sm:mb-12 relative">
               <div className="absolute inset-0 bg-gradient-to-r from-violet-400/30 via-purple-400/30 to-fuchsia-400/30 blur-3xl scale-150" />
               {/* Contigo Logo */}
-              <div className="relative z-10 flex items-center gap-3 sm:gap-6">
-                <img src="/contigo-logo.jpg" alt="ConTigo" className="w-[200px] h-auto sm:w-[300px] lg:w-[420px] drop-shadow-2xl rounded-lg" />
+              <div className="relative z-10 flex items-center gap-4 sm:gap-8">
+                <img src="/logo-icon.svg" alt="ConTigo" className="w-[80px] h-[80px] sm:w-[120px] sm:h-[120px] lg:w-[160px] lg:h-[160px] drop-shadow-2xl" />
+                <span className="text-5xl sm:text-7xl lg:text-9xl tracking-tight drop-shadow-lg">
+                  <span className="font-bold text-violet-700">con</span><span className="font-light text-slate-900">tigo</span>
+                </span>
               </div>
             </div>
             
@@ -576,7 +579,7 @@ export default function LandingPageClient() {
                 <span className="absolute -bottom-2 left-0 right-0 h-3 bg-gradient-to-r from-violet-500/20 to-purple-500/20 blur-lg" />
               </span>
             </h1>
-            <style jsx>{`
+            <style>{`
               @keyframes gradient {
                 0%, 100% { background-position: 0% 50%; }
                 50% { background-position: 100% 50%; }
@@ -1931,7 +1934,7 @@ export default function LandingPageClient() {
             <div className="lg:col-span-2">
               {/* Footer Logo */}
               <div className="flex items-center gap-3 mb-6">
-                <img src="/contigo-logo-stack.png" alt="ConTigo" width={40} height={40} className="object-contain brightness-0 invert" />
+                <img src="/logo-icon-white.svg" alt="ConTigo" width={40} height={40} className="object-contain" />
                 <span className="text-2xl font-bold">
                   <span className="text-violet-400">con</span>
                   <span className="text-white">tigo</span>

@@ -21,7 +21,8 @@ import { ZodError } from "zod";
 import { semanticCache } from "@/lib/ai/semantic-cache.service";
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { generateETag, checkETagMatch, CacheDuration } from '@/lib/api-cache-headers';
-import { contractCache, etagHeaders } from '@/lib/cache/etag-cache';
+import { contractCache, apiCache, etagHeaders } from '@/lib/cache/etag-cache';
+import { deleteCachedByPattern } from '@/lib/cache';
 import { logger } from '@/lib/logger';
 
 // Using singleton prisma instance from @/lib/prisma
@@ -873,6 +874,8 @@ export async function PUT(
     // Invalidate server-side + semantic caches
     contractCache.invalidate(`contract:${tenantId}:${contractId}`);
     contractCache.invalidate('contracts:', true); // prefix invalidation for list cache
+    apiCache.invalidate('contracts:', true); // clear list endpoint ETag cache
+    await deleteCachedByPattern('contracts:list:*').catch(() => {});
     semanticCache.invalidate(tenantId, contractId).catch((err) => {
       logger.error('[ContractUpdate] Semantic cache invalidation error:', err);
     });
@@ -927,6 +930,10 @@ export async function DELETE(
     // Invalidate server-side + semantic caches
     contractCache.invalidate(`contract:${tenantId}:${contractId}`);
     contractCache.invalidate('contracts:', true); // prefix invalidation for list cache
+    apiCache.invalidate('contracts:', true); // clear list endpoint ETag cache
+    // Invalidate Redis cache so the list endpoint returns fresh data
+    await deleteCachedByPattern('contracts:list:*').catch(() => {});
+    await deleteCachedByPattern('contracts:stats').catch(() => {});
     semanticCache.invalidate(tenantId, contractId).catch((err) => {
       logger.error('[ContractDelete] Semantic cache invalidation error:', err);
     });

@@ -70,7 +70,19 @@ function installFetchInterceptor(): () => void {
         url.startsWith('/') || url.startsWith(window.location.origin);
 
       if (isSameOrigin) {
-        const csrfToken = getTokenFromCookie();
+        let csrfToken = getTokenFromCookie();
+
+        // If no token exists yet, eagerly fetch one before sending the request.
+        // This avoids a guaranteed 403 followed by a retry that can't replay
+        // consumed body streams (e.g. FormData with file uploads).
+        if (!csrfToken) {
+          try {
+            await originalFetch.call(window, '/api/csrf', { method: 'GET', credentials: 'include' });
+            csrfToken = getTokenFromCookie();
+          } catch {
+            // Best-effort — proceed without token
+          }
+        }
 
         if (csrfToken) {
           const existingHeaders = new Headers(init?.headers);
@@ -84,22 +96,27 @@ function installFetchInterceptor(): () => void {
         // Execute the request
         const response = await originalFetch.call(window, input, init!);
 
-        // Auto-retry ONCE on CSRF failure: refresh token and replay
+        // Auto-retry ONCE on CSRF failure: refresh token and replay.
+        // NOTE: Only retry if the body is NOT a ReadableStream/FormData (which
+        // cannot be consumed twice). File uploads rely on the eager-fetch above.
         if (response.status === 403) {
-          try {
-            const body = await response.clone().json();
-            if (body?.code === 'CSRF_MISSING' || body?.code === 'CSRF_EXPIRED' || body?.code === 'CSRF_INVALID') {
-              // Refresh token from server
-              await originalFetch.call(window, '/api/csrf', { method: 'GET', credentials: 'include' });
-              const freshToken = getTokenFromCookie();
-              if (freshToken) {
-                const retryHeaders = new Headers(init?.headers);
-                retryHeaders.set(CSRF_CONSTANTS.HEADER_NAME, freshToken);
-                return originalFetch.call(window, input, { ...init, headers: retryHeaders });
+          const canRetry = !(init?.body instanceof FormData) && !(init?.body instanceof ReadableStream);
+          if (canRetry) {
+            try {
+              const body = await response.clone().json();
+              if (body?.code === 'CSRF_MISSING' || body?.code === 'CSRF_EXPIRED' || body?.code === 'CSRF_INVALID') {
+                // Refresh token from server
+                await originalFetch.call(window, '/api/csrf', { method: 'GET', credentials: 'include' });
+                const freshToken = getTokenFromCookie();
+                if (freshToken) {
+                  const retryHeaders = new Headers(init?.headers);
+                  retryHeaders.set(CSRF_CONSTANTS.HEADER_NAME, freshToken);
+                  return originalFetch.call(window, input, { ...init, headers: retryHeaders });
+                }
               }
+            } catch {
+              // If retry parsing fails, return original response
             }
-          } catch {
-            // If retry parsing fails, return original response
           }
         }
 

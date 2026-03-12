@@ -93,7 +93,7 @@ interface Version {
   label?: string;
 }
 
-const collaborators: Collaborator[] = [
+const DEMO_COLLABORATORS: Collaborator[] = [
   { id: '1', name: 'Sarah Chen', color: '#3B82F6', isActive: true, lastSeen: 'now' },
   { id: '2', name: 'Mike Johnson', color: '#10B981', isActive: true, lastSeen: 'now' },
   { id: '3', name: 'Lisa Park', color: '#8B5CF6', isActive: false, lastSeen: '5m ago' },

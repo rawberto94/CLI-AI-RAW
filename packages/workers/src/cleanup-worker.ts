@@ -11,6 +11,9 @@
  */
 
 import { Worker as BullWorker, Queue as BullQueue } from 'bullmq';
+
+type BullWorkerType = InstanceType<typeof BullWorker>;
+type BullQueueType = InstanceType<typeof BullQueue>;
 import { getQueueService } from '@repo/utils/queue/queue-service';
 import pino from 'pino';
 
@@ -294,8 +297,8 @@ async function runCleanup(): Promise<CleanupResult> {
 // Worker Registration
 // ============================================================================
 
-let cleanupWorker: BullWorker | null = null;
-let cleanupQueue: BullQueue | null = null;
+let cleanupWorker: BullWorkerType | null = null;
+let cleanupQueue: BullQueueType | null = null;
 
 export function registerCleanupWorker() {
   if (isBuildTime) return null;

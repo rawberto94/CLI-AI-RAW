@@ -134,7 +134,7 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
 async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueResult> {
   const { contractId, tenantId, filePath, mimeType } = options;
   
-  logger.info({ contractId, filePath }, 'Starting inline artifact generation (legacy fallback)');
+  logger.info('Starting inline artifact generation (legacy fallback)', { contractId, filePath });
   
   // Ensure contract is in PROCESSING state before fire-and-forget
   try {
@@ -158,9 +158,9 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
         prisma
       );
       
-      logger.info({ contractId, ...result }, 'Inline artifact generation completed');
+      logger.info('Inline artifact generation completed', { contractId, ...result });
     } catch (err) {
-      logger.error({ contractId, error: (err as Error).message }, 'Inline artifact generation failed');
+      logger.error('Inline artifact generation failed', err as Error, { contractId });
       // Mark contract as failed so it doesn't stay stuck in PROCESSING
       try {
         await prisma.contract.update({
@@ -198,17 +198,11 @@ function scheduleInlineFallback(options: TriggerOptions, delayMs: number) {
         !contract.rawText &&
         ['PROCESSING', 'QUEUED', 'PENDING'].includes(contract.status)
       ) {
-        logger.warn(
-          { contractId: options.contractId },
-          'No artifacts after queue delay — triggering inline fallback processing'
-        );
+        logger.warn('No artifacts after queue delay — triggering inline fallback processing', { contractId: options.contractId });
         await triggerLegacyProcessing(options);
       }
     } catch (err) {
-      logger.error(
-        { contractId: options.contractId, error: (err as Error).message },
-        'Inline fallback check failed'
-      );
+      logger.error('Inline fallback check failed', err as Error, { contractId: options.contractId });
     }
   }, delayMs);
   timer.unref(); // Don't prevent graceful shutdown

@@ -25,7 +25,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
     const playbook = await generateAndStorePlaybook({
       contractId,
       tenantId: ctx.tenantId,
-      ourRole: ourRole || 'auto',
+      ourRole: (ourRole || 'auto') as 'auto' | 'licensor' | 'licensee' | 'buyer' | 'seller',
       negotiationContext,
     });
 

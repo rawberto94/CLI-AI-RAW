@@ -650,7 +650,7 @@ export class RFxDetectionAgent extends BaseAgent {
   }
 
   private generateActions(opportunities: RFxOpportunity[], tenantId: string): any[] {
-    const actions = [];
+    const actions: Record<string, unknown>[] = [];
 
     // Add action for highest priority opportunity
     if (opportunities.length > 0) {

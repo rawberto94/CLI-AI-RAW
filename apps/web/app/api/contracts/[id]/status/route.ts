@@ -385,7 +385,7 @@ export async function PATCH(
     const updated = await prisma.contract.update({
       where: { id: contractId },
       data: {
-        status: normalizedStatus,
+        status: normalizedStatus as Parameters<typeof prisma.contract.update>[0]['data']['status'],
         metadata: {
           ...meta,
           statusHistory,

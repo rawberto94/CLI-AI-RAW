@@ -319,21 +319,17 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
     if (contractCount >= TENANT_MAX_CONTRACTS) {
       return createErrorResponse(ctx, 'QUOTA_EXCEEDED', `Tenant quota exceeded: ${contractCount}/${TENANT_MAX_CONTRACTS} contracts`, 403, {
-        details: `Maximum ${TENANT_MAX_CONTRACTS} contracts per tenant. Please archive or delete unused contracts.`,
-        currentCount: contractCount,
-        limit: TENANT_MAX_CONTRACTS,
+        details: `Maximum ${TENANT_MAX_CONTRACTS} contracts per tenant (current: ${contractCount}). Please archive or delete unused contracts.`,
       });
     }
     if (storageMB >= TENANT_MAX_STORAGE_MB) {
       return createErrorResponse(ctx, 'QUOTA_EXCEEDED', `Storage quota exceeded: ${storageMB.toFixed(0)}MB/${TENANT_MAX_STORAGE_MB}MB`, 403, {
-        details: `Maximum ${TENANT_MAX_STORAGE_MB}MB storage per tenant.`,
-        currentMB: Math.round(storageMB),
-        limitMB: TENANT_MAX_STORAGE_MB,
+        details: `Maximum ${TENANT_MAX_STORAGE_MB}MB storage per tenant (current: ${Math.round(storageMB)}MB).`,
       });
     }
   } catch (quotaError) {
     // Non-blocking: if quota check fails, allow upload but log warning
-    logger.warn({ tenantId, error: quotaError }, 'Failed to check tenant quota, allowing upload');
+    logger.warn('Failed to check tenant quota, allowing upload', { tenantId, error: String(quotaError) });
   }
 
   let formData: FormData;
@@ -588,7 +584,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         idempotencyKey,
       });
     } catch (sideEffectsErr) {
-      logger.warn('[ContractUpload] createContractWithSideEffects unavailable, using direct creation:', (sideEffectsErr as Error).message);
+      logger.warn('[ContractUpload] createContractWithSideEffects unavailable, using direct creation: ' + (sideEffectsErr as Error).message);
       // Fallback to direct creation — use transaction for atomicity
       const txResult = await prisma.$transaction(async (tx) => {
         const contract = await tx.contract.create({
@@ -803,7 +799,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       } else {
         priority = PROCESSING_PRIORITY.BACKGROUND; // > 20 MB → background
       }
-      logger.info({ fileSizeBytes, derivedPriority: priority }, 'File size priority boost applied');
+      logger.info('File size priority boost applied', { fileSizeBytes, derivedPriority: priority });
     }
     
     // Get OCR mode from form data (user-selected AI model)

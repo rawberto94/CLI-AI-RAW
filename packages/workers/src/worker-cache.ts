@@ -9,6 +9,8 @@
  */
 
 import Redis from 'ioredis';
+
+type RedisInstance = InstanceType<typeof Redis>;
 import crypto from 'crypto';
 import pino from 'pino';
 
@@ -41,7 +43,7 @@ export interface CachedAIResponse {
  * Distributed Worker Cache using Redis
  */
 export class WorkerCache {
-  private redis: Redis;
+  private redis: RedisInstance;
   private keyPrefix: string;
   private defaultTTL: number;
 

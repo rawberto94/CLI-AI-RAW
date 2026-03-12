@@ -10,7 +10,7 @@ function MarketingHeader() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5" aria-label="ConTigo home">
-          <img src="/contigo-logo-stack.png" alt="ConTigo" width={32} height={32} className="object-contain" />
+          <img src="/logo-icon.svg" alt="ConTigo" width={32} height={32} className="object-contain" />
           <span className="text-xl tracking-tight">
             <span className="font-bold text-violet-700 dark:text-violet-400">con</span>
             <span className="font-light text-slate-900 dark:text-white">tigo</span>
@@ -69,7 +69,7 @@ function MarketingFooter() {
           {/* Brand */}
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2.5" aria-label="ConTigo home">
-              <img src="/contigo-logo-stack.png" alt="ConTigo" width={28} height={28} className="object-contain" />
+              <img src="/logo-icon.svg" alt="ConTigo" width={28} height={28} className="object-contain" />
               <span className="text-lg tracking-tight">
                 <span className="font-bold text-violet-700 dark:text-violet-400">con</span>
                 <span className="font-light text-slate-900 dark:text-white">tigo</span>

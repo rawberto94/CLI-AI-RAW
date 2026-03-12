@@ -2240,7 +2240,7 @@ export default function AIReportBuilderPage() {
       </div>
       
       {/* Custom scrollbar styles */}
-      <style jsx global>{`
+      <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
           height: 4px;

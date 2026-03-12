@@ -110,7 +110,7 @@ function getEncodingForModel(model: string): Tiktoken {
   try {
     // Try to get encoding for the model directly
     const mappedModel = MODEL_ENCODING_MAP[model] ?? model;
-    const encoding = encodingForModel(mappedModel);
+    const encoding = encodingForModel(mappedModel as Parameters<typeof encodingForModel>[0]);
     encodingCache.set(model, encoding);
     return encoding;
   } catch {

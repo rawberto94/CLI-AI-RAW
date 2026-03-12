@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+import crypto from "crypto";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -30,9 +31,41 @@ if (isNextBuildProcess()) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Resolved once at startup — used to bust the webpack cache on dependency or Next.js version changes.
+let nextVersion = 'unknown';
+try {
+  const nextPkgPath = path.resolve(__dirname, '..', '..', 'node_modules', 'next', 'package.json');
+  nextVersion = JSON.parse(fs.readFileSync(nextPkgPath, 'utf8')).version;
+} catch (_) {}
+
+// Content-hash of the lockfile — survives git operations & codespace restores
+// where file mtimes are not preserved. This ensures any dependency change
+// (pnpm install/update) always invalidates the webpack filesystem cache.
+let lockfileHash = 'unknown';
+try {
+  const lockfilePath = path.resolve(__dirname, '..', '..', 'pnpm-lock.yaml');
+  const lockfileContent = fs.readFileSync(lockfilePath);
+  lockfileHash = crypto.createHash('md5').update(lockfileContent).digest('hex');
+} catch (_) {}
+
+let reactVersion = 'unknown';
+try {
+  const reactPkgPath = path.resolve(__dirname, '..', '..', 'node_modules', 'react', 'package.json');
+  reactVersion = JSON.parse(fs.readFileSync(reactPkgPath, 'utf8')).version;
+} catch (_) {}
+
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
+
+// Dev-mode asset prefix: changes the URL namespace for all _next/static assets
+// so that stale browser cache entries (from a previous "immutable" header bug)
+// can never match. The hash is stable for a given dependency set and only changes
+// when dependencies or the Next.js version change — exactly when cache busting
+// is needed.
+const devAssetPrefix = process.env.NODE_ENV === 'development'
+  ? `/_dev-${crypto.createHash('md5').update(`${lockfileHash}|${nextVersion}`).digest('hex').slice(0, 8)}`
+  : undefined;
 
 const nextConfig = {
   eslint: {
@@ -45,6 +78,11 @@ const nextConfig = {
   // Disable dev-mode devtools overlay to prevent segment-explorer context errors
   devIndicators: false,
   output: "standalone",
+
+  // In dev mode, use a unique path prefix for static assets. This ensures the
+  // browser never serves stale cached chunks if the dependency tree changed,
+  // because the URL is different for each unique set of dependencies.
+  ...(devAssetPrefix && { assetPrefix: devAssetPrefix }),
   
   // External packages that should not be bundled (native modules)
   serverExternalPackages: [
@@ -161,18 +199,20 @@ const nextConfig = {
 
   // Minimal webpack configuration
   webpack: (config, { isServer, dev, webpack, nextRuntime }) => {
-    // Tie webpack persistent cache to the lockfile so that any dependency change
-    // (pnpm install / update) automatically invalidates stale cached modules.
-    // This prevents "Cannot read properties of undefined (reading 'call')" crashes
-    // caused by webpack serving chunks compiled against a different dependency tree.
+    // Tie webpack persistent cache to the lockfile content hash + package versions
+    // so that ANY dependency change automatically invalidates stale cached modules.
+    // Uses a content hash (not mtime) because git/codespace operations don't preserve
+    // file timestamps. This prevents "Cannot read properties of undefined (reading 'call')"
+    // crashes caused by webpack serving chunks compiled against a different dependency tree.
     if (config.cache && config.cache.type === 'filesystem') {
-      try {
-        const lockfilePath = path.resolve(__dirname, '..', '..', 'pnpm-lock.yaml');
-        const lockfileMtime = fs.statSync(lockfilePath).mtimeMs;
-        config.cache.version = `${config.cache.version || ''}|lock:${lockfileMtime}`;
-      } catch (_) {
-        // Lockfile read failed — leave cache version unchanged
-      }
+      config.cache.version = `${config.cache.version || ''}|lock:${lockfileHash}|next:${nextVersion}|react:${reactVersion}`;
+      // Tell webpack to watch the lockfile itself — if it changes between builds,
+      // the entire filesystem cache is automatically dropped.
+      config.cache.buildDependencies = {
+        ...config.cache.buildDependencies,
+        lockfile: [path.resolve(__dirname, '..', '..', 'pnpm-lock.yaml')],
+        nextConfig: [path.resolve(__dirname, 'next.config.mjs')],
+      };
     }
 
     // Avoid noisy warnings for ESM packages that use top-level await (e.g. pdfjs-dist)
@@ -354,6 +394,7 @@ const nextConfig = {
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
               "connect-src 'self' https://*.sentry.io https://*.ingest.sentry.io wss: ws:",
+              "manifest-src 'self'",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
@@ -387,25 +428,42 @@ const nextConfig = {
         ],
       },
       {
-        // Cache static assets aggressively
+        // Cache static assets aggressively (production only — dev has no content hashes)
         source: "/static/(.*)",
         headers: [
           {
             key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
+            value: process.env.NODE_ENV === 'production'
+              ? "public, max-age=31536000, immutable"
+              : "no-store, must-revalidate",
           },
         ],
       },
       {
         // Cache Next.js build assets (JS/CSS chunks) for CDN
+        // In dev mode, chunk filenames are stable (no content hash), so immutable
+        // caching causes "Cannot read properties of undefined (reading 'call')"
+        // when dependencies change and the browser serves stale chunks.
         source: "/_next/static/(.*)",
         headers: [
           {
             key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
+            value: process.env.NODE_ENV === 'production'
+              ? "public, max-age=31536000, immutable"
+              : "no-store, must-revalidate",
           },
         ],
       },
+      // Match prefixed dev-mode asset paths (assetPrefix = /_dev-<hash>)
+      ...(process.env.NODE_ENV === 'development' ? [{
+        source: "/_dev-:hash/_next/static/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, must-revalidate",
+          },
+        ],
+      }] : []),
     ];
   },
 };

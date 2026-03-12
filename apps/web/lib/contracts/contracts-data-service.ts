@@ -20,11 +20,15 @@ export interface Contract {
   processedAt?: string;
   fileSize: number;
   contractType?: string;
+  contractTitle?: string;
   totalValue?: number;
   currency?: string;
   riskScore?: number;
+  riskLevel?: string;
   complianceScore?: number;
   parties?: string[];
+  clientName?: string;
+  supplierName?: string;
   effectiveDate?: string;
   expirationDate?: string;
   error?: string;

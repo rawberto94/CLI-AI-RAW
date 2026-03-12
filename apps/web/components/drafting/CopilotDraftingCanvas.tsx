@@ -34,6 +34,7 @@ interface CopilotSuggestion {
   id: string;
   type: 'clause_improvement' | 'risk_warning' | 'compliance' | 'auto_complete' | 'negotiation';
   triggerText: string;
+  originalText?: string;
   suggestedText: string;
   explanation: string;
   confidence: number;

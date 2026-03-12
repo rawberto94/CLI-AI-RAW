@@ -88,8 +88,7 @@ export const POST = withAuthApiHandler(async (req, ctx) => {
 
     return createErrorResponse(ctx, 'VALIDATION_ERROR',
       'File rejected by security scan', 422, {
-      details: 'Infected file detected and quarantined',
-      threats: scanResult.threats,
+      details: `Infected file detected and quarantined. Threats: ${JSON.stringify(scanResult.threats)}`,
     });
   }
 

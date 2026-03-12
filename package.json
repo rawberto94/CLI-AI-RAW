@@ -10,16 +10,16 @@
   "scripts": {
     "dev": "turbo run dev",
     "dev:web": "turbo run dev --filter=web",
-    "dev:workers": "turbo run dev --filter=workers",
+    "dev:workers": "turbo run dev --filter=@repo/workers",
     "dev:all": "bash scripts/start-all.sh",
     "stop:all": "bash scripts/stop-all.sh",
     "build": "turbo run build",
     "build:web": "turbo run build --filter=web",
-    "build:workers": "turbo run build --filter=workers",
+    "build:workers": "turbo run build --filter=@repo/workers",
     "build:clients": "bash scripts/build-clients.sh",
     "start": "pnpm --filter web run start",
     "websocket": "pnpm --filter web run ws:server",
-    "workers:start": "pnpm --filter workers run start",
+    "workers:start": "pnpm --filter @repo/workers run start",
     "api": "cd packages/data-orchestration && node api-server.js",
     "test": "bash scripts/start-test-services.sh && turbo run test --filter=web",
     "test:unit": "turbo run test:unit",
@@ -37,7 +37,7 @@
     "db:studio": "pnpm exec prisma studio --schema packages/clients/db/schema.prisma",
     "db:push": "pnpm exec prisma db push --schema packages/clients/db/schema.prisma",
     "db:seed": "pnpm exec prisma db seed --schema packages/clients/db/schema.prisma",
-    "postinstall": "rm -rf apps/web/.next/cache/webpack"
+    "postinstall": "rm -rf apps/web/.next"
   },
   "dependencies": {},
   "devDependencies": {

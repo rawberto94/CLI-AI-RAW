@@ -14,10 +14,11 @@ import { z } from 'zod';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 const mfaActionSchema = z.object({
-  action: z.enum(['setup', 'verify-setup', 'verify', 'disable', 'backup-codes'], {
-    errorMap: () => ({ message: 'Invalid MFA action. Must be one of: setup, verify-setup, verify, disable, backup-codes' }),
+  action: z.enum(['setup', 'verify-setup', 'verify', 'disable', 'backup-codes', 'regenerate-backup-codes'], {
+    errorMap: () => ({ message: 'Invalid MFA action. Must be one of: setup, verify-setup, verify, disable, backup-codes, regenerate-backup-codes' }),
   }),
   token: z.string().optional(),
+  password: z.string().optional(),
 });
 
 import {
@@ -52,7 +53,8 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
-    const { action, token } = mfaActionSchema.parse(await request.json());
+    const { action, token, password } = mfaActionSchema.parse(await request.json());
+    const body = { password };
     
     switch (action) {
       case 'setup': {
