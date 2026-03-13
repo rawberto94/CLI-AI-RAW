@@ -45,7 +45,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
     // Handle confirmation/rejection of pending actions
     if (pendingActionId !== undefined) {
-      const pendingAction = getPendingAction(pendingActionId);
+      const pendingAction = await getPendingAction(pendingActionId);
       
       if (!pendingAction) {
         return createErrorResponse(ctx, 'NOT_FOUND', 'Action not found or has expired. Please try again.', 404);
@@ -109,7 +109,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
   const actionId = searchParams.get('actionId');
   
   if (actionId) {
-    const pendingAction = getPendingAction(actionId);
+    const pendingAction = await getPendingAction(actionId);
     
     if (!pendingAction) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Action not found or has expired', 404);

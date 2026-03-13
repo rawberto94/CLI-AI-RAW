@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useContractOrchestrator } from './useContractOrchestrator';
+import { streamChatToJSON } from '@/lib/ai/stream-to-json';
 
 export interface ChatMessage {
   id: string;
@@ -216,32 +217,24 @@ ${orchestratorSuggestions.slice(0, 3).map((s) => `- **${s.type}** (${s.relevance
 
         // Regular AI chat with orchestrator context
         const systemContext = getSystemContext();
-        const response = await fetch('/api/ai/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: content,
+        const result = await streamChatToJSON({
+          message: content,
+          conversationHistory: messages.slice(-5).map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+          context: {
             context: contractId ? 'contract-detail' : 'global',
             contractId,
-            systemContext, // Include orchestrator status
-            history: messages.slice(-5).map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
-          }),
+            systemContext,
+          },
           signal: abortControllerRef.current.signal,
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to get response');
-        }
-
-        const rawData = await response.json();
-        const data = rawData.data ?? rawData;
         const botMessage: ChatMessage = {
           id: `bot-${Date.now()}`,
           role: 'assistant',
-          content: data.message || data.response || 'I apologize, but I encountered an error.',
+          content: result.message || 'I apologize, but I encountered an error.',
           timestamp: new Date(),
           orchestratorInfo: orchestratorProgress
             ? {

@@ -18,6 +18,7 @@
  */
 
 import { createLogger } from '../utils/logger';
+import { estimateTokens } from '../utils/token-estimation';
 
 const logger = createLogger('intelligent-document-analyzer');
 
@@ -385,7 +386,7 @@ export class IntelligentDocumentAnalyzerService {
           analysisVersion: this.analysisVersion,
           modelUsed: 'gpt-4o',
           processingTime,
-          tokenCount: Math.ceil(documentText.length / 4),
+          tokenCount: estimateTokens(documentText),
           timestamp: new Date().toISOString()
         }
       };

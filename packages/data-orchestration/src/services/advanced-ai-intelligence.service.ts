@@ -15,6 +15,7 @@
 import { createLogger } from '../utils/logger';
 import { dbAdaptor } from '../dal/database.adaptor';
 import { cacheAdaptor } from '../dal/cache.adaptor';
+import { estimateTokens } from '../utils/token-estimation';
 
 const logger = createLogger('advanced-ai-intelligence');
 
@@ -393,8 +394,7 @@ export class SemanticChunker {
   }
 
   private static estimateTokens(text: string): number {
-    // Rough estimate: ~4 characters per token for English
-    return Math.ceil(text.length / 4);
+    return estimateTokens(text);
   }
 
   private static assessImportance(sectionName: string, content: string): DocumentChunk['importance'] {
@@ -481,8 +481,9 @@ export function selectOptimalModel(
   priority: 'speed' | 'accuracy' | 'cost'
 ): ModelCapability {
   // Filter models that can handle the contract length
+  const estimatedContractTokens = Math.ceil(contractLength * 1.3 / 4.5); // Chars-to-tokens heuristic
   const capableModels = MODEL_REGISTRY.filter(m => 
-    m.maxTokens >= contractLength / 4 // Rough token estimate
+    m.maxTokens >= estimatedContractTokens
   );
 
   if (capableModels.length === 0) {

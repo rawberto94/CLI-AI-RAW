@@ -19,6 +19,7 @@ import {
   aiLearningService,
 } from './advanced-ai-intelligence.service';
 import { createLogger } from '../utils/logger';
+import { estimateTokens } from '../utils/token-estimation';
 
 const logger = createLogger('intelligent-prompt-router');
 
@@ -410,7 +411,7 @@ export class IntelligentPromptRouter {
 
     // 5. Chunk document if needed
     let chunks: ChunkingResult | undefined;
-    const estimatedTokens = contractText.length / 4;
+    const estimatedTokens = estimateTokens(contractText);
     
     if (includeChunking && estimatedTokens > maxTokens) {
       chunks = SemanticChunker.chunkDocument(contractText, maxTokens);

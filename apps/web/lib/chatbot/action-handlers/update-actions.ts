@@ -12,9 +12,10 @@
 import { DetectedIntent, ActionResponse, ChatContext } from '../types';
 import { prisma } from '@/lib/prisma';
 import { queueRAGReindex } from '@/lib/rag/reindex-helper';
+import { redis } from '@/lib/redis';
 
-// Pending action storage (in production, use Redis or database)
-const pendingActions = new Map<string, PendingAction>();
+const PENDING_ACTION_PREFIX = 'pending_action:';
+const PENDING_ACTION_TTL = 300; // 5 minutes in seconds
 
 export interface PendingAction {
   id: string;
@@ -154,7 +155,7 @@ function generateActionId(): string {
 /**
  * Create a pending action for user confirmation
  */
-export function createPendingAction(
+export async function createPendingAction(
   type: PendingAction['type'],
   contractId: string,
   tenantId: string,
@@ -163,7 +164,7 @@ export function createPendingAction(
   newValue: unknown,
   reason: string,
   userId?: string
-): PendingAction {
+): Promise<PendingAction> {
   const action: PendingAction = {
     id: generateActionId(),
     type,
@@ -175,11 +176,16 @@ export function createPendingAction(
     newValue,
     reason,
     createdAt: new Date(),
-    expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minute expiry
+    expiresAt: new Date(Date.now() + PENDING_ACTION_TTL * 1000),
     status: 'pending',
   };
   
-  pendingActions.set(action.id, action);
+  await redis.set(
+    `${PENDING_ACTION_PREFIX}${action.id}`,
+    JSON.stringify(action),
+    'EX',
+    PENDING_ACTION_TTL
+  );
   
   return action;
 }
@@ -187,13 +193,18 @@ export function createPendingAction(
 /**
  * Get a pending action by ID
  */
-export function getPendingAction(actionId: string): PendingAction | null {
-  const action = pendingActions.get(actionId);
-  if (!action) return null;
+export async function getPendingAction(actionId: string): Promise<PendingAction | null> {
+  const raw = await redis.get(`${PENDING_ACTION_PREFIX}${actionId}`);
+  if (!raw) return null;
   
-  // Check if expired
+  const action: PendingAction = JSON.parse(raw);
+  // Re-hydrate date strings
+  action.createdAt = new Date(action.createdAt);
+  action.expiresAt = new Date(action.expiresAt);
+  
+  // Redis TTL handles expiry, but double-check in case of clock skew
   if (new Date() > action.expiresAt) {
-    action.status = 'expired';
+    await redis.del(`${PENDING_ACTION_PREFIX}${actionId}`);
     return null;
   }
   
@@ -235,8 +246,9 @@ async function executeAction(action: PendingAction): Promise<ActionResponse> {
       reason: `chatbot update: ${action.field}`,
     });
     
-    // Mark action as approved
+    // Mark action as approved and remove from pending
     action.status = 'approved';
+    await redis.del(`${PENDING_ACTION_PREFIX}${action.id}`);
     
     return {
       success: true,
@@ -278,7 +290,7 @@ export async function handleUpdateActions(
       };
     }
     
-    const pendingAction = getPendingAction(pendingActionId);
+    const pendingAction = await getPendingAction(pendingActionId);
     if (!pendingAction) {
       return {
         success: false,
@@ -300,9 +312,9 @@ export async function handleUpdateActions(
       };
     }
     
-    const pendingAction = getPendingAction(pendingActionId);
+    const pendingAction = await getPendingAction(pendingActionId);
     if (pendingAction) {
-      pendingAction.status = 'rejected';
+      await redis.del(`${PENDING_ACTION_PREFIX}${pendingActionId}`);
     }
     
     return {
@@ -434,7 +446,7 @@ export async function handleUpdateActions(
   const currentValue = fieldMapping ? (contract as Record<string, unknown>)[fieldMapping.dbField] : null;
   
   // Create pending action
-  const pendingAction = createPendingAction(
+  const pendingAction = await createPendingAction(
     type,
     contractId,
     context.tenantId,

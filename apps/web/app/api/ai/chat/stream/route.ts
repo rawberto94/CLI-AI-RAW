@@ -27,175 +27,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { prisma } from '@/lib/prisma';
-import { parallelMultiQueryRAG } from '@/lib/rag/parallel-rag.service';
-import { hybridSearch } from '@/lib/rag/advanced-rag.service';
 import { semanticCache } from '@/lib/ai/semantic-cache.service';
 import { calculateDynamicConfidence } from '@/lib/ai/confidence-calibration';
-import { retrieveRelevantMemories, storeMemory } from '@/lib/ai/episodic-memory-integration';
+import { storeMemory } from '@/lib/ai/episodic-memory-integration';
 import { STREAMING_TOOLS, executeTool, type ToolResult } from '@/lib/ai/streaming-tools';
-import { withAuthApiHandler, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, type AuthenticatedApiContext } from '@/lib/api-middleware';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 import { allocateBudget, getBudgetStats } from '@/lib/ai/token-budget';
 import { shouldUseAgent, executeWithAgent } from '@/lib/ai/agent-integration';
-import { routeToModel, recordAICost, estimateTokenCost, type TaskType } from '@/lib/ai/model-router.service';
-import { shouldUseRAG } from '@/lib/ai/chat/response-builder';
+import { recordAICost, estimateTokenCost, type TaskType } from '@/lib/ai/model-router.service';
 import { checkInputGuardrails, checkOutputGuardrails } from '@/lib/ai/guardrails';
 import { summarizeConversationHistory } from '@/lib/ai/conversation-summarizer';
 import { aiTracer } from '@/lib/ai/ai-tracing';
-import { getLearningContext, formatLearningContextForPrompt } from '@repo/agents';
+import { countTokens } from '@/lib/ai/token-counter';
 import { logger } from '@/lib/logger';
 
-// ─── Clients ────────────────────────────────────────────────────────────
-
-let _openai: OpenAI | null = null;
-function getOpenAI(): OpenAI {
-  if (!_openai) {
-    const key = (process.env.OPENAI_API_KEY || '').trim();
-    if (!key) throw new Error('OPENAI_API_KEY is not configured');
-    _openai = new OpenAI({ apiKey: key });
-  }
-  return _openai;
-}
-// Keep backward-compat reference (used throughout this file)
-const openai = new Proxy({} as OpenAI, { get: (_, prop) => (getOpenAI() as any)[prop] });
-
-const anthropic = process.env.ANTHROPIC_API_KEY
-  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  : null;
-
-// ─── Model Failover Chain ───────────────────────────────────────────────
-
-interface ModelConfig {
-  provider: 'openai' | 'anthropic';
-  model: string;
-  priority: number;
-}
-
-// Build failover chain dynamically based on available API keys
-const MODEL_FAILOVER_CHAIN: ModelConfig[] = [
-  { provider: 'openai', model: process.env.OPENAI_MODEL || 'gpt-4o-mini', priority: 1 },
-  { provider: 'openai', model: 'gpt-4o', priority: 2 },
-  // Only include Anthropic models if API key is configured
-  ...(process.env.ANTHROPIC_API_KEY ? [
-    { provider: 'anthropic' as const, model: 'claude-3-5-haiku-20241022', priority: 3 },
-    { provider: 'anthropic' as const, model: 'claude-sonnet-4-20250514', priority: 4 },
-  ] : []),
-];
-
-// Log available models at startup
-if (typeof window === 'undefined') {
-  logger.info(`[AI Chat Stream] Available models: ${MODEL_FAILOVER_CHAIN.map(c => `${c.provider}/${c.model}`).join(', ')}`);
-  if (!process.env.ANTHROPIC_API_KEY) {
-    logger.info('[AI Chat Stream] Anthropic failover disabled (ANTHROPIC_API_KEY not set)');
-  }
-}
-
-// ─── Role-based tool permissions ────────────────────────────────────────
-
-const WRITE_TOOLS = new Set([
-  'start_workflow',
-  'approve_or_reject_step',
-  'create_workflow',
-  'cancel_workflow',
-  'assign_approver',
-  'escalate_workflow',
-  'create_contract',
-  'update_contract',
-]);
-
-const ADMIN_TOOLS = new Set<string>([
-  // Future: tools that require admin role
-]);
-
-function canUseTool(toolName: string, userRole: string): boolean {
-  if (ADMIN_TOOLS.has(toolName) && userRole !== 'ADMIN') return false;
-  if (WRITE_TOOLS.has(toolName) && userRole === 'VIEWER') return false;
-  return true;
-}
-
-// Maximum tool-calling iterations before forcing a final response
-const MAX_TOOL_ITERATIONS = 5;
-
-// ─── Smart Model Routing ────────────────────────────────────────────────
-
-type QueryComplexity = 'simple' | 'moderate' | 'complex';
-
-function detectQueryComplexity(message: string): QueryComplexity {
-  const q = message.toLowerCase().trim();
-  const wordCount = message.split(/\s+/).length;
-
-  // Simple: greetings, confirmations, trivial lookups
-  const simplePatterns = [
-    /^(hi|hello|hey|thanks|thank you|ok|okay|yes|no|bye|sup|yo)\b/,
-    /^what time/,
-    /^(who|what) (is|are) (you|contigo|this)/,
-    /^(show|go to|open|navigate)/,
-  ];
-  if (simplePatterns.some(p => p.test(q)) && wordCount <= 8) return 'simple';
-
-  // Complex: multi-part analysis, comparisons, legal reasoning, strategy
-  const complexIndicators = [
-    'compare', 'analyze', 'summarize all', 'across all', 'trend',
-    'risk assessment', 'compliance audit', 'negotiate', 'strategy',
-    'implications', 'recommend', 'evaluate', 'what should',
-    'how can we', 'optimize', 'consolidate', 'benchmark',
-    'clause by clause', 'draft a', 'create a report', 'full analysis',
-  ];
-  const complexCount = complexIndicators.filter(k => q.includes(k)).length;
-  if (complexCount >= 1 || wordCount > 50) return 'complex';
-
-  return 'moderate';
-}
-
-function buildModelChain(complexity: QueryComplexity, query?: string): ModelConfig[] {
-  const baseModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-
-  // Use smart model router for dynamic selection
-  if (query) {
-    try {
-      const taskTypeMap: Record<QueryComplexity, TaskType> = {
-        simple: 'simple_qa',
-        moderate: 'extraction',
-        complex: 'analysis',
-      };
-      const routing = routeToModel({
-        query,
-        taskType: taskTypeMap[complexity],
-        inputTokens: Math.round(query.length / 4),
-      });
-      // Build chain with routed model first, then fallbacks
-      const chain: ModelConfig[] = [
-        { provider: 'openai', model: routing.model, priority: 1 },
-      ];
-      if (routing.model !== 'gpt-4o') {
-        chain.push({ provider: 'openai', model: 'gpt-4o', priority: 2 });
-      }
-      if (routing.model !== baseModel && routing.model !== 'gpt-4o') {
-        chain.push({ provider: 'openai', model: baseModel, priority: 3 });
-      }
-      if (process.env.ANTHROPIC_API_KEY) {
-        chain.push({ provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', priority: chain.length + 1 });
-      }
-      return chain;
-    } catch {
-      // Fall through to default logic
-    }
-  }
-
-  if (complexity === 'complex') {
-    // Route complex queries to gpt-4o first, then fall back
-    return [
-      { provider: 'openai', model: 'gpt-4o', priority: 1 },
-      { provider: 'openai', model: baseModel, priority: 2 },
-      ...(process.env.ANTHROPIC_API_KEY ? [
-        { provider: 'anthropic' as const, model: 'claude-3-5-sonnet-20241022', priority: 3 },
-      ] : []),
-    ];
-  }
-
-  // Simple & moderate: use the default chain
-  return MODEL_FAILOVER_CHAIN;
-}
+// ─── Decomposed modules ─────────────────────────────────────────────────
+import {
+  openai, anthropic, type ModelConfig,
+  canUseTool, MAX_TOOL_ITERATIONS,
+  detectQueryComplexity, buildModelChain,
+} from '@/lib/ai/chat-stream/model-routing';
+import { gatherContext } from '@/lib/ai/chat-stream/context-gathering';
+import { buildSystemPrompt, applyAgentPersona } from '@/lib/ai/chat-stream/system-prompt';
+import { detectTopic, summarizeToolResult, deduplicateActions, buildToolPreview } from '@/lib/ai/chat-stream/sse-helpers';
 
 // ─── Main Handler ───────────────────────────────────────────────────────
 
@@ -311,256 +166,26 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
 
   const contextContractId = context?.contractId as string | undefined;
 
-  // Wrap RAG calls with a timeout AND error catch to prevent hanging/crashing
-  // when OpenAI is unavailable (quota/auth) or any dependency throws
-  const withTimeout = <T>(promise: Promise<T>, fallback: T, timeoutMs = 15_000): Promise<T> =>
-    Promise.race([
-      promise.catch((err) => {
-        logger.warn('[Stream v2] RAG/memory call failed', { action: 'rag-memory', error: err instanceof Error ? err.message : String(err) });
-        return fallback;
-      }),
-      new Promise<T>((resolve) => setTimeout(() => {
-        logger.warn(`[Stream v2] RAG/memory call timed out after ${timeoutMs}ms`);
-        resolve(fallback);
-      }, timeoutMs)),
-    ]);
-
-  const emptyRag = { results: [], queryVariations: [], timingsMs: { total: 0, hyde: 0, expansion: 0, search: 0, fusion: 0 } };
-
-  const [ragResults, contractScopedResults, memories] = await Promise.all([
-    shouldUseRAG(message)
-      ? withTimeout(parallelMultiQueryRAG(message, { tenantId, k: 7 }), emptyRag)
-      : Promise.resolve(emptyRag),
-    // When on a specific contract page, also do a contract-scoped search for higher relevance
-    contextContractId && shouldUseRAG(message)
-      ? withTimeout(hybridSearch(message, {
-          mode: 'hybrid',
-          k: 5,
-          rerank: true,
-          expandQuery: true,
-          filters: { tenantId, contractIds: [contextContractId] },
-        }).catch(() => []), [])
-      : Promise.resolve([]),
-    withTimeout(retrieveRelevantMemories(userId, tenantId, message, effectiveHistory, {
-      maxMemories: 5,
-      types: ['preference', 'fact', 'decision', 'insight'],
-    }), []),
-  ]);
-
-  // ── Contract Profile + Artifact Intelligence (when on a contract page) ──
-  let contractProfileContext = '';
-  if (contextContractId) {
-    try {
-      const [contractProfile, contractArtifacts, contractClauses, contractObligations] = await Promise.all([
-        prisma.contract.findFirst({
-          where: { id: contextContractId, tenantId },
-          select: {
-            id: true, contractTitle: true, contractType: true, status: true,
-            supplierName: true, clientName: true, totalValue: true, currency: true,
-            effectiveDate: true, expirationDate: true, jurisdiction: true,
-            paymentTerms: true, terminationClause: true, renewalTerms: true,
-            noticePeriodDays: true, autoRenewalEnabled: true, expirationRisk: true,
-            daysUntilExpiry: true, riskFlags: true, category: true,
-            signatureStatus: true, documentClassification: true,
-            description: true, categoryL1: true, categoryL2: true,
-          },
-        }),
-        prisma.contractArtifact.findMany({
-          where: { contractId: contextContractId },
-          select: { type: true, key: true, value: true, confidence: true },
-          orderBy: { confidence: 'desc' },
-          take: 30,
-        }),
-        prisma.clause.findMany({
-          where: { contractId: contextContractId },
-          select: { category: true, text: true, riskLevel: true },
-          orderBy: { position: 'asc' },
-          take: 20,
-        }),
-        prisma.obligation.findMany({
-          where: { contractId: contextContractId, tenantId },
-          select: { title: true, type: true, status: true, priority: true, dueDate: true, owner: true },
-          orderBy: { dueDate: 'asc' },
-          take: 10,
-        }).catch(() => []),
-      ]);
-
-      if (contractProfile) {
-        const cp = contractProfile;
-        contractProfileContext += `\n\n**📋 Active Contract Profile — ${cp.contractTitle || 'Untitled'}:**\n`;
-        contractProfileContext += `| Field | Value |\n|-------|-------|\n`;
-        if (cp.supplierName) contractProfileContext += `| Supplier | ${cp.supplierName} |\n`;
-        if (cp.clientName) contractProfileContext += `| Client | ${cp.clientName} |\n`;
-        if (cp.contractType) contractProfileContext += `| Type | ${cp.contractType} |\n`;
-        if (cp.status) contractProfileContext += `| Status | ${cp.status} |\n`;
-        if (cp.totalValue) contractProfileContext += `| Value | ${cp.currency || 'USD'} ${Number(cp.totalValue).toLocaleString()} |\n`;
-        if (cp.effectiveDate) contractProfileContext += `| Effective | ${new Date(cp.effectiveDate).toLocaleDateString()} |\n`;
-        if (cp.expirationDate) contractProfileContext += `| Expires | ${new Date(cp.expirationDate).toLocaleDateString()} |\n`;
-        if (cp.daysUntilExpiry != null) contractProfileContext += `| Days Until Expiry | ${cp.daysUntilExpiry} |\n`;
-        if (cp.jurisdiction) contractProfileContext += `| Jurisdiction | ${cp.jurisdiction} |\n`;
-        if (cp.paymentTerms) contractProfileContext += `| Payment Terms | ${cp.paymentTerms} |\n`;
-        if (cp.terminationClause) contractProfileContext += `| Termination | ${cp.terminationClause} |\n`;
-        if (cp.renewalTerms) contractProfileContext += `| Renewal Terms | ${cp.renewalTerms} |\n`;
-        if (cp.noticePeriodDays) contractProfileContext += `| Notice Period | ${cp.noticePeriodDays} days |\n`;
-        if (cp.autoRenewalEnabled) contractProfileContext += `| Auto-Renewal | Yes |\n`;
-        if (cp.expirationRisk) contractProfileContext += `| Expiration Risk | ${cp.expirationRisk} |\n`;
-        if (cp.signatureStatus) contractProfileContext += `| Signature | ${cp.signatureStatus} |\n`;
-        if (cp.riskFlags && typeof cp.riskFlags === 'object' && Array.isArray(cp.riskFlags) && (cp.riskFlags as string[]).length > 0) {
-          contractProfileContext += `| Risk Flags | ${(cp.riskFlags as string[]).join(', ')} |\n`;
-        }
-        if (cp.categoryL1) contractProfileContext += `| Category | ${cp.categoryL1}${cp.categoryL2 ? ' > ' + cp.categoryL2 : ''} |\n`;
-      }
-
-      if (contractArtifacts.length > 0) {
-        // Group artifacts by type for clean presentation
-        const byType = new Map<string, Array<{ key: string; value: unknown; confidence: number }>>();
-        for (const a of contractArtifacts) {
-          if (!byType.has(a.type)) byType.set(a.type, []);
-          byType.get(a.type)!.push({ key: a.key, value: a.value, confidence: a.confidence });
-        }
-        contractProfileContext += `\n**🔍 Extracted Artifacts (${contractArtifacts.length} items):**\n`;
-        for (const [type, items] of byType) {
-          contractProfileContext += `- **${type}** (${items.length}): ${items.slice(0, 3).map(i => {
-            const val = typeof i.value === 'string' ? i.value.slice(0, 100) : JSON.stringify(i.value).slice(0, 100);
-            return `${i.key}: ${val} (${Math.round(i.confidence * 100)}%)`;
-          }).join('; ')}${items.length > 3 ? ` + ${items.length - 3} more` : ''}\n`;
-        }
-      }
-
-      if (contractClauses.length > 0) {
-        contractProfileContext += `\n**⚖️ Extracted Clauses (${contractClauses.length}):**\n`;
-        for (const c of contractClauses.slice(0, 10)) {
-          const riskBadge = c.riskLevel === 'high' ? '🔴' : c.riskLevel === 'medium' ? '🟡' : '🟢';
-          contractProfileContext += `- ${riskBadge} **${c.category}**: ${c.text.slice(0, 150)}${c.text.length > 150 ? '...' : ''}\n`;
-        }
-        if (contractClauses.length > 10) {
-          contractProfileContext += `  _(${contractClauses.length - 10} more clauses available via extract_clauses tool)_\n`;
-        }
-      }
-
-      if (contractObligations.length > 0) {
-        contractProfileContext += `\n**📅 Obligations (${contractObligations.length}):**\n`;
-        for (const o of contractObligations.slice(0, 5)) {
-          const priorityIcon = o.priority === 'CRITICAL' ? '🔴' : o.priority === 'HIGH' ? '🟠' : o.priority === 'MEDIUM' ? '🟡' : '🟢';
-          const dueDateStr = o.dueDate ? new Date(o.dueDate).toLocaleDateString() : 'No due date';
-          contractProfileContext += `- ${priorityIcon} **${o.title}** [${o.status}] — ${o.type}, ${o.owner}, Due: ${dueDateStr}\n`;
-        }
-      }
-    } catch (err) {
-      logger.warn('[Stream v2] Contract profile injection failed', { action: 'contract-profile', error: err instanceof Error ? err.message : String(err) });
-    }
-  }
-
-  // ── Cross-conversation learning context (#6) ──────────────────────────
-  let learningContextStr = '';
-  try {
-    const learningCtx = await withTimeout(getLearningContext(tenantId), {
-      tenantId,
-      correctionPatterns: [],
-      historicalPatterns: [],
-      qualityThresholds: {},
-      builtAt: new Date(),
-    } as any);
-    learningContextStr = formatLearningContextForPrompt(learningCtx);
-  } catch {
-    // Learning context unavailable — continue without it
-  }
-
-  const searchResults = ragResults.results || [];
-  const ragSources = searchResults.map(r => r.contractName);
-
-  let ragContext = '';
-
-  // Prioritize contract-scoped results when available
-  if (contractScopedResults.length > 0) {
-    ragContext += `\n\n**Contract-Specific Information (${contractScopedResults.length} matches):**\n${contractScopedResults
-      .map((r, i) => {
-        const label = r.metadata?.heading || r.metadata?.section || `Section ${i + 1}`;
-        return `[${i + 1}] **${label}** (${Math.round((r.score || 0) * 100)}% match):\n> ${r.text.slice(0, 500)}...`;
-      })
-      .join('\n\n')}`;
-  }
-
-  if (searchResults.length > 0) {
-    ragContext += `\n\n**Relevant Contract Information (${searchResults.length} matches):**\n${searchResults
-      .map((r, i) => `[${i + 1}] **[${r.contractName}](/contracts/${r.contractId})** (${Math.round(r.score * 100)}% match):\n> ${r.text.slice(0, 400)}...`)
-      .join('\n\n')}`;
-  }
-
-  let memoryContext = '';
-  if (memories.length > 0) {
-    memoryContext = `\n\n**Past Interactions:**\n${memories.map(m => `- [${m.type}] ${m.content.slice(0, 200)}`).join('\n')}`;
-  }
+  const {
+    searchResults, ragSources, ragContext, memoryContext,
+    contractProfileContext, learningContextStr, memories, ragResults,
+  } = await gatherContext(message, tenantId, userId, effectiveHistory, contextContractId);
 
   // ═══════════════════════════════════════════════════════════════════════
-  // STEP 3 — SYSTEM PROMPT (Agentic)
+  // STEP 3 — SYSTEM PROMPT (Agentic) + PERSONA DETECTION
   // ═══════════════════════════════════════════════════════════════════════
 
-  const systemPrompt = `You are ConTigo AI, an autonomous contract management assistant.
+  const baseSystemPrompt = buildSystemPrompt({
+    userRole: userRole ?? 'USER',
+    contextContractId,
+    contractProfileContext,
+    ragContext,
+    memoryContext,
+    learningContextStr,
+    conversationSummary,
+  });
 
-**Capabilities:**
-You have access to tools that let you search contracts, view details, analyze spend & risk, compare two contracts side by side, extract and analyze clauses, track obligations and deadlines, fully manage workflows (start/approve/reject/cancel/escalate/assign/create/check status/suggest), create and update contracts, check compliance, retrieve AI intelligence insights (health scores, risk insights, portfolio analytics), navigate the user to any page, query background AI agent findings (risk alerts, compliance issues, learning patterns), run multi-agent debates on contracts (getting specialist perspectives from legal/pricing/compliance/risk/operations agents), and record user feedback on response quality.
-${contextContractId ? `\n**IMPORTANT — Active Contract Context:** The user is currently viewing contract ID: ${contextContractId}. When they ask about "this contract", "the contract", or refer to details without specifying which contract, use this ID. Full contract profile, artifacts, clauses, and obligations are included below in this prompt.` : ''}
-
-**When to use tools:**
-- ALWAYS use a tool when the user asks for data, actions, or navigation — do NOT guess or make up data.
-- Call multiple tools if the question requires cross-referencing (e.g., "find expiring contracts from Acme" → search_contracts + list_expiring_contracts).
-- For navigation requests ("go to dashboard", "show me analytics"), use navigate_to_page.
-- For intelligence/insights ("health score", "portfolio health", "AI insights", "what needs attention", "intelligence"), use get_intelligence_insights.
-- For workflow requests, use the appropriate workflow tool:
-  • "start approval" / "kick off review" → start_workflow
-  • "what needs my approval" / "pending tasks" → get_pending_approvals
-  • "approve" / "reject" → approve_or_reject_step
-  • "status of the workflow" / "where is the approval" → get_workflow_status
-  • "cancel the workflow" / "stop the approval" → cancel_workflow
-  • "assign Sarah to the review" / "delegate" → assign_approver
-  • "escalate" / "this is stuck" → escalate_workflow
-  • "which workflow should I use" / "suggest a workflow" → suggest_workflow
-  • "create a new approval workflow" → create_workflow
-  • "list workflows" / "show templates" → list_workflows
-- For intelligence navigation ("show me the knowledge graph", "open health scores", "negotiation co-pilot"), use navigate_to_page with intelligence targets.
-- For agent insights ("what have the agents found", "proactive alerts", "what should I know"), use get_agent_insights.
-- For multi-agent debate ("second opinion", "multi-agent analysis", "comprehensive review"), use get_agent_debate with the contract ID.
-- For user feedback ("good answer", "thumbs up", "bad response"), use rate_response.
-- For contract comparison ("compare contract A with B", "what's different"), use compare_contracts.
-- For clause extraction or analysis ("show me the clauses", "what clauses are in this contract", "indemnification clause"), use extract_clauses.
-- For obligation tracking ("what are the obligations", "deadlines", "what do we need to do"), use list_obligations.
-
-**Response rules:**
-1. Be concise and actionable.
-2. Use markdown: headers, bullets, bold for key values, tables when appropriate.
-3. Link to contracts: [Contract Name](/contracts/ID)
-4. After tool results, summarize findings with specific numbers and recommendations.
-5. If a tool returns a navigation URL, mention it so the user can click through.
-6. Current user role: ${userRole}. Respect permissions.
-7. If you used get_agent_insights, present findings organized by severity with actionable next steps.
-8. If you used get_agent_debate, present each agent's perspective, highlight key conflicts and the consensus, then recommend action.
-9. When users give feedback (positive/negative), acknowledge it warmly and adjust your approach.
-
-${contractProfileContext}
-${ragContext}
-${memoryContext}
-${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${learningContextStr}` : ''}
-${conversationSummary ? `\n${conversationSummary}` : ''}`;
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // STEP 3.1 — AGENT PERSONA @MENTION DETECTION
-  // ═══════════════════════════════════════════════════════════════════════
-
-  let finalSystemPrompt = systemPrompt;
-  let finalMessage = message;
-
-  try {
-    const { extractMention } = await import('@repo/workers/agents/agent-personas');
-    const mention = extractMention(message);
-    if (mention) {
-      // Inject the persona's system prompt overlay
-      finalSystemPrompt += `\n\n**ACTIVE PERSONA — ${mention.persona.displayName} ${mention.persona.avatar}:**\n${mention.persona.systemPromptOverlay}\n\nThe user addressed you as @${mention.handle}. Respond in this persona's voice and expertise area. Focus on ${mention.persona.expertise.join(', ')}.`;
-      finalMessage = mention.cleanMessage || message;
-    }
-  } catch {
-    // Persona module unavailable — continue with default prompt
-  }
+  const { systemPrompt: finalSystemPrompt, message: finalMessage } = await applyAgentPersona(baseSystemPrompt, message);
 
   // ═══════════════════════════════════════════════════════════════════════
   // STEP 3.5 — AGENT DECISION & TOKEN BUDGET
@@ -1159,7 +784,7 @@ ${conversationSummary ? `\n${conversationSummary}` : ''}`;
               metadata: {
                 intent: context.intent?.type,
                 confidence: finalAdjustedConfidence,
-                tokensUsed: Math.round(fullContent.length / 4),
+                tokensUsed: countTokens(fullContent).tokens,
               },
             }, tenantId)
             .catch(() => { /* ignore */ });
@@ -1209,7 +834,7 @@ ${conversationSummary ? `\n${conversationSummary}` : ''}`;
                   role: 'assistant',
                   content: fullContent,
                   model: usedModel,
-                  tokensUsed: Math.round(fullContent.length / 4),
+                  tokensUsed: countTokens(fullContent).tokens,
                   confidence: finalAdjustedConfidence,
                   sources: ragSources.slice(0, 10) as any,
                 },
@@ -1237,8 +862,8 @@ ${conversationSummary ? `\n${conversationSummary}` : ''}`;
         ]);
 
         // Record AI cost
-        const estimatedInputTokens = Math.round(message.length / 4);
-        const estimatedOutputTokens = Math.round(fullContent.length / 4);
+        const estimatedInputTokens = countTokens(message).tokens;
+        const estimatedOutputTokens = countTokens(fullContent).tokens;
         recordAICost({
           model: usedModel,
           inputTokens: estimatedInputTokens,
@@ -1254,7 +879,7 @@ ${conversationSummary ? `\n${conversationSummary}` : ''}`;
           type: 'done',
           done: true,
           conversationId: persistedConversationId,
-          totalTokens: Math.round(fullContent.length / 4),
+          totalTokens: countTokens(fullContent).tokens,
           confidence: finalAdjustedConfidence,
           confidenceTier: finalConfidence.tier,
           explanation: finalConfidence.explanation,
@@ -1300,202 +925,3 @@ ${conversationSummary ? `\n${conversationSummary}` : ''}`;
     },
   });
 });
-
-// ─── Helpers ────────────────────────────────────────────────────────────
-
-function detectTopic(query: string): string {
-  const q = query.toLowerCase();
-  if (q.includes('expir') || q.includes('renew')) return 'renewal';
-  if (q.includes('risk') || q.includes('compliance')) return 'risk';
-  if (q.includes('spend') || q.includes('value') || q.includes('cost')) return 'financial';
-  if (q.includes('supplier') || q.includes('vendor')) return 'supplier';
-  if (q.includes('workflow') || q.includes('approv')) return 'workflow';
-  if (q.includes('clause') || q.includes('term')) return 'legal';
-  return 'general';
-}
-
-/** Summarize a tool result into a short human-readable string. */
-function summarizeToolResult(result: ToolResult): string {
-  if (!result.success) return `Error: ${result.error}`;
-  const d = result.data as Record<string, unknown>;
-  if (!d) return 'Done';
-
-  switch (result.toolName) {
-    case 'search_contracts':
-      return `Found ${d.count || 0} contracts`;
-    case 'get_contract_details':
-      return `Loaded: ${d.title || 'contract'}`;
-    case 'list_expiring_contracts':
-      return `${d.count || 0} contracts expiring in ${d.daysAhead || 30} days`;
-    case 'get_spend_analysis':
-      return `Analyzed ${d.totalContracts || 0} contracts, $${Number(d.totalSpend || 0).toLocaleString()} total`;
-    case 'get_risk_assessment': {
-      const summary = d.summary as Record<string, number> | undefined;
-      return summary ? `${summary.criticalRisks || 0} critical, ${summary.highRisks || 0} high risks` : 'Risk assessed';
-    }
-    case 'get_supplier_info': {
-      const s = d.summary as Record<string, unknown> | undefined;
-      return s ? `${s.totalContracts || 0} contracts, $${Number(s.totalSpend || 0).toLocaleString()} spend` : 'Supplier loaded';
-    }
-    case 'start_workflow':
-      return `Started "${d.workflowName}" workflow`;
-    case 'list_workflows': {
-      const templates = d.templates as unknown[];
-      return `${templates?.length || 0} workflow templates`;
-    }
-    case 'get_pending_approvals':
-      return `${d.total || 0} pending approvals`;
-    case 'approve_or_reject_step':
-      return `${d.decision === 'approve' ? 'Approved' : 'Rejected'}: ${d.step || 'step'}`;
-    case 'create_contract':
-      return `Created draft: ${d.title || 'contract'}`;
-    case 'update_contract':
-      return `Updated ${d.field}: ${d.newValue}`;
-    case 'navigate_to_page':
-      return `Navigate to ${d.page || 'page'}`;
-    case 'get_compliance_summary':
-      return `Compliance: ${d.complianceScore || 0}%`;
-    case 'get_contract_stats':
-      return `${d.totalContracts || 0} contracts, $${Number(d.totalValue || 0).toLocaleString()}`;
-    case 'get_agent_insights':
-      return `${d.totalInsights || 0} agent insights across ${(d.categories as string[])?.length || 0} categories`;
-    case 'get_agent_debate': {
-      const debate = d.debate as Record<string, unknown> | undefined;
-      return debate ? `${(debate.agentsParticipated as string[])?.length || 0} agents debated over ${debate.totalTurns || 0} turns, convergence: ${debate.convergenceScore || 0}%` : 'Debate complete';
-    }
-    case 'rate_response':
-      return `Feedback recorded: ${d.rating}`;
-    case 'compare_contracts': {
-      const contracts = d.contracts as Record<string, Record<string, unknown>> | undefined;
-      return contracts ? `Compared: "${contracts.A?.title}" vs "${contracts.B?.title}"` : 'Comparison complete';
-    }
-    case 'extract_clauses':
-      return `${d.totalClauses || 0} clauses extracted from ${d.contractTitle || 'contract'}`;
-    case 'list_obligations': {
-      const summary = d.summary as Record<string, unknown> | undefined;
-      return `${summary?.total || 0} obligations (${summary?.overdue || 0} overdue, ${summary?.dueSoon || 0} due soon)`;
-    }
-    default:
-      return 'Complete';
-  }
-}
-
-/** Deduplicate actions by their action string. */
-function deduplicateActions(actions: Array<{ label: string; action: string }>): Array<{ label: string; action: string }> {
-  const seen = new Set<string>();
-  return actions.filter(a => {
-    if (seen.has(a.action)) return false;
-    seen.add(a.action);
-    return true;
-  });
-}
-
-/** Build a rich preview from tool results for streaming UI (#9). */
-function buildToolPreview(result: ToolResult): Record<string, unknown> | null {
-  const d = result.data as Record<string, unknown>;
-  if (!d) return null;
-
-  switch (result.toolName) {
-    case 'search_contracts': {
-      const contracts = d.contracts as Array<Record<string, unknown>> | undefined;
-      if (!contracts || contracts.length === 0) return null;
-      return {
-        type: 'contract_list',
-        items: contracts.slice(0, 3).map(c => ({
-          id: c.contractId,
-          name: c.contractName,
-          supplier: c.supplier,
-          score: c.score,
-        })),
-        totalCount: d.count,
-      };
-    }
-    case 'get_contract_details':
-      return {
-        type: 'contract_card',
-        title: d.title,
-        supplier: d.supplier,
-        status: d.status,
-        value: d.value,
-        daysUntilExpiry: d.daysUntilExpiry,
-      };
-    case 'list_expiring_contracts': {
-      const contracts = d.contracts as Array<Record<string, unknown>> | undefined;
-      return {
-        type: 'expiring_list',
-        count: d.count,
-        totalValueAtRisk: d.totalValueAtRisk,
-        items: (contracts || []).slice(0, 3).map(c => ({
-          title: c.title,
-          supplier: c.supplier,
-          daysUntilExpiry: c.daysUntilExpiry,
-          value: c.value,
-        })),
-      };
-    }
-    case 'get_agent_insights': {
-      const insights = d.insights as Array<Record<string, unknown>> | undefined;
-      if (!insights || insights.length === 0) return null;
-      return {
-        type: 'insights_list',
-        count: d.totalInsights,
-        topInsights: insights.slice(0, 3).map(i => ({
-          severity: i.severity,
-          title: i.title,
-          source: i.source,
-        })),
-      };
-    }
-    case 'get_agent_debate': {
-      const debate = d.debate as Record<string, unknown> | undefined;
-      if (!debate) return null;
-      return {
-        type: 'debate_summary',
-        totalTurns: debate.totalTurns,
-        agentsParticipated: debate.agentsParticipated,
-        convergenceScore: debate.convergenceScore,
-        consensusReached: d.consensusReached,
-      };
-    }
-    case 'get_pending_approvals':
-      return {
-        type: 'approvals_count',
-        total: d.total,
-        urgent: (d.approvals as Array<Record<string, unknown>> | undefined)?.filter(a => {
-          const started = a.startedAt as string | undefined;
-          return started && (Date.now() - new Date(started).getTime() > 3 * 86400000);
-        }).length || 0,
-      };
-    case 'compare_contracts': {
-      const contracts = d.contracts as Record<string, Record<string, unknown>> | undefined;
-      const dimensions = d.dimensions as Record<string, Record<string, unknown>> | undefined;
-      if (!contracts) return null;
-      return {
-        type: 'contract_comparison',
-        contractA: contracts.A?.title,
-        contractB: contracts.B?.title,
-        valueDifference: dimensions?.value?.difference,
-      };
-    }
-    case 'extract_clauses': {
-      const riskDist = d.riskDistribution as Record<string, number> | undefined;
-      return {
-        type: 'clause_extraction',
-        totalClauses: d.totalClauses,
-        categories: d.categories,
-        highRisk: riskDist?.high || 0,
-      };
-    }
-    case 'list_obligations': {
-      const summary = d.summary as Record<string, unknown> | undefined;
-      return {
-        type: 'obligations_summary',
-        total: summary?.total,
-        overdue: summary?.overdue,
-        dueSoon: summary?.dueSoon,
-      };
-    }
-    default:
-      return null;
-  }
-}

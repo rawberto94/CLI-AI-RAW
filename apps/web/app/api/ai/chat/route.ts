@@ -15,7 +15,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 // AI Chat modules
-import { detectIntent } from '@/lib/ai/chat/intent-detection';
+import { detectIntentWithLLMFallback } from '@/lib/ai/chat/intent-detection';
 import {
   findMatchingContracts, listContractsBySupplier, listExpiringContracts,
   listContractsByStatus, listHighValueContracts, listContractsBySignatureStatus,
@@ -110,7 +110,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     }
 
     // Detect intent from the resolved message (with references resolved)
-    const intent = detectIntent(resolvedMessage);
+    const intent = await detectIntentWithLLMFallback(resolvedMessage);
 
     // Build database context based on detected intent
     let additionalContext = '';

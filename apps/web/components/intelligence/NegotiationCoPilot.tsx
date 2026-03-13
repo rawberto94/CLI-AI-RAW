@@ -34,6 +34,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useDataMode } from '@/contexts/DataModeContext';
+import { streamChatToJSON } from '@/lib/ai/stream-to-json';
 
 // ============================================================================
 // Types
@@ -566,34 +567,16 @@ export const NegotiationCoPilot: React.FC = () => {
         `${r.clause} (${r.riskLevel} risk): ${r.aiAnalysis.summary}`
       ).join('\n');
 
-      const response = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: chatInput,
-          context: 'negotiation',
-          systemPrompt: `You are an expert contract negotiation assistant. You help analyze contract clauses, suggest counter-proposals, and provide negotiation strategies.
-
-Current redline changes being reviewed:
-${redlineContext}
-
-Provide concise, actionable advice. Include specific language suggestions when helpful.`,
-          conversationHistory: chatMessages.slice(-8).map(m => ({
-            role: m.role,
-            content: m.content
-          })),
-          useMock: false,
-        }),
+      const result = await streamChatToJSON({
+        message: `[Negotiation Context]\n${redlineContext}\n\n[User Question]\n${chatInput}`,
+        conversationHistory: chatMessages.slice(-8).map(m => ({
+          role: m.role,
+          content: m.content,
+        })),
+        context: { context: 'negotiation' },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to get AI response');
-      }
-
-      const data = await response.json();
-      
-      // API wraps response as { success: true, data: { response: "...", ... } }
-      const aiText = data?.data?.response || data?.message || data?.response || 'No response received';
+      const aiText = result.message || 'No response received';
 
       // Generate suggestions based on the response
       const suggestions = generateNegotiationSuggestions(chatInput, aiText);

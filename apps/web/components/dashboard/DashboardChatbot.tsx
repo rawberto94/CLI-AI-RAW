@@ -22,6 +22,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
+import { streamChatToJSON } from '@/lib/ai/stream-to-json';
 
 interface Message {
   id: string;
@@ -92,30 +93,20 @@ export function DashboardChatbot() {
     }
     abortControllerRef.current = new AbortController();
 
-    const response = await fetch('/api/ai/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: messageContent,
-        context: 'dashboard',
-        conversationHistory: messageHistory.slice(-10).map(m => ({
-          role: m.role,
-          content: m.content
-        })),
-        useRAG: true,
-        useMock: false,
-      }),
+    const result = await streamChatToJSON({
+      message: messageContent,
+      conversationHistory: messageHistory.slice(-10).map(m => ({
+        role: m.role,
+        content: m.content,
+      })),
+      context: { context: 'dashboard' },
       signal: abortControllerRef.current.signal,
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(error.error || `API request failed: ${response.status}`);
-    }
-
-    return response.json();
+    return {
+      message: result.message,
+      suggestions: result.suggestions,
+    };
   }, []);
 
   const handleSendMessage = async (content?: string) => {

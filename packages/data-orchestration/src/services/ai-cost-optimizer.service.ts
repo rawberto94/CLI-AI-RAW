@@ -12,6 +12,7 @@
 
 import { createLogger } from '../utils/logger';
 import { cacheAdaptor } from '../dal/cache.adaptor';
+import { estimateTokens } from '../utils/token-estimation';
 
 const logger = createLogger('cost-optimizer');
 
@@ -320,8 +321,7 @@ export class AICostOptimizerService {
   }
 
   private estimateTokens(text: string): number {
-    // Rough estimation: ~4 characters per token for English
-    return Math.ceil(text.length / 4);
+    return estimateTokens(text);
   }
 
   private getQualityTradeoff(from: AIModel, to: AIModel): string {

@@ -3,7 +3,10 @@
  * Extracted from the legacy non-streaming chat route.
  *
  * Contains pure logic for detecting user intent from natural language queries.
+ * Includes an async LLM fallback for low-confidence regex matches.
  */
+
+import OpenAI from 'openai';
 
 export interface DetectedIntent {
   type: 'search' | 'action' | 'question' | 'workflow' | 'list' | 'analytics' | 'procurement' | 'taxonomy' | 'comparison' | 'system';
@@ -1217,5 +1220,105 @@ export function detectIntent(query: string): DetectedIntent {
     entities: {
       searchQuery: extractedTerms.length > 2 ? extractedTerms : query },
     confidence: hasImplicitContractContext ? 0.8 : 0.7 };
+}
+
+// ─── LLM Fallback for Low-Confidence Intent Detection ─────────────────────
+
+const LLM_FALLBACK_THRESHOLD = 0.75;
+
+const INTENT_CLASSIFICATION_PROMPT = `You are an intent classifier for a contract management system chatbot.
+Given a user query, classify it into one of the following intent types and actions.
+
+Intent types: search, action, question, workflow, list, analytics, procurement, taxonomy, comparison, system.
+
+Common actions per type:
+- search: semantic_search, clause_search
+- action: renew, generate, approve, create, update_status, update_value, update_expiration, deep_analysis
+- question: general, help, greeting, farewell, executive_briefing, status_update, attention_needed
+- workflow: start_workflow
+- list: list_by_supplier, list_expiring, list_by_status, list_by_value, count, list_by_signature, list_needing_signature, list_by_document_type
+- analytics: spend_analysis, cost_savings, risk_assessment, supplier_performance, rate_comparison, compliance_status
+- procurement: budget_status, top_suppliers, savings_opportunities, contract_risks, auto_renewals, payment_terms
+- taxonomy: list_categories, categorize_contract, category_details, suggest_category
+- comparison: compare_contracts, compare_clauses, compare_groups, compare_suppliers, side_by_side
+- system: system_health, ai_performance, queue_status
+
+Respond with JSON: {"type": "<intent_type>", "action": "<action>", "confidence": <0.0-1.0>}
+Only return the JSON object, nothing else.`;
+
+let _openaiForIntent: OpenAI | null = null;
+function getOpenAIClient(): OpenAI | null {
+  if (!process.env.OPENAI_API_KEY) return null;
+  if (!_openaiForIntent) {
+    _openaiForIntent = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openaiForIntent;
+}
+
+/**
+ * Enhanced intent detection with LLM fallback.
+ * Runs the fast regex-based detectIntent first, then falls back to
+ * gpt-4o-mini classification when confidence is below threshold.
+ */
+export async function detectIntentWithLLMFallback(query: string): Promise<DetectedIntent> {
+  const regexResult = detectIntent(query);
+
+  // High-confidence regex match — no need for LLM
+  if (regexResult.confidence >= LLM_FALLBACK_THRESHOLD) {
+    return regexResult;
+  }
+
+  const openai = getOpenAIClient();
+  if (!openai) {
+    return regexResult; // No API key, use regex result as-is
+  }
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: INTENT_CLASSIFICATION_PROMPT },
+        { role: 'user', content: query },
+      ],
+      temperature: 0,
+      max_tokens: 100,
+      response_format: { type: 'json_object' },
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) return regexResult;
+
+    const llmResult = JSON.parse(content) as {
+      type?: string;
+      action?: string;
+      confidence?: number;
+    };
+
+    // Validate LLM output
+    const validTypes = ['search', 'action', 'question', 'workflow', 'list', 'analytics', 'procurement', 'taxonomy', 'comparison', 'system'];
+    if (!llmResult.type || !validTypes.includes(llmResult.type)) {
+      return regexResult;
+    }
+
+    const llmConfidence = typeof llmResult.confidence === 'number'
+      ? Math.min(llmResult.confidence, 0.95) // cap at 0.95 — never fully trust LLM alone
+      : 0.85;
+
+    // Only use LLM result if it's more confident than regex
+    if (llmConfidence <= regexResult.confidence) {
+      return regexResult;
+    }
+
+    // Merge: take LLM type/action but keep regex-extracted entities
+    return {
+      type: llmResult.type as DetectedIntent['type'],
+      action: (llmResult.action || regexResult.action) as DetectedIntent['action'],
+      entities: regexResult.entities, // regex entity extraction is still valuable
+      confidence: llmConfidence,
+    };
+  } catch {
+    // LLM call failed — silently fall back to regex result
+    return regexResult;
+  }
 }
 

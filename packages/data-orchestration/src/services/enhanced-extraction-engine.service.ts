@@ -14,6 +14,7 @@
  */
 
 import { createLogger } from '../utils/logger';
+import { estimateTokens } from '../utils/token-estimation';
 
 const logger = createLogger('enhanced-extraction-engine');
 
@@ -815,7 +816,7 @@ export class EnhancedExtractionEngine {
         version: this.version,
         passes,
         totalTime: Date.now() - startTime,
-        tokenUsage: Math.ceil(documentText.length / 4),
+        tokenUsage: estimateTokens(documentText),
         fallbacksUsed,
         documentProfile
       }
