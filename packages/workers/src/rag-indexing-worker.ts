@@ -92,6 +92,7 @@ export async function processRAGIndexingJob(
         fileName: true,
         tenantId: true,
         status: true,
+        aiMetadata: true,
       },
     });
     
@@ -151,7 +152,10 @@ export async function processRAGIndexingJob(
       });
     } else {
       // Default: regex-based structural chunking (zero-dependency, deterministic)
-      rawChunks = semanticChunk(contract.rawText);
+      // Pass DI paragraph hints when available for structure-aware chunking
+      const aiMeta = (contract.aiMetadata as any) ?? {};
+      const diParagraphs = Array.isArray(aiMeta.diParagraphs) ? aiMeta.diParagraphs : undefined;
+      rawChunks = semanticChunk(contract.rawText, diParagraphs ? { diParagraphs } : undefined);
     }
 
     jobLogger.info({ chunkCount: rawChunks.length }, 'Chunks created');
@@ -356,7 +360,7 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
       section: chunk.metadata.section || null,
     }));
     
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       // Delete existing embeddings
       await tx.contractEmbedding.deleteMany({ where: { contractId } });
       
@@ -483,7 +487,7 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
             jobLogger.info({ chunkCount: fallbackChunks.length }, 'Storing chunks WITHOUT embeddings for BM25 keyword search fallback');
             
             // Atomic delete+reinsert for fallback path too
-            await prisma.$transaction(async (tx) => {
+            await prisma.$transaction(async (tx: any) => {
               await tx.contractEmbedding.deleteMany({ where: { contractId } });
               
               for (const chunk of fallbackChunks) {

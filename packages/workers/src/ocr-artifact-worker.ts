@@ -79,11 +79,75 @@ import {
 // Type-only imports for Azure Document Intelligence
 import type {
   DIAnalyzeResult,
+  DITable,
+  DIKeyValuePair,
+  DIParagraph,
+  DIPage,
   ContractExtractionResult,
   InvoiceExtractionResult,
 } from './azure-document-intelligence';
 import { ArtifactQualityValidator, selfCritiqueArtifact } from './utils/artifact-quality-validator';
 import { WorkerCache } from './worker-cache';
+
+// ============================================================================
+// Structured OCR Result — preserves DI structured data alongside flat text
+// ============================================================================
+
+export interface StructuredOCRResult {
+  /** Flat text content (backward-compatible) */
+  text: string;
+  /** OCR provider that produced this result */
+  source: 'azure-di-layout' | 'azure-di-contract' | 'azure-di-invoice' | 'openai' | 'azure-ch' | 'mistral' | 'fallback';
+  /** Full DI analysis result when available */
+  diResult: DIAnalyzeResult | null;
+  /** Pre-extracted contract fields from DI prebuilt-contract model */
+  contractFields: ContractExtractionResult | null;
+  /** Pre-extracted invoice fields from DI prebuilt-invoice model */
+  invoiceFields: InvoiceExtractionResult | null;
+  /** Structured tables extracted by DI */
+  tables: DITable[];
+  /** Key-value pairs extracted by DI */
+  keyValuePairs: DIKeyValuePair[];
+  /** Paragraphs with semantic roles from DI */
+  paragraphs: DIParagraph[];
+  /** Per-page data from DI (word-level confidence) */
+  pages: DIPage[];
+  /** Aggregate OCR confidence (0-1) computed from DI word confidence */
+  confidence: number;
+  /** Whether the source is DI (trusted, skip enhancement) */
+  isDISource: boolean;
+}
+
+/** Create a minimal StructuredOCRResult for non-DI providers */
+function makeNonDIResult(text: string, source: StructuredOCRResult['source']): StructuredOCRResult {
+  return {
+    text,
+    source,
+    diResult: null,
+    contractFields: null,
+    invoiceFields: null,
+    tables: [],
+    keyValuePairs: [],
+    paragraphs: [],
+    pages: [],
+    confidence: 0,
+    isDISource: false,
+  };
+}
+
+/** Compute aggregate confidence from DI page word-level data */
+function computeDIConfidence(pages: DIPage[]): number {
+  if (!pages || pages.length === 0) return 0;
+  let totalConf = 0;
+  let wordCount = 0;
+  for (const page of pages) {
+    for (const word of page.words || []) {
+      totalConf += word.confidence;
+      wordCount++;
+    }
+  }
+  return wordCount > 0 ? totalConf / wordCount : 0;
+}
 
 // ============================================================================
 // Preprocessing Cache (P3.3)
@@ -918,9 +982,10 @@ function generateOCRCacheKey(filePath: string, fileSize: number): string {
 }
 
 /**
- * Perform OCR extraction on a file with circuit breaker protection and caching
+ * Perform OCR extraction on a file with circuit breaker protection and caching.
+ * Returns StructuredOCRResult preserving DI structured data when available.
  */
-async function performOCR(filePath: string, ocrMode: string, fileSize?: number, onProgress?: (pct: number) => void): Promise<string> {
+async function performOCR(filePath: string, ocrMode: string, fileSize?: number, onProgress?: (pct: number) => void): Promise<StructuredOCRResult> {
   logger.info({ filePath, ocrMode }, 'Performing OCR extraction');
   
   // Check distributed cache first
@@ -929,7 +994,8 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
     const cached = await ocrCache.get(cacheKey);
     if (cached) {
       logger.info({ cacheKey }, 'Using cached OCR result from distributed cache');
-      return cached.text;
+      // Cached results are flat text from legacy — wrap as non-DI
+      return makeNonDIResult(cached.text, 'fallback');
     }
   }
   
@@ -940,13 +1006,14 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
       const { isDIConfigured, isDIEnabled } = await import('./azure-document-intelligence');
       if (isDIConfigured() && isDIEnabled() && azureCircuitBreaker.getState() !== CircuitState.OPEN) {
         onProgress?.(15); // DI submission starting
-        const result = await azureCircuitBreaker.execute(() =>
-          retry(async () => {
+        const structuredResult = await azureCircuitBreaker.execute(() =>
+          retry(async (): Promise<StructuredOCRResult> => {
             const { analyzeLayout, analyzeContract, analyzeInvoice } = await import('./azure-document-intelligence');
             const fileBuffer = await fs.readFile(filePath);
 
             if (ocrMode === 'azure-di-contract') {
               const { analysis, contract } = await analyzeContract(fileBuffer);
+              // Build rich text with structured appendices
               const parts = [analysis.content];
               if (contract.parties.length > 0) {
                 parts.push('\n--- CONTRACT PARTIES ---');
@@ -955,7 +1022,19 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
               if (contract.dates.effectiveDate) parts.push(`Effective Date: ${contract.dates.effectiveDate}`);
               if (contract.dates.expirationDate) parts.push(`Expiration Date: ${contract.dates.expirationDate}`);
               if (contract.jurisdiction) parts.push(`Jurisdiction: ${contract.jurisdiction}`);
-              return parts.join('\n');
+              return {
+                text: parts.join('\n'),
+                source: 'azure-di-contract',
+                diResult: analysis,
+                contractFields: contract,
+                invoiceFields: null,
+                tables: analysis.tables || [],
+                keyValuePairs: analysis.keyValuePairs || [],
+                paragraphs: analysis.paragraphs || [],
+                pages: analysis.pages || [],
+                confidence: computeDIConfidence(analysis.pages || []),
+                isDISource: true,
+              };
             } else if (ocrMode === 'azure-di-invoice') {
               const { analysis, invoice } = await analyzeInvoice(fileBuffer);
               const parts = [analysis.content, '\n--- INVOICE DATA ---'];
@@ -970,7 +1049,19 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
                   parts.push(`| ${li.description || '-'} | ${li.quantity ?? '-'} | ${li.unitPrice ?? '-'} | ${li.amount ?? '-'} |`);
                 }
               }
-              return parts.join('\n');
+              return {
+                text: parts.join('\n'),
+                source: 'azure-di-invoice',
+                diResult: analysis,
+                contractFields: null,
+                invoiceFields: invoice,
+                tables: analysis.tables || [],
+                keyValuePairs: analysis.keyValuePairs || [],
+                paragraphs: analysis.paragraphs || [],
+                pages: analysis.pages || [],
+                confidence: computeDIConfidence(analysis.pages || []),
+                isDISource: true,
+              };
             } else {
               // azure-di-layout
               const result = await analyzeLayout(fileBuffer, { extractKeyValuePairs: true });
@@ -991,7 +1082,19 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
                   if (kv.key && kv.value) parts.push(`${kv.key}: ${kv.value}`);
                 }
               }
-              return parts.join('\n');
+              return {
+                text: parts.join('\n'),
+                source: 'azure-di-layout',
+                diResult: result,
+                contractFields: null,
+                invoiceFields: null,
+                tables: result.tables || [],
+                keyValuePairs: result.keyValuePairs || [],
+                paragraphs: result.paragraphs || [],
+                pages: result.pages || [],
+                confidence: computeDIConfidence(result.pages || []),
+                isDISource: true,
+              };
             }
           }, {
             maxAttempts: 2,
@@ -1003,14 +1106,14 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
           })
         );
 
-        // Cache and return
-        if (fileSize && result && result.length > 100) {
+        // Cache the text portion for fast retrieval
+        if (fileSize && structuredResult.text && structuredResult.text.length > 100) {
           const cacheKey = generateOCRCacheKey(filePath, fileSize);
-          await ocrCache.set(cacheKey, result);
+          await ocrCache.set(cacheKey, structuredResult.text);
         }
-        logger.info({ ocrMode, textLength: result.length }, 'DI model OCR succeeded');
+        logger.info({ ocrMode, textLength: structuredResult.text.length, confidence: structuredResult.confidence.toFixed(3), tables: structuredResult.tables.length, kvPairs: structuredResult.keyValuePairs.length }, 'DI model OCR succeeded with structured data');
         onProgress?.(55); // DI analysis complete
-        return result;
+        return structuredResult;
       }
     } catch (diError) {
       logger.warn({ error: (diError as Error).message, ocrMode }, 'DI model OCR failed, falling through to legacy chain');
@@ -1085,7 +1188,7 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
       }
       
       logger.info({ mode, textLength: result.length }, 'OCR extraction succeeded');
-      return result;
+      return makeNonDIResult(result, mode as StructuredOCRResult['source']);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       
@@ -1099,7 +1202,8 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
   
   // All modes exhausted - use basic extraction as last resort
   logger.error({ lastError: lastError?.message }, 'All OCR modes exhausted, using basic extraction');
-  return await extractTextFallback(filePath);
+  const fallbackText = await extractTextFallback(filePath);
+  return makeNonDIResult(fallbackText, 'fallback');
 }
 
 /**
@@ -1793,17 +1897,22 @@ export async function processOCRArtifactJob(
       }
     }
 
-    const rawExtractedText = await performOCR(localFilePath, ocrMode, undefined, async (pct) => {
+    const ocrResult = await performOCR(localFilePath, ocrMode, undefined, async (pct) => {
       try { await job.updateProgress(pct); } catch { /* best-effort */ }
     });
+    const rawExtractedText = ocrResult.text;
     
-    // ============ OCR ENHANCEMENT PIPELINE (NEW) ============
-    // Apply post-OCR corrections, validation, and quality improvements
+    // ============ OCR ENHANCEMENT PIPELINE ============
+    // Skip enhancement for DI output — DI text is already clean and deterministic.
+    // For non-DI providers, apply post-OCR corrections, validation, and quality improvements.
     let enhancedText = rawExtractedText;
     let ocrEnhancementResult: OCREnhancementPipelineResult | null = null;
     let adaptiveConfig: AdaptiveModelConfig | null = null;
     
-    if (WORKER_CONFIG.ocr.enablePostOCRCorrection && rawExtractedText.length > 0) {
+    if (ocrResult.isDISource) {
+      jobLogger.info({ source: ocrResult.source, confidence: ocrResult.confidence.toFixed(3) }, 
+        'DI source detected — skipping OCR enhancement pipeline (DI output is deterministic)');
+    } else if (WORKER_CONFIG.ocr.enablePostOCRCorrection && rawExtractedText.length > 0) {
       try {
         jobLogger.info('Running OCR enhancement pipeline...');
         await publishJobProgress(job.id || '', contractId, tenantId, 30, 'ocr-enhancement', 'Enhancing OCR accuracy');
@@ -1851,10 +1960,13 @@ export async function processOCRArtifactJob(
     }
     
     // ============ LLM ENHANCEMENT (Swiss Data Protection Compliant) ============
-    // Use AI for intelligent spell correction with data residency compliance
+    // Skip for DI output — DI text is high-quality and doesn't need LLM spell correction.
+    // For non-DI providers, use AI for intelligent spell correction with data residency compliance.
     let llmEnhancementResult: HybridEnhancementResult | null = null;
     
-    if (WORKER_CONFIG.ocr.enableLLMCorrection && enhancedText.length > 100) {
+    if (ocrResult.isDISource) {
+      jobLogger.info('DI source — skipping LLM enhancement (DI output is high-quality)');
+    } else if (WORKER_CONFIG.ocr.enableLLMCorrection && enhancedText.length > 100) {
       try {
         jobLogger.info({
           dataResidency: WORKER_CONFIG.ocr.llmDataResidency,
@@ -1900,14 +2012,46 @@ export async function processOCRArtifactJob(
       }
     }
     
-    // Initialize quality metrics
+    // ============ MULTI-PASS CROSS-VALIDATION ============
+    // For non-DI, low-confidence results: run a secondary OCR pass and adopt the
+    // longer/better result when the differential is significant.
+    const CROSS_VALIDATE_THRESHOLD = 0.6;
+    if (
+      !ocrResult.isDISource &&
+      WORKER_CONFIG.ocr.enableMultiPassExtraction &&
+      (ocrEnhancementResult?.validation.confidence ?? 0.5) < CROSS_VALIDATE_THRESHOLD &&
+      localFilePath &&
+      enhancedText.length > 100
+    ) {
+      try {
+        jobLogger.info({ confidence: ocrEnhancementResult?.validation.confidence }, 'Low confidence — attempting cross-validation pass');
+        // Pick a different provider for the second pass
+        const secondaryMode = ocrMode === 'openai' ? 'mistral' : 'openai';
+        const secondResult = await performOCR(localFilePath, secondaryMode, undefined, async () => {});
+        if (secondResult.text.length > enhancedText.length * 1.15) {
+          jobLogger.info({
+            primary: enhancedText.length,
+            secondary: secondResult.text.length,
+            provider: secondaryMode,
+          }, 'Cross-validation pass produced significantly more text — adopting');
+          enhancedText = secondResult.text;
+        }
+      } catch (crossErr) {
+        jobLogger.warn({ error: (crossErr as Error).message }, 'Cross-validation pass failed, continuing with primary');
+      }
+    }
+    
+    // Initialize quality metrics — prefer DI word-level confidence when available
+    const baseConfidence = ocrResult.isDISource && ocrResult.confidence > 0
+      ? ocrResult.confidence
+      : (ocrEnhancementResult?.validation.confidence || 0.5);
     qualityMetrics = {
       contractId,
       startTime: Date.now(),
       textLength: enhancedText.length,
       artifactsGenerated: 0,
       failedArtifacts: [],
-      textConfidence: ocrEnhancementResult?.validation.confidence || 0.5,
+      textConfidence: baseConfidence,
       tablesDetected: 0,
       financialIndicators: { hasCurrency: false, currencies: [], hasPercentages: false, hasPaymentTerms: false, estimatedTotalValue: null, confidence: 0.5 },
       errors: [],
@@ -1954,17 +2098,46 @@ export async function processOCRArtifactJob(
     // Save extracted text to contract's rawText field for AI processing
     if (extractedText && extractedText.length > 0) {
       try {
+        const ocrUpdateData: Record<string, any> = {
+          rawText: extractedText,
+          ocrProvider: ocrMode,
+          ocrModel: ocrMode.startsWith('azure-di-') ? `prebuilt-${ocrMode.replace('azure-di-', '')}` : undefined,
+          ocrProcessedAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        // Persist DI confidence and structured metadata when available
+        if (ocrResult.isDISource) {
+          ocrUpdateData.aiMetadata = {
+            ocrStructuredMeta: {
+              source: ocrResult.source,
+              confidence: ocrResult.confidence,
+              tableCount: ocrResult.tables.length,
+              kvPairCount: ocrResult.keyValuePairs.length,
+              paragraphCount: ocrResult.paragraphs.length,
+              pageCount: ocrResult.pages.length,
+              hasContractFields: !!ocrResult.contractFields,
+              hasInvoiceFields: !!ocrResult.invoiceFields,
+              processedAt: new Date().toISOString(),
+            },
+            // Store DI paragraph hints for RAG chunker
+            diParagraphs: ocrResult.paragraphs.slice(0, 500).map(p => ({
+              content: p.content.slice(0, 200),
+              role: p.role,
+            })),
+            // Persist DI structured data for reprocessing without re-calling API
+            diTables: ocrResult.tables.slice(0, 100),
+            diKeyValuePairs: ocrResult.keyValuePairs.slice(0, 200),
+            diContractFields: ocrResult.contractFields || null,
+            diInvoiceFields: ocrResult.invoiceFields || null,
+          };
+        }
+
         await prisma.contract.updateMany({
           where: { id: contractId, tenantId },
-          data: {
-            rawText: extractedText,
-            ocrProvider: ocrMode,
-            ocrModel: ocrMode.startsWith('azure-di-') ? `prebuilt-${ocrMode.replace('azure-di-', '')}` : undefined,
-            ocrProcessedAt: new Date(),
-            updatedAt: new Date(),
-          },
+          data: ocrUpdateData,
         });
-        jobLogger.info({ textLength: extractedText.length }, 'Raw text saved to contract');
+        jobLogger.info({ textLength: extractedText.length, isDI: ocrResult.isDISource, confidence: ocrResult.confidence.toFixed(3) }, 'Raw text saved to contract');
       } catch (rawTextError) {
         jobLogger.warn({ error: rawTextError }, 'Failed to save rawText, continuing with processing');
       }
@@ -2156,7 +2329,8 @@ export async function processOCRArtifactJob(
             artifactType, 
             extractedText, 
             contract,
-            detectedContractType // Pass detected type for adaptive prompts
+            detectedContractType, // Pass detected type for adaptive prompts
+            ocrResult // Pass structured DI data for pre-validated fields
           );
           
           // Track token usage from the result metadata
@@ -3696,13 +3870,16 @@ async function callOpenAIForArtifact(
 
 /**
  * Generate artifact data using AI (Mistral first, OpenAI fallback)
- * Now adaptive based on detected contract type with retry logic for rate limits
+ * Now adaptive based on detected contract type with retry logic for rate limits.
+ * When DI structured data is available, it's injected into the prompt context
+ * so the LLM uses pre-validated tables, parties, dates, and financial data.
  */
 async function generateArtifactWithAI(
   type: string,
   contractText: string,
   contract: any,
-  detectedContractType?: ContractType
+  detectedContractType?: ContractType,
+  ocrResult?: StructuredOCRResult | null
 ): Promise<Record<string, any>> {
   const mistralKey = process.env.MISTRAL_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
@@ -3733,6 +3910,57 @@ async function generateArtifactWithAI(
         ? `Key risk areas for this contract type: ${profile.riskCategories.join(', ')}`
         : undefined,
     };
+
+    // Inject DI structured data into prompt context when available
+    if (ocrResult?.isDISource) {
+      promptCtx.diConfidence = ocrResult.confidence;
+      if (ocrResult.tables.length > 0) {
+        promptCtx.diTables = ocrResult.tables.map(t => ({
+          pageNumber: t.pageNumber,
+          headers: t.headers,
+          rows: t.rows,
+          confidence: t.confidence,
+        }));
+      }
+      if (ocrResult.keyValuePairs.length > 0) {
+        promptCtx.diKeyValuePairs = ocrResult.keyValuePairs.map(kv => ({
+          key: kv.key,
+          value: kv.value,
+          confidence: kv.confidence,
+        }));
+      }
+      if (ocrResult.contractFields) {
+        promptCtx.diContractFields = {
+          parties: ocrResult.contractFields.parties.map(p => ({
+            name: p.name,
+            role: p.role,
+            address: p.address,
+            confidence: p.confidence,
+          })),
+          dates: ocrResult.contractFields.dates,
+          jurisdiction: ocrResult.contractFields.jurisdiction,
+          title: ocrResult.contractFields.title,
+          confidence: ocrResult.contractFields.confidence,
+        };
+      }
+      if (ocrResult.invoiceFields) {
+        promptCtx.diInvoiceFields = {
+          vendorName: ocrResult.invoiceFields.vendorName,
+          customerName: ocrResult.invoiceFields.customerName,
+          invoiceId: ocrResult.invoiceFields.invoiceId,
+          invoiceDate: ocrResult.invoiceFields.invoiceDate,
+          invoiceTotal: ocrResult.invoiceFields.invoiceTotal,
+          currency: ocrResult.invoiceFields.currency,
+          lineItems: ocrResult.invoiceFields.lineItems.map(li => ({
+            description: li.description,
+            quantity: li.quantity,
+            unitPrice: li.unitPrice,
+            amount: li.amount,
+          })),
+          confidence: ocrResult.invoiceFields.confidence,
+        };
+      }
+    }
 
     // Use shared module for prompt generation (single source of truth)
     const prompt = buildArtifactPrompt(type, promptCtx);

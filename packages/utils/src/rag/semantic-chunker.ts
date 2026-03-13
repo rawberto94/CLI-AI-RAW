@@ -20,6 +20,8 @@ export interface ChunkMetadata {
   startChar: number;
   endChar: number;
   wordCount: number;
+  /** DI paragraph semantic role (title, sectionHeading, footnote, etc.) */
+  diParagraphRole?: string;
 }
 
 export interface SemanticChunk {
@@ -28,10 +30,18 @@ export interface SemanticChunk {
   metadata: ChunkMetadata;
 }
 
+/** DI paragraph info for structure-aware chunking */
+export interface DIParagraphHint {
+  content: string;
+  role?: 'title' | 'sectionHeading' | 'footnote' | 'pageHeader' | 'pageFooter' | 'pageNumber';
+}
+
 export interface ChunkingOptions {
   maxChunkSize?: number;
   minChunkSize?: number;
   overlap?: number;
+  /** DI paragraphs with semantic roles — enables structure-aware splitting */
+  diParagraphs?: DIParagraphHint[];
 }
 
 // ── Patterns ────────────────────────────────────────────────────────────────
@@ -52,16 +62,34 @@ const SECTION_SPLIT =
  * Semantic chunking – splits text by document structure (headings, sections,
  * paragraphs) rather than fixed character counts.
  *
+ * When DI paragraphs with semantic roles are provided, uses them to identify
+ * section boundaries more accurately than regex heuristics.
+ *
  * Returns chunks in document order with char-offset metadata.
  */
 export function semanticChunk(
   text: string,
   options: ChunkingOptions = {},
 ): SemanticChunk[] {
-  const { maxChunkSize = 1500, minChunkSize = 200, overlap = 100 } = options;
+  const { maxChunkSize = 1500, minChunkSize = 200, overlap = 100, diParagraphs } = options;
 
   const chunks: SemanticChunk[] = [];
   let chunkIndex = 0;
+
+  // Build DI paragraph role lookup for tagging chunks
+  // Maps paragraph content prefix → role for fast matching
+  const diRoleMap = new Map<string, string>();
+  if (diParagraphs && diParagraphs.length > 0) {
+    for (const p of diParagraphs) {
+      if (p.role && p.content) {
+        // Use first 80 chars as lookup key (paragraphs may be truncated differently)
+        const key = p.content.trim().slice(0, 80);
+        if (key.length > 5) {
+          diRoleMap.set(key, p.role);
+        }
+      }
+    }
+  }
 
   // Split by major sections first
   const sections = text.split(SECTION_SPLIT);
@@ -71,11 +99,26 @@ export function semanticChunk(
 
     // Extract heading if present
     const headingMatch = section.match(HEADING_PATTERN);
-    const heading = headingMatch ? headingMatch[0].trim() : undefined;
+    let heading = headingMatch ? headingMatch[0].trim() : undefined;
+
+    // Use DI roles to improve heading detection
+    let diRole: string | undefined;
+    if (diRoleMap.size > 0) {
+      const sectionPrefix = section.trim().slice(0, 80);
+      const foundRole = diRoleMap.get(sectionPrefix);
+      if (foundRole) {
+        diRole = foundRole;
+        // DI says this is a heading — trust it over regex
+        if (foundRole === 'sectionHeading' || foundRole === 'title') {
+          heading = heading || (section.trim().split('\n')[0] ?? '').trim();
+        }
+      }
+    }
 
     // Determine chunk type
     let chunkType: ChunkMetadata['chunkType'] = 'paragraph';
     if (heading) chunkType = 'heading';
+    else if (diRole === 'footnote') chunkType = 'paragraph'; // footnotes are paragraph-like
     else if (LIST_PATTERN.test(section)) chunkType = 'list';
     else if (TABLE_PATTERN.test(section)) chunkType = 'table';
     else if (/clause|term|condition|obligation/i.test(section)) chunkType = 'clause';
@@ -101,6 +144,7 @@ export function semanticChunk(
           startChar: safeSectionStart,
           endChar: safeSectionStart + section.length,
           wordCount: section.split(/\s+/).length,
+          diParagraphRole: diRole,
         },
       });
       continue;
@@ -129,6 +173,7 @@ export function semanticChunk(
             startChar: chunkStartChar,
             endChar: chunkStartChar + currentChunk.length,
             wordCount: currentChunk.split(/\s+/).length,
+            diParagraphRole: diRole,
           },
         });
 
@@ -158,6 +203,7 @@ export function semanticChunk(
           startChar: chunkStartChar,
           endChar: chunkStartChar + currentChunk.length,
           wordCount: currentChunk.split(/\s+/).length,
+          diParagraphRole: diRole,
         },
       });
     }

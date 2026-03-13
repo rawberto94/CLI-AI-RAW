@@ -81,6 +81,54 @@ const BUILT_IN_TOOLS: ReActTool[] = [
       detailed: z.boolean().optional().default(false),
     }),
     execute: async (params, context) => {
+      const text = context.contractText || '';
+      if (!text) {
+        return { success: false, data: { clauseType: params.clauseType, found: false, excerpts: [], matchCount: 0 } };
+      }
+
+      // ── Primary: LLM-powered clause extraction ──
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (apiKey) {
+        try {
+          const { ChatOpenAI } = await import('@langchain/openai');
+          const llm = new ChatOpenAI({
+            openAIApiKey: apiKey,
+            modelName: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+            temperature: 0,
+            maxTokens: 1000,
+          });
+          const textPreview = text.slice(0, 12000); // Limit to ~3k tokens
+          const response = await llm.invoke([
+            new SystemMessage(
+              `Extract the ${params.clauseType} clause(s) from the contract text below. ` +
+              `Return a JSON object: { "found": boolean, "excerpts": string[], "summary": string }. ` +
+              `Each excerpt should be the exact text from the contract (max 500 chars each, up to 3 excerpts). ` +
+              `The summary should be a 1-2 sentence plain English description of what the clause says. ` +
+              `If no matching clause exists, return { "found": false, "excerpts": [], "summary": "No ${params.clauseType} clause found." }.`
+            ),
+            new HumanMessage(textPreview),
+          ]);
+          const content = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return {
+              success: !!parsed.found,
+              data: {
+                clauseType: params.clauseType,
+                found: !!parsed.found,
+                excerpts: (parsed.excerpts || []).slice(0, 3),
+                matchCount: (parsed.excerpts || []).length,
+                summary: parsed.summary || '',
+              },
+            };
+          }
+        } catch {
+          // LLM extraction failed — fall through to regex fallback
+        }
+      }
+
+      // ── Fallback: regex-based extraction ──
       const clausePatterns: Record<string, RegExp[]> = {
         termination: [/terminat(e|ion)/gi, /cancel(lation)?/gi, /end\s+of\s+agreement/gi],
         liability: [/liabilit(y|ies)/gi, /limit(ation)?\s+of\s+liability/gi, /cap\s+on\s+damages/gi],
@@ -94,14 +142,12 @@ const BUILT_IN_TOOLS: ReActTool[] = [
         warranties: [/warrant(y|ies)/gi, /represent(ation)?s?/gi, /covenant/gi],
       };
 
-      const text = context.contractText || '';
       const patterns = clausePatterns[params.clauseType.toLowerCase()] || [];
       const matches: string[] = [];
 
       for (const pattern of patterns) {
         const found = text.match(pattern);
         if (found) {
-          // Get surrounding context for each match
           const index = text.search(pattern);
           if (index > -1) {
             const start = Math.max(0, index - 200);
@@ -116,7 +162,7 @@ const BUILT_IN_TOOLS: ReActTool[] = [
         data: {
           clauseType: params.clauseType,
           found: matches.length > 0,
-          excerpts: matches.slice(0, 3), // Limit to 3 excerpts
+          excerpts: matches.slice(0, 3),
           matchCount: matches.length,
         },
       };

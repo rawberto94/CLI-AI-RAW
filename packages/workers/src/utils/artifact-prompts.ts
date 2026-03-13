@@ -496,6 +496,39 @@ export interface PromptContext {
   financialFieldsHint?: string;
   /** Risk category hints */
   riskCategoriesHint?: string;
+
+  // ── Azure Document Intelligence structured data (when DI is the OCR source) ──
+
+  /** Pre-extracted tables from DI (with headers, rows, confidence) */
+  diTables?: Array<{
+    pageNumber: number;
+    headers: string[];
+    rows: string[][];
+    confidence: number;
+  }>;
+  /** Key-value pairs extracted by DI */
+  diKeyValuePairs?: Array<{ key: string; value: string; confidence: number }>;
+  /** Pre-extracted contract fields from DI prebuilt-contract model */
+  diContractFields?: {
+    parties: Array<{ name: string; role?: string; address?: string; confidence: number }>;
+    dates: { effectiveDate?: string; expirationDate?: string; executionDate?: string; renewalDate?: string };
+    jurisdiction?: string;
+    title?: string;
+    confidence: number;
+  };
+  /** Pre-extracted invoice fields from DI prebuilt-invoice model */
+  diInvoiceFields?: {
+    vendorName?: string;
+    customerName?: string;
+    invoiceId?: string;
+    invoiceDate?: string;
+    invoiceTotal?: number;
+    currency?: string;
+    lineItems: Array<{ description?: string; quantity?: number; unitPrice?: number; amount?: number }>;
+    confidence: number;
+  };
+  /** Aggregate DI OCR confidence (0-1, from word-level) */
+  diConfidence?: number;
 }
 
 /**
@@ -525,6 +558,72 @@ export function buildArtifactPrompt(type: string, ctx: PromptContext): string | 
   const typeContext = ctx.contractTypeHints
     ? `\nCONTRACT TYPE DETECTED: ${ctx.contractTypeDisplayName || ctx.contractType}\n${ctx.contractTypeHints}\n${ctx.expectedSections ? `EXPECTED SECTIONS: ${ctx.expectedSections.join(', ')}\n` : ''}`
     : '';
+
+  // Build DI pre-validated data context — inject structured data into prompts
+  let diContext = '';
+  if (ctx.diConfidence && ctx.diConfidence > 0) {
+    const diParts: string[] = ['\n--- PRE-VALIDATED DATA (Azure Document Intelligence, high confidence) ---'];
+    
+    // Contract fields for OVERVIEW, CLAUSES, RISK, etc.
+    if (ctx.diContractFields && ['OVERVIEW', 'CLAUSES', 'RISK', 'COMPLIANCE', 'OBLIGATIONS', 'RENEWAL', 'PARTIES'].includes(type)) {
+      const cf = ctx.diContractFields;
+      if (cf.parties.length > 0) {
+        diParts.push('\nPRE-VALIDATED CONTRACT PARTIES:');
+        for (const p of cf.parties) {
+          diParts.push(`  - ${p.name}${p.role ? ` (${p.role})` : ''}${p.address ? `, ${p.address}` : ''} [confidence: ${(p.confidence * 100).toFixed(0)}%]`);
+        }
+      }
+      if (cf.dates.effectiveDate) diParts.push(`PRE-VALIDATED Effective Date: ${cf.dates.effectiveDate}`);
+      if (cf.dates.expirationDate) diParts.push(`PRE-VALIDATED Expiration Date: ${cf.dates.expirationDate}`);
+      if (cf.dates.executionDate) diParts.push(`PRE-VALIDATED Execution Date: ${cf.dates.executionDate}`);
+      if (cf.jurisdiction) diParts.push(`PRE-VALIDATED Jurisdiction: ${cf.jurisdiction}`);
+      if (cf.title) diParts.push(`PRE-VALIDATED Document Title: ${cf.title}`);
+    }
+
+    // Invoice fields for FINANCIAL, OVERVIEW
+    if (ctx.diInvoiceFields && ['FINANCIAL', 'OVERVIEW', 'RATES'].includes(type)) {
+      const inv = ctx.diInvoiceFields;
+      diParts.push('\nPRE-VALIDATED INVOICE DATA:');
+      if (inv.vendorName) diParts.push(`  Vendor: ${inv.vendorName}`);
+      if (inv.customerName) diParts.push(`  Customer: ${inv.customerName}`);
+      if (inv.invoiceId) diParts.push(`  Invoice #: ${inv.invoiceId}`);
+      if (inv.invoiceDate) diParts.push(`  Date: ${inv.invoiceDate}`);
+      if (inv.invoiceTotal != null) diParts.push(`  Total: ${inv.currency || ''} ${inv.invoiceTotal}`);
+      if (inv.lineItems.length > 0) {
+        diParts.push('  Line Items:');
+        for (const li of inv.lineItems) {
+          diParts.push(`    - ${li.description || 'N/A'}: qty ${li.quantity ?? '-'} × ${li.unitPrice ?? '-'} = ${li.amount ?? '-'}`);
+        }
+      }
+    }
+
+    // Tables for FINANCIAL, RATES, OVERVIEW
+    if (ctx.diTables && ctx.diTables.length > 0 && ['FINANCIAL', 'RATES', 'OVERVIEW', 'OBLIGATIONS'].includes(type)) {
+      diParts.push(`\nPRE-VALIDATED TABLES (${ctx.diTables.length} found):`);
+      for (let i = 0; i < Math.min(ctx.diTables.length, 10); i++) {
+        const t = ctx.diTables[i];
+        if (t && t.headers.length > 0) {
+          diParts.push(`  Table ${i + 1} (page ${t.pageNumber}, confidence ${(t.confidence * 100).toFixed(0)}%):`);
+          diParts.push(`    | ${t.headers.join(' | ')} |`);
+          for (const row of t.rows.slice(0, 20)) {
+            diParts.push(`    | ${row.join(' | ')} |`);
+          }
+        }
+      }
+    }
+
+    // Key-value pairs for all types
+    if (ctx.diKeyValuePairs && ctx.diKeyValuePairs.length > 0) {
+      diParts.push(`\nPRE-VALIDATED KEY-VALUE PAIRS (${ctx.diKeyValuePairs.length} found):`);
+      for (const kv of ctx.diKeyValuePairs.slice(0, 30)) {
+        diParts.push(`  ${kv.key}: ${kv.value} [confidence: ${(kv.confidence * 100).toFixed(0)}%]`);
+      }
+    }
+
+    diParts.push('\nIMPORTANT: Use the pre-validated data above as ground truth when it conflicts with OCR text. These values have been extracted by Azure Document Intelligence with high precision.');
+    diParts.push('--- END PRE-VALIDATED DATA ---\n');
+    diContext = diParts.join('\n');
+  }
 
   const clauseCategories = ctx.clauseCategories && ctx.clauseCategories.length > 0
     ? ctx.clauseCategories.join(', ')
@@ -1372,7 +1471,12 @@ Contract text:
 ${truncatedText}`,
   };
 
-  return prompts[type] || null;
+  const prompt = prompts[type] || null;
+  // Inject DI context before the contract text section if available
+  if (prompt && diContext) {
+    return prompt.replace('Contract text:\n', diContext + '\nContract text:\n');
+  }
+  return prompt;
 }
 
 // ─── Fallback Templates ─────────────────────────────────────────────────────

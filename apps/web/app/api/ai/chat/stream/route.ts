@@ -9,7 +9,7 @@
  * - Episodic memory retrieval
  * - Parallel RAG search
  * - Dynamic confidence calculation
- * - Model failover (GPT-4o → GPT-4o-mini → Claude 3 Haiku → Sonnet)
+ * - Model failover (GPT-4o → GPT-4o-mini → Claude 3.5 Haiku → Claude Sonnet 4)
  * - Role-based action permissions
  * 
  * SSE Event Types sent to client:
@@ -39,6 +39,8 @@ import { allocateBudget, getBudgetStats } from '@/lib/ai/token-budget';
 import { shouldUseAgent, executeWithAgent } from '@/lib/ai/agent-integration';
 import { routeToModel, recordAICost, estimateTokenCost, type TaskType } from '@/lib/ai/model-router.service';
 import { shouldUseRAG } from '@/lib/ai/chat/response-builder';
+import { checkInputGuardrails, checkOutputGuardrails } from '@/lib/ai/guardrails';
+import { summarizeConversationHistory } from '@/lib/ai/conversation-summarizer';
 import { getLearningContext, formatLearningContextForPrompt } from '@repo/agents';
 import { logger } from '@/lib/logger';
 
@@ -74,8 +76,8 @@ const MODEL_FAILOVER_CHAIN: ModelConfig[] = [
   { provider: 'openai', model: 'gpt-4o', priority: 2 },
   // Only include Anthropic models if API key is configured
   ...(process.env.ANTHROPIC_API_KEY ? [
-    { provider: 'anthropic' as const, model: 'claude-3-haiku-20240307', priority: 3 },
-    { provider: 'anthropic' as const, model: 'claude-3-sonnet-20240229', priority: 4 },
+    { provider: 'anthropic' as const, model: 'claude-3-5-haiku-20241022', priority: 3 },
+    { provider: 'anthropic' as const, model: 'claude-sonnet-4-20250514', priority: 4 },
   ] : []),
 ];
 
@@ -111,7 +113,7 @@ function canUseTool(toolName: string, userRole: string): boolean {
 }
 
 // Maximum tool-calling iterations before forcing a final response
-const MAX_TOOL_ITERATIONS = 3;
+const MAX_TOOL_ITERATIONS = 5;
 
 // ─── Smart Model Routing ────────────────────────────────────────────────
 
@@ -233,6 +235,39 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   }
 
   // ═══════════════════════════════════════════════════════════════════════
+  // STEP 0.5 — INPUT GUARDRAILS (prompt injection + content moderation)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const guardrailCheck = await checkInputGuardrails(message);
+  if (!guardrailCheck.safe) {
+    return new NextResponse(JSON.stringify({
+      error: guardrailCheck.reason || 'Message blocked by safety filter.',
+      guardrail: true,
+      category: guardrailCheck.category,
+    }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // STEP 0.7 — CONVERSATION SUMMARIZATION (compress long history)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  let conversationSummary = '';
+  let effectiveHistory = conversationHistory;
+  if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+    try {
+      const summarized = await summarizeConversationHistory(conversationHistory);
+      conversationSummary = summarized.summary;
+      effectiveHistory = summarized.recentMessages;
+    } catch {
+      // Non-critical — fall back to raw history
+      effectiveHistory = conversationHistory.slice(-10);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
   // STEP 1 — SEMANTIC CACHE CHECK
   // ═══════════════════════════════════════════════════════════════════════
 
@@ -305,7 +340,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           filters: { tenantId, contractIds: [contextContractId] },
         }).catch(() => []), [])
       : Promise.resolve([]),
-    withTimeout(retrieveRelevantMemories(userId, tenantId, message, conversationHistory, {
+    withTimeout(retrieveRelevantMemories(userId, tenantId, message, effectiveHistory, {
       maxMemories: 5,
       types: ['preference', 'fact', 'decision', 'insight'],
     }), []),
@@ -504,7 +539,8 @@ ${contextContractId ? `\n**IMPORTANT — Active Contract Context:** The user is 
 ${contractProfileContext}
 ${ragContext}
 ${memoryContext}
-${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${learningContextStr}` : ''}`;
+${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${learningContextStr}` : ''}
+${conversationSummary ? `\n${conversationSummary}` : ''}`;
 
   // ═══════════════════════════════════════════════════════════════════════
   // STEP 3.1 — AGENT PERSONA @MENTION DETECTION
@@ -539,7 +575,7 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
       query: message,
       tenantId,
       userId,
-      conversationHistory,
+      conversationHistory: effectiveHistory,
     });
     
     if (agentResponse.agentUsed && agentResponse.response) {
@@ -602,7 +638,7 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
     {
       systemPrompt: finalSystemPrompt,
       ragContext,
-      conversationHistory: conversationHistory.slice(-10).map((msg: { role: string; content: string }) => ({
+      conversationHistory: effectiveHistory.slice(-10).map((msg: { role: string; content: string }) => ({
         role: msg.role as 'system' | 'user' | 'assistant',
         content: msg.content,
       })),
@@ -765,7 +801,7 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
                 break;
               } else if (config.provider === 'anthropic' && anthropic) {
                 // Anthropic fallback — true streaming WITH tool calling
-                const anthropicMessages: Anthropic.MessageParam[] = conversationHistory.slice(-10).map((msg: { role: string; content: string }) => ({
+                const anthropicMessages: Anthropic.MessageParam[] = effectiveHistory.slice(-10).map((msg: { role: string; content: string }) => ({
                   role: msg.role === 'assistant' ? 'assistant' as const : 'user' as const,
                   content: msg.content,
                 }));
@@ -1030,6 +1066,18 @@ ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${lear
         // ═══════════════════════════════════════════════════════════════
         // STEP 5 — POST-PROCESSING (Self-Critique, Cache, Memory, Done)
         // ═══════════════════════════════════════════════════════════════
+
+        // ── Output guardrails: check LLM output for policy violations/prompt leakage ──
+        if (fullContent.length > 20) {
+          const outputCheck = await checkOutputGuardrails(fullContent).catch(() => ({ safe: true }) as { safe: boolean });
+          if (!outputCheck.safe) {
+            logger.warn('[Stream v2] Output guardrail triggered — replacing response');
+            fullContent = 'I apologize, but I was unable to generate an appropriate response. Please try rephrasing your question.';
+            controller.enqueue(encoder.encode(
+              `data: ${JSON.stringify({ type: 'content', content: '\n\n_[Response filtered by safety system]_' })}\n\n`
+            ));
+          }
+        }
 
         // ── Self-critique (#4): Quick quality check on generated response ──
         let selfCritiqueScore = 1.0;
