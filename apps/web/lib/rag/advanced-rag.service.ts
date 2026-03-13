@@ -969,6 +969,36 @@ export async function hybridSearch(
       }
     }
     
+    // Step 5.9: Neo4j Knowledge Graph enrichment
+    // Query Neo4j for cross-contract entity relationships to add context
+    if (process.env.RAG_NEO4J_ENABLED === 'true') {
+      try {
+        const { neo4jGraphService } = await import('@repo/data-orchestration/services/graph/neo4j-graph.service');
+        const graphContractIds = [...new Set(finalResults.slice(0, 5).map(r => r.contractId))];
+        
+        for (const cId of graphContractIds) {
+          const relatedContracts = await neo4jGraphService.findRelatedContracts(cId, tenantId, { limit: 3 });
+          if (relatedContracts && relatedContracts.length > 0) {
+            // Add graph-sourced related contract chunks as low-priority results
+            for (const related of relatedContracts) {
+              const relId = related.contractId || (related as any).id;
+              if (relId && !finalResults.some(r => r.contractId === relId)) {
+                finalResults.push({
+                  contractId: relId,
+                  chunkIndex: -1,
+                  text: `[Graph-linked from ${cId}] ${(related as any).summary || (related as any).relationship || 'Related contract'}`,
+                  score: 0.25 * ((related as any).strength || 0.5),
+                  matchType: 'hybrid',
+                });
+              }
+            }
+          }
+        }
+      } catch (neo4jErr) {
+        console.warn('[RAG] Neo4j graph enrichment skipped:', neo4jErr);
+      }
+    }
+    
     // Step 6: Fetch contract metadata and format results
     const contractIds = [...new Set(finalResults.map(r => r.contractId))];
     const contracts = await prisma.contract.findMany({

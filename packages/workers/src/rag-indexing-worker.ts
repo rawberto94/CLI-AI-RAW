@@ -252,6 +252,56 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
       // Continue with original chunks — graceful degradation
     }
     
+    await job.updateProgress(28);
+    
+    // Step 2: RAPTOR hierarchical summarization
+    // Build multi-level summaries and append them as extra embeddable chunks
+    if (process.env.RAG_RAPTOR_ENABLED === 'true' && apiKey) {
+      try {
+        const { buildRaptorTree, getRaptorSummaryChunks } = await import('@repo/utils/rag/raptor-summarizer');
+        const OpenAIRaptor = openaiModule?.default || (await import('openai')).default;
+        const raptorClient = new OpenAIRaptor({ apiKey });
+        
+        const summarize = async (texts: string[], instruction: string): Promise<string> => {
+          const res = await raptorClient.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: instruction },
+              { role: 'user', content: texts.join('\n\n---\n\n') },
+            ],
+            temperature: 0,
+            max_tokens: 400,
+          });
+          return res.choices[0]?.message?.content?.trim() || '';
+        };
+        
+        const tree = await buildRaptorTree(
+          chunks.map(c => c.text),
+          summarize,
+          contractId,
+        );
+        
+        const summaryChunks = getRaptorSummaryChunks(tree);
+        if (summaryChunks.length > 0) {
+          const baseIndex = chunks.length;
+          for (let si = 0; si < summaryChunks.length; si++) {
+            const sc = summaryChunks[si]!;
+            chunks.push({
+              index: baseIndex + si,
+              text: sc.text,
+              metadata: {
+                chunkType: `raptor_L${sc.level}`,
+                section: `RAPTOR Level ${sc.level} Summary`,
+              },
+            } as SemanticChunk);
+          }
+          jobLogger.info({ raptorSummaries: summaryChunks.length, levels: tree.levels }, 'RAPTOR hierarchical summaries added');
+        }
+      } catch (raptorErr) {
+        jobLogger.warn({ error: (raptorErr as Error).message }, 'RAPTOR summarization skipped (non-fatal)');
+      }
+    }
+    
     await job.updateProgress(30);
     
     // Generate embeddings in batches with retry and rate limit handling

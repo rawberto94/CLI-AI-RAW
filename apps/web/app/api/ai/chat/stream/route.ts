@@ -41,6 +41,7 @@ import { routeToModel, recordAICost, estimateTokenCost, type TaskType } from '@/
 import { shouldUseRAG } from '@/lib/ai/chat/response-builder';
 import { checkInputGuardrails, checkOutputGuardrails } from '@/lib/ai/guardrails';
 import { summarizeConversationHistory } from '@/lib/ai/conversation-summarizer';
+import { aiTracer } from '@/lib/ai/ai-tracing';
 import { getLearningContext, formatLearningContextForPrompt } from '@repo/agents';
 import { logger } from '@/lib/logger';
 
@@ -722,6 +723,16 @@ ${conversationSummary ? `\n${conversationSummary}` : ''}`;
           for (const config of modelChain) {
             if (config.provider === 'anthropic' && !anthropic) continue;
 
+            const llmSpan = aiTracer.startLLMSpan({
+              model: config.model,
+              operation: 'chat',
+              provider: config.provider as 'openai' | 'anthropic',
+              tenantId: tenantId,
+              userId: userId,
+              feature: 'chatbot',
+              tags: { iteration: String(iteration), complexity: queryComplexity },
+            });
+
             try {
               if (config.provider === 'openai') {
                 // ── True token-level streaming with tool support ──────
@@ -798,6 +809,7 @@ ${conversationSummary ? `\n${conversationSummary}` : ''}`;
                   // Content already streamed to client — no tool calls
                   assistantMessage = null;
                 }
+                aiTracer.endLLMSpan(llmSpan, { success: true });
                 break;
               } else if (config.provider === 'anthropic' && anthropic) {
                 // Anthropic fallback — true streaming WITH tool calling
@@ -892,10 +904,16 @@ ${conversationSummary ? `\n${conversationSummary}` : ''}`;
                   // Content-only response, no tools needed
                   assistantMessage = null;
                 }
+                aiTracer.endLLMSpan(llmSpan, { success: true });
                 break;
               }
             } catch (error) {
               const errMsg = error instanceof Error ? error.message : String(error);
+              aiTracer.endLLMSpan(llmSpan, {
+                success: false,
+                errorType: error instanceof Error ? error.name : 'Error',
+                errorMessage: errMsg,
+              });
               logger.warn(`[Stream v2] ${config.provider}/${config.model} failed`, { action: 'model-call', error: errMsg });
               
               // FIX: Fail-fast on quota/auth errors — no point trying other models

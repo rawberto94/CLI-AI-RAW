@@ -26,9 +26,37 @@ export class OpenAIClient {
         userChunks: any[];
         schema: any;
         temperature?: number;
+        /** If provided, uses OpenAI strict json_schema mode instead of json_object + AJV repair */
+        structuredOutputName?: string;
     }): Promise<T> {
-        const { model, system, userChunks, schema, temperature = 0 } = opts;
+        const { model, system, userChunks, schema, temperature = 0, structuredOutputName } = opts;
 
+        // If structuredOutputName is provided, use native json_schema mode (no repair loop needed)
+        if (structuredOutputName) {
+            const messages: Array<{ role: string; content: string }> = [
+                { role: 'system', content: system },
+                { role: 'user', content: JSON.stringify(userChunks) },
+            ];
+            const response = await this.openai.chat.completions.create({
+                model,
+                messages: messages as any,
+                temperature,
+                top_p: 1,
+                response_format: {
+                    type: 'json_schema',
+                    json_schema: {
+                        name: structuredOutputName,
+                        strict: true,
+                        schema,
+                    },
+                },
+            });
+            const content = response.choices[0]?.message?.content;
+            if (!content) throw new Error('Empty response from OpenAI');
+            return JSON.parse(content) as T;
+        }
+
+        // Fallback: json_object mode with AJV repair loop
         // Ensure at least one message contains the word "json" to satisfy response_format=json_object requirements
         const systemWithJson = `${system} Return a valid JSON object that strictly matches the provided schema. Respond with JSON only.`;
         const safetyPreamble = 'Format: json. Output must be a single JSON object.';
@@ -109,7 +137,7 @@ export class OpenAIClient {
         model: string;
         temperature?: number;
         max_tokens?: number;
-        response_format?: { type: 'json_object' | 'text' };
+        response_format?: { type: 'json_object' | 'json_schema' | 'text'; json_schema?: { name: string; strict: boolean; schema: Record<string, unknown> } };
     }): Promise<{ choices: Array<{ message?: { content?: string } }> }> {
         const { messages, model, temperature = 0.5, max_tokens, response_format } = opts;
         

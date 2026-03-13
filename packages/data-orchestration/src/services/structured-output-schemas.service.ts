@@ -635,6 +635,483 @@ export const COMPLIANCE_ARTIFACT_SCHEMA: JSONSchema = {
 // SCHEMA REGISTRY
 // =============================================================================
 
+// ---------- 7 new artifact schemas (NEGOTIATION_POINTS through EXECUTIVE_SUMMARY) ----------
+
+export const NEGOTIATION_POINTS_ARTIFACT_SCHEMA: JSONSchema = {
+  type: 'object',
+  properties: {
+    leveragePoints: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          title: { type: 'string' },
+          description: { type: 'string' },
+          category: { type: 'string' },
+          strength: { type: 'string', enum: ['strong', 'moderate', 'weak'] },
+          suggestedAction: { type: 'string' },
+          sourceClause: { type: 'string' },
+        },
+        required: ['title', 'description', 'strength'],
+        additionalProperties: false,
+      },
+    },
+    weakClauses: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          clauseReference: { type: 'string' },
+          issue: { type: 'string' },
+          impact: { type: 'string', enum: ['high', 'medium', 'low'] },
+          suggestedRevision: { type: 'string' },
+          benchmarkComparison: { type: 'string' },
+        },
+        required: ['clauseReference', 'issue', 'impact'],
+        additionalProperties: false,
+      },
+    },
+    benchmarkGaps: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          area: { type: 'string' },
+          currentTerm: { type: 'string' },
+          marketStandard: { type: 'string' },
+          gap: { type: 'string' },
+          recommendation: { type: 'string' },
+        },
+        required: ['area', 'currentTerm', 'marketStandard'],
+        additionalProperties: false,
+      },
+    },
+    negotiationScript: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          topic: { type: 'string' },
+          openingPosition: { type: 'string' },
+          fallbackPosition: { type: 'string' },
+          walkAwayPoint: { type: 'string' },
+          supportingEvidence: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['topic', 'openingPosition'],
+        additionalProperties: false,
+      },
+    },
+    overallLeverage: { type: 'string', enum: ['strong', 'balanced', 'weak'] },
+    extractionMetadata: {
+      type: 'object',
+      properties: { model: { type: 'string' }, extractionTime: { type: 'string' } },
+      required: ['model'],
+      additionalProperties: false,
+    },
+  },
+  required: ['leveragePoints'],
+  additionalProperties: false,
+};
+
+export const AMENDMENTS_ARTIFACT_SCHEMA: JSONSchema = {
+  type: 'object',
+  properties: {
+    amendments: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          amendmentNumber: { type: 'number' },
+          effectiveDate: { type: 'string' },
+          title: { type: 'string' },
+          description: { type: 'string' },
+          changedClauses: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                clauseId: { type: 'string' },
+                originalText: { type: 'string' },
+                newText: { type: 'string' },
+                changeType: { type: 'string', enum: ['added', 'modified', 'deleted'] },
+              },
+              required: ['clauseId', 'newText', 'changeType'],
+              additionalProperties: false,
+            },
+          },
+          signedBy: { type: 'array', items: { type: 'string' } },
+          sourceDocument: { type: 'string' },
+        },
+        required: ['title', 'description'],
+        additionalProperties: false,
+      },
+    },
+    supersededClauses: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          originalClause: { type: 'string' },
+          supersededBy: { type: 'string' },
+          effectiveDate: { type: 'string' },
+        },
+        required: ['originalClause', 'supersededBy'],
+        additionalProperties: false,
+      },
+    },
+    changeLog: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          date: { type: 'string' },
+          type: { type: 'string' },
+          description: { type: 'string' },
+          reference: { type: 'string' },
+        },
+        required: ['date', 'description'],
+        additionalProperties: false,
+      },
+    },
+    extractionMetadata: {
+      type: 'object',
+      properties: { model: { type: 'string' }, extractionTime: { type: 'string' } },
+      required: ['model'],
+      additionalProperties: false,
+    },
+  },
+  required: ['amendments'],
+  additionalProperties: false,
+};
+
+export const CONTACTS_ARTIFACT_SCHEMA: JSONSchema = {
+  type: 'object',
+  properties: {
+    primaryContacts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          name: { type: 'string' },
+          role: { type: 'string' },
+          party: { type: 'string' },
+          email: { type: 'string' },
+          phone: { type: 'string' },
+          address: { type: 'string' },
+          isPrimary: { type: 'boolean' },
+        },
+        required: ['name', 'role', 'party'],
+        additionalProperties: false,
+      },
+    },
+    escalationPath: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          level: { type: 'number' },
+          role: { type: 'string' },
+          name: { type: 'string' },
+          contactInfo: { type: 'string' },
+          escalationTrigger: { type: 'string' },
+        },
+        required: ['level', 'role'],
+        additionalProperties: false,
+      },
+    },
+    notificationAddresses: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          purpose: { type: 'string' },
+          party: { type: 'string' },
+          address: { type: 'string' },
+          format: { type: 'string' },
+        },
+        required: ['purpose', 'address'],
+        additionalProperties: false,
+      },
+    },
+    extractionMetadata: {
+      type: 'object',
+      properties: { model: { type: 'string' }, extractionTime: { type: 'string' } },
+      required: ['model'],
+      additionalProperties: false,
+    },
+  },
+  required: ['primaryContacts'],
+  additionalProperties: false,
+};
+
+export const PARTIES_ARTIFACT_SCHEMA: JSONSchema = {
+  type: 'object',
+  properties: {
+    parties: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          role: { type: 'string' },
+          type: { type: 'string' },
+          address: { type: 'string' },
+          jurisdiction: { type: 'string' },
+          signatoryName: { type: 'string' },
+          signatoryTitle: { type: 'string' },
+        },
+        required: ['name', 'role'],
+        additionalProperties: false,
+      },
+    },
+    relationships: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          partyA: { type: 'string' },
+          partyB: { type: 'string' },
+          relationship: { type: 'string' },
+        },
+        required: ['partyA', 'partyB', 'relationship'],
+        additionalProperties: false,
+      },
+    },
+    thirdParties: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          role: { type: 'string' },
+        },
+        required: ['name', 'role'],
+        additionalProperties: false,
+      },
+    },
+    extractionMetadata: {
+      type: 'object',
+      properties: { model: { type: 'string' }, extractionTime: { type: 'string' } },
+      required: ['model'],
+      additionalProperties: false,
+    },
+  },
+  required: ['parties'],
+  additionalProperties: false,
+};
+
+export const TIMELINE_ARTIFACT_SCHEMA: JSONSchema = {
+  type: 'object',
+  properties: {
+    contractTimeline: {
+      type: 'object',
+      properties: {
+        executionDate: { type: 'string' },
+        effectiveDate: { type: 'string' },
+        expirationDate: { type: 'string' },
+        totalDuration: { type: 'string' },
+      },
+      additionalProperties: false,
+    },
+    milestones: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          date: { type: 'string' },
+          type: { type: 'string' },
+          owner: { type: 'string' },
+          consequences: { type: 'string' },
+        },
+        required: ['name', 'date'],
+        additionalProperties: false,
+      },
+    },
+    deadlines: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          description: { type: 'string' },
+          date: { type: 'string' },
+          type: { type: 'string' },
+          consequences: { type: 'string' },
+        },
+        required: ['description', 'date'],
+        additionalProperties: false,
+      },
+    },
+    paymentSchedule: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          description: { type: 'string' },
+          amount: { type: 'string' },
+          dueDate: { type: 'string' },
+          frequency: { type: 'string' },
+        },
+        required: ['description', 'dueDate'],
+        additionalProperties: false,
+      },
+    },
+    noticePeriods: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          type: { type: 'string' },
+          period: { type: 'string' },
+          method: { type: 'string' },
+        },
+        required: ['type', 'period'],
+        additionalProperties: false,
+      },
+    },
+    criticalPath: { type: 'array', items: { type: 'string' } },
+    extractionMetadata: {
+      type: 'object',
+      properties: { model: { type: 'string' }, extractionTime: { type: 'string' } },
+      required: ['model'],
+      additionalProperties: false,
+    },
+  },
+  required: ['contractTimeline', 'milestones'],
+  additionalProperties: false,
+};
+
+export const DELIVERABLES_ARTIFACT_SCHEMA: JSONSchema = {
+  type: 'object',
+  properties: {
+    deliverables: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          description: { type: 'string' },
+          type: { type: 'string' },
+          owner: { type: 'string' },
+          recipient: { type: 'string' },
+          dueDate: { type: 'string' },
+          acceptanceCriteria: { type: 'array', items: { type: 'string' } },
+          priority: { type: 'string', enum: ['critical', 'high', 'medium', 'low'] },
+        },
+        required: ['name', 'description'],
+        additionalProperties: false,
+      },
+    },
+    serviceLevels: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          metric: { type: 'string' },
+          target: { type: 'string' },
+          measurement: { type: 'string' },
+          penalty: { type: 'string' },
+        },
+        required: ['metric', 'target'],
+        additionalProperties: false,
+      },
+    },
+    acceptanceProcess: {
+      type: 'object',
+      properties: {
+        reviewPeriod: { type: 'string' },
+        approvalAuthority: { type: 'string' },
+        rejectionProcess: { type: 'string' },
+      },
+      additionalProperties: false,
+    },
+    workBreakdown: { type: 'array', items: { type: 'string' } },
+    exclusions: { type: 'array', items: { type: 'string' } },
+    extractionMetadata: {
+      type: 'object',
+      properties: { model: { type: 'string' }, extractionTime: { type: 'string' } },
+      required: ['model'],
+      additionalProperties: false,
+    },
+  },
+  required: ['deliverables'],
+  additionalProperties: false,
+};
+
+export const EXECUTIVE_SUMMARY_ARTIFACT_SCHEMA: JSONSchema = {
+  type: 'object',
+  properties: {
+    headline: { type: 'string' },
+    strategicSummary: { type: 'string' },
+    keyMetrics: {
+      type: 'object',
+      properties: {
+        totalContractValue: { type: 'string' },
+        contractDuration: { type: 'string' },
+        keyDeadlines: { type: 'array', items: { type: 'string' } },
+        numberOfParties: { type: 'number' },
+        numberOfDeliverables: { type: 'number' },
+      },
+      additionalProperties: false,
+    },
+    businessImpact: {
+      type: 'object',
+      properties: {
+        revenueImpact: { type: 'string' },
+        operationalImpact: { type: 'string' },
+        resourceRequirements: { type: 'string' },
+      },
+      additionalProperties: false,
+    },
+    riskProfile: {
+      type: 'object',
+      properties: {
+        overallRisk: { type: 'string' },
+        topRisks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              risk: { type: 'string' },
+              severity: { type: 'string' },
+              mitigation: { type: 'string' },
+            },
+            required: ['risk', 'severity'],
+            additionalProperties: false,
+          },
+        },
+        missingProtections: { type: 'array', items: { type: 'string' } },
+      },
+      additionalProperties: false,
+    },
+    recommendedActions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          action: { type: 'string' },
+          priority: { type: 'string', enum: ['immediate', 'short-term', 'long-term'] },
+          rationale: { type: 'string' },
+        },
+        required: ['action', 'priority'],
+        additionalProperties: false,
+      },
+    },
+    extractionMetadata: {
+      type: 'object',
+      properties: { model: { type: 'string' }, extractionTime: { type: 'string' } },
+      required: ['model'],
+      additionalProperties: false,
+    },
+  },
+  required: ['strategicSummary', 'keyMetrics'],
+  additionalProperties: false,
+};
+
 export const ARTIFACT_SCHEMAS: Record<string, JSONSchema> = {
   OVERVIEW: OVERVIEW_ARTIFACT_SCHEMA,
   FINANCIAL: FINANCIAL_ARTIFACT_SCHEMA,
@@ -644,6 +1121,13 @@ export const ARTIFACT_SCHEMAS: Record<string, JSONSchema> = {
   RATES: RATES_ARTIFACT_SCHEMA,
   RENEWAL: RENEWAL_ARTIFACT_SCHEMA,
   COMPLIANCE: COMPLIANCE_ARTIFACT_SCHEMA,
+  NEGOTIATION_POINTS: NEGOTIATION_POINTS_ARTIFACT_SCHEMA,
+  AMENDMENTS: AMENDMENTS_ARTIFACT_SCHEMA,
+  CONTACTS: CONTACTS_ARTIFACT_SCHEMA,
+  PARTIES: PARTIES_ARTIFACT_SCHEMA,
+  TIMELINE: TIMELINE_ARTIFACT_SCHEMA,
+  DELIVERABLES: DELIVERABLES_ARTIFACT_SCHEMA,
+  EXECUTIVE_SUMMARY: EXECUTIVE_SUMMARY_ARTIFACT_SCHEMA,
 };
 
 /**

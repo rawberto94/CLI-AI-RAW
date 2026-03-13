@@ -1472,12 +1472,92 @@ ${truncatedText}`,
   };
 
   const prompt = prompts[type] || null;
-  // Inject DI context before the contract text section if available
-  if (prompt && diContext) {
-    return prompt.replace('Contract text:\n', diContext + '\nContract text:\n');
+  if (!prompt) return null;
+
+  // Inject few-shot example before contract text for key artifact types
+  const fewShot = FEW_SHOT_EXAMPLES[type];
+  let finalPrompt = prompt;
+  if (fewShot) {
+    finalPrompt = finalPrompt.replace(
+      'Contract text:\n',
+      `\n--- FEW-SHOT EXAMPLE (for output format reference only — do NOT copy these values) ---
+INPUT SNIPPET: "${fewShot.inputSnippet}"
+EXPECTED OUTPUT SNIPPET:
+${JSON.stringify(fewShot.outputSnippet, null, 2)}
+--- END EXAMPLE ---
+
+Contract text:\n`
+    );
   }
-  return prompt;
+
+  // Inject DI context before the contract text section if available
+  if (diContext) {
+    finalPrompt = finalPrompt.replace('Contract text:\n', diContext + '\nContract text:\n');
+  }
+  return finalPrompt;
 }
+
+// ─── Few-Shot Examples ──────────────────────────────────────────────────────
+// Compact representative input→output examples to ground the LLM on expected
+// format and detail level. These are NOT real contracts — they are synthetic.
+
+const FEW_SHOT_EXAMPLES: Record<string, { inputSnippet: string; outputSnippet: Record<string, any> }> = {
+  OVERVIEW: {
+    inputSnippet: 'This Master Services Agreement ("Agreement") is entered into as of January 15, 2024, by and between Acme Corp, a Delaware corporation ("Client"), and TechFlow Inc, a California LLC ("Vendor"). The Agreement shall remain in effect for a period of three (3) years... total value not to exceed $2,400,000.',
+    outputSnippet: {
+      summary: "This is a 3-year Master Services Agreement between Acme Corp (Client) and TechFlow Inc (Vendor) with a total value cap of $2,400,000. The agreement was entered into on January 15, 2024...",
+      contractType: "Master Services Agreement",
+      parties: [{ name: "Acme Corp", role: "Client", jurisdiction: "Delaware", isPlaceholder: false }, { name: "TechFlow Inc", role: "Vendor", jurisdiction: "California", isPlaceholder: false }],
+      effectiveDate: "2024-01-15",
+      totalValue: 2400000,
+      currency: "USD",
+      certainty: 0.92,
+    },
+  },
+  CLAUSES: {
+    inputSnippet: 'Section 8.1 Limitation of Liability: In no event shall either party be liable for any indirect, incidental, special, or consequential damages... Section 8.2 Indemnification: Vendor shall indemnify and hold harmless Client from and against any claims arising from Vendor\'s negligence.',
+    outputSnippet: {
+      clauses: [
+        { title: "Limitation of Liability", section: "8.1", content: "Mutual exclusion of indirect, incidental, special, and consequential damages.", importance: "high", category: "liability", extractedFromText: true },
+        { title: "Indemnification", section: "8.2", content: "Vendor indemnifies Client against claims arising from Vendor's negligence.", importance: "high", category: "indemnification", extractedFromText: true },
+      ],
+      certainty: 0.90,
+    },
+  },
+  FINANCIAL: {
+    inputSnippet: 'The total contract value shall not exceed $1,200,000 USD. Payment shall be made in monthly installments of $100,000, due within Net 30 of invoice receipt. A 2% early payment discount applies for payments within 10 days.',
+    outputSnippet: {
+      totalValue: 1200000,
+      currency: "USD",
+      hasFinancialTerms: true,
+      paymentTerms: "Monthly installments of $100,000, Net 30",
+      discounts: [{ type: "early_payment", value: 2, unit: "percentage", description: "2% discount for payment within 10 days" }],
+      certainty: 0.95,
+    },
+  },
+  RISK: {
+    inputSnippet: 'Vendor\'s total aggregate liability under this Agreement shall not exceed the fees paid in the preceding 12 months. Client waives all warranties except those expressly stated herein.',
+    outputSnippet: {
+      overallRisk: "Medium",
+      riskScore: 55,
+      risks: [
+        { category: "Financial", level: "Medium", title: "Limited vendor liability cap", description: "Vendor liability capped at 12 months of fees, which may not cover significant losses.", mitigation: "Negotiate higher liability cap or carve-outs for data breach and IP infringement.", clauseReference: "Aggregate liability clause", extractedFromText: true },
+        { category: "Legal", level: "High", title: "Broad warranty waiver by Client", description: "Client waives all warranties except express ones, removing implied merchantability protections.", mitigation: "Negotiate to retain key implied warranties.", clauseReference: "Warranty waiver clause", extractedFromText: true },
+      ],
+      certainty: 0.85,
+    },
+  },
+  OBLIGATIONS: {
+    inputSnippet: 'Vendor shall deliver monthly progress reports by the 5th business day of each month. Client shall provide access to necessary systems within 10 business days of signing.',
+    outputSnippet: {
+      obligations: [
+        { id: "obl_1", party: "Vendor", obligation: "Deliver monthly progress reports by 5th business day of each month", type: "reporting", frequency: "monthly", priority: "medium", extractedFromText: true, confidence: 0.95 },
+        { id: "obl_2", party: "Client", obligation: "Provide access to necessary systems within 10 business days of signing", type: "deliverable", frequency: "one-time", priority: "high", extractedFromText: true, confidence: 0.95 },
+      ],
+      certainty: 0.92,
+    },
+  },
+};
 
 // ─── Fallback Templates ─────────────────────────────────────────────────────
 // Used when AI is unavailable. Returns empty/null structures.
@@ -1650,7 +1730,23 @@ export const UNIFIED_QUALITY_THRESHOLDS = {
 
 // ─── Prompt Version ─────────────────────────────────────────────────────────
 
-export const PROMPT_VERSION = 'unified-artifact-prompts-v3';
+export const PROMPT_VERSION = 'unified-artifact-prompts-v4';
+
+// Integrate with prompt registry for version tracking and A/B testing
+let _registryLoaded = false;
+function ensureRegistryLoaded(): void {
+  if (_registryLoaded) return;
+  _registryLoaded = true;
+  try {
+    // Dynamic import to avoid circular dependency issues
+    const { promptRegistry } = require('./prompt-registry');
+    if (promptRegistry) {
+      logger.info('Prompt registry available — version tracking enabled');
+    }
+  } catch {
+    // Registry not available — use inline prompts (no-op)
+  }
+}
 
 // ─── Required Fields per Type ───────────────────────────────────────────────
 // Used by quality validator to check completeness.

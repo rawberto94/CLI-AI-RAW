@@ -31,13 +31,14 @@ interface TypedOpenAIClient {
     userChunks: any[];
     schema: any;
     temperature?: number;
+    structuredOutputName?: string;
   }): Promise<T>;
   chat(opts: {
     messages: Array<{ role: string; content: string }>;
     model: string;
     temperature?: number;
     max_tokens?: number;
-    response_format?: { type: 'json_object' | 'text' };
+    response_format?: { type: 'json_object' | 'json_schema' | 'text'; json_schema?: { name: string; strict: boolean; schema: Record<string, unknown> } };
   }): Promise<{ choices: Array<{ message?: { content?: string } }> }>;
 }
 
@@ -55,7 +56,19 @@ class OpenAIClient implements TypedOpenAIClient {
     userChunks: any[];
     schema: any;
     temperature?: number;
+    structuredOutputName?: string;
   }): Promise<T> {
+    const responseFormat = opts.structuredOutputName
+      ? {
+          type: 'json_schema' as const,
+          json_schema: {
+            name: opts.structuredOutputName,
+            strict: true,
+            schema: opts.schema,
+          },
+        }
+      : { type: 'json_object' as const };
+
     const response = await this.openai.chat.completions.create({
       model: opts.model,
       messages: [
@@ -63,7 +76,7 @@ class OpenAIClient implements TypedOpenAIClient {
         ...opts.userChunks.map((chunk: any) => ({ role: 'user' as const, content: String(chunk) })),
       ],
       temperature: opts.temperature ?? 0.3,
-      response_format: { type: 'json_object' },
+      response_format: responseFormat as any,
     });
 
     const content = response.choices[0]?.message?.content;
@@ -76,7 +89,7 @@ class OpenAIClient implements TypedOpenAIClient {
     model: string;
     temperature?: number;
     max_tokens?: number;
-    response_format?: { type: 'json_object' | 'text' };
+    response_format?: { type: 'json_object' | 'json_schema' | 'text'; json_schema?: { name: string; strict: boolean; schema: Record<string, unknown> } };
   }): Promise<{ choices: Array<{ message?: { content?: string } }> }> {
     const response = await this.openai.chat.completions.create({
       model: opts.model,
