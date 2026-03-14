@@ -2252,19 +2252,18 @@ export async function processOCRArtifactJob(
 
     // Store expected artifact count in contract aiMetadata so the SSE stream
     // can calculate accurate progress (e.g., 3 of 15 instead of 3 of 3).
+    // Keep a local copy so per-artifact progress updates can write without re-reading.
     const expectedArtifactCount = allArtifactTypes.length; // includes applicable + not-applicable
+    let progressMeta: Record<string, any> = {
+      ...((contract.aiMetadata as any) || {}),
+      expectedArtifactCount,
+      applicableArtifactCount: artifactTypes.length,
+      processingStartedAt: new Date().toISOString(),
+    };
     try {
-      const existingMeta: any = contract.aiMetadata || {};
       await prisma.contract.update({
         where: { id: contractId },
-        data: {
-          aiMetadata: {
-            ...existingMeta,
-            expectedArtifactCount,
-            applicableArtifactCount: artifactTypes.length,
-            processingStartedAt: new Date().toISOString(),
-          },
-        },
+        data: { aiMetadata: progressMeta },
       });
     } catch (metaErr) {
       jobLogger.warn({ error: (metaErr as Error).message }, 'Failed to store expected artifact count');
@@ -2451,18 +2450,17 @@ export async function processOCRArtifactJob(
             },
           });
           // Update aiMetadata with current processing stage so the contracts list API
-          // can show real-time progress (e.g., "Generating artifacts (5/15)")
+          // can show real-time progress (e.g., "Generating artifacts (5/15)").
+          // Uses the local progressMeta copy — no extra DB read needed.
           try {
-            const currentMeta: any = (await prisma.contract.findUnique({ where: { id: contractId }, select: { aiMetadata: true } }))?.aiMetadata || {};
+            progressMeta = {
+              ...progressMeta,
+              currentStage: `Generating artifacts (${completedCount}/${artifactTypes.length})`,
+              completedArtifacts: completedCount,
+            };
             await prisma.contract.update({
               where: { id: contractId },
-              data: {
-                aiMetadata: {
-                  ...currentMeta,
-                  currentStage: `Generating artifacts (${completedCount}/${artifactTypes.length})`,
-                  completedArtifacts: completedCount,
-                },
-              },
+              data: { aiMetadata: progressMeta },
             });
           } catch (_stageErr) {
             // Non-critical — progress display only
@@ -3221,29 +3219,33 @@ export async function processOCRArtifactJob(
             filledCount: gapFillingResult.output.filledFields.length 
           }, 'Gap filling completed, updating artifacts');
           
-          // Update artifact data with filled values
-          // Query for actual artifact IDs from database since artifactDataArray doesn't have IDs
+          // Update artifact data with filled values.
+          // Pre-fetch all touched artifacts in one query, merge in memory, then
+          // update in parallel — avoids N+1 (findFirst + update) per filled field.
+          const neededTypes = [...new Set(gapFillingResult.output.filledFields.map((f: any) => f.artifactType as string))];
+          const dbArtifactsForGap = await prisma.artifact.findMany({
+            where: { contractId, type: { in: neededTypes } },
+          });
+          const artifactByType = new Map(dbArtifactsForGap.map((a: any) => [a.type as string, a]));
+
+          // Merge all filled fields per artifact in memory first
+          const mergedGapData = new Map<string, { id: string; data: Record<string, unknown> }>();
           for (const filled of gapFillingResult.output.filledFields) {
-            const dbArtifact = await prisma.artifact.findFirst({
-              where: { 
-                contractId, 
-                type: filled.artifactType 
-              },
-            });
-            if (dbArtifact) {
-              const existingData = (dbArtifact.data as Record<string, unknown>) || {};
-              await prisma.artifact.update({
-                where: { id: dbArtifact.id },
-                data: {
-                  data: {
-                    ...existingData,
-                    [filled.field]: filled.value,
-                  },
-                  updatedAt: new Date(),
-                },
-              });
-            }
+            const artifact = artifactByType.get(filled.artifactType as string);
+            if (!artifact) continue;
+            const entry = mergedGapData.get(artifact.id) ?? {
+              id: artifact.id,
+              data: { ...(artifact.data as Record<string, unknown>) },
+            };
+            entry.data[filled.field as string] = filled.value;
+            mergedGapData.set(artifact.id, entry);
           }
+
+          await Promise.all(
+            [...mergedGapData.values()].map(({ id, data }) =>
+              prisma.artifact.update({ where: { id }, data: { data, updatedAt: new Date() } })
+            )
+          );
 
           // Re-map gap-filled OVERVIEW/FINANCIAL data to contract record
           // The initial transaction mapped from the original OVERVIEW, but gap-filling
