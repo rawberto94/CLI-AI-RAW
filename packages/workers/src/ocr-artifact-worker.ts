@@ -3475,8 +3475,9 @@ export async function processOCRArtifactJob(
     const { plan, inputs } = buildProcessingPlan({ extractedText });
     await setProcessingPlan({ tenantId, contractId, plan, inputs });
 
-    // 6. Auto-queue RAG indexing for semantic search
-    // Uses minimal delay since we're inside a transaction - data is committed
+    // 6. Auto-queue RAG indexing for semantic search (raw text chunks)
+    // The RAG indexing worker processes contract rawText into semantic chunks —
+    // it does not use artifactIds (which index artifact summaries, handled by step 9).
     if (!hasCompleteFailure && plan.ragIndexing) {
       try {
         jobLogger.info({ plan }, 'Queueing automatic RAG indexing');
@@ -3484,7 +3485,7 @@ export async function processOCRArtifactJob(
         await queueService.addJob(
           QUEUE_NAMES.RAG_INDEXING,
           'index-contract',
-          { contractId, tenantId, artifactIds: [], traceId: trace.traceId } as any,
+          { contractId, tenantId, traceId: trace.traceId } as any,
           {
             priority: 15,
             delay: 3000, // Allow 3s for DB transaction to fully commit before RAG worker reads
@@ -3498,8 +3499,8 @@ export async function processOCRArtifactJob(
       }
     }
 
-    // 7. Auto-queue metadata extraction for AI-powered field extraction
-    // Runs after RAG indexing via priority ordering (higher priority = later)
+    // 7. Auto-queue metadata extraction for AI-powered field extraction.
+    // Runs in a separate queue; contract is already COMPLETED at this point.
     if (!hasCompleteFailure && plan.metadataExtraction) {
       try {
         jobLogger.info({ plan }, 'Queueing automatic metadata extraction');
@@ -3507,9 +3508,9 @@ export async function processOCRArtifactJob(
         await queueService.addJob(
           QUEUE_NAMES.METADATA_EXTRACTION,
           'extract-metadata',
-          { 
-            contractId, 
-            tenantId, 
+          {
+            contractId,
+            tenantId,
             autoApply: true,
             autoApplyThreshold: 0.85,
             source: 'upload',
@@ -3517,8 +3518,8 @@ export async function processOCRArtifactJob(
             traceId: trace.traceId,
           },
           {
-            priority: 20, // Higher priority number = processed later
-            delay: 200, // Minimal delay
+            priority: 20,
+            delay: 2000, // 2s — gives the DB replica time to reflect COMPLETED status
             jobId: `metadata-${contractId}`,
           }
         );
@@ -3537,9 +3538,9 @@ export async function processOCRArtifactJob(
         await queueService.addJob(
           QUEUE_NAMES.CATEGORIZATION,
           'categorize-contract',
-          { 
-            contractId, 
-            tenantId, 
+          {
+            contractId,
+            tenantId,
             autoApply: true,
             autoApplyThreshold: 0.75,
             source: 'upload',
@@ -3547,8 +3548,8 @@ export async function processOCRArtifactJob(
             traceId: trace.traceId,
           },
           {
-            priority: 25, // Higher priority number = processed later
-            delay: 300, // Minimal delay
+            priority: 25,
+            delay: 2000, // 2s — consistent with metadata extraction delay
             jobId: `categorize-${contractId}`,
           }
         );
