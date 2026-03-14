@@ -60,7 +60,7 @@ interface UploadFile {
 }
 
 const DEFAULT_PROCESSING_OPTIONS: ProcessingOptions = {
-  aiModel: 'azure-ch',
+  aiModel: 'openai',
   processingMode: 'standard',
   concurrency: 2,
   enabledArtifacts: [

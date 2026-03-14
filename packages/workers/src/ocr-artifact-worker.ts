@@ -1579,22 +1579,28 @@ async function performGPT4OCR(filePath: string): Promise<string> {
       
       logger.info({ textLength: rawText.length, meaningfulLength: meaningfulText.length, pages: pdfData.numpages }, 'PDF text extracted');
       
-      // Scanned / image-based PDF: very little extractable text → use GPT-4o native PDF file input
+      // Scanned / image-based PDF: very little extractable text → use GPT-4o Responses API with native PDF input
       if (meaningfulText.length < 50) {
-        logger.info({ pages: pdfData.numpages, extractedChars: meaningfulText.length }, 'Scanned/image PDF detected — using GPT-4o native PDF file input');
+        logger.info({ pages: pdfData.numpages, extractedChars: meaningfulText.length }, 'Scanned/image PDF detected — using GPT-4o Responses API with native PDF input');
         const visionModel = WORKER_CONFIG.ai.visionModel || 'gpt-4o';
         const base64 = fileBuffer.toString('base64');
         const fileName = path.basename(filePath);
-        
-        // Use native PDF file content type (NOT image_url which rejects application/pdf MIME)
-        const response = await openai.chat.completions.create({
+
+        // Use the Responses API which supports native PDF file input (type: 'input_file')
+        // The Chat Completions API does NOT support PDF files directly.
+        const response = await (openai as any).responses.create({
           model: visionModel,
-          messages: [
+          input: [
             {
               role: 'user',
               content: [
                 {
-                  type: 'text',
+                  type: 'input_file',
+                  filename: fileName,
+                  file_data: `data:application/pdf;base64,${base64}`,
+                },
+                {
+                  type: 'input_text',
                   text: `Extract ALL text from this scanned PDF document with high accuracy.
 Preserve the exact structure, formatting, and layout.
 Include:
@@ -1607,22 +1613,14 @@ Include:
 
 Return the extracted text in clean markdown format.`,
                 },
-                {
-                  type: 'file',
-                  file: {
-                    filename: fileName,
-                    file_data: `data:application/pdf;base64,${base64}`,
-                  },
-                } as any,
               ],
             },
           ],
-          max_tokens: 8192,
-          temperature: 0.1,
+          max_output_tokens: 8192,
         });
-        
-        const visionText = response.choices[0]?.message?.content || '';
-        logger.info({ textLength: visionText.length, model: visionModel }, 'GPT-4o Vision OCR completed for scanned PDF');
+
+        const visionText: string = (response as any).output_text || '';
+        logger.info({ textLength: visionText.length, model: visionModel }, 'GPT-4o Responses API OCR completed for scanned PDF');
         
         if (visionText.length > 50) {
           return visionText;
@@ -1889,11 +1887,11 @@ export async function processOCRArtifactJob(
           }
         }
 
-        // Still auto? fall back to azure-ch (which already tries DI v4.0 internally)
-        if (ocrMode === 'auto') ocrMode = 'azure-ch';
+        // Still auto? fall back to openai (GPT Vision) — azure-ch requires credentials not yet configured
+        if (ocrMode === 'auto') ocrMode = 'openai';
       } catch (preErr) {
-        jobLogger.warn({ error: (preErr as Error).message }, 'Preclassification failed, defaulting to azure-ch');
-        ocrMode = 'azure-ch';
+        jobLogger.warn({ error: (preErr as Error).message }, 'Preclassification failed, defaulting to openai');
+        ocrMode = 'openai';
       }
     }
 

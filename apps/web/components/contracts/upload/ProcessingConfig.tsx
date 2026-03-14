@@ -64,23 +64,30 @@ export interface ProcessingConfigProps {
 // ============================================================================
 
 const AI_MODELS = [
-  { 
-    id: 'azure-ch', 
-    name: 'Azure GPT-4o (CH)', 
+  {
+    id: 'openai',
+    name: 'GPT-4o Vision',
+    description: 'OpenAI GPT-4o with native PDF & image OCR',
+    badge: 'Active',
+    badgeColor: 'bg-blue-100 text-blue-700'
+  },
+  {
+    id: 'azure-ch',
+    name: 'Azure GPT-4o (CH)',
     description: 'Azure Switzerland North - Swiss FADP compliant',
     badge: 'Recommended',
     badgeColor: 'bg-green-100 text-green-700'
   },
-  { 
-    id: 'mistral', 
-    name: 'Mistral Large (EU)', 
+  {
+    id: 'mistral',
+    name: 'Mistral Large (EU)',
     description: 'EU-hosted AI model - GDPR compliant',
     badge: 'Fast',
     badgeColor: 'bg-violet-100 text-violet-700'
   },
-  { 
-    id: 'auto', 
-    name: 'Auto Select', 
+  {
+    id: 'auto',
+    name: 'Auto Select',
     description: 'Automatically choose between Azure CH and Mistral EU',
     badge: 'Smart',
     badgeColor: 'bg-violet-100 text-violet-700'
