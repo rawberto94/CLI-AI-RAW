@@ -175,6 +175,10 @@ export interface DIAnalyzeResult {
   styles: DIStyle[];
   /** Detected document languages (BCP-47 locale codes) */
   languages: DILanguage[];
+  /** Barcodes detected in the document */
+  barcodes: DIBarcode[];
+  /** Formulas detected in the document (LaTeX) */
+  formulas: DIFormula[];
   /** Processing metadata */
   metadata: DIMetadata;
 }
@@ -263,6 +267,24 @@ export interface DILanguage {
   locale: string;     // e.g. 'en', 'de', 'fr', 'it'
   confidence: number;
   spans: Array<{ offset: number; length: number }>;
+}
+
+/** Barcode extracted by DI (1D/2D codes) */
+export interface DIBarcode {
+  kind: string;      // e.g. 'QRCode', 'Code128', 'EAN13', 'PDF417'
+  value: string;
+  confidence: number;
+  polygon?: number[];
+  span?: { offset: number; length: number };
+}
+
+/** Formula extracted by DI (LaTeX representation) */
+export interface DIFormula {
+  kind: 'inline' | 'display';
+  value: string;     // LaTeX
+  confidence: number;
+  polygon?: number[];
+  span?: { offset: number; length: number };
 }
 
 export interface DIMetadata {
@@ -615,6 +637,30 @@ function parseLanguages(raw: any): DILanguage[] {
   }));
 }
 
+function parseBarcodes(raw: any): DIBarcode[] {
+  return (raw.pages || []).flatMap((page: any) =>
+    (page.barcodes || []).map((b: any) => ({
+      kind: b.kind || 'unknown',
+      value: b.value || '',
+      confidence: b.confidence ?? 0.9,
+      polygon: b.polygon,
+      span: b.span ? { offset: b.span.offset ?? 0, length: b.span.length ?? 0 } : undefined,
+    }))
+  );
+}
+
+function parseFormulas(raw: any): DIFormula[] {
+  return (raw.pages || []).flatMap((page: any) =>
+    (page.formulas || []).map((f: any) => ({
+      kind: f.kind === 'display' ? 'display' : 'inline',
+      value: f.value || '',
+      confidence: f.confidence ?? 0.9,
+      polygon: f.polygon,
+      span: f.span ? { offset: f.span.offset ?? 0, length: f.span.length ?? 0 } : undefined,
+    }))
+  );
+}
+
 function parseDocuments(raw: any): DIDocument[] {
   return (raw.documents || []).map((doc: any) => {
     const fields: Record<string, DIField> = {};
@@ -659,7 +705,7 @@ export async function analyzeLayout(
 ): Promise<DIAnalyzeResult> {
   const span = startSpan({ name: 'di.analyzeLayout', kind: 'client', attributes: { 'di.model': 'prebuilt-layout', 'di.buffer_size': fileBuffer.length } });
   try {
-    const features: string[] = [];
+    const features: string[] = ['barcodes', 'formulas'];
     if (options.extractKeyValuePairs !== false) {
       features.push('keyValuePairs');
     }
@@ -683,6 +729,8 @@ export async function analyzeLayout(
     documents: [],
     styles: parseStyles(raw),
     languages: parseLanguages(raw),
+    barcodes: parseBarcodes(raw),
+    formulas: parseFormulas(raw),
     metadata: {
       model: 'prebuilt-layout',
       apiVersion: DI_API_VERSION,
@@ -731,6 +779,8 @@ export async function analyzeRead(
     documents: [],
     styles: parseStyles(raw),
     languages: parseLanguages(raw),
+    barcodes: [],
+    formulas: [],
     metadata: {
       model: 'prebuilt-read',
       apiVersion: DI_API_VERSION,
@@ -768,7 +818,7 @@ export async function analyzeContract(
   try {
   const raw = await analyzeDocument(fileBuffer, 'prebuilt-contract', {
     locale: options.locale,
-    features: ['keyValuePairs'],
+    features: ['keyValuePairs', 'barcodes', 'formulas'],
   });
 
   const region = raw._region as string;
@@ -782,6 +832,8 @@ export async function analyzeContract(
     documents: parseDocuments(raw),
     styles: parseStyles(raw),
     languages: parseLanguages(raw),
+    barcodes: parseBarcodes(raw),
+    formulas: parseFormulas(raw),
     metadata: {
       model: 'prebuilt-contract',
       apiVersion: DI_API_VERSION,
@@ -885,6 +937,8 @@ export async function analyzeInvoice(
     documents: parseDocuments(raw),
     styles: parseStyles(raw),
     languages: parseLanguages(raw),
+    barcodes: parseBarcodes(raw),
+    formulas: parseFormulas(raw),
     metadata: {
       model: 'prebuilt-invoice',
       apiVersion: DI_API_VERSION,
@@ -971,7 +1025,7 @@ export async function analyzeWithQueries(
   const span = startSpan({ name: 'di.analyzeWithQueries', kind: 'client', attributes: { 'di.model': 'prebuilt-layout', 'di.queries': queryFields.length } });
   try {
   const raw = await analyzeDocument(fileBuffer, 'prebuilt-layout', {
-    features: ['queryFields', 'keyValuePairs'],
+    features: ['queryFields', 'keyValuePairs', 'barcodes', 'formulas'],
     queryFields,
     locale: options.locale,
   });
@@ -987,6 +1041,8 @@ export async function analyzeWithQueries(
     documents: parseDocuments(raw),
     styles: parseStyles(raw),
     languages: parseLanguages(raw),
+    barcodes: parseBarcodes(raw),
+    formulas: parseFormulas(raw),
     metadata: {
       model: 'prebuilt-layout',
       apiVersion: DI_API_VERSION,

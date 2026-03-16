@@ -539,6 +539,12 @@ export interface PromptContext {
   diDetectedLanguages?: string[];
   /** Document structure from DI paragraph roles (title, sectionHeading, etc.) */
   diDocumentStructure?: Array<{ content: string; role: string }>;
+  /** Selection marks (checkboxes) detected by DI */
+  diSelectionMarks?: Array<{ state: 'selected' | 'unselected'; confidence: number; page: number }>;
+  /** Barcodes detected by DI */
+  diBarcodes?: Array<{ kind: string; value: string; confidence: number }>;
+  /** Formulas detected by DI (LaTeX) */
+  diFormulas?: Array<{ kind: string; value: string; confidence: number }>;
 }
 
 /**
@@ -697,6 +703,35 @@ export function buildArtifactPrompt(type: string, ctx: PromptContext): string | 
     if (ctx.diDetectedLanguages && ctx.diDetectedLanguages.length > 0) {
       diParts.push(`\nDETECTED DOCUMENT LANGUAGES: ${ctx.diDetectedLanguages.join(', ')}`);
       diParts.push(`  Use language-aware interpretation for dates (DD.MM.YYYY vs MM/DD/YYYY), currency, and terminology.`);
+    }
+
+    // Selection marks (checkboxes) — important for compliance, insurance, and intake forms
+    const checkboxTypes = ['COMPLIANCE', 'RISK', 'OVERVIEW', 'OBLIGATIONS'];
+    if (ctx.diSelectionMarks && ctx.diSelectionMarks.length > 0 && checkboxTypes.includes(type)) {
+      const selected = ctx.diSelectionMarks.filter(sm => sm.state === 'selected');
+      const unselected = ctx.diSelectionMarks.filter(sm => sm.state === 'unselected');
+      diParts.push(`\nSELECTION MARKS (CHECKBOXES) — ${ctx.diSelectionMarks.length} detected:`);
+      diParts.push(`  Checked: ${selected.length}, Unchecked: ${unselected.length}`);
+      diParts.push(`  NOTE: Checked/unchecked boxes indicate agreed terms, selected options, or compliance attestations.`);
+    }
+
+    // Barcodes — useful for document identification, payment references
+    const barcodeTypes = ['FINANCIAL', 'OVERVIEW', 'RATES'];
+    if (ctx.diBarcodes && ctx.diBarcodes.length > 0 && barcodeTypes.includes(type)) {
+      diParts.push(`\nBARCODES DETECTED (${ctx.diBarcodes.length}):`);
+      for (const bc of ctx.diBarcodes.slice(0, 10)) {
+        diParts.push(`  [${bc.kind}] ${bc.value} (confidence: ${(bc.confidence * 100).toFixed(0)}%)`);
+      }
+    }
+
+    // Formulas — useful for financial calculations, rate computations
+    const formulaTypes = ['FINANCIAL', 'RATES'];
+    if (ctx.diFormulas && ctx.diFormulas.length > 0 && formulaTypes.includes(type)) {
+      diParts.push(`\nMATHEMATICAL FORMULAS DETECTED (${ctx.diFormulas.length}):`);
+      for (const f of ctx.diFormulas.slice(0, 15)) {
+        diParts.push(`  [${f.kind}] ${f.value}`);
+      }
+      diParts.push(`  NOTE: These LaTeX formulas were extracted by DI. Use them for accurate financial calculations.`);
     }
 
     diParts.push('\nIMPORTANT: Use the pre-validated data above as ground truth when it conflicts with OCR text. These values have been extracted by Azure Document Intelligence with high precision.');

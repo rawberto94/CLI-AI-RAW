@@ -276,6 +276,10 @@ export interface CachedDIStructuredData {
   styles?: Array<{ isHandwritten: boolean; spans: Array<{ offset: number; length: number }>; confidence: number }>;
   handwrittenText?: string[];
   detectedLanguages?: string[];
+  selectionMarks?: Array<{ state: 'selected' | 'unselected'; confidence: number; page: number }>;
+  barcodes?: Array<{ kind: string; value: string; confidence: number }>;
+  formulas?: Array<{ kind: string; value: string; confidence: number }>;
+  pageInfo?: Array<{ pageNumber: number; width: number; height: number; unit: string }>;
 }
 
 /**

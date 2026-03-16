@@ -86,6 +86,9 @@ import type {
   DIPage,
   DIStyle,
   DILanguage,
+  DIBarcode,
+  DIFormula,
+  DISelectionMark,
   ContractExtractionResult,
   InvoiceExtractionResult,
 } from './azure-document-intelligence';
@@ -121,6 +124,14 @@ export interface StructuredOCRResult {
   handwrittenText: string[];
   /** Detected document languages from DI (BCP-47 locale codes) */
   detectedLanguages: string[];
+  /** Selection marks (checkboxes) from DI */
+  selectionMarks: Array<{ state: 'selected' | 'unselected'; confidence: number; page: number }>;
+  /** Barcodes detected by DI */
+  barcodes: DIBarcode[];
+  /** Formulas detected by DI (LaTeX) */
+  formulas: DIFormula[];
+  /** Lightweight page info (dimensions only, no word data) */
+  pageInfo: Array<{ pageNumber: number; width: number; height: number; unit: string }>;
   /** Aggregate OCR confidence (0-1) computed from DI word confidence */
   confidence: number;
   /** Whether the source is DI (trusted, skip enhancement) */
@@ -142,6 +153,10 @@ function makeNonDIResult(text: string, source: StructuredOCRResult['source']): S
     styles: [],
     handwrittenText: [],
     detectedLanguages: [],
+    selectionMarks: [],
+    barcodes: [],
+    formulas: [],
+    pageInfo: [],
     confidence: 0,
     isDISource: false,
   };
@@ -1057,6 +1072,10 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
           styles: (di.styles as DIStyle[]) || [],
           handwrittenText: (di.handwrittenText as string[]) || [],
           detectedLanguages: (di.detectedLanguages as string[]) || [],
+          selectionMarks: (di.selectionMarks as StructuredOCRResult['selectionMarks']) || [],
+          barcodes: (di.barcodes as DIBarcode[]) || [],
+          formulas: (di.formulas as DIFormula[]) || [],
+          pageInfo: (di.pageInfo as StructuredOCRResult['pageInfo']) || [],
           isDISource: true,
         };
       }
@@ -1112,6 +1131,10 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
                 styles: analysis.styles || [],
                 handwrittenText: extractHandwrittenSpans(analysis.content, analysis.styles || []),
                 detectedLanguages: (analysis.languages || []).map(l => l.locale),
+                selectionMarks: (analysis.pages || []).flatMap((p, i) => (p.selectionMarks || []).map(sm => ({ state: sm.state as 'selected' | 'unselected', confidence: sm.confidence, page: i + 1 }))),
+                barcodes: analysis.barcodes || [],
+                formulas: analysis.formulas || [],
+                pageInfo: (analysis.pages || []).map(p => ({ pageNumber: p.pageNumber, width: p.width, height: p.height, unit: p.unit })),
                 confidence: computeDIConfidence(analysis.pages || []),
                 isDISource: true,
               };
@@ -1142,29 +1165,19 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
                 styles: analysis.styles || [],
                 handwrittenText: extractHandwrittenSpans(analysis.content, analysis.styles || []),
                 detectedLanguages: (analysis.languages || []).map(l => l.locale),
+                selectionMarks: (analysis.pages || []).flatMap((p, i) => (p.selectionMarks || []).map(sm => ({ state: sm.state as 'selected' | 'unselected', confidence: sm.confidence, page: i + 1 }))),
+                barcodes: analysis.barcodes || [],
+                formulas: analysis.formulas || [],
+                pageInfo: (analysis.pages || []).map(p => ({ pageNumber: p.pageNumber, width: p.width, height: p.height, unit: p.unit })),
                 confidence: computeDIConfidence(analysis.pages || []),
                 isDISource: true,
               };
             } else {
               // azure-di-layout
               const result = await analyzeLayout(fileBuffer, { extractKeyValuePairs: true, pages: pageRange });
+              // Tables & KV pairs are passed via structured diTables/diKeyValuePairs in prompts —
+              // skip flat-text duplication to save tokens. Only append for RAG indexing summary.
               const parts = [result.content];
-              if (result.tables.length > 0) {
-                parts.push('\n--- EXTRACTED TABLES ---');
-                for (const t of result.tables) {
-                  if (t.headers.length) {
-                    parts.push(`| ${t.headers.join(' | ')} |`);
-                    parts.push(`| ${t.headers.map(() => '---').join(' | ')} |`);
-                  }
-                  for (const r of t.rows) parts.push(`| ${r.join(' | ')} |`);
-                }
-              }
-              if (result.keyValuePairs.length > 0) {
-                parts.push('\n--- KEY-VALUE PAIRS ---');
-                for (const kv of result.keyValuePairs) {
-                  if (kv.key && kv.value) parts.push(`${kv.key}: ${kv.value}`);
-                }
-              }
               return {
                 text: parts.join('\n'),
                 source: 'azure-di-layout',
@@ -1178,6 +1191,10 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
                 styles: result.styles || [],
                 handwrittenText: extractHandwrittenSpans(result.content, result.styles || []),
                 detectedLanguages: (result.languages || []).map(l => l.locale),
+                selectionMarks: (result.pages || []).flatMap((p, i) => (p.selectionMarks || []).map(sm => ({ state: sm.state as 'selected' | 'unselected', confidence: sm.confidence, page: i + 1 }))),
+                barcodes: result.barcodes || [],
+                formulas: result.formulas || [],
+                pageInfo: (result.pages || []).map(p => ({ pageNumber: p.pageNumber, width: p.width, height: p.height, unit: p.unit })),
                 confidence: computeDIConfidence(result.pages || []),
                 isDISource: true,
               };
@@ -1242,6 +1259,10 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
             styles: structuredResult.styles.map(s => ({ isHandwritten: s.isHandwritten, spans: s.spans, confidence: s.confidence })),
             handwrittenText: structuredResult.handwrittenText,
             detectedLanguages: structuredResult.detectedLanguages,
+            selectionMarks: structuredResult.selectionMarks,
+            barcodes: structuredResult.barcodes.map(b => ({ kind: b.kind, value: b.value, confidence: b.confidence })),
+            formulas: structuredResult.formulas.map(f => ({ kind: f.kind, value: f.value, confidence: f.confidence })),
+            pageInfo: structuredResult.pageInfo,
           } : undefined);
         }
         logger.info({ ocrMode, textLength: structuredResult.text.length, confidence: structuredResult.confidence.toFixed(3), tables: structuredResult.tables.length, kvPairs: structuredResult.keyValuePairs.length }, 'DI model OCR succeeded with structured data');
@@ -4259,6 +4280,16 @@ async function generateArtifactWithAI(
         .map(p => ({ content: p.content.slice(0, 200), role: p.role! }));
       if (structuredParagraphs.length > 0) {
         promptCtx.diDocumentStructure = structuredParagraphs;
+      }
+      // Inject selection marks, barcodes, formulas
+      if (ocrResult.selectionMarks.length > 0) {
+        promptCtx.diSelectionMarks = ocrResult.selectionMarks;
+      }
+      if (ocrResult.barcodes.length > 0) {
+        promptCtx.diBarcodes = ocrResult.barcodes;
+      }
+      if (ocrResult.formulas.length > 0) {
+        promptCtx.diFormulas = ocrResult.formulas;
       }
     }
 
