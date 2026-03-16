@@ -133,6 +133,10 @@ export function useUploadQueue(
           'x-tenant-id': getTenantId(),
           'x-data-mode': dataMode,
         };
+        // IMPORTANT: Do NOT set 'Content-Type' header for FormData uploads.
+        // The browser automatically sets it to multipart/form-data with the
+        // correct boundary. Setting it manually causes 403 Forbidden errors
+        // because the server cannot parse the multipart body.
         if (skipDuplicateCheck) {
           headers['x-skip-duplicate-check'] = 'true';
         }

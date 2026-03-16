@@ -287,15 +287,31 @@ function sanitizeFileName(fileName: string): string {
  * Requirements: 1.1, 1.7
  */
 export const POST = withAuthApiHandler(async (request, ctx) => {
-  const tenantId = ctx.tenantId;
   const uploadStartTime = Date.now();
+  
+  // Use tenant ID from authenticated context (session) first, fall back to header.
+  // On Azure, the x-tenant-id header from localStorage may be stale/mismatched
+  // with the session tenant, causing Forbidden errors.
+  const tenantId = ctx.tenantId || request.headers.get('x-tenant-id');
   
   // Require tenant ID for data isolation
   if (!tenantId) {
+    logger.warn('[ContractUpload] No tenant ID found in session or header', {
+      userId: ctx.userId,
+      hasSessionTenant: !!ctx.tenantId,
+      headerTenant: request.headers.get('x-tenant-id'),
+    });
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400, {
-      details: 'Please provide x-tenant-id header',
+      details: 'No tenant ID found in your session. Please sign out and sign back in.',
     });
   }
+
+  logger.info('[ContractUpload] Upload request received', {
+    tenantId,
+    userId: ctx.userId,
+    sessionTenant: ctx.tenantId,
+    headerTenant: request.headers.get('x-tenant-id'),
+  });
 
   // Rate limiting: 10 uploads per minute per tenant (Redis-backed)
   const rlResult = await checkUploadRateLimit(tenantId);

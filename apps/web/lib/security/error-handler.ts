@@ -26,6 +26,10 @@ const SAFE_ERROR_MESSAGES = new Set([
   'File too large',
   'Invalid file type',
   'Invalid format',
+  'Tenant quota exceeded',
+  'Storage quota exceeded',
+  'No tenant ID found in your session. Please sign out and sign back in.',
+  'Too many uploads. Please wait and try again.',
 ]);
 
 /**

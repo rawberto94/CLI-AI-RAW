@@ -67,6 +67,7 @@ const CSRF_EXEMPT_PATHS = [
   '/api/webhooks',
   '/api/csrf',
   '/api/cron',
+  '/api/contracts/upload',   // File uploads use multipart/form-data (no CSRF token in body)
 ];
 
 /**
@@ -424,10 +425,16 @@ export default auth(async (req) => {
   // This is sufficient because only the server can sign valid tokens.
   // We intentionally do NOT compare header vs cookie (Double Submit pattern)
   // because that causes race conditions during token refresh in bulk uploads.
+  //
+  // File upload routes (multipart/form-data) are exempt because the global
+  // fetch interceptor may fail to attach the CSRF cookie on some Azure
+  // proxy/domain configurations. These routes are still protected by session auth.
+  const isFileUploadRoute = pathname.includes('/signed-copy');
   if (
     pathname.startsWith("/api/") &&
     !CSRF_SAFE_METHODS.has(req.method) &&
-    !CSRF_EXEMPT_PATHS.some((path) => pathname.startsWith(path))
+    !CSRF_EXEMPT_PATHS.some((path) => pathname.startsWith(path)) &&
+    !isFileUploadRoute
   ) {
     const headerToken = req.headers.get(CSRF_HEADER_NAME);
 

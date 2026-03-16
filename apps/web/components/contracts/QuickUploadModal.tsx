@@ -184,27 +184,37 @@ export function QuickUploadModal({
   const uploadFile = async (uploadFile: UploadFile): Promise<{ success: boolean; contractId?: string; error?: string }> => {
     const formData = new FormData()
     formData.append('file', uploadFile.file)
-    formData.append('category', category)
+    if (category) {
+      formData.append('category', category)
+    }
     if (ocrMode && ocrMode !== 'auto') {
       formData.append('ocrMode', ocrMode)
     }
     
     try {
+      // Do NOT set Content-Type header — the browser sets it automatically
+      // with the correct multipart boundary for FormData.
+      // Setting it manually (or via a default header interceptor) causes
+      // the server to reject the request.
+      const tenantId = getTenantId();
+      const headers: Record<string, string> = {};
+      if (tenantId) {
+        headers['x-tenant-id'] = tenantId;
+      }
+
       const response = await fetch('/api/contracts/upload', {
         method: 'POST',
-        headers: {
-          'x-tenant-id': getTenantId(),
-        },
+        headers,
         body: formData,
       })
       
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Upload failed')
+        const data = await response.json().catch(() => ({ error: `Upload failed with status ${response.status}` }))
+        throw new Error(data.error || data.message || `Upload failed (${response.status})`)
       }
       
       const data = await response.json()
-      return { success: true, contractId: data.contract?.id || data.id }
+      return { success: true, contractId: data.data?.contractId || data.contract?.id || data.id }
     } catch (error) {
       return { 
         success: false, 
