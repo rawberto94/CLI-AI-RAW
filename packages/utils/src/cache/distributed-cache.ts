@@ -273,6 +273,9 @@ export interface CachedDIStructuredData {
   contractFields?: Record<string, any>;
   invoiceFields?: Record<string, any>;
   confidence: number;
+  styles?: Array<{ isHandwritten: boolean; spans: Array<{ offset: number; length: number }>; confidence: number }>;
+  handwrittenText?: string[];
+  detectedLanguages?: string[];
 }
 
 /**

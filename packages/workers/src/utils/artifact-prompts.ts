@@ -529,6 +529,16 @@ export interface PromptContext {
   };
   /** Aggregate DI OCR confidence (0-1, from word-level) */
   diConfidence?: number;
+  /** Handwriting/signature info from DI styles analysis */
+  diHandwritingInfo?: {
+    hasHandwriting: boolean;
+    handwrittenSpans: string[];
+    handwrittenSpanCount: number;
+  };
+  /** Detected document languages from DI (BCP-47 locale codes) */
+  diDetectedLanguages?: string[];
+  /** Document structure from DI paragraph roles (title, sectionHeading, etc.) */
+  diDocumentStructure?: Array<{ content: string; role: string }>;
 }
 
 /**
@@ -546,6 +556,18 @@ export function getTextLimitForType(type: string): number {
 export function truncateTextForType(text: string, type: string): string {
   const limit = getTextLimitForType(type);
   if (text.length <= limit) return text;
+
+  // For CONTACTS and PARTIES, signature blocks are at the END of documents.
+  // Use head+tail strategy to preserve both start (party definitions) and end (signatures).
+  const TAIL_TYPES = ['CONTACTS', 'PARTIES'];
+  if (TAIL_TYPES.includes(type)) {
+    const tailSize = Math.min(8000, Math.floor(limit * 0.25)); // Reserve 25% (up to 8K) for the tail
+    const headSize = limit - tailSize - 100; // 100 chars for separator
+    const head = text.substring(0, headSize);
+    const tail = text.substring(text.length - tailSize);
+    return head + '\n\n[... middle section truncated — signature blocks preserved below ...]\n\n' + tail;
+  }
+
   return text.substring(0, limit) + '\n\n[... text truncated for processing ...]';
 }
 
@@ -567,7 +589,7 @@ export function buildArtifactPrompt(type: string, ctx: PromptContext): string | 
     const diParts: string[] = ['\n--- PRE-VALIDATED DATA (Azure Document Intelligence, high confidence) ---'];
     
     // Contract fields — useful across nearly all artifact types
-    if (ctx.diContractFields && ['OVERVIEW', 'CLAUSES', 'RISK', 'COMPLIANCE', 'OBLIGATIONS', 'RENEWAL', 'PARTIES', 'DELIVERABLES', 'TIMELINE', 'FINANCIAL'].includes(type)) {
+    if (ctx.diContractFields && ['OVERVIEW', 'CLAUSES', 'RISK', 'COMPLIANCE', 'OBLIGATIONS', 'RENEWAL', 'PARTIES', 'CONTACTS', 'DELIVERABLES', 'TIMELINE', 'FINANCIAL'].includes(type)) {
       const cf = ctx.diContractFields;
       if (cf.parties.length > 0) {
         const trustedParties = cf.parties.filter(p => p.confidence >= 0.5);
@@ -629,6 +651,52 @@ export function buildArtifactPrompt(type: string, ctx: PromptContext): string | 
           diParts.push(`  ${kv.key}: ${kv.value} [confidence: ${(kv.confidence * 100).toFixed(0)}%]`);
         }
       }
+    }
+
+    // Document structure from DI paragraphs — helps identify sections, titles, headings
+    const structureTypes = ['OVERVIEW', 'CLAUSES', 'OBLIGATIONS', 'COMPLIANCE', 'TIMELINE', 'DELIVERABLES'];
+    if (ctx.diDocumentStructure && ctx.diDocumentStructure.length > 0 && structureTypes.includes(type)) {
+      const titles = ctx.diDocumentStructure.filter(p => p.role === 'title');
+      const headings = ctx.diDocumentStructure.filter(p => p.role === 'sectionHeading');
+      if (titles.length > 0 || headings.length > 0) {
+        diParts.push(`\nDOCUMENT STRUCTURE (from DI paragraph analysis):`);
+        if (titles.length > 0) {
+          diParts.push(`  Document title(s): ${titles.map(t => `"${t.content}"`).join(', ')}`);
+        }
+        if (headings.length > 0) {
+          diParts.push(`  Section headings (${headings.length}):`);
+          for (const h of headings.slice(0, 30)) {
+            diParts.push(`    - ${h.content}`);
+          }
+        }
+      }
+    }
+
+    // Handwriting/signature detection — critical for CONTACTS and PARTIES
+    if (ctx.diHandwritingInfo && ['CONTACTS', 'PARTIES'].includes(type)) {
+      if (ctx.diHandwritingInfo.hasHandwriting) {
+        diParts.push(`\nPRE-VALIDATED HANDWRITING DETECTION:`);
+        diParts.push(`  Handwritten spans detected: ${ctx.diHandwritingInfo.handwrittenSpanCount}`);
+        diParts.push(`  This document contains HANDWRITTEN content (confirmed by Azure Document Intelligence).`);
+        if (ctx.diHandwritingInfo.handwrittenSpans.length > 0) {
+          diParts.push(`  Handwritten text found:`);
+          for (const span of ctx.diHandwritingInfo.handwrittenSpans.slice(0, 20)) {
+            diParts.push(`    - "${span}"`);
+          }
+          diParts.push(`  IMPORTANT: Handwritten text likely indicates signatures, initials, or annotations.`);
+          diParts.push(`  If handwritten text appears near signature lines, the document is likely SIGNED.`);
+        }
+      } else {
+        diParts.push(`\nPRE-VALIDATED HANDWRITING DETECTION:`);
+        diParts.push(`  No handwritten content detected by Azure Document Intelligence.`);
+        diParts.push(`  NOTE: This means no physical signatures were found. Look for typed /s/ signatures or electronic signature indicators instead.`);
+      }
+    }
+
+    // Document language detection — helps with locale-specific formatting
+    if (ctx.diDetectedLanguages && ctx.diDetectedLanguages.length > 0) {
+      diParts.push(`\nDETECTED DOCUMENT LANGUAGES: ${ctx.diDetectedLanguages.join(', ')}`);
+      diParts.push(`  Use language-aware interpretation for dates (DD.MM.YYYY vs MM/DD/YYYY), currency, and terminology.`);
     }
 
     diParts.push('\nIMPORTANT: Use the pre-validated data above as ground truth when it conflicts with OCR text. These values have been extracted by Azure Document Intelligence with high precision.');

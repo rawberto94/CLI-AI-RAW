@@ -171,6 +171,10 @@ export interface DIAnalyzeResult {
   paragraphs: DIParagraph[];
   /** Prebuilt model-specific extracted fields */
   documents: DIDocument[];
+  /** Detected text styles (handwriting, fonts) */
+  styles: DIStyle[];
+  /** Detected document languages (BCP-47 locale codes) */
+  languages: DILanguage[];
   /** Processing metadata */
   metadata: DIMetadata;
 }
@@ -243,6 +247,22 @@ export interface DISelectionMark {
   state: 'selected' | 'unselected';
   confidence: number;
   polygon?: number[];
+}
+
+export interface DIStyle {
+  /** Whether this text span is handwritten (signatures, annotations, fill-ins) */
+  isHandwritten: boolean;
+  /** Character offsets in the full document content */
+  spans: Array<{ offset: number; length: number }>;
+  /** Confidence of the handwriting detection */
+  confidence: number;
+}
+
+/** Detected document language (BCP-47 locale code with confidence) */
+export interface DILanguage {
+  locale: string;     // e.g. 'en', 'de', 'fr', 'it'
+  confidence: number;
+  spans: Array<{ offset: number; length: number }>;
 }
 
 export interface DIMetadata {
@@ -573,6 +593,28 @@ function parseParagraphs(raw: any): DIParagraph[] {
   }));
 }
 
+function parseStyles(raw: any): DIStyle[] {
+  return (raw.styles || []).map((s: any) => ({
+    isHandwritten: s.isHandwritten === true,
+    spans: (s.spans || []).map((sp: any) => ({
+      offset: sp.offset ?? 0,
+      length: sp.length ?? 0,
+    })),
+    confidence: s.confidence ?? 0.9,
+  }));
+}
+
+function parseLanguages(raw: any): DILanguage[] {
+  return (raw.languages || []).map((lang: any) => ({
+    locale: lang.locale || 'unknown',
+    confidence: lang.confidence ?? 0.9,
+    spans: (lang.spans || []).map((sp: any) => ({
+      offset: sp.offset ?? 0,
+      length: sp.length ?? 0,
+    })),
+  }));
+}
+
 function parseDocuments(raw: any): DIDocument[] {
   return (raw.documents || []).map((doc: any) => {
     const fields: Record<string, DIField> = {};
@@ -639,6 +681,8 @@ export async function analyzeLayout(
     keyValuePairs: parseKeyValuePairs(raw),
     paragraphs: parseParagraphs(raw),
     documents: [],
+    styles: parseStyles(raw),
+    languages: parseLanguages(raw),
     metadata: {
       model: 'prebuilt-layout',
       apiVersion: DI_API_VERSION,
@@ -685,6 +729,8 @@ export async function analyzeRead(
     keyValuePairs: [],
     paragraphs: parseParagraphs(raw),
     documents: [],
+    styles: parseStyles(raw),
+    languages: parseLanguages(raw),
     metadata: {
       model: 'prebuilt-read',
       apiVersion: DI_API_VERSION,
@@ -734,6 +780,8 @@ export async function analyzeContract(
     keyValuePairs: parseKeyValuePairs(raw),
     paragraphs: parseParagraphs(raw),
     documents: parseDocuments(raw),
+    styles: parseStyles(raw),
+    languages: parseLanguages(raw),
     metadata: {
       model: 'prebuilt-contract',
       apiVersion: DI_API_VERSION,
@@ -835,6 +883,8 @@ export async function analyzeInvoice(
     keyValuePairs: parseKeyValuePairs(raw),
     paragraphs: parseParagraphs(raw),
     documents: parseDocuments(raw),
+    styles: parseStyles(raw),
+    languages: parseLanguages(raw),
     metadata: {
       model: 'prebuilt-invoice',
       apiVersion: DI_API_VERSION,
@@ -935,6 +985,8 @@ export async function analyzeWithQueries(
     keyValuePairs: parseKeyValuePairs(raw),
     paragraphs: parseParagraphs(raw),
     documents: parseDocuments(raw),
+    styles: parseStyles(raw),
+    languages: parseLanguages(raw),
     metadata: {
       model: 'prebuilt-layout',
       apiVersion: DI_API_VERSION,

@@ -84,6 +84,8 @@ import type {
   DIKeyValuePair,
   DIParagraph,
   DIPage,
+  DIStyle,
+  DILanguage,
   ContractExtractionResult,
   InvoiceExtractionResult,
 } from './azure-document-intelligence';
@@ -113,6 +115,12 @@ export interface StructuredOCRResult {
   paragraphs: DIParagraph[];
   /** Per-page data from DI (word-level confidence) */
   pages: DIPage[];
+  /** Text styles with handwriting detection from DI */
+  styles: DIStyle[];
+  /** Handwritten text spans extracted from DI styles */
+  handwrittenText: string[];
+  /** Detected document languages from DI (BCP-47 locale codes) */
+  detectedLanguages: string[];
   /** Aggregate OCR confidence (0-1) computed from DI word confidence */
   confidence: number;
   /** Whether the source is DI (trusted, skip enhancement) */
@@ -131,6 +139,9 @@ function makeNonDIResult(text: string, source: StructuredOCRResult['source']): S
     keyValuePairs: [],
     paragraphs: [],
     pages: [],
+    styles: [],
+    handwrittenText: [],
+    detectedLanguages: [],
     confidence: 0,
     isDISource: false,
   };
@@ -148,6 +159,22 @@ function computeDIConfidence(pages: DIPage[]): number {
     }
   }
   return wordCount > 0 ? totalConf / wordCount : 0;
+}
+
+/** Extract handwritten text spans from DI styles data */
+function extractHandwrittenSpans(content: string, styles: DIStyle[]): string[] {
+  if (!content || !styles || styles.length === 0) return [];
+  const handwritten: string[] = [];
+  for (const style of styles) {
+    if (!style.isHandwritten || style.confidence < 0.5) continue;
+    for (const span of style.spans) {
+      const text = content.substring(span.offset, span.offset + span.length).trim();
+      if (text.length > 0) {
+        handwritten.push(text);
+      }
+    }
+  }
+  return handwritten;
 }
 
 // ============================================================================
@@ -1027,6 +1054,9 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
           paragraphs: di.paragraphs as DIParagraph[],
           pages: [],
           confidence: di.confidence,
+          styles: (di.styles as DIStyle[]) || [],
+          handwrittenText: (di.handwrittenText as string[]) || [],
+          detectedLanguages: (di.detectedLanguages as string[]) || [],
           isDISource: true,
         };
       }
@@ -1079,6 +1109,9 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
                 keyValuePairs: analysis.keyValuePairs || [],
                 paragraphs: analysis.paragraphs || [],
                 pages: analysis.pages || [],
+                styles: analysis.styles || [],
+                handwrittenText: extractHandwrittenSpans(analysis.content, analysis.styles || []),
+                detectedLanguages: (analysis.languages || []).map(l => l.locale),
                 confidence: computeDIConfidence(analysis.pages || []),
                 isDISource: true,
               };
@@ -1106,6 +1139,9 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
                 keyValuePairs: analysis.keyValuePairs || [],
                 paragraphs: analysis.paragraphs || [],
                 pages: analysis.pages || [],
+                styles: analysis.styles || [],
+                handwrittenText: extractHandwrittenSpans(analysis.content, analysis.styles || []),
+                detectedLanguages: (analysis.languages || []).map(l => l.locale),
                 confidence: computeDIConfidence(analysis.pages || []),
                 isDISource: true,
               };
@@ -1139,6 +1175,9 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
                 keyValuePairs: result.keyValuePairs || [],
                 paragraphs: result.paragraphs || [],
                 pages: result.pages || [],
+                styles: result.styles || [],
+                handwrittenText: extractHandwrittenSpans(result.content, result.styles || []),
+                detectedLanguages: (result.languages || []).map(l => l.locale),
                 confidence: computeDIConfidence(result.pages || []),
                 isDISource: true,
               };
@@ -1200,14 +1239,47 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
             contractFields: structuredResult.contractFields ?? undefined,
             invoiceFields: structuredResult.invoiceFields ?? undefined,
             confidence: structuredResult.confidence,
+            styles: structuredResult.styles.map(s => ({ isHandwritten: s.isHandwritten, spans: s.spans, confidence: s.confidence })),
+            handwrittenText: structuredResult.handwrittenText,
+            detectedLanguages: structuredResult.detectedLanguages,
           } : undefined);
         }
         logger.info({ ocrMode, textLength: structuredResult.text.length, confidence: structuredResult.confidence.toFixed(3), tables: structuredResult.tables.length, kvPairs: structuredResult.keyValuePairs.length }, 'DI model OCR succeeded with structured data');
+
+        // Log DI API usage for cost tracking persistence
+        const diPageCount = structuredResult.pages.length || 1;
+        logAIUsage({
+          model: ocrMode,
+          endpoint: 'azure-document-intelligence',
+          feature: 'ocr-extraction',
+          inputTokens: diPageCount, // DI charges per page, not per token
+          outputTokens: structuredResult.text.length,
+          latencyMs: 0, // Latency tracked by circuit breaker/DI module
+          success: true,
+          metadata: {
+            diModel: ocrMode,
+            pages: diPageCount,
+            tables: structuredResult.tables.length,
+            kvPairs: structuredResult.keyValuePairs.length,
+            confidence: structuredResult.confidence,
+            handwritingDetected: structuredResult.handwrittenText.length > 0,
+          },
+        });
         onProgress?.(55); // DI analysis complete
         return structuredResult;
       }
     } catch (diError) {
       logger.warn({ error: (diError as Error).message, ocrMode }, 'DI model OCR failed, falling through to legacy chain');
+      logAIUsage({
+        model: ocrMode,
+        endpoint: 'azure-document-intelligence',
+        feature: 'ocr-extraction',
+        inputTokens: 0,
+        outputTokens: 0,
+        latencyMs: 0,
+        success: false,
+        errorType: (diError as Error).message?.slice(0, 200),
+      });
     }
     // Fall through to legacy fallback chain
   }
@@ -1342,7 +1414,7 @@ async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
     const diEndpoint = process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
     const diKey = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
 
-    if (diEndpoint && diKey) {
+    if (diEndpoint && diKey && azureCircuitBreaker.getState() !== CircuitState.OPEN) {
       try {
         const { analyzeLayout } = await import('./azure-document-intelligence');
         const result = await analyzeLayout(fileBuffer, { extractKeyValuePairs: true });
@@ -2316,6 +2388,9 @@ export async function processOCRArtifactJob(
             diKeyValuePairs: ocrResult.keyValuePairs.slice(0, 200),
             diContractFields: ocrResult.contractFields || null,
             diInvoiceFields: ocrResult.invoiceFields || null,
+            diHandwritingDetected: ocrResult.handwrittenText.length > 0,
+            diHandwrittenSpans: ocrResult.handwrittenText.slice(0, 50),
+            diDetectedLanguages: ocrResult.detectedLanguages,
           };
         }
 
@@ -3238,16 +3313,20 @@ export async function processOCRArtifactJob(
         })() ||
         null,
       
-      // Signature status (from CONTACTS artifact)
-      signature_status: unwrapVal(contactsData.signatureStatus) || 'unknown',
+      // Signature status (from CONTACTS artifact, with DI handwriting fallback)
+      signature_status: unwrapVal(contactsData.signatureStatus) || 
+        (ocrResult.handwrittenText.length > 0 ? 'signed' : 'unknown'),
       signature_date: unwrapVal(contactsData.signatureDate) || 
         (contactsData.signatories?.find((s: any) => s.dateSigned)?.dateSigned) || 
+        ocrResult.contractFields?.dates?.executionDate ||
         unwrapVal(overviewArtifactData.executionDate) || null,
       signature_required_flag: unwrapVal(contactsData.signatureStatus) === 'unsigned' || 
         unwrapVal(contactsData.signatureStatus) === 'partially_signed' ||
         (!unwrapVal(contactsData.signatureDate) && unwrapVal(contactsData.signatureStatus) !== 'signed'),
       signatories: contactsData.signatories || [],
       signature_analysis: contactsData.signatureAnalysis || null,
+      di_handwriting_detected: ocrResult.handwrittenText.length > 0,
+      di_handwritten_spans: ocrResult.handwrittenText.slice(0, 20),
       
       // Reminders
       first_reminder_days: 90,
@@ -4162,6 +4241,24 @@ async function generateArtifactWithAI(
           })),
           confidence: ocrResult.invoiceFields.confidence,
         };
+      }
+      // Inject handwriting/signature detection from DI styles
+      const handwrittenSpans = ocrResult.handwrittenText || [];
+      promptCtx.diHandwritingInfo = {
+        hasHandwriting: handwrittenSpans.length > 0,
+        handwrittenSpans,
+        handwrittenSpanCount: handwrittenSpans.length,
+      };
+      // Inject detected document languages
+      if (ocrResult.detectedLanguages.length > 0) {
+        promptCtx.diDetectedLanguages = ocrResult.detectedLanguages;
+      }
+      // Inject document structure from paragraph roles
+      const structuredParagraphs = ocrResult.paragraphs
+        .filter(p => p.role && ['title', 'sectionHeading'].includes(p.role))
+        .map(p => ({ content: p.content.slice(0, 200), role: p.role! }));
+      if (structuredParagraphs.length > 0) {
+        promptCtx.diDocumentStructure = structuredParagraphs;
       }
     }
 
