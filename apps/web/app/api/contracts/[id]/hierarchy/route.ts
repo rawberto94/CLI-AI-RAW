@@ -23,6 +23,7 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 import { contractHierarchyService } from 'data-orchestration/services';
+import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
 // Validation schemas

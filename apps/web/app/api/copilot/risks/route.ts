@@ -36,7 +36,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       tenantId,
       userId,
       contractType,
-      activePlaybook: playbook };
+      activePlaybook: playbook ? { id: playbook, name: playbook } : undefined };
 
     const copilotService = getAICopilotService();
     const risks = await copilotService.detectRisks(text, context);

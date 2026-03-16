@@ -31,7 +31,7 @@ export function UploadDropZone({ onDrop, disabled = false, uploadPurpose = 'stor
       'image/jpeg': ['.jpg', '.jpeg'],
     },
     multiple: true,
-    maxSize: 50 * 1024 * 1024,
+    maxSize: 100 * 1024 * 1024,
     disabled,
   });
 
@@ -103,7 +103,7 @@ export function UploadDropZone({ onDrop, disabled = false, uploadPurpose = 'stor
                   </div>
 
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Maximum file size: 50MB per file &bull; Upload multiple files at once
+                    Maximum file size: 100MB per file &bull; Upload multiple files at once
                   </p>
                 </>
               )}

@@ -19,6 +19,8 @@ const workflowStepSchema = z.object({
   timeout: z.number().int().optional(),
 });
 
+type WorkflowStepInput = z.infer<typeof workflowStepSchema>;
+
 const createWorkflowSchema = z.object({
   name: z.string().optional(),
   description: z.string().optional(),

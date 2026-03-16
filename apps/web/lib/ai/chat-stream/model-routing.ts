@@ -43,8 +43,8 @@ export const MODEL_FAILOVER_CHAIN: ModelConfig[] = [
   { provider: 'openai', model: 'gpt-4o', priority: 2 },
   // Only include Anthropic models if API key is configured
   ...(process.env.ANTHROPIC_API_KEY ? [
-    { provider: 'anthropic' as const, model: 'claude-3-5-haiku-20241022', priority: 3 },
-    { provider: 'anthropic' as const, model: 'claude-sonnet-4-20250514', priority: 4 },
+    { provider: 'anthropic' as const, model: process.env.ANTHROPIC_MODEL_FAST || 'claude-3-5-haiku-20241022', priority: 3 },
+    { provider: 'anthropic' as const, model: process.env.ANTHROPIC_MODEL_SMART || 'claude-sonnet-4-20250514', priority: 4 },
   ] : []),
 ];
 
@@ -86,6 +86,20 @@ export const MAX_TOOL_ITERATIONS = 5;
 
 export type QueryComplexity = 'simple' | 'moderate' | 'complex';
 
+// Default complex-query keywords; override via COMPLEXITY_KEYWORDS_COMPLEX env var (comma-separated)
+const DEFAULT_COMPLEX_KEYWORDS = [
+  'compare', 'analyze', 'summarize all', 'across all', 'trend',
+  'risk assessment', 'compliance audit', 'negotiate', 'strategy',
+  'implications', 'recommend', 'evaluate', 'what should',
+  'how can we', 'optimize', 'consolidate', 'benchmark',
+  'clause by clause', 'draft a', 'create a report', 'full analysis',
+];
+
+function getComplexKeywords(): string[] {
+  const env = process.env.COMPLEXITY_KEYWORDS_COMPLEX;
+  return env ? env.split(',').map(k => k.trim().toLowerCase()).filter(Boolean) : DEFAULT_COMPLEX_KEYWORDS;
+}
+
 export function detectQueryComplexity(message: string): QueryComplexity {
   const q = message.toLowerCase().trim();
   const wordCount = message.split(/\s+/).length;
@@ -100,13 +114,7 @@ export function detectQueryComplexity(message: string): QueryComplexity {
   if (simplePatterns.some(p => p.test(q)) && wordCount <= 8) return 'simple';
 
   // Complex: multi-part analysis, comparisons, legal reasoning, strategy
-  const complexIndicators = [
-    'compare', 'analyze', 'summarize all', 'across all', 'trend',
-    'risk assessment', 'compliance audit', 'negotiate', 'strategy',
-    'implications', 'recommend', 'evaluate', 'what should',
-    'how can we', 'optimize', 'consolidate', 'benchmark',
-    'clause by clause', 'draft a', 'create a report', 'full analysis',
-  ];
+  const complexIndicators = getComplexKeywords();
   const complexCount = complexIndicators.filter(k => q.includes(k)).length;
   if (complexCount >= 1 || wordCount > 50) return 'complex';
 
@@ -140,7 +148,7 @@ export function buildModelChain(complexity: QueryComplexity, query?: string): Mo
         chain.push({ provider: 'openai', model: baseModel, priority: 3 });
       }
       if (process.env.ANTHROPIC_API_KEY) {
-        chain.push({ provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', priority: chain.length + 1 });
+        chain.push({ provider: 'anthropic', model: process.env.ANTHROPIC_MODEL_SMART || 'claude-sonnet-4-20250514', priority: chain.length + 1 });
       }
       return chain;
     } catch {
@@ -154,7 +162,7 @@ export function buildModelChain(complexity: QueryComplexity, query?: string): Mo
       { provider: 'openai', model: 'gpt-4o', priority: 1 },
       { provider: 'openai', model: baseModel, priority: 2 },
       ...(process.env.ANTHROPIC_API_KEY ? [
-        { provider: 'anthropic' as const, model: 'claude-3-5-sonnet-20241022', priority: 3 },
+        { provider: 'anthropic' as const, model: process.env.ANTHROPIC_MODEL_SMART || 'claude-sonnet-4-20250514', priority: 3 },
       ] : []),
     ];
   }

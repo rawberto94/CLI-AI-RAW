@@ -73,7 +73,9 @@ import {
   formatPeriodicity,
   getDefaultContractMetadata,
   MetadataFieldDefinition,
-  UIAttention
+  UIAttention,
+  SignatureStatus,
+  DocumentClassification
 } from '@/lib/types/contract-metadata-schema';
 import { formatCurrency, formatDate } from '@/lib/design-tokens';
 
@@ -586,7 +588,7 @@ interface PartyDisplayProps {
 }
 
 function PartyCard({ party, index, isEditing, onChange, onRemove }: PartyDisplayProps) {
-  const displayName = party.legalName || party.name || '';
+  const displayName = party.legalName || '';
   const displayRole = party.role || 'Party';
   
   if (isEditing) {
@@ -1504,14 +1506,14 @@ export function EnhancedContractMetadataSection({
         
         if (contract.clientName) {
           fallbackParties.push({
-            legalName: contract.clientName,
+            legalName: String(contract.clientName),
             role: 'Client',
           });
         }
         
         if (contract.supplierName) {
           fallbackParties.push({
-            legalName: contract.supplierName,
+            legalName: String(contract.supplierName),
             role: 'Supplier',
           });
         }
@@ -1531,18 +1533,18 @@ export function EnhancedContractMetadataSection({
         base.jurisdiction = String(contract.jurisdiction);
       }
       
-      // Contract type
-      if (!base.contract_type && contract.contractType) {
-        base.contract_type = String(contract.contractType);
+      // Contract type - store in document_classification
+      if (contract.contractType) {
+        base.document_classification = String(contract.contractType) as DocumentClassification;
       }
       
       // Signature info (from DB columns)
       if (contract.signature_date) base.signature_date = String(contract.signature_date);
-      if (contract.signature_status) base.signature_status = String(contract.signature_status);
+      if (contract.signature_status) base.signature_status = String(contract.signature_status) as SignatureStatus;
       if (contract.signature_required_flag !== undefined) base.signature_required_flag = Boolean(contract.signature_required_flag);
       
       // Document classification (from DB columns)
-      if (contract.document_classification) base.document_classification = String(contract.document_classification);
+      if (contract.document_classification) base.document_classification = String(contract.document_classification) as DocumentClassification;
       if (contract.document_classification_warning) base.document_classification_warning = String(contract.document_classification_warning);
       
       // Notice period (from DB)

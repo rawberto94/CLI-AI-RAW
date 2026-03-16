@@ -8,6 +8,21 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useSession } from 'next-auth/react';
 
+export type AgentSSEEventType =
+  | 'approval_required'
+  | 'goal_approved'
+  | 'goal_completed'
+  | 'goal_failed'
+  | 'approval_escalated'
+  | 'activity'
+  | 'opportunity'
+  | 'heartbeat';
+
+interface UseAgentSSEOptions {
+  onEvent?: (eventType: AgentSSEEventType, data: Record<string, unknown>) => void;
+  onReconnectExhausted?: () => void;
+}
+
 interface SSEState {
   connected: boolean;
   lastMessage: any | null;
@@ -16,11 +31,13 @@ interface SSEState {
   newOpportunities: number;
 }
 
-interface UseAgentSSEReturn extends SSEState {
+export interface UseAgentSSEReturn extends SSEState {
+  isConnected: boolean;
+  isReconnectExhausted: boolean;
   reconnect: () => void;
 }
 
-export function useAgentSSE(): UseAgentSSEReturn {
+export function useAgentSSE(options?: UseAgentSSEOptions): UseAgentSSEReturn {
   const { data: session } = useSession();
   const [state, setState] = useState<SSEState>({
     connected: false,
@@ -29,9 +46,13 @@ export function useAgentSSE(): UseAgentSSEReturn {
     pendingApprovals: 0,
     newOpportunities: 0,
   });
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const MAX_RECONNECT_ATTEMPTS = 5;
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   const connect = useCallback(() => {
     if (!session?.user?.tenantId) return;
@@ -50,6 +71,7 @@ export function useAgentSSE(): UseAgentSSEReturn {
 
     es.onopen = () => {
       setState(prev => ({ ...prev, connected: true }));
+      setReconnectAttempts(0);
       console.log('[SSE] Connected to agent updates');
     };
 
@@ -84,6 +106,7 @@ export function useAgentSSE(): UseAgentSSEReturn {
         ...prev,
         activities: [data, ...prev.activities].slice(0, 50),
       }));
+      optionsRef.current?.onEvent?.('activity', data);
     });
 
     es.addEventListener('approval', (event) => {
@@ -92,6 +115,7 @@ export function useAgentSSE(): UseAgentSSEReturn {
         ...prev,
         pendingApprovals: prev.pendingApprovals + 1,
       }));
+      optionsRef.current?.onEvent?.('approval_required', data);
     });
 
     es.addEventListener('opportunity', (event) => {
@@ -100,6 +124,7 @@ export function useAgentSSE(): UseAgentSSEReturn {
         ...prev,
         newOpportunities: prev.newOpportunities + 1,
       }));
+      optionsRef.current?.onEvent?.('opportunity', data);
     });
 
     es.addEventListener('heartbeat', () => {
@@ -110,14 +135,22 @@ export function useAgentSSE(): UseAgentSSEReturn {
       console.error('[SSE] Error:', error);
       setState(prev => ({ ...prev, connected: false }));
       
-      // Auto-reconnect after 5 seconds
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      reconnectTimeoutRef.current = setTimeout(() => {
-        console.log('[SSE] Reconnecting...');
-        connect();
-      }, 5000);
+      setReconnectAttempts(prev => {
+        const next = prev + 1;
+        if (next >= MAX_RECONNECT_ATTEMPTS) {
+          optionsRef.current?.onReconnectExhausted?.();
+          return next;
+        }
+        // Auto-reconnect after 5 seconds
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+        }
+        reconnectTimeoutRef.current = setTimeout(() => {
+          console.log('[SSE] Reconnecting...');
+          connect();
+        }, 5000);
+        return next;
+      });
     };
   }, [session]);
 
@@ -143,6 +176,8 @@ export function useAgentSSE(): UseAgentSSEReturn {
 
   return {
     ...state,
+    isConnected: state.connected,
+    isReconnectExhausted: reconnectAttempts >= MAX_RECONNECT_ATTEMPTS,
     reconnect,
   };
 }

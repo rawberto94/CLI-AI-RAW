@@ -126,6 +126,7 @@ interface TreeStats {
   totalValue: number;
   rootCount: number;
   leafCount: number;
+  avgBranchingFactor: number;
   contractsByType: Record<string, number>;
   riskDistribution: {
     critical: number;
@@ -500,8 +501,9 @@ export function RelationshipGraph({
 
     pack(root);
 
+    const packRoot = root as d3.HierarchyCircularNode<GraphNode>;
     const nodes = g.selectAll('.node')
-      .data(root.descendants())
+      .data(packRoot.descendants())
       .enter()
       .append('g')
       .attr('class', 'node')

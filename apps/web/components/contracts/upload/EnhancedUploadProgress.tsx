@@ -248,9 +248,10 @@ export function EnhancedUploadProgress({
 
     let notFoundCount = 0;
     let pollCount = 0;
+    let consecutiveErrors = 0;
     const MAX_NOT_FOUND = 5;
     const INITIAL_GRACE_POLLS = 5; // Increased grace period for DB commit delay
-    const MAX_PROCESSING_MS = 120_000; // 2 minutes — if no COMPLETED/FAILED by then, auto-complete
+    const MAX_PROCESSING_MS = 300_000; // 5 minutes — large contracts with many artifacts can take a while
     let timeoutId: NodeJS.Timeout | null = null;
     const pollStartTime = Date.now();
 
@@ -263,8 +264,8 @@ export function EnhancedUploadProgress({
 
       // ── Processing timeout ──
       // If we've been polling for too long without a terminal status,
-      // auto-complete to unblock the UI. The contracts list page will
-      // pick up the actual status on its own polling cycle.
+      // mark as completed so the user can view the contract.
+      // The contract page will reflect the actual processing state.
       if (Date.now() - pollStartTime > MAX_PROCESSING_MS) {
         handleCompletion(contractId);
         return;
@@ -297,8 +298,9 @@ export function EnhancedUploadProgress({
           return;
         }
         
-        // Reset not found counter on success
+        // Reset counters on success
         notFoundCount = 0;
+        consecutiveErrors = 0;
         
         // API wraps response in { success, data } envelope
         const json = await res.json();
@@ -333,8 +335,10 @@ export function EnhancedUploadProgress({
         const nextInterval = getPollInterval(data.currentStep, data.status);
         schedulePoll(nextInterval);
       } catch {
-        // On error, retry with backoff
-        schedulePoll(3000);
+        // On error, retry with exponential backoff (3s, 6s, 12s, capped at 15s)
+        consecutiveErrors++;
+        const backoff = Math.min(15_000, 3000 * Math.pow(2, consecutiveErrors - 1));
+        schedulePoll(backoff);
       }
     };
 
@@ -385,15 +389,15 @@ export function EnhancedUploadProgress({
     if (isCompleted || status === 'completed') return 100;
     if (status === 'error') return 0;
     if (status === 'pending') return 0;
-    // Simulate progress over time: 15% → 95% over 120s (matches MAX_PROCESSING_MS)
+    // Simulate progress over time: 15% → 95% over 300s (matches MAX_PROCESSING_MS)
     const elapsed = elapsedTime / 1000;
     if (elapsed < 2) return 15;
-    if (elapsed < 10) return 15 + (elapsed / 10) * 25;          // 15% → 40%
-    if (elapsed < 30) return 40 + ((elapsed - 10) / 20) * 20;   // 40% → 60%
-    if (elapsed < 60) return 60 + ((elapsed - 30) / 30) * 15;   // 60% → 75%
-    if (elapsed < 90) return 75 + ((elapsed - 60) / 30) * 10;   // 75% → 85%
-    if (elapsed < 120) return 85 + ((elapsed - 90) / 30) * 10;  // 85% → 95%
-    return 95 + Math.min(3, (elapsed - 120) / 60);              // Slowly creep to 98%
+    if (elapsed < 15) return 15 + (elapsed / 15) * 25;           // 15% → 40%
+    if (elapsed < 60) return 40 + ((elapsed - 15) / 45) * 20;    // 40% → 60%
+    if (elapsed < 120) return 60 + ((elapsed - 60) / 60) * 15;   // 60% → 75%
+    if (elapsed < 200) return 75 + ((elapsed - 120) / 80) * 10;  // 75% → 85%
+    if (elapsed < 300) return 85 + ((elapsed - 200) / 100) * 10; // 85% → 95%
+    return 95 + Math.min(3, (elapsed - 300) / 120);              // Slowly creep to 98%
   })();
   const progress = apiStatus?.progress ?? simulatedProgress;
   const displayTime = apiStatus?.timing?.elapsedMs ?? elapsedTime;

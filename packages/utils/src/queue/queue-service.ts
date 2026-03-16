@@ -229,7 +229,7 @@ export class QueueService {
       attempts?: number;
       jobId?: string;
     }
-  ): Promise<JobType<T> | null> {
+  ): Promise<JobType<T>> {
     try {
       const queue = this.getQueue<T>(queueName);
       
@@ -253,10 +253,10 @@ export class QueueService {
       return job;
     } catch (error) {
       logger.error(
-        { error, queueName, jobName },
-        'Failed to add job to queue'
+        { error, queueName, jobName, dataKeys: Object.keys(data || {}) },
+        'CRITICAL: Failed to add job to queue — contract may be stuck in processing state'
       );
-      return null;
+      throw error;
     }
   }
 

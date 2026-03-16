@@ -426,6 +426,73 @@ export class UserFeedbackLearner {
       logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Failed to store threshold adjustment');
     }
   }
+
+  // ========================================================================
+  // OCR Model Preference Learning
+  // ========================================================================
+
+  /**
+   * Record which OCR provider/model produced a given artifact quality.
+   * Call this after artifact generation with the OCR source and edit count.
+   */
+  async recordOCROutcome(tenantId: string, ocrProvider: string, editCount: number): Promise<void> {
+    try {
+      await prisma.$executeRaw`
+        INSERT INTO ocr_model_outcomes (
+          tenant_id,
+          ocr_provider,
+          edit_count,
+          recorded_at
+        ) VALUES (
+          ${tenantId},
+          ${ocrProvider},
+          ${editCount},
+          ${new Date()}
+        )
+      `;
+    } catch {
+      // Table may not exist — non-critical
+    }
+  }
+
+  /**
+   * Get the preferred OCR model for a tenant based on historical edit rates.
+   * Returns the provider with the lowest average edit count over the last 30 days,
+   * or null if insufficient data.
+   */
+  async getPreferredOCRModel(tenantId: string): Promise<string | null> {
+    try {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 30);
+
+      const results = await prisma.$queryRaw<Array<{ ocr_provider: string; avg_edits: number; sample_count: bigint }>>`
+        SELECT
+          ocr_provider,
+          AVG(edit_count) as avg_edits,
+          COUNT(*) as sample_count
+        FROM ocr_model_outcomes
+        WHERE tenant_id = ${tenantId}
+          AND recorded_at > ${cutoff}
+        GROUP BY ocr_provider
+        HAVING COUNT(*) >= 5
+        ORDER BY AVG(edit_count) ASC
+        LIMIT 1
+      `;
+
+      if (results.length > 0) {
+        logger.info({
+          tenantId,
+          preferred: results[0].ocr_provider,
+          avgEdits: Number(results[0].avg_edits).toFixed(2),
+          samples: Number(results[0].sample_count),
+        }, '📊 OCR model preference determined from feedback');
+        return results[0].ocr_provider;
+      }
+    } catch {
+      // Table may not exist — fall through
+    }
+    return null;
+  }
 }
 
 /**

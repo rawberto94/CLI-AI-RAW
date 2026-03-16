@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
           const version = versionResult.rows[0]?.version || 'unknown';
 
           // Check if the contract table exists
-          let tableInfo = null;
+          let tableInfo: { tableName: string; exists: boolean; columns: { name: string; type: string }[] } | null = null;
           if (contractTableName) {
             const tableResult = await client.query(
               `SELECT column_name, data_type FROM information_schema.columns
@@ -99,12 +99,12 @@ export async function POST(request: NextRequest) {
               ssl: ssl === 'true' ? { rejectUnauthorized: false } : undefined,
               connectTimeout: 10000,
             };
-        const conn = await mysql.createConnection(connConfig);
+        const conn = await mysql.createConnection(connConfig as any);
         try {
           const [rows] = await conn.query('SELECT VERSION() as version') as [Array<{ version: string }>, unknown];
           const version = rows[0]?.version || 'unknown';
 
-          let tableInfo = null;
+          let tableInfo: { tableName: string; exists: boolean; columns: { name: string; type: string }[] } | null = null;
           if (contractTableName && database) {
             const [cols] = await conn.query(
               `SELECT COLUMN_NAME as column_name, DATA_TYPE as data_type
@@ -150,14 +150,14 @@ export async function POST(request: NextRequest) {
                 connectTimeout: 10000,
               },
             };
-        const pool = await sql.default.connect(config as sql.config);
+        const pool = await (sql.default.connect as any)(config);
         try {
-          const result = await pool.query`SELECT @@VERSION as version`;
+          const result = await (pool as any).query`SELECT @@VERSION as version`;
           const version = result.recordset[0]?.version?.split('\n')[0] || 'unknown';
 
-          let tableInfo = null;
+          let tableInfo: { tableName: string; exists: boolean; columns: { name: string; type: string }[] } | null = null;
           if (contractTableName) {
-            const colResult = await pool.query`
+            const colResult = await (pool as any).query`
               SELECT COLUMN_NAME as column_name, DATA_TYPE as data_type
               FROM INFORMATION_SCHEMA.COLUMNS
               WHERE TABLE_NAME = ${contractTableName}

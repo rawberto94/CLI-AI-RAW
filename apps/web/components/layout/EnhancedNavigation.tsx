@@ -593,7 +593,7 @@ function EnhancedNavigation() {
           <nav className="flex-1 overflow-y-auto px-3 pb-3 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-slate-600">
             {filteredNavigationGroups.map((group, groupIndex) => (
               <div key={group.id} className={cn(groupIndex > 0 && 'mt-5')}>
-                <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
+                <h3 className="px-3 mb-1.5 text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
                   {group.label}
                 </h3>
                 <div className="space-y-0.5">

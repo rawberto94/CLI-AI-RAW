@@ -542,6 +542,22 @@ export class ToolRegistryService extends EventEmitter {
 
     // Register built-in tools
     BUILT_IN_TOOLS.forEach(tool => this.registerTool(tool));
+
+    // Register built-in composed tools
+    this.registerComposedTool({
+      id: 'contract-risk-review',
+      name: 'Contract Risk Review',
+      description: 'Analyze a contract then extract risk-related clauses (sequential)',
+      toolIds: ['contract-analyzer', 'clause-extractor'],
+      composition: 'sequential',
+    });
+    this.registerComposedTool({
+      id: 'contract-full-analysis',
+      name: 'Full Contract Analysis',
+      description: 'Run contract analysis, clause extraction, and validation in parallel',
+      toolIds: ['contract-analyzer', 'clause-extractor', 'data-validator'],
+      composition: 'parallel',
+    });
   }
 
   // ---------------------------------------------------------------------------

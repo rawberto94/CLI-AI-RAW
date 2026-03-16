@@ -24,6 +24,7 @@ import { isRetryableError, RetryableError } from './utils/errors';
 import { sha256 } from './utils/hash';
 import { ensureProcessingJob, updateStep, assertRetryableReady } from './workflow/processing-job';
 import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime';
+import { logAIUsageBatch } from './utils/ai-usage-logger';
 
 const logger = pino({ name: 'rag-indexing-worker' });
 const prisma = getClient();
@@ -38,6 +39,17 @@ let openaiModule: any = null;
     logger.warn('Failed to preload OpenAI module, will load on-demand');
   }
 })();
+
+// Module-level OpenAI client singleton — avoids re-instantiation per embedding/contextual/RAPTOR call
+let _ragOpenAISingleton: any = null;
+async function getRagOpenAIClient(): Promise<any> {
+  if (_ragOpenAISingleton) return _ragOpenAISingleton;
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  const Mod = openaiModule?.default || (await import('openai')).default;
+  _ragOpenAISingleton = new Mod({ apiKey });
+  return _ragOpenAISingleton;
+}
 
 import { semanticChunk, type SemanticChunk } from '@repo/utils/rag/semantic-chunker';
 import { adaptiveChunk, type EmbedFn } from '@repo/utils/rag/adaptive-chunker';
@@ -61,6 +73,8 @@ export async function processRAGIndexingJob(
   const { contractId, tenantId } = job.data;
   const trace = getTraceContextFromJobData(job.data);
   const jobLogger = logger.child({ jobId: job.id, contractId, tenantId });
+  let ragTokensUsed = 0; // Track all LLM + embedding tokens for cost visibility
+  let contractRawText: string | null = null; // Hoisted for fallback BM25 path
   
   jobLogger.info('Starting RAG indexing');
   
@@ -109,6 +123,7 @@ export async function processRAGIndexingJob(
     if (!contract.rawText) {
       throw new RetryableError('No text content available yet');
     }
+    contractRawText = contract.rawText;
     
     await job.updateProgress(10);
     
@@ -125,8 +140,7 @@ export async function processRAGIndexingJob(
     if (process.env.RAG_ADAPTIVE_CHUNKING === 'true' && apiKey) {
       // Adaptive chunking — splits at true semantic boundaries using embeddings
       jobLogger.info('Using adaptive embedding-based chunking');
-      const OpenAIEmbed = openaiModule?.default || (await import('openai')).default;
-      const embedClient = new OpenAIEmbed({ apiKey });
+      const embedClient = await getRagOpenAIClient();
       const embedModel = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
 
       const embedFn: EmbedFn = async (texts: string[]) => {
@@ -177,8 +191,7 @@ export async function processRAGIndexingJob(
     try {
       const ctxApiKey = process.env.OPENAI_API_KEY;
       if (ctxApiKey) {
-        const OpenAICtx = openaiModule?.default || (await import('openai')).default;
-        const ctxClient = new OpenAICtx({ apiKey: ctxApiKey });
+        const ctxClient = await getRagOpenAIClient();
 
         // Document summary (first 6K chars → gpt-4o-mini)
         const summaryRes = await ctxClient.chat.completions.create({
@@ -190,6 +203,7 @@ export async function processRAGIndexingJob(
           temperature: 0,
           max_tokens: 200,
         });
+        ragTokensUsed += summaryRes.usage?.total_tokens ?? 0;
         const docSummary = summaryRes.choices[0]?.message?.content || '';
 
         if (docSummary) {
@@ -209,7 +223,7 @@ export async function processRAGIndexingJob(
                   {
                     role: 'system',
                     content: `You contextualize contract chunks for a retrieval system. Given a document summary and multiple chunks, write a 1-2 sentence context prefix for EACH chunk that identifies its location in the document and provides enough context for standalone understanding.
-Return a JSON array of strings, one prefix per chunk, in the same order. Return ONLY the JSON array, no other text.`,
+Return a JSON object with a "prefixes" key containing an array of strings, one prefix per chunk, in the same order. Example: {"prefixes": ["This chunk covers...", "This section deals with..."]}`,
                   },
                   {
                     role: 'user',
@@ -217,15 +231,26 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
                   },
                 ],
                 temperature: 0,
-                max_tokens: 150 * ctxBatch.length,
+                max_tokens: Math.min(150 * ctxBatch.length, 4096),
                 response_format: { type: 'json_object' },
               });
 
+              ragTokensUsed += res.usage?.total_tokens ?? 0;
               const raw = res.choices[0]?.message?.content?.trim() || '{}';
               let prefixes: string[] = [];
               try {
                 const parsed = JSON.parse(raw);
-                prefixes = Array.isArray(parsed) ? parsed : (parsed.prefixes || parsed.contexts || Object.values(parsed));
+                if (Array.isArray(parsed)) {
+                  prefixes = parsed;
+                } else if (Array.isArray(parsed.prefixes)) {
+                  prefixes = parsed.prefixes;
+                } else if (Array.isArray(parsed.contexts)) {
+                  prefixes = parsed.contexts;
+                } else {
+                  // Last resort: extract values in insertion order
+                  const vals = Object.values(parsed);
+                  prefixes = vals.every(v => typeof v === 'string') ? vals as string[] : [];
+                }
               } catch {
                 prefixes = [];
               }
@@ -259,8 +284,7 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
     if (process.env.RAG_RAPTOR_ENABLED === 'true' && apiKey) {
       try {
         const { buildRaptorTree, getRaptorSummaryChunks } = await import('@repo/utils/rag/raptor-summarizer');
-        const OpenAIRaptor = openaiModule?.default || (await import('openai')).default;
-        const raptorClient = new OpenAIRaptor({ apiKey });
+        const raptorClient = await getRagOpenAIClient();
         
         const summarize = async (texts: string[], instruction: string): Promise<string> => {
           const res = await raptorClient.chat.completions.create({
@@ -272,6 +296,7 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
             temperature: 0,
             max_tokens: 400,
           });
+          ragTokensUsed += res.usage?.total_tokens ?? 0;
           return res.choices[0]?.message?.content?.trim() || '';
         };
         
@@ -290,10 +315,14 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
               index: baseIndex + si,
               text: sc.text,
               metadata: {
-                chunkType: `raptor_L${sc.level}`,
+                chunkType: 'paragraph' as const,
                 section: `RAPTOR Level ${sc.level} Summary`,
+                startChar: 0,
+                endChar: sc.text.length,
+                wordCount: sc.text.split(/\s+/).length,
+                diParagraphRole: `raptor_L${sc.level}`,
               },
-            } as SemanticChunk);
+            });
           }
           jobLogger.info({ raptorSummaries: summaryChunks.length, levels: tree.levels }, 'RAPTOR hierarchical summaries added');
         }
@@ -303,10 +332,87 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
     }
     
     await job.updateProgress(30);
+
+    // Step 2.5: DI table and paragraph role enrichment
+    // Embed DI tables as separate chunks for structured retrieval
+    // Use DI paragraph semantic roles to tag chunk sections
+    try {
+      const aiMeta = (contract.aiMetadata as any) ?? {};
+      const diTables = Array.isArray(aiMeta.diTables) ? aiMeta.diTables : [];
+      const diParagraphs = Array.isArray(aiMeta.diParagraphs) ? aiMeta.diParagraphs : [];
+
+      // Add tables as dedicated chunks
+      if (diTables.length > 0) {
+        let tableChunksAdded = 0;
+        for (let ti = 0; ti < diTables.length; ti++) {
+          const table = diTables[ti];
+          if (!table || !Array.isArray(table.headers) || table.headers.length === 0) continue;
+          if (typeof table.confidence === 'number' && table.confidence < 0.5) continue;
+
+          // Render table as markdown for embedding
+          const lines: string[] = [`Table ${ti + 1} (page ${table.pageNumber ?? '?'}):`];
+          lines.push(`| ${table.headers.join(' | ')} |`);
+          lines.push(`| ${table.headers.map(() => '---').join(' | ')} |`);
+          for (const row of (table.rows || []).slice(0, 50)) {
+            lines.push(`| ${row.join(' | ')} |`);
+          }
+          const tableText = lines.join('\n');
+          if (tableText.length < 20) continue;
+
+          chunks.push({
+            index: chunks.length,
+            text: tableText,
+            metadata: {
+              chunkType: 'table' as any,
+              section: `DI Table ${ti + 1}`,
+              startChar: 0,
+              endChar: tableText.length,
+              wordCount: tableText.split(/\s+/).length,
+            },
+          });
+          tableChunksAdded++;
+        }
+        if (tableChunksAdded > 0) {
+          jobLogger.info({ tableChunksAdded }, 'DI table chunks added for structured retrieval');
+        }
+      }
+
+      // Tag existing chunks with DI paragraph roles for retrieval weighting
+      if (diParagraphs.length > 0) {
+        const roleMap = new Map<string, string>();
+        for (const p of diParagraphs) {
+          if (p.role && p.content) {
+            const key = p.content.trim().slice(0, 80);
+            if (key.length > 5) roleMap.set(key, p.role);
+          }
+        }
+        if (roleMap.size > 0) {
+          let tagged = 0;
+          for (const chunk of chunks) {
+            if (chunk.metadata.diParagraphRole) continue; // already tagged
+            const prefix = chunk.text.trim().slice(0, 80);
+            const role = roleMap.get(prefix);
+            if (role) {
+              chunk.metadata.diParagraphRole = role;
+              // Boost heading/title chunks by prepending role context
+              if (role === 'title' || role === 'sectionHeading') {
+                chunk.metadata.section = chunk.metadata.section || `[${role}]`;
+              }
+              tagged++;
+            }
+          }
+          if (tagged > 0) {
+            jobLogger.info({ taggedChunks: tagged, totalRoles: roleMap.size }, 'DI paragraph roles applied to chunks');
+          }
+        }
+      }
+    } catch (diEnrichErr) {
+      jobLogger.warn({ error: (diEnrichErr as Error).message }, 'DI table/paragraph enrichment skipped (non-fatal)');
+    }
     
     // Generate embeddings in batches with retry and rate limit handling
-    const OpenAI = openaiModule?.default || (await import('openai')).default;
-    const openai = new OpenAI({ apiKey });
+    const openai = await getRagOpenAIClient();
+    if (!openai) throw new Error('OPENAI_API_KEY not configured');
     const model = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
 
     // Idempotency: skip if we've already indexed the same rawText with the same embedding model.
@@ -386,6 +492,7 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
       const response = await retryWithBackoff(() => 
         openai.embeddings.create(embParams, { signal: AbortSignal.timeout(30_000) })
       ) as any;
+      ragTokensUsed += response.usage?.total_tokens ?? 0;
       embeddings.push(...response.data.map((d: any) => d.embedding));
       
       // Update progress (30% to 80% during embedding)
@@ -401,14 +508,26 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
     
     const { toSql } = await import('pgvector/utils');
     
-    const records = chunks.map((chunk, i) => ({
-      contractId,
-      chunkIndex: chunk.index,
-      chunkText: chunk.text,
-      embedding: toSql(embeddings[i]),
-      chunkType: chunk.metadata.chunkType,
-      section: chunk.metadata.section || null,
-    }));
+    // Validate embeddings count matches chunks (P0: prevents corrupt vector rows)
+    if (embeddings.length !== chunks.length) {
+      throw new Error(`Embedding count mismatch: got ${embeddings.length} embeddings for ${chunks.length} chunks`);
+    }
+
+    const records = chunks.map((chunk, i) => {
+      const vec = embeddings[i];
+      // Defense-in-depth: validate vector is a proper numeric array before SQL conversion
+      if (!Array.isArray(vec) || vec.length === 0 || !vec.every((v: unknown) => typeof v === 'number' && Number.isFinite(v))) {
+        throw new Error(`Invalid embedding vector at index ${i}: expected finite number array, got length=${Array.isArray(vec) ? vec.length : 'N/A'}`);
+      }
+      return {
+        contractId,
+        chunkIndex: chunk.index,
+        chunkText: chunk.text,
+        embedding: toSql(vec),
+        chunkType: chunk.metadata.chunkType,
+        section: chunk.metadata.section || null,
+      };
+    });
     
     await prisma.$transaction(async (tx: any) => {
       // Delete existing embeddings
@@ -483,7 +602,25 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
       chunksCreated: chunks.length,
       embeddingsGenerated: embeddings.length,
       processingTime,
+      ragTokensUsed,
     }, 'RAG indexing completed');
+
+    // Persist aggregate RAG usage to ai_usage_logs for dashboard & cost alerts
+    if (ragTokensUsed > 0) {
+      logAIUsageBatch([
+        {
+          model: 'text-embedding-3-small',
+          endpoint: 'openai',
+          feature: 'rag-indexing:embedding',
+          inputTokens: ragTokensUsed,
+          outputTokens: 0,
+          latencyMs: processingTime,
+          success: true,
+          tenantId,
+          contractId,
+        },
+      ]).catch(() => {}); // fire-and-forget
+    }
 
     await updateStep({
       tenantId,
@@ -524,73 +661,64 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
 
     // FALLBACK: Store chunks WITHOUT embeddings so BM25 keyword search still works
     // This mirrors the pattern in rag-integration.service.ts
-    if (!isMissingKey) {
+    if (!isMissingKey && contractRawText) {
       try {
-        const contract = await prisma.contract.findFirst({
-          where: { id: contractId, tenantId },
-          select: { rawText: true },
-        });
-        
-        if (contract?.rawText) {
-          const fallbackChunks = semanticChunk(contract.rawText);
-          if (fallbackChunks.length > 0) {
-            jobLogger.info({ chunkCount: fallbackChunks.length }, 'Storing chunks WITHOUT embeddings for BM25 keyword search fallback');
+        const fallbackChunks = semanticChunk(contractRawText);
+        if (fallbackChunks.length > 0) {
+          jobLogger.info({ chunkCount: fallbackChunks.length }, 'Storing chunks WITHOUT embeddings for BM25 keyword search fallback');
+          
+          // Atomic delete+reinsert for fallback path too (batched for performance)
+          await prisma.$transaction(async (tx: any) => {
+            await tx.contractEmbedding.deleteMany({ where: { contractId } });
             
-            // Atomic delete+reinsert for fallback path too
-            await prisma.$transaction(async (tx: any) => {
-              await tx.contractEmbedding.deleteMany({ where: { contractId } });
-              
-              for (const chunk of fallbackChunks) {
-                await tx.contractEmbedding.create({
-                  data: {
-                    contractId,
-                    chunkIndex: chunk.index,
-                    chunkText: chunk.text,
-                    chunkType: chunk.metadata.chunkType,
-                    section: chunk.metadata.section || null,
-                  },
-                });
-              }
-            }, { timeout: 30000 });
-            
-            // Mark as partially indexed (chunks stored, no vectors)
-            await prisma.contractMetadata.upsert({
-              where: { contractId },
-              update: {
-                embeddingVersion: 'text-only',
-                embeddingCount: fallbackChunks.length,
-                lastEmbeddingAt: new Date(),
-                systemFields: {
-                  ragIndexing: {
-                    rawTextHash: sha256(contract.rawText),
-                    model: 'text-only',
-                    indexedAt: new Date().toISOString(),
-                    embeddingFailed: true,
-                    failureReason: errorMessage.substring(0, 500),
-                  },
-                },
-              },
-              create: {
+            await tx.contractEmbedding.createMany({
+              data: fallbackChunks.map((chunk: any) => ({
                 contractId,
-                tenantId,
-                updatedBy: 'system',
-                embeddingVersion: 'text-only',
-                embeddingCount: fallbackChunks.length,
-                lastEmbeddingAt: new Date(),
-                systemFields: {
-                  ragIndexing: {
-                    rawTextHash: sha256(contract.rawText),
-                    model: 'text-only',
-                    indexedAt: new Date().toISOString(),
-                    embeddingFailed: true,
-                    failureReason: errorMessage.substring(0, 500),
-                  },
+                chunkIndex: chunk.index,
+                chunkText: chunk.text,
+                chunkType: chunk.metadata.chunkType,
+                section: chunk.metadata.section || null,
+              })),
+            });
+          }, { timeout: 30000 });
+          
+          // Mark as partially indexed (chunks stored, no vectors)
+          await prisma.contractMetadata.upsert({
+            where: { contractId },
+            update: {
+              embeddingVersion: 'text-only',
+              embeddingCount: fallbackChunks.length,
+              lastEmbeddingAt: new Date(),
+              systemFields: {
+                ragIndexing: {
+                  rawTextHash: sha256(contractRawText),
+                  model: 'text-only',
+                  indexedAt: new Date().toISOString(),
+                  embeddingFailed: true,
+                  failureReason: errorMessage.substring(0, 500),
                 },
               },
-            });
-            
-            jobLogger.info({ chunksStored: fallbackChunks.length }, 'Text-only chunks stored for BM25 fallback');
-          }
+            },
+            create: {
+              contractId,
+              tenantId,
+              updatedBy: 'system',
+              embeddingVersion: 'text-only',
+              embeddingCount: fallbackChunks.length,
+              lastEmbeddingAt: new Date(),
+              systemFields: {
+                ragIndexing: {
+                  rawTextHash: sha256(contractRawText),
+                  model: 'text-only',
+                  indexedAt: new Date().toISOString(),
+                  embeddingFailed: true,
+                  failureReason: errorMessage.substring(0, 500),
+                },
+              },
+            },
+          });
+          
+          jobLogger.info({ chunksStored: fallbackChunks.length }, 'Text-only chunks stored for BM25 fallback');
         }
       } catch (fallbackError) {
         jobLogger.error({ error: fallbackError }, 'Failed to store text-only chunks fallback');

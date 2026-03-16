@@ -305,11 +305,11 @@ async function ingestContract(
       const result = await triggerArtifactGeneration({
         contractId: contract.id,
         tenantId,
-        filePath: contract.storagePath,
+        filePath: contract.storagePath || '',
         mimeType: 'text/plain',
         useQueue: true,
         priority: PROCESSING_PRIORITY.LOW,
-        source: 'data-connection',
+        source: 'api',
       });
 
       if (result.jobId) {
@@ -410,7 +410,7 @@ async function syncMySQL(
         connectTimeout: 15000,
       };
 
-  const conn = await mysql.createConnection(connConfig);
+  const conn = await mysql.createConnection(connConfig as any);
   const result = { newContracts: 0, skippedContracts: 0, failedContracts: 0, errors: [] as string[] };
 
   try {

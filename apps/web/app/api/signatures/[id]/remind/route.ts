@@ -57,7 +57,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     if (signer.email) {
       const sent = await sendEmail({
         to: signer.email,
-        subject: `Reminder: Signature requested on "${signatureRequest.title || 'Document'}"`,
+        subject: `Reminder: Signature requested on "${signatureRequest.subject || 'Document'}"`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #1a1a1a;">Signature Reminder</h2>

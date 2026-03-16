@@ -30,7 +30,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
 
     // Handle OAuth errors
     if (error) {
-      logger.error('Box OAuth error:', error, errorDescription);
+      logger.error('Box OAuth error:', error, errorDescription ? { description: errorDescription } : undefined);
       return NextResponse.redirect(
         new URL(`/settings/contract-sources?error=${encodeURIComponent(errorDescription || error)}`, request.url)
       );

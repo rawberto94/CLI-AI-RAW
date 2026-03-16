@@ -18,10 +18,10 @@ import { ensureProcessingJob, updateStep } from './workflow/processing-job';
 import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime';
 import { ArtifactQualityValidator, selfCritiqueArtifact } from './utils/artifact-quality-validator';
 import { AdaptiveRetryStrategy, chunkTextForModel } from './utils/adaptive-retry-strategy';
+import { logAIUsage } from './utils/ai-usage-logger';
 import {
   ContractType as ProfileContractType,
   detectContractType,
-  detectContractTypeWithAI,
   getContractProfile,
   isArtifactApplicable,
   getEnhancedPromptHints,
@@ -126,6 +126,17 @@ async function loadTenantArtifactConfig(tenantId: string): Promise<{
 
 const logger = pino({ name: 'artifact-generator-worker' });
 const prisma = getClient();
+
+// Module-level OpenAI singleton — avoids re-instantiation per artifact call
+let _openaiSingleton: any = null;
+async function getOpenAIClient(): Promise<any> {
+  if (_openaiSingleton) return _openaiSingleton;
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  const OpenAI = (await import('openai')).default;
+  _openaiSingleton = new OpenAI({ apiKey });
+  return _openaiSingleton;
+}
 
 const openaiBreaker = new CircuitBreaker({
   failureThreshold: Number.parseInt(process.env.OPENAI_BREAKER_FAILURE_THRESHOLD || '5', 10),
@@ -253,23 +264,17 @@ export async function generateArtifactsJob(
     }
 
     // ── Contract Type Detection ─────────────────────────────────────────
+    // The upstream categorization worker should have already set contractType.
+    // Only fall back to keyword detection if it's still OTHER/UNKNOWN.
+    // Skip expensive AI detection here — it was already attempted upstream.
     let detectedContractType: ProfileContractType = (contract.contractType as ProfileContractType) || 'OTHER';
     if (detectedContractType === 'OTHER' || (contract.contractType as string) === 'UNKNOWN') {
       try {
         const keywordResult = detectContractType(contractText);
         if (keywordResult.confidence >= 0.5) {
           detectedContractType = keywordResult.type;
-          logger.info({ contractId, type: detectedContractType, confidence: keywordResult.confidence, method: 'keyword' }, 'Contract type detected');
-        } else {
-          // AI-based detection for low-confidence keyword results
-          const aiResult = await detectContractTypeWithAI(contractText);
-          if (aiResult && aiResult.confidence >= 0.4) {
-            detectedContractType = aiResult.type;
-            logger.info({ contractId, type: detectedContractType, confidence: aiResult.confidence, method: 'ai' }, 'Contract type detected via AI');
-          }
-        }
-        // Persist detected type
-        if (detectedContractType !== 'OTHER') {
+          logger.info({ contractId, type: detectedContractType, confidence: keywordResult.confidence, method: 'keyword-fallback' }, 'Contract type detected via keyword fallback in artifact generator');
+          // Persist detected type
           await prisma.contract.update({
             where: { id: contractId, tenantId },
             data: { contractType: detectedContractType },
@@ -312,8 +317,36 @@ export async function generateArtifactsJob(
     let progressBase = 10;
     const failedArtifacts: string[] = [];
 
+    // DB-backed daily cost guard: check actual DB usage across all workers
+    // This survives restarts and works in multi-worker deployments
+    const maxTenantDaily = parseFloat(process.env.MAX_ARTIFACT_COST_PER_TENANT_DAILY || '50.00');
+    try {
+      const { getTenantDailyCost } = await import('./utils/ai-usage-logger');
+      const dbDailyCost = await getTenantDailyCost(tenantId);
+      if (dbDailyCost >= maxTenantDaily) {
+        logger.warn({ contractId, tenantId, dbDailyCost, maxTenantDaily }, '⛔ Tenant daily cost limit reached (DB-backed) — skipping all artifact generation');
+        return { artifactsCreated: 0, artifactIds: [], failedArtifacts: artifactTypes.map(a => a.type), partialSuccess: false };
+      }
+      if (dbDailyCost >= maxTenantDaily * 0.8) {
+        logger.warn({ contractId, tenantId, dbDailyCost, maxTenantDaily }, '⚠️ Tenant nearing daily cost limit (DB-backed)');
+      }
+    } catch (costCheckErr) {
+      logger.warn({ error: costCheckErr }, 'DB cost check failed — falling back to in-memory tracker');
+    }
+
     // Generate each artifact with retry logic (using tenant config)
     for (const { type, weight, config } of artifactTypes) {
+      // Budget guard: check per-contract and per-tenant cost limits before each artifact
+      const budgetCheck = costTracker.canProceed(contractId, tenantId);
+      if (!budgetCheck.allowed) {
+        logger.warn({ contractId, tenantId, type, reason: budgetCheck.reason }, '⛔ Artifact generation blocked by cost budget');
+        failedArtifacts.push(type);
+        continue;
+      }
+      if (budgetCheck.warning) {
+        logger.warn({ contractId, tenantId, type, warning: budgetCheck.warning }, '⚠️ Approaching cost limit');
+      }
+
       try {
         await updateStep({
           tenantId,
@@ -345,7 +378,7 @@ export async function generateArtifactsJob(
             const result = await adaptiveRetry.executeWithRetry(
               async (model) => {
                 modelUsed = model.name;
-                const data = await generateArtifactData(type, contractText, contractId, model.name, detectedContractType);
+                const data = await generateArtifactData(type, contractText, contractId, tenantId, model.name, detectedContractType);
                 return { data, model: model.name };
               },
               `Generate ${type} artifact`
@@ -694,20 +727,17 @@ async function generateArtifactData(
   type: string,
   contractText: string,
   contractId: string,
+  tenantId: string,
   modelName?: string,
   contractType?: string
 ): Promise<Record<string, any>> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  
-  // If no API key, use shared fallback templates
-  if (!apiKey) {
-    logger.warn('OPENAI_API_KEY not configured, using fallback templates');
-    return getFallbackTemplate(type);
-  }
 
   try {
-    const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ apiKey });
+    const openai = await getOpenAIClient();
+    if (!openai) {
+      logger.warn('OPENAI_API_KEY not configured, using fallback templates');
+      return getFallbackTemplate(type);
+    }
 
     // Build contract-type-specific hints for enhanced extraction
     let contractTypeHints = '';
@@ -780,6 +810,22 @@ async function generateArtifactData(
     const promptTokens = response.usage?.prompt_tokens || 0;
     const completionTokens = response.usage?.completion_tokens || 0;
     const cost = estimateTokenCost(model, promptTokens, completionTokens);
+
+    // Feed cost into the budget tracker so per-contract/tenant limits are enforced
+    costTracker.addCost(contractId, tenantId, cost);
+
+    // Persist usage to ai_usage_logs for dashboard & cost alerts
+    logAIUsage({
+      model,
+      endpoint: 'openai',
+      feature: `artifact-generation:${type}`,
+      inputTokens: promptTokens,
+      outputTokens: completionTokens,
+      latencyMs: 0,
+      success: true,
+      tenantId,
+      contractId,
+    }).catch(() => {}); // fire-and-forget
 
     const artifactData = parsed;
     artifactData._meta = { 

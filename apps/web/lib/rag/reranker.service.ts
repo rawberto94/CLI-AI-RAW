@@ -190,11 +190,14 @@ Output ONLY the scoring lines, nothing else.`,
   const content = response.choices[0]?.message?.content || '';
   const lines = content.split('\n').filter(l => l.trim());
 
-  // Parse structured output — more robust than JSON extraction
+  // Parse structured output — each line is "DOC_N: SCORE | reason"
+  // Use a targeted regex that matches the score after ":" rather than
+  // the first number (which would capture the document index N).
   const scores: number[] = [];
   for (let i = 0; i < documents.length; i++) {
     const line = lines[i] || '';
-    const scoreMatch = line.match(/(\d+\.?\d*)/);
+    // Match "DOC_N: 0.85" pattern — capture the score after the colon
+    const scoreMatch = line.match(/:\s*(\d+\.?\d*)/);
     const rawScore = scoreMatch ? parseFloat(scoreMatch[1]) : 0.5;
     // Clamp to 0-1 range (LLM sometimes outputs > 1)
     scores.push(Math.max(0, Math.min(1, rawScore)));

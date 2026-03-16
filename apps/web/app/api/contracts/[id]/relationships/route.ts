@@ -123,7 +123,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
           confidence: rel.confidence,
           status: rel.status,
           detectedBy: rel.detectedBy,
-          detectedAt: rel.detectedAt,
+          createdAt: rel.createdAt,
           confirmedAt: rel.confirmedAt,
           relatedContract: {
             id: relatedContract.id,

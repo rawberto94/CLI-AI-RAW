@@ -343,6 +343,8 @@ export class AgentSwarm extends EventEmitter {
 // ============================================================================
 
 class SwarmTeam {
+  private totalTokensUsed = 0;
+
   constructor(
     private coordinator: SwarmAgent,
     private specialists: SwarmAgent[],
@@ -398,6 +400,7 @@ Format as JSON:
 
       const content = response.choices[0]?.message?.content;
       if (!content) throw new Error('No plan generated');
+      this.totalTokensUsed += response.usage?.total_tokens ?? 0;
 
       const planData = JSON.parse(content);
 
@@ -471,6 +474,7 @@ Format as JSON:
       });
 
       const result = response.choices[0]?.message?.content;
+      this.totalTokensUsed += response.usage?.total_tokens ?? 0;
 
       // Parse structured output if needed
       let parsedResult: unknown = result;
@@ -544,6 +548,7 @@ Format as JSON:
 
       const content = response.choices[0]?.message?.content;
       if (!content) throw new Error('Synthesis failed');
+      this.totalTokensUsed += response.usage?.total_tokens ?? 0;
 
       const synthesis = JSON.parse(content);
 
@@ -561,7 +566,7 @@ Format as JSON:
           teamSize: 1 + this.specialists.length + (this.reviewer ? 1 : 0),
           subtasksCompleted: results.length,
           totalDuration: results.reduce((sum, r) => sum + (r.subtask.estimatedDuration || 0), 0),
-          totalTokens: 0, // Would track actual usage
+          totalTokens: this.totalTokensUsed,
           consensusLevel: synthesis.confidence,
         },
         contributions: results.map(r => ({
@@ -605,7 +610,9 @@ Provide reviewed/improved output.`;
         max_tokens: this.reviewer.maxTokens,
       });
 
-      return response.choices[0]?.message?.content || output;
+      const reviewResult = response.choices[0]?.message?.content || output;
+      this.totalTokensUsed += response.usage?.total_tokens ?? 0;
+      return reviewResult;
     } finally {
       this.registry.updateLoad(this.reviewer.id, -1);
     }
@@ -641,7 +648,9 @@ Format as JSON:
       response_format: { type: 'json_object' },
     });
 
-    return JSON.parse(response.choices[0]?.message?.content || '{}');
+    const result = JSON.parse(response.choices[0]?.message?.content || '{}');
+    this.totalTokensUsed += response.usage?.total_tokens ?? 0;
+    return result;
   }
 }
 

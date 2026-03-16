@@ -276,6 +276,35 @@ async function startWorkers() {
     const staleRecoveryInterval = setInterval(runStaleProcessingRecovery, 10 * 60 * 1000);
     staleRecoveryInterval.unref();
 
+    // AI Memory Maintenance: apply time-based decay to stale memories (daily)
+    const runMemoryMaintenance = async () => {
+      try {
+        const clientsDb2 = await import('clients-db');
+        const getClient2 = typeof clientsDb2 === 'function' ? clientsDb2 : (clientsDb2 as any).default;
+        const db = typeof getClient2 === 'function' ? getClient2() : getClient2;
+
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const decayed = await db.aiMemory.updateMany({
+          where: {
+            lastAccessedAt: { lt: thirtyDaysAgo },
+            importance: { gt: 0.2 },
+          },
+          data: {
+            importance: { multiply: 0.95 },
+          },
+        });
+        if (decayed.count > 0) {
+          logger.info({ count: decayed.count }, '🧠 AI memory decay applied to stale memories');
+        }
+      } catch (memErr) {
+        logger.warn({ error: memErr }, '⚠️ Memory maintenance failed (non-fatal)');
+      }
+    };
+    // Run once at startup, then every 24 hours
+    await runMemoryMaintenance();
+    const memoryMaintenanceInterval = setInterval(runMemoryMaintenance, 24 * 60 * 60 * 1000);
+    memoryMaintenanceInterval.unref();
+
     // Activate obligation monitoring (continuous SLA/deadline checker)
     try {
       // @ts-ignore — @repo/agents workspace alias resolved at runtime by pnpm

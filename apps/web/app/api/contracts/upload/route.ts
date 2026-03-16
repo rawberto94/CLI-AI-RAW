@@ -72,12 +72,12 @@ async function checkUploadRateLimit(tenantId: string): Promise<{ allowed: boolea
         return { allowed: false, retryAfter: Math.ceil(Math.max(ttl, 1000) / 1000) };
       }
       return { allowed: true };
-    } catch {
-      // Redis failed, fall through to memory
+    } catch (redisErr) {
+      console.warn('[RateLimit] Redis unavailable, falling back to in-memory rate limiter — multi-instance deployments are NOT protected', (redisErr as Error).message);
     }
   }
 
-  // In-memory fallback
+  // In-memory fallback (single-instance only — no cross-process enforcement)
   const entry = _memRateStore.get(key);
   if (entry && entry.resetAt > now) {
     entry.count++;
@@ -370,7 +370,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       contractType: formData.get("contractType") ? (formData.get("contractType") as string) : undefined,
       startDate: formData.get("startDate") ? (formData.get("startDate") as string) : undefined,
       endDate: formData.get("endDate") ? (formData.get("endDate") as string) : undefined,
-      totalValue: formData.get("totalValue") ? parseFloat(formData.get("totalValue") as string) : undefined,
+      totalValue: formData.get("totalValue") ? (Number.isFinite(parseFloat(formData.get("totalValue") as string)) ? parseFloat(formData.get("totalValue") as string) : undefined) : undefined,
       currency: formData.get("currency") ? (formData.get("currency") as string) : undefined,
       clientName: formData.get("clientName") ? (formData.get("clientName") as string) : undefined,
       supplierName: formData.get("supplierName") ? (formData.get("supplierName") as string) : undefined,
@@ -441,6 +441,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
   
   // Check for duplicate file using transactional read for consistency
   // ENABLED by default — set DISABLE_DUPLICATE_DETECTION=true to opt out
+  // Any authenticated user can skip duplicate check (e.g. intentional reprocess)
   const skipDuplicateCheck = request.headers.get('x-skip-duplicate-check') === 'true';
   const enableDuplicateDetection = process.env.DISABLE_DUPLICATE_DETECTION !== 'true';
   
@@ -449,32 +450,16 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       
-      const existingContract = await prisma.$transaction(async (tx) => {
-        const contract = await tx.contract.findFirst({
-          where: {
-            tenantId,
-            checksum: contentHash,
-            isDeleted: false,
-            status: { notIn: ['FAILED', 'DELETED'] },
-            // Only consider as duplicate if uploaded in last 7 days
-            createdAt: { gte: sevenDaysAgo }
-          },
-          select: { id: true, status: true, fileName: true, createdAt: true }
-        });
-        
-        // Double-check the contract exists in same transaction
-        if (contract) {
-          const verified = await tx.contract.findUnique({
-            where: { id: contract.id },
-            select: { id: true, status: true }
-          });
-          return verified ? contract : null;
-        }
-        return null;
-      }, {
-        isolationLevel: 'ReadCommitted',
-        maxWait: 5000,
-        timeout: 10000,
+      const existingContract = await prisma.contract.findFirst({
+        where: {
+          tenantId,
+          checksum: contentHash,
+          isDeleted: false,
+          status: { notIn: ['FAILED', 'DELETED'] },
+          // Only consider as duplicate if uploaded in last 7 days
+          createdAt: { gte: sevenDaysAgo }
+        },
+        select: { id: true, status: true, fileName: true, createdAt: true }
       });
       
       if (existingContract) {
@@ -682,8 +667,14 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     logger.error('[ContractUpload] Metadata init import error:', metaErr);
   }
 
+  // Only attempt text-based pre-classification for text formats.
+  // PDFs, DOCX, images produce garbled output from buffer.toString('utf-8'),
+  // so skip early classification — the OCR worker will handle these properly.
+  const ext = file.name.toLowerCase().split('.').pop() || '';
+  const isTextBased = ['txt', 'text', 'csv', 'html', 'htm', 'xml', 'md', 'rtf', 'json'].includes(ext);
+
   // Classify contract using taxonomy (non-blocking, async)
-  try {
+  if (isTextBased) try {
     // Read first few pages for classification
     const textContent = buffer.toString('utf-8', 0, Math.min(10000, buffer.length));
     
@@ -727,7 +718,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
   // Fast text-based party extraction at upload time
   // Gives immediate clientName/supplierName from document text before AI processing
-  try {
+  if (isTextBased) try {
     const partyText = buffer.toString('utf-8', 0, Math.min(15000, buffer.length));
     if (!metadata.clientName && !metadata.supplierName && partyText.length > 50) {
       const partyUpdate: Record<string, string> = {};
@@ -760,7 +751,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
   // Fast keyword-based contract type detection at upload time
   // This gives an immediate contractType (e.g., "SOW", "NDA", "MSA") without an API call.
   // The OCR worker will later refine this with AI-based detection for higher accuracy.
-  try {
+  if (isTextBased) try {
     const textContent = buffer.toString('utf-8', 0, Math.min(10000, buffer.length));
     const { detectContractType } = await import("@repo/workers/contract-type-profiles");
     const detection = detectContractType(textContent);

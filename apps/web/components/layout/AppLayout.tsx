@@ -3,8 +3,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Bell, User, Search, Sparkles } from 'lucide-react'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -32,14 +30,11 @@ export default function AppLayout({
           animate={{ opacity: 1, y: 0 }}
           className="sticky top-16 lg:top-0 z-20 border-b border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-slate-900/70"
         >
-          {/* Decorative accent line */}
-          <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent" />
-          
           <div className="flex h-14 md:h-16 items-center justify-between px-4 lg:px-6">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               {title && (
                 <div className="min-w-0">
-                  <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent truncate">
+                  <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white truncate">
                     {title}
                   </h1>
                   {description && (
@@ -49,50 +44,12 @@ export default function AppLayout({
               )}
             </div>
             
-            <div className="flex items-center gap-1 md:gap-2">
-              {/* Search - hidden on mobile */}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="hidden md:flex h-9 w-9 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80" 
-                aria-label="Search contracts"
-              >
-                <Search className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-              </Button>
-              
-              {/* Notifications */}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-9 w-9 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80" 
-                aria-label="Notifications"
-              >
-                <Bell className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-              </Button>
-              
-              {/* User Menu */}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-9 w-9 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80" 
-                aria-label="User menu"
-              >
-                <User className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-              </Button>
-              
-              {/* Custom Actions - hidden on mobile if space is tight */}
-              <div className="hidden sm:flex items-center gap-2">
+            {actions && (
+              <div className="flex items-center gap-2 shrink-0">
                 {actions}
               </div>
-            </div>
+            )}
           </div>
-          
-          {/* Mobile actions row if present */}
-          {actions && (
-            <div className="sm:hidden px-4 pb-3 flex gap-2">
-              {actions}
-            </div>
-          )}
         </motion.header>
       )}
 

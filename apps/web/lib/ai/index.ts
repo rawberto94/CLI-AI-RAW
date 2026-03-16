@@ -274,6 +274,8 @@ export {
   type ContractCategorizationResult,
   type CategorizationOptions,
   type ContractTypeCategory,
+  type BroadCategory,
+  type ClassificationSignals,
   type IndustrySector,
   type RiskLevel,
   type RegulatoryDomain,

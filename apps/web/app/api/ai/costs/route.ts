@@ -82,8 +82,38 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
         return createSuccessResponse(ctx, history);
       }
 
+      case 'di-costs': {
+        // Fetch Document Intelligence cost data from the worker health server
+        const workerHealthPort = process.env.WORKER_HEALTH_PORT || '9090';
+        const workerHealthHost = process.env.WORKER_HEALTH_HOST || 'localhost';
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 3000);
+          const metricsRes = await fetch(
+            `http://${workerHealthHost}:${workerHealthPort}/metrics/json`,
+            { signal: controller.signal }
+          );
+          clearTimeout(timeout);
+          if (!metricsRes.ok) {
+            return createSuccessResponse(ctx, { available: false, reason: 'Worker health server returned non-OK status' });
+          }
+          const metrics = await metricsRes.json();
+          return createSuccessResponse(ctx, {
+            available: true,
+            documentIntelligence: metrics.documentIntelligence || null,
+            diCost: metrics.diCost || null,
+          });
+        } catch (fetchErr) {
+          return createSuccessResponse(ctx, {
+            available: false,
+            reason: 'Worker health server unreachable',
+            error: fetchErr instanceof Error ? fetchErr.message : 'Unknown error',
+          });
+        }
+      }
+
       default:
-        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action. Use: budget, report, estimate, select-model, realtime, history', 400);
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action. Use: budget, report, estimate, select-model, realtime, history, di-costs', 400);
     }
   });
 

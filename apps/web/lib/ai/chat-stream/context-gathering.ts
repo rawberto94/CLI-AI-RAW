@@ -6,7 +6,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import { parallelMultiQueryRAG } from '@/lib/rag/parallel-rag.service';
+import { parallelMultiQueryRAG, type ParallelRAGResult } from '@/lib/rag/parallel-rag.service';
 import { hybridSearch } from '@/lib/rag/advanced-rag.service';
 import { retrieveRelevantMemories } from '@/lib/ai/episodic-memory-integration';
 import { shouldUseRAG } from '@/lib/ai/chat/response-builder';
@@ -27,7 +27,7 @@ function withTimeout<T>(promise: Promise<T>, fallback: T, timeoutMs = 15_000): P
   ]);
 }
 
-const emptyRag = { results: [], queryVariations: [], timingsMs: { total: 0, hyde: 0, expansion: 0, search: 0, fusion: 0 } };
+const emptyRag: ParallelRAGResult = { results: [], queryVariations: [], timingsMs: { total: 0, hyde: 0, expansion: 0, search: 0, fusion: 0 } };
 
 export interface GatheredContext {
   searchResults: Array<{ contractId: string; contractName: string; score: number; text: string; matchType?: string; sources?: string[]; metadata?: Record<string, unknown> }>;

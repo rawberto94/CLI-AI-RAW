@@ -57,7 +57,7 @@ interface CacheStats {
 // ============================================================================
 
 const DEFAULT_CONFIG: SemanticCacheConfig = {
-  similarityThreshold: 0.95,
+  similarityThreshold: parseFloat(process.env.RAG_CACHE_SIMILARITY_THRESHOLD || '0.92'),
   maxEntries: parseInt(process.env.RAG_CACHE_MAX_ENTRIES || '2000', 10), // 2000 for enterprise (was 500)
   ttlMs: parseInt(process.env.RAG_CACHE_TTL_MS || String(30 * 60 * 1000), 10), // 30 min default
   enabled: true,
@@ -376,13 +376,16 @@ class SemanticCacheStore {
     const r = this.getRedis();
     if (!r) return;
 
-    const keys = await r.zrangebyscore(REDIS_INDEX_KEY, '-inf', '+inf');
-    for (const key of keys) {
-      if (key.startsWith(`${tenantId}:`)) {
+    // Use SCAN instead of fetching ALL sorted-set members — O(batch) instead of O(N)
+    let cursor = '0';
+    do {
+      const [nextCursor, keys] = await r.zscan(REDIS_INDEX_KEY, cursor, 'MATCH', `${tenantId}:*`, 'COUNT', 100);
+      cursor = nextCursor;
+      for (const key of keys.filter((_: string, i: number) => i % 2 === 0)) {
         await r.del(key);
         await r.zrem(REDIS_INDEX_KEY, key);
       }
-    }
+    } while (cursor !== '0');
   }
 
   private async invalidateContractRedis(contractId: string): Promise<void> {

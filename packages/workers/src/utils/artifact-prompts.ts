@@ -560,17 +560,22 @@ export function buildArtifactPrompt(type: string, ctx: PromptContext): string | 
     : '';
 
   // Build DI pre-validated data context — inject structured data into prompts
+  // Gate on minimum confidence threshold to avoid injecting noisy extractions
+  const DI_MIN_CONFIDENCE = 0.5;
   let diContext = '';
-  if (ctx.diConfidence && ctx.diConfidence > 0) {
+  if (ctx.diConfidence && ctx.diConfidence >= DI_MIN_CONFIDENCE) {
     const diParts: string[] = ['\n--- PRE-VALIDATED DATA (Azure Document Intelligence, high confidence) ---'];
     
-    // Contract fields for OVERVIEW, CLAUSES, RISK, etc.
-    if (ctx.diContractFields && ['OVERVIEW', 'CLAUSES', 'RISK', 'COMPLIANCE', 'OBLIGATIONS', 'RENEWAL', 'PARTIES'].includes(type)) {
+    // Contract fields — useful across nearly all artifact types
+    if (ctx.diContractFields && ['OVERVIEW', 'CLAUSES', 'RISK', 'COMPLIANCE', 'OBLIGATIONS', 'RENEWAL', 'PARTIES', 'DELIVERABLES', 'TIMELINE', 'FINANCIAL'].includes(type)) {
       const cf = ctx.diContractFields;
       if (cf.parties.length > 0) {
-        diParts.push('\nPRE-VALIDATED CONTRACT PARTIES:');
-        for (const p of cf.parties) {
-          diParts.push(`  - ${p.name}${p.role ? ` (${p.role})` : ''}${p.address ? `, ${p.address}` : ''} [confidence: ${(p.confidence * 100).toFixed(0)}%]`);
+        const trustedParties = cf.parties.filter(p => p.confidence >= 0.5);
+        if (trustedParties.length > 0) {
+          diParts.push('\nPRE-VALIDATED CONTRACT PARTIES:');
+          for (const p of trustedParties) {
+            diParts.push(`  - ${p.name}${p.role ? ` (${p.role})` : ''}${p.address ? `, ${p.address}` : ''} [confidence: ${(p.confidence * 100).toFixed(0)}%]`);
+          }
         }
       }
       if (cf.dates.effectiveDate) diParts.push(`PRE-VALIDATED Effective Date: ${cf.dates.effectiveDate}`);
@@ -597,26 +602,32 @@ export function buildArtifactPrompt(type: string, ctx: PromptContext): string | 
       }
     }
 
-    // Tables for FINANCIAL, RATES, OVERVIEW
-    if (ctx.diTables && ctx.diTables.length > 0 && ['FINANCIAL', 'RATES', 'OVERVIEW', 'OBLIGATIONS'].includes(type)) {
-      diParts.push(`\nPRE-VALIDATED TABLES (${ctx.diTables.length} found):`);
-      for (let i = 0; i < Math.min(ctx.diTables.length, 10); i++) {
-        const t = ctx.diTables[i];
-        if (t && t.headers.length > 0) {
-          diParts.push(`  Table ${i + 1} (page ${t.pageNumber}, confidence ${(t.confidence * 100).toFixed(0)}%):`);
-          diParts.push(`    | ${t.headers.join(' | ')} |`);
-          for (const row of t.rows.slice(0, 20)) {
-            diParts.push(`    | ${row.join(' | ')} |`);
+    // Tables — valuable for financial, compliance (SLA/insurance tables), clauses (amendment schedules), deliverables (milestones)
+    if (ctx.diTables && ctx.diTables.length > 0 && ['FINANCIAL', 'RATES', 'OVERVIEW', 'OBLIGATIONS', 'CLAUSES', 'COMPLIANCE', 'DELIVERABLES', 'TIMELINE'].includes(type)) {
+      const trustedTables = ctx.diTables.filter(t => t.confidence >= 0.5);
+      if (trustedTables.length > 0) {
+        diParts.push(`\nPRE-VALIDATED TABLES (${trustedTables.length} found):`);
+        for (let i = 0; i < Math.min(trustedTables.length, 10); i++) {
+          const t = trustedTables[i];
+          if (t && t.headers.length > 0) {
+            diParts.push(`  Table ${i + 1} (page ${t.pageNumber}, confidence ${(t.confidence * 100).toFixed(0)}%):`);
+            diParts.push(`    | ${t.headers.join(' | ')} |`);
+            for (const row of t.rows.slice(0, 20)) {
+              diParts.push(`    | ${row.join(' | ')} |`);
+            }
           }
         }
       }
     }
 
-    // Key-value pairs for all types
+    // Key-value pairs for all types — filter out low-confidence pairs
     if (ctx.diKeyValuePairs && ctx.diKeyValuePairs.length > 0) {
-      diParts.push(`\nPRE-VALIDATED KEY-VALUE PAIRS (${ctx.diKeyValuePairs.length} found):`);
-      for (const kv of ctx.diKeyValuePairs.slice(0, 30)) {
-        diParts.push(`  ${kv.key}: ${kv.value} [confidence: ${(kv.confidence * 100).toFixed(0)}%]`);
+      const trustedKV = ctx.diKeyValuePairs.filter(kv => kv.confidence >= 0.5);
+      if (trustedKV.length > 0) {
+        diParts.push(`\nPRE-VALIDATED KEY-VALUE PAIRS (${trustedKV.length} found):`);
+        for (const kv of trustedKV.slice(0, 30)) {
+          diParts.push(`  ${kv.key}: ${kv.value} [confidence: ${(kv.confidence * 100).toFixed(0)}%]`);
+        }
       }
     }
 

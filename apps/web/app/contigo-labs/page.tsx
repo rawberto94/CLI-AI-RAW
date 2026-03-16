@@ -91,6 +91,7 @@ import {
   Workflow,
   Award,
   Tag,
+  Grid3x3 as Grid3X3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -3426,6 +3427,7 @@ function CreateRFxModal({ onClose, vendors = [], onCreated }: { onClose: () => v
 }
 
 function EventDetailModal({ event, onClose }: any) {
+  const router = useRouter();
   // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };    document.addEventListener('keydown', handleKeyDown);

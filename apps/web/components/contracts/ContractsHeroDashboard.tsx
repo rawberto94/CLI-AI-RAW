@@ -232,37 +232,37 @@ const StatCard = memo(function StatCard({
 }: StatCardProps) {
   const colorStyles = {
     blue: {
-      bg: 'bg-gradient-to-br from-blue-500 to-indigo-600',
+      bg: 'bg-blue-600',
       light: 'bg-blue-50',
       text: 'text-blue-600',
       ring: 'ring-blue-500/20',
     },
     green: {
-      bg: 'bg-gradient-to-br from-emerald-500 to-green-600',
+      bg: 'bg-emerald-600',
       light: 'bg-emerald-50',
       text: 'text-emerald-600',
       ring: 'ring-emerald-500/20',
     },
     amber: {
-      bg: 'bg-gradient-to-br from-amber-500 to-amber-600',
+      bg: 'bg-amber-500',
       light: 'bg-amber-50',
       text: 'text-amber-600',
       ring: 'ring-amber-500/20',
     },
     red: {
-      bg: 'bg-gradient-to-br from-red-500 to-red-600',
+      bg: 'bg-red-500',
       light: 'bg-red-50',
       text: 'text-red-600',
       ring: 'ring-red-500/20',
     },
     purple: {
-      bg: 'bg-gradient-to-br from-violet-500 to-purple-600',
+      bg: 'bg-violet-600',
       light: 'bg-violet-50',
       text: 'text-violet-600',
       ring: 'ring-violet-500/20',
     },
     cyan: {
-      bg: 'bg-gradient-to-br from-cyan-500 to-teal-600',
+      bg: 'bg-cyan-600',
       light: 'bg-cyan-50',
       text: 'text-cyan-600',
       ring: 'ring-cyan-500/20',
@@ -276,13 +276,13 @@ const StatCard = memo(function StatCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay }}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      whileHover={{ y: -2, transition: { duration: 0.2 } }}
       onClick={onClick}
       data-testid={testId}
       className={cn(
-        "relative overflow-hidden rounded-2xl bg-white p-5 shadow-lg shadow-slate-200/50",
-        "border border-slate-100 hover:border-slate-200 transition-all duration-300",
-        "hover:shadow-xl hover:shadow-slate-300/50",
+        "relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm",
+        "border border-slate-200/60 hover:border-slate-300 transition-all duration-200",
+        "hover:shadow-md",
         onClick && "cursor-pointer"
       )}
     >
@@ -294,7 +294,7 @@ const StatCard = memo(function StatCard({
       <div className="relative">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
-          <div className={cn("p-2.5 rounded-xl shadow-lg", styles.bg)}>
+          <div className={cn("p-2.5 rounded-xl", styles.bg)}>
             <Icon className="h-5 w-5 text-white" />
           </div>
           {trend !== undefined && (
@@ -372,18 +372,18 @@ const AlertCard = memo(function AlertCard({
 }: AlertCardProps) {
   const colorStyles = {
     amber: {
-      bg: 'bg-gradient-to-r from-amber-50 via-orange-50/80 to-amber-50',
+      bg: 'bg-amber-50',
       border: 'border-amber-200/60',
-      icon: 'bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30',
+      icon: 'bg-amber-500 text-white',
       text: 'text-amber-700',
-      hover: 'hover:border-amber-300 hover:shadow-amber-200/50',
+      hover: 'hover:border-amber-300',
     },
     red: {
-      bg: 'bg-gradient-to-r from-red-50 via-rose-50/80 to-red-50',
+      bg: 'bg-red-50',
       border: 'border-red-200/60',
-      icon: 'bg-gradient-to-br from-red-500 to-rose-500 text-white shadow-lg shadow-red-500/30',
+      icon: 'bg-red-500 text-white',
       text: 'text-red-700',
-      hover: 'hover:border-red-300 hover:shadow-red-200/50',
+      hover: 'hover:border-red-300',
     },
   };
 
@@ -393,14 +393,14 @@ const AlertCard = memo(function AlertCard({
     <motion.div
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
-      whileHover={{ x: 4, scale: 1.01 }}
+      whileHover={{ x: 2 }}
       onClick={onClick}
       className={cn(
-        "flex items-center gap-4 p-4 rounded-xl border transition-all duration-300",
+        "flex items-center gap-4 p-4 rounded-xl border transition-all duration-200",
         styles.bg,
         styles.border,
         styles.hover,
-        onClick && "cursor-pointer hover:shadow-lg"
+        onClick && "cursor-pointer hover:shadow-md"
       )}
     >
       <div className={cn("p-2.5 rounded-xl", styles.icon)}>
@@ -440,9 +440,9 @@ const QuickAction = memo(function QuickAction({
   href,
 }: QuickActionProps) {
   const colorStyles = {
-    blue: 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/25',
-    purple: 'bg-violet-600 hover:bg-violet-700 shadow-violet-500/25',
-    cyan: 'bg-cyan-600 hover:bg-cyan-700 shadow-cyan-500/25',
+    blue: 'bg-blue-600 hover:bg-blue-700 shadow-sm',
+    purple: 'bg-violet-600 hover:bg-violet-700 shadow-sm',
+    cyan: 'bg-cyan-600 hover:bg-cyan-700 shadow-sm',
   };
 
   const content = (

@@ -124,17 +124,16 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
     await prisma.agentEvent.create({
       data: {
         tenantId,
-        agentId: 'rfx-detection-agent',
-        type: 'opportunity_found',
-        title: 'RFx Opportunity Scan Complete',
-        description: `Scout detected ${opportunities.length} opportunities`,
+        contractId: '',
+        agentName: 'rfx-detection-agent',
+        eventType: 'opportunity_found',
+        outcome: 'success',
+        reasoning: `Scout detected ${opportunities.length} opportunities`,
         metadata: {
           algorithm: filter.algorithm,
           urgency: filter.urgency,
           count: opportunities.length,
         },
-        timestamp: new Date(),
-        status: 'active',
       },
     });
 
@@ -211,7 +210,7 @@ export const PATCH = withAuthApiHandler(async (req: NextRequest, ctx) => {
             tenantId,
           },
           data: {
-            status: 'SNOOZED',
+            status: 'REJECTED',
             snoozedUntil: snoozeUntilDate,
           },
         });
@@ -277,11 +276,12 @@ async function createRfxFromOpportunity(
         type: rfxConfig?.type || 'RFP',
         title: rfxConfig?.title || `Sourcing: ${contract.contractTitle}`,
         description: rfxConfig?.description || `Competitive sourcing for ${contract.contractTitle}`,
-        sourcingContractId: contract.id,
+        sourceContractId: contract.id,
         status: 'draft',
         category: contract.contractType,
-        estimatedValue: contract.totalValue,
-        notes: notes || undefined,
+        estimatedValue: contract.totalValue ? Number(contract.totalValue) : undefined,
+        responseDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        createdBy: tenantId,
       },
     });
 
@@ -291,8 +291,12 @@ async function createRfxFromOpportunity(
         tenantId,
         contractId: contract.id,
         algorithm: algorithm as any,
-        status: 'CONVERTED',
+        status: 'APPROVED',
         rfxId: rfx.id,
+        title: rfxConfig?.title || `Sourcing: ${contract.contractTitle}`,
+        description: rfxConfig?.description || `Competitive sourcing for ${contract.contractTitle}`,
+        reasoning: `Converted from ${algorithm} opportunity`,
+        recommendedAction: `Create ${rfxConfig?.type || 'RFP'} event`,
         metadata: {
           sourceOpportunityId: opportunityId,
           convertedAt: new Date().toISOString(),
@@ -304,18 +308,17 @@ async function createRfxFromOpportunity(
     await tx.agentEvent.create({
       data: {
         tenantId,
-        agentId: 'rfx-detection-agent',
-        type: 'opportunity_converted',
-        title: `Opportunity Converted to ${rfxConfig?.type || 'RFP'}`,
-        description: `Converted ${algorithm} opportunity for "${contract.contractTitle}" into RFx event`,
+        contractId: contract.id,
+        agentName: 'rfx-detection-agent',
+        eventType: 'opportunity_converted',
+        outcome: 'success',
+        reasoning: `Converted ${algorithm} opportunity for "${contract.contractTitle}" into RFx event`,
         metadata: {
           rfxId: rfx.id,
           contractId: contract.id,
           algorithm,
           opportunityId,
         },
-        timestamp: new Date(),
-        status: 'active',
       },
     });
 

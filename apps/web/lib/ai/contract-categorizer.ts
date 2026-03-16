@@ -19,6 +19,7 @@ import { openai } from "@/lib/openai-client";
 // ============================================================================
 
 export type ContractTypeCategory = 
+  // Core Agreements
   | 'MSA'
   | 'SOW'
   | 'NDA'
@@ -35,6 +36,34 @@ export type ContractTypeCategory =
   | 'RENEWAL'
   | 'SUBCONTRACT'
   | 'SUBSCRIPTION'
+  // Financial & Corporate
+  | 'LOAN'
+  | 'INVESTMENT'
+  | 'MERGER_ACQUISITION'
+  | 'INSURANCE'
+  | 'FRANCHISE'
+  // Operational
+  | 'DISTRIBUTION'
+  | 'SUPPLY'
+  | 'MANUFACTURING'
+  | 'MAINTENANCE'
+  | 'CONSTRUCTION'
+  // HR & Personnel
+  | 'OFFER_LETTER'
+  | 'INDEPENDENT_CONTRACTOR'
+  | 'NON_COMPETE'
+  | 'SEPARATION_AGREEMENT'
+  // Pre-contractual & Transactional
+  | 'LETTER_OF_INTENT'
+  | 'MEMORANDUM_OF_UNDERSTANDING'
+  | 'ENGAGEMENT_LETTER'
+  | 'WORK_ORDER'
+  | 'CHANGE_ORDER'
+  | 'PURCHASE_ORDER'
+  // Compliance & Regulatory
+  | 'TERMS_OF_SERVICE'
+  | 'PRIVACY_POLICY'
+  // Catch-all
   | 'OTHER';
 
 export type IndustrySector =
@@ -77,10 +106,31 @@ export interface CategorizationDimension<T = string> {
   alternatives?: Array<{ value: T; confidence: number }>;
 }
 
+export type BroadCategory =
+  | 'CORE_AGREEMENT'
+  | 'PROJECT_WORK'
+  | 'FINANCIAL'
+  | 'EMPLOYMENT_HR'
+  | 'OPERATIONAL'
+  | 'COMPLIANCE'
+  | 'CORPORATE'
+  | 'PRE_CONTRACTUAL'
+  | 'TRANSACTIONAL';
+
+export interface ClassificationSignals {
+  titleMatch?: string;
+  partyRoles?: string;
+  keyClausesDetected?: string[];
+  ambiguityNotes?: string;
+}
+
 export interface ContractCategorizationResult {
   /** Primary contract type classification */
   contractType: CategorizationDimension<ContractTypeCategory>;
   
+  /** Broad category for hierarchical grouping */
+  broadCategory?: BroadCategory;
+
   /** Industry sector the contract relates to */
   industry: CategorizationDimension<IndustrySector>;
   
@@ -121,6 +171,9 @@ export interface ContractCategorizationResult {
     hasDataProcessing?: boolean;
     hasIPAssignment?: boolean;
   };
+
+  /** Signals that drove the classification decision */
+  classificationSignals?: ClassificationSignals;
   
   /** Overall categorization confidence */
   overallConfidence: number;
@@ -258,6 +311,143 @@ const CONTRACT_TYPE_DEFINITIONS: Record<ContractTypeCategory, {
     description: 'Recurring service subscription terms',
     keywords: ['subscription', 'saas', 'recurring', 'annual', 'monthly'],
     indicators: ['subscription fee', 'auto-renewal', 'subscription term'],
+  },
+  // Financial & Corporate
+  LOAN: {
+    name: 'Loan Agreement',
+    description: 'Lending arrangement with interest and repayment terms',
+    keywords: ['loan', 'promissory note', 'borrower', 'lender', 'principal'],
+    indicators: ['interest rate', 'maturity date', 'collateral', 'repayment schedule'],
+  },
+  INVESTMENT: {
+    name: 'Investment Agreement',
+    description: 'Equity or debt investment terms',
+    keywords: ['investment', 'equity', 'convertible note', 'series', 'preferred stock'],
+    indicators: ['valuation', 'liquidation preference', 'anti-dilution', 'cap table'],
+  },
+  MERGER_ACQUISITION: {
+    name: 'Merger & Acquisition Agreement',
+    description: 'Corporate merger, acquisition, or asset purchase',
+    keywords: ['merger', 'acquisition', 'stock purchase', 'asset purchase'],
+    indicators: ['earnout', 'representations and warranties', 'closing conditions', 'due diligence'],
+  },
+  INSURANCE: {
+    name: 'Insurance Policy',
+    description: 'Insurance coverage and premium terms',
+    keywords: ['insurance', 'policy', 'premium', 'coverage', 'insured'],
+    indicators: ['deductible', 'exclusions', 'claims procedure', 'underwriter'],
+  },
+  FRANCHISE: {
+    name: 'Franchise Agreement',
+    description: 'Franchise rights and obligations',
+    keywords: ['franchise', 'franchisee', 'franchisor', 'territory'],
+    indicators: ['franchise fee', 'royalty', 'brand standards', 'operating manual'],
+  },
+  // Operational
+  DISTRIBUTION: {
+    name: 'Distribution Agreement',
+    description: 'Product distribution rights and territory',
+    keywords: ['distribution', 'distributor', 'territory', 'reseller'],
+    indicators: ['distribution rights', 'minimum purchase', 'exclusivity', 'channel'],
+  },
+  SUPPLY: {
+    name: 'Supply Agreement',
+    description: 'Supply of goods or materials terms',
+    keywords: ['supply', 'supplier', 'materials', 'goods', 'volume'],
+    indicators: ['supply schedule', 'volume commitment', 'quality standards', 'delivery'],
+  },
+  MANUFACTURING: {
+    name: 'Manufacturing Agreement',
+    description: 'Contract manufacturing or OEM arrangement',
+    keywords: ['manufacturing', 'oem', 'toll manufacturing', 'production'],
+    indicators: ['specifications', 'quality control', 'batch', 'nre'],
+  },
+  MAINTENANCE: {
+    name: 'Maintenance Agreement',
+    description: 'Ongoing maintenance and support services',
+    keywords: ['maintenance', 'support', 'upkeep', 'service agreement'],
+    indicators: ['preventive maintenance', 'response time', 'spare parts', 'service window'],
+  },
+  CONSTRUCTION: {
+    name: 'Construction Contract',
+    description: 'Construction or building project terms',
+    keywords: ['construction', 'building', 'contractor', 'project'],
+    indicators: ['practical completion', 'liquidated damages', 'retention', 'defects liability'],
+  },
+  // HR & Personnel
+  OFFER_LETTER: {
+    name: 'Offer Letter',
+    description: 'Employment offer with compensation details',
+    keywords: ['offer letter', 'employment offer', 'job offer', 'compensation'],
+    indicators: ['start date', 'position', 'signing bonus', 'at-will'],
+  },
+  INDEPENDENT_CONTRACTOR: {
+    name: 'Independent Contractor Agreement',
+    description: 'Independent contractor engagement terms',
+    keywords: ['independent contractor', '1099', 'freelance', 'contractor'],
+    indicators: ['self-employed', 'no benefits', 'own tools', 'contractor services'],
+  },
+  NON_COMPETE: {
+    name: 'Non-Compete Agreement',
+    description: 'Competitive restriction covenant',
+    keywords: ['non-compete', 'non-competition', 'restrictive covenant'],
+    indicators: ['restricted territory', 'restricted period', 'competing business'],
+  },
+  SEPARATION_AGREEMENT: {
+    name: 'Separation Agreement',
+    description: 'Employment termination and severance terms',
+    keywords: ['separation', 'severance', 'termination agreement'],
+    indicators: ['release of claims', 'severance pay', 'transition period'],
+  },
+  // Pre-contractual & Transactional
+  LETTER_OF_INTENT: {
+    name: 'Letter of Intent',
+    description: 'Non-binding preliminary agreement or term sheet',
+    keywords: ['letter of intent', 'loi', 'term sheet', 'heads of terms'],
+    indicators: ['non-binding', 'indicative terms', 'exclusivity period', 'good faith'],
+  },
+  MEMORANDUM_OF_UNDERSTANDING: {
+    name: 'Memorandum of Understanding',
+    description: 'Mutual understanding between parties',
+    keywords: ['memorandum of understanding', 'mou', 'mutual understanding'],
+    indicators: ['non-binding', 'preliminary', 'mutual agreement', 'cooperation'],
+  },
+  ENGAGEMENT_LETTER: {
+    name: 'Engagement Letter',
+    description: 'Professional services engagement terms',
+    keywords: ['engagement letter', 'retainer', 'professional engagement'],
+    indicators: ['scope of engagement', 'fee schedule', 'client responsibilities'],
+  },
+  WORK_ORDER: {
+    name: 'Work Order',
+    description: 'Specific work authorization under a master agreement',
+    keywords: ['work order', 'work authorization', 'service order'],
+    indicators: ['job order', 'work request', 'authorized work', 'order number'],
+  },
+  CHANGE_ORDER: {
+    name: 'Change Order',
+    description: 'Modification to project scope or terms',
+    keywords: ['change order', 'change request', 'scope change'],
+    indicators: ['revised scope', 'change directive', 'modification to original'],
+  },
+  PURCHASE_ORDER: {
+    name: 'Purchase Order',
+    description: 'Commercial document for ordering goods or services',
+    keywords: ['purchase order', 'po', 'requisition', 'order confirmation'],
+    indicators: ['po number', 'ship to', 'bill to', 'unit price', 'order quantity'],
+  },
+  // Compliance & Regulatory
+  TERMS_OF_SERVICE: {
+    name: 'Terms of Service',
+    description: 'Service usage terms and conditions',
+    keywords: ['terms of service', 'terms and conditions', 'tos', 'user agreement'],
+    indicators: ['acceptable use', 'user conduct', 'account terms', 'subscription terms'],
+  },
+  PRIVACY_POLICY: {
+    name: 'Privacy Policy',
+    description: 'Data collection and privacy practices',
+    keywords: ['privacy policy', 'privacy notice', 'data collection'],
+    indicators: ['personal information', 'cookies', 'data retention', 'opt out'],
   },
   OTHER: {
     name: 'Other',
@@ -408,8 +598,26 @@ export class AIContractCategorizer {
         messages: [
           {
             role: 'system',
-            content: `You are an expert contract analyst specializing in contract classification and risk assessment. 
-Analyze contracts with precision and provide structured categorization across multiple dimensions.
+            content: `You are a senior legal analyst specializing in contract classification, risk assessment, and regulatory compliance. 
+You have deep expertise in commercial agreements, corporate transactions, employment law, procurement, IP licensing, and data protection.
+
+CLASSIFICATION PRINCIPLES:
+1. INTENT OVER FORM: Classify by the document's legal purpose, not just its title. A document titled "Agreement" may be a SOW, NDA, or MSA based on its substance.
+2. SPECIFICITY: Always prefer the most specific type. "PURCHASE_ORDER" over "PURCHASE", "DPA" over "NDA" for data processing agreements, "OFFER_LETTER" over "EMPLOYMENT" for job offers.
+3. PRIMARY PURPOSE: When a document serves multiple purposes (e.g., an MSA with embedded NDA clauses), classify by primary purpose.
+4. PARTY RELATIONSHIPS: Use party roles (landlord/tenant, employer/employee, licensor/licensee) as strong classification signals.
+5. STRUCTURAL CUES: Section headings, defined terms, and recitals are high-signal classification features.
+
+DISAMBIGUATION RULES:
+- MSA vs SOW: MSA is the umbrella; SOW defines specific project scope/deliverables under an MSA.
+- NDA vs DPA: NDA protects general confidential information; DPA specifically governs personal data processing under GDPR/privacy law.
+- CONSULTING vs INDEPENDENT_CONTRACTOR: Consulting focuses on advisory output; independent contractor emphasizes non-employee status.
+- AMENDMENT vs CHANGE_ORDER: Amendment modifies contract terms; change order modifies project scope/cost within a construction or project context.
+- PURCHASE vs PURCHASE_ORDER: Agreement is a negotiated contract; PO is a transactional commercial document.
+- LICENSE vs SUBSCRIPTION: License grants usage rights (often perpetual); subscription is time-bound recurring access.
+- LEASE vs REAL_ESTATE (recognize as LEASE): Lease is ongoing occupancy; real estate purchase is asset transfer.
+- PARTNERSHIP vs JOINT_VENTURE (classify as PARTNERSHIP): Both are collaborative but JV is typically project-specific.
+
 Always respond with valid JSON matching the requested schema exactly.`,
           },
           {
@@ -419,7 +627,7 @@ Always respond with valid JSON matching the requested schema exactly.`,
         ],
         model,
         temperature,
-        max_tokens: 2000,
+        max_tokens: 2500,
         response_format: { type: 'json_object' },
       });
 
@@ -478,7 +686,20 @@ Always respond with valid JSON matching the requested schema exactly.`,
         messages: [
           {
             role: 'system',
-            content: 'Classify the contract type and risk level. Respond with JSON: {"type": "MSA|SOW|NDA|SLA|DPA|LICENSE|EMPLOYMENT|CONSULTING|VENDOR|PURCHASE|LEASE|PARTNERSHIP|AMENDMENT|RENEWAL|SUBCONTRACT|SUBSCRIPTION|OTHER", "risk": "LOW|MEDIUM|HIGH|CRITICAL", "confidence": 0-100}',
+            content: `Classify the contract by its primary legal purpose and assess risk. Use the most specific type available.
+
+Contract Types: MSA|SOW|NDA|SLA|DPA|LICENSE|EMPLOYMENT|CONSULTING|VENDOR|PURCHASE|LEASE|PARTNERSHIP|AMENDMENT|RENEWAL|SUBCONTRACT|SUBSCRIPTION|LOAN|INVESTMENT|MERGER_ACQUISITION|INSURANCE|FRANCHISE|DISTRIBUTION|SUPPLY|MANUFACTURING|MAINTENANCE|CONSTRUCTION|OFFER_LETTER|INDEPENDENT_CONTRACTOR|NON_COMPETE|SEPARATION_AGREEMENT|LETTER_OF_INTENT|MEMORANDUM_OF_UNDERSTANDING|ENGAGEMENT_LETTER|WORK_ORDER|CHANGE_ORDER|PURCHASE_ORDER|TERMS_OF_SERVICE|PRIVACY_POLICY|OTHER
+
+Key distinctions:
+- MSA=umbrella terms, SOW=specific project scope, WORK_ORDER=single task authorization
+- NDA=confidential info protection, DPA=personal data processing under privacy law
+- PURCHASE=negotiated sales contract, PURCHASE_ORDER=commercial order document
+- EMPLOYMENT=full contract, OFFER_LETTER=job offer, INDEPENDENT_CONTRACTOR=non-employee
+- LICENSE=usage rights grant, SUBSCRIPTION=recurring time-bound access
+
+Risk: LOW=standard terms | MEDIUM=some non-standard terms | HIGH=significant deviations or liability | CRITICAL=urgent legal review needed
+
+Respond with JSON: {"type": "<TYPE>", "risk": "<RISK>", "confidence": 0-100, "reasoning": "one sentence"}`,
           },
           {
             role: 'user',
@@ -487,7 +708,7 @@ Always respond with valid JSON matching the requested schema exactly.`,
         ],
         model,
         temperature: 0.1,
-        max_tokens: 100,
+        max_tokens: 200,
         response_format: { type: 'json_object' },
       });
 
@@ -592,16 +813,27 @@ ${text}
 ### 1. Contract Type (choose one):
 ${contractTypes}${customTypesSection}
 
-### 2. Industry Sector (choose one):
+### 2. Broad Category (choose one):
+  - CORE_AGREEMENT: Long-term relationship agreements (MSA, NDA, SLA, Partnership)
+  - PROJECT_WORK: Specific deliverable/scope documents (SOW, Work Order, Change Order)
+  - FINANCIAL: Monetary instruments (Loan, Investment, Insurance, Purchase)
+  - EMPLOYMENT_HR: Workforce-related (Employment, Offer Letter, Non-Compete, Separation)
+  - OPERATIONAL: Supply chain and operations (Supply, Distribution, Manufacturing, Maintenance)
+  - COMPLIANCE: Regulatory and policy documents (DPA, Terms of Service, Privacy Policy)
+  - CORPORATE: Corporate governance (M&A, Franchise, Partnership)
+  - PRE_CONTRACTUAL: Non-binding or preliminary (LOI, MOU, Engagement Letter, Proposal)
+  - TRANSACTIONAL: Commercial documents (Purchase Order, Work Order)
+
+### 3. Industry Sector (choose one):
 ${industries}${customIndustriesSection}
 
-### 3. Risk Level:
-  - LOW: Standard terms, minimal liability exposure
+### 4. Risk Level:
+  - LOW: Standard terms, minimal liability exposure, well-established template
   - MEDIUM: Some non-standard terms or moderate liability
   - HIGH: Significant deviations, major liability or compliance risks
   - CRITICAL: Urgent legal review needed, major red flags
 
-### 4. Complexity (1-10):
+### 5. Complexity (1-10):
   - 1-3: Simple, standard agreement
   - 4-6: Moderate complexity, some custom terms
   - 7-8: Complex with multiple provisions
@@ -612,9 +844,10 @@ ${industries}${customIndustriesSection}
   "contractType": {
     "value": "TYPE_CODE",
     "confidence": 0-100,
-    ${options.includeReasoning ? '"reasoning": "explanation",' : ''}
+    ${options.includeReasoning ? '"reasoning": "explanation of primary classification signals (title, party roles, key clauses)",' : ''}
     "alternatives": [{"value": "TYPE", "confidence": 0-100}]
   },
+  "broadCategory": "CORE_AGREEMENT|PROJECT_WORK|FINANCIAL|EMPLOYMENT_HR|OPERATIONAL|COMPLIANCE|CORPORATE|PRE_CONTRACTUAL|TRANSACTIONAL",
   "industry": {
     "value": "INDUSTRY_CODE",
     "confidence": 0-100
@@ -622,7 +855,7 @@ ${industries}${customIndustriesSection}
   "riskLevel": {
     "value": "LOW|MEDIUM|HIGH|CRITICAL",
     "confidence": 0-100,
-    "reasoning": "key risk factors"
+    "reasoning": "key risk factors identified in the contract"
   },
   "complexity": {
     "value": 1-10,
@@ -649,6 +882,12 @@ ${industries}${customIndustriesSection}
     "hasConfidentiality": boolean,
     "hasDataProcessing": boolean,
     "hasIPAssignment": boolean
+  },
+  "classificationSignals": {
+    "titleMatch": "what the document title/heading suggests",
+    "partyRoles": "key party roles identified (e.g., landlord/tenant, employer/employee)",
+    "keyClausesDetected": ["list of significant clause types found"],
+    "ambiguityNotes": "any uncertainty in classification and why"
   }
 }`;
   }
@@ -675,8 +914,30 @@ ${industries}${customIndustriesSection}
       regulatoryDomains = this.detectRegulatoryDomains(text);
     }
 
+    // Extract broad category
+    const validBroadCategories: BroadCategory[] = [
+      'CORE_AGREEMENT', 'PROJECT_WORK', 'FINANCIAL', 'EMPLOYMENT_HR',
+      'OPERATIONAL', 'COMPLIANCE', 'CORPORATE', 'PRE_CONTRACTUAL', 'TRANSACTIONAL',
+    ];
+    const broadCategory = validBroadCategories.includes(parsed.broadCategory)
+      ? parsed.broadCategory as BroadCategory
+      : this.inferBroadCategory(contractType.value);
+
+    // Extract classification signals
+    const classificationSignals: ClassificationSignals = parsed.classificationSignals
+      ? {
+          titleMatch: parsed.classificationSignals.titleMatch,
+          partyRoles: parsed.classificationSignals.partyRoles,
+          keyClausesDetected: Array.isArray(parsed.classificationSignals.keyClausesDetected)
+            ? parsed.classificationSignals.keyClausesDetected.slice(0, 10)
+            : undefined,
+          ambiguityNotes: parsed.classificationSignals.ambiguityNotes,
+        }
+      : undefined;
+
     return {
       contractType,
+      broadCategory,
       industry,
       riskLevel,
       complexity,
@@ -698,6 +959,7 @@ ${industries}${customIndustriesSection}
         hasDataProcessing: !!parsed.flags?.hasDataProcessing,
         hasIPAssignment: !!parsed.flags?.hasIPAssignment,
       },
+      classificationSignals,
       overallConfidence: 0, // Will be calculated
       metadata: {
         model: '',
@@ -869,7 +1131,66 @@ ${industries}${customIndustriesSection}
       (result.riskLevel.confidence * weights.riskLevel) +
       (result.complexity.confidence * weights.complexity);
 
-    return Math.round(weightedSum);
+    // Apply penalties for low individual dimension confidence
+    let penalty = 0;
+    if (result.contractType.confidence < 50) penalty += 10; // Main classification is weak
+    if (result.contractType.value === 'OTHER') penalty += 15; // Fell through to catch-all
+
+    // Boost for strong classification signals
+    let boost = 0;
+    if (result.classificationSignals?.titleMatch) boost += 3;
+    if (result.classificationSignals?.keyClausesDetected?.length && 
+        result.classificationSignals.keyClausesDetected.length >= 3) boost += 5;
+    if (!result.classificationSignals?.ambiguityNotes) boost += 2;
+
+    return Math.round(Math.max(10, Math.min(100, weightedSum - penalty + boost)));
+  }
+
+  /**
+   * Infer the broad category from the specific contract type when AI doesn't provide it
+   */
+  private inferBroadCategory(type: ContractTypeCategory): BroadCategory {
+    const categoryMap: Record<string, BroadCategory> = {
+      MSA: 'CORE_AGREEMENT',
+      NDA: 'CORE_AGREEMENT',
+      SLA: 'CORE_AGREEMENT',
+      PARTNERSHIP: 'CORE_AGREEMENT',
+      VENDOR: 'CORE_AGREEMENT',
+      RENEWAL: 'CORE_AGREEMENT',
+      SUBCONTRACT: 'CORE_AGREEMENT',
+      SOW: 'PROJECT_WORK',
+      WORK_ORDER: 'PROJECT_WORK',
+      CHANGE_ORDER: 'PROJECT_WORK',
+      LOAN: 'FINANCIAL',
+      INVESTMENT: 'FINANCIAL',
+      INSURANCE: 'FINANCIAL',
+      PURCHASE: 'FINANCIAL',
+      PURCHASE_ORDER: 'TRANSACTIONAL',
+      EMPLOYMENT: 'EMPLOYMENT_HR',
+      OFFER_LETTER: 'EMPLOYMENT_HR',
+      INDEPENDENT_CONTRACTOR: 'EMPLOYMENT_HR',
+      NON_COMPETE: 'EMPLOYMENT_HR',
+      SEPARATION_AGREEMENT: 'EMPLOYMENT_HR',
+      CONSULTING: 'EMPLOYMENT_HR',
+      SUPPLY: 'OPERATIONAL',
+      DISTRIBUTION: 'OPERATIONAL',
+      MANUFACTURING: 'OPERATIONAL',
+      MAINTENANCE: 'OPERATIONAL',
+      CONSTRUCTION: 'OPERATIONAL',
+      LEASE: 'OPERATIONAL',
+      DPA: 'COMPLIANCE',
+      TERMS_OF_SERVICE: 'COMPLIANCE',
+      PRIVACY_POLICY: 'COMPLIANCE',
+      MERGER_ACQUISITION: 'CORPORATE',
+      FRANCHISE: 'CORPORATE',
+      LICENSE: 'CORE_AGREEMENT',
+      SUBSCRIPTION: 'CORE_AGREEMENT',
+      AMENDMENT: 'CORE_AGREEMENT',
+      LETTER_OF_INTENT: 'PRE_CONTRACTUAL',
+      MEMORANDUM_OF_UNDERSTANDING: 'PRE_CONTRACTUAL',
+      ENGAGEMENT_LETTER: 'PRE_CONTRACTUAL',
+    };
+    return categoryMap[type] || 'CORE_AGREEMENT';
   }
 
   private fallbackCategorization(
@@ -884,8 +1205,9 @@ ${industries}${customIndustriesSection}
       contractType: {
         value: contractType,
         confidence: 50,
-        reasoning: 'Fallback rule-based detection',
+        reasoning: 'Fallback rule-based detection using keyword matching',
       },
+      broadCategory: this.inferBroadCategory(contractType),
       industry: {
         value: 'OTHER',
         confidence: 30,
@@ -912,6 +1234,9 @@ ${industries}${customIndustriesSection}
         hasConfidentiality: text.toLowerCase().includes('confidential'),
         hasDataProcessing: text.toLowerCase().includes('data process'),
         hasIPAssignment: text.toLowerCase().includes('intellectual property') && text.toLowerCase().includes('assign'),
+      },
+      classificationSignals: {
+        ambiguityNotes: 'AI classification failed, using keyword-based fallback. Manual review recommended.',
       },
       overallConfidence: 40,
       metadata: {

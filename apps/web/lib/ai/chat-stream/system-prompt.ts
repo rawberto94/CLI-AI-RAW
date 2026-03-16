@@ -17,9 +17,21 @@ export interface SystemPromptInput {
 
 /**
  * Build the full system prompt for the AI chat, incorporating all context.
+ * Applies per-section character limits to prevent context window overflow
+ * before the downstream token budget allocator runs.
  */
 export function buildSystemPrompt(input: SystemPromptInput): string {
-  const { userRole, contextContractId, contractProfileContext, ragContext, memoryContext, learningContextStr, conversationSummary } = input;
+  const { contextContractId, learningContextStr, conversationSummary } = input;
+
+  // Sanitize userRole — only allow known roles to prevent prompt injection
+  const VALID_ROLES = new Set(['ADMIN', 'USER', 'VIEWER', 'EDITOR', 'MANAGER']);
+  const userRole = VALID_ROLES.has(input.userRole) ? input.userRole : 'USER';
+
+  // Cap variable-length sections to prevent unbounded prompt growth.
+  // Total budget ~80K chars (~20K tokens) leaves room for conversation + response.
+  const contractProfileContext = truncateSection(input.contractProfileContext, 30_000);
+  const ragContext = truncateSection(input.ragContext, 20_000);
+  const memoryContext = truncateSection(input.memoryContext, 10_000);
 
   return `You are ConTigo AI, an autonomous contract management assistant.
 
@@ -67,6 +79,14 @@ ${ragContext}
 ${memoryContext}
 ${learningContextStr ? `\n**Learned Patterns (from past interactions):**\n${learningContextStr}` : ''}
 ${conversationSummary ? `\n${conversationSummary}` : ''}`;
+}
+
+/**
+ * Truncate a context section to a max character length, appending a notice.
+ */
+function truncateSection(text: string, maxChars: number): string {
+  if (!text || text.length <= maxChars) return text;
+  return text.slice(0, maxChars) + '\n\n... [truncated — section too large]';
 }
 
 /**

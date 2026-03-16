@@ -138,6 +138,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'metadata',
           sources: cached.sources,
+          ragSources: (cached.ragResults || []).map((r: { contractId: string; contractName: string; score: number }) => ({
+            contractId: r.contractId,
+            contractName: r.contractName,
+            score: r.score,
+          })),
           cached: true,
           confidence: cached.metadata.confidence,
           suggestedActions: [
@@ -222,6 +227,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'metadata',
             sources: ragSources,
+            ragSources: searchResults.slice(0, 5).map(r => ({
+              contractId: r.contractId,
+              contractName: r.contractName,
+              score: r.score,
+            })),
             agentUsed: true,
             agentSteps: agentResponse.steps,
             toolsUsed: agentResponse.toolsUsed,
@@ -315,6 +325,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'metadata',
           sources: ragSources,
+          ragSources: searchResults.slice(0, 5).map(r => ({
+            contractId: r.contractId,
+            contractName: r.contractName,
+            score: r.score,
+          })),
           confidence: initialConfidence.confidence,
           confidenceTier: initialConfidence.tier,
           queryVariations: ragResults.queryVariations?.slice(0, 3),
@@ -727,11 +742,28 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         let selfCritiqueNote = '';
         if (fullContent.length > 50 && searchResults.length > 0) {
           try {
-            // Check if response is grounded in RAG context
+            // Check if response is grounded in RAG context using n-gram overlap.
+            // Single-word matching fails for paraphrases ("contractual obligations"
+            // won't match "duties under the agreement"). Using bigrams + trigrams
+            // captures phrase-level grounding more accurately.
             const ragTexts = searchResults.map(r => r.text.toLowerCase()).join(' ');
-            const responseWords = fullContent.toLowerCase().split(/\s+/).filter(w => w.length > 4);
-            const groundedWords = responseWords.filter(w => ragTexts.includes(w));
-            const groundingRatio = responseWords.length > 0 ? groundedWords.length / responseWords.length : 0;
+
+            // Extract n-grams (bigrams + trigrams) from response
+            const responseWords = fullContent.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+            const responsePhrases = new Set<string>();
+            for (let i = 0; i < responseWords.length - 1; i++) {
+              responsePhrases.add(responseWords[i] + ' ' + responseWords[i + 1]); // bigram
+              if (i < responseWords.length - 2) {
+                responsePhrases.add(responseWords[i] + ' ' + responseWords[i + 1] + ' ' + responseWords[i + 2]); // trigram
+              }
+            }
+            // Also include significant single words (>6 chars, likely domain terms)
+            for (const w of responseWords) {
+              if (w.length > 6) responsePhrases.add(w);
+            }
+
+            const groundedPhrases = Array.from(responsePhrases).filter(p => ragTexts.includes(p));
+            const groundingRatio = responsePhrases.size > 0 ? groundedPhrases.length / responsePhrases.size : 0;
 
             if (groundingRatio < 0.1 && !allToolResults.some(r => r.success)) {
               selfCritiqueScore = 0.5;

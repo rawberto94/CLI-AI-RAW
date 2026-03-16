@@ -288,6 +288,8 @@ interface VectorResult {
   chunkIndex: number;
   chunkText: string;
   score: number;
+  chunkType?: string;
+  section?: string;
 }
 
 interface KeywordResult {
@@ -383,6 +385,8 @@ async function vectorSearch(
         ce."contractId",
         ce."chunkIndex",
         ce."chunkText",
+        ce."chunkType",
+        ce."section",
         1 - (ce."embedding" <=> ${vectorQuery}::vector) as score
       FROM "ContractEmbedding" ce
       ${joinClause}
@@ -553,7 +557,7 @@ interface RerankedResult {
  */
 async function rerank(
   query: string,
-  results: Array<{ contractId: string; chunkIndex: number; text: string; score: number }>,
+  results: Array<{ contractId: string; chunkIndex: number; text: string; score: number; chunkType?: string; section?: string }>,
   options?: { apiKey?: string; topK?: number }
 ): Promise<RerankedResult[]> {
   const topK = options?.topK || 10;
@@ -567,7 +571,15 @@ async function rerank(
   // Delegate to progressiveRerank — races fast embedding-similarity against
   // Cohere / GPT and returns whichever finishes first (2 s timeout for the slow path).
   try {
-    const docs = candidates.map(c => c.text.slice(0, 1000));
+    // Enrich documents with metadata prefix for better reranking relevance
+    const docs = candidates.map(c => {
+      const prefix = [
+        c.chunkType ? `[type:${c.chunkType}]` : '',
+        c.section ? `[section:${c.section}]` : '',
+      ].filter(Boolean).join(' ');
+      const text = c.text.slice(0, 1000);
+      return prefix ? `${prefix} ${text}` : text;
+    });
     const reranked = await progressiveRerankService(query, docs, {
       topK,
       minScore: 0.1,
@@ -800,15 +812,19 @@ export async function hybridSearch(
     }
     
     // Step 4: Combine results with RRF (for hybrid mode)
-    let combinedResults: Array<{ contractId: string; chunkIndex: number; text: string; score: number; matchType: 'semantic' | 'keyword' | 'hybrid' }>;
+    let combinedResults: Array<{ contractId: string; chunkIndex: number; text: string; score: number; matchType: 'semantic' | 'keyword' | 'hybrid'; chunkType?: string; section?: string }>;
     
     if (mode === 'hybrid') {
       const rrfScores = reciprocalRankFusion(vectorResults, keywordResults);
       
       // Create result map for quick lookup
-      const resultMap = new Map<string, { text: string; contractId: string; chunkIndex: number }>();
-      vectorResults.forEach(r => resultMap.set(`${r.contractId}:${r.chunkIndex}`, { text: r.chunkText, contractId: r.contractId, chunkIndex: r.chunkIndex }));
-      keywordResults.forEach(r => resultMap.set(`${r.contractId}:${r.chunkIndex}`, { text: r.chunkText, contractId: r.contractId, chunkIndex: r.chunkIndex }));
+      const resultMap = new Map<string, { text: string; contractId: string; chunkIndex: number; chunkType?: string; section?: string }>();
+      vectorResults.forEach(r => resultMap.set(`${r.contractId}:${r.chunkIndex}`, { text: r.chunkText, contractId: r.contractId, chunkIndex: r.chunkIndex, chunkType: r.chunkType, section: r.section }));
+      keywordResults.forEach(r => {
+        if (!resultMap.has(`${r.contractId}:${r.chunkIndex}`)) {
+          resultMap.set(`${r.contractId}:${r.chunkIndex}`, { text: r.chunkText, contractId: r.contractId, chunkIndex: r.chunkIndex });
+        }
+      });
       
       combinedResults = Array.from(rrfScores.entries())
         .map(([key, scoreInfo]) => {
@@ -831,6 +847,8 @@ export async function hybridSearch(
         text: r.chunkText,
         score: r.score,
         matchType: 'semantic' as const,
+        chunkType: r.chunkType,
+        section: r.section,
       }));
     } else {
       combinedResults = keywordResults.map(r => ({
@@ -852,7 +870,20 @@ export async function hybridSearch(
         text: r.text,
         score: r.rerankedScore,
         matchType: combinedResults.find(c => c.contractId === r.contractId && c.chunkIndex === r.chunkIndex)?.matchType || 'hybrid',
+        chunkType: combinedResults.find(c => c.contractId === r.contractId && c.chunkIndex === r.chunkIndex)?.chunkType,
       }));
+    }
+    
+    // Step 5.1: Table-chunk score boosting
+    // When the query intent targets tabular data (rates, pricing, schedules),
+    // boost table-type chunks by 25% so they surface higher in the final list.
+    if (autoChunkTypes?.includes('table') && finalResults.length > 0) {
+      const TABLE_BOOST = 0.25;
+      finalResults = finalResults.map(r => ({
+        ...r,
+        score: r.chunkType === 'table' ? Math.min(1, r.score * (1 + TABLE_BOOST)) : r.score,
+      }));
+      finalResults.sort((a, b) => b.score - a.score);
     }
     
     // Step 5.5: MMR Diversity — remove near-duplicate chunks
@@ -977,7 +1008,7 @@ export async function hybridSearch(
         const graphContractIds = [...new Set(finalResults.slice(0, 5).map(r => r.contractId))];
         
         for (const cId of graphContractIds) {
-          const relatedContracts = await neo4jGraphService.findRelatedContracts(cId, tenantId, { limit: 3 });
+          const relatedContracts = await neo4jGraphService.findRelatedContracts(cId, tenantId, { minStrength: 0.3 });
           if (relatedContracts && relatedContracts.length > 0) {
             // Add graph-sourced related contract chunks as low-priority results
             for (const related of relatedContracts) {

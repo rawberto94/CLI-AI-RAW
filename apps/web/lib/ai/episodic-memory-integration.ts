@@ -279,16 +279,62 @@ export async function applyMemoryDecay(
 }
 
 /**
- * Consolidate similar memories
+ * Consolidate similar memories by merging near-duplicates.
+ * Uses the embedding column on AiMemory to find semantically similar pairs,
+ * keeps the higher-importance memory and deletes the duplicate.
  */
- 
 export async function consolidateMemories(
-  _userId: string,
-  _tenantId: string
+  userId: string,
+  tenantId: string
 ): Promise<number> {
-  // This would use embeddings to find similar memories and merge them
-  // For now, return 0 as this requires more complex implementation
-  return 0;
+  try {
+    // Find pairs of memories with high cosine similarity (> 0.93)
+    // using pgvector's <=> operator. Limit to 50 pairs per run to
+    // avoid long-running transactions.
+    const pairs: Array<{ id_a: string; id_b: string; importance_a: number; importance_b: number; similarity: number }> =
+      await prisma.$queryRawUnsafe(`
+        SELECT
+          a.id AS id_a,
+          b.id AS id_b,
+          a.importance AS importance_a,
+          b.importance AS importance_b,
+          1 - (a.embedding <=> b.embedding) AS similarity
+        FROM ai_memories a
+        JOIN ai_memories b
+          ON a.user_id = $1
+          AND b.user_id = $1
+          AND a.tenant_id = $2
+          AND b.tenant_id = $2
+          AND a.id < b.id
+          AND a.embedding IS NOT NULL
+          AND b.embedding IS NOT NULL
+          AND 1 - (a.embedding <=> b.embedding) > 0.93
+        ORDER BY similarity DESC
+        LIMIT 50
+      `, userId, tenantId);
+
+    if (pairs.length === 0) return 0;
+
+    // For each pair, delete the less important one (or the older one if equal)
+    const idsToDelete: string[] = [];
+    for (const pair of pairs) {
+      // Skip if we've already marked one of these for deletion
+      if (idsToDelete.includes(pair.id_a) || idsToDelete.includes(pair.id_b)) continue;
+      const deleteId = pair.importance_a >= pair.importance_b ? pair.id_b : pair.id_a;
+      idsToDelete.push(deleteId);
+    }
+
+    if (idsToDelete.length > 0) {
+      await prisma.aiMemory.deleteMany({
+        where: { id: { in: idsToDelete } },
+      });
+    }
+
+    return idsToDelete.length;
+  } catch (error) {
+    console.error('[EpisodicMemory] Error consolidating memories:', error);
+    return 0;
+  }
 }
 
 // =============================================================================

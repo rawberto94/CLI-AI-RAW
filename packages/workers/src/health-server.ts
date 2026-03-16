@@ -71,6 +71,9 @@ function createHealthHandler(): (req: http.IncomingMessage, res: http.ServerResp
         case '/di-health':
           await handleDIHealth(res);
           break;
+        case '/di-health/history':
+          handleDIHealthHistory(res);
+          break;
         default:
           res.writeHead(404, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Not found' }));
@@ -256,6 +259,97 @@ async function handleDIHealth(res: http.ServerResponse): Promise<void> {
   }
 }
 
+// ============================================================================
+// Scheduled DI Health Polling
+// ============================================================================
+
+interface DIHealthRecord {
+  timestamp: string;
+  reachable: boolean;
+  latencyMs?: number;
+  error?: string;
+}
+
+const diHealthHistory: DIHealthRecord[] = [];
+const DI_HEALTH_HISTORY_MAX = 120; // Keep last 120 checks (~1 hour at 30s interval)
+let diHealthInterval: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Background DI health poller — runs every 30s and records status history.
+ * Logs warnings on consecutive failures for circuit-breaker-like alerting.
+ */
+function startDIHealthPolling(intervalMs: number = 30_000): void {
+  if (!isDIConfigured()) return;
+
+  let consecutiveFailures = 0;
+
+  diHealthInterval = setInterval(async () => {
+    const start = Date.now();
+    try {
+      const health = await checkDIHealth();
+      const latencyMs = Date.now() - start;
+      diHealthHistory.push({
+        timestamp: new Date().toISOString(),
+        reachable: !!health.reachable,
+        latencyMs,
+      });
+      if (health.reachable) {
+        consecutiveFailures = 0;
+      } else {
+        consecutiveFailures++;
+        if (consecutiveFailures >= 3) {
+          logger.warn({ consecutiveFailures, latencyMs }, 'DI health: multiple consecutive unreachable checks');
+        }
+      }
+    } catch (err) {
+      consecutiveFailures++;
+      diHealthHistory.push({
+        timestamp: new Date().toISOString(),
+        reachable: false,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      });
+      if (consecutiveFailures >= 3) {
+        logger.warn({ consecutiveFailures, error: err instanceof Error ? err.message : String(err) }, 'DI health poll failed repeatedly');
+      }
+    }
+    // Trim history
+    while (diHealthHistory.length > DI_HEALTH_HISTORY_MAX) {
+      diHealthHistory.shift();
+    }
+  }, intervalMs);
+
+  // Don't block process exit
+  if (diHealthInterval && typeof diHealthInterval === 'object' && 'unref' in diHealthInterval) {
+    diHealthInterval.unref();
+  }
+
+  logger.info({ intervalMs }, 'DI health polling started');
+}
+
+/**
+ * DI health history endpoint
+ */
+function handleDIHealthHistory(res: http.ServerResponse): void {
+  const reachableCount = diHealthHistory.filter(h => h.reachable).length;
+  const totalCount = diHealthHistory.length;
+  const avgLatency = totalCount > 0
+    ? diHealthHistory.reduce((sum, h) => sum + (h.latencyMs || 0), 0) / totalCount
+    : 0;
+
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    summary: {
+      total: totalCount,
+      reachable: reachableCount,
+      unreachable: totalCount - reachableCount,
+      uptimePercent: totalCount > 0 ? ((reachableCount / totalCount) * 100).toFixed(1) : 'N/A',
+      avgLatencyMs: Math.round(avgLatency),
+    },
+    history: diHealthHistory.slice(-50), // Return last 50 records
+  }, null, 2));
+}
+
 /**
  * Start the health check server
  */
@@ -283,8 +377,12 @@ export function startHealthServer(port: number = 9090): http.Server {
         `http://localhost:${port}/resilience - Circuit breakers & backpressure`,
         `http://localhost:${port}/traces - Recent distributed traces`,
         `http://localhost:${port}/di-health - Azure Document Intelligence health`,
+        `http://localhost:${port}/di-health/history - DI health check history`,
       ]
     }, 'Available endpoints');
+
+    // Start background DI health polling (every 30s)
+    startDIHealthPolling();
   });
 
   return server;

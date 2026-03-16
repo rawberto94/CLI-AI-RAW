@@ -366,6 +366,8 @@ async function analyzeDocument(
     queryFields?: string[];
     outputContentFormat?: 'text' | 'markdown';
     locale?: string;
+    /** Page range to analyze, e.g. '1-50'. Reduces cost for large documents. */
+    pages?: string;
     onProgress?: (pct: number, message: string) => void;
   } = {}
 ): Promise<any> {
@@ -399,6 +401,10 @@ async function analyzeDocument(
   }
   if (options.locale) {
     params.set('locale', options.locale);
+  }
+  // Page-range limiting — reduces cost for large documents
+  if (options.pages) {
+    params.set('pages', options.pages);
   }
 
   const analyzeUrl = `${config.endpoint}/documentintelligence/documentModels/${model}:analyze?${params.toString()}`;
@@ -605,6 +611,8 @@ export async function analyzeLayout(
     extractKeyValuePairs?: boolean;
     locale?: string;
     outputFormat?: 'text' | 'markdown';
+    /** Page range to analyze, e.g. '1-50'. Reduces cost for large documents. */
+    pages?: string;
   } = {}
 ): Promise<DIAnalyzeResult> {
   const span = startSpan({ name: 'di.analyzeLayout', kind: 'client', attributes: { 'di.model': 'prebuilt-layout', 'di.buffer_size': fileBuffer.length } });
@@ -618,6 +626,7 @@ export async function analyzeLayout(
       features,
       locale: options.locale,
       outputContentFormat: options.outputFormat,
+      pages: options.pages,
     });
 
     const region = raw._region as string;

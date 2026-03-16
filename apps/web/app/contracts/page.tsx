@@ -463,7 +463,7 @@ export default function ContractsPage() {
             name: p.legalName,
             role: (p.role?.toLowerCase() === 'client' ? 'client' : 
                    p.role?.toLowerCase() === 'supplier' || p.role?.toLowerCase() === 'vendor' ? 'vendor' : 
-                   'other') as const,
+                   'other') as 'client' | 'vendor' | 'other',
           }))
         : contract.parties ? [
             ...(contract.parties.client ? [{ name: contract.parties.client, role: 'client' as const }] : []),
@@ -503,7 +503,7 @@ export default function ContractsPage() {
           name: p.legalName,
           role: (p.role?.toLowerCase() === 'client' ? 'client' : 
                  p.role?.toLowerCase() === 'supplier' || p.role?.toLowerCase() === 'vendor' ? 'vendor' : 
-                 'other') as const,
+                 'other') as 'client' | 'vendor' | 'other',
           email: p.email || '',
           phone: '',
         }))

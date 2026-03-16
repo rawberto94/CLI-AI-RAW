@@ -22,7 +22,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
     const errorDescription = searchParams.get('error_description');
 
     if (error) {
-      logger.error('OAuth error:', error, errorDescription);
+      logger.error('OAuth error:', error, errorDescription ? { description: errorDescription } : undefined);
       return redirectWithError(`Authentication failed: ${errorDescription || error}`);
     }
 

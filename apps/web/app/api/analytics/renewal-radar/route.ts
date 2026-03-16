@@ -248,7 +248,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         return createErrorResponse(ctx, 'VALIDATION_ERROR', 'contractId or contractIds required', 400);
       }
 
-      const results = [];
+      const results: { contractId: string; alertsScheduled: number }[] = [];
       for (const id of targetIds) {
         const schedule = await renewalIntelligenceService.generateAlertSchedule(id, tenantId);
         
@@ -299,6 +299,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           status: 'DRAFT',
           createdBy: userId,
           title: `RFX for ${contractId}`,
+          type: 'RFX_INITIATED',
+          responseDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         },
       });
 

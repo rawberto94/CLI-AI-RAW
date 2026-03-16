@@ -49,6 +49,7 @@ export interface CategorizationResult {
   success: boolean;
   contractId: string;
   contractType?: string;
+  broadCategory?: string;
   industry?: string;
   riskLevel?: string;
   complexity?: number;
@@ -289,42 +290,71 @@ export async function processCategorizationJob(
 
     // Industry to taxonomy category mapping (L1 first, then L2)
     const industryToCategoryMap: Record<string, string[]> = {
-      'TECHNOLOGY': ['Information Technology', 'Software & Applications', 'Cloud & Infrastructure'],
-      'HEALTHCARE': ['Research & Development', 'Clinical Trials'],
-      'FINANCE': ['Finance & Accounting', 'Banking & Treasury'],
-      'MANUFACTURING': ['Operations', 'Manufacturing'],
-      'RETAIL': ['Sales & Revenue', 'Procurement'],
-      'ENERGY': ['Operations', 'Utilities'],
-      'GOVERNMENT': ['Legal & Compliance', 'Compliance Services'],
-      'EDUCATION': ['Human Resources', 'Training & Development'],
-      'REAL_ESTATE': ['Real Estate & Facilities', 'Office Leases'],
-      'LEGAL': ['Legal & Compliance', 'Outside Counsel'],
-      'MEDIA': ['Marketing & Communications', 'Creative Services'],
-      'TRANSPORTATION': ['Operations', 'Logistics & Shipping'],
-      'HOSPITALITY': ['Operations', 'Facility Services'],
-      'AGRICULTURE': ['Operations', 'Manufacturing'],
-      'CONSTRUCTION': ['Real Estate & Facilities', 'Construction'],
+      'TECHNOLOGY': ['Information Technology', 'Software & Applications', 'Cloud & Infrastructure', 'Data & Analytics'],
+      'HEALTHCARE': ['Research & Development', 'Clinical Trials', 'Compliance Services', 'Professional Services'],
+      'FINANCE': ['Finance & Accounting', 'Banking & Treasury', 'Risk Management', 'Compliance Services'],
+      'MANUFACTURING': ['Operations', 'Manufacturing', 'Supply Chain', 'Quality Assurance'],
+      'RETAIL': ['Sales & Revenue', 'Procurement', 'Marketing & Communications', 'E-Commerce'],
+      'ENERGY': ['Operations', 'Utilities', 'Environmental Services', 'Infrastructure'],
+      'GOVERNMENT': ['Legal & Compliance', 'Compliance Services', 'Procurement', 'Public Sector'],
+      'EDUCATION': ['Human Resources', 'Training & Development', 'Professional Services'],
+      'REAL_ESTATE': ['Real Estate & Facilities', 'Office Leases', 'Construction', 'Property Management'],
+      'LEGAL': ['Legal & Compliance', 'Outside Counsel', 'Litigation', 'Regulatory'],
+      'MEDIA': ['Marketing & Communications', 'Creative Services', 'Advertising', 'Content'],
+      'TRANSPORTATION': ['Operations', 'Logistics & Shipping', 'Fleet Management', 'Supply Chain'],
+      'HOSPITALITY': ['Operations', 'Facility Services', 'Food & Beverage', 'Events'],
+      'AGRICULTURE': ['Operations', 'Manufacturing', 'Supply Chain', 'Environmental Services'],
+      'CONSTRUCTION': ['Real Estate & Facilities', 'Construction', 'Infrastructure', 'Project Management'],
     };
 
-    // Contract type to category hints (L1 first, then L2)
+    // Contract type to category hints — expanded for all 39 types
     const contractTypeCategoryHints: Record<string, string[]> = {
-      'MSA': ['Procurement', 'Strategic Vendors'],
-      'SOW': ['Professional Services', 'Consulting'],
-      'NDA': ['Legal & Compliance'],
-      'LICENSE': ['Information Technology', 'Software & Applications'],
+      'MSA': ['Procurement', 'Strategic Vendors', 'Professional Services'],
+      'SOW': ['Professional Services', 'Consulting', 'Project Management'],
+      'NDA': ['Legal & Compliance', 'Confidentiality'],
+      'LICENSE': ['Information Technology', 'Software & Applications', 'Intellectual Property'],
       'EMPLOYMENT': ['Human Resources', 'Recruitment & Staffing'],
-      'CONSULTING': ['Professional Services', 'Consulting'],
-      'VENDOR': ['Procurement', 'Strategic Vendors'],
-      'PURCHASE': ['Procurement', 'Commodity Vendors'],
-      'LEASE': ['Real Estate & Facilities', 'Office Leases'],
-      'SUBSCRIPTION': ['Information Technology', 'Software & Applications'],
-      'DPA': ['Legal & Compliance', 'Compliance Services'],
-      'SLA': ['Information Technology', 'Cloud & Infrastructure'],
-      'PARTNERSHIP': ['Corporate Development', 'Joint Ventures'],
-      'SUBCONTRACT': ['Procurement', 'Strategic Vendors'],
+      'CONSULTING': ['Professional Services', 'Consulting', 'Advisory'],
+      'VENDOR': ['Procurement', 'Strategic Vendors', 'Supplier Management'],
+      'PURCHASE': ['Procurement', 'Commodity Vendors', 'Purchasing'],
+      'LEASE': ['Real Estate & Facilities', 'Office Leases', 'Equipment'],
+      'SUBSCRIPTION': ['Information Technology', 'Software & Applications', 'SaaS'],
+      'DPA': ['Legal & Compliance', 'Compliance Services', 'Data Protection'],
+      'SLA': ['Information Technology', 'Cloud & Infrastructure', 'Service Management'],
+      'PARTNERSHIP': ['Corporate Development', 'Joint Ventures', 'Strategic Alliances'],
+      'SUBCONTRACT': ['Procurement', 'Strategic Vendors', 'Subcontracting'],
+      'AMENDMENT': ['Legal & Compliance'],
+      'RENEWAL': ['Procurement', 'Vendor Management'],
+      // Financial & Corporate
+      'LOAN': ['Finance & Accounting', 'Banking & Treasury', 'Lending'],
+      'INVESTMENT': ['Finance & Accounting', 'Corporate Development', 'Capital Markets'],
+      'MERGER_ACQUISITION': ['Corporate Development', 'Legal & Compliance', 'M&A'],
+      'INSURANCE': ['Finance & Accounting', 'Risk Management', 'Insurance'],
+      'FRANCHISE': ['Corporate Development', 'Franchise Operations'],
+      // Operational
+      'DISTRIBUTION': ['Sales & Revenue', 'Distribution', 'Channel Partners'],
+      'SUPPLY': ['Procurement', 'Supply Chain', 'Materials'],
+      'MANUFACTURING': ['Operations', 'Manufacturing', 'Production'],
+      'MAINTENANCE': ['Operations', 'Facility Services', 'IT Support'],
+      'CONSTRUCTION': ['Real Estate & Facilities', 'Construction', 'Capital Projects'],
+      // HR & Personnel
+      'OFFER_LETTER': ['Human Resources', 'Recruitment & Staffing'],
+      'INDEPENDENT_CONTRACTOR': ['Human Resources', 'Consulting', 'Staff Augmentation'],
+      'NON_COMPETE': ['Human Resources', 'Legal & Compliance'],
+      'SEPARATION_AGREEMENT': ['Human Resources', 'Legal & Compliance'],
+      // Pre-contractual & Transactional
+      'LETTER_OF_INTENT': ['Corporate Development', 'Strategic Planning'],
+      'MEMORANDUM_OF_UNDERSTANDING': ['Corporate Development', 'Strategic Alliances'],
+      'ENGAGEMENT_LETTER': ['Professional Services', 'Legal & Compliance'],
+      'WORK_ORDER': ['Operations', 'Facility Services', 'IT Support'],
+      'CHANGE_ORDER': ['Operations', 'Construction', 'Project Management'],
+      'PURCHASE_ORDER': ['Procurement', 'Purchasing', 'Supply Chain'],
+      // Compliance & Regulatory
+      'TERMS_OF_SERVICE': ['Legal & Compliance', 'Compliance Services'],
+      'PRIVACY_POLICY': ['Legal & Compliance', 'Compliance Services', 'Data Protection'],
     };
 
-    // Calculate score for each category
+    // Calculate score for each category using multi-signal weighted scoring
     for (const cat of allCategories) {
       let score = 0;
       const signals: string[] = [];
@@ -332,26 +362,39 @@ export async function processCategorizationJob(
       const catDescLower = (cat.description || '').toLowerCase();
       const catKeywords = (cat.keywords || []).map(k => k.toLowerCase());
 
-      // Signal 1: Direct name match from mapping (highest weight: 40 points)
+      // Signal 1: Direct name match from mapping (40-50 points)
+      // Both industry AND type pointing to same category = stronger signal
       const industryHints = industryToCategoryMap[industryValue] || [];
       const typeHints = contractTypeCategoryHints[contractTypeValue] || [];
-      if (industryHints.includes(cat.name) || typeHints.includes(cat.name)) {
+      const industryMatched = industryHints.some(h => h.toLowerCase() === catNameLower);
+      const typeMatched = typeHints.some(h => h.toLowerCase() === catNameLower);
+      if (industryMatched && typeMatched) {
+        score += 50; // Both signals agree — very strong
+        signals.push('mapping_match:both');
+      } else if (industryMatched || typeMatched) {
         score += 40;
-        signals.push('mapping_match');
+        signals.push(industryMatched ? 'mapping_match:industry' : 'mapping_match:type');
       }
 
-      // Signal 2: Keyword matching (up to 30 points)
+      // Signal 2: Keyword matching with diminishing returns (up to 30 points)
       let keywordMatches = 0;
       for (const signal of allSignals) {
-        if (catKeywords.some(kw => kw.includes(signal) || signal.includes(kw))) {
-          keywordMatches++;
+        let matched = false;
+        for (const kw of catKeywords) {
+          if (kw.includes(signal) || signal.includes(kw)) {
+            matched = true;
+            break;
+          }
         }
-        // Also check if signal appears in category name or description
-        if (catNameLower.includes(signal) || catDescLower.includes(signal)) {
-          keywordMatches++;
+        if (!matched && (catNameLower.includes(signal) || catDescLower.includes(signal))) {
+          matched = true;
         }
+        if (matched) keywordMatches++;
       }
-      const keywordScore = Math.min(keywordMatches * 6, 30);
+      // Diminishing returns: first matches worth more than later ones
+      const keywordScore = keywordMatches > 0 
+        ? Math.min(Math.round(10 * Math.log2(keywordMatches + 1) + 5), 30) 
+        : 0;
       if (keywordScore > 0) {
         score += keywordScore;
         signals.push(`keywords:${keywordMatches}`);
@@ -559,6 +602,7 @@ export async function processCategorizationJob(
             ...existingMetadata,
             _categorization: {
               contractType: result.contractType,
+              broadCategory: result.broadCategory || null,
               industry: result.industry,
               riskLevel: result.riskLevel,
               complexity: result.complexity,
@@ -567,6 +611,7 @@ export async function processCategorizationJob(
               scope: result.scope,
               flags: result.flags,
               overallConfidence: result.overallConfidence,
+              classificationSignals: result.classificationSignals || null,
               // Full taxonomy classification with scoring
               taxonomy: {
                 categoryL1: matchedCategoryL1 ? {
@@ -609,11 +654,13 @@ export async function processCategorizationJob(
             ...existingMetadata,
             _pendingCategorization: {
               contractType: result.contractType,
+              broadCategory: result.broadCategory || null,
               industry: result.industry,
               riskLevel: result.riskLevel,
               complexity: result.complexity,
               regulatoryDomains: result.regulatoryDomains,
               overallConfidence: result.overallConfidence,
+              classificationSignals: result.classificationSignals || null,
               // Suggested taxonomy classification with scoring
               suggestedTaxonomy: {
                 categoryL1: matchedCategoryL1 ? {
@@ -664,6 +711,7 @@ export async function processCategorizationJob(
       success: true,
       contractId,
       contractType: result.contractType.value,
+      broadCategory: result.broadCategory,
       industry: result.industry.value,
       riskLevel: result.riskLevel.value,
       complexity: result.complexity.value,

@@ -126,7 +126,7 @@ async function sendInitialData(controller: ReadableStreamDefaultController, tena
         where: { tenantId, status: 'AWAITING_APPROVAL' },
       }).catch(() => 0),
       prisma.rFxOpportunity.count({
-        where: { tenantId, status: 'DETECTED' },
+        where: { tenantId, status: 'IDENTIFIED' },
       }).catch(() => 0),
     ]);
 

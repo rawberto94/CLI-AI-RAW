@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
     const contracts = await prisma.contract.findMany({
       where: {
         tenantId,
-        status: { in: ['COMPLETED', 'ACTIVE', 'PENDING_RENEWAL'] },
+        status: { in: ['COMPLETED', 'ACTIVE', 'PENDING'] },
         OR: [
           { endDate: { not: null } },
           { expirationDate: { not: null } },

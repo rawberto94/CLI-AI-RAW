@@ -263,17 +263,30 @@ export const distributedCache = DistributedCache.getInstance();
 // Specialized caches with different prefixes and TTLs
 
 /**
- * OCR result cache - stores extracted text from documents
+ * Cacheable subset of DI structured data — lightweight, JSON-safe
+ */
+export interface CachedDIStructuredData {
+  source: string;
+  tables: Array<{ pageNumber: number; headers: string[]; rows: string[][]; confidence: number }>;
+  keyValuePairs: Array<{ key: string; value: string; confidence: number }>;
+  paragraphs: Array<{ content: string; role?: string }>;
+  contractFields?: Record<string, any>;
+  invoiceFields?: Record<string, any>;
+  confidence: number;
+}
+
+/**
+ * OCR result cache - stores extracted text and optional DI structured data
  */
 export const ocrCache = {
-  async get(fileHash: string): Promise<{ text: string; timestamp: number } | null> {
+  async get(fileHash: string): Promise<{ text: string; timestamp: number; diStructured?: CachedDIStructuredData } | null> {
     return distributedCache.get(`ocr:${fileHash}`);
   },
   
-  async set(fileHash: string, text: string): Promise<boolean> {
+  async set(fileHash: string, text: string, diStructured?: CachedDIStructuredData): Promise<boolean> {
     return distributedCache.set(
       `ocr:${fileHash}`,
-      { text, timestamp: Date.now() },
+      { text, timestamp: Date.now(), ...(diStructured ? { diStructured } : {}) },
       86400 // 24 hours
     );
   },

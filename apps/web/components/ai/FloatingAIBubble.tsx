@@ -183,35 +183,35 @@ const QUICK_ACTIONS = [
     icon: TrendingUp,
     label: "Insights",
     query: "Show me portfolio insights",
-    color: "from-violet-500 to-pink-500",
+    color: "from-blue-500 to-indigo-500",
     description: "Analytics & trends",
   },
   {
     icon: Search,
     label: "Search",
     query: "Help me find a specific contract",
-    color: "from-violet-500 to-violet-500",
+    color: "from-cyan-500 to-blue-500",
     description: "Find contracts quickly",
   },
   {
     icon: Shield,
     label: "Compliance",
     query: "Show me compliance status",
-    color: "from-violet-500 to-purple-500",
+    color: "from-emerald-500 to-teal-500",
     description: "Risk & compliance overview",
   },
   {
     icon: DollarSign,
     label: "Cost Analysis",
     query: "Analyze my contract costs",
-    color: "from-violet-500 to-purple-500",
+    color: "from-rose-500 to-pink-500",
     description: "Spending breakdown",
   },
   {
     icon: FileText,
     label: "Categories",
     query: "Show me all procurement categories",
-    color: "from-violet-500 to-purple-500",
+    color: "from-slate-500 to-gray-600",
     description: "Taxonomy & categorization",
   },
 ];
@@ -468,9 +468,56 @@ export function FloatingAIBubble() {
   // Refs
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const chatPanelRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const pendingAutoMessageRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Accessibility: detect prefers-reduced-motion
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // Accessibility: focus trap when chat is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const panel = chatPanelRef.current;
+    if (!panel) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsOpen(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+
+      const focusable = panel.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    panel.addEventListener("keydown", handleKeyDown);
+    // Focus the input when opening
+    setTimeout(() => inputRef.current?.focus(), 100);
+    return () => panel.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
 
   // Abort in-flight SSE stream on component unmount
   useEffect(() => {
@@ -1089,9 +1136,9 @@ export function FloatingAIBubble() {
                               ...m,
                               toolProgress: [
                                 ...(m.toolProgress || []),
-                                { toolName: data.toolName, status: 'running' as const },
+                                { toolName: data.toolName as string, status: 'running' as const },
                               ],
-                            }
+                            } as Message
                           : m
                       )
                     );
@@ -1100,20 +1147,20 @@ export function FloatingAIBubble() {
                     setMessages((prev) =>
                       prev.map((m) =>
                         m.id === assistantMessageId
-                          ? {
+                          ? ({
                               ...m,
                               toolProgress: (m.toolProgress || []).map((tp) =>
                                 tp.toolName === data.toolName
                                   ? {
                                       ...tp,
                                       status: (data.success ? 'done' : 'error') as 'done' | 'error',
-                                      summary: data.summary,
-                                      navigation: data.navigation,
-                                      executionTimeMs: data.executionTimeMs,
+                                      summary: data.summary as string | undefined,
+                                      navigation: data.navigation as { route: string; label: string } | undefined,
+                                      executionTimeMs: data.executionTimeMs as number | undefined,
                                     }
                                   : tp
                               ),
-                            }
+                            } as Message)
                           : m
                       )
                     );
@@ -1129,13 +1176,13 @@ export function FloatingAIBubble() {
                     setMessages((prev) =>
                       prev.map((m) =>
                         m.id === assistantMessageId
-                          ? {
+                          ? ({
                               ...m,
                               toolPreviews: [
                                 ...(m.toolPreviews || []),
-                                { toolName: data.toolName as string, preview: data.preview },
+                                { toolName: data.toolName as string, preview: data.preview as Record<string, unknown> },
                               ],
-                            }
+                            } as Message)
                           : m
                       )
                     );
@@ -1194,7 +1241,7 @@ export function FloatingAIBubble() {
                     setMessages((prev) =>
                       prev.map((m) =>
                         m.id === assistantMessageId
-                          ? {
+                          ? ({
                               ...m,
                               content: accumulatedContent || (
                                 (data.toolsUsed as string[])?.length > 0
@@ -1206,7 +1253,7 @@ export function FloatingAIBubble() {
                                 label: a.label,
                                 action: a.action,
                               })),
-                              selfCritique: (data.selfCritique as Record<string, unknown>) || undefined,
+                              selfCritique: data.selfCritique as { score: number; note: string; grounded: boolean } | undefined,
                               metadata: {
                                 confidence: (data.confidence as number) || (finalMetadata.confidence as number) || 0.95,
                                 processingTime,
@@ -1215,7 +1262,7 @@ export function FloatingAIBubble() {
                                 ragSources: finalMetadata.ragSources as RAGSource[],
                                 toolsUsed: data.toolsUsed as string[],
                               },
-                            }
+                            } as Message)
                           : m
                       )
                     );
@@ -1389,6 +1436,10 @@ export function FloatingAIBubble() {
           content: "⏱️ **Request timed out**\n\nThe request took too long to complete. This could be due to a slow connection or high server load.\n\n💡 **What you can do:**\n• Try asking a simpler question\n• Check your internet connection\n• Wait a moment and try again",
           timestamp: new Date(),
           suggestions: ["Try again", "Simplify question"],
+          actions: [
+            { label: "🔄 Retry", action: `retry:${messageContent}` },
+            { label: "✏️ Simplify", action: "simplify-question" },
+          ],
           metadata: {
             confidence: 1,
             processingTime: 0,
@@ -1620,12 +1671,12 @@ export function FloatingAIBubble() {
                     whileTap={{ scale: isDragging ? 1 : 0.92 }}
                     aria-label="Open AI Assistant (⌘/) - Drag to move"
                   >
-                    {/* Animated glow rings */}
+                    {/* Single breathing glow ring */}
                     <motion.span 
-                      className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500"
+                      className="absolute inset-0 rounded-full bg-violet-500/30"
                       animate={{ 
-                        scale: [1, 1.3, 1],
-                        opacity: [0.3, 0, 0.3]
+                        scale: [1, 1.25, 1],
+                        opacity: [0.4, 0, 0.4]
                       }}
                       transition={{ 
                         duration: 2.5,
@@ -1633,62 +1684,14 @@ export function FloatingAIBubble() {
                         ease: "easeInOut"
                       }}
                     />
-                    <motion.span 
-                      className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500 via-pink-500 to-purple-500"
-                      animate={{ 
-                        scale: [1, 1.5, 1],
-                        opacity: [0.2, 0, 0.2]
-                      }}
-                      transition={{ 
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                        delay: 0.5
-                      }}
-                    />
 
-                    {/* Main bubble with refined gradient */}
-                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 shadow-2xl shadow-violet-500/40 flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:shadow-violet-500/60">
-                      {/* Shimmer effect */}
-                      <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/25 to-white/0 animate-shimmer" />
+                    {/* Main bubble - clean and premium */}
+                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 shadow-2xl shadow-black/15 flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:shadow-black/25">
+                      {/* Subtle top highlight */}
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/15 to-transparent" />
                       
-                      {/* Inner glow */}
-                      <div className="absolute inset-1 rounded-full bg-gradient-to-br from-white/10 to-transparent" />
-                      
-                      {/* Icon with subtle animation */}
-                      <motion.div 
-                        className="relative z-10"
-                        animate={{ 
-                          y: [0, -2, 0],
-                          rotate: [0, 5, -5, 0]
-                        }}
-                        transition={{ 
-                          duration: 4,
-                          repeat: Infinity,
-                          ease: "easeInOut"
-                        }}
-                      >
-                        <Sparkles className="w-7 h-7 text-white drop-shadow-lg" />
-                      </motion.div>
-
-                      {/* Floating particles - more refined */}
-                      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                        <motion.div 
-                          className="absolute w-2 h-2 bg-white/40 rounded-full top-2 left-3 blur-[0.5px]"
-                          animate={{ y: [-2, 2, -2], x: [-1, 1, -1], opacity: [0.3, 0.6, 0.3] }}
-                          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                        />
-                        <motion.div 
-                          className="absolute w-1.5 h-1.5 bg-white/50 rounded-full bottom-3 right-4 blur-[0.5px]"
-                          animate={{ y: [2, -2, 2], x: [1, -1, 1], opacity: [0.4, 0.7, 0.4] }}
-                          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
-                        />
-                        <motion.div 
-                          className="absolute w-1 h-1 bg-white/60 rounded-full top-4 right-2 blur-[0.5px]"
-                          animate={{ y: [-1, 3, -1], opacity: [0.5, 0.8, 0.5] }}
-                          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
-                        />
-                      </div>
+                      {/* Icon - only animates on hover */}
+                      <Sparkles className="relative z-10 w-7 h-7 text-white drop-shadow-sm" />
                     </div>
 
                     {/* Notification badge with bounce */}
@@ -1699,7 +1702,7 @@ export function FloatingAIBubble() {
                           animate={{ scale: 1, y: 0 }}
                           exit={{ scale: 0, y: 10 }}
                           transition={{ type: "spring", damping: 10, stiffness: 300 }}
-                          className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-red-500 to-rose-500 rounded-full flex items-center justify-center text-xs text-white font-bold shadow-lg shadow-red-500/30 ring-2 ring-white"
+                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs text-white font-bold shadow-md ring-2 ring-white"
                         >
                           {unreadCount}
                         </motion.span>
@@ -1731,102 +1734,87 @@ export function FloatingAIBubble() {
         <AnimatePresence>
           {isOpen && (
             <motion.div key="open"
-              initial={{ opacity: 0, scale: 0.9, y: 30 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 30 }}
-              transition={{ type: "spring", damping: 20, stiffness: 280 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="ConTigo AI Chat"
+              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 30 }}
+              animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+              exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 30 }}
+              transition={prefersReducedMotion ? { duration: 0.15 } : { type: "spring", damping: 20, stiffness: 280 }}
               className={`fixed z-50 ${
                 isExpanded
                   ? "inset-2 md:inset-4 lg:inset-8"
-                  : "w-[560px] h-[780px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-80px)]"
+                  : "w-[min(560px,calc(100vw-32px))] h-[min(780px,calc(100vh-80px))] sm:w-[90vw] sm:max-w-[560px] md:w-[560px]"
               }`}
               style={!isExpanded ? {
                 bottom: `${16 + position.y}px`,
                 right: `${16 + position.x}px`,
               } : undefined}
             >
-              <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl shadow-violet-500/20 border border-gray-200/80 backdrop-blur-sm">
-                {/* White/Light background with subtle pattern */}
-                <div className="absolute inset-0 bg-gradient-to-br from-white via-white to-gray-50/50" />
+              <div ref={chatPanelRef} className="relative w-full h-full rounded-2xl overflow-hidden shadow-xl shadow-black/10 border border-gray-200 backdrop-blur-sm">
+                {/* White background */}
+                <div className="absolute inset-0 bg-white" />
                 
-                {/* Animated gradient accent at top - also serves as drag handle */}
+                {/* Accent bar at top - also serves as drag handle */}
                 <motion.div 
-                  className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 cursor-grab active:cursor-grabbing"
-                  animate={{
-                    backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-                  }}
-                  transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
-                  style={{ backgroundSize: "200% 100%" }}
+                  className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 cursor-grab active:cursor-grabbing"
+                  animate={{ opacity: [0.7, 1, 0.7] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                   onMouseDown={handleDragStart}
                   onTouchStart={handleDragStart}
                 />
 
                 {/* Content */}
                 <div className="relative h-full flex flex-col">
-                  {/* Header - Enhanced with glassmorphism and drag handle */}
+                  {/* Header - Clean glassmorphism design */}
                   <div 
-                    className="flex items-center justify-between px-6 py-5 border-b border-gray-200/80 bg-gradient-to-r from-gray-50/90 to-white/90 backdrop-blur-md cursor-grab active:cursor-grabbing select-none"
+                    className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white/80 backdrop-blur-md cursor-grab active:cursor-grabbing select-none"
                     onMouseDown={handleDragStart}
                     onTouchStart={handleDragStart}
                   >
-                    <div className="flex items-center gap-4 pointer-events-none">
+                    <div className="flex items-center gap-3.5 pointer-events-none">
                       <div className="relative">
-                        <motion.div 
-                          className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-violet-500/25"
-                          whileHover={{ scale: 1.05, rotate: 5 }}
-                          transition={{ type: "spring", damping: 10 }}
+                        <div 
+                          className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md"
                         >
-                          <Bot className="w-6 h-6 text-white drop-shadow-sm" />
-                        </motion.div>
-                        <motion.span
-                          animate={{ 
-                            scale: [1, 1.3, 1],
-                            opacity: [1, 0.7, 1]
-                          }}
-                          transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                          className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-gradient-to-r from-violet-400 to-violet-500 rounded-full border-2 border-white shadow-sm"
+                          <Bot className="w-5.5 h-5.5 text-white" />
+                        </div>
+                        <span
+                          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white"
                         />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2.5">
+                        <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                           ConTigo AI
-                          <Badge className="bg-gradient-to-r from-violet-100 to-pink-100 text-violet-700 text-[10px] border-violet-200/50 px-2 py-0.5 font-medium shadow-sm">
+                          <Badge className="bg-violet-50 text-violet-700 text-[10px] border-violet-200/50 px-2 py-0.5 font-medium">
                             <Zap className="w-2.5 h-2.5 mr-1" />
-                            RAG Powered
+                            RAG
                           </Badge>
                           {/* Usage Quota Indicator */}
                           <InlineUsageIndicator />
                           {lastArtifactUpdate && (
-                            <motion.div
-                              initial={{ scale: 0, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              className="flex items-center gap-1"
-                            >
-                              <Badge className="bg-gradient-to-r from-violet-100 to-violet-100 text-green-700 text-[10px] border-green-200/50 px-2 py-0.5 font-medium shadow-sm">
-                                <RefreshCw className="w-2.5 h-2.5 mr-1" />
-                                Live Data
-                              </Badge>
-                            </motion.div>
+                            <Badge className="bg-emerald-50 text-emerald-700 text-[10px] border-emerald-200/50 px-2 py-0.5 font-medium">
+                              <RefreshCw className="w-2.5 h-2.5 mr-1" />
+                              Live
+                            </Badge>
                           )}
                         </h3>
-                        <p className="text-sm text-gray-500 flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
                           {isTyping ? (
-                            <motion.span 
+                            <span 
                               className="flex items-center gap-1.5"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
                             >
                               <motion.span 
-                                className="w-1.5 h-1.5 bg-gradient-to-r from-violet-400 to-violet-500 rounded-full"
+                                className="w-1.5 h-1.5 bg-violet-500 rounded-full"
                                 animate={{ scale: [1, 1.3, 1] }}
                                 transition={{ repeat: Infinity, duration: 0.8 }}
                               />
-                              <span className="text-violet-600 font-medium">Analyzing contracts...</span>
-                            </motion.span>
+                              <span className="text-violet-600 font-medium">Analyzing...</span>
+                            </span>
                           ) : currentContractId ? (
                             <span className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 bg-gradient-to-r from-violet-400 to-purple-500 rounded-full shadow-sm" />
-                              <span className="text-violet-600">Context-aware mode</span>
+                              <span className="w-1.5 h-1.5 bg-violet-500 rounded-full" />
+                              <span className="text-violet-600">Context-aware</span>
                               {lastArtifactUpdate && (
                                 <span className="text-xs text-green-600">
                                   • Synced {formatTimeAgo(lastArtifactUpdate)}
@@ -1835,8 +1823,8 @@ export function FloatingAIBubble() {
                             </span>
                           ) : (
                             <span className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 bg-gradient-to-r from-violet-400 to-violet-500 rounded-full shadow-sm" />
-                              Online • {messages.length - 1} message{messages.length - 1 !== 1 ? 's' : ''}
+                              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                              Ready • {messages.length - 1} message{messages.length - 1 !== 1 ? 's' : ''}
                             </span>
                           )}
                         </p>
@@ -2003,12 +1991,15 @@ export function FloatingAIBubble() {
                   </AnimatePresence>
 
                   {/* Messages - Enhanced with better visual hierarchy */}
-                  <div className="flex-1 overflow-hidden bg-gradient-to-b from-gray-50/30 to-gray-50/80">
+                  <div className="flex-1 overflow-hidden bg-gray-50/50">
                     <ScrollArea className="h-full">
-                      <div ref={scrollRef} className="p-6 space-y-6">
+                      <div ref={scrollRef} className="p-6 space-y-5">
                         {messages.map((message, msgIndex) => (
                           <motion.div
                             key={message.id}
+                            role="article"
+                            aria-label={`Message from ${message.role === "user" ? "you" : "ConTigo AI"}`}
+                            tabIndex={message.role === "assistant" ? 0 : -1}
                             initial={{ opacity: 0, y: 15, scale: 0.98 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             transition={{ 
@@ -2017,7 +2008,7 @@ export function FloatingAIBubble() {
                               stiffness: 300,
                               delay: msgIndex === messages.length - 1 ? 0.1 : 0 
                             }}
-                            className="space-y-3 group"
+                            className="space-y-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded-xl"
                           >
                             <div
                               className={`flex ${
@@ -2025,13 +2016,11 @@ export function FloatingAIBubble() {
                               }`}
                             >
                               {message.role === "assistant" && (
-                                <motion.div 
-                                  className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 flex items-center justify-center mr-3 flex-shrink-0 shadow-lg shadow-violet-500/20"
-                                  whileHover={{ scale: 1.05, rotate: 5 }}
-                                  transition={{ type: "spring", damping: 10 }}
+                              <div 
+                                  className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mr-3 flex-shrink-0 shadow-md"
                                 >
-                                  <Sparkles className="w-5 h-5 text-white drop-shadow-sm" />
-                                </motion.div>
+                                  <Sparkles className="w-4.5 h-4.5 text-white" />
+                                </div>
                               )}
                               <div className="relative max-w-[85%]">
                                 <motion.div
@@ -2039,8 +2028,8 @@ export function FloatingAIBubble() {
                                   transition={{ type: "spring", damping: 20 }}
                                   className={`rounded-2xl px-5 py-4 ${
                                     message.role === "user"
-                                      ? "bg-gradient-to-br from-violet-500 via-purple-600 to-purple-600 text-white rounded-br-md shadow-lg shadow-violet-500/20"
-                                      : "bg-white/95 backdrop-blur-sm text-gray-800 rounded-bl-md shadow-md border border-gray-100/80 hover:shadow-lg transition-shadow"
+                                      ? "bg-gradient-to-br from-violet-500 to-purple-500 text-white rounded-br-md shadow-md"
+                                      : "bg-white text-gray-800 rounded-bl-md shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
                                   }`}
                                 >
                                   {/* Plan Steps Visualization */}
@@ -2049,13 +2038,18 @@ export function FloatingAIBubble() {
                                       <div className="flex items-center gap-1.5 mb-1.5">
                                         <span className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider">Agent Plan</span>
                                       </div>
-                                      <div className="space-y-1">
-                                        {message.planSteps.map((ps) => (
+                                      <div className="space-y-0">
+                                        {message.planSteps.map((ps, psIdx) => (
                                           <div key={ps.step} className="flex items-start gap-2 text-xs text-indigo-700">
-                                            <span className="w-4 h-4 rounded-full bg-indigo-200 text-indigo-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
-                                              {ps.step}
-                                            </span>
-                                            <span>{ps.description}</span>
+                                            <div className="flex flex-col items-center shrink-0">
+                                              <span className="w-5 h-5 rounded-full bg-indigo-200 text-indigo-700 flex items-center justify-center text-[10px] font-bold mt-0.5">
+                                                {ps.step}
+                                              </span>
+                                              {psIdx < (message.planSteps?.length ?? 0) - 1 && (
+                                                <div className="w-px h-3 bg-indigo-200 mt-0.5" />
+                                              )}
+                                            </div>
+                                            <span className="pt-0.5 pb-1">{ps.description}</span>
                                           </div>
                                         ))}
                                       </div>
@@ -2097,6 +2091,16 @@ export function FloatingAIBubble() {
                                     </div>
                                   )}
 
+                                  {/* Thinking indicator: shown when tools finished but no content streamed yet */}
+                                  {message.toolProgress && message.toolProgress.length > 0 &&
+                                   message.toolProgress.every(tp => tp.status !== 'running') &&
+                                   !message.content && (
+                                    <div className="mb-3 flex items-center gap-2 text-xs text-violet-500">
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                      <span className="font-medium">Synthesizing response...</span>
+                                    </div>
+                                  )}
+
                                   {/* Tool Preview Cards */}
                                   {message.toolPreviews && message.toolPreviews.length > 0 && (
                                     <div className="mb-3 space-y-2">
@@ -2126,8 +2130,8 @@ export function FloatingAIBubble() {
                                   />
                                   
                                   {/* Metadata footer - Enhanced */}
-                                  <div className={`flex items-center justify-between mt-3 pt-3 border-t ${message.role === "user" ? "border-white/20" : "border-gray-100/80"}`}>
-                                    <span className={`text-[11px] font-medium ${message.role === "user" ? "text-white/70" : "text-gray-400"}`}>
+                                  <div className={`flex items-center justify-between mt-3 pt-3 border-t ${message.role === "user" ? "border-white/20" : "border-gray-100"}`}>
+                                    <span className={`text-xs font-medium ${message.role === "user" ? "text-white/70" : "text-gray-400"}`}>
                                       {message.timestamp.toLocaleTimeString([], {
                                         hour: "2-digit",
                                         minute: "2-digit",
@@ -2136,20 +2140,20 @@ export function FloatingAIBubble() {
                                     <div className="flex items-center gap-2">
                                       {/* RAG indicator - Enhanced */}
                                       {message.metadata?.usedRAG && (
-                                        <span className="text-[10px] font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-violet-200/50">
+                                        <span className="text-xs font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-violet-200/50">
                                           <Search className="w-2.5 h-2.5" />
                                           RAG
                                         </span>
                                       )}
                                       {message.metadata?.confidence && message.role === "assistant" && (
-                                        <span className="text-[10px] font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-violet-200/50">
+                                        <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-blue-200/50">
                                           <Zap className="w-2.5 h-2.5" />
                                           {Math.round(message.metadata.confidence * 100)}%
                                         </span>
                                       )}
                                       {/* Self-critique grounding indicator */}
                                       {message.selfCritique && (
-                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 border ${
+                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 border ${
                                           message.selfCritique.grounded
                                             ? 'text-emerald-600 bg-emerald-50 border-emerald-200/50'
                                             : 'text-amber-600 bg-amber-50 border-amber-200/50'
@@ -2168,11 +2172,11 @@ export function FloatingAIBubble() {
                                       initial={{ opacity: 0 }}
                                       animate={{ opacity: 1 }}
                                       transition={{ delay: 0.3 }}
-                                      className="mt-3 pt-3 border-t border-gray-100/80"
+                                      className="mt-3 pt-3 border-t border-gray-100"
                                     >
                                       <details className="text-xs group/sources">
                                         <summary className="cursor-pointer text-violet-600 hover:text-violet-700 flex items-center gap-1.5 font-medium transition-colors">
-                                          <FileText className="w-3 h-3" />
+                                          <FileText className="w-3.5 h-3.5" />
                                           <span>{message.metadata.ragSources.length} source{message.metadata.ragSources.length !== 1 ? 's' : ''} referenced</span>
                                           <motion.span 
                                             className="text-gray-400 ml-auto"
@@ -2188,14 +2192,14 @@ export function FloatingAIBubble() {
                                               initial={{ opacity: 0, x: -10 }}
                                               animate={{ opacity: 1, x: 0 }}
                                               transition={{ delay: i * 0.1 }}
-                                              className="flex items-center justify-between gap-2 bg-gradient-to-r from-gray-50 to-purple-50/30 rounded-lg px-3 py-2 border border-gray-100/80 hover:border-violet-200/50 transition-colors cursor-pointer"
+                                              className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200 hover:border-violet-300 transition-colors cursor-pointer"
                                               onClick={() => window.open(`/contracts/${src.contractId}`, '_blank')}
                                             >
                                               <div className="flex items-center gap-2 min-w-0">
                                                 <FileText className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" />
                                                 <span className="truncate font-medium">{src.contractName}</span>
                                               </div>
-                                              <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded flex-shrink-0">
+                                              <span className="text-xs font-bold text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded flex-shrink-0">
                                                 {Math.round(src.score * 100)}%
                                               </span>
                                             </motion.li>
@@ -2225,7 +2229,7 @@ export function FloatingAIBubble() {
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: i * 0.1 }}
                                             onClick={() => router.push(`/contracts/${contract.id}`)}
-                                            className="group/card relative bg-gradient-to-r from-white to-purple-50/30 rounded-xl p-3 border border-gray-200/80 hover:border-violet-300 hover:shadow-md transition-all cursor-pointer"
+                                            className="group/card relative bg-white rounded-xl p-3 border border-gray-200 hover:border-violet-300 hover:shadow-md transition-all cursor-pointer"
                                           >
                                             <div className="flex items-start justify-between gap-3">
                                               <div className="flex-1 min-w-0">
@@ -2234,12 +2238,12 @@ export function FloatingAIBubble() {
                                                     {contract.name}
                                                   </h4>
                                                   {contract.riskLevel && (
-                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                                                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
                                                       contract.riskLevel === 'high' ? 'bg-red-100 text-red-700' :
                                                       contract.riskLevel === 'medium' ? 'bg-amber-100 text-amber-700' :
                                                       'bg-green-100 text-green-700'
                                                     }`}>
-                                                      {contract.riskLevel === 'high' ? '🔴' : contract.riskLevel === 'medium' ? '🟡' : '🟢'}
+                                                      {contract.riskLevel === 'high' ? 'High' : contract.riskLevel === 'medium' ? 'Medium' : 'Low'}
                                                     </span>
                                                   )}
                                                 </div>
@@ -2251,7 +2255,7 @@ export function FloatingAIBubble() {
                                                     </span>
                                                   )}
                                                   {contract.type && (
-                                                    <span className="bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                                                    <span className="bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full text-xs font-semibold">
                                                       {contract.type}
                                                     </span>
                                                   )}
@@ -2264,7 +2268,7 @@ export function FloatingAIBubble() {
                                                   </div>
                                                 )}
                                                 {contract.daysUntilExpiry !== undefined && (
-                                                  <div className={`text-[10px] font-medium ${
+                                                  <div className={`text-xs font-medium ${
                                                     contract.daysUntilExpiry <= 30 ? 'text-red-600' :
                                                     contract.daysUntilExpiry <= 90 ? 'text-amber-600' :
                                                     'text-gray-500'
@@ -2276,7 +2280,7 @@ export function FloatingAIBubble() {
                                                 )}
                                               </div>
                                             </div>
-                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-40 group-hover/card:opacity-100 transition-opacity">
                                               <ExternalLink className="w-4 h-4 text-violet-500" />
                                             </div>
                                           </motion.div>
@@ -2386,8 +2390,8 @@ export function FloatingAIBubble() {
                                     onClick={() => handleAction(action.action)}
                                     className={`text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all font-medium ${
                                       action.variant === "primary"
-                                        ? "bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 text-white hover:shadow-xl hover:shadow-violet-500/30 shadow-md"
-                                        : "bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border border-gray-200/80 shadow-sm hover:shadow-md hover:border-gray-300"
+                                        ? "bg-violet-500 hover:bg-violet-600 text-white shadow-md hover:shadow-lg"
+                                        : "bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300"
                                     }`}
                                   >
                                     {action.icon && <action.icon className="w-4 h-4" />}
@@ -2432,7 +2436,7 @@ export function FloatingAIBubble() {
                             {/* Suggestions - Enhanced as pills */}
                             {message.suggestions && message.suggestions.length > 0 && message.role === "assistant" && !message.clarificationNeeded && (
                               <motion.div 
-                                className="flex flex-wrap gap-2 pl-14"
+                                className="flex flex-wrap gap-2 pl-14 max-w-full overflow-x-auto pb-1"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: 0.4 }}
@@ -2443,10 +2447,10 @@ export function FloatingAIBubble() {
                                     initial={{ opacity: 0, scale: 0.9, y: 5 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     transition={{ delay: 0.5 + idx * 0.06, type: "spring", damping: 15 }}
-                                    whileHover={{ scale: 1.05, y: -1 }}
-                                    whileTap={{ scale: 0.95 }}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.97 }}
                                     onClick={() => handleSendMessage(suggestion)}
-                                    className="text-[13px] px-4 py-2 rounded-full bg-white hover:bg-gradient-to-r hover:from-violet-50 hover:to-purple-50 text-gray-600 hover:text-violet-700 border border-gray-200 hover:border-violet-300 transition-all shadow-sm hover:shadow-md font-medium"
+                                    className="text-sm px-4 py-2 rounded-full bg-white hover:bg-violet-50 text-gray-600 hover:text-violet-700 border border-gray-200 hover:border-violet-300 transition-all shadow-sm hover:shadow-md font-medium flex-shrink-0"
                                   >
                                     {suggestion}
                                   </motion.button>
@@ -2459,37 +2463,38 @@ export function FloatingAIBubble() {
                         {/* Enhanced typing indicator with animated thinking status */}
                         {isLoading && (
                           <motion.div
+                            role="status"
+                            aria-live="polite"
+                            aria-label="AI is analyzing your question"
                             initial={{ opacity: 0, y: 15, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             className="flex items-start gap-3"
                           >
-                            <motion.div 
-                              className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-violet-500/25 flex-shrink-0"
-                              animate={{ rotate: [0, 5, -5, 0] }}
-                              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            <div 
+                              className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md flex-shrink-0"
                             >
-                              <Loader2 className="w-5 h-5 text-white animate-spin" />
-                            </motion.div>
-                            <div className="bg-gradient-to-br from-white to-gray-50/50 rounded-2xl rounded-bl-lg px-5 py-4 shadow-md border border-gray-100/80 min-w-[220px] backdrop-blur-sm">
+                              <Loader2 className="w-4.5 h-4.5 text-white animate-spin" />
+                            </div>
+                            <div className="bg-white rounded-2xl rounded-bl-lg px-5 py-4 shadow-sm border border-gray-200 min-w-[220px]">
                               <div className="flex items-center gap-3 mb-3">
                                 <div className="flex gap-1.5">
                                   <motion.span
-                                    animate={{ scale: [1, 1.4, 1], opacity: [0.5, 1, 0.5] }}
-                                    transition={{ repeat: Infinity, duration: 1, ease: "easeInOut" }}
-                                    className="w-2 h-2 bg-gradient-to-r from-violet-500 to-pink-500 rounded-full shadow-sm"
+                                    animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
+                                    transition={{ repeat: Infinity, duration: 0.6, ease: "easeInOut" }}
+                                    className="w-2 h-2 bg-violet-500 rounded-full"
                                   />
                                   <motion.span
-                                    animate={{ scale: [1, 1.4, 1], opacity: [0.5, 1, 0.5] }}
-                                    transition={{ repeat: Infinity, duration: 1, delay: 0.2, ease: "easeInOut" }}
-                                    className="w-2 h-2 bg-gradient-to-r from-violet-400 to-pink-400 rounded-full shadow-sm"
+                                    animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
+                                    transition={{ repeat: Infinity, duration: 0.6, delay: 0.15, ease: "easeInOut" }}
+                                    className="w-2 h-2 bg-violet-400 rounded-full"
                                   />
                                   <motion.span
-                                    animate={{ scale: [1, 1.4, 1], opacity: [0.5, 1, 0.5] }}
-                                    transition={{ repeat: Infinity, duration: 1, delay: 0.4, ease: "easeInOut" }}
-                                    className="w-2 h-2 bg-gradient-to-r from-violet-300 to-pink-300 rounded-full shadow-sm"
+                                    animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
+                                    transition={{ repeat: Infinity, duration: 0.6, delay: 0.3, ease: "easeInOut" }}
+                                    className="w-2 h-2 bg-violet-300 rounded-full"
                                   />
                                 </div>
-                                <span className="text-sm font-semibold bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">Thinking</span>
+                                <span className="text-sm font-semibold text-violet-600">Thinking</span>
                               </div>
                               <motion.div 
                                 className="space-y-2"
@@ -2498,7 +2503,7 @@ export function FloatingAIBubble() {
                                 transition={{ delay: 0.2 }}
                               >
                                 <motion.p 
-                                  className="text-xs text-gray-600 flex items-center gap-2 bg-violet-50/50 rounded-lg px-2.5 py-1.5"
+                                  className="text-xs text-gray-600 flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5"
                                   initial={{ opacity: 0, x: -10 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   transition={{ delay: 0.3 }}
@@ -2507,7 +2512,7 @@ export function FloatingAIBubble() {
                                   Searching contracts with RAG...
                                 </motion.p>
                                 <motion.p 
-                                  className="text-xs text-gray-500 flex items-center gap-2 bg-violet-50/50 rounded-lg px-2.5 py-1.5"
+                                  className="text-xs text-gray-500 flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5"
                                   initial={{ opacity: 0, x: -10 }}
                                   animate={{ opacity: 0.8, x: 0 }}
                                   transition={{ delay: 0.6 }}
@@ -2520,9 +2525,9 @@ export function FloatingAIBubble() {
                               <motion.button
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                transition={{ delay: 2 }}
+                                transition={{ delay: 1 }}
                                 onClick={cancelCurrentRequest}
-                                className="mt-3 text-xs text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1.5 px-2 py-1 rounded hover:bg-red-50"
+                                className="mt-3 text-xs text-gray-400 hover:text-red-600 transition-colors flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-red-50 font-medium"
                               >
                                 <X className="w-3 h-3" />
                                 Cancel request
@@ -2536,18 +2541,12 @@ export function FloatingAIBubble() {
 
                   {/* Quick Actions - Enhanced with better visual hierarchy */}
                   {messages.length === 1 && (
-                    <div className="px-6 pb-4 bg-gradient-to-b from-white to-gray-50/50">
+                    <div className="px-6 pb-4 bg-white">
                       <div className="text-sm text-gray-600 mb-3 flex items-center gap-2 font-semibold">
-                        <motion.span
-                          animate={{ rotate: [0, 10, -10, 0] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                          className="inline-flex"
-                        >
-                          <Zap className="w-4 h-4 text-amber-500" />
-                        </motion.span>
-                        Quick Actions
+                        <Zap className="w-4 h-4 text-amber-500" />
+                        Suggested Queries
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {QUICK_ACTIONS.slice(0, 4).map((action, idx) => (
                           <motion.button
                             key={idx}
@@ -2557,30 +2556,24 @@ export function FloatingAIBubble() {
                             whileHover={{ scale: 1.03, y: -3 }}
                             whileTap={{ scale: 0.97 }}
                             onClick={() => handleSendMessage(action.query)}
-                            className="group flex items-center gap-3.5 p-4 rounded-2xl bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-purple-50/30 border border-gray-100 hover:border-violet-200/50 transition-all text-left shadow-sm hover:shadow-lg"
+                            className="group flex items-center gap-3.5 p-4 sm:p-3 rounded-2xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-violet-300 transition-all text-left shadow-sm hover:shadow-md"
                           >
-                            <motion.div
-                              whileHover={{ rotate: [0, -10, 10, 0], scale: 1.1 }}
-                              transition={{ duration: 0.5 }}
-                              className={`w-12 h-12 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center flex-shrink-0 shadow-lg`}
+                            <div
+                              className={`w-11 h-11 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center flex-shrink-0 shadow-md`}
                             >
-                              <action.icon className="w-5 h-5 text-white drop-shadow-sm" />
-                            </motion.div>
+                              <action.icon className="w-5 h-5 text-white" />
+                            </div>
                             <div className="min-w-0 flex-1">
                               <span className="text-sm font-semibold text-gray-800 group-hover:text-violet-700 block truncate transition-colors">
                                 {action.label}
                               </span>
-                              <span className="text-xs text-gray-400 group-hover:text-gray-500 block truncate mt-0.5 transition-colors">
+                              <span className="text-xs text-gray-500 group-hover:text-gray-600 block truncate mt-0.5 transition-colors">
                                 {action.description}
                               </span>
                             </div>
-                            <motion.div 
-                              className="opacity-0 group-hover:opacity-100 transition-opacity"
-                              initial={{ x: -5 }}
-                              whileHover={{ x: 0 }}
-                            >
-                              <Send className="w-4 h-4 text-violet-400" />
-                            </motion.div>
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Send className="w-4 h-4 text-violet-500" />
+                            </div>
                           </motion.button>
                         ))}
                       </div>
@@ -2588,7 +2581,7 @@ export function FloatingAIBubble() {
                   )}
 
                   {/* Input area - Enhanced with better visual design */}
-                  <div className="p-6 border-t border-gray-200/80 bg-gradient-to-b from-white to-gray-50/30">
+                  <div className="p-6 border-t border-gray-200 bg-white">
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -2601,6 +2594,8 @@ export function FloatingAIBubble() {
                           ref={inputRef}
                           value={input}
                           onChange={(e) => setInput(e.target.value)}
+                          aria-label="Chat message input"
+                          autoComplete="off"
                           placeholder={currentContractId 
                             ? "Ask about this contract..." 
                             : messages.length > 1 
@@ -2608,7 +2603,7 @@ export function FloatingAIBubble() {
                               : "Try: 'Summarize Deloitte contracts from 2024'"
                           }
                           disabled={isLoading}
-                          className="w-full bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 rounded-2xl pr-24 focus:border-violet-400 focus:ring-violet-500/20 focus:ring-2 h-14 text-base px-5 shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-200"
+                          className="w-full bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 rounded-2xl pr-24 focus:border-violet-500 focus:ring-violet-500/30 focus:ring-2 h-14 text-base px-5 shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-200"
                         />
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                           {/* Voice input button - Enhanced */}
@@ -2648,10 +2643,14 @@ export function FloatingAIBubble() {
                           type="submit"
                           size="icon"
                           disabled={!input.trim() || isLoading}
-                          className="h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 hover:from-violet-600 hover:via-purple-600 hover:to-pink-600 shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
+                          aria-label={isLoading ? "Sending message" : !input.trim() ? "Type a message to send" : "Send message"}
+                          className="h-14 w-14 rounded-2xl bg-violet-500 hover:bg-violet-600 shadow-md hover:shadow-lg disabled:opacity-50 disabled:brightness-75 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
                         >
                           {isLoading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <>
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                              <span className="sr-only">Sending message...</span>
+                            </>
                           ) : (
                             <Send className="w-5 h-5" />
                           )}
@@ -2660,12 +2659,12 @@ export function FloatingAIBubble() {
                     </form>
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center gap-4">
-                        <span className="text-[11px] text-gray-500 flex items-center gap-1.5">
-                          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded-md text-[10px] text-gray-600 font-mono shadow-sm">Enter</kbd>
+                        <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs text-gray-600 font-mono shadow-sm">Enter</kbd>
                           <span>send</span>
                         </span>
-                        <span className="text-[11px] text-gray-500 flex items-center gap-1.5">
-                          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded-md text-[10px] text-gray-600 font-mono shadow-sm">⌘/</kbd>
+                        <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs text-gray-600 font-mono shadow-sm">⌘/</kbd>
                           <span>toggle</span>
                         </span>
                       </div>
@@ -2673,7 +2672,7 @@ export function FloatingAIBubble() {
                         onClick={() => setShowExamples(true)}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        className="text-[11px] text-violet-600 hover:text-violet-800 flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-violet-50 transition-colors font-medium"
+                        className="text-xs text-violet-600 hover:text-violet-800 flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-violet-50 transition-colors font-medium"
                       >
                         <Sparkles className="w-3 h-3" />
                         View examples

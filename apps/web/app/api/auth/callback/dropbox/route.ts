@@ -30,7 +30,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
 
     // Handle OAuth errors
     if (error) {
-      logger.error('Dropbox OAuth error:', error, errorDescription);
+      logger.error('Dropbox OAuth error:', error, errorDescription ? { description: errorDescription } : undefined);
       return NextResponse.redirect(
         new URL(`/settings/contract-sources?error=${encodeURIComponent(errorDescription || error)}`, request.url)
       );

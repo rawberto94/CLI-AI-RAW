@@ -75,29 +75,6 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
       }
     }
 
-    // Build query filters
-    const whereClause: any = { tenantId };
-    
-    if (agentId) {
-      whereClause.agentId = agentId;
-    }
-    
-    if (type && ACTIVITY_TYPES.includes(type)) {
-      whereClause.type = type;
-    }
-    
-    if (since) {
-      whereClause.timestamp = { gte: new Date(since) };
-    }
-    
-    if (status) {
-      whereClause.status = status;
-    }
-    
-    if (cursor) {
-      whereClause.id = { lt: cursor };
-    }
-
     // Fetch from multiple activity sources in parallel
     const [
       agentActivities,
@@ -108,21 +85,23 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
     ] = await Promise.all([
       // 1. Agent activity log
       prisma.agentEvent.findMany({
-        where: whereClause,
+        where: {
+          tenantId,
+          ...(agentId && { agentName: agentId }),
+          ...(type && ACTIVITY_TYPES.includes(type) && { eventType: type }),
+          ...(since && { timestamp: { gte: new Date(since) } }),
+          ...(status && { outcome: status }),
+          ...(cursor && { id: { lt: cursor } }),
+        },
         take: limit,
         orderBy: { timestamp: 'desc' },
-        include: {
-          agent: {
-            select: { name: true, codename: true },
-          },
-        },
       }),
 
       // 2. Agent execution logs
       prisma.agentPerformanceLog.findMany({
         where: {
           tenantId,
-          ...(agentId && { agent: agentId }),
+          ...(agentId && { agentType: agentId }),
           ...(cursor && { createdAt: { lt: new Date(cursor) } }),
         },
         take: limit,
@@ -133,47 +112,48 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
       prisma.agentGoal.findMany({
         where: {
           tenantId,
-          status: { in: ['COMPLETED', 'ACHIEVED'] },
+          status: 'COMPLETED',
           ...(agentId && { type: agentId.toUpperCase() }),
-          ...(cursor && { achievedAt: { lt: new Date(cursor) } }),
+          ...(cursor && { completedAt: { lt: new Date(cursor) } }),
         },
         take: limit,
-        orderBy: { achievedAt: 'desc' },
+        orderBy: { completedAt: 'desc' },
         include: {
-          actions: {
+          steps: {
             where: { status: 'COMPLETED' },
-            select: { type: true, result: true },
+            select: { type: true, output: true },
           },
         },
       }),
 
-      // 4. Workflow executions
+      // 4. Workflow-style goal executions
       prisma.agentGoal.findMany({
         where: {
           tenantId,
+          completedAt: { not: null },
           ...(cursor && { completedAt: { lt: new Date(cursor) } }),
         },
         take: limit,
         orderBy: { completedAt: 'desc' },
         include: {
-          workflow: {
-            select: { name: true, description: true },
+          steps: {
+            select: { name: true, status: true, output: true, duration: true },
           },
         },
       }),
 
-      // 5. Task completions
+      // 5. Task completions (goal steps)
       prisma.agentGoalStep.findMany({
         where: {
-          tenantId,
           status: 'COMPLETED',
-          ...(agentId && { assignedTo: agentId }),
           ...(cursor && { completedAt: { lt: new Date(cursor) } }),
         },
         take: limit,
         orderBy: { completedAt: 'desc' },
         include: {
-          result: true,
+          goal: {
+            select: { tenantId: true, type: true, contractId: true, priority: true },
+          },
         },
       }),
     ]);
@@ -183,41 +163,39 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
       // Agent activities
       ...agentActivities.map(a => ({
         id: a.id,
-        type: a.type,
-        agentId: a.agentId,
-        agentCodename: a.agent?.codename || getCodenameFromId(a.agentId),
-        agentAvatar: getAvatarFromCodename(a.agent?.codename),
-        title: a.title,
-        description: a.description,
+        type: a.eventType,
+        agentId: a.agentName,
+        agentCodename: getCodenameFromId(a.agentName),
+        agentAvatar: getAvatarFromCodename(getCodenameFromId(a.agentName)),
+        title: a.eventType,
+        description: a.reasoning,
         context: a.metadata,
         contractId: a.contractId,
         timestamp: a.timestamp.toISOString(),
-        importance: a.importance || 'normal',
-        category: getActivityCategory(a.type),
-        status: a.status,
-        metrics: a.metadata?.metrics,
+        importance: 'normal',
+        category: getActivityCategory(a.eventType),
+        status: a.outcome,
+        metrics: (a.metadata as Record<string, any>)?.metrics,
       })),
 
       // Execution logs
       ...executionLogs.map(e => ({
         id: `exec-${e.id}`,
         type: 'task_completed',
-        agentId: e.agent,
-        agentCodename: getCodenameFromId(e.agent),
-        agentAvatar: getAvatarFromCodename(getCodenameFromId(e.agent)),
-        title: `${getCodenameFromId(e.agent)} completed task`,
-        description: e.input?.action || 'Agent executed successfully',
+        agentId: e.agentType,
+        agentCodename: getCodenameFromId(e.agentType),
+        agentAvatar: getAvatarFromCodename(getCodenameFromId(e.agentType)),
+        title: `${getCodenameFromId(e.agentType)} completed task`,
+        description: `${e.artifactType} processed`,
         context: {
-          duration: e.finishedAt && e.startedAt 
-            ? Math.round((e.finishedAt.getTime() - e.startedAt.getTime()) / 1000)
-            : null,
-          output: e.output,
+          duration: e.executionTime ? Math.round(e.executionTime / 1000) : null,
+          cost: e.cost,
         },
-        contractId: e.input?.contractId || e.input?.payload?.contractId,
-        timestamp: e.finishedAt?.toISOString() || e.createdAt.toISOString(),
+        contractId: e.contractId,
+        timestamp: e.timestamp.toISOString(),
         importance: 'normal',
         category: 'execution',
-        status: e.status.toLowerCase(),
+        status: 'success',
       })),
 
       // Goal achievements
@@ -231,12 +209,11 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
         description: g.description,
         context: {
           progress: g.progress,
-          actions: g.actions,
-          confidence: g.confidence,
+          steps: g.steps,
         },
         contractId: g.contractId,
-        timestamp: g.achievedAt?.toISOString() || g.updatedAt.toISOString(),
-        importance: g.confidence && g.confidence > 0.8 ? 'high' : 'normal',
+        timestamp: g.completedAt?.toISOString() || g.updatedAt.toISOString(),
+        importance: 'normal',
         category: 'milestone',
         status: 'success',
       })),
@@ -248,11 +225,11 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
         agentId: 'orchestrator',
         agentCodename: 'Orchestrator',
         agentAvatar: '🎼',
-        title: w.workflow?.name || 'Workflow completed',
-        description: w.workflow?.description || `Workflow ${w.status.toLowerCase()}`,
+        title: w.title || 'Workflow completed',
+        description: w.description || `Workflow ${w.status.toLowerCase()}`,
         context: {
-          steps: w.stepResults,
-          duration: w.duration,
+          steps: w.steps.map(s => ({ name: s.name, status: s.status, duration: s.duration })),
+          totalSteps: w.totalSteps,
         },
         timestamp: w.completedAt?.toISOString() || w.updatedAt.toISOString(),
         importance: w.status === 'FAILED' ? 'high' : 'normal',
@@ -260,22 +237,22 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
         status: w.status.toLowerCase(),
       })),
 
-      // Task completions
-      ...recentTasks.map(t => ({
+      // Task completions (goal steps)
+      ...recentTasks.filter(t => t.goal.tenantId === tenantId).map(t => ({
         id: `task-${t.id}`,
         type: 'task_completed',
-        agentId: t.assignedTo,
-        agentCodename: getCodenameFromId(t.assignedTo),
-        agentAvatar: getAvatarFromCodename(getCodenameFromId(t.assignedTo)),
-        title: `Task completed: ${t.title}`,
-        description: t.description,
+        agentId: t.type,
+        agentCodename: getCodenameFromId(t.type),
+        agentAvatar: getAvatarFromCodename(getCodenameFromId(t.type)),
+        title: `Task completed: ${t.name}`,
+        description: `Step ${t.order} completed`,
         context: {
-          result: t.result,
-          priority: t.priority,
+          output: t.output,
+          duration: t.duration,
         },
-        contractId: t.contractId,
+        contractId: t.goal.contractId,
         timestamp: t.completedAt?.toISOString() || t.updatedAt.toISOString(),
-        importance: t.priority === 'CRITICAL' ? 'critical' : t.priority === 'HIGH' ? 'high' : 'normal',
+        importance: t.goal.priority <= 2 ? 'critical' : t.goal.priority <= 4 ? 'high' : 'normal',
         category: 'task',
         status: 'success',
       })),
@@ -332,7 +309,7 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
       // Mark all as read
       await prisma.agentEvent.updateMany({
         where: { tenantId },
-        data: { status: 'read' },
+        data: { outcome: 'read' },
       });
 
       // Clear cache
@@ -349,7 +326,7 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
           id: { in: activityIds },
           tenantId,
         },
-        data: { status: 'read' },
+        data: { outcome: 'read' },
       });
 
       return createSuccessResponse(ctx, {

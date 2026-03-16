@@ -59,6 +59,7 @@ import {
 import { getTraceContextFromJobData } from './observability/trace';
 import { buildProcessingPlan } from './workflow/planner';
 import { ensureProcessingJob, setProcessingPlan } from './workflow/processing-job';
+import { logAIUsage } from './utils/ai-usage-logger';
 
 // Unified artifact prompts, types, and helpers from shared module
 import {
@@ -220,7 +221,9 @@ async function preprocessTextCached(
   // Store in cache (fire-and-forget)
   if (cache) {
     const toCache: CachedPreprocessResult = { ...result, cachedAt: Date.now() };
-    cache.setAIResponse(cacheKey, { response: toCache, model: 'preprocess', tokens: 0 }, 86400).catch(() => {});
+    cache.setAIResponse(cacheKey, { response: toCache, model: 'preprocess', tokens: 0 }, 86400).catch((e) => {
+      logger.debug({ error: (e as Error).message, cacheKey }, 'Cache write failed (non-critical)');
+    });
   }
 
   return { ...result, fromCache: false };
@@ -233,6 +236,17 @@ const logger = pino({
   name: 'ocr-artifact-worker',
   level: isBuildTime ? 'silent' : (process.env.LOG_LEVEL || 'info')
 });
+
+// Module-level OpenAI client singleton — avoids re-instantiation per call
+let _ocrOpenAISingleton: any = null;
+async function getOCROpenAIClient(): Promise<any> {
+  if (_ocrOpenAISingleton) return _ocrOpenAISingleton;
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  const OpenAI = (await import('openai')).default;
+  _ocrOpenAISingleton = new OpenAI({ apiKey });
+  return _ocrOpenAISingleton;
+}
 
 // ============ ENHANCED CONFIGURATION ============
 // Worker configuration for improved accuracy and coverage
@@ -974,9 +988,14 @@ interface OCRArtifactResult {
 }
 
 /**
- * Generate cache key for OCR results
+ * Generate cache key for OCR results.
+ * Uses content hash when available for collision resistance;
+ * falls back to filename + size for backward compatibility.
  */
-function generateOCRCacheKey(filePath: string, fileSize: number): string {
+function generateOCRCacheKey(filePath: string, fileSize: number, contentHash?: string): string {
+  if (contentHash) {
+    return `ocr:${contentHash}`;
+  }
   const fileName = path.basename(filePath);
   return `ocr:${fileName}:${fileSize}`;
 }
@@ -985,16 +1004,32 @@ function generateOCRCacheKey(filePath: string, fileSize: number): string {
  * Perform OCR extraction on a file with circuit breaker protection and caching.
  * Returns StructuredOCRResult preserving DI structured data when available.
  */
-async function performOCR(filePath: string, ocrMode: string, fileSize?: number, onProgress?: (pct: number) => void): Promise<StructuredOCRResult> {
+async function performOCR(filePath: string, ocrMode: string, fileSize?: number, onProgress?: (pct: number) => void, contentHash?: string): Promise<StructuredOCRResult> {
   logger.info({ filePath, ocrMode }, 'Performing OCR extraction');
   
   // Check distributed cache first
   if (fileSize) {
-    const cacheKey = generateOCRCacheKey(filePath, fileSize);
+    const cacheKey = generateOCRCacheKey(filePath, fileSize, contentHash);
     const cached = await ocrCache.get(cacheKey);
     if (cached) {
-      logger.info({ cacheKey }, 'Using cached OCR result from distributed cache');
-      // Cached results are flat text from legacy — wrap as non-DI
+      logger.info({ cacheKey, hasDIStructured: !!cached.diStructured }, 'Using cached OCR result from distributed cache');
+      // Restore structured DI data when available, otherwise wrap as non-DI
+      if (cached.diStructured) {
+        const di = cached.diStructured;
+        return {
+          text: cached.text,
+          source: di.source as StructuredOCRResult['source'],
+          diResult: null, // Full diResult not cached (too large)
+          contractFields: (di.contractFields as ContractExtractionResult) ?? null,
+          invoiceFields: (di.invoiceFields as InvoiceExtractionResult) ?? null,
+          tables: di.tables as DITable[],
+          keyValuePairs: di.keyValuePairs as DIKeyValuePair[],
+          paragraphs: di.paragraphs as DIParagraph[],
+          pages: [],
+          confidence: di.confidence,
+          isDISource: true,
+        };
+      }
       return makeNonDIResult(cached.text, 'fallback');
     }
   }
@@ -1006,6 +1041,18 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
       const { isDIConfigured, isDIEnabled } = await import('./azure-document-intelligence');
       if (isDIConfigured() && isDIEnabled() && azureCircuitBreaker.getState() !== CircuitState.OPEN) {
         onProgress?.(15); // DI submission starting
+
+        // Page-range limiting for large documents (cost optimization)
+        // DI charges per page — limit initial pass to first N pages for large files
+        const DI_MAX_PAGES = parseInt(process.env.AZURE_DI_MAX_PAGES || '50', 10);
+        const fileSizeBytes = fileSize ?? 0;
+        // Heuristic: PDFs average ~50KB/page. Files > DI_MAX_PAGES * 50KB likely exceed the limit.
+        const estimatedPages = fileSizeBytes > 0 ? Math.ceil(fileSizeBytes / 50_000) : 0;
+        const pageRange = estimatedPages > DI_MAX_PAGES ? `1-${DI_MAX_PAGES}` : undefined;
+        if (pageRange) {
+          logger.info({ estimatedPages, pageRange, DI_MAX_PAGES }, 'Large document detected — limiting DI to page range for cost savings');
+        }
+
         const structuredResult = await azureCircuitBreaker.execute(() =>
           retry(async (): Promise<StructuredOCRResult> => {
             const { analyzeLayout, analyzeContract, analyzeInvoice } = await import('./azure-document-intelligence');
@@ -1064,7 +1111,7 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
               };
             } else {
               // azure-di-layout
-              const result = await analyzeLayout(fileBuffer, { extractKeyValuePairs: true });
+              const result = await analyzeLayout(fileBuffer, { extractKeyValuePairs: true, pages: pageRange });
               const parts = [result.content];
               if (result.tables.length > 0) {
                 parts.push('\n--- EXTRACTED TABLES ---');
@@ -1106,10 +1153,54 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
           })
         );
 
-        // Cache the text portion for fast retrieval
+        // ── analyzeWithQueries enrichment: extract key contract answers via DI query fields ──
+        if (
+          structuredResult.isDISource &&
+          process.env.AZURE_DI_QUERY_ENRICHMENT !== 'false' &&
+          structuredResult.confidence > 0.4
+        ) {
+          try {
+            const { analyzeWithQueries } = await import('./azure-document-intelligence');
+            const queryFields = [
+              'What is the governing law or jurisdiction?',
+              'What is the termination notice period?',
+              'What is the contract effective date?',
+              'What is the contract expiration or renewal date?',
+              'What are the payment terms?',
+              'What is the total contract value?',
+              'Who are the contracting parties?',
+              'What are the key obligations?',
+            ];
+            const fileBuffer = await fs.readFile(filePath);
+            const { answers } = await analyzeWithQueries(fileBuffer, queryFields);
+            const validAnswers = Object.entries(answers).filter(([, v]) => v && v.trim().length > 0);
+            if (validAnswers.length > 0) {
+              // Merge answers into keyValuePairs for downstream artifact generation
+              for (const [key, value] of validAnswers) {
+                structuredResult.keyValuePairs.push({ key, value, confidence: 0.8 } as any);
+              }
+              // Append answers to the text for RAG indexing
+              const answerBlock = validAnswers.map(([k, v]) => `${k}: ${v}`).join('\n');
+              structuredResult.text += `\n\n--- DI QUERY FIELD ANSWERS ---\n${answerBlock}`;
+              logger.info({ answerCount: validAnswers.length }, 'DI analyzeWithQueries enrichment added');
+            }
+          } catch (queryErr) {
+            logger.warn({ error: (queryErr as Error).message }, 'DI analyzeWithQueries enrichment failed, continuing without');
+          }
+        }
+
+        // Cache the text and structured DI data for fast retrieval
         if (fileSize && structuredResult.text && structuredResult.text.length > 100) {
-          const cacheKey = generateOCRCacheKey(filePath, fileSize);
-          await ocrCache.set(cacheKey, structuredResult.text);
+          const cacheKey = generateOCRCacheKey(filePath, fileSize, contentHash);
+          await ocrCache.set(cacheKey, structuredResult.text, structuredResult.isDISource ? {
+            source: structuredResult.source,
+            tables: structuredResult.tables.map(t => ({ pageNumber: t.pageNumber, headers: t.headers, rows: t.rows, confidence: t.confidence })),
+            keyValuePairs: structuredResult.keyValuePairs.map(kv => ({ key: kv.key, value: kv.value, confidence: kv.confidence })),
+            paragraphs: structuredResult.paragraphs.map(p => ({ content: p.content, role: p.role })),
+            contractFields: structuredResult.contractFields ?? undefined,
+            invoiceFields: structuredResult.invoiceFields ?? undefined,
+            confidence: structuredResult.confidence,
+          } : undefined);
         }
         logger.info({ ocrMode, textLength: structuredResult.text.length, confidence: structuredResult.confidence.toFixed(3), tables: structuredResult.tables.length, kvPairs: structuredResult.keyValuePairs.length }, 'DI model OCR succeeded with structured data');
         onProgress?.(55); // DI analysis complete
@@ -1182,7 +1273,7 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
       
       // Cache successful result in distributed cache
       if (fileSize && result && result.length > 100) {
-        const cacheKey = generateOCRCacheKey(filePath, fileSize);
+        const cacheKey = generateOCRCacheKey(filePath, fileSize, contentHash);
         await ocrCache.set(cacheKey, result);
         logger.info({ cacheKey, textLength: result.length }, 'Cached OCR result in distributed cache');
       }
@@ -1434,8 +1525,14 @@ async function performMistralOCR(filePath: string): Promise<string> {
       }
       
       const client = new Mistral({ apiKey });
-      // Limit to 20k chars for even faster processing
-      const textToProcess = rawText.substring(0, 20000);
+      // Enhance first 20k chars with AI; append un-enhanced remainder to avoid data loss
+      const ENHANCE_LIMIT = 20000;
+      const textToProcess = rawText.substring(0, ENHANCE_LIMIT);
+      const remainder = rawText.length > ENHANCE_LIMIT ? rawText.substring(ENHANCE_LIMIT) : '';
+      
+      if (remainder) {
+        logger.info({ totalLength: rawText.length, enhancedLength: ENHANCE_LIMIT, remainderLength: remainder.length }, 'Document exceeds enhancement limit — remainder will be appended unenhanced');
+      }
       
       // Use smaller/faster model for better performance
       const chatResponse = await client.chat.complete({
@@ -1450,7 +1547,11 @@ async function performMistralOCR(filePath: string): Promise<string> {
         temperature: 0.3, // Lower temperature for faster, more deterministic responses
       });
       
-      const enhancedText = chatResponse.choices?.[0]?.message?.content || rawText;
+      const rawContent = chatResponse.choices?.[0]?.message?.content;
+      // Mistral SDK may return string[] for some responses — coerce to string
+      const enhancedPart = (Array.isArray(rawContent) ? rawContent.join('') : rawContent) || textToProcess;
+      // Append un-enhanced remainder so no text is silently lost
+      const enhancedText = remainder ? `${enhancedPart}\n\n${remainder}` : enhancedPart;
       logger.info({ enhancedLength: enhancedText.length }, 'Text enhanced with Mistral AI');
       return enhancedText;
     } else if (isImage) {
@@ -1547,7 +1648,7 @@ async function performGPT4OCR(filePath: string): Promise<string> {
       throw new Error('OPENAI_API_KEY not configured');
     }
     
-    const openai = new OpenAI({ apiKey });
+    const openai = await getOCROpenAIClient();
     const fileBuffer = await fs.readFile(filePath);
 
     // Guard against OOM: base64 encoding doubles memory. Cap at 20MB for Vision OCR.
@@ -1762,6 +1863,8 @@ export async function processOCRArtifactJob(
   const jobLogger = logger.child({ jobId: job.id, contractId, tenantId });
 
   let qualityMetrics: ExtractionQualityMetrics | undefined;
+  let localFilePath: string | undefined;
+  let isTempFile = false;
 
   jobLogger.info({ filePath }, 'Starting OCR + artifact processing');
 
@@ -1790,6 +1893,15 @@ export async function processOCRArtifactJob(
       throw new Error(`Contract ${contractId} not found`);
     }
 
+    // Idempotency guard: if this is a retry and OCR already completed, skip re-processing
+    if (job.attemptsMade > 0 && contract.rawText && contract.rawText.length > 100 && contract.status === 'COMPLETED') {
+      const existingArtifacts = await prisma.artifact.count({ where: { contractId } });
+      if (existingArtifacts > 0) {
+        jobLogger.info({ attemptsMade: job.attemptsMade, existingArtifacts, textLength: contract.rawText.length }, 'Idempotency: OCR already completed on prior attempt, skipping re-processing');
+        return { success: true, artifactsCreated: existingArtifacts, extractedText: contract.rawText };
+      }
+    }
+
     await ensureProcessingJob({
       tenantId,
       contractId,
@@ -1802,8 +1914,6 @@ export async function processOCRArtifactJob(
     await publishJobProgress(job.id || '', contractId, tenantId, 10, 'processing', 'Downloading contract file');
 
     // 2. Download file from storage to temp location
-    let localFilePath: string;
-    
     if (!contract.storagePath) {
       throw new Error(`Contract ${contractId} has no storage path`);
     }
@@ -1842,11 +1952,23 @@ export async function processOCRArtifactJob(
       localFilePath = path.join(tempDir, `${contractId}-${fileName}`);
       
       await fs.writeFile(localFilePath, fileBuffer);
+      isTempFile = true;
       jobLogger.info({ localFilePath, size: fileBuffer.length }, 'File downloaded');
     } else {
       // Local file system
       localFilePath = contract.storagePath!;
       jobLogger.info({ localFilePath }, 'Using local file');
+    }
+
+    // Compute content hash for collision-resistant OCR cache key
+    let fileContentHash: string | undefined;
+    let localFileSize: number | undefined;
+    try {
+      const buf = await fs.readFile(localFilePath);
+      fileContentHash = createHash('sha256').update(buf).digest('hex');
+      localFileSize = buf.length;
+    } catch {
+      // Non-critical — fall back to hash-less cache key
     }
 
     // 3. Run OCR extraction (skip progress update for speed)
@@ -1861,35 +1983,57 @@ export async function processOCRArtifactJob(
       try {
         const { isDIConfigured, isDIEnabled } = await import('./azure-document-intelligence');
         if (isDIConfigured() && isDIEnabled()) {
-          // Read a small text sample for preclassification (use pdf-parse for PDFs)
-          let textSample = '';
-          const ext = localFilePath.toLowerCase().split('.').pop() || '';
-          if (['pdf'].includes(ext)) {
-            try {
-              const buf = await fs.readFile(localFilePath);
-              const pdfParse = pdfParseModule || (await import('pdf-parse')).default;
-              const parsed = await pdfParse(buf, { max: 3 }); // first 3 pages
-              textSample = (parsed.text || '').slice(0, 3000);
-            } catch { /* ignore, proceed without sample */ }
+          // Check feedback-driven OCR model preference first
+          try {
+            const { getUserFeedbackLearner } = await import('./agents/user-feedback-learner');
+            const preferred = await getUserFeedbackLearner().getPreferredOCRModel(tenantId);
+            if (preferred) {
+              ocrMode = preferred;
+              jobLogger.info({ preferredModel: preferred }, 'Feedback learner selected OCR model based on historical edit rates');
+            }
+          } catch {
+            // Non-critical — fall through to preclassification
           }
 
-          if (textSample.length > 50) {
-            const { quickClassify } = await import('./document-preclassification');
-            const classification = await quickClassify(textSample);
-            const mappedMode = OCR_MODEL_TO_MODE[classification.recommendedModel];
-            if (mappedMode) {
-              ocrMode = mappedMode;
-              jobLogger.info({
-                category: classification.category,
-                contractType: classification.contractType,
-                recommendedModel: classification.recommendedModel,
-                resolvedMode: ocrMode,
-              }, 'Preclassification selected DI model');
+          // If feedback didn't pick a model, use preclassification
+          if (ocrMode === 'auto') {
+            // Read a small text sample for preclassification (use pdf-parse for PDFs)
+            let textSample = '';
+            const ext = localFilePath.toLowerCase().split('.').pop() || '';
+            if (['pdf'].includes(ext)) {
+              try {
+                const buf = await fs.readFile(localFilePath);
+                const pdfParse = pdfParseModule || (await import('pdf-parse')).default;
+                const parsed = await pdfParse(buf, { max: 3 }); // first 3 pages
+                textSample = (parsed.text || '').slice(0, 3000);
+              } catch { /* ignore, proceed without sample */ }
+            }
+
+            if (textSample.length > 50) {
+              const { quickClassify } = await import('./document-preclassification');
+              const classification = await quickClassify(textSample);
+              const mappedMode = OCR_MODEL_TO_MODE[classification.recommendedModel];
+              if (mappedMode) {
+                ocrMode = mappedMode;
+                jobLogger.info({
+                  category: classification.category,
+                  contractType: classification.contractType,
+                  recommendedModel: classification.recommendedModel,
+                  resolvedMode: ocrMode,
+                }, 'Preclassification selected DI model');
+              }
+            }
+
+            // If still auto (scanned PDF with no text, or image file), DI layout
+            // is the best option — it handles images and scanned docs natively.
+            if (ocrMode === 'auto') {
+              ocrMode = 'azure-di-layout';
+              jobLogger.info('No text sample for preclassification — defaulting to azure-di-layout');
             }
           }
         }
 
-        // Still auto? fall back to azure-ch (which already tries DI v4.0 internally)
+        // DI not configured? fall back to azure-ch legacy chain
         if (ocrMode === 'auto') ocrMode = 'azure-ch';
       } catch (preErr) {
         jobLogger.warn({ error: (preErr as Error).message }, 'Preclassification failed, defaulting to azure-ch');
@@ -1897,9 +2041,9 @@ export async function processOCRArtifactJob(
       }
     }
 
-    const ocrResult = await performOCR(localFilePath, ocrMode, undefined, async (pct) => {
+    let ocrResult = await performOCR(localFilePath, ocrMode, localFileSize, async (pct) => {
       try { await job.updateProgress(pct); } catch { /* best-effort */ }
-    });
+    }, fileContentHash);
     const rawExtractedText = ocrResult.text;
     
     // ============ OCR ENHANCEMENT PIPELINE ============
@@ -2038,6 +2182,48 @@ export async function processOCRArtifactJob(
         }
       } catch (crossErr) {
         jobLogger.warn({ error: (crossErr as Error).message }, 'Cross-validation pass failed, continuing with primary');
+      }
+    }
+
+    // ============ DI LOW-CONFIDENCE CROSS-VALIDATION ============
+    // When DI returns a result below a confidence threshold, run a secondary DI model
+    // (e.g., prebuilt-read for pure text) and adopt the better result.
+    const DI_CROSS_VALIDATE_THRESHOLD = 0.55;
+    if (
+      ocrResult.isDISource &&
+      ocrResult.confidence < DI_CROSS_VALIDATE_THRESHOLD &&
+      localFilePath &&
+      enhancedText.length > 100
+    ) {
+      try {
+        jobLogger.info({ confidence: ocrResult.confidence, primaryMode: ocrMode }, 'DI low confidence — attempting DI cross-validation with secondary model');
+        const secondaryDIMode: string = ocrMode === 'azure-di-layout' ? 'azure-di-contract' : 'azure-di-layout';
+        const secondResult = await performOCR(localFilePath, secondaryDIMode as any, undefined, async () => {});
+        // Adopt if the secondary DI pass yields significantly better confidence or more text
+        const betterConfidence = secondResult.confidence > ocrResult.confidence + 0.1;
+        const moreText = secondResult.text.length > enhancedText.length * 1.15;
+        if (betterConfidence || moreText) {
+          jobLogger.info({
+            primaryConfidence: ocrResult.confidence.toFixed(3),
+            secondaryConfidence: secondResult.confidence.toFixed(3),
+            primaryLen: enhancedText.length,
+            secondaryLen: secondResult.text.length,
+            provider: secondaryDIMode,
+          }, 'DI cross-validation produced better result — adopting');
+          enhancedText = secondResult.text;
+          // Update ocrResult reference for downstream quality metrics
+          // Use spread to avoid mutating the shared reference
+          ocrResult = {
+            ...ocrResult,
+            confidence: secondResult.confidence,
+            tables: secondResult.tables,
+            keyValuePairs: secondResult.keyValuePairs,
+            paragraphs: secondResult.paragraphs,
+            source: secondResult.source,
+          };
+        }
+      } catch (diCrossErr) {
+        jobLogger.warn({ error: (diCrossErr as Error).message }, 'DI cross-validation pass failed, continuing with primary');
       }
     }
     
@@ -2344,6 +2530,19 @@ export async function processOCRArtifactJob(
               artifactResult._meta.completionTokens || Math.floor(tokensUsed * 0.3)
             );
             budgetTracker.addCost(contractId, tenantId, estimatedCost);
+
+            // Persist usage to ai_usage_logs for dashboard & cost alerts
+            logAIUsage({
+              model: modelUsed,
+              endpoint: 'openai',
+              feature: `artifact-generation:${artifactType}`,
+              inputTokens: artifactResult._meta.promptTokens || Math.floor(tokensUsed * 0.7),
+              outputTokens: artifactResult._meta.completionTokens || Math.floor(tokensUsed * 0.3),
+              latencyMs: 0, // not tracked at this granularity
+              success: true,
+              tenantId,
+              contractId,
+            }).catch(() => {}); // fire-and-forget
           }
           
           // Quality validation — check if generated content meets quality thresholds
@@ -3468,11 +3667,6 @@ export async function processOCRArtifactJob(
       jobLogger.error({ error: metadataPopulateError }, 'CRITICAL: Failed to populate ContractMetadata — AI insights may be missing for this contract');
     }
 
-    // Clean up temp file if we created one
-    if (contract.storageProvider === 's3') {
-      await fs.unlink(localFilePath).catch(() => {});
-    }
-
     // 5.5 Deterministic downstream plan (persisted for debugging/ops)
     const { plan, inputs } = buildProcessingPlan({ extractedText });
     await setProcessingPlan({ tenantId, contractId, plan, inputs });
@@ -3687,6 +3881,15 @@ export async function processOCRArtifactJob(
     }
 
     throw error;
+  } finally {
+    // Clean up temp files regardless of success/failure
+    if (isTempFile && localFilePath) {
+      try {
+        await fs.unlink(localFilePath);
+      } catch {
+        // best-effort cleanup
+      }
+    }
   }
 }
 
@@ -3794,8 +3997,8 @@ async function callOpenAIForArtifact(
   
   for (let attempt = 1; attempt <= AI_RETRY_CONFIG.maxAttempts; attempt++) {
     try {
-      const OpenAI = (await import('openai')).default;
-      const openai = new OpenAI({ apiKey });
+      const openai = await getOCROpenAIClient();
+      if (!openai) return { success: false, error: 'OPENAI_API_KEY not configured' };
       
       logger.info({ type, attempt }, 'Calling OpenAI for artifact generation');
       

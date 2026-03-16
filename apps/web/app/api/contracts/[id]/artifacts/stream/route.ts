@@ -132,6 +132,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       }
     );
   }
+  const connectionKey: string = connKey;
 
   // Check initial contract status - if already completed, we can send data immediately
   let contract: { id: string; status: string; aiMetadata?: any } | null = null;
@@ -146,7 +147,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     
     if (!contract) {
       // Contract doesn't exist - return 404
-      releaseConnectionByKey(tenantId, connKey);
+      releaseConnectionByKey(tenantId, connectionKey);
       return new Response(
         JSON.stringify({ error: 'Contract not found' }),
         { 
@@ -159,7 +160,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     }
   } catch {
     // Database error - return 503 instead of silently using mock data
-    releaseConnectionByKey(tenantId, connKey);
+    releaseConnectionByKey(tenantId, connectionKey);
     return new Response(
       JSON.stringify({ error: 'Database unavailable' }),
       { 
@@ -343,7 +344,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             })}\n\n`)
           );
           
-          releaseConnectionByKey(tenantId, connKey);
+          releaseConnectionByKey(tenantId, connectionKey);
           controller.close();
           isClosed = true;
           return;
@@ -359,7 +360,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         clearInterval(pollInterval);
         clearInterval(heartbeatInterval);
         isClosed = true;
-        releaseConnectionByKey(tenantId, connKey);
+        releaseConnectionByKey(tenantId, connectionKey);
         try {
           controller.close();
         } catch (_e) {
@@ -389,7 +390,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             message: 'Processing timeout - please retry'
           });
           clearInterval(pollInterval);
-          releaseConnectionByKey(tenantId, connKey);
+          releaseConnectionByKey(tenantId, connectionKey);
           controller.close();
           isClosed = true;
           return;
@@ -406,7 +407,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             message: 'Processing partially complete - some artifacts may still be generating'
           });
           clearInterval(pollInterval);
-          releaseConnectionByKey(tenantId, connKey);
+          releaseConnectionByKey(tenantId, connectionKey);
           controller.close();
           isClosed = true;
           return;
@@ -525,7 +526,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             );
             
             clearInterval(pollInterval);
-            releaseConnectionByKey(tenantId, connKey);
+            releaseConnectionByKey(tenantId, connectionKey);
             controller.close();
             isClosed = true;
           }
@@ -541,7 +542,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
               timestamp: new Date().toISOString()
             });
             clearInterval(pollInterval);
-            releaseConnectionByKey(tenantId, connKey);
+            releaseConnectionByKey(tenantId, connectionKey);
             controller.close();
             isClosed = true;
             return;
@@ -563,7 +564,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       clearInterval(pollInterval);
       clearInterval(heartbeatInterval);
       isClosed = true;
-      releaseConnectionByKey(tenantId, connKey);
+      releaseConnectionByKey(tenantId, connectionKey);
     }
   });
 

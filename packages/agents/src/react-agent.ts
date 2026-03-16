@@ -482,6 +482,63 @@ const BUILT_IN_TOOLS: ReActTool[] = [
 ];
 
 // =============================================================================
+// JSON EXTRACTION HELPER
+// =============================================================================
+
+/**
+ * Extract the first complete JSON object from a string using balanced-brace
+ * counting. This avoids the greedy regex problem where /\{[\s\S]*\}/ would
+ * match from the first '{' to the very last '}', spanning multiple objects.
+ */
+function extractFirstJSON(text: string): string | null {
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        const candidate = text.slice(start, i + 1);
+        // Validate it's actual JSON before returning
+        try {
+          JSON.parse(candidate);
+          return candidate;
+        } catch {
+          // Not valid JSON — keep scanning for next '{'
+          const nextStart = text.indexOf('{', i + 1);
+          if (nextStart === -1) return null;
+          i = nextStart - 1;
+          depth = 0;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+// =============================================================================
 // REACT AGENT CLASS
 // =============================================================================
 
@@ -614,16 +671,22 @@ OR if you have gathered enough information:
           ? response.content 
           : JSON.stringify(response.content);
 
-        // Track token usage (approximate)
-        totalTokens += (systemPrompt.length + userPrompt.length + content.length) / 4;
+        // Track token usage — prefer LangChain's metadata if the model returned it
+        const usage = response.response_metadata?.tokenUsage ?? response.usage_metadata;
+        if (usage && typeof usage === 'object' && 'totalTokens' in usage) {
+          totalTokens += (usage as { totalTokens: number }).totalTokens;
+        } else {
+          totalTokens += Math.ceil((systemPrompt.length + userPrompt.length + content.length) / 4);
+        }
 
         // Parse the response
         let parsed: { thought: string; action: { tool: string; parameters: any } | null };
         try {
-          // Try to extract JSON from the response
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            parsed = JSON.parse(jsonMatch[0]);
+          // Extract JSON using balanced-brace matching (avoids greedy regex
+          // that would span from first '{' to last '}' across multiple objects)
+          const extracted = extractFirstJSON(content);
+          if (extracted) {
+            parsed = JSON.parse(extracted);
           } else {
             throw new Error('No JSON found in response');
           }

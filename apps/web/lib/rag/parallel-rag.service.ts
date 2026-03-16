@@ -534,13 +534,18 @@ function multiQueryRRF(
   }
 
   // Convert to array and sort by RRF score
-  return Array.from(scoreMap.values())
+  // Normalize scores to [0, 1] range — raw RRF sums can exceed 1.0
+  // when a chunk appears across multiple query variations.
+  const items = Array.from(scoreMap.values());
+  const maxScore = items.reduce((max, item) => Math.max(max, item.rrfScore), 0);
+
+  return items
     .sort((a, b) => b.rrfScore - a.rrfScore)
     .map(item => ({
       contractId: item.contractId,
       chunkIndex: item.chunkIndex,
       text: item.text,
-      score: item.rrfScore,
+      score: maxScore > 0 ? item.rrfScore / maxScore : 0,
       matchType: item.hasVector && item.hasKeyword ? 'hybrid' :
                  item.hasVector ? 'semantic' : 'keyword',
       sources: Array.from(item.sources),
