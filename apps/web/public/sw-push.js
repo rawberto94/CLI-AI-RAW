@@ -4,10 +4,6 @@
  * Handles background push notifications and click actions.
  */
 
-/// <reference lib="webworker" />
-
-declare const self: ServiceWorkerGlobalScope;
-
 // Install event
 self.addEventListener("install", () => {
   self.skipWaiting();

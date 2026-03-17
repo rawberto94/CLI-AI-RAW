@@ -1,11 +1,7 @@
-/// <reference lib="webworker" />
-
 /**
  * ConTigo Service Worker
  * Enables offline functionality and push notifications
  */
-
-declare const self: ServiceWorkerGlobalScope;
 
 const CACHE_NAME = 'contigo-v2';
 const OFFLINE_URL = '/offline';
