@@ -49,8 +49,8 @@ minio
 minio.*
 wget-log
 
-# Scripts (optional - comment out if you want to keep them)
-*.sh
+# Logs directory
+.logs/
 
 # Documentation (optional - keep important docs)
 *_COMPLETE.md
