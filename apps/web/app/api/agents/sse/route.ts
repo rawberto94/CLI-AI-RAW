@@ -14,6 +14,7 @@ import { NextRequest } from 'next/server';
 import { redis } from '@/lib/redis';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { getAuthenticatedApiContext } from '@/lib/api-middleware';
 
 // Track connected clients
 const clients = new Map<string, ReadableStreamDefaultController[]>();
@@ -24,13 +25,13 @@ const clients = new Map<string, ReadableStreamDefaultController[]>();
  * Establish SSE connection for real-time updates
  */
 export async function GET(req: NextRequest) {
-  const searchParams = req.nextUrl.searchParams;
-  const tenantId = searchParams.get('tenantId');
-  const userId = searchParams.get('userId');
-
-  if (!tenantId) {
-    return new Response('Missing tenantId', { status: 400 });
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
 
   const clientId = `${tenantId}:${userId || 'anonymous'}:${Date.now()}`;
 

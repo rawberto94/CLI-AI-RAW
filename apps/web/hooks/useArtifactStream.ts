@@ -284,7 +284,16 @@ export function useArtifactStream({
       // Auto-retry connection with exponential backoff if not complete
       if (!isCompleteRef.current && reconnectAttemptsRef.current < maxReconnectAttempts) {
         const retryDelay = Math.min(2000 * Math.pow(1.5, reconnectAttemptsRef.current), 10000);
-        reconnectTimeoutRef.current = setTimeout(() => {
+        reconnectTimeoutRef.current = setTimeout(async () => {
+          // Check session before retrying — EventSource can't report 401
+          try {
+            const res = await fetch('/api/auth/session');
+            const sess = await res.json();
+            if (!sess?.user) {
+              console.log('[useArtifactStream] Session expired, stopping reconnect');
+              return;
+            }
+          } catch { /* proceed with reconnect */ }
           connect();
         }, retryDelay);
       } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
@@ -347,6 +356,12 @@ export function useArtifactStream({
         console.log(`[useArtifactStream] Verification response status: ${response.status} for contract ${contractId}`);
 
         if (!response.ok) {
+          // Session expired — don't retry, the user needs to re-authenticate
+          if (response.status === 401) {
+            console.warn(`[useArtifactStream] Unauthorized (401) for contract ${contractId} — session may have expired`);
+            return;
+          }
+
           // For 404, retry a few times before giving up (contract may not be committed yet)
           if (response.status === 404) {
             if (verifyAttempts < MAX_VERIFY_ATTEMPTS) {

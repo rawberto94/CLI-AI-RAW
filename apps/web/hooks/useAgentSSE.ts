@@ -135,17 +135,36 @@ export function useAgentSSE(options?: UseAgentSSEOptions): UseAgentSSEReturn {
       console.error('[SSE] Error:', error);
       setState(prev => ({ ...prev, connected: false }));
       
+      // Close the erroring connection
+      es.close();
+      eventSourceRef.current = null;
+      
       setReconnectAttempts(prev => {
         const next = prev + 1;
         if (next >= MAX_RECONNECT_ATTEMPTS) {
           optionsRef.current?.onReconnectExhausted?.();
           return next;
         }
-        // Auto-reconnect after 5 seconds
+        // Before reconnecting, verify session is still valid.
+        // EventSource cannot report HTTP status codes, so a 401 looks
+        // identical to a network error.  A quick session check avoids
+        // noisy retry loops when the user is simply not authenticated.
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
         }
-        reconnectTimeoutRef.current = setTimeout(() => {
+        reconnectTimeoutRef.current = setTimeout(async () => {
+          try {
+            const res = await fetch('/api/auth/session');
+            const sess = await res.json();
+            if (!sess?.user) {
+              // Session expired — stop retrying
+              console.log('[SSE] Session expired, stopping reconnect');
+              optionsRef.current?.onReconnectExhausted?.();
+              return;
+            }
+          } catch {
+            // Can't check session — try reconnect anyway
+          }
           console.log('[SSE] Reconnecting...');
           connect();
         }, 5000);
