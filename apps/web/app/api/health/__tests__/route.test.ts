@@ -39,11 +39,10 @@ describe('GET /api/health', () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-    expect(data.data.status).toBe('healthy');
-    expect(data.data.uptime).toBe('2d 3h 15m');
-    expect(data.data.version).toBe('1.0.0');
-    expect(data.data.timestamp).toBe('2026-01-01T00:00:00Z');
+    expect(data.status).toBe('healthy');
+    expect(data.uptime).toBe('2d 3h 15m');
+    expect(data.version).toBe('1.0.0');
+    expect(data.timestamp).toBe('2026-01-01T00:00:00Z');
   });
 
   it('returns 200 with degraded status', async () => {
@@ -59,8 +58,7 @@ describe('GET /api/health', () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-    expect(data.data.status).toBe('degraded');
+    expect(data.status).toBe('degraded');
   });
 
   it('returns 503 when unhealthy', async () => {
@@ -76,9 +74,7 @@ describe('GET /api/health', () => {
     const data = await response.json();
 
     expect(response.status).toBe(503);
-    expect(data.success).toBe(false);
-    expect(data.error.code).toBe('SERVICE_UNAVAILABLE');
-    expect(data.error.message).toBe('System unhealthy');
+    expect(data.status).toBe('unhealthy');
   });
 
   it('returns 503 when health check throws', async () => {
@@ -90,12 +86,11 @@ describe('GET /api/health', () => {
     const data = await response.json();
 
     expect(response.status).toBe(503);
-    expect(data.success).toBe(false);
-    expect(data.error.code).toBe('SERVICE_UNAVAILABLE');
-    expect(data.error.message).toBe('Database connection failed');
+    expect(data.status).toBe('unhealthy');
+    expect(data.error).toBe('Database connection failed');
   });
 
-  it('includes meta fields in response', async () => {
+  it('includes expected fields in response', async () => {
     mockGetOverallHealth.mockResolvedValue({
       status: 'healthy',
       timestamp: '2026-01-01T00:00:00Z',
@@ -107,8 +102,9 @@ describe('GET /api/health', () => {
     const response = await GET(createRequest());
     const data = await response.json();
 
-    expect(data.meta).toBeDefined();
-    expect(data.meta.requestId).toBeDefined();
-    expect(data.meta.timestamp).toBeDefined();
+    expect(data.status).toBeDefined();
+    expect(data.timestamp).toBeDefined();
+    expect(data.uptime).toBeDefined();
+    expect(data.version).toBeDefined();
   });
 });

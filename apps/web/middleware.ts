@@ -68,6 +68,7 @@ const CSRF_EXEMPT_PATHS = [
   '/api/csrf',
   '/api/cron',
   '/api/contracts/upload',   // File uploads use multipart/form-data (no CSRF token in body)
+  '/api/agents/sse',           // Internal broadcast endpoint (auth-protected, no browser form)
 ];
 
 /**

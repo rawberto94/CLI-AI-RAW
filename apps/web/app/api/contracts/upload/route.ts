@@ -14,8 +14,8 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { contractService } from 'data-orchestration/services';
 // TODO: Replace prisma.contract.create with contractService.createContractWithIntegrity
+// (import contractService from 'data-orchestration/services' when ready)
 import { triggerArtifactGeneration, PROCESSING_PRIORITY } from "@/lib/artifact-trigger";
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
 import { contractUploadSchema } from "@/lib/validation/contract.validation";
@@ -37,9 +37,11 @@ async function getUploadRedisClient(): Promise<any> {
   try {
     const Redis = (await import('ioredis')).default;
     _redisClient = new Redis(redisUrl, { maxRetriesPerRequest: 2, lazyConnect: true });
+    _redisClient.on('error', () => { _redisClient = null; });
     await _redisClient.connect();
     return _redisClient;
   } catch {
+    _redisClient = null;
     return null;
   }
 }

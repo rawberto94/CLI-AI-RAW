@@ -186,19 +186,27 @@ async function setupRedisSubscription(tenantId: string) {
 
   try {
     if (!redisSubscriber) {
-      // Create a duplicate connection for subscribing
+      // Create a duplicate connection for subscribing (ioredis auto-connects)
       redisSubscriber = redis.duplicate();
-      await redisSubscriber.connect();
+
+      // ioredis delivers pub/sub messages via the 'message' event
+      redisSubscriber.on('message', (channel: string, message: string) => {
+        try {
+          const parsed = JSON.parse(message);
+          if (!parsed || typeof parsed !== 'object') return;
+          const { event, data } = parsed;
+          // Extract tenantId from channel name (format: "sse:<tenantId>")
+          const tid = channel.replace(/^sse:/, '');
+          if (event) {
+            broadcastToTenant(tid, event, data);
+          }
+        } catch (error) {
+          logger.error('Error parsing Redis message:', error);
+        }
+      });
     }
 
-    await redisSubscriber.subscribe(`sse:${tenantId}`, (message: string) => {
-      try {
-        const { event, data } = JSON.parse(message);
-        broadcastToTenant(tenantId, event, data);
-      } catch (error) {
-        logger.error('Error parsing Redis message:', error);
-      }
-    });
+    await redisSubscriber.subscribe(`sse:${tenantId}`);
   } catch (error) {
     logger.error('Redis subscription error:', error);
   }

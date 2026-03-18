@@ -7,8 +7,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-  schemas: path.resolve(__dirname, '../schemas/dist'),
-  utils: path.resolve(__dirname, '../utils/dist'),
+      schemas: path.resolve(__dirname, '../schemas/src'),
+      utils: path.resolve(__dirname, '../utils/src'),
     },
   },
 });

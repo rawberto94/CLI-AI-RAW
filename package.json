@@ -57,7 +57,8 @@
       "zod": "3.23.8",
       "zod-to-json-schema": "3.23.5",
       "pino": "^9.5.0",
-      "@opentelemetry/semantic-conventions": "^1.28.0"
+      "@opentelemetry/semantic-conventions": "^1.28.0",
+      "fast-xml-parser": ">=5.3.5"
     },
     "onlyBuiltDependencies": [
       "@prisma/client",

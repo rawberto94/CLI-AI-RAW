@@ -466,6 +466,19 @@ const nextConfig = {
       }] : []),
     ];
   },
+
+  // In dev mode the browser requests chunks from /_dev-<hash>/_next/static/...
+  // (because of assetPrefix). Rewrite those back to the real /_next/static/...
+  // paths so the dev server can resolve them.
+  async rewrites() {
+    if (!devAssetPrefix) return [];
+    return {
+      beforeFiles: [
+        { source: `${devAssetPrefix}/_next/:path*`, destination: '/_next/:path*' },
+        { source: `${devAssetPrefix}/:path*`, destination: '/:path*' },
+      ],
+    };
+  },
 };
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");

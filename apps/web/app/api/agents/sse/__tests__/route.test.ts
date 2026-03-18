@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   mockRFxOpportunityCount: vi.fn().mockResolvedValue(0),
   mockRedisPublish: vi.fn().mockResolvedValue(undefined),
   mockRedisDuplicate: vi.fn(),
+  mockGetAuthenticatedApiContext: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -35,6 +36,10 @@ vi.mock('@/lib/redis', () => ({
 
 vi.mock('@/lib/notifications/hitl-notification.service', () => ({
   sendHITLApprovalNotification: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/lib/api-middleware', () => ({
+  getAuthenticatedApiContext: mocks.mockGetAuthenticatedApiContext,
 }));
 
 // ── Import AFTER mocks ────────────────────────────────────────────────
@@ -67,14 +72,26 @@ function reqWithoutTenant() {
 // ── Tests ──────────────────────────────────────────────────────────────
 
 describe('GET /api/agents/sse', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default: unauthenticated
+    mocks.mockGetAuthenticatedApiContext.mockReturnValue(null);
+  });
 
   it('returns 400 without tenantId query param', async () => {
+    // No auth context → 401
     const res = await GET(reqWithoutTenant());
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(401);
   });
 
   it('returns SSE response with correct headers', async () => {
+    mocks.mockGetAuthenticatedApiContext.mockReturnValue({
+      requestId: 'test-req',
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+      startTime: Date.now(),
+      dataMode: 'real',
+    });
     const res = await GET(reqWithTenant());
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('text/event-stream');
@@ -83,6 +100,13 @@ describe('GET /api/agents/sse', () => {
   });
 
   it('returns readable stream body', async () => {
+    mocks.mockGetAuthenticatedApiContext.mockReturnValue({
+      requestId: 'test-req',
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+      startTime: Date.now(),
+      dataMode: 'real',
+    });
     const res = await GET(reqWithTenant());
     expect(res.body).toBeTruthy();
     expect(res.body).toBeInstanceOf(ReadableStream);

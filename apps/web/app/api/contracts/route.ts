@@ -356,7 +356,7 @@ async function handler(request: NextRequest) {
             }
             return {
               id: contract.id,
-              title: contract.originalName || contract.fileName,
+              title: contract.contractTitle || contract.originalName || contract.fileName,
               filename: contract.fileName,
               originalName: contract.originalName || contract.fileName,
               status: effectiveStatus,
