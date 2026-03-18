@@ -3464,10 +3464,9 @@ export async function processOCRArtifactJob(
           description: enterpriseMetadata.contract_short_description || undefined,
           // Financial fields
           ...(totalValueParsed != null ? { totalValue: totalValueParsed } : {}),
-          ...(enterpriseMetadata.currency && enterpriseMetadata.currency !== 'USD' ? { currency: enterpriseMetadata.currency } : 
-              enterpriseMetadata.currency === 'USD' && unwrapVal(overviewArtifactData.currency) ? { currency: 'USD' } : {}),
+          ...(enterpriseMetadata.currency ? { currency: enterpriseMetadata.currency } : {}),
           ...(enterpriseMetadata.payment_type ? { paymentTerms: enterpriseMetadata.payment_type } : {}),
-          ...(enterpriseMetadata.billing_frequency_type ? { paymentFrequency: enterpriseMetadata.billing_frequency_type } : {}),
+          ...(enterpriseMetadata.billing_frequency_type ? { paymentFrequency: enterpriseMetadata.billing_frequency_type, billingCycle: enterpriseMetadata.billing_frequency_type } : {}),
           // Dates
           ...(effectiveDateParsed ? { effectiveDate: effectiveDateParsed, startDate: effectiveDateParsed } : {}),
           ...(endDateParsed ? { expirationDate: endDateParsed, endDate: endDateParsed } : {}),
@@ -3479,9 +3478,31 @@ export async function processOCRArtifactJob(
           // Classification & jurisdiction
           ...(contractTypeParsed ? { contractType: contractTypeParsed } : {}),
           ...(enterpriseMetadata.jurisdiction ? { jurisdiction: enterpriseMetadata.jurisdiction } : {}),
+          // Document classification from contract type
+          ...(contractTypeParsed ? {
+            documentClassification: (() => {
+              const t = contractTypeParsed.toLowerCase();
+              if (t.includes('purchase order') || t.includes('po')) return 'purchase_order';
+              if (t.includes('invoice')) return 'invoice';
+              if (t.includes('quote') || t.includes('quotation')) return 'quote';
+              if (t.includes('proposal')) return 'proposal';
+              if (t.includes('amendment') || t.includes('addendum')) return 'amendment';
+              if (t.includes('sow') || t.includes('statement of work')) return 'sow';
+              return 'contract';
+            })(),
+          } : {}),
           // Renewal & termination
           autoRenewalEnabled: enterpriseMetadata.auto_renewing || false,
           ...(noticePeriodDaysParsed != null ? { noticePeriodDays: noticePeriodDaysParsed } : {}),
+          // Computed financial breakdowns
+          ...(() => {
+            if (totalValueParsed == null || !effectiveDateParsed || !endDateParsed) return {};
+            const months = Math.max(1, Math.round((endDateParsed.getTime() - effectiveDateParsed.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+            return {
+              annualValue: months >= 12 ? Math.round((totalValueParsed / months) * 12 * 100) / 100 : totalValueParsed,
+              monthlyValue: Math.round((totalValueParsed / months) * 100) / 100,
+            };
+          })(),
           updatedAt: new Date(),
         },
       });

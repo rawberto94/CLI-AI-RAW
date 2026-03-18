@@ -828,6 +828,15 @@ export async function PUT(
     if (updates.contractTitle !== undefined) prismaUpdates.contractTitle = updates.contractTitle;
     if (updates.clientName !== undefined) prismaUpdates.clientName = updates.clientName;
     if (updates.supplierName !== undefined) prismaUpdates.supplierName = updates.supplierName;
+    if (updates.contractType !== undefined) prismaUpdates.contractType = updates.contractType;
+    if (updates.jurisdiction !== undefined) prismaUpdates.jurisdiction = updates.jurisdiction;
+    if (updates.paymentTerms !== undefined) prismaUpdates.paymentTerms = updates.paymentTerms;
+    if (updates.paymentFrequency !== undefined) prismaUpdates.paymentFrequency = updates.paymentFrequency;
+    if (updates.billingCycle !== undefined) prismaUpdates.billingCycle = updates.billingCycle;
+    if (updates.autoRenewalEnabled !== undefined) prismaUpdates.autoRenewalEnabled = updates.autoRenewalEnabled;
+    if (updates.noticePeriodDays !== undefined) prismaUpdates.noticePeriodDays = updates.noticePeriodDays;
+    if (updates.annualValue !== undefined) prismaUpdates.annualValue = updates.annualValue;
+    if (updates.monthlyValue !== undefined) prismaUpdates.monthlyValue = updates.monthlyValue;
     
     // Handle notes as part of metadata JSON field
     if (updates.notes !== undefined) {
