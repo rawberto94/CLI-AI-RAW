@@ -755,6 +755,8 @@ export function buildArtifactPrompt(type: string, ctx: PromptContext): string | 
   "executiveBriefing": "A detailed 2-3 paragraph briefing suitable for C-level executives highlighting: 1) What this contract does and why it matters, 2) Key value proposition and commercial terms, 3) Main obligations and deliverables, 4) Notable risks, opportunities, or unusual provisions, 5) Recommended actions or decisions needed",
   "contractType": "The type of contract (e.g., Service Agreement, NDA, MSA, SOW, Employment, Lease)",
   "contractTypeConfidence": number 0-100 indicating confidence in type classification,
+  "documentNumber": "The contract/agreement/PO number as written in the document header or title (e.g., 'Agreement No. 12345', 'PO-2024-001'). null if no document number found.",
+  "language": "The primary language the document is written in (e.g., 'English', 'German', 'French', 'Italian', 'Spanish'). Use the full language name, not ISO code.",
   "parties": [{"name": "Party name", "role": "Client/Vendor/Contractor/etc", "address": "if mentioned", "jurisdiction": "Country/State if mentioned", "isPlaceholder": false}],
   "effectiveDate": "YYYY-MM-DD or null if not found",
   "expirationDate": "YYYY-MM-DD or null if not found",

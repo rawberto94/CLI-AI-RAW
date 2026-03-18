@@ -3243,10 +3243,11 @@ export async function processOCRArtifactJob(
     // Build enterprise metadata schema
     const enterpriseMetadata = {
       // Document identification
-      document_number: contractId,
+      document_number: unwrapVal(overviewArtifactData.documentNumber) || contractId,
       document_title: unwrapVal(overviewArtifactData.contractTitle) || 
         (unwrapVal(overviewArtifactData.summary) || '').split('.')[0]?.substring(0, 100) || '',
       contract_short_description: unwrapVal(overviewArtifactData.summary) || '',
+      contract_language: unwrapVal(overviewArtifactData.language) || null,
       
       // Parties
       external_parties: externalParties,
@@ -3258,9 +3259,9 @@ export async function processOCRArtifactJob(
         if (typeof val === 'string') {
           const cleaned = val.replace(/[$€£¥,]/g, '').trim();
           const parsed = parseFloat(cleaned);
-          return isNaN(parsed) ? 0 : parsed;
+          return isNaN(parsed) ? null : parsed;
         }
-        return 0;
+        return null;
       })(),
       tcv_text: unwrapVal(financialData.totalValueText) || 
         (unwrapVal(overviewArtifactData.totalValue) ? 
@@ -3268,7 +3269,7 @@ export async function processOCRArtifactJob(
       payment_type: paymentType,
       billing_frequency_type: billingFrequency,
       periodicity: billingFrequency || '',
-      currency: unwrapVal(overviewArtifactData.currency) || unwrapVal(financialData.currency) || 'USD',
+      currency: unwrapVal(overviewArtifactData.currency) || unwrapVal(financialData.currency) || null,
       
       // Dates - with keyDates fallback (use latest signing date, not first)
       execution_date: unwrapVal(overviewArtifactData.executionDate) || 
@@ -3398,7 +3399,7 @@ export async function processOCRArtifactJob(
       },
     };
 
-    // Save enterprise metadata to contract.aiMetadata AND update signature status on contract
+    // Save enterprise metadata to contract.aiMetadata AND persist extracted fields to DB columns
     try {
       // Parse signature date if string
       let signatureDateParsed: Date | null = null;
@@ -3408,15 +3409,79 @@ export async function processOCRArtifactJob(
           signatureDateParsed = parsed;
         }
       }
-      
+
+      // Parse effective/start and end/expiration dates
+      let effectiveDateParsed: Date | null = null;
+      if (enterpriseMetadata.contract_effective_date) {
+        const parsed = new Date(enterpriseMetadata.contract_effective_date);
+        if (!isNaN(parsed.getTime())) effectiveDateParsed = parsed;
+      }
+      let endDateParsed: Date | null = null;
+      if (enterpriseMetadata.contract_end_date) {
+        const parsed = new Date(enterpriseMetadata.contract_end_date);
+        if (!isNaN(parsed.getTime())) endDateParsed = parsed;
+      }
+
+      // Parse total value as Decimal-compatible number
+      const totalValueParsed = (enterpriseMetadata.tcv_amount != null && enterpriseMetadata.tcv_amount > 0) 
+        ? enterpriseMetadata.tcv_amount : null;
+
+      // Extract client/supplier names from parties
+      const clientParty = externalParties.find((p: any) => 
+        /client|buyer|customer|purchaser/i.test(p.role || '')
+      );
+      const supplierParty = externalParties.find((p: any) => 
+        /vendor|supplier|provider|contractor|seller|service provider/i.test(p.role || '')
+      );
+      // Fallback: if roles don't match, use first two parties
+      const firstParty = externalParties[0];
+      const secondParty = externalParties[1];
+
+      // Parse notice period string to days integer
+      let noticePeriodDaysParsed: number | null = null;
+      if (enterpriseMetadata.notice_period) {
+        const match = enterpriseMetadata.notice_period.match(/(\d+)\s*(day|month|week)/i);
+        if (match) {
+          const num = parseInt(match[1]!);
+          const unit = match[2]!.toLowerCase();
+          noticePeriodDaysParsed = unit === 'month' ? num * 30 : unit === 'week' ? num * 7 : num;
+        }
+      }
+
+      // Determine contract type from OVERVIEW artifact
+      const contractTypeParsed = unwrapVal(overviewArtifactData.contractType) || null;
+
       await prisma.contract.updateMany({
         where: { id: contractId, tenantId },
         data: {
           aiMetadata: enterpriseMetadata as any,
-          // Update signature fields on the contract model for easy querying and legal tracking
+          // Signature fields
           signatureStatus: enterpriseMetadata.signature_status || 'unknown',
           signatureDate: signatureDateParsed,
           signatureRequiredFlag: enterpriseMetadata.signature_required_flag || false,
+          // Core identification
+          contractTitle: enterpriseMetadata.document_title || undefined,
+          description: enterpriseMetadata.contract_short_description || undefined,
+          // Financial fields
+          ...(totalValueParsed != null ? { totalValue: totalValueParsed } : {}),
+          ...(enterpriseMetadata.currency && enterpriseMetadata.currency !== 'USD' ? { currency: enterpriseMetadata.currency } : 
+              enterpriseMetadata.currency === 'USD' && unwrapVal(overviewArtifactData.currency) ? { currency: 'USD' } : {}),
+          ...(enterpriseMetadata.payment_type ? { paymentTerms: enterpriseMetadata.payment_type } : {}),
+          ...(enterpriseMetadata.billing_frequency_type ? { paymentFrequency: enterpriseMetadata.billing_frequency_type } : {}),
+          // Dates
+          ...(effectiveDateParsed ? { effectiveDate: effectiveDateParsed, startDate: effectiveDateParsed } : {}),
+          ...(endDateParsed ? { expirationDate: endDateParsed, endDate: endDateParsed } : {}),
+          // Parties
+          ...(clientParty?.legalName ? { clientName: clientParty.legalName } : 
+              !supplierParty && firstParty?.legalName ? { clientName: firstParty.legalName } : {}),
+          ...(supplierParty?.legalName ? { supplierName: supplierParty.legalName } : 
+              !clientParty && secondParty?.legalName ? { supplierName: secondParty.legalName } : {}),
+          // Classification & jurisdiction
+          ...(contractTypeParsed ? { contractType: contractTypeParsed } : {}),
+          ...(enterpriseMetadata.jurisdiction ? { jurisdiction: enterpriseMetadata.jurisdiction } : {}),
+          // Renewal & termination
+          autoRenewalEnabled: enterpriseMetadata.auto_renewing || false,
+          ...(noticePeriodDaysParsed != null ? { noticePeriodDays: noticePeriodDaysParsed } : {}),
           updatedAt: new Date(),
         },
       });
@@ -3427,7 +3492,19 @@ export async function processOCRArtifactJob(
         hasFinancials: !!enterpriseMetadata.tcv_amount,
         signatureStatus: enterpriseMetadata.signature_status,
         signatureRequiredFlag: enterpriseMetadata.signature_required_flag,
-      }, 'Enterprise metadata schema populated in aiMetadata and signature status updated');
+        dbColumnsUpdated: {
+          contractTitle: !!enterpriseMetadata.document_title,
+          totalValue: totalValueParsed != null,
+          effectiveDate: !!effectiveDateParsed,
+          expirationDate: !!endDateParsed,
+          clientName: !!(clientParty?.legalName || firstParty?.legalName),
+          supplierName: !!(supplierParty?.legalName || secondParty?.legalName),
+          contractType: !!contractTypeParsed,
+          jurisdiction: !!enterpriseMetadata.jurisdiction,
+          autoRenewalEnabled: enterpriseMetadata.auto_renewing,
+          noticePeriodDays: noticePeriodDaysParsed,
+        },
+      }, 'Enterprise metadata persisted to aiMetadata JSON and DB columns');
     } catch (metadataError) {
       jobLogger.warn({ error: metadataError }, 'Failed to save enterprise metadata, continuing with processing');
     }

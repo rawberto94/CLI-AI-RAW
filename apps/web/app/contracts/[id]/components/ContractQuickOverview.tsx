@@ -30,7 +30,7 @@ interface Party {
 }
 
 interface QuickOverviewProps {
-  tcvAmount: number
+  tcvAmount: number | null
   currency: string
   paymentType: string
   periodicity: string
@@ -61,7 +61,7 @@ const ValueSection = memo(function ValueSection({
         <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Value</span>
       </div>
       <p className="text-xl sm:text-2xl font-bold text-slate-900 mb-1.5 sm:mb-2">
-        {tcvAmount > 0 
+        {tcvAmount != null && tcvAmount > 0 
           ? formatCurrency(tcvAmount, currency || 'USD')
           : <span className="text-slate-400 text-base sm:text-lg">Not specified</span>}
       </p>

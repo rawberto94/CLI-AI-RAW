@@ -13,7 +13,7 @@ interface ContractMetadata {
   document_classification: DocumentClassification
   document_classification_warning?: string
   external_parties: Array<{ legalName: string; role?: string; legalForm?: string }>
-  tcv_amount: number
+  tcv_amount: number | null
   tcv_text: string
   payment_type: string
   billing_frequency_type: string
@@ -92,17 +92,17 @@ export function useContractMetadata(contract: ContractData | null) {
   }, [])
   
   // Helper to extract numeric value from various formats
-  const extractNumericValue = useCallback((val: any): number => {
+  const extractNumericValue = useCallback((val: any): number | null => {
     const unwrapped = unwrapValue(val)
-    if (unwrapped === null || unwrapped === undefined) return 0
+    if (unwrapped === null || unwrapped === undefined) return null
     if (typeof unwrapped === 'number') return unwrapped
     if (typeof unwrapped === 'string') {
       // Remove currency symbols and parse
       const cleaned = unwrapped.replace(/[$€£¥,]/g, '').trim()
       const parsed = parseFloat(cleaned)
-      return isNaN(parsed) ? 0 : parsed
+      return isNaN(parsed) ? null : parsed
     }
-    return 0
+    return null
   }, [unwrapValue])
   
   const formatDateStr = useCallback((date: string | Date | null | undefined): string => {
@@ -206,7 +206,7 @@ export function useContractMetadata(contract: ContractData | null) {
         document_classification: 'unknown' as DocumentClassification,
         document_classification_warning: undefined,
         external_parties: [],
-        tcv_amount: 0,
+        tcv_amount: null,
         tcv_text: '',
         payment_type: 'none',
         billing_frequency_type: 'none',
@@ -250,7 +250,7 @@ export function useContractMetadata(contract: ContractData | null) {
         overviewData?.total_value ?? 
         financialData?.total_value ??
         overviewData?.contractValue ??
-        0
+        null
       ),
       tcv_text: contract.tcv_text || 
         unwrapValue(financialData?.description) || 
@@ -265,7 +265,7 @@ export function useContractMetadata(contract: ContractData | null) {
         unwrapValue(financialData?.periodicity) || 'none',
       currency: contract.currency || 
         unwrapValue(financialData?.currency) || 
-        unwrapValue(overviewData?.currency) || 'USD',
+        unwrapValue(overviewData?.currency) || '',
       
       // Dates - handle wrapped values
       signature_date: formatDateStr(
