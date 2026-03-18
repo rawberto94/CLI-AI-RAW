@@ -3335,26 +3335,40 @@ export async function processOCRArtifactJob(
         })() ||
         null,
       
-      // Signature status (from CONTACTS artifact, with DI handwriting fallback)
-      // Only infer 'signed' from handwriting if spans contain signature-like patterns
-      // (e.g., near signature labels, /s/ markers). Plain handwriting (annotations,
-      // fill-ins, margin notes) should NOT default to 'signed'.
-      signature_status: unwrapVal(contactsData.signatureStatus) || 
-        (() => {
-          if (ocrResult.handwrittenText.length === 0) return 'unknown';
-          // Check if any handwritten span looks like a signature vs annotation
-          const sigPatterns = /\b(signature|signed|sign|executed|witness|authorized)\b|\/s\//i;
-          const fullText = ocrResult.fullText || '';
-          const hasSignatureContext = sigPatterns.test(fullText) && ocrResult.handwrittenText.length > 0;
-          // Also check if signatories were detected with isSigned flags
-          const signatoryCount = (contactsData.signatories || []).length;
-          const signedCount = (contactsData.signatories || []).filter((s: any) => s.isSigned).length;
-          if (signedCount > 0 && signedCount === signatoryCount) return 'signed';
-          if (signedCount > 0) return 'partially_signed';
-          // Only mark as 'signed' if handwriting appears in signature context
-          if (hasSignatureContext) return 'partially_signed';
-          return 'unknown';
-        })(),
+      // Signature status: combine AI verdict with DI handwriting evidence.
+      // The AI only analyzes OCR text and can miss physical handwritten signatures
+      // (scribbles/cursive that DI detects as handwriting but can't read as text).
+      // DI handwriting detection overrides AI's 'unsigned' when signatures are present.
+      signature_status: (() => {
+        const aiStatus = unwrapVal(contactsData.signatureStatus);
+        const handwrittenSpans = ocrResult.handwrittenText || [];
+        const hasHandwriting = handwrittenSpans.length > 0;
+        const fullText = ocrResult.fullText || '';
+        const sigPatterns = /\b(signature|signed|sign here|executed|witness|authorized|acknowledged)\b|\/s\//i;
+        const hasSignatureContext = sigPatterns.test(fullText);
+        const signatoryCount = (contactsData.signatories || []).length;
+        const signedCount = (contactsData.signatories || []).filter((s: any) => s.isSigned).length;
+
+        // If AI says signed/partially_signed, trust it
+        if (aiStatus === 'signed' || aiStatus === 'partially_signed') return aiStatus;
+
+        // If signatories have isSigned flags, trust those
+        if (signedCount > 0 && signedCount === signatoryCount) return 'signed';
+        if (signedCount > 0) return 'partially_signed';
+
+        // DI detected handwriting + document has signature blocks → signed
+        // This catches handwritten signatures the AI couldn't see in text form
+        if (hasHandwriting && hasSignatureContext) return 'signed';
+
+        // AI says unsigned with no DI contradiction → trust it
+        if (aiStatus === 'unsigned' && !hasHandwriting) return 'unsigned';
+
+        // AI says unsigned but DI found handwriting without signature context
+        // (could be annotations/fill-ins, not signatures) → keep unsigned
+        if (aiStatus === 'unsigned') return 'unsigned';
+
+        return aiStatus || 'unknown';
+      })(),
       signature_date: unwrapVal(contactsData.signatureDate) || 
         (contactsData.signatories?.find((s: any) => s.dateSigned)?.dateSigned) || 
         ocrResult.contractFields?.dates?.executionDate ||

@@ -1311,12 +1311,14 @@ CRITICAL SIGNATURE STATUS DETECTION RULES:
 - Look at the END of the document for signature blocks
 - "signed" = ALL signature lines have actual signatures (handwritten marks, typed /s/ names with dates, or electronic signature indicators like DocuSign/Adobe Sign)
 - "partially_signed" = SOME but NOT ALL signature lines have signatures
-- "unsigned" = NO signatures present, all signature lines are blank/empty
+- "unsigned" = NO signatures present, all signature lines are blank/empty — ONLY use this if you are confident no marks exist on signature lines
 - "unknown" = Cannot find signature blocks or document format is unclear
 - Empty lines like "________________________" without marks above/below = unsigned
 - Names TYPED above/below signature lines are NOT signatures unless accompanied by "/s/" prefix or are clearly part of an electronic signature block with dates
 - Handwritten annotations, margin notes, or fill-in fields are NOT signatures — only marks in designated signature blocks count
-- If handwriting data indicates signatures were detected by Document Intelligence, weigh that evidence carefully but verify against document context
+- IMPORTANT: If the PRE-VALIDATED HANDWRITING DETECTION section above indicates handwritten content was detected, and this document has signature blocks, you should strongly presume the document IS signed unless there is clear contrary evidence. Handwritten signatures often appear as illegible marks that OCR cannot read as text, but the handwriting detection confirmed physical marks exist. Do NOT mark as "unsigned" when handwriting was detected near signature areas.
+- If handwriting data indicates signatures were detected by Document Intelligence, weigh that evidence HEAVILY in favor of "signed" — the AI model cannot see the physical marks, only the extracted text
+- For each signatory, set "isSigned": true if there is ANY indication they signed (handwritten mark, /s/ prefix, date next to their name, DocuSign stamp, or DI handwriting detection near their signature block)
 ONLY extract contact information EXPLICITLY stated. DO NOT invent contacts or assume standard roles.
 
 Contract text:
