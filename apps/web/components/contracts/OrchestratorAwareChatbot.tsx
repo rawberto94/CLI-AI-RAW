@@ -32,6 +32,7 @@ import {
   Maximize2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { sanitizeHtml } from '@/lib/security/sanitize';
 import { useOrchestratorChatbot } from '@/hooks/useOrchestratorChatbot';
 
 interface OrchestratorAwareChatbotProps {
@@ -253,11 +254,7 @@ export function OrchestratorAwareChatbot({
                           <div
                             className="whitespace-pre-wrap break-words"
                             dangerouslySetInnerHTML={{
-                              __html: message.content
-                                .replace(/&/g, '&amp;')
-                                .replace(/</g, '&lt;')
-                                .replace(/>/g, '&gt;')
-                                .replace(/"/g, '&quot;')
+                              __html: sanitizeHtml(message.content)
                                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                                 .replace(/\n/g, '<br />'),
                             }}

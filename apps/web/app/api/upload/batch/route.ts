@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getErrorMessage, isUploadedFile } from "@/lib/types/common"
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware'
 import { uploadRequestSchema } from 'schemas'
+import { UPLOAD } from '@/lib/constants'
 
 // Explicitly mark this route as dynamic (file uploads always dynamic)
 export const runtime = "nodejs"
@@ -32,9 +33,33 @@ export async function POST(req: NextRequest) {
 
     const files = form.getAll("files")
     const items: Array<{ name: string; blob: Blob; filename: string }> = []
+
+    // Allowed MIME types and max file size from constants
+    const allowedMimes = [
+      ...UPLOAD.ALLOWED_TYPES.CONTRACTS,
+      ...UPLOAD.ALLOWED_TYPES.RATE_CARDS,
+      ...UPLOAD.ALLOWED_TYPES.IMAGES,
+    ];
+    const allowedExts = [
+      ...UPLOAD.EXTENSIONS.CONTRACTS,
+      ...UPLOAD.EXTENSIONS.RATE_CARDS,
+      ...UPLOAD.EXTENSIONS.IMAGES,
+    ];
+    const maxFileSize = UPLOAD.MAX_FILE_SIZE;
+
     for (const f of files) {
       if (isUploadedFile(f)) {
         const name = f.name || "upload.bin"
+        const ext = name.lastIndexOf('.') >= 0 ? name.slice(name.lastIndexOf('.')).toLowerCase() : '';
+        if (!allowedExts.includes(ext)) {
+          return createErrorResponse(ctx, 'BAD_REQUEST', `File type not allowed: ${ext}. Accepted: ${allowedExts.join(', ')}`, 400);
+        }
+        if (f.type && !allowedMimes.includes(f.type)) {
+          return createErrorResponse(ctx, 'BAD_REQUEST', `MIME type not allowed: ${f.type}`, 400);
+        }
+        if (f.size > maxFileSize) {
+          return createErrorResponse(ctx, 'BAD_REQUEST', `File too large: ${name} (${Math.round(f.size / 1024 / 1024)}MB). Max: ${Math.round(maxFileSize / 1024 / 1024)}MB`, 400);
+        }
         items.push({ name, blob: f as Blob, filename: name })
       }
     }
@@ -45,6 +70,16 @@ export async function POST(req: NextRequest) {
         return createErrorResponse(ctx, 'BAD_REQUEST', 'Missing files', 400)
       }
       const name = one.name || "upload.bin"
+      const ext = name.lastIndexOf('.') >= 0 ? name.slice(name.lastIndexOf('.')).toLowerCase() : '';
+      if (!allowedExts.includes(ext)) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', `File type not allowed: ${ext}. Accepted: ${allowedExts.join(', ')}`, 400);
+      }
+      if (one.type && !allowedMimes.includes(one.type)) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', `MIME type not allowed: ${one.type}`, 400);
+      }
+      if (one.size > maxFileSize) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', `File too large: ${name} (${Math.round(one.size / 1024 / 1024)}MB). Max: ${Math.round(maxFileSize / 1024 / 1024)}MB`, 400);
+      }
       items.push({ name, blob: one as Blob, filename: name })
     }
 
