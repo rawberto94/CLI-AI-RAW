@@ -84,3 +84,5 @@ nohup.out
 .turbo
 .vercel
 *.tsbuildinfo
+*.bak
+*.old
