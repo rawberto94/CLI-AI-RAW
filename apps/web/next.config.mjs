@@ -70,7 +70,17 @@ const nextConfig = {
   devIndicators: false,
   output: "standalone",
 
-  
+  // Unique build ID per dependency set — prevents stale browser-cached chunks
+  // from a previous install (different Next.js/React version) being served.
+  // In dev mode the lockfile+version hash changes whenever deps change, busting
+  // the browser cache without needing a URL-prefix rewrite layer.
+  generateBuildId: async () => {
+    if (process.env.NODE_ENV === 'development') {
+      return `dev-${crypto.createHash('md5').update(`${lockfileHash}|${nextVersion}|${reactVersion}`).digest('hex').slice(0, 12)}`;
+    }
+    return null; // let Next.js generate the default for production
+  },
+
   // External packages that should not be bundled (native modules)
   serverExternalPackages: [
     'ssh2',
