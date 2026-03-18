@@ -275,10 +275,10 @@ export function useContractMetadata(contract: ContractData | null) {
       ),
       signature_status: contract.signature_status || 'unknown',
       signature_required_flag: contract.signature_required_flag ?? (
-        // Auto-flag if unsigned or partially signed
+        // Only auto-flag if we have a definitive unsigned or partially_signed status
+        // Don't flag when status is 'unknown' to avoid spurious alerts
         contract.signature_status === 'unsigned' || 
-        contract.signature_status === 'partially_signed' ||
-        (!contract.signature_date && contract.signature_status !== 'signed')
+        contract.signature_status === 'partially_signed'
       ),
       start_date: formatDateStr(
         contract.start_date || 

@@ -3335,15 +3335,33 @@ export async function processOCRArtifactJob(
         null,
       
       // Signature status (from CONTACTS artifact, with DI handwriting fallback)
+      // Only infer 'signed' from handwriting if spans contain signature-like patterns
+      // (e.g., near signature labels, /s/ markers). Plain handwriting (annotations,
+      // fill-ins, margin notes) should NOT default to 'signed'.
       signature_status: unwrapVal(contactsData.signatureStatus) || 
-        (ocrResult.handwrittenText.length > 0 ? 'signed' : 'unknown'),
+        (() => {
+          if (ocrResult.handwrittenText.length === 0) return 'unknown';
+          // Check if any handwritten span looks like a signature vs annotation
+          const sigPatterns = /\b(signature|signed|sign|executed|witness|authorized)\b|\/s\//i;
+          const fullText = ocrResult.fullText || '';
+          const hasSignatureContext = sigPatterns.test(fullText) && ocrResult.handwrittenText.length > 0;
+          // Also check if signatories were detected with isSigned flags
+          const signatoryCount = (contactsData.signatories || []).length;
+          const signedCount = (contactsData.signatories || []).filter((s: any) => s.isSigned).length;
+          if (signedCount > 0 && signedCount === signatoryCount) return 'signed';
+          if (signedCount > 0) return 'partially_signed';
+          // Only mark as 'signed' if handwriting appears in signature context
+          if (hasSignatureContext) return 'partially_signed';
+          return 'unknown';
+        })(),
       signature_date: unwrapVal(contactsData.signatureDate) || 
         (contactsData.signatories?.find((s: any) => s.dateSigned)?.dateSigned) || 
         ocrResult.contractFields?.dates?.executionDate ||
         unwrapVal(overviewArtifactData.executionDate) || null,
+      // Only flag signature_required if we have a definitive unsigned/partially_signed status
+      // Don't flag when status is 'unknown' — avoids spurious alerts on newly uploaded contracts
       signature_required_flag: unwrapVal(contactsData.signatureStatus) === 'unsigned' || 
-        unwrapVal(contactsData.signatureStatus) === 'partially_signed' ||
-        (!unwrapVal(contactsData.signatureDate) && unwrapVal(contactsData.signatureStatus) !== 'signed'),
+        unwrapVal(contactsData.signatureStatus) === 'partially_signed',
       signatories: contactsData.signatories || [],
       signature_analysis: contactsData.signatureAnalysis || null,
       di_handwriting_detected: ocrResult.handwrittenText.length > 0,

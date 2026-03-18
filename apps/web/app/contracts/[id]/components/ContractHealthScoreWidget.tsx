@@ -75,13 +75,14 @@ export const ContractHealthScoreWidget = memo(function ContractHealthScoreWidget
       name: 'Signature',
       score: signatureStatus === 'signed' ? 100 : 
              signatureStatus === 'partially_signed' ? 50 : 
-             signatureStatus === 'unsigned' ? 0 : 30,
+             signatureStatus === 'unsigned' ? 0 : 60,
       status: signatureStatus === 'signed' ? 'good' : 
-              signatureStatus === 'partially_signed' ? 'warning' : 'critical',
+              signatureStatus === 'partially_signed' ? 'warning' : 
+              signatureStatus === 'unsigned' ? 'critical' : 'warning',
       message: signatureStatus === 'signed' ? 'Fully executed' :
                signatureStatus === 'partially_signed' ? 'Awaiting signatures' :
                signatureStatus === 'unsigned' ? 'Not signed - not legally binding' :
-               'Signature status unknown',
+               'Signature status not yet determined',
       icon: FileSignature,
     })
     

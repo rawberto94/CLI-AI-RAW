@@ -689,13 +689,15 @@ export function buildArtifactPrompt(type: string, ctx: PromptContext): string | 
           for (const span of ctx.diHandwritingInfo.handwrittenSpans.slice(0, 20)) {
             diParts.push(`    - "${span}"`);
           }
-          diParts.push(`  IMPORTANT: Handwritten text likely indicates signatures, initials, or annotations.`);
-          diParts.push(`  If handwritten text appears near signature lines, the document is likely SIGNED.`);
+          diParts.push(`  IMPORTANT: Handwritten text MAY indicate signatures, initials, OR annotations/fill-ins.`);
+          diParts.push(`  You MUST verify whether handwritten content appears in or near SIGNATURE BLOCKS before concluding the document is signed.`);
+          diParts.push(`  Handwritten margin notes, annotations, or form field fill-ins are NOT signatures.`);
+          diParts.push(`  Only mark as "signed" if handwritten marks appear on/near designated signature lines.`);
         }
       } else {
         diParts.push(`\nPRE-VALIDATED HANDWRITING DETECTION:`);
         diParts.push(`  No handwritten content detected by Azure Document Intelligence.`);
-        diParts.push(`  NOTE: This means no physical signatures were found. Look for typed /s/ signatures or electronic signature indicators instead.`);
+        diParts.push(`  NOTE: This means no physical signatures were found. Look for typed /s/ signatures or electronic signature indicators (DocuSign, Adobe Sign) instead.`);
       }
     }
 
@@ -1305,12 +1307,14 @@ ${truncatedText}`,
 
 CRITICAL SIGNATURE STATUS DETECTION RULES:
 - Look at the END of the document for signature blocks
-- "signed" = ALL signature lines have actual signatures (handwritten marks, typed /s/ names with dates, or electronic signature indicators)
+- "signed" = ALL signature lines have actual signatures (handwritten marks, typed /s/ names with dates, or electronic signature indicators like DocuSign/Adobe Sign)
 - "partially_signed" = SOME but NOT ALL signature lines have signatures
 - "unsigned" = NO signatures present, all signature lines are blank/empty
-- "unknown" = Cannot find signature blocks or unclear
-- Empty lines like "________________________" without marks = unsigned
-- Names TYPED above/below signature lines are NOT signatures unless accompanied by "/s/" or actual handwriting
+- "unknown" = Cannot find signature blocks or document format is unclear
+- Empty lines like "________________________" without marks above/below = unsigned
+- Names TYPED above/below signature lines are NOT signatures unless accompanied by "/s/" prefix or are clearly part of an electronic signature block with dates
+- Handwritten annotations, margin notes, or fill-in fields are NOT signatures — only marks in designated signature blocks count
+- If handwriting data indicates signatures were detected by Document Intelligence, weigh that evidence carefully but verify against document context
 ONLY extract contact information EXPLICITLY stated. DO NOT invent contacts or assume standard roles.
 
 Contract text:

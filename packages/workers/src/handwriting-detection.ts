@@ -9,7 +9,6 @@
  */
 
 import pino from 'pino';
-import * as crypto from 'crypto';
 
 const logger = pino({ name: 'handwriting-detection' });
 
@@ -147,122 +146,121 @@ interface ImageAnalysisContext {
   width: number;
   height: number;
   pageNumber: number;
-  seed: number; // For reproducible mock results
+  /** Azure DI handwritten spans for this page (real detection data) */
+  handwrittenSpans?: Array<{ text: string; offset: number; length: number; confidence: number }>;
+  /** Full page text for context matching */
+  pageText?: string;
 }
 
 /**
- * Simulate handwriting region detection
- * In production, this would use ML models like Google Vision, Azure Computer Vision,
- * or specialized handwriting detection models
+ * Detect handwriting regions using Azure Document Intelligence styles data.
+ * Uses actual DI isHandwritten spans + text pattern heuristics to classify
+ * handwritten regions as signatures, annotations, fill-ins, etc.
  */
 function detectHandwritingRegions(
   context: ImageAnalysisContext,
   options: DetectionOptions
 ): HandwrittenRegion[] {
   const regions: HandwrittenRegion[] = [];
-  const { width, height, pageNumber, seed } = context;
+  const { width, height, pageNumber, handwrittenSpans = [], pageText = '' } = context;
   
-  // Use seed for reproducible "random" detection
-  const random = (n: number) => {
-    const x = Math.sin(seed + n) * 10000;
-    return x - Math.floor(x);
-  };
+  if (handwrittenSpans.length === 0) return regions;
   
-  // Simulate signature detection (usually bottom of document)
-  if (options.detectSignatures !== false && random(1) > 0.3) {
-    const signatureY = height * 0.7 + random(2) * height * 0.2;
+  const lowerText = pageText.toLowerCase();
+  
+  for (let i = 0; i < handwrittenSpans.length; i++) {
+    const span = handwrittenSpans[i]!;
+    const spanText = span.text.trim();
+    if (spanText.length === 0) continue;
+    
+    // Classify the handwritten span based on surrounding text context
+    const type = classifyHandwrittenSpan(spanText, span.offset, lowerText);
+    
+    // Skip if this type isn't requested
+    if (type === 'SIGNATURE' && options.detectSignatures === false) continue;
+    if (type === 'ANNOTATION' && options.detectAnnotations === false) continue;
+    if (type === 'FILL_IN' && options.detectFillIns === false) continue;
+    
+    // Estimate position based on offset ratio in text
+    const offsetRatio = pageText.length > 0 ? span.offset / pageText.length : 0.5;
+    const estimatedY = height * offsetRatio;
+    
     regions.push({
-      id: `sig_${pageNumber}_${Date.now()}`,
-      type: 'SIGNATURE',
+      id: `${type.toLowerCase()}_${pageNumber}_${i}`,
+      type,
       boundingBox: {
-        x: width * 0.1 + random(3) * width * 0.3,
-        y: signatureY,
-        width: width * 0.2 + random(4) * width * 0.1,
-        height: height * 0.05 + random(5) * height * 0.02,
+        x: width * 0.1,
+        y: estimatedY,
+        width: Math.min(width * 0.8, spanText.length * 12),
+        height: height * 0.03,
       },
-      confidence: 0.7 + random(6) * 0.25,
+      confidence: span.confidence,
       pageNumber,
+      extractedText: spanText,
+      textConfidence: span.confidence,
       metadata: {
-        ink: random(7) > 0.5 ? 'blue' : 'black',
-        style: 'cursive',
-        legibility: random(8) > 0.6 ? 'medium' : 'high',
-      },
-    });
-  }
-  
-  // Simulate annotation detection (margins)
-  if (options.detectAnnotations !== false && random(10) > 0.6) {
-    const annotationCount = Math.floor(random(11) * 3) + 1;
-    for (let i = 0; i < annotationCount; i++) {
-      const isLeftMargin = random(12 + i) > 0.5;
-      regions.push({
-        id: `ann_${pageNumber}_${i}_${Date.now()}`,
-        type: 'ANNOTATION',
-        boundingBox: {
-          x: isLeftMargin ? 0 : width * 0.85,
-          y: height * random(13 + i),
-          width: width * 0.1,
-          height: height * 0.05 + random(14 + i) * height * 0.03,
-        },
-        confidence: 0.6 + random(15 + i) * 0.3,
-        pageNumber,
-        metadata: {
-          ink: random(16 + i) > 0.7 ? 'red' : 'black',
-          style: 'mixed',
-          legibility: 'medium',
-        },
-      });
-    }
-  }
-  
-  // Simulate fill-in field detection
-  if (options.detectFillIns !== false && random(20) > 0.4) {
-    const fillInCount = Math.floor(random(21) * 5) + 1;
-    for (let i = 0; i < fillInCount; i++) {
-      regions.push({
-        id: `fill_${pageNumber}_${i}_${Date.now()}`,
-        type: 'FILL_IN',
-        boundingBox: {
-          x: width * 0.2 + random(22 + i) * width * 0.6,
-          y: height * 0.1 + random(23 + i) * height * 0.8,
-          width: width * 0.15 + random(24 + i) * width * 0.1,
-          height: height * 0.02,
-        },
-        confidence: 0.75 + random(25 + i) * 0.2,
-        pageNumber,
-        metadata: {
-          ink: 'black',
-          style: 'print',
-          legibility: 'high',
-        },
-      });
-    }
-  }
-  
-  // Simulate date written detection
-  if (random(30) > 0.5) {
-    regions.push({
-      id: `date_${pageNumber}_${Date.now()}`,
-      type: 'DATE_WRITTEN',
-      boundingBox: {
-        x: width * 0.6,
-        y: height * 0.75 + random(31) * height * 0.1,
-        width: width * 0.15,
-        height: height * 0.02,
-      },
-      confidence: 0.8 + random(32) * 0.15,
-      pageNumber,
-      extractedText: `${Math.floor(random(33) * 28) + 1}/${Math.floor(random(34) * 12) + 1}/2024`,
-      textConfidence: 0.7 + random(35) * 0.2,
-      metadata: {
-        ink: 'black',
-        style: 'print',
-        legibility: 'high',
+        style: type === 'SIGNATURE' ? 'cursive' : 'mixed',
+        legibility: span.confidence > 0.8 ? 'high' : span.confidence > 0.6 ? 'medium' : 'low',
       },
     });
   }
   
   return regions;
+}
+
+/**
+ * Classify a handwritten span based on its content and surrounding text context.
+ */
+function classifyHandwrittenSpan(
+  spanText: string,
+  offset: number,
+  fullTextLower: string
+): HandwritingType {
+  const spanLower = spanText.toLowerCase();
+  
+  // Check for initials pattern (1-3 uppercase letters, possibly with dots)
+  if (/^[A-Z]{1,3}\.?$/.test(spanText.trim())) {
+    return 'INITIALS';
+  }
+  
+  // Check surrounding context for signature indicators (within ~200 chars)
+  const contextStart = Math.max(0, offset - 200);
+  const contextEnd = Math.min(fullTextLower.length, offset + spanText.length + 200);
+  const surroundingContext = fullTextLower.substring(contextStart, contextEnd);
+  
+  const signatureContextPatterns = [
+    /\bsignature\b/, /\bsigned\b/, /\bby:\s*_/, /\bexecuted\s+by\b/,
+    /\bauthorized\s+by\b/, /\bwitness\b/, /\/s\//, /\bsign\s+here\b/,
+    /\bunterschrift\b/, /\bfirma\b/, /\bsigne\b/,
+  ];
+  
+  if (signatureContextPatterns.some(p => p.test(surroundingContext))) {
+    return 'SIGNATURE';
+  }
+  
+  // Check for date patterns in the handwritten text itself
+  if (/\d{1,2}[\/.]\d{1,2}[\/.]\d{2,4}/.test(spanText) || 
+      /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(spanText)) {
+    return 'DATE_WRITTEN';
+  }
+  
+  // Short text near form fields → fill-in
+  if (spanText.length < 30 && /_{3,}|\.{3,}|\[.*\]/.test(surroundingContext)) {
+    return 'FILL_IN';
+  }
+  
+  // Longer text or text in margins → annotation
+  if (spanText.length > 50) {
+    return 'ANNOTATION';
+  }
+  
+  // Default: if it's near the bottom 30% of the document, likely a signature
+  const docPosition = offset / Math.max(fullTextLower.length, 1);
+  if (docPosition > 0.7 && spanText.length < 40) {
+    return 'SIGNATURE';
+  }
+  
+  return 'FILL_IN';
 }
 
 /**
@@ -368,7 +366,9 @@ function determineProcessingRecommendation(
  */
 export async function analyzeHandwriting(
   input: Buffer | string,
-  options: DetectionOptions = {}
+  options: DetectionOptions = {},
+  /** Optional: Azure DI handwritten spans (from styles.isHandwritten). When provided, uses real detection data. */
+  diHandwrittenSpans?: Array<{ text: string; offset: number; length: number; confidence: number }>
 ): Promise<HandwritingAnalysisResult> {
   const startTime = Date.now();
   const warnings: string[] = [];
@@ -377,48 +377,32 @@ export async function analyzeHandwriting(
     detectSignatures = true,
     detectAnnotations = true,
     detectFillIns = true,
-    pageRange,
     minRegionSize = 100,
     sensitivityLevel = 'medium',
   } = options;
   
-  // Generate seed from input for reproducible results
-  const hash = crypto.createHash('md5')
-    .update(Buffer.isBuffer(input) ? input : Buffer.from(input))
-    .digest('hex');
-  const seed = parseInt(hash.substring(0, 8), 16);
-  
-  // Simulate multi-page document
-  const pageCount = 1 + (seed % 10);
-  const startPage = pageRange?.start || 1;
-  const endPage = Math.min(pageRange?.end || pageCount, pageCount);
+  const documentText = typeof input === 'string' ? input : input.toString('utf-8');
   
   // Standard document dimensions (A4 at 300 DPI)
   const pageWidth = 2480;
   const pageHeight = 3508;
   
-  // Detect regions on each page
-  const allRegions: HandwrittenRegion[] = [];
-  const pagesWithHandwriting: number[] = [];
+  // Use real Azure DI handwriting data when available, otherwise use text heuristics
+  const spans = diHandwrittenSpans || detectHandwritingFromText(documentText);
   
-  for (let page = startPage; page <= endPage; page++) {
-    const pageRegions = detectHandwritingRegions(
-      { width: pageWidth, height: pageHeight, pageNumber: page, seed: seed + page },
-      { detectSignatures, detectAnnotations, detectFillIns }
-    );
-    
-    // Filter by minimum size
-    const validRegions = pageRegions.filter(r => {
-      const area = r.boundingBox.width * r.boundingBox.height;
-      return area >= minRegionSize;
-    });
-    
-    if (validRegions.length > 0) {
-      pagesWithHandwriting.push(page);
-    }
-    
-    allRegions.push(...validRegions);
-  }
+  // Detect regions using the spans
+  const allRegions = detectHandwritingRegions(
+    { width: pageWidth, height: pageHeight, pageNumber: 1, handwrittenSpans: spans, pageText: documentText },
+    { detectSignatures, detectAnnotations, detectFillIns }
+  );
+  
+  // Filter by minimum size
+  const validRegions = allRegions.filter(r => {
+    const area = r.boundingBox.width * r.boundingBox.height;
+    return area >= minRegionSize;
+  });
+  
+  const pagesWithHandwriting = validRegions.length > 0 ? [1] : [];
   
   // Adjust confidence based on sensitivity
   const sensitivityMultiplier = {
@@ -427,48 +411,50 @@ export async function analyzeHandwriting(
     high: 1.1,
   }[sensitivityLevel];
   
-  for (const region of allRegions) {
+  for (const region of validRegions) {
     region.confidence = Math.min(1, region.confidence * sensitivityMultiplier);
   }
   
   // Extract signature details
-  const documentText = typeof input === 'string' ? input : undefined;
-  const signatures = extractSignatureInfo(allRegions, documentText);
+  const signatures = extractSignatureInfo(validRegions, documentText);
   
-  // Calculate handwriting percentage
-  const totalPageArea = pageWidth * pageHeight * (endPage - startPage + 1);
-  const handwritingArea = allRegions.reduce((sum, r) => {
-    return sum + r.boundingBox.width * r.boundingBox.height;
-  }, 0);
-  const handwritingPercentage = (handwritingArea / totalPageArea) * 100;
+  // Calculate handwriting percentage based on character count
+  const handwrittenCharCount = spans.reduce((sum, s) => sum + s.text.length, 0);
+  const handwritingPercentage = documentText.length > 0 
+    ? (handwrittenCharCount / documentText.length) * 100 
+    : 0;
   
   // Determine if manual review is needed
-  const lowConfidenceCount = allRegions.filter(r => r.confidence < 0.6).length;
-  const needsManualReview = lowConfidenceCount > allRegions.length * 0.3 ||
+  const lowConfidenceCount = validRegions.filter(r => r.confidence < 0.6).length;
+  const needsManualReview = lowConfidenceCount > validRegions.length * 0.3 ||
     signatures.some(s => !s.isComplete) ||
     handwritingPercentage > 50;
   
-  if (needsManualReview) {
+  if (needsManualReview && validRegions.length > 0) {
     warnings.push('Document contains significant handwriting that may require manual verification');
   }
   
+  if (!diHandwrittenSpans) {
+    warnings.push('Using text heuristics — provide Azure DI styles data for accurate handwriting detection');
+  }
+  
   // Calculate summary statistics
-  const avgConfidence = allRegions.length > 0
-    ? allRegions.reduce((sum, r) => sum + r.confidence, 0) / allRegions.length
+  const avgConfidence = validRegions.length > 0
+    ? validRegions.reduce((sum, r) => sum + r.confidence, 0) / validRegions.length
     : 1;
   
   const legibilityScores = { high: 1, medium: 0.7, low: 0.4 };
-  const legibilityScore = allRegions.length > 0
-    ? allRegions.reduce((sum, r) => {
+  const legibilityScore = validRegions.length > 0
+    ? validRegions.reduce((sum, r) => {
         return sum + (legibilityScores[r.metadata?.legibility || 'medium'] || 0.7);
-      }, 0) / allRegions.length
+      }, 0) / validRegions.length
     : 1;
   
   const summary: HandwritingSummary = {
-    totalRegions: allRegions.length,
+    totalRegions: validRegions.length,
     signatureCount: signatures.length,
-    annotationCount: allRegions.filter(r => r.type === 'ANNOTATION').length,
-    fillInCount: allRegions.filter(r => r.type === 'FILL_IN').length,
+    annotationCount: validRegions.filter(r => r.type === 'ANNOTATION').length,
+    fillInCount: validRegions.filter(r => r.type === 'FILL_IN').length,
     avgConfidence,
     legibilityScore,
     pagesWithHandwriting,
@@ -476,29 +462,68 @@ export async function analyzeHandwriting(
   
   // Get processing recommendation
   const processingRecommendation = determineProcessingRecommendation(
-    allRegions,
+    validRegions,
     handwritingPercentage
   );
   
   logger.info({
-    hasHandwriting: allRegions.length > 0,
+    hasHandwriting: validRegions.length > 0,
     handwritingPercentage: handwritingPercentage.toFixed(2),
-    regionCount: allRegions.length,
+    regionCount: validRegions.length,
     signatureCount: signatures.length,
     recommendation: processingRecommendation,
     processingTime: Date.now() - startTime,
+    usingDIData: !!diHandwrittenSpans,
   }, 'Handwriting analysis complete');
   
   return {
-    hasHandwriting: allRegions.length > 0,
+    hasHandwriting: validRegions.length > 0,
     handwritingPercentage,
-    regions: allRegions,
+    regions: validRegions,
     signatures,
     needsManualReview,
     processingRecommendation,
     warnings,
     summary,
   };
+}
+
+/**
+ * Fallback: detect handwriting-like patterns from text when DI data is unavailable.
+ * Uses signature block patterns and /s/ markers as heuristics.
+ */
+function detectHandwritingFromText(
+  text: string
+): Array<{ text: string; offset: number; length: number; confidence: number }> {
+  const spans: Array<{ text: string; offset: number; length: number; confidence: number }> = [];
+  
+  // Look for /s/ electronic signature markers
+  const sRegex = /\/s\/\s*([^\n]{1,60})/gi;
+  let match;
+  while ((match = sRegex.exec(text)) !== null) {
+    spans.push({
+      text: match[0],
+      offset: match.index,
+      length: match[0].length,
+      confidence: 0.85,
+    });
+  }
+  
+  // Look for "Signed: Name" / "By: Name" patterns followed by actual content (not blanks)
+  const signedByRegex = /(?:signed|executed)\s*(?:by)?:\s*([A-Z][a-zA-Z\s.]{2,40})/gi;
+  while ((match = signedByRegex.exec(text)) !== null) {
+    const name = match[1]?.trim();
+    if (name && name.length > 2 && !/_{3,}/.test(name)) {
+      spans.push({
+        text: match[0],
+        offset: match.index,
+        length: match[0].length,
+        confidence: 0.7,
+      });
+    }
+  }
+  
+  return spans;
 }
 
 /**
