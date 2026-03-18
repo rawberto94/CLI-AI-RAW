@@ -58,15 +58,6 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
-// Dev-mode asset prefix: changes the URL namespace for all _next/static assets
-// so that stale browser cache entries (from a previous "immutable" header bug)
-// can never match. The hash is stable for a given dependency set and only changes
-// when dependencies or the Next.js version change — exactly when cache busting
-// is needed.
-const devAssetPrefix = process.env.NODE_ENV === 'development'
-  ? `/_dev-${crypto.createHash('md5').update(`${lockfileHash}|${nextVersion}`).digest('hex').slice(0, 8)}`
-  : undefined;
-
 const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
@@ -79,10 +70,6 @@ const nextConfig = {
   devIndicators: false,
   output: "standalone",
 
-  // In dev mode, use a unique path prefix for static assets. This ensures the
-  // browser never serves stale cached chunks if the dependency tree changed,
-  // because the URL is different for each unique set of dependencies.
-  ...(devAssetPrefix && { assetPrefix: devAssetPrefix }),
   
   // External packages that should not be bundled (native modules)
   serverExternalPackages: [
@@ -454,31 +441,11 @@ const nextConfig = {
           },
         ],
       },
-      // Match prefixed dev-mode asset paths (assetPrefix = /_dev-<hash>)
-      ...(process.env.NODE_ENV === 'development' ? [{
-        source: "/_dev-:hash/_next/static/(.*)",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "no-store, must-revalidate",
-          },
-        ],
-      }] : []),
+
     ];
   },
 
-  // In dev mode the browser requests chunks from /_dev-<hash>/_next/static/...
-  // (because of assetPrefix). Rewrite those back to the real /_next/static/...
-  // paths so the dev server can resolve them.
-  async rewrites() {
-    if (!devAssetPrefix) return [];
-    return {
-      beforeFiles: [
-        { source: `${devAssetPrefix}/_next/:path*`, destination: '/_next/:path*' },
-        { source: `${devAssetPrefix}/:path*`, destination: '/:path*' },
-      ],
-    };
-  },
+
 };
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
