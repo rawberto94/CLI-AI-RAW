@@ -6,11 +6,11 @@ let publisher: InstanceType<typeof Redis> | null = null;
 let publisherReady = false;
 let publisherConnectPromise: Promise<void> | null = null;
 
-function getRedisUrl(): string {
-  return (
-    process.env.REDIS_URL ||
-    `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`
-  );
+function getRedisUrl(): string | null {
+  if (process.env.REDIS_URL) return process.env.REDIS_URL;
+  if (process.env.REDIS_HOST) return `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`;
+  // No Redis configured — return null to skip connection attempts
+  return null;
 }
 
 async function ensureRedisPublisher(): Promise<InstanceType<typeof Redis>> {
@@ -20,9 +20,14 @@ async function ensureRedisPublisher(): Promise<InstanceType<typeof Redis>> {
     if (publisher && publisherReady) return publisher;
   }
 
+  const redisUrl = getRedisUrl();
+  if (!redisUrl) {
+    throw new Error('Redis not configured');
+  }
+
   publisherConnectPromise = (async () => {
     try {
-      publisher = new Redis(getRedisUrl(), {
+      publisher = new Redis(redisUrl, {
         maxRetriesPerRequest: 3,
         retryStrategy: (times: number) => Math.min(times * 100, 3000),
         lazyConnect: true,

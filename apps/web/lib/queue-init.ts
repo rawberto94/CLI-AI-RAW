@@ -21,6 +21,14 @@ export function initializeQueueService() {
     return getQueueService();
   }
 
+  // In production, require explicit REDIS_HOST to avoid silently connecting to
+  // localhost:6379 which doesn't exist in Azure Container Apps.
+  // Without Redis, the system falls back to inline artifact processing.
+  if (process.env.NODE_ENV === 'production' && !process.env['REDIS_HOST']) {
+    logger.warn('REDIS_HOST not configured in production — queue service disabled, using inline processing');
+    return null;
+  }
+
   try {
     const redisConfig = {
       host: process.env['REDIS_HOST'] || 'localhost',
