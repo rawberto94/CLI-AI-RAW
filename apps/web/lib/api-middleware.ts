@@ -136,12 +136,16 @@ export function getAuthenticatedApiContext(request: NextRequest): AuthenticatedA
   const tenantId = request.headers.get('x-tenant-id');
 
   if (!userId) {
+    console.log(`[API-DIAG] getAuthenticatedApiContext: no userId header, path=${request.nextUrl?.pathname}`);
     return null;
   }
 
   // In production, require explicit tenant
   if (!tenantId && process.env.NODE_ENV === 'production') {
-    throw new Error('Tenant ID required for authenticated requests');
+    console.error(`[API-DIAG] Missing tenantId for user=${userId}, path=${request.nextUrl?.pathname}`);
+    // Return null instead of throwing to avoid unhandled errors
+    // The handler will return a 401 which is clearer than a 500
+    return null;
   }
   return {
     requestId: request.headers.get('x-request-id') || nanoid(),

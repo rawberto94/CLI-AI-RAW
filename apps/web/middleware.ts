@@ -431,15 +431,23 @@ export default auth(async (req) => {
   // fetch interceptor may fail to attach the CSRF cookie on some Azure
   // proxy/domain configurations. These routes are still protected by session auth.
   const isFileUploadRoute = pathname.includes('/signed-copy');
+  const isCSRFExempt = CSRF_EXEMPT_PATHS.some((path) => pathname.startsWith(path));
+
+  // Diagnostic logging for upload requests
+  if (pathname.includes('/upload') || pathname.includes('/contract')) {
+    console.log(`[MW-DIAG] ${req.method} ${pathname} | auth=${!!req.auth} | userId=${req.auth?.user?.id || 'none'} | tenantId=${req.auth?.user?.tenantId || 'none'} | csrfExempt=${isCSRFExempt} | isFileUpload=${isFileUploadRoute} | reqId=${requestId}`);
+  }
+
   if (
     pathname.startsWith("/api/") &&
     !CSRF_SAFE_METHODS.has(req.method) &&
-    !CSRF_EXEMPT_PATHS.some((path) => pathname.startsWith(path)) &&
+    !isCSRFExempt &&
     !isFileUploadRoute
   ) {
     const headerToken = req.headers.get(CSRF_HEADER_NAME);
 
     if (!headerToken) {
+      console.log(`[MW-DIAG] CSRF BLOCKED (missing) ${req.method} ${pathname} | reqId=${requestId}`);
       const response = NextResponse.json(
         { error: "Forbidden", message: "CSRF token missing", code: "CSRF_MISSING", requestId },
         { status: 403 }
@@ -448,6 +456,7 @@ export default auth(async (req) => {
     }
 
     if (!(await verifyCSRFToken(headerToken, req.auth?.user?.id))) {
+      console.log(`[MW-DIAG] CSRF BLOCKED (invalid) ${req.method} ${pathname} | reqId=${requestId}`);
       const response = NextResponse.json(
         { error: "Forbidden", message: "Invalid or expired CSRF token", code: "CSRF_EXPIRED", requestId },
         { status: 403 }
