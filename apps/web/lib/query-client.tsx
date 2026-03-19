@@ -3,7 +3,6 @@
 import { QueryClient, QueryClientProvider, MutationCache } from '@tanstack/react-query';
 import { useState, useEffect, lazy, Suspense, type ReactNode } from 'react';
 import { setGlobalQueryClient } from './propagation';
-import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner';
 
 // Lazy load devtools to reduce initial memory footprint — catch import errors gracefully
@@ -45,15 +44,15 @@ export const QUERY_CATEGORIES = {
 // Default options for React Query
 const defaultQueryClientOptions = {
   queries: {
-    // Data is considered fresh for 30 seconds by default
-    staleTime: STALE_TIMES.dynamic,
-    // Cache is garbage collected after 5 minutes
-    gcTime: 5 * 60 * 1000,
-    // Retry failed requests 3 times with exponential backoff
-    retry: 3,
+    // Data is considered fresh for 60 seconds by default
+    staleTime: STALE_TIMES.semiDynamic,
+    // Cache is garbage collected after 3 minutes
+    gcTime: 3 * 60 * 1000,
+    // Retry failed requests twice with exponential backoff
+    retry: 2,
     retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    // Only refetch on window focus if data is stale (avoids burst of requests on every alt-tab)
-    refetchOnWindowFocus: true,
+    // Don't refetch on window focus — reduces burst of requests on alt-tab
+    refetchOnWindowFocus: false,
     // Refetch on reconnect
     refetchOnReconnect: true,
     // Don't refetch on mount if data is fresh
@@ -124,37 +123,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
     setGlobalQueryClient(queryClient);
   }, [queryClient]);
   
-  // Prefetch critical data on app mount
-  useEffect(() => {
-    const prefetchCriticalData = async () => {
-      // Prefetch dashboard summary
-      queryClient.prefetchQuery({
-        queryKey: ['dashboard-summary'],
-        queryFn: async () => {
-          const tenantId = getTenantId();
-          // Skip prefetch if no tenant (user needs to authenticate)
-          if (!tenantId || tenantId === 'unknown') {
-            return { contracts: [], summary: null };
-          }
-          const res = await fetch('/api/contracts/summary', {
-            headers: { 'x-tenant-id': tenantId },
-          });
-          // Handle non-JSON responses gracefully
-          if (!res.ok) {
-            console.warn('[QueryProvider] Dashboard prefetch failed:', res.status);
-            return { contracts: [], summary: null };
-          }
-          return res.json();
-        },
-        staleTime: STALE_TIMES.realtime,
-      });
-    };
-    
-    // Only prefetch if not already in cache
-    if (!queryClient.getQueryData(['dashboard-summary'])) {
-      prefetchCriticalData();
-    }
-  }, [queryClient]);
+  // Dashboard prefetch moved to dashboard page to avoid fetching on every route
 
   return (
     <QueryClientProvider client={queryClient}>
