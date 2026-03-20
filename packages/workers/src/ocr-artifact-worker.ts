@@ -2143,6 +2143,57 @@ export async function processOCRArtifactJob(
       }
     }
 
+    // Auto-populate contract fields directly from high-confidence DI extractions.
+    // When DI returns structured fields at ≥ 0.85 confidence we write them straight
+    // to the DB, avoiding a redundant GPT re-extraction for that data later.
+    const DI_AUTO_POPULATE_THRESHOLD = 0.85;
+    if (ocrResult.isDISource) {
+      try {
+        const contractFieldUpdates: Record<string, any> = {};
+        let metadataParties: Array<{ name: string; role: string; address?: string }> | null = null;
+
+        if (ocrResult.contractFields && ocrResult.contractFields.confidence >= DI_AUTO_POPULATE_THRESHOLD) {
+          const cf = ocrResult.contractFields;
+
+          if (cf.dates?.effectiveDate) {
+            const d = new Date(cf.dates.effectiveDate);
+            if (!isNaN(d.getTime())) { contractFieldUpdates.effectiveDate = d; contractFieldUpdates.startDate = d; }
+          }
+          if (cf.dates?.expirationDate) {
+            const d = new Date(cf.dates.expirationDate);
+            if (!isNaN(d.getTime())) { contractFieldUpdates.expirationDate = d; contractFieldUpdates.endDate = d; }
+          }
+          if (cf.jurisdiction) contractFieldUpdates.jurisdiction = cf.jurisdiction;
+
+          const highConfParties = cf.parties.filter(p => p.confidence >= DI_AUTO_POPULATE_THRESHOLD);
+          if (highConfParties.length > 0) {
+            metadataParties = highConfParties.map(p => ({ name: p.name, role: p.role ?? 'Party', address: p.address }));
+          }
+        }
+
+        if (ocrResult.invoiceFields && ocrResult.invoiceFields.confidence >= DI_AUTO_POPULATE_THRESHOLD) {
+          const inv = ocrResult.invoiceFields;
+          if (inv.invoiceTotal != null) contractFieldUpdates.totalValue = inv.invoiceTotal;
+          if (inv.currency) contractFieldUpdates.currency = inv.currency;
+        }
+
+        if (Object.keys(contractFieldUpdates).length > 0) {
+          await prisma.contract.updateMany({ where: { id: contractId, tenantId }, data: contractFieldUpdates });
+          jobLogger.info({ fields: Object.keys(contractFieldUpdates) }, 'Auto-populated contract fields from DI');
+        }
+        if (metadataParties) {
+          await prisma.contractMetadata.upsert({
+            where: { contractId },
+            create: { contractId, tenantId, updatedBy: 'di-ocr', parties: metadataParties, systemFields: {}, customFields: {}, tags: [], searchKeywords: [] },
+            update: { parties: metadataParties, lastUpdated: new Date() },
+          });
+          jobLogger.info({ partyCount: metadataParties.length }, 'Auto-populated parties from DI');
+        }
+      } catch (diAutoPopErr) {
+        jobLogger.warn({ error: (diAutoPopErr as Error).message }, 'DI auto-population failed, continuing');
+      }
+    }
+
     try { await job.updateProgress(60); } catch { /* best-effort */ }
     await publishJobProgress(job.id || '', contractId, tenantId, 60, 'artifacts', 'Detecting contract type with AI');
 
@@ -2287,8 +2338,25 @@ export async function processOCRArtifactJob(
       let bestQualityScore = 0;
       let tokensUsed = 0;
       let modelUsed = 'unknown';
-      
-      jobLogger.info({ artifactType, progress: `${completedCount + 1}/${artifactTypes.length}` }, 'Generating artifact');
+
+      // DI fast-path: build PARTIES artifact directly from DI when party
+      // confidence is high enough — no GPT call needed.
+      if (artifactType === 'PARTIES' && ocrResult?.isDISource && ocrResult.contractFields?.parties?.length) {
+        const parties = ocrResult.contractFields.parties;
+        const avgConf = parties.reduce((s, p) => s + p.confidence, 0) / parties.length;
+        if (avgConf >= 0.92) {
+          bestArtifactData = {
+            parties: parties.map(p => ({ name: p.name, role: p.role ?? 'Party', address: p.address })),
+            extractionSource: 'azure-document-intelligence',
+            confidence: avgConf,
+          };
+          bestQualityScore = 0.95;
+          modelUsed = `azure-di (${ocrMode})`;
+          jobLogger.info({ avgPartyConfidence: avgConf.toFixed(3), partyCount: parties.length }, 'DI-direct PARTIES artifact — GPT call skipped');
+        }
+      }
+
+      jobLogger.info({ artifactType, progress: `${completedCount + 1}/${artifactTypes.length}`, diDirect: !!bestArtifactData }, 'Generating artifact');
 
       // Check cost budget before generating (P2 #11)
       const budgetCheck = budgetTracker.canProceed(contractId, tenantId);
@@ -2322,7 +2390,7 @@ export async function processOCRArtifactJob(
         jobLogger.warn({ artifactType, warning: budgetCheck.warning }, 'Approaching cost budget limit');
       }
 
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      for (let attempt = 1; attempt <= maxRetries && !bestArtifactData; attempt++) {
         try {
           const artifactResult = await generateArtifactWithAI(
             artifactType, 
@@ -3952,8 +4020,12 @@ async function generateArtifactWithAI(
           customerName: ocrResult.invoiceFields.customerName,
           invoiceId: ocrResult.invoiceFields.invoiceId,
           invoiceDate: ocrResult.invoiceFields.invoiceDate,
+          dueDate: ocrResult.invoiceFields.dueDate,
           invoiceTotal: ocrResult.invoiceFields.invoiceTotal,
+          amountDue: ocrResult.invoiceFields.amountDue,
           currency: ocrResult.invoiceFields.currency,
+          paymentTerms: ocrResult.invoiceFields.paymentTerms,
+          purchaseOrder: ocrResult.invoiceFields.purchaseOrder,
           lineItems: ocrResult.invoiceFields.lineItems.map(li => ({
             description: li.description,
             quantity: li.quantity,
