@@ -913,10 +913,7 @@ const OCR_MODEL_TO_MODE: Record<string, OCRMode> = {
   AZURE_DI_CONTRACT: 'azure-di-contract',
   AZURE_DI_INVOICE: 'azure-di-invoice',
   AZURE_READ: 'azure-ch',
-  AZURE_FORM: 'azure-di-layout', // superseded by DI v4.0
-  GOOGLE_DOCUMENT_AI: 'openai',  // not available, best alternative
-  GOOGLE_VISION: 'openai',
-  AWS_TEXTRACT: 'openai',
+  AZURE_FORM: 'azure-di-layout',
   TESSERACT_FAST: 'mistral',
   TESSERACT_BEST: 'mistral',
   MANUAL_REVIEW: 'openai',
@@ -2093,8 +2090,13 @@ export async function processOCRArtifactJob(
       } : null,
     }, 'OCR extraction and preprocessing completed');
 
-    // Save extracted text to contract's rawText field for AI processing
-    if (extractedText && extractedText.length > 0) {
+    // Save extracted text to contract's rawText field for AI processing.
+    // Always persist even if short — metadata worker uses RetryableError to
+    // wait for sufficient content, and silence here causes infinite retries.
+    if (extractedText != null) {
+      if (extractedText.length < 100) {
+        jobLogger.warn({ contractId, extractedLength: extractedText.length }, 'Extracted text is very short — downstream workers may retry or skip');
+      }
       try {
         const ocrUpdateData: Record<string, any> = {
           rawText: extractedText,
