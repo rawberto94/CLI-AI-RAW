@@ -190,5 +190,23 @@ export {
   type AutoStartCondition,
 } from './workflow-auto-start.service';
 
+// Artifact editing
+export { EditableArtifactService, editableArtifactService } from './editable-artifact.service';
+
+// Metadata editing
+export { MetadataEditorService, metadataEditorService } from './metadata-editor.service';
+
+// Contract hierarchy
+export { ContractHierarchyService, contractHierarchyService } from './contract-hierarchy.service';
+
+// Agent context enrichment
+export {
+  AgentContextEnrichmentService,
+  agentContextEnrichmentService,
+  type EnrichedAgentContext,
+  type ContractArtifacts,
+  type GraphInsights,
+} from './agent-context-enrichment.service';
+
 // Re-export commonly used types from validation service (the canonical source)
 export type { ValidationResult, SanitizationOptions } from './validation.service';
