@@ -15,8 +15,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
-    "neo4j-driver": "^5.15.0",
-    "@langchain/community": "0.2.33",
+"@langchain/community": "0.2.33",
     "@langchain/core": "^0.2.31",
     "@langchain/openai": "^0.2.8",
     "@prisma/client": "^5.22.0",
