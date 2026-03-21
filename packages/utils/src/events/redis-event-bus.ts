@@ -149,6 +149,7 @@ class RedisEventBus {
         this.isConnected = true;
       } catch (err) {
         this.isConnected = false;
+        this.connectionPromise = null; // Reset so future connect() calls can retry
         throw err;
       }
     })();

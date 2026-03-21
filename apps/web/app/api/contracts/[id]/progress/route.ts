@@ -6,17 +6,13 @@
 import { NextRequest } from 'next/server'
 import { progressTracker } from '@/lib/progress-tracker'
 import { auth } from '@/lib/auth';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import getDb from '@/lib/prisma';
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
   const contractId = params.id;
 
   // Authenticate — reject unauthenticated access
@@ -26,6 +22,22 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       JSON.stringify({ error: 'Unauthorized' }),
       { status: 401, headers: { 'Content-Type': 'application/json' } }
     );
+  }
+
+  // Tenant isolation — verify contract belongs to the user's tenant
+  const tenantId = session.user.tenantId;
+  if (tenantId) {
+    const db = await getDb();
+    const contract = await db.contract.findFirst({
+      where: { id: contractId, tenantId },
+      select: { id: true },
+    });
+    if (!contract) {
+      return new Response(
+        JSON.stringify({ error: 'Not found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
   }
 
   // Create SSE response
@@ -50,6 +62,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           // Close connection after completion or failure
           if (event.stage === 'completed' || event.stage === 'failed') {
             setTimeout(() => {
+              clearInterval(heartbeat)
+              unsubscribe()
               controller.close()
             }, 1000)
           }

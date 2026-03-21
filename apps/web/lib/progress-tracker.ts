@@ -9,6 +9,12 @@ export interface ArtifactProgressEvent {
   contractId: string
   stage: 
     | 'started'
+    | 'processing'
+    | 'ocr'
+    | 'ocr-enhancement'
+    | 'llm-enhancement'
+    | 'artifacts'
+    | 'indexing'
     | 'text_extraction' 
     | 'rag_embeddings' 
     | 'overview' 
@@ -45,29 +51,46 @@ class ProgressTracker {
   private async ensureConnected(): Promise<void> {
     if (this.connected) return
 
-    await redisEventBus.connect()
+    try {
+      await redisEventBus.connect()
 
-    this.redisUnsub = redisEventBus.on(RedisEvents.JOB_PROGRESS, (payload: EventPayload) => {
-      const contractId = payload.data.contractId as string | undefined
-      if (!contractId) return
+      this.redisUnsub = redisEventBus.on(RedisEvents.JOB_PROGRESS, (payload: EventPayload) => {
+        const contractId = payload.data.contractId as string | undefined
+        if (!contractId) return
 
-      const event: ArtifactProgressEvent = {
-        contractId,
-        stage: (payload.data.status as ArtifactProgressEvent['stage']) || 'started',
-        progress: (payload.data.progress as number) ?? 0,
-        message: (payload.data.message as string) || '',
-        timestamp: payload.timestamp,
-      }
+        const event: ArtifactProgressEvent = {
+          contractId,
+          stage: (payload.data.status as ArtifactProgressEvent['stage']) || 'started',
+          progress: (payload.data.progress as number) ?? 0,
+          message: (payload.data.message as string) || '',
+          timestamp: payload.timestamp,
+        }
 
-      const callbacks = this.listeners.get(contractId)
-      if (callbacks) {
-        callbacks.forEach(cb => {
-          try { cb(event) } catch { /* callback error */ }
-        })
-      }
-    })
+        const callbacks = this.listeners.get(contractId)
+        if (callbacks) {
+          callbacks.forEach(cb => {
+            try { cb(event) } catch { /* callback error */ }
+          })
+        }
+      })
 
-    this.connected = true
+      this.connected = true
+    } catch (error) {
+      console.error('[ProgressTracker] Failed to connect to Redis event bus:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Disconnect from Redis event bus and clean up all listeners.
+   */
+  async disconnect(): Promise<void> {
+    if (this.redisUnsub) {
+      this.redisUnsub()
+      this.redisUnsub = null
+    }
+    this.listeners.clear()
+    this.connected = false
   }
 
   /**
@@ -94,4 +117,9 @@ class ProgressTracker {
   }
 }
 
-export const progressTracker = new ProgressTracker()
+// Use globalThis to prevent multiple instances during Next.js hot reloading
+const globalForProgressTracker = globalThis as unknown as { progressTracker?: ProgressTracker }
+export const progressTracker = globalForProgressTracker.progressTracker ?? new ProgressTracker()
+if (process.env.NODE_ENV !== 'production') {
+  globalForProgressTracker.progressTracker = progressTracker
+}

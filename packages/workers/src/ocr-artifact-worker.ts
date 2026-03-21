@@ -28,9 +28,7 @@ import {
   detectContractType,
   detectContractTypeWithAI,
   getContractProfile,
-  getRelevantArtifacts,
   isArtifactApplicable,
-  getEnhancedPromptHints,
   getContractTypeInsights,
   getSmartSuggestions,
   getMissingMandatoryFields,
@@ -39,13 +37,8 @@ import {
 
 // Import OCR enhancements module
 import {
-  deskewImage,
-  postOCRValidation,
-  selectAdaptiveModel,
   runOCREnhancementPipeline,
   collectTrainingData,
-  analyzeCharacterConfidence,
-  getLowConfidenceRegions,
   type OCREnhancementPipelineResult,
   type AdaptiveModelConfig,
 } from './ocr-enhancements';
@@ -274,7 +267,7 @@ const WORKER_CONFIG = {
     enablePartyNameValidation: true,       // Validate extracted party names
     enableFinancialValidation: true,       // Validate financial values
     enableDateValidation: true,            // Validate dates
-    model: 'mistral-large-latest',            // Mistral for artifact generation
+    model: 'azure-gpt-4o',                     // Azure OpenAI primary, Mistral fallback
     enableMultiPassVision: true,           // Multi-pass extraction for complex documents
   },
   // Worker Settings
@@ -585,301 +578,6 @@ const prisma = getClient();
 // Use distributed Redis cache instead of in-memory cache
 import { ocrCache } from '@repo/utils/cache/distributed-cache';
 
-// ============ IMAGE PREPROCESSING UTILITIES ============
-
-/**
- * Preprocessing options for image enhancement before OCR
- */
-interface ImagePreprocessingOptions {
-  enableDeskew: boolean;
-  enableDenoise: boolean;
-  enableContrastEnhancement: boolean;
-  enableBinarization: boolean;
-  targetDpi: number;
-  maxDimension: number;
-}
-
-/**
- * Quality metrics from preprocessing analysis
- */
-interface PreprocessingQualityMetrics {
-  estimatedDpi: number;
-  sharpness: number;
-  contrast: number;
-  brightness: number;
-  noiseLevel: number;
-  qualityScore: number;
-  recommendations: string[];
-}
-
-/**
- * Result from image preprocessing
- */
-interface PreprocessingResult {
-  buffer: Buffer;
-  qualityBefore: PreprocessingQualityMetrics;
-  qualityAfter: PreprocessingQualityMetrics;
-  stepsApplied: string[];
-  processingTimeMs: number;
-  estimatedAccuracyImprovement: number;
-}
-
-/**
- * Preprocess image buffer for better OCR accuracy using sharp
- * This is a lightweight preprocessing pipeline for the worker
- */
-async function preprocessImageForOCR(
-  imageBuffer: Buffer,
-  options: Partial<ImagePreprocessingOptions> = {}
-): Promise<PreprocessingResult> {
-  const startTime = Date.now();
-  const stepsApplied: string[] = [];
-  
-  const opts: ImagePreprocessingOptions = {
-    enableDeskew: options.enableDeskew ?? true,
-    enableDenoise: options.enableDenoise ?? true,
-    enableContrastEnhancement: options.enableContrastEnhancement ?? true,
-    enableBinarization: options.enableBinarization ?? false,
-    targetDpi: options.targetDpi ?? 300,
-    maxDimension: options.maxDimension ?? 3000,
-  };
-  
-  try {
-    const sharp = (await import('sharp')).default;
-    
-    // Analyze initial quality
-    const inputImage = sharp(imageBuffer);
-    const metadata = await inputImage.metadata();
-    const stats = await inputImage.stats();
-    
-    // Calculate initial quality metrics
-    const qualityBefore = calculateImageQuality(metadata, stats);
-    
-    // Skip preprocessing if quality is already good
-    if (qualityBefore.qualityScore >= WORKER_CONFIG.ocr.minQualityScoreForSkip) {
-      logger.info({ qualityScore: qualityBefore.qualityScore }, 'Image quality sufficient, skipping preprocessing');
-      return {
-        buffer: imageBuffer,
-        qualityBefore,
-        qualityAfter: qualityBefore,
-        stepsApplied: ['skipped-good-quality'],
-        processingTimeMs: Date.now() - startTime,
-        estimatedAccuracyImprovement: 0,
-      };
-    }
-    
-    let pipeline = sharp(imageBuffer);
-    
-    // Step 1: Convert to grayscale
-    if (metadata.channels && metadata.channels > 1) {
-      pipeline = pipeline.grayscale();
-      stepsApplied.push('grayscale');
-    }
-    
-    // Step 2: Resize if too large (memory efficiency)
-    const width = metadata.width || 0;
-    const height = metadata.height || 0;
-    if (width > opts.maxDimension || height > opts.maxDimension) {
-      pipeline = pipeline.resize({
-        width: opts.maxDimension,
-        height: opts.maxDimension,
-        fit: 'inside',
-        withoutEnlargement: true,
-      });
-      stepsApplied.push('resize');
-    }
-    
-    // Step 3: Upscale low-DPI images
-    if (qualityBefore.estimatedDpi < opts.targetDpi && width < opts.maxDimension / 2) {
-      const scale = Math.min(2, opts.targetDpi / Math.max(qualityBefore.estimatedDpi, 72));
-      if (scale > 1.1) {
-        const newWidth = Math.round(width * scale);
-        pipeline = pipeline.resize({
-          width: Math.min(newWidth, opts.maxDimension),
-          fit: 'inside',
-        });
-        stepsApplied.push(`upscale-${scale.toFixed(1)}x`);
-      }
-    }
-    
-    // Step 3b: Deskew if enabled (NEW ENHANCEMENT)
-    if (opts.enableDeskew && WORKER_CONFIG.ocr.enableDeskew) {
-      try {
-        const tempBuffer = await pipeline.toBuffer();
-        const deskewResult = await deskewImage(tempBuffer);
-        if (deskewResult.wasApplied) {
-          pipeline = sharp(deskewResult.buffer);
-          stepsApplied.push(`deskew-${deskewResult.angle.toFixed(1)}deg`);
-          logger.info({ angle: deskewResult.angle, confidence: deskewResult.confidence }, 'Deskew applied');
-        }
-      } catch (deskewError) {
-        logger.warn({ error: deskewError }, 'Deskew failed, continuing without');
-      }
-    }
-    
-    // Step 4: Denoise if noisy
-    if (opts.enableDenoise && qualityBefore.noiseLevel > 0.3) {
-      pipeline = pipeline.median(3);
-      stepsApplied.push('denoise');
-    }
-    
-    // Step 5: Enhance contrast
-    if (opts.enableContrastEnhancement) {
-      pipeline = pipeline.normalize();
-      stepsApplied.push('normalize-contrast');
-      
-      // Additional contrast boost for low-contrast images
-      if (qualityBefore.contrast < 0.5) {
-        pipeline = pipeline.linear(1.2, -30);
-        stepsApplied.push('boost-contrast');
-      }
-    }
-    
-    // Step 6: Sharpen if blurry
-    if (qualityBefore.sharpness < 0.7) {
-      pipeline = pipeline.sharpen({
-        sigma: 1.5,
-        m1: 1.0,
-        m2: 0.5,
-      });
-      stepsApplied.push('sharpen');
-    }
-    
-    // Step 7: Binarize for very low quality
-    if (opts.enableBinarization && qualityBefore.qualityScore < 50) {
-      pipeline = pipeline.threshold(128);
-      stepsApplied.push('binarize');
-    }
-    
-    // Output as PNG for best quality
-    const processedBuffer = await pipeline
-      .png({ compressionLevel: 6 })
-      .toBuffer();
-    
-    // Analyze output quality
-    const outputImage = sharp(processedBuffer);
-    const outputMetadata = await outputImage.metadata();
-    const outputStats = await outputImage.stats();
-    const qualityAfter = calculateImageQuality(outputMetadata, outputStats);
-    
-    const processingTimeMs = Date.now() - startTime;
-    const estimatedAccuracyImprovement = Math.max(0, ((qualityAfter.qualityScore - qualityBefore.qualityScore) / 10) * 5);
-    
-    logger.info({
-      qualityBefore: qualityBefore.qualityScore,
-      qualityAfter: qualityAfter.qualityScore,
-      stepsApplied,
-      processingTimeMs,
-      estimatedAccuracyImprovement: `${estimatedAccuracyImprovement.toFixed(1)}%`,
-    }, 'Image preprocessing completed');
-    
-    return {
-      buffer: processedBuffer,
-      qualityBefore,
-      qualityAfter,
-      stepsApplied,
-      processingTimeMs,
-      estimatedAccuracyImprovement,
-    };
-  } catch (error) {
-    logger.warn({ error }, 'Image preprocessing failed, using original buffer');
-    const defaultMetrics: PreprocessingQualityMetrics = {
-      estimatedDpi: 72,
-      sharpness: 0.5,
-      contrast: 0.5,
-      brightness: 128,
-      noiseLevel: 0.2,
-      qualityScore: 50,
-      recommendations: ['Preprocessing failed - using original'],
-    };
-    return {
-      buffer: imageBuffer,
-      qualityBefore: defaultMetrics,
-      qualityAfter: defaultMetrics,
-      stepsApplied: ['preprocessing-failed'],
-      processingTimeMs: Date.now() - startTime,
-      estimatedAccuracyImprovement: 0,
-    };
-  }
-}
-
-/**
- * Calculate image quality score from metadata and stats
- */
-function calculateImageQuality(
-  metadata: { width?: number; height?: number; density?: number; channels?: number },
-  stats: { channels: Array<{ min: number; max: number; mean: number; stdev?: number }> }
-): PreprocessingQualityMetrics {
-  const width = metadata.width || 1;
-  const height = metadata.height || 1;
-  
-  // Estimate DPI (assume letter size 8.5x11 if no metadata)
-  const estimatedDpi = metadata.density || Math.round(((width / 8.5) + (height / 11)) / 2);
-  
-  // Get channel stats (use first channel for grayscale metrics)
-  const channel = stats.channels[0] || { min: 0, max: 255, mean: 128 };
-  
-  // Calculate contrast from range
-  const contrast = (channel.max - channel.min) / 255;
-  
-  // Brightness from mean
-  const brightness = channel.mean;
-  
-  // Simplified sharpness and noise estimation
-  const sharpness = contrast > 0.6 ? 0.8 : contrast > 0.4 ? 0.6 : 0.4;
-  const noiseLevel = contrast < 0.3 ? 0.5 : 0.2;
-  
-  // Calculate overall quality score (0-100)
-  let qualityScore = 0;
-  
-  // DPI contribution (30 points)
-  if (estimatedDpi >= 300) qualityScore += 30;
-  else if (estimatedDpi >= 200) qualityScore += 20;
-  else if (estimatedDpi >= 150) qualityScore += 10;
-  
-  // Contrast contribution (25 points)
-  qualityScore += contrast * 25;
-  
-  // Sharpness contribution (20 points)
-  qualityScore += sharpness * 20;
-  
-  // Brightness contribution (10 points, optimal 100-180)
-  if (brightness >= 100 && brightness <= 180) qualityScore += 10;
-  else if (brightness >= 50 && brightness <= 220) qualityScore += 5;
-  
-  // Noise penalty (15 points max)
-  qualityScore += (1 - noiseLevel) * 15;
-  
-  // Generate recommendations
-  const recommendations: string[] = [];
-  if (estimatedDpi < 200) recommendations.push('Consider higher DPI scan (300+ recommended)');
-  if (sharpness < 0.5) recommendations.push('Image appears blurry');
-  if (contrast < 0.4) recommendations.push('Low contrast detected');
-  if (brightness < 80) recommendations.push('Image is too dark');
-  if (brightness > 200) recommendations.push('Image is too bright');
-  if (noiseLevel > 0.4) recommendations.push('High noise detected');
-  if (qualityScore >= 75) recommendations.push('Quality is acceptable');
-  
-  return {
-    estimatedDpi,
-    sharpness,
-    contrast,
-    brightness,
-    noiseLevel,
-    qualityScore: Math.max(0, Math.min(100, qualityScore)),
-    recommendations,
-  };
-}
-
-/**
- * Check if file is an image type that can be preprocessed
- */
-function isPreprocessableImage(filePath: string): boolean {
-  const ext = filePath.toLowerCase().split('.').pop() || '';
-  return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tiff', 'tif'].includes(ext);
-}
-const OCR_CACHE_TTL = 24 * 60 * 60; // 24 hours in seconds
-
 // Valid OCR modes — DI v4.0 models only (no legacy fallbacks)
 type OCRMode =
   | 'azure-di-layout'
@@ -931,8 +629,7 @@ function s3Client(): S3Client {
   return _s3Client;
 }
 
-// For references that need a client object
-const getS3ClientInstance = () => s3Client();
+
 
 interface OCRArtifactResult {
   success: boolean;
@@ -1243,7 +940,10 @@ export async function processOCRArtifactJob(
       }
     }
 
-    const ocrResult = await performOCR(localFilePath, ocrMode, undefined, async (pct) => {
+    // Pass file size so OCR results can be distributed-cached
+    let downloadedFileSize: number | undefined;
+    try { downloadedFileSize = (await fs.stat(localFilePath)).size; } catch { /* best-effort */ }
+    const ocrResult = await performOCR(localFilePath, ocrMode, downloadedFileSize, async (pct) => {
       try { await job.updateProgress(pct); } catch { /* best-effort */ }
     });
     const rawExtractedText = ocrResult.text;
@@ -1580,8 +1280,8 @@ export async function processOCRArtifactJob(
       processingStartedAt: new Date().toISOString(),
     };
     try {
-      await prisma.contract.update({
-        where: { id: contractId },
+      await prisma.contract.updateMany({
+        where: { id: contractId, tenantId },
         data: { aiMetadata: progressMeta },
       });
     } catch (metaErr) {
@@ -3035,11 +2735,11 @@ async function callMistralForArtifact(
   }
 
   let lastError: Error | null = null;
+  const { Mistral } = await import('@mistralai/mistralai');
+  const client = new Mistral({ apiKey });
   
   for (let attempt = 1; attempt <= AI_RETRY_CONFIG.maxAttempts; attempt++) {
     try {
-      const { Mistral } = await import('@mistralai/mistralai');
-      const client = new Mistral({ apiKey });
       
       logger.info({ type, attempt }, 'Calling Mistral for artifact generation');
       
@@ -3362,12 +3062,7 @@ async function generateArtifactWithAI(
   }
 }
 
-/**
- * Estimate token cost in USD — delegates to shared module
- */
-function estimateTokenCost(model: string, promptTokens: number, completionTokens: number): number {
-  return sharedEstimateTokenCost(model, promptTokens, completionTokens);
-}
+
 
 /**
  * Fallback artifact templates when AI is unavailable (delegates to shared module with contract overlay)
