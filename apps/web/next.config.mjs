@@ -113,9 +113,6 @@ const nextConfig = {
   
   // Optimized static generation
   staticPageGenerationTimeout: 300,
-  generateBuildId: async () => {
-    return process.env.GIT_COMMIT_SHA || `build-${Date.now()}`;
-  },
 
   // Transpile workspace packages
   transpilePackages: ["@repo/data-orchestration", "@repo/utils", "@repo/workers", "@repo/agents"],

@@ -118,7 +118,7 @@ function generateRequestId(): string {
 const RATE_LIMIT_WINDOW = 60; // 1 minute (seconds for Redis TTL)
 const RATE_LIMIT_MAX = 100; // requests per window for general users
 const RATE_LIMIT_CLEANUP_INTERVAL = 5 * 60 * 1000;
-const RATE_LIMIT_MAX_ENTRIES = 10000;
+const RATE_LIMIT_MAX_ENTRIES = 1000;
 
 // In-memory fallback store (used when Redis is unavailable)
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
@@ -379,6 +379,10 @@ export default auth(async (req) => {
 
   // Allow public paths (auth pages only)
   if (publicExactPaths.has(pathname) || publicPaths.some((path) => pathname.startsWith(path))) {
+    // Authenticated users hitting "/" should be redirected to /dashboard
+    if (pathname === "/" && req.auth) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
     return addTracingHeaders(NextResponse.next());
   }
 
