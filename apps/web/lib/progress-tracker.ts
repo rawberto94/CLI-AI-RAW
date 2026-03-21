@@ -1,7 +1,9 @@
 /**
- * Server-Sent Events (SSE) Progress Tracking
- * Real-time updates for artifact generation
+ * Server-Sent Events (SSE) Progress Tracking via Redis Pub/Sub
+ * Workers publish progress via publishJobProgress() → Redis Pub/Sub → this tracker → SSE
  */
+
+import { redisEventBus, RedisEvents, type EventPayload } from '@repo/utils/events/redis-event-bus';
 
 export interface ArtifactProgressEvent {
   contractId: string
@@ -26,18 +28,60 @@ export interface ArtifactProgressEvent {
   timestamp: string
 }
 
-// Simple in-memory event emitter for progress events
-// In production, use Redis PubSub for multi-instance support
+/**
+ * Redis-backed progress tracker.
+ * Subscribes to JOB_PROGRESS events via Redis Pub/Sub so SSE works across
+ * multiple web server instances.
+ */
 class ProgressTracker {
   private listeners: Map<string, Set<(event: ArtifactProgressEvent) => void>> = new Map()
+  private redisUnsub: (() => void) | null = null
+  private connected = false
 
-  subscribe(contractId: string, callback: (event: ArtifactProgressEvent) => void) {
+  /**
+   * Ensure we are subscribed to the Redis event bus.
+   * Safe to call multiple times — only connects once.
+   */
+  private async ensureConnected(): Promise<void> {
+    if (this.connected) return
+
+    await redisEventBus.connect()
+
+    this.redisUnsub = redisEventBus.on(RedisEvents.JOB_PROGRESS, (payload: EventPayload) => {
+      const contractId = payload.data.contractId as string | undefined
+      if (!contractId) return
+
+      const event: ArtifactProgressEvent = {
+        contractId,
+        stage: (payload.data.status as ArtifactProgressEvent['stage']) || 'started',
+        progress: (payload.data.progress as number) ?? 0,
+        message: (payload.data.message as string) || '',
+        timestamp: payload.timestamp,
+      }
+
+      const callbacks = this.listeners.get(contractId)
+      if (callbacks) {
+        callbacks.forEach(cb => {
+          try { cb(event) } catch { /* callback error */ }
+        })
+      }
+    })
+
+    this.connected = true
+  }
+
+  /**
+   * Subscribe to progress events for a specific contract.
+   * Returns an unsubscribe function.
+   */
+  async subscribe(contractId: string, callback: (event: ArtifactProgressEvent) => void): Promise<() => void> {
+    await this.ensureConnected()
+
     if (!this.listeners.has(contractId)) {
       this.listeners.set(contractId, new Set())
     }
     this.listeners.get(contractId)!.add(callback)
 
-    // Return unsubscribe function
     return () => {
       const callbacks = this.listeners.get(contractId)
       if (callbacks) {
@@ -48,79 +92,6 @@ class ProgressTracker {
       }
     }
   }
-
-  emit(event: ArtifactProgressEvent) {
-    const callbacks = this.listeners.get(event.contractId)
-    if (callbacks) {
-      callbacks.forEach(callback => {
-        try {
-          callback(event)
-        } catch {
-          // Callback error, continue with other callbacks
-        }
-      })
-    }
-  }
-
-  // Helper to create progress events
-  createEvent(
-    contractId: string,
-    stage: ArtifactProgressEvent['stage'],
-    progress: number,
-    message: string,
-    options: Partial<ArtifactProgressEvent> = {}
-  ): ArtifactProgressEvent {
-    return {
-      contractId,
-      stage,
-      progress,
-      message,
-      timestamp: new Date().toISOString(),
-      ...options
-    }
-  }
 }
 
 export const progressTracker = new ProgressTracker()
-
-// Convenience functions for artifact generator
-export function emitProgress(
-  contractId: string,
-  stage: ArtifactProgressEvent['stage'],
-  progress: number,
-  message: string,
-  options?: Partial<ArtifactProgressEvent>
-) {
-  progressTracker.emit(
-    progressTracker.createEvent(contractId, stage, progress, message, options)
-  )
-}
-
-export function emitArtifactComplete(
-  contractId: string,
-  artifactType: string,
-  data: any,
-  progress: number
-) {
-  emitProgress(
-    contractId,
-    artifactType.toLowerCase() as any,
-    progress,
-    `✅ ${artifactType} artifact generated`,
-    { artifactType, data }
-  )
-}
-
-export function emitError(
-  contractId: string,
-  stage: ArtifactProgressEvent['stage'],
-  error: string
-) {
-  emitProgress(
-    contractId,
-    'failed',
-    100,
-    `❌ ${error}`,
-    { error, stage }
-  )
-}

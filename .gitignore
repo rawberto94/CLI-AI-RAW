@@ -84,3 +84,8 @@ nohup.out
 .turbo
 .vercel
 *.tsbuildinfo
+
+# Compiled JS in TypeScript source directories (keep api-server.js which has no .ts)
+packages/utils/src/**/*.js
+packages/data-orchestration/src/**/*.js
+!packages/data-orchestration/api-server.js

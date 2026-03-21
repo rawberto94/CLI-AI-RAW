@@ -20,7 +20,7 @@ import {
   CircuitState, 
   CircuitBreakerError 
 } from '@repo/utils/patterns/circuit-breaker';
-import { retry, retryOpenAI, retryStorage } from '@repo/utils/patterns/retry';
+import { retry, retryStorage } from '@repo/utils/patterns/retry';
 import { redisEventBus, RedisEvents, publishJobProgress } from '@repo/utils/events/redis-event-bus';
 import {
   ContractType,
@@ -97,7 +97,7 @@ export interface StructuredOCRResult {
   /** Flat text content (backward-compatible) */
   text: string;
   /** OCR provider that produced this result */
-  source: 'azure-di-layout' | 'azure-di-contract' | 'azure-di-invoice' | 'openai' | 'azure-ch' | 'mistral' | 'fallback';
+  source: 'azure-di-layout' | 'azure-di-contract' | 'azure-di-invoice';
   /** Full DI analysis result when available */
   diResult: DIAnalyzeResult | null;
   /** Pre-extracted contract fields from DI prebuilt-contract model */
@@ -274,8 +274,7 @@ const WORKER_CONFIG = {
     enablePartyNameValidation: true,       // Validate extracted party names
     enableFinancialValidation: true,       // Validate financial values
     enableDateValidation: true,            // Validate dates
-    model: process.env.OPENAI_MODEL || 'gpt-4o', // Use GPT-4o by default for best OCR quality
-    visionModel: process.env.OPENAI_VISION_MODEL || 'gpt-4o', // Use GPT-4o for Vision (NOT gpt-4o-mini)
+    model: 'mistral-large-latest',            // Mistral for artifact generation
     enableMultiPassVision: true,           // Multi-pass extraction for complex documents
   },
   // Worker Settings
@@ -558,21 +557,8 @@ function logQualityMetrics(metrics: ExtractionQualityMetrics): void {
   }
 }
 
-// Circuit breakers for external services (Swiss-compliant only)
-const mistralCircuitBreaker = new CircuitBreaker('mistral-ocr', {
-  failureThreshold: 7,                    // Increased tolerance
-  successThreshold: 2,                    // Faster recovery
-  resetTimeout: 45000,                    // 45 seconds - faster reset
-  requestTimeout: 180000,                 // 3 minutes for OCR (increased)
-  onStateChange: (from, to, metrics) => {
-    logger.warn({ from, to, metrics }, 'Mistral circuit breaker state changed');
-  },
-  onFailure: (error, metrics) => {
-    logger.error({ error: error.message, metrics }, 'Mistral circuit breaker failure');
-  },
-});
-
-const azureCircuitBreaker = new CircuitBreaker('azure-ch-ocr', {
+// Circuit breaker for Azure Document Intelligence
+const azureCircuitBreaker = new CircuitBreaker('azure-di-ocr', {
   failureThreshold: 7,                    // Increased tolerance
   successThreshold: 2,                    // Faster recovery
   resetTimeout: 45000,                    // 45 seconds
@@ -894,47 +880,30 @@ function isPreprocessableImage(filePath: string): boolean {
 }
 const OCR_CACHE_TTL = 24 * 60 * 60; // 24 hours in seconds
 
-// Valid OCR modes — includes DI v4.0 models + legacy providers
+// Valid OCR modes — DI v4.0 models only (no legacy fallbacks)
 type OCRMode =
-  | 'openai'
-  | 'azure-ch'
-  | 'mistral'
   | 'azure-di-layout'
   | 'azure-di-contract'
   | 'azure-di-invoice'
   | 'auto';
 
-// Fallback chain for generic/legacy modes (DI modes short-circuit before this)
-const OCR_FALLBACK_CHAIN: readonly OCRMode[] = ['openai', 'azure-ch', 'mistral'];
-
-// Map preclassification OCRModel → worker OCRMode
+// Map preclassification OCRModel → worker OCRMode (DI models only)
 const OCR_MODEL_TO_MODE: Record<string, OCRMode> = {
   AZURE_DI_LAYOUT: 'azure-di-layout',
   AZURE_DI_CONTRACT: 'azure-di-contract',
   AZURE_DI_INVOICE: 'azure-di-invoice',
-  AZURE_READ: 'azure-ch',
-  AZURE_FORM: 'azure-di-layout', // superseded by DI v4.0
-  GOOGLE_DOCUMENT_AI: 'openai',  // not available, best alternative
-  GOOGLE_VISION: 'openai',
-  AWS_TEXTRACT: 'openai',
-  TESSERACT_FAST: 'mistral',
-  TESSERACT_BEST: 'mistral',
-  MANUAL_REVIEW: 'openai',
+  AZURE_FORM: 'azure-di-layout',
 };
 
-// Preload heavy modules to reduce cold start time
+// Preload pdf-parse for faster processing
 let pdfParseModule: any = null;
-let mistralModule: any = null;
 
 (async () => {
   try {
-    // Preload in background
     pdfParseModule = (await import('pdf-parse')).default;
-    const mistral = await import('@mistralai/mistralai');
-    mistralModule = mistral.Mistral;
-    logger.info('Heavy modules preloaded for faster processing');
+    logger.info('pdf-parse preloaded for faster processing');
   } catch (e) {
-    logger.warn('Failed to preload modules, will load on-demand');
+    logger.warn('Failed to preload pdf-parse, will load on-demand');
   }
 })();
 
@@ -982,11 +951,12 @@ function generateOCRCacheKey(filePath: string, fileSize: number): string {
 }
 
 /**
- * Perform OCR extraction on a file with circuit breaker protection and caching.
- * Returns StructuredOCRResult preserving DI structured data when available.
+ * Perform OCR extraction using Azure Document Intelligence only.
+ * Returns StructuredOCRResult with rich structured data from DI models.
+ * Throws if DI is not configured or unavailable.
  */
 async function performOCR(filePath: string, ocrMode: string, fileSize?: number, onProgress?: (pct: number) => void): Promise<StructuredOCRResult> {
-  logger.info({ filePath, ocrMode }, 'Performing OCR extraction');
+  logger.info({ filePath, ocrMode }, 'Performing OCR extraction via Azure Document Intelligence');
   
   // Check distributed cache first
   if (fileSize) {
@@ -994,759 +964,137 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
     const cached = await ocrCache.get(cacheKey);
     if (cached) {
       logger.info({ cacheKey }, 'Using cached OCR result from distributed cache');
-      // Cached results are flat text from legacy — wrap as non-DI
-      return makeNonDIResult(cached.text, 'fallback');
+      return makeNonDIResult(cached.text, 'azure-di-layout');
     }
   }
   
-  // ── DI modes: try the specific model first, then fall through to legacy chain ──
+  // Validate DI is available — hard error if not
+  const { isDIConfigured, isDIEnabled } = await import('./azure-document-intelligence');
+  if (!isDIConfigured()) {
+    throw new Error('Azure Document Intelligence is not configured. Set AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT and AZURE_DOCUMENT_INTELLIGENCE_KEY environment variables.');
+  }
+  if (!isDIEnabled()) {
+    throw new Error('Azure Document Intelligence is disabled. Set AZURE_DOCUMENT_INTELLIGENCE_ENABLED=true to enable.');
+  }
+  if (azureCircuitBreaker.getState() === CircuitState.OPEN) {
+    throw new Error('Azure Document Intelligence circuit breaker is OPEN — too many recent failures. Will auto-recover.');
+  }
+  
+  // Resolve DI model — default to layout if mode is not a specific DI model
   const DI_MODES: OCRMode[] = ['azure-di-layout', 'azure-di-contract', 'azure-di-invoice'];
-  if (DI_MODES.includes(ocrMode as OCRMode)) {
-    try {
-      const { isDIConfigured, isDIEnabled } = await import('./azure-document-intelligence');
-      if (isDIConfigured() && isDIEnabled() && azureCircuitBreaker.getState() !== CircuitState.OPEN) {
-        onProgress?.(15); // DI submission starting
-        const structuredResult = await azureCircuitBreaker.execute(() =>
-          retry(async (): Promise<StructuredOCRResult> => {
-            const { analyzeLayout, analyzeContract, analyzeInvoice } = await import('./azure-document-intelligence');
-            const fileBuffer = await fs.readFile(filePath);
+  const resolvedMode = DI_MODES.includes(ocrMode as OCRMode) ? ocrMode : 'azure-di-layout';
+  
+  onProgress?.(15);
+  const structuredResult = await azureCircuitBreaker.execute(() =>
+    retry(async (): Promise<StructuredOCRResult> => {
+      const { analyzeLayout, analyzeContract, analyzeInvoice } = await import('./azure-document-intelligence');
+      const fileBuffer = await fs.readFile(filePath);
 
-            if (ocrMode === 'azure-di-contract') {
-              const { analysis, contract } = await analyzeContract(fileBuffer);
-              // Build rich text with structured appendices
-              const parts = [analysis.content];
-              if (contract.parties.length > 0) {
-                parts.push('\n--- CONTRACT PARTIES ---');
-                for (const p of contract.parties) parts.push(`${p.role || 'Party'}: ${p.name}`);
-              }
-              if (contract.dates.effectiveDate) parts.push(`Effective Date: ${contract.dates.effectiveDate}`);
-              if (contract.dates.expirationDate) parts.push(`Expiration Date: ${contract.dates.expirationDate}`);
-              if (contract.jurisdiction) parts.push(`Jurisdiction: ${contract.jurisdiction}`);
-              return {
-                text: parts.join('\n'),
-                source: 'azure-di-contract',
-                diResult: analysis,
-                contractFields: contract,
-                invoiceFields: null,
-                tables: analysis.tables || [],
-                keyValuePairs: analysis.keyValuePairs || [],
-                paragraphs: analysis.paragraphs || [],
-                pages: analysis.pages || [],
-                confidence: computeDIConfidence(analysis.pages || []),
-                isDISource: true,
-              };
-            } else if (ocrMode === 'azure-di-invoice') {
-              const { analysis, invoice } = await analyzeInvoice(fileBuffer);
-              const parts = [analysis.content, '\n--- INVOICE DATA ---'];
-              if (invoice.vendorName) parts.push(`Vendor: ${invoice.vendorName}`);
-              if (invoice.invoiceId) parts.push(`Invoice #: ${invoice.invoiceId}`);
-              if (invoice.invoiceDate) parts.push(`Date: ${invoice.invoiceDate}`);
-              if (invoice.invoiceTotal != null) parts.push(`Total: ${invoice.currency || ''} ${invoice.invoiceTotal}`);
-              if (invoice.lineItems.length > 0) {
-                parts.push('\n| Description | Qty | Unit Price | Amount |');
-                parts.push('| --- | --- | --- | --- |');
-                for (const li of invoice.lineItems) {
-                  parts.push(`| ${li.description || '-'} | ${li.quantity ?? '-'} | ${li.unitPrice ?? '-'} | ${li.amount ?? '-'} |`);
-                }
-              }
-              return {
-                text: parts.join('\n'),
-                source: 'azure-di-invoice',
-                diResult: analysis,
-                contractFields: null,
-                invoiceFields: invoice,
-                tables: analysis.tables || [],
-                keyValuePairs: analysis.keyValuePairs || [],
-                paragraphs: analysis.paragraphs || [],
-                pages: analysis.pages || [],
-                confidence: computeDIConfidence(analysis.pages || []),
-                isDISource: true,
-              };
-            } else {
-              // azure-di-layout
-              const result = await analyzeLayout(fileBuffer, { extractKeyValuePairs: true });
-              const parts = [result.content];
-              if (result.tables.length > 0) {
-                parts.push('\n--- EXTRACTED TABLES ---');
-                for (const t of result.tables) {
-                  if (t.headers.length) {
-                    parts.push(`| ${t.headers.join(' | ')} |`);
-                    parts.push(`| ${t.headers.map(() => '---').join(' | ')} |`);
-                  }
-                  for (const r of t.rows) parts.push(`| ${r.join(' | ')} |`);
-                }
-              }
-              if (result.keyValuePairs.length > 0) {
-                parts.push('\n--- KEY-VALUE PAIRS ---');
-                for (const kv of result.keyValuePairs) {
-                  if (kv.key && kv.value) parts.push(`${kv.key}: ${kv.value}`);
-                }
-              }
-              return {
-                text: parts.join('\n'),
-                source: 'azure-di-layout',
-                diResult: result,
-                contractFields: null,
-                invoiceFields: null,
-                tables: result.tables || [],
-                keyValuePairs: result.keyValuePairs || [],
-                paragraphs: result.paragraphs || [],
-                pages: result.pages || [],
-                confidence: computeDIConfidence(result.pages || []),
-                isDISource: true,
-              };
-            }
-          }, {
-            maxAttempts: 2,
-            initialDelay: 2000,
-            maxDelay: 15000,
-            onRetry: (error, attempt, delay) => {
-              logger.warn({ error: error.message, attempt, delay, ocrMode }, 'DI model retry');
-            },
-          })
-        );
-
-        // Cache the text portion for fast retrieval
-        if (fileSize && structuredResult.text && structuredResult.text.length > 100) {
-          const cacheKey = generateOCRCacheKey(filePath, fileSize);
-          await ocrCache.set(cacheKey, structuredResult.text);
+      if (resolvedMode === 'azure-di-contract') {
+        const { analysis, contract } = await analyzeContract(fileBuffer);
+        const parts = [analysis.content];
+        if (contract.parties.length > 0) {
+          parts.push('\n--- CONTRACT PARTIES ---');
+          for (const p of contract.parties) parts.push(`${p.role || 'Party'}: ${p.name}`);
         }
-        logger.info({ ocrMode, textLength: structuredResult.text.length, confidence: structuredResult.confidence.toFixed(3), tables: structuredResult.tables.length, kvPairs: structuredResult.keyValuePairs.length }, 'DI model OCR succeeded with structured data');
-        onProgress?.(55); // DI analysis complete
-        return structuredResult;
-      }
-    } catch (diError) {
-      logger.warn({ error: (diError as Error).message, ocrMode }, 'DI model OCR failed, falling through to legacy chain');
-    }
-    // Fall through to legacy fallback chain
-  }
-
-  // Build fallback chain starting from preferred mode
-  const preferredIndex = OCR_FALLBACK_CHAIN.indexOf(ocrMode as OCRMode);
-  const fallbackOrder = preferredIndex >= 0 
-    ? [...OCR_FALLBACK_CHAIN.slice(preferredIndex), ...OCR_FALLBACK_CHAIN.slice(0, preferredIndex)]
-    : OCR_FALLBACK_CHAIN;
-  
-  let lastError: Error | null = null;
-  
-  for (const mode of fallbackOrder) {
-    // Check circuit breaker state before attempting
-    if (mode === 'mistral' && mistralCircuitBreaker.getState() === CircuitState.OPEN) {
-      logger.warn('Mistral circuit breaker is open, skipping');
-      continue;
-    }
-    if (mode === 'azure-ch' && azureCircuitBreaker.getState() === CircuitState.OPEN) {
-      logger.warn('Azure Switzerland circuit breaker is open, skipping');
-      continue;
-    }
-    
-    try {
-      let result: string;
-      
-      if (mode === 'openai') {
-        // OpenAI GPT-4 Vision OCR (for testing/development)
-        result = await retry(() => performGPT4OCR(filePath), {
-          maxAttempts: 3,
-          initialDelay: 1000,
-          maxDelay: 10000,
-          onRetry: (error, attempt, delay) => {
-            logger.warn({ error: error.message, attempt, delay }, 'OpenAI OCR retry');
-          },
-        });
-      } else if (mode === 'mistral') {
-        result = await mistralCircuitBreaker.execute(() => 
-          retry(() => performMistralOCR(filePath), {
-            maxAttempts: 3,
-            initialDelay: 1000,
-            maxDelay: 10000,
-            onRetry: (error, attempt, delay) => {
-              logger.warn({ error: error.message, attempt, delay }, 'Mistral OCR retry');
-            },
-          })
-        );
-      } else if (mode === 'azure-ch') {
-        result = await azureCircuitBreaker.execute(() => 
-          retry(() => performAzureSwitzerlandOCR(filePath), {
-            maxAttempts: 3,
-            initialDelay: 1000,
-            maxDelay: 10000,
-            onRetry: (error, attempt, delay) => {
-              logger.warn({ error: error.message, attempt, delay }, 'Azure Switzerland OCR retry');
-            },
-          })
-        );
+        if (contract.dates.effectiveDate) parts.push(`Effective Date: ${contract.dates.effectiveDate}`);
+        if (contract.dates.expirationDate) parts.push(`Expiration Date: ${contract.dates.expirationDate}`);
+        if (contract.jurisdiction) parts.push(`Jurisdiction: ${contract.jurisdiction}`);
+        return {
+          text: parts.join('\n'),
+          source: 'azure-di-contract',
+          diResult: analysis,
+          contractFields: contract,
+          invoiceFields: null,
+          tables: analysis.tables || [],
+          keyValuePairs: analysis.keyValuePairs || [],
+          paragraphs: analysis.paragraphs || [],
+          pages: analysis.pages || [],
+          confidence: computeDIConfidence(analysis.pages || []),
+          isDISource: true,
+        };
+      } else if (resolvedMode === 'azure-di-invoice') {
+        const { analysis, invoice } = await analyzeInvoice(fileBuffer);
+        const parts = [analysis.content, '\n--- INVOICE DATA ---'];
+        if (invoice.vendorName) parts.push(`Vendor: ${invoice.vendorName}`);
+        if (invoice.invoiceId) parts.push(`Invoice #: ${invoice.invoiceId}`);
+        if (invoice.invoiceDate) parts.push(`Date: ${invoice.invoiceDate}`);
+        if (invoice.invoiceTotal != null) parts.push(`Total: ${invoice.currency || ''} ${invoice.invoiceTotal}`);
+        if (invoice.lineItems.length > 0) {
+          parts.push('\n| Description | Qty | Unit Price | Amount |');
+          parts.push('| --- | --- | --- | --- |');
+          for (const li of invoice.lineItems) {
+            parts.push(`| ${li.description || '-'} | ${li.quantity ?? '-'} | ${li.unitPrice ?? '-'} | ${li.amount ?? '-'} |`);
+          }
+        }
+        return {
+          text: parts.join('\n'),
+          source: 'azure-di-invoice',
+          diResult: analysis,
+          contractFields: null,
+          invoiceFields: invoice,
+          tables: analysis.tables || [],
+          keyValuePairs: analysis.keyValuePairs || [],
+          paragraphs: analysis.paragraphs || [],
+          pages: analysis.pages || [],
+          confidence: computeDIConfidence(analysis.pages || []),
+          isDISource: true,
+        };
       } else {
-        // Fallback to basic extraction
-        result = await extractTextFallback(filePath);
-      }
-      
-      // Cache successful result in distributed cache
-      if (fileSize && result && result.length > 100) {
-        const cacheKey = generateOCRCacheKey(filePath, fileSize);
-        await ocrCache.set(cacheKey, result);
-        logger.info({ cacheKey, textLength: result.length }, 'Cached OCR result in distributed cache');
-      }
-      
-      logger.info({ mode, textLength: result.length }, 'OCR extraction succeeded');
-      return makeNonDIResult(result, mode as StructuredOCRResult['source']);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      
-      if (error instanceof CircuitBreakerError) {
-        logger.warn({ mode, state: error.state }, 'Circuit breaker prevented OCR call, trying next');
-      } else {
-        logger.warn({ mode, error: lastError.message }, 'OCR mode failed, trying next');
-      }
-    }
-  }
-  
-  // All modes exhausted - use basic extraction as last resort
-  logger.error({ lastError: lastError?.message }, 'All OCR modes exhausted, using basic extraction');
-  const fallbackText = await extractTextFallback(filePath);
-  return makeNonDIResult(fallbackText, 'fallback');
-}
-
-/**
- * Fallback text extraction (no AI enhancement)
- */
-async function extractTextFallback(filePath: string): Promise<string> {
-  try {
-    const fileBuffer = await fs.readFile(filePath);
-    const isPDF = filePath.toLowerCase().endsWith('.pdf');
-    
-    if (isPDF) {
-      const pdfParse = pdfParseModule || (await import('pdf-parse')).default;
-      const pdfData = await pdfParse(fileBuffer);
-      return pdfData.text || 'Unable to extract text from PDF';
-    } else {
-      // For images, return a placeholder
-      return `[Image file: ${filePath} - OCR services unavailable]`;
-    }
-  } catch (error) {
-    logger.error({ error, filePath }, 'Fallback extraction failed');
-    return `[Error extracting text from: ${filePath}]`;
-  }
-}
-
-/**
- * Azure Switzerland OCR extraction (Swiss FADP compliant)
- *
- * Uses Azure Document Intelligence v4.0 Layout model when DI credentials
- * are available (richer output: text + tables + key-value pairs + structure).
- * Falls back to legacy Computer Vision Read API v3.2 otherwise.
- */
-async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
-  try {
-    const fileBuffer = await fs.readFile(filePath);
-    const ext = filePath.toLowerCase().split('.').pop() || '';
-    const isTextFile = ['txt', 'text', 'md', 'html', 'htm', 'xml', 'json', 'csv'].includes(ext);
-
-    // For text files, just read directly
-    if (isTextFile) {
-      logger.info({ filePath, size: fileBuffer.length }, 'Reading text file directly (no OCR needed)');
-      return fileBuffer.toString('utf-8');
-    }
-
-    // ── Try Document Intelligence v4.0 Layout model first ──
-    const diEndpoint = process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
-    const diKey = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
-
-    if (diEndpoint && diKey) {
-      try {
-        const { analyzeLayout } = await import('./azure-document-intelligence');
+        // azure-di-layout (default)
         const result = await analyzeLayout(fileBuffer, { extractKeyValuePairs: true });
-
-        // Build rich text output with tables rendered as markdown
-        const parts: string[] = [];
-        parts.push(result.content);
-
-        // Append tables as markdown for downstream AI processing
+        const parts = [result.content];
         if (result.tables.length > 0) {
-          parts.push('\n\n--- EXTRACTED TABLES ---\n');
-          for (const table of result.tables) {
-            if (table.headers.length > 0) {
-              parts.push(`| ${table.headers.join(' | ')} |`);
-              parts.push(`| ${table.headers.map(() => '---').join(' | ')} |`);
+          parts.push('\n--- EXTRACTED TABLES ---');
+          for (const t of result.tables) {
+            if (t.headers.length) {
+              parts.push(`| ${t.headers.join(' | ')} |`);
+              parts.push(`| ${t.headers.map(() => '---').join(' | ')} |`);
             }
-            for (const row of table.rows) {
-              parts.push(`| ${row.join(' | ')} |`);
-            }
-            parts.push('');
+            for (const r of t.rows) parts.push(`| ${r.join(' | ')} |`);
           }
         }
-
-        // Append key-value pairs
         if (result.keyValuePairs.length > 0) {
-          parts.push('\n--- KEY-VALUE PAIRS ---\n');
+          parts.push('\n--- KEY-VALUE PAIRS ---');
           for (const kv of result.keyValuePairs) {
-            if (kv.key && kv.value) {
-              parts.push(`${kv.key}: ${kv.value}`);
-            }
+            if (kv.key && kv.value) parts.push(`${kv.key}: ${kv.value}`);
           }
         }
-
-        const extractedText = parts.join('\n');
-        logger.info(
-          {
-            textLength: extractedText.length,
-            pages: result.metadata.pageCount,
-            tables: result.tables.length,
-            kvPairs: result.keyValuePairs.length,
-            model: 'prebuilt-layout',
-            apiVersion: 'v4.0',
-          },
-          'Azure Document Intelligence v4.0 OCR completed'
-        );
-        return extractedText;
-      } catch (diError) {
-        logger.warn(
-          { error: (diError as Error).message },
-          'Document Intelligence v4.0 failed, falling back to Read API v3.2'
-        );
-        // Fall through to legacy path
+        return {
+          text: parts.join('\n'),
+          source: 'azure-di-layout',
+          diResult: result,
+          contractFields: null,
+          invoiceFields: null,
+          tables: result.tables || [],
+          keyValuePairs: result.keyValuePairs || [],
+          paragraphs: result.paragraphs || [],
+          pages: result.pages || [],
+          confidence: computeDIConfidence(result.pages || []),
+          isDISource: true,
+        };
       }
-    }
-
-    // ── Legacy fallback: Azure Computer Vision Read API v3.2 ──
-    const endpoint = process.env.AZURE_VISION_ENDPOINT_CH;
-    const apiKey = process.env.AZURE_VISION_KEY_CH;
-    
-    if (!endpoint || !apiKey) {
-      throw new Error('Azure Switzerland credentials not configured (AZURE_VISION_ENDPOINT_CH / AZURE_VISION_KEY_CH or AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT / AZURE_DOCUMENT_INTELLIGENCE_KEY)');
-    }
-    
-    const readUrl = `${endpoint}/vision/v3.2/read/analyze`;
-    logger.info({ filePath, endpoint: readUrl }, 'Using Azure Switzerland OCR (legacy Read v3.2)');
-    
-    const submitResponse = await fetch(readUrl, {
-      method: 'POST',
-      headers: {
-        'Ocp-Apim-Subscription-Key': apiKey,
-        'Content-Type': 'application/octet-stream',
+    }, {
+      maxAttempts: 2,
+      initialDelay: 2000,
+      maxDelay: 15000,
+      onRetry: (error, attempt, delay) => {
+        logger.warn({ error: error.message, attempt, delay, ocrMode: resolvedMode }, 'DI model retry');
       },
-      body: fileBuffer,
-    });
-    
-    if (!submitResponse.ok) {
-      const errorText = await submitResponse.text();
-      throw new Error(`Azure OCR submit failed: ${submitResponse.status} ${errorText}`);
-    }
-    
-    const operationLocation = submitResponse.headers.get('Operation-Location');
-    if (!operationLocation) {
-      throw new Error('Azure OCR did not return Operation-Location header');
-    }
-    
-    let result;
-    let attempts = 0;
-    const maxAttempts = 30;
-    
-    while (attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const resultResponse = await fetch(operationLocation, {
-        headers: { 'Ocp-Apim-Subscription-Key': apiKey },
-      });
-      
-      if (!resultResponse.ok) {
-        throw new Error(`Azure OCR result failed: ${resultResponse.status}`);
-      }
-      
-      result = await resultResponse.json();
-      
-      if (result.status === 'succeeded') break;
-      if (result.status === 'failed') throw new Error('Azure OCR processing failed');
-      
-      attempts++;
-    }
-    
-    if (!result || result.status !== 'succeeded') {
-      throw new Error('Azure OCR timed out or failed');
-    }
-    
-    const extractedText = result.analyzeResult.readResults
-      .map((page: any) => page.lines.map((line: any) => line.text).join('\n'))
-      .join('\n\n');
-    
-    logger.info({ textLength: extractedText.length, pages: result.analyzeResult.readResults.length }, 'Azure Switzerland OCR completed (legacy Read v3.2)');
-    return extractedText;
-  } catch (error) {
-    const err = error as Error;
-    logger.error({ error: err, message: err.message }, 'Azure Switzerland OCR failed');
-    throw error;
+    })
+  );
+
+  // Cache the text portion for fast retrieval
+  if (fileSize && structuredResult.text && structuredResult.text.length > 100) {
+    const cacheKey = generateOCRCacheKey(filePath, fileSize);
+    await ocrCache.set(cacheKey, structuredResult.text);
   }
+  logger.info({ ocrMode: resolvedMode, textLength: structuredResult.text.length, confidence: structuredResult.confidence.toFixed(3), tables: structuredResult.tables.length, kvPairs: structuredResult.keyValuePairs.length }, 'DI OCR succeeded with structured data');
+  onProgress?.(55);
+  return structuredResult;
 }
 
-/**
- * Mistral OCR extraction
- * For PDFs: uses pdf-parse to extract text, then Mistral AI to enhance/structure it
- * For images: uses Pixtral vision model
- */
-async function performMistralOCR(filePath: string): Promise<string> {
-  try {
-    const fileBuffer = await fs.readFile(filePath);
-
-    // Guard against OOM: base64 encoding doubles memory. Cap at 20MB for Vision OCR.
-    const MAX_VISION_OCR_SIZE = 20 * 1024 * 1024;
-    if (fileBuffer.length > MAX_VISION_OCR_SIZE) {
-      logger.warn({ size: fileBuffer.length, maxSize: MAX_VISION_OCR_SIZE, filePath }, 'File too large for Mistral Vision OCR — falling back to text extraction');
-      throw new Error(`File size ${(fileBuffer.length / 1024 / 1024).toFixed(1)}MB exceeds Vision OCR limit of 20MB`);
-    }
-
-    const ext = filePath.toLowerCase().split('.').pop() || '';
-    const isPDF = ext === 'pdf';
-    const isTextFile = ['txt', 'text', 'md', 'html', 'htm', 'xml', 'json', 'csv'].includes(ext);
-    const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tiff', 'tif'].includes(ext);
-    
-    // For text files, just read directly - no OCR needed
-    if (isTextFile) {
-      logger.info({ filePath, size: fileBuffer.length }, 'Reading text file directly (no OCR needed)');
-      return fileBuffer.toString('utf-8');
-    }
-    
-    if (isPDF) {
-      // Use pdf-parse for PDF text extraction (preloaded or lazy load)
-      logger.info({ filePath, size: fileBuffer.length }, 'Extracting text from PDF with pdf-parse');
-      const pdfParse = pdfParseModule || (await import('pdf-parse')).default;
-      const pdfData = await pdfParse(fileBuffer);
-      
-      const rawText = pdfData.text;
-      const meaningfulText = rawText.replace(/\s+/g, ' ').trim();
-      logger.info({ textLength: rawText.length, meaningfulLength: meaningfulText.length, pages: pdfData.numpages }, 'PDF text extracted');
-      
-      // Scanned/image PDF: Mistral chat can't handle these — throw so fallback chain tries OpenAI Vision
-      if (meaningfulText.length < 50) {
-        throw new Error('Scanned/image PDF detected — Mistral text enhancement requires extractable text, falling back to next OCR provider');
-      }
-      
-      // Optimize: Skip AI enhancement for small/medium documents to improve speed
-      if (rawText.length < 5000) {
-        logger.info('Text is small/medium, skipping AI enhancement for speed');
-        return rawText;
-      }
-      
-      // Use Mistral AI to enhance and structure the extracted text (preloaded or lazy load)
-      const Mistral = mistralModule || (await import('@mistralai/mistralai')).Mistral;
-      const apiKey = process.env.MISTRAL_API_KEY;
-      if (!apiKey) {
-        logger.warn('MISTRAL_API_KEY not configured, returning raw PDF text');
-        return rawText;
-      }
-      
-      const client = new Mistral({ apiKey });
-      // Limit to 20k chars for even faster processing
-      const textToProcess = rawText.substring(0, 20000);
-      
-      // Use smaller/faster model for better performance
-      const chatResponse = await client.chat.complete({
-        model: 'mistral-small-latest',
-        messages: [
-          {
-            role: 'user',
-            content: `Clean this text, fix errors, return markdown:\n\n${textToProcess}`,
-          },
-        ],
-        maxTokens: 4000,
-        temperature: 0.3, // Lower temperature for faster, more deterministic responses
-      });
-      
-      const enhancedText = chatResponse.choices?.[0]?.message?.content || rawText;
-      logger.info({ enhancedLength: enhancedText.length }, 'Text enhanced with Mistral AI');
-      return enhancedText;
-    } else if (isImage) {
-      // For images, use Pixtral vision model with optional preprocessing
-      const { Mistral } = await import('@mistralai/mistralai');
-      const apiKey = process.env.MISTRAL_API_KEY;
-      if (!apiKey) {
-        throw new Error('MISTRAL_API_KEY not configured');
-      }
-      
-      // Apply preprocessing if enabled
-      let processedBuffer: Buffer = fileBuffer;
-      if (WORKER_CONFIG.ocr.enablePreprocessing) {
-        logger.info({ filePath }, 'Preprocessing image for better OCR accuracy');
-        const preprocessResult = await preprocessImageForOCR(fileBuffer, {
-          enableDeskew: true,
-          enableDenoise: true,
-          enableContrastEnhancement: true,
-          enableBinarization: false,
-          targetDpi: 300,
-          maxDimension: 3000,
-        });
-        processedBuffer = Buffer.from(preprocessResult.buffer);
-        
-        if (preprocessResult.estimatedAccuracyImprovement > 0) {
-          logger.info({
-            qualityBefore: preprocessResult.qualityBefore.qualityScore,
-            qualityAfter: preprocessResult.qualityAfter.qualityScore,
-            accuracyImprovement: `${preprocessResult.estimatedAccuracyImprovement.toFixed(1)}%`,
-            stepsApplied: preprocessResult.stepsApplied,
-          }, 'Image preprocessing improved quality');
-        }
-      }
-      
-      const client = new Mistral({ apiKey });
-      const base64Data = processedBuffer.toString('base64');
-      const mimeType = ext === 'png' ? 'image/png' : 
-                       ext === 'gif' ? 'image/gif' : 
-                       ext === 'webp' ? 'image/webp' : 'image/jpeg';
-      
-      logger.info({ filePath, size: processedBuffer.length, mimeType }, 'Processing image with Mistral Pixtral Vision OCR');
-      
-      const chatResponse = await client.chat.complete({
-        model: 'pixtral-12b-2409',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Extract all text from this image and return it in markdown format. Preserve the structure and formatting as much as possible.',
-              },
-              {
-                type: 'image_url',
-                imageUrl: `data:${mimeType};base64,${base64Data}`,
-              },
-            ],
-          },
-        ],
-        maxTokens: 8000,
-      });
-      
-      const extractedText = chatResponse.choices?.[0]?.message?.content || '';
-      logger.info({ textLength: extractedText.length }, 'Mistral Vision OCR completed');
-      return typeof extractedText === 'string' ? extractedText : '';
-    } else {
-      // For DOCX/DOC and other unsupported types, try to read as text
-      logger.info({ filePath, ext }, 'Unsupported file type for Mistral Vision, trying text extraction');
-      try {
-        return fileBuffer.toString('utf-8');
-      } catch {
-        throw new Error(`Unsupported file type: ${ext}. Mistral Vision only supports images.`);
-      }
-    }
-  } catch (error) {
-    const err = error as Error;
-    logger.error({ error: err, message: err.message, stack: err.stack }, 'Mistral OCR failed');
-    throw error;
-  }
-}
-
-/**
- * GPT-4 Vision OCR extraction
- * For PDFs: Uses pdf-parse to extract text, then GPT to clean/enhance
- * For text files: Just read the file directly
- * For images: Uses GPT-4 Vision
- */
-async function performGPT4OCR(filePath: string): Promise<string> {
-  try {
-    const OpenAI = (await import('openai')).default;
-    
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
-    }
-    
-    const openai = new OpenAI({ apiKey });
-    const fileBuffer = await fs.readFile(filePath);
-
-    // Guard against OOM: base64 encoding doubles memory. Cap at 20MB for Vision OCR.
-    const MAX_VISION_OCR_SIZE = 20 * 1024 * 1024;
-    if (fileBuffer.length > MAX_VISION_OCR_SIZE) {
-      logger.warn({ size: fileBuffer.length, maxSize: MAX_VISION_OCR_SIZE, filePath }, 'File too large for Vision OCR — falling back to text extraction');
-      throw new Error(`File size ${(fileBuffer.length / 1024 / 1024).toFixed(1)}MB exceeds Vision OCR limit of 20MB`);
-    }
-
-    const ext = filePath.toLowerCase().split('.').pop() || '';
-    const isPDF = ext === 'pdf';
-    const isTextFile = ['txt', 'text', 'md', 'html', 'htm', 'xml', 'json', 'csv'].includes(ext);
-    const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tiff', 'tif'].includes(ext);
-    
-    // For text files, just read directly - no OCR needed
-    if (isTextFile) {
-      logger.info({ filePath, size: fileBuffer.length }, 'Reading text file directly (no OCR needed)');
-      return fileBuffer.toString('utf-8');
-    }
-    
-    // For PDFs, use pdf-parse first, then GPT for enhancement
-    if (isPDF) {
-      logger.info({ filePath, size: fileBuffer.length }, 'Processing PDF with pdf-parse + GPT enhancement');
-      
-      const pdfParse = pdfParseModule || (await import('pdf-parse')).default;
-      const pdfData = await pdfParse(fileBuffer);
-      const rawText = pdfData.text;
-      const meaningfulText = rawText.replace(/\s+/g, ' ').trim();
-      
-      logger.info({ textLength: rawText.length, meaningfulLength: meaningfulText.length, pages: pdfData.numpages }, 'PDF text extracted');
-      
-      // Scanned / image-based PDF: very little extractable text → use GPT-4o Responses API with native PDF input
-      if (meaningfulText.length < 50) {
-        logger.info({ pages: pdfData.numpages, extractedChars: meaningfulText.length }, 'Scanned/image PDF detected — using GPT-4o Responses API with native PDF input');
-        const visionModel = WORKER_CONFIG.ai.visionModel || 'gpt-4o';
-        const base64 = fileBuffer.toString('base64');
-        const fileName = path.basename(filePath);
-
-        // Use the Responses API which supports native PDF file input (type: 'input_file')
-        // The Chat Completions API does NOT support PDF files directly.
-        const response = await (openai as any).responses.create({
-          model: visionModel,
-          input: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'input_file',
-                  filename: fileName,
-                  file_data: `data:application/pdf;base64,${base64}`,
-                },
-                {
-                  type: 'input_text',
-                  text: `Extract ALL text from this scanned PDF document with high accuracy.
-Preserve the exact structure, formatting, and layout.
-Include:
-- All headings and subheadings
-- All paragraphs with proper spacing
-- All lists (numbered and bulleted)
-- Table data in markdown table format
-- Headers and footers
-- Any signatures or handwritten annotations
-
-Return the extracted text in clean markdown format.`,
-                },
-              ],
-            },
-          ],
-          max_output_tokens: 8192,
-        });
-
-        const visionText: string = (response as any).output_text || '';
-        logger.info({ textLength: visionText.length, model: visionModel }, 'GPT-4o Responses API OCR completed for scanned PDF');
-        
-        if (visionText.length > 50) {
-          return visionText;
-        }
-        // If vision also returned little text, fall through to return whatever we have
-        logger.warn({ visionTextLength: visionText.length }, 'GPT-4o Vision returned minimal text for scanned PDF');
-        return visionText || rawText;
-      }
-      
-      // Text-based PDF with sufficient content
-      // For small documents, skip GPT enhancement
-      if (rawText.length < 3000) {
-        return rawText;
-      }
-      
-      // Use GPT to clean and structure the text
-      const textToProcess = rawText.substring(0, 15000);
-      
-      const response = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a document processing expert. Clean and structure the following extracted PDF text. Fix OCR errors, format as clean markdown, and preserve the document structure.'
-          },
-          {
-            role: 'user',
-            content: textToProcess
-          }
-        ],
-        max_tokens: 4096,
-        temperature: 0.2
-      });
-      
-      const enhancedText = response.choices[0]?.message?.content || rawText;
-      logger.info({ originalLength: rawText.length, enhancedLength: enhancedText.length }, 'GPT text enhancement completed');
-      
-      return enhancedText;
-    } else if (isImage) {
-      // For images, use GPT-4o Vision (full model for best accuracy) with preprocessing
-      
-      // Apply preprocessing if enabled for better OCR accuracy
-      let processedBuffer: Buffer = fileBuffer;
-      if (WORKER_CONFIG.ocr.enablePreprocessing) {
-        logger.info({ filePath }, 'Preprocessing image for GPT-4o Vision OCR');
-        const preprocessResult = await preprocessImageForOCR(fileBuffer, {
-          enableDeskew: true,
-          enableDenoise: true,
-          enableContrastEnhancement: true,
-          enableBinarization: false,
-          targetDpi: 300,
-          maxDimension: 4000, // Higher resolution for GPT-4o Vision
-        });
-        processedBuffer = Buffer.from(preprocessResult.buffer);
-        
-        if (preprocessResult.estimatedAccuracyImprovement > 0) {
-          logger.info({
-            qualityBefore: preprocessResult.qualityBefore.qualityScore,
-            qualityAfter: preprocessResult.qualityAfter.qualityScore,
-            accuracyImprovement: `${preprocessResult.estimatedAccuracyImprovement.toFixed(1)}%`,
-            stepsApplied: preprocessResult.stepsApplied,
-          }, 'Image preprocessing improved quality for GPT-4o Vision');
-        }
-      }
-      
-      const base64 = processedBuffer.toString('base64');
-      const mimeType = ext === 'png' ? 'image/png' : 
-                       ext === 'gif' ? 'image/gif' : 
-                       ext === 'webp' ? 'image/webp' : 'image/jpeg';
-      
-      // Use GPT-4o for Vision OCR (NOT gpt-4o-mini) for best quality
-      const visionModel = WORKER_CONFIG.ai.visionModel || 'gpt-4o';
-      logger.info({ filePath, size: processedBuffer.length, mimeType, visionModel }, 'Processing image with GPT-4o Vision OCR');
-      
-      const response = await openai.chat.completions.create({
-        model: visionModel,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `Extract ALL text from this document image with high accuracy.
-Preserve the exact structure, formatting, and layout.
-Include:
-- All headings and subheadings
-- All paragraphs with proper spacing
-- All lists (numbered and bulleted)
-- Table data in markdown table format
-- Headers and footers
-- Any handwritten annotations
-
-Return the extracted text in clean markdown format.`,
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:${mimeType};base64,${base64}`,
-                  detail: 'high', // Use high detail for better OCR accuracy
-                },
-              },
-            ],
-          },
-        ],
-        max_tokens: 8192, // Increased for longer documents
-        temperature: 0.1, // Lower temperature for more accurate extraction
-      });
-      
-      const extractedText = response.choices[0]?.message?.content || '';
-      logger.info({ textLength: extractedText.length, model: visionModel }, 'GPT-4o Vision OCR completed');
-      
-      return extractedText;
-    } else {
-      // For DOCX/DOC and other unsupported types, try to read as text
-      logger.info({ filePath, ext }, 'Unsupported file type for GPT-4 Vision, trying text extraction');
-      try {
-        return fileBuffer.toString('utf-8');
-      } catch {
-        throw new Error(`Unsupported file type: ${ext}. GPT-4 Vision only supports images (png, jpg, gif, webp).`);
-      }
-    }
-  } catch (error) {
-    logger.error({ error }, 'GPT-4 OCR failed');
-    throw error;
-  }
-}
+/* ── Dead OCR providers removed (DI-only) ── */
 
 /**
  * OCR + Artifact Generation Worker
@@ -1887,11 +1235,11 @@ export async function processOCRArtifactJob(
           }
         }
 
-        // Still auto? fall back to openai (GPT Vision) — azure-ch requires credentials not yet configured
-        if (ocrMode === 'auto') ocrMode = 'openai';
+        // Still auto? default to azure-di-contract (the most comprehensive DI model)
+        if (ocrMode === 'auto') ocrMode = 'azure-di-contract';
       } catch (preErr) {
-        jobLogger.warn({ error: (preErr as Error).message }, 'Preclassification failed, defaulting to openai');
-        ocrMode = 'openai';
+        jobLogger.warn({ error: (preErr as Error).message }, 'Preclassification failed, defaulting to azure-di-contract');
+        ocrMode = 'azure-di-contract';
       }
     }
 
@@ -2007,35 +1355,6 @@ export async function processOCRArtifactJob(
         }
       } catch (llmError) {
         jobLogger.warn({ error: llmError }, 'LLM enhancement failed, continuing with local enhancements only');
-      }
-    }
-    
-    // ============ MULTI-PASS CROSS-VALIDATION ============
-    // For non-DI, low-confidence results: run a secondary OCR pass and adopt the
-    // longer/better result when the differential is significant.
-    const CROSS_VALIDATE_THRESHOLD = 0.6;
-    if (
-      !ocrResult.isDISource &&
-      WORKER_CONFIG.ocr.enableMultiPassExtraction &&
-      (ocrEnhancementResult?.validation.confidence ?? 0.5) < CROSS_VALIDATE_THRESHOLD &&
-      localFilePath &&
-      enhancedText.length > 100
-    ) {
-      try {
-        jobLogger.info({ confidence: ocrEnhancementResult?.validation.confidence }, 'Low confidence — attempting cross-validation pass');
-        // Pick a different provider for the second pass
-        const secondaryMode = ocrMode === 'openai' ? 'mistral' : 'openai';
-        const secondResult = await performOCR(localFilePath, secondaryMode, undefined, async () => {});
-        if (secondResult.text.length > enhancedText.length * 1.15) {
-          jobLogger.info({
-            primary: enhancedText.length,
-            secondary: secondResult.text.length,
-            provider: secondaryMode,
-          }, 'Cross-validation pass produced significantly more text — adopting');
-          enhancedText = secondResult.text;
-        }
-      } catch (crossErr) {
-        jobLogger.warn({ error: (crossErr as Error).message }, 'Cross-validation pass failed, continuing with primary');
       }
     }
     
@@ -3719,7 +3038,7 @@ async function callMistralForArtifact(
   
   for (let attempt = 1; attempt <= AI_RETRY_CONFIG.maxAttempts; attempt++) {
     try {
-      const Mistral = mistralModule || (await import('@mistralai/mistralai')).Mistral;
+      const { Mistral } = await import('@mistralai/mistralai');
       const client = new Mistral({ apiKey });
       
       logger.info({ type, attempt }, 'Calling Mistral for artifact generation');
@@ -3778,100 +3097,110 @@ async function callMistralForArtifact(
 }
 
 /**
- * Call OpenAI for artifact generation with retry logic
+ * Call Azure OpenAI for artifact generation with retry logic.
+ * Uses the Azure OpenAI REST API directly (Switzerland North — FADP compliant).
  */
-async function callOpenAIForArtifact(
+async function callAzureOpenAIForArtifact(
   prompt: string,
   systemPrompt: string,
   type: string
 ): Promise<{ success: boolean; data?: Record<string, any>; error?: string; tokensUsed?: number; promptTokens?: number; completionTokens?: number; model?: string }> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return { success: false, error: 'OPENAI_API_KEY not configured' };
+  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+  const apiKey = process.env.AZURE_OPENAI_API_KEY;
+  const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+
+  if (!endpoint || !apiKey) {
+    return { success: false, error: 'Azure OpenAI not configured (AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_API_KEY)' };
   }
 
   let lastError: Error | null = null;
-  let isDowngraded = false;
-  
+
   for (let attempt = 1; attempt <= AI_RETRY_CONFIG.maxAttempts; attempt++) {
     try {
-      const OpenAI = (await import('openai')).default;
-      const openai = new OpenAI({ apiKey });
-      
-      logger.info({ type, attempt }, 'Calling OpenAI for artifact generation');
-      
-      // Model downgrade cascade: gpt-4o → gpt-4o-mini on rate limit retries
-      const primaryModel = process.env.OPENAI_MODEL || 'gpt-4o';
-      const currentModel = (attempt >= 3 && isDowngraded) ? 'gpt-4o-mini' : primaryModel;
-      
-      const response = await openai.chat.completions.create({
-        model: currentModel,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: currentModel === 'gpt-4o-mini' ? 4096 : 8192,
-        temperature: 0.2,
-        response_format: { type: 'json_object' }
-      }, { signal: AbortSignal.timeout(90_000) });
+      const url = `${endpoint.replace(/\/$/, '')}/openai/deployments/${deployment}/chat/completions?api-version=2024-06-01`;
 
-      const content = response.choices[0]?.message?.content;
+      logger.info({ type, attempt, deployment }, 'Calling Azure OpenAI for artifact generation');
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 90_000);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': apiKey,
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: 8192,
+          temperature: 0.2,
+          response_format: { type: 'json_object' },
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Azure OpenAI ${response.status}: ${errText}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
       if (!content) {
-        throw new Error('Empty response from OpenAI');
+        throw new Error('Empty response from Azure OpenAI');
       }
 
       const artifactData = sharedSafeParseJSON(content, type);
       if (!artifactData) {
-        throw new Error(`Failed to parse OpenAI response as JSON for ${type}`);
+        throw new Error(`Failed to parse Azure OpenAI response as JSON for ${type}`);
       }
-      const usage = response.usage;
-      logger.info({ type, model: currentModel, keys: Object.keys(artifactData), tokensUsed: usage?.total_tokens }, 'OpenAI artifact generation succeeded');
-      
-      return { 
-        success: true, 
+
+      const usage = data.usage;
+      logger.info({ type, deployment, keys: Object.keys(artifactData), tokensUsed: usage?.total_tokens }, 'Azure OpenAI artifact generation succeeded');
+
+      return {
+        success: true,
         data: artifactData,
         tokensUsed: usage?.total_tokens || 0,
         promptTokens: usage?.prompt_tokens || 0,
         completionTokens: usage?.completion_tokens || 0,
-        model: currentModel,
+        model: `azure-${deployment}`,
       };
-      
+
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       const errorMsg = lastError.message;
-      
-      // Check if retryable (rate limits, server errors)
-      const isRateLimited = errorMsg.includes('429') || errorMsg.includes('rate_limit') || errorMsg.includes('quota');
+
+      const isRateLimited = errorMsg.includes('429') || errorMsg.includes('rate') || errorMsg.includes('quota');
       const isServerError = errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503') || errorMsg.includes('504');
       const isRetryable = isRateLimited || isServerError;
-      
-      // Downgrade model on rate limit to increase chance of success
-      if (isRateLimited && !isDowngraded) {
-        isDowngraded = true;
-        logger.warn({ type, attempt }, 'Rate limited on primary model, will downgrade to gpt-4o-mini on next attempt');
-      }
-      
+
       if (!isRetryable || attempt >= AI_RETRY_CONFIG.maxAttempts) {
-        logger.warn({ type, attempt, error: errorMsg, wasDowngraded: isDowngraded }, 'OpenAI artifact generation failed');
+        logger.warn({ type, attempt, error: errorMsg }, 'Azure OpenAI artifact generation failed');
         return { success: false, error: errorMsg };
       }
-      
-      // Calculate backoff delay with jitter (longer for rate limits)
+
       const multiplier = isRateLimited ? 3 : 1;
       const baseDelay = AI_RETRY_CONFIG.baseDelay * Math.pow(AI_RETRY_CONFIG.backoffMultiplier, attempt - 1) * multiplier;
       const delay = Math.min(baseDelay, AI_RETRY_CONFIG.maxDelay) * (0.5 + Math.random());
-      
-      logger.warn({ type, attempt, delay: Math.round(delay), error: errorMsg }, 'OpenAI rate limited, retrying');
+
+      logger.warn({ type, attempt, delay: Math.round(delay), error: errorMsg }, 'Azure OpenAI retrying');
       await new Promise(r => setTimeout(r, delay));
     }
   }
-  
-  return { success: false, error: lastError?.message || 'Unknown OpenAI error' };
+
+  return { success: false, error: lastError?.message || 'Unknown Azure OpenAI error' };
 }
 
 /**
- * Generate artifact data using AI (Mistral first, OpenAI fallback)
- * Now adaptive based on detected contract type with retry logic for rate limits.
+ * Generate artifact data using AI.
+ * Priority: Azure OpenAI (Switzerland North, FADP compliant) → Mistral (EU) → fallback templates.
+ * Adaptive based on detected contract type with retry logic for rate limits.
  * When DI structured data is available, it's injected into the prompt context
  * so the LLM uses pre-validated tables, parties, dates, and financial data.
  */
@@ -3883,11 +3212,12 @@ async function generateArtifactWithAI(
   ocrResult?: StructuredOCRResult | null
 ): Promise<Record<string, any>> {
   const mistralKey = process.env.MISTRAL_API_KEY;
-  const openaiKey = process.env.OPENAI_API_KEY;
+  const azureOpenAIKey = process.env.AZURE_OPENAI_API_KEY;
+  const azureOpenAIEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
   
-  // If no AI keys, use fallback templates
-  if (!mistralKey && !openaiKey) {
-    logger.warn('No AI API keys configured, using fallback templates');
+  // At least one AI provider must be configured
+  if (!azureOpenAIKey && !mistralKey) {
+    logger.error('No AI provider configured — set AZURE_OPENAI_API_KEY or MISTRAL_API_KEY');
     return getFallbackArtifact(type, contractText, contract);
   }
   
@@ -3974,47 +3304,40 @@ async function generateArtifactWithAI(
     const systemPrompt = getSystemPrompt();
     let usedProvider = 'none';
     let artifactData: Record<string, any> | null = null;
+    let tokenUsageResult: { tokensUsed?: number; promptTokens?: number; completionTokens?: number } = {};
 
-    // Try Mistral first (if configured)
-    if (mistralKey) {
-      logger.info({ type, textLength: truncatedText.length }, 'Trying Mistral for artifact generation');
+    // Priority 1: Azure OpenAI (Switzerland North — FADP compliant)
+    if (azureOpenAIKey && azureOpenAIEndpoint) {
+      logger.info({ type, textLength: truncatedText.length }, 'Generating artifact with Azure OpenAI (Switzerland North)');
+      const azResult = await callAzureOpenAIForArtifact(prompt, systemPrompt, type);
+      if (azResult.success && azResult.data) {
+        artifactData = azResult.data;
+        usedProvider = azResult.model || 'azure-gpt-4o';
+        tokenUsageResult = { tokensUsed: azResult.tokensUsed, promptTokens: azResult.promptTokens, completionTokens: azResult.completionTokens };
+      } else {
+        logger.warn({ type, error: azResult.error }, 'Azure OpenAI failed, trying Mistral fallback');
+      }
+    }
+
+    // Priority 2: Mistral (EU — GDPR compliant)
+    if (!artifactData && mistralKey) {
+      logger.info({ type, textLength: truncatedText.length }, 'Generating artifact with Mistral');
       const mistralResult = await callMistralForArtifact(prompt, systemPrompt, type);
-      
       if (mistralResult.success && mistralResult.data) {
         artifactData = mistralResult.data;
         usedProvider = 'mistral-large-latest';
       } else {
-        logger.warn({ type, error: mistralResult.error }, 'Mistral failed, trying OpenAI fallback');
+        logger.error({ type, error: mistralResult.error }, 'Mistral artifact generation failed');
       }
     }
 
-    // Fall back to OpenAI if Mistral failed or not configured
-    if (!artifactData && openaiKey) {
-      logger.info({ type, textLength: truncatedText.length }, 'Trying OpenAI for artifact generation');
-      const openaiResult = await callOpenAIForArtifact(prompt, systemPrompt, type);
-      
-      if (openaiResult.success && openaiResult.data) {
-        artifactData = openaiResult.data;
-        usedProvider = openaiResult.model || process.env.OPENAI_MODEL || 'gpt-4o';
-        // Capture token usage from OpenAI
-        artifactData._tokenUsage = {
-          tokensUsed: openaiResult.tokensUsed || 0,
-          promptTokens: openaiResult.promptTokens || 0,
-          completionTokens: openaiResult.completionTokens || 0,
-        };
-      } else {
-        logger.warn({ type, error: openaiResult.error }, 'OpenAI also failed');
-      }
-    }
-
-    // If both AI providers failed, use fallback templates
     if (!artifactData) {
       logger.error({ type }, 'All AI providers failed, using fallback templates');
       return getFallbackArtifact(type, contractText, contract);
     }
 
     // Add metadata including token usage tracking
-    const tokenUsage = artifactData._tokenUsage || {};
+    const tokenUsage = { ...tokenUsageResult, ...(artifactData._tokenUsage || {}) };
     delete artifactData._tokenUsage; // Remove temp field
     
     artifactData._meta = {
@@ -4178,7 +3501,6 @@ if (isMainModule) {
  */
 export function getCircuitBreakerMetrics() {
   return {
-    mistral: mistralCircuitBreaker.getMetrics(),
     azure: azureCircuitBreaker.getMetrics(),
     storage: storageCircuitBreaker.getMetrics(),
   };
@@ -4188,7 +3510,6 @@ export function getCircuitBreakerMetrics() {
  * Reset circuit breakers (for testing or manual intervention)
  */
 export function resetCircuitBreakers() {
-  mistralCircuitBreaker.reset();
   azureCircuitBreaker.reset();
   storageCircuitBreaker.reset();
   logger.info('All circuit breakers reset');

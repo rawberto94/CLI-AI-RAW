@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
-    start(controller) {
+    async start(controller) {
       // Send initial connection message
       const data = JSON.stringify({
         type: 'connected',
@@ -41,8 +41,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       })
       controller.enqueue(encoder.encode(`data: ${data}\n\n`))
 
-      // Subscribe to progress events
-      const unsubscribe = progressTracker.subscribe(contractId, (event) => {
+      // Subscribe to Redis-backed progress events
+      const unsubscribe = await progressTracker.subscribe(contractId, (event) => {
         try {
           const data = JSON.stringify(event)
           controller.enqueue(encoder.encode(`data: ${data}\n\n`))
