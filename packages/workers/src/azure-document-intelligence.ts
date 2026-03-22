@@ -713,7 +713,7 @@ export async function analyzeContract(
   try {
   const raw = await analyzeDocument(fileBuffer, 'prebuilt-contract', {
     locale: options.locale,
-    features: ['keyValuePairs'],
+    // Note: prebuilt-contract model does not support the keyValuePairs feature
   });
 
   const region = raw._region as string;
