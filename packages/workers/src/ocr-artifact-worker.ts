@@ -2245,11 +2245,11 @@ export async function processOCRArtifactJob(
           const dbArtifactsForGap = await prisma.artifact.findMany({
             where: { contractId, type: { in: neededTypes } },
           });
-          const artifactByType = new Map(dbArtifactsForGap.map((a: any) => [a.type as string, a]));
+          const artifactByType = new Map<string, any>(dbArtifactsForGap.map((a: any) => [a.type as string, a]));
 
           // Merge all filled fields per artifact in memory first
           const mergedGapData = new Map<string, { id: string; data: Record<string, unknown> }>();
-          for (const filled of gapFillingResult.output.filledFields) {
+          for (const filled of gapFillingResult.output.filledFields as any[]) {
             const artifact = artifactByType.get(filled.artifactType as string);
             if (!artifact) continue;
             const entry = mergedGapData.get(artifact.id) ?? {
@@ -2283,7 +2283,7 @@ export async function processOCRArtifactJob(
             return null;
           };
 
-          for (const filled of gapFillingResult.output.filledFields) {
+          for (const filled of gapFillingResult.output.filledFields as any[]) {
             if (filled.artifactType === 'OVERVIEW') {
               switch (filled.field) {
                 case 'effectiveDate': {

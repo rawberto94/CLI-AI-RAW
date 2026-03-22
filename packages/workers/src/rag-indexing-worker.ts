@@ -290,10 +290,13 @@ Return a JSON array of strings, one prefix per chunk, in the same order. Return 
               index: baseIndex + si,
               text: sc.text,
               metadata: {
-                chunkType: `raptor_L${sc.level}`,
+                chunkType: 'paragraph' as const,
                 section: `RAPTOR Level ${sc.level} Summary`,
+                startChar: 0,
+                endChar: sc.text.length,
+                wordCount: sc.text.split(/\s+/).length,
               },
-            } as SemanticChunk);
+            });
           }
           jobLogger.info({ raptorSummaries: summaryChunks.length, levels: tree.levels }, 'RAPTOR hierarchical summaries added');
         }
