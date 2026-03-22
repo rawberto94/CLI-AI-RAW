@@ -1155,6 +1155,62 @@ export async function processOCRArtifactJob(
           data: ocrUpdateData,
         });
         jobLogger.info({ textLength: extractedText.length, isDI: ocrResult.isDISource, confidence: ocrResult.confidence.toFixed(3) }, 'Raw text saved to contract');
+
+        // DI-first: persist DI-extracted structured fields directly to DB columns
+        // This avoids the AI re-extracting parties, dates, jurisdiction from raw text
+        if (ocrResult.isDISource && ocrResult.contractFields) {
+          const diFields: Record<string, any> = {};
+          const cf = ocrResult.contractFields;
+
+          // Dates
+          if (cf.dates.effectiveDate) {
+            try { diFields.effectiveDate = new Date(cf.dates.effectiveDate); } catch { /* skip invalid */ }
+          }
+          if (cf.dates.expirationDate) {
+            try { diFields.expirationDate = new Date(cf.dates.expirationDate); } catch { /* skip invalid */ }
+          }
+
+          // Jurisdiction
+          if (cf.jurisdiction) {
+            diFields.jurisdiction = cf.jurisdiction;
+          }
+
+          // Contract title
+          if (cf.title) {
+            diFields.contractTitle = cf.title;
+          }
+
+          // Parties — detect client vs supplier by role
+          if (cf.parties && cf.parties.length > 0) {
+            const clientParty = cf.parties.find((p: any) => {
+              const role = (p.role || '').toLowerCase();
+              return role.includes('client') || role.includes('buyer') || role.includes('customer');
+            });
+            const supplierParty = cf.parties.find((p: any) => {
+              const role = (p.role || '').toLowerCase();
+              return role.includes('supplier') || role.includes('vendor') || role.includes('provider') || role.includes('contractor') || role.includes('seller');
+            });
+
+            if (clientParty?.name) diFields.clientName = clientParty.name;
+            if (supplierParty?.name) diFields.supplierName = supplierParty.name;
+
+            // If roles aren't clear, assign first two parties
+            if (!diFields.clientName && !diFields.supplierName && cf.parties.length >= 2) {
+              diFields.clientName = cf.parties[0]!.name;
+              diFields.supplierName = cf.parties[1]!.name;
+            } else if (!diFields.clientName && !diFields.supplierName && cf.parties.length === 1) {
+              diFields.supplierName = cf.parties[0]!.name;
+            }
+          }
+
+          if (Object.keys(diFields).length > 0) {
+            await prisma.contract.updateMany({
+              where: { id: contractId, tenantId },
+              data: { ...diFields, updatedAt: new Date() },
+            });
+            jobLogger.info({ fieldsSet: Object.keys(diFields), confidence: cf.confidence }, 'DI-first: persisted DI-extracted fields directly to contract record');
+          }
+        }
       } catch (rawTextError) {
         jobLogger.warn({ error: rawTextError }, 'Failed to save rawText, continuing with processing');
       }
@@ -1684,7 +1740,8 @@ export async function processOCRArtifactJob(
         };
         
         // Extract parties - handle various structures
-        if (overviewData.parties && Array.isArray(overviewData.parties)) {
+        // Only overwrite if DI didn't already set them (DI-first principle)
+        if (overviewData.parties && Array.isArray(overviewData.parties) && !contract.clientName && !contract.supplierName) {
           const getPartyName = (p: any) => unwrap(p.name) || unwrap(p.legalName) || p;
           const getPartyRole = (p: any) => (unwrap(p.role) || '').toLowerCase();
           
@@ -1724,8 +1781,9 @@ export async function processOCRArtifactJob(
         }
         
         // Extract dates - handle wrapped values, with keyDates fallback
-        let effectiveDate = unwrapDate(overviewData.effectiveDate);
-        let expirationDate = unwrapDate(overviewData.expirationDate);
+        // Only overwrite if DI didn't already set them (DI-first principle)
+        let effectiveDate = contract.effectiveDate ? null : unwrapDate(overviewData.effectiveDate);
+        let expirationDate = contract.expirationDate ? null : unwrapDate(overviewData.expirationDate);
         
         // Fallback: derive dates from keyDates array if top-level fields are empty
         if ((!effectiveDate || !expirationDate) && Array.isArray(overviewData.keyDates)) {
@@ -1795,9 +1853,12 @@ export async function processOCRArtifactJob(
         }
         
         // Extract jurisdiction from OVERVIEW (fallback: CLAUSES governing-law clause)
-        const jurisdiction = unwrap(overviewData.jurisdiction) || unwrap(overviewData.governingLaw);
-        if (jurisdiction && typeof jurisdiction === 'string') {
-          contractUpdate.jurisdiction = jurisdiction;
+        // Only overwrite if DI didn't already set it (DI-first principle)
+        if (!contract.jurisdiction) {
+          const jurisdiction = unwrap(overviewData.jurisdiction) || unwrap(overviewData.governingLaw);
+          if (jurisdiction && typeof jurisdiction === 'string') {
+            contractUpdate.jurisdiction = jurisdiction;
+          }
         }
 
         // Extract termination clause from OVERVIEW
@@ -1826,7 +1887,7 @@ export async function processOCRArtifactJob(
           }
         }
 
-        // Extract contract title if we have a summary
+        // Extract contract title if we have a summary and DI didn't already set it
         if (overviewData.summary && !contract.contractTitle) {
           // Use first sentence of summary as title, max 100 chars
           const summaryText = unwrap(overviewData.summary);
@@ -2797,40 +2858,32 @@ async function callMistralForArtifact(
 }
 
 /**
- * Call Azure OpenAI for artifact generation with retry logic.
- * Uses the Azure OpenAI REST API directly (Switzerland North — FADP compliant).
+ * Call OpenAI for artifact generation with retry logic.
+ * Uses the OpenAI API directly via the `openai` npm package (gpt-4o model).
  */
-async function callAzureOpenAIForArtifact(
+async function callOpenAIForArtifact(
   prompt: string,
   systemPrompt: string,
   type: string
 ): Promise<{ success: boolean; data?: Record<string, any>; error?: string; tokensUsed?: number; promptTokens?: number; completionTokens?: number; model?: string }> {
-  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-  const apiKey = process.env.AZURE_OPENAI_API_KEY;
-  const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+  const apiKey = process.env.OPENAI_API_KEY;
+  const model = process.env.OPENAI_ARTIFACT_MODEL || 'gpt-4o';
 
-  if (!endpoint || !apiKey) {
-    return { success: false, error: 'Azure OpenAI not configured (AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_API_KEY)' };
+  if (!apiKey) {
+    return { success: false, error: 'OPENAI_API_KEY not configured' };
   }
 
+  const OpenAI = (await import('openai')).default;
+  const openai = new OpenAI({ apiKey });
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= AI_RETRY_CONFIG.maxAttempts; attempt++) {
     try {
-      const url = `${endpoint.replace(/\/$/, '')}/openai/deployments/${deployment}/chat/completions?api-version=2024-06-01`;
+      logger.info({ type, attempt, model }, 'Calling OpenAI for artifact generation');
 
-      logger.info({ type, attempt, deployment }, 'Calling Azure OpenAI for artifact generation');
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 90_000);
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'api-key': apiKey,
-        },
-        body: JSON.stringify({
+      const response = await Promise.race([
+        openai.chat.completions.create({
+          model,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: prompt },
@@ -2839,29 +2892,21 @@ async function callAzureOpenAIForArtifact(
           temperature: 0.2,
           response_format: { type: 'json_object' },
         }),
-        signal: controller.signal,
-      });
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('OpenAI request timeout (90s)')), 90_000)),
+      ]);
 
-      clearTimeout(timeout);
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Azure OpenAI ${response.status}: ${errText}`);
-      }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
+      const content = response.choices?.[0]?.message?.content;
       if (!content) {
-        throw new Error('Empty response from Azure OpenAI');
+        throw new Error('Empty response from OpenAI');
       }
 
       const artifactData = sharedSafeParseJSON(content, type);
       if (!artifactData) {
-        throw new Error(`Failed to parse Azure OpenAI response as JSON for ${type}`);
+        throw new Error(`Failed to parse OpenAI response as JSON for ${type}`);
       }
 
-      const usage = data.usage;
-      logger.info({ type, deployment, keys: Object.keys(artifactData), tokensUsed: usage?.total_tokens }, 'Azure OpenAI artifact generation succeeded');
+      const usage = response.usage;
+      logger.info({ type, model, keys: Object.keys(artifactData), tokensUsed: usage?.total_tokens }, 'OpenAI artifact generation succeeded');
 
       return {
         success: true,
@@ -2869,7 +2914,7 @@ async function callAzureOpenAIForArtifact(
         tokensUsed: usage?.total_tokens || 0,
         promptTokens: usage?.prompt_tokens || 0,
         completionTokens: usage?.completion_tokens || 0,
-        model: `azure-${deployment}`,
+        model,
       };
 
     } catch (error) {
@@ -2881,7 +2926,7 @@ async function callAzureOpenAIForArtifact(
       const isRetryable = isRateLimited || isServerError;
 
       if (!isRetryable || attempt >= AI_RETRY_CONFIG.maxAttempts) {
-        logger.warn({ type, attempt, error: errorMsg }, 'Azure OpenAI artifact generation failed');
+        logger.warn({ type, attempt, error: errorMsg }, 'OpenAI artifact generation failed');
         return { success: false, error: errorMsg };
       }
 
@@ -2889,17 +2934,17 @@ async function callAzureOpenAIForArtifact(
       const baseDelay = AI_RETRY_CONFIG.baseDelay * Math.pow(AI_RETRY_CONFIG.backoffMultiplier, attempt - 1) * multiplier;
       const delay = Math.min(baseDelay, AI_RETRY_CONFIG.maxDelay) * (0.5 + Math.random());
 
-      logger.warn({ type, attempt, delay: Math.round(delay), error: errorMsg }, 'Azure OpenAI retrying');
+      logger.warn({ type, attempt, delay: Math.round(delay), error: errorMsg }, 'OpenAI retrying');
       await new Promise(r => setTimeout(r, delay));
     }
   }
 
-  return { success: false, error: lastError?.message || 'Unknown Azure OpenAI error' };
+  return { success: false, error: lastError?.message || 'Unknown OpenAI error' };
 }
 
 /**
  * Generate artifact data using AI.
- * Priority: Azure OpenAI (Switzerland North, FADP compliant) → Mistral (EU) → fallback templates.
+ * Priority: OpenAI (gpt-4o, primary) → Mistral (EU, fallback) → fallback templates.
  * Adaptive based on detected contract type with retry logic for rate limits.
  * When DI structured data is available, it's injected into the prompt context
  * so the LLM uses pre-validated tables, parties, dates, and financial data.
@@ -2912,12 +2957,11 @@ async function generateArtifactWithAI(
   ocrResult?: StructuredOCRResult | null
 ): Promise<Record<string, any>> {
   const mistralKey = process.env.MISTRAL_API_KEY;
-  const azureOpenAIKey = process.env.AZURE_OPENAI_API_KEY;
-  const azureOpenAIEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+  const openaiKey = process.env.OPENAI_API_KEY;
   
   // At least one AI provider must be configured
-  if (!azureOpenAIKey && !mistralKey) {
-    logger.error('No AI provider configured — set AZURE_OPENAI_API_KEY or MISTRAL_API_KEY');
+  if (!openaiKey && !mistralKey) {
+    logger.error('No AI provider configured — set OPENAI_API_KEY or MISTRAL_API_KEY');
     return getFallbackArtifact(type, contractText, contract);
   }
   
@@ -3006,16 +3050,16 @@ async function generateArtifactWithAI(
     let artifactData: Record<string, any> | null = null;
     let tokenUsageResult: { tokensUsed?: number; promptTokens?: number; completionTokens?: number } = {};
 
-    // Priority 1: Azure OpenAI (Switzerland North — FADP compliant)
-    if (azureOpenAIKey && azureOpenAIEndpoint) {
-      logger.info({ type, textLength: truncatedText.length }, 'Generating artifact with Azure OpenAI (Switzerland North)');
-      const azResult = await callAzureOpenAIForArtifact(prompt, systemPrompt, type);
-      if (azResult.success && azResult.data) {
-        artifactData = azResult.data;
-        usedProvider = azResult.model || 'azure-gpt-4o';
-        tokenUsageResult = { tokensUsed: azResult.tokensUsed, promptTokens: azResult.promptTokens, completionTokens: azResult.completionTokens };
+    // Priority 1: OpenAI (gpt-4o)
+    if (openaiKey) {
+      logger.info({ type, textLength: truncatedText.length }, 'Generating artifact with OpenAI (gpt-4o)');
+      const oaiResult = await callOpenAIForArtifact(prompt, systemPrompt, type);
+      if (oaiResult.success && oaiResult.data) {
+        artifactData = oaiResult.data;
+        usedProvider = oaiResult.model || 'gpt-4o';
+        tokenUsageResult = { tokensUsed: oaiResult.tokensUsed, promptTokens: oaiResult.promptTokens, completionTokens: oaiResult.completionTokens };
       } else {
-        logger.warn({ type, error: azResult.error }, 'Azure OpenAI failed, trying Mistral fallback');
+        logger.warn({ type, error: oaiResult.error }, 'OpenAI failed, trying Mistral fallback');
       }
     }
 

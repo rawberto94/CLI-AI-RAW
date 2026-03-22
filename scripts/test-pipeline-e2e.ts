@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 /**
  * End-to-End Pipeline Integration Test
- * Tests: DI OCR → Azure OpenAI artifacts → Mistral fallback → Redis pub/sub → MinIO storage
+ * Tests: DI OCR → OpenAI artifacts → Mistral fallback → Redis pub/sub → MinIO storage
  * Usage: npx tsx scripts/test-pipeline-e2e.ts [path-to-pdf]
  */
 
@@ -201,12 +201,24 @@ async function testDIOCR(pdfBuffer: Buffer) {
       console.log(`     Parties: ${contractResult.contract.parties.length}`);
       if (contractResult.contract.parties.length > 0) {
         for (const p of contractResult.contract.parties.slice(0, 3)) {
-          console.log(`       - ${p.role || 'Party'}: ${p.name}`);
+          console.log(`       - ${p.role || 'Party'}: ${p.name} (confidence: ${((p.confidence || 0) * 100).toFixed(0)}%)`);
         }
       }
       console.log(`     Effective Date: ${contractResult.contract.dates.effectiveDate || 'N/A'}`);
       console.log(`     Expiration Date: ${contractResult.contract.dates.expirationDate || 'N/A'}`);
+      console.log(`     Execution Date: ${contractResult.contract.dates.executionDate || 'N/A'}`);
       console.log(`     Jurisdiction: ${contractResult.contract.jurisdiction || 'N/A'}`);
+      console.log(`     Title: ${contractResult.contract.title || 'N/A'}`);
+      console.log(`     Confidence: ${((contractResult.contract.confidence || 0) * 100).toFixed(0)}%`);
+      console.log('     ─── DI-First Fields (persisted directly to DB) ───');
+      const cf = contractResult.contract;
+      const diFields: string[] = [];
+      if (cf.dates.effectiveDate) diFields.push(`effectiveDate=${cf.dates.effectiveDate}`);
+      if (cf.dates.expirationDate) diFields.push(`expirationDate=${cf.dates.expirationDate}`);
+      if (cf.jurisdiction) diFields.push(`jurisdiction=${cf.jurisdiction}`);
+      if (cf.title) diFields.push(`contractTitle=${cf.title}`);
+      if (cf.parties.length > 0) diFields.push(`parties=${cf.parties.map(p => p.name).join(', ')}`);
+      console.log(`     ${diFields.length > 0 ? diFields.join(' | ') : 'No structured fields extracted'}`);
     } catch (contractErr: any) {
       // analyzeContract may fail for some DI tiers (e.g. keyValuePairs not supported)
       fail('analyzeContract', contractErr.message?.substring(0, 120));
@@ -220,38 +232,49 @@ async function testDIOCR(pdfBuffer: Buffer) {
   }
 }
 
-// ─── 5. Azure OpenAI artifact generation ─────────────────────────────────────
-async function testAzureOpenAI(extractedText: string) {
-  section('5. Azure OpenAI Artifact Generation');
-  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-  const apiKey = process.env.AZURE_OPENAI_API_KEY;
-  const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+// ─── 5. OpenAI artifact generation ───────────────────────────────────────────
+async function testOpenAI(extractedText: string) {
+  section('5. OpenAI Artifact Generation');
+  const apiKey = process.env.OPENAI_API_KEY;
+  const model = process.env.OPENAI_ARTIFACT_MODEL || 'gpt-4o';
 
-  if (!endpoint || !apiKey) {
-    skip('Azure OpenAI', 'AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_API_KEY not set');
+  if (!apiKey) {
+    skip('OpenAI', 'OPENAI_API_KEY not set');
     return null;
   }
-  ok('Azure OpenAI configured', `${deployment} @ ${endpoint.replace(/https?:\/\//, '').split('.')[0]}`);
+  ok('OpenAI configured', `model: ${model}`);
 
-  // Pre-check: verify endpoint is reachable
+  // Pre-check: verify API is reachable
   try {
-    const hostname = new URL(endpoint).hostname;
-    const dns = await import('dns');
-    await new Promise<void>((resolve, reject) => {
-      dns.lookup(hostname, (err) => err ? reject(err) : resolve());
+    const response = await fetch('https://api.openai.com/v1/models', {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
     });
-    ok('Azure OpenAI DNS', `${hostname} resolves`);
-  } catch {
-    fail('Azure OpenAI DNS', `${new URL(endpoint).hostname} does not resolve — resource may not be provisioned`);
-    console.log('     ℹ️  Mistral fallback should handle artifact generation instead');
+    if (response.ok) {
+      ok('OpenAI API reachable', `HTTP ${response.status}`);
+    } else {
+      fail('OpenAI API reachable', `HTTP ${response.status}`);
+      return null;
+    }
+  } catch (e: any) {
+    fail('OpenAI API reachable', e.message);
     return null;
   }
 
   // Import prompt builder
   const { buildArtifactPrompt, getSystemPrompt } = await import('../packages/workers/src/utils/artifact-prompts');
   const contractProfiles = await import('../packages/workers/src/contract-type-profiles');
+
+  // Also test DI contract extraction for full pipeline
+  const di = await import('../packages/workers/src/azure-document-intelligence');
+  let diContractFields: any = null;
+  try {
+    const pdfBuf = fs.readFileSync(PDF_PATH);
+    const contractResult = await di.analyzeContract(pdfBuf);
+    diContractFields = contractResult.contract;
+  } catch { /* already tested in section 4 */ }
+
   const profile = contractProfiles.getContractProfile('MSA');
-  const promptCtx = {
+  const promptCtx: any = {
     contractText: extractedText,
     contractType: 'MSA',
     contractTypeDisplayName: profile.displayName,
@@ -259,28 +282,39 @@ async function testAzureOpenAI(extractedText: string) {
     expectedSections: profile.expectedSections,
   };
 
+  // Inject DI data if available
+  if (diContractFields) {
+    promptCtx.diConfidence = diContractFields.confidence || 0.9;
+    promptCtx.diContractFields = {
+      parties: diContractFields.parties || [],
+      dates: diContractFields.dates || {},
+      jurisdiction: diContractFields.jurisdiction,
+      title: diContractFields.title,
+      confidence: diContractFields.confidence || 0.9,
+    };
+  }
+
   const systemPrompt = getSystemPrompt();
   const results: Record<string, any> = {};
+  const OpenAI = (await import('openai')).default;
+  const openai = new OpenAI({ apiKey });
 
-  for (const artifactType of ['OVERVIEW', 'FINANCIAL', 'RISK']) {
+  const artifactTypes = ['OVERVIEW', 'CLAUSES', 'FINANCIAL', 'RISK', 'COMPLIANCE', 'OBLIGATIONS', 'RENEWAL'];
+
+  for (const artifactType of artifactTypes) {
     const prompt = buildArtifactPrompt(artifactType, promptCtx);
     if (!prompt) {
       skip(`Generate ${artifactType}`, 'No prompt template');
       continue;
     }
 
-    console.log(`  ⏳ Generating ${artifactType} artifact...`);
+    console.log(`  ⏳ Generating ${artifactType} artifact via OpenAI (${model})...`);
     const start = Date.now();
 
     try {
-      const url = `${endpoint.replace(/\/$/, '')}/openai/deployments/${deployment}/chat/completions?api-version=2024-06-01`;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 90_000);
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
-        body: JSON.stringify({
+      const response = await Promise.race([
+        openai.chat.completions.create({
+          model,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: prompt },
@@ -289,47 +323,87 @@ async function testAzureOpenAI(extractedText: string) {
           temperature: 0.2,
           response_format: { type: 'json_object' },
         }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('OpenAI timeout (90s)')), 90_000)),
+      ]);
 
-      if (!response.ok) {
-        const errText = await response.text();
-        fail(`Azure OpenAI ${artifactType}`, `HTTP ${response.status}: ${errText.substring(0, 150)}`);
-        continue;
-      }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
+      const content = response.choices?.[0]?.message?.content;
       if (!content) {
-        fail(`Azure OpenAI ${artifactType}`, 'Empty response');
+        fail(`OpenAI ${artifactType}`, 'Empty response');
         continue;
       }
 
       const parsed = JSON.parse(content);
       const elapsed = Date.now() - start;
-      const tokens = data.usage?.total_tokens || 0;
-      ok(`Azure OpenAI ${artifactType}`, `${elapsed}ms, ${tokens} tokens, ${Object.keys(parsed).length} fields`);
+      const tokens = response.usage?.total_tokens || 0;
+      const cost = estimateCost(model, response.usage?.prompt_tokens || 0, response.usage?.completion_tokens || 0);
+      ok(`OpenAI ${artifactType}`, `${elapsed}ms, ${tokens} tokens (~$${cost.toFixed(4)}), ${Object.keys(parsed).length} fields`);
       results[artifactType] = parsed;
 
-      // Print key fields
-      if (artifactType === 'OVERVIEW') {
-        console.log(`     Summary: ${(parsed.summary || '').substring(0, 80)}...`);
-        console.log(`     Parties: ${parsed.parties?.length || 0}`);
-        console.log(`     Value: ${parsed.totalValue || 'N/A'}`);
-      } else if (artifactType === 'FINANCIAL') {
-        console.log(`     Total Value: ${parsed.totalValue || parsed.totalContractValue || 'N/A'}`);
-        console.log(`     Payment Terms: ${parsed.paymentTerms || 'N/A'}`);
-      } else if (artifactType === 'RISK') {
-        console.log(`     Risk Level: ${parsed.overallRiskLevel || 'N/A'}`);
-        console.log(`     Risks Found: ${parsed.riskFactors?.length || parsed.risks?.length || 0}`);
-      }
+      // Print key fields for each artifact type
+      printArtifactDetails(artifactType, parsed);
     } catch (e: any) {
-      fail(`Azure OpenAI ${artifactType}`, e.message);
+      fail(`OpenAI ${artifactType}`, e.message);
     }
   }
 
   return results;
+}
+
+function estimateCost(model: string, promptTokens: number, completionTokens: number): number {
+  // gpt-4o pricing (approximate)
+  if (model.includes('gpt-4o-mini')) return (promptTokens * 0.15 + completionTokens * 0.6) / 1_000_000;
+  if (model.includes('gpt-4o')) return (promptTokens * 2.5 + completionTokens * 10) / 1_000_000;
+  return (promptTokens * 5 + completionTokens * 15) / 1_000_000;
+}
+
+function printArtifactDetails(type: string, data: any) {
+  switch (type) {
+    case 'OVERVIEW':
+      console.log(`     Summary: ${(data.summary || '').substring(0, 120)}...`);
+      console.log(`     Parties: ${data.parties?.length || 0}`);
+      if (data.parties) for (const p of data.parties.slice(0, 4)) console.log(`       - ${p.role || 'Party'}: ${p.name || p}`);
+      console.log(`     Effective Date: ${data.effectiveDate || 'N/A'}`);
+      console.log(`     Expiration Date: ${data.expirationDate || 'N/A'}`);
+      console.log(`     Total Value: ${data.totalValue || 'N/A'} ${data.currency || ''}`);
+      console.log(`     Jurisdiction: ${data.jurisdiction || 'N/A'}`);
+      console.log(`     Key Terms: ${(data.keyTerms || []).slice(0, 5).join(', ') || 'N/A'}`);
+      console.log(`     Key Dates: ${data.keyDates?.length || 0}`);
+      break;
+    case 'CLAUSES':
+      console.log(`     Clauses Found: ${data.clauses?.length || 0}`);
+      if (data.clauses) for (const c of data.clauses.slice(0, 5)) console.log(`       - [${c.category || 'unknown'}] ${(c.title || c.name || '').substring(0, 60)}`);
+      console.log(`     Critical Clauses: ${data.criticalClauses?.length || 0}`);
+      console.log(`     Missing Clauses: ${data.missingClauses?.length || 0}`);
+      break;
+    case 'FINANCIAL':
+      console.log(`     Total Value: ${data.totalValue?.value ?? data.totalContractValue ?? data.totalValue ?? 'N/A'}`);
+      console.log(`     Currency: ${data.currency?.value ?? data.currency ?? 'N/A'}`);
+      console.log(`     Payment Terms: ${(typeof data.paymentTerms === 'object' ? data.paymentTerms?.value : data.paymentTerms) || 'N/A'}`);
+      console.log(`     Line Items: ${data.lineItems?.length || data.pricingBreakdown?.length || 0}`);
+      break;
+    case 'RISK':
+      console.log(`     Overall Risk: ${data.overallRiskLevel || data.overallRisk || 'N/A'}`);
+      console.log(`     Risk Score: ${data.riskScore || 'N/A'}`);
+      console.log(`     Risk Factors: ${data.riskFactors?.length || data.risks?.length || 0}`);
+      if (data.riskFactors) for (const r of (data.riskFactors || []).slice(0, 3)) console.log(`       - [${r.severity || r.level || '?'}] ${(r.description || r.name || '').substring(0, 80)}`);
+      break;
+    case 'COMPLIANCE':
+      console.log(`     Requirements: ${data.requirements?.length || data.complianceAreas?.length || 0}`);
+      console.log(`     Certifications: ${data.certifications?.length || 0}`);
+      console.log(`     Data Protection: ${data.dataProtection?.applicable ?? data.gdpr?.applicable ?? 'N/A'}`);
+      break;
+    case 'OBLIGATIONS':
+      console.log(`     Total Obligations: ${data.obligations?.length || 0}`);
+      if (data.obligations) for (const o of (data.obligations || []).slice(0, 3)) console.log(`       - [${o.party || '?'}] ${(o.description || o.obligation || '').substring(0, 80)}`);
+      console.log(`     Deadlines: ${data.deadlines?.length || data.milestones?.length || 0}`);
+      break;
+    case 'RENEWAL':
+      console.log(`     Auto-renew: ${data.autoRenewal ?? data.autoRenew ?? 'N/A'}`);
+      console.log(`     Renewal Term: ${data.renewalTerm || data.renewalPeriod || 'N/A'}`);
+      console.log(`     Notice Period: ${data.noticePeriod || 'N/A'}`);
+      console.log(`     Term End: ${data.currentTermEnd || data.expirationDate || 'N/A'}`);
+      break;
+  }
 }
 
 // ─── 6. Mistral fallback test ────────────────────────────────────────────────
@@ -477,12 +551,12 @@ async function main() {
   // 4. DI OCR
   const extractedText = await testDIOCR(pdfBuffer);
 
-  // 5. Azure OpenAI
-  let azureResults: Record<string, any> | null = null;
+  // 5. OpenAI
+  let openaiResults: Record<string, any> | null = null;
   if (extractedText) {
-    azureResults = await testAzureOpenAI(extractedText);
+    openaiResults = await testOpenAI(extractedText);
   } else {
-    skip('Azure OpenAI', 'No OCR text available');
+    skip('OpenAI', 'No OCR text available');
   }
 
   // 6. Mistral fallback

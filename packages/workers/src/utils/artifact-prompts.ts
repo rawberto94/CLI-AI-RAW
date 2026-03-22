@@ -620,7 +620,7 @@ export function buildArtifactPrompt(type: string, ctx: PromptContext): string | 
       }
     }
 
-    diParts.push('\nIMPORTANT: Use the pre-validated data above as ground truth when it conflicts with OCR text. These values have been extracted by Azure Document Intelligence with high precision.');
+    diParts.push('\nIMPORTANT: Use the pre-validated data above as ground truth when it conflicts with OCR text. These values have been extracted by Azure Document Intelligence with high precision. The following fields have ALREADY been persisted to the database from DI — you do NOT need to re-extract them, but include them in your response for completeness: parties, effectiveDate, expirationDate, jurisdiction, contractTitle. Focus your analysis on: summary, executiveBriefing, risk assessment, clause interpretation, financial analysis, obligations, and other analytical fields that DI cannot extract.');
     diParts.push('--- END PRE-VALIDATED DATA ---\n');
     diContext = diParts.join('\n');
   }
