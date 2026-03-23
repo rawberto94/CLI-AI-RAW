@@ -1,53 +1,5 @@
 {
   "name": "Contigo",
-  "dockerComposeFile": [
-    "../docker-compose.dev.yml",
-    "docker-compose.devcontainer.yml"
-  ],
-  "service": "workspace",
-  "workspaceFolder": "/workspace",
-
-  "features": {
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "20",
-      "pnpmVersion": "9"
-    },
-    "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {}
-  },
-
-  "customizations": {
-    "vscode": {
-      "settings": {
-        "terminal.integrated.defaultProfile.linux": "bash",
-        "editor.formatOnSave": true,
-        "editor.codeActionsOnSave": {
-          "source.fixAll.eslint": "explicit"
-        },
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
-        "files.eol": "\n"
-      },
-      "extensions": [
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
-        "prisma.prisma",
-        "GitHub.copilot",
-        "GitHub.copilot-chat"
-      ]
-    }
-  },
-
-  "forwardPorts": [3005, 5432, 6379, 7474, 9000, 9001],
-  "portsAttributes": {
-    "3005": { "label": "App", "onAutoForward": "openBrowser" },
-    "5432": { "label": "PostgreSQL", "onAutoForward": "silent" },
-    "6379": { "label": "Redis", "onAutoForward": "silent" },
-    "7474": { "label": "Neo4j", "onAutoForward": "silent" },
-    "9000": { "label": "MinIO API", "onAutoForward": "silent" },
-    "9001": { "label": "MinIO Console", "onAutoForward": "silent" }
-  },
-
-  "postCreateCommand": "corepack enable && pnpm install || true",
-  "remoteUser": "vscode",
-  "updateRemoteUserUID": true
+  "image": "mcr.microsoft.com/devcontainers/base:bullseye",
+  "remoteUser": "vscode"
 }
