@@ -1,15 +1,16 @@
 {
   "name": "Contigo",
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bullseye",
+
+  "image": "mcr.microsoft.com/devcontainers/base:bullseye",
 
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/node:1": {
       "version": "20",
       "pnpmVersion": "9"
-    }
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
 
   "customizations": {
@@ -20,8 +21,8 @@
         "editor.codeActionsOnSave": {
           "source.fixAll.eslint": "explicit"
         },
-        "files.eol": "\n",
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "files.eol": "\n"
       },
       "extensions": [
         "dbaeumer.vscode-eslint",
@@ -34,6 +35,7 @@
   },
 
   "forwardPorts": [3005, 5432, 6379, 7474, 7687, 9000, 9001],
+
   "portsAttributes": {
     "3005": { "label": "App", "onAutoForward": "openBrowser" },
     "5432": { "label": "Postgres" },
@@ -45,14 +47,15 @@
   },
 
   "remoteEnv": {
-    "PNPM_HOME": "/home/node/.local/share/pnpm",
-    "PATH": "/home/node/.local/share/pnpm:$PATH",
-    "NODE_OPTIONS": "--max-old-space-size=4096"
+    "PNPM_HOME": "/home/vscode/.local/share/pnpm",
+    "PATH": "/home/vscode/.local/share/pnpm:$PATH",
+    "NODE_OPTIONS": "--max-old-space-size=8192"
   },
 
-  "postCreateCommand": "corepack enable && pnpm --version && pnpm install --frozen-lockfile",
-  "postStartCommand": "bash scripts/codespace-startup.sh",
+  "postCreateCommand": "corepack enable && pnpm install",
 
-  "remoteUser": "node",
+  "postStartCommand": "docker compose up -d",
+
+  "remoteUser": "vscode",
   "updateRemoteUserUID": true
 }
