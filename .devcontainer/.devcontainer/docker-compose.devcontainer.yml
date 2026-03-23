@@ -1,0 +1,14 @@
+services:
+  workspace:
+    image: mcr.microsoft.com/devcontainers/base:bullseye
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+    environment:
+      PNPM_HOME: /home/vscode/.local/share/pnpm
+      NODE_OPTIONS: --max-old-space-size=4096
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
