@@ -377,20 +377,36 @@ function getDIConfig(): DIConfig {
     );
   }
 
-  // Determine region from endpoint
-  let region = 'unknown';
-  if (endpoint.includes('switzerland')) region = 'switzerland-north';
-  else if (endpoint.includes('westeurope') || endpoint.includes('west-europe')) region = 'west-europe';
-  else if (endpoint.includes('northeurope') || endpoint.includes('north-europe')) region = 'north-europe';
-  else if (endpoint.includes('francecentral') || endpoint.includes('france-central')) region = 'france-central';
+  return { endpoint: endpoint.replace(/\/$/, ''), apiKey, region: detectRegion(endpoint) };
+}
 
-  return { endpoint: endpoint.replace(/\/$/, ''), apiKey, region };
+/** Detect the Azure region from a Document Intelligence endpoint URL. */
+function detectRegion(endpoint: string): string {
+  const REGION_PATTERNS: Array<{ patterns: string[]; region: string }> = [
+    { patterns: ['switzerland', '-ch.', '-ch-'], region: 'switzerland-north' },
+    { patterns: ['westeurope', 'west-europe'], region: 'west-europe' },
+    { patterns: ['northeurope', 'north-europe'], region: 'north-europe' },
+    { patterns: ['francecentral', 'france-central'], region: 'france-central' },
+  ];
+  for (const { patterns, region } of REGION_PATTERNS) {
+    if (patterns.some((p) => endpoint.includes(p))) return region;
+  }
+  return 'unknown';
 }
 
 function getDataResidency(region: string): string {
   if (region.includes('switzerland')) return 'switzerland';
   if (region.includes('europe') || region.includes('france')) return 'eu';
   return 'other';
+}
+
+/** Extract a numeric amount from a DI currency field (which may return `{ amount, currencyCode }`). */
+function extractCurrencyAmount(field: any): number | undefined {
+  if (!field) return undefined;
+  if (field.type === 'currency' && field.value != null && typeof field.value === 'object') {
+    return field.value.amount;
+  }
+  return field.value;
 }
 
 // ============================================================================
@@ -469,8 +485,8 @@ async function analyzeDocument(
     throw new Error(`Document Intelligence submit failed (${submitResponse.status}): ${errorText}`);
   }
 
-  // Get operation location for async polling
-  const operationLocation = submitResponse.headers.get('Operation-Location');
+  // Get operation location for async polling (header name is case-insensitive in real fetch, but handle both)
+  const operationLocation = submitResponse.headers.get('Operation-Location') || submitResponse.headers.get('operation-location');
   if (!operationLocation) {
     throw new Error('Document Intelligence did not return Operation-Location header');
   }
@@ -705,7 +721,7 @@ export async function analyzeLayout(
 ): Promise<DIAnalyzeResult> {
   const span = startSpan({ name: 'di.analyzeLayout', kind: 'client', attributes: { 'di.model': 'prebuilt-layout', 'di.buffer_size': fileBuffer.length } });
   try {
-    const features: string[] = ['barcodes', 'formulas'];
+    const features: string[] = [];
     if (options.extractKeyValuePairs !== false) {
       features.push('keyValuePairs');
     }
@@ -962,13 +978,21 @@ export async function analyzeInvoice(
         description: iv?.Description?.value || iv?.Description?.content,
         quantity: iv?.Quantity?.value,
         unit: iv?.Unit?.value || iv?.Unit?.content,
-        unitPrice: iv?.UnitPrice?.value,
-        amount: iv?.Amount?.value,
-        tax: iv?.Tax?.value,
+        unitPrice: extractCurrencyAmount(iv?.UnitPrice),
+        amount: extractCurrencyAmount(iv?.Amount),
+        tax: extractCurrencyAmount(iv?.Tax),
         productCode: iv?.ProductCode?.value || iv?.ProductCode?.content,
       });
     }
   }
+
+  // Extract currency code from the first available currency field
+  const currencyCode =
+    f['InvoiceTotal']?.value?.currencyCode ||
+    f['SubTotal']?.value?.currencyCode ||
+    f['AmountDue']?.value?.currencyCode ||
+    f['CurrencyCode']?.value ||
+    f['CurrencyCode']?.content;
 
   const invoice: InvoiceExtractionResult = {
     vendorName: f['VendorName']?.value || f['VendorName']?.content,
@@ -979,12 +1003,12 @@ export async function analyzeInvoice(
     invoiceDate: f['InvoiceDate']?.value,
     dueDate: f['DueDate']?.value,
     purchaseOrder: f['PurchaseOrder']?.value || f['PurchaseOrder']?.content,
-    subtotal: f['SubTotal']?.value,
-    totalTax: f['TotalTax']?.value,
-    invoiceTotal: f['InvoiceTotal']?.value,
-    amountDue: f['AmountDue']?.value,
-    currency: f['CurrencyCode']?.value || f['CurrencyCode']?.content,
-    paymentTerms: f['PaymentTerm']?.value || f['PaymentTerm']?.content,
+    subtotal: extractCurrencyAmount(f['SubTotal']),
+    totalTax: extractCurrencyAmount(f['TotalTax']),
+    invoiceTotal: extractCurrencyAmount(f['InvoiceTotal']),
+    amountDue: extractCurrencyAmount(f['AmountDue']),
+    currency: currencyCode,
+    paymentTerms: f['PaymentTerms']?.value || f['PaymentTerms']?.content || f['PaymentTerm']?.value || f['PaymentTerm']?.content,
     lineItems,
     confidence: doc?.confidence ?? 0.8,
     rawFields: f,
