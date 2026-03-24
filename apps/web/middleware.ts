@@ -54,21 +54,32 @@ const CSRF_SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 // API routes exempt from CSRF enforcement
 const CSRF_EXEMPT_PATHS = [
-  '/api/auth/callback',      // NextAuth OAuth callbacks need to work without CSRF header
+  // NextAuth internal endpoints
+  '/api/auth/callback',      // NextAuth OAuth callbacks
   '/api/auth/session',       // NextAuth session endpoint
-  '/api/auth/csrf',          // NextAuth CSRF token endpoint  
+  '/api/auth/csrf',          // NextAuth CSRF token endpoint
   '/api/auth/signin',        // NextAuth signin handler
   '/api/auth/signout',       // NextAuth signout handler
   '/api/auth/providers',     // NextAuth providers list
   '/api/auth/error',         // NextAuth error handler
+  // Pre-authentication flows (user has no session yet → no CSRF cookie)
   '/api/auth/mfa',           // MFA verify during login (half-authenticated state)
+  '/api/auth/signup',        // Registration — no session yet
+  '/api/auth/forgot-password', // Password reset request — no session
+  '/api/auth/reset-password',  // Password reset confirm — uses emailed token, no session
+  '/api/auth/verify-email',    // Email verification — uses emailed token, no session
+  '/api/auth/verify-invite',   // Invite acceptance — no session yet
+  '/api/auth/addin-login',     // Office Add-in auth — non-browser client
+  '/api/auth/sso',             // SSO token exchange — external IdP callback
+  // Infrastructure / monitoring
   '/api/health',
   '/api/monitoring/health',
-  '/api/webhooks',
-  '/api/csrf',
-  '/api/cron',
-  '/api/contracts/upload',   // File uploads use multipart/form-data (no CSRF token in body)
-  '/api/agents/sse',           // Internal broadcast endpoint (auth-protected, no browser form)
+  '/api/webhooks',           // Inbound webhooks from external services
+  '/api/csrf',               // CSRF token issuance — must be callable to get a token
+  '/api/cron',               // Scheduled jobs — server-to-server
+  // Special upload handling
+  '/api/contracts/upload',   // Multipart file uploads; XHR interceptor covers this
+  '/api/agents/sse',         // SSE stream endpoint (auth-protected, no browser form)
 ];
 
 /**

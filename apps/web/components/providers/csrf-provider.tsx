@@ -21,16 +21,20 @@ interface CSRFContextValue {
 const CSRFContext = createContext<CSRFContextValue | null>(null);
 
 /**
- * Get CSRF token from cookie
+ * Get CSRF token from cookie — uses indexOf to correctly handle base64 `=` padding
+ * in the token value (split('=') would truncate after the first `=`).
  */
 function getTokenFromCookie(): string | null {
   if (typeof document === 'undefined') return null;
   
   const cookies = document.cookie.split(';');
   for (const cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
+    const trimmed = cookie.trim();
+    const eqIdx = trimmed.indexOf('=');
+    if (eqIdx === -1) continue;
+    const name = trimmed.slice(0, eqIdx);
     if (name === CSRF_CONSTANTS.TOKEN_NAME) {
-      return decodeURIComponent(value);
+      return decodeURIComponent(trimmed.slice(eqIdx + 1));
     }
   }
   return null;
@@ -42,15 +46,16 @@ function getTokenFromCookie(): string | null {
 const CSRF_MUTATION_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
 
 /**
- * Install a global fetch interceptor that automatically injects the CSRF token
- * header into all same-origin mutation requests. This ensures every component
- * gets CSRF protection without needing to individually call useCSRF().
+ * Install a global fetch + XHR interceptor that automatically injects the CSRF
+ * token header into all same-origin mutation requests. This ensures every
+ * component gets CSRF protection without needing to individually call useCSRF().
  */
 function installFetchInterceptor(): () => void {
   if (typeof window === 'undefined') return () => {};
 
   const originalFetch = window.fetch;
 
+  // ── Fetch interceptor ─────────────────────────────────────────────────────
   window.fetch = async function patchedFetch(
     input: RequestInfo | URL,
     init?: RequestInit,
@@ -79,8 +84,8 @@ function installFetchInterceptor(): () => void {
           try {
             await originalFetch.call(window, '/api/csrf', { method: 'GET', credentials: 'include' });
             csrfToken = getTokenFromCookie();
-          } catch {
-            // Best-effort — proceed without token
+          } catch (err) {
+            console.warn('[CSRF] Failed to obtain CSRF token from /api/csrf:', err);
           }
         }
 
@@ -91,6 +96,8 @@ function installFetchInterceptor(): () => void {
             existingHeaders.set(CSRF_CONSTANTS.HEADER_NAME, csrfToken);
           }
           init = { ...init, headers: existingHeaders, credentials: init?.credentials ?? 'include' };
+        } else {
+          console.warn('[CSRF] No token available — request may be rejected by server:', method, url);
         }
 
         // Execute the request
@@ -105,7 +112,7 @@ function installFetchInterceptor(): () => void {
             try {
               const body = await response.clone().json();
               if (body?.code === 'CSRF_MISSING' || body?.code === 'CSRF_EXPIRED' || body?.code === 'CSRF_INVALID') {
-                // Refresh token from server
+                console.info('[CSRF] Token expired — refreshing and retrying request');
                 await originalFetch.call(window, '/api/csrf', { method: 'GET', credentials: 'include' });
                 const freshToken = getTokenFromCookie();
                 if (freshToken) {
@@ -127,9 +134,47 @@ function installFetchInterceptor(): () => void {
     return originalFetch.call(window, input, init!);
   };
 
-  // Return cleanup function that restores original fetch
+  // ── XHR interceptor ───────────────────────────────────────────────────────
+  // Patch XMLHttpRequest so non-fetch code (e.g. legacy upload managers) also
+  // gets CSRF tokens injected automatically.
+  const originalOpen = XMLHttpRequest.prototype.open;
+  const originalSend = XMLHttpRequest.prototype.send;
+
+  XMLHttpRequest.prototype.open = function patchedOpen(
+    method: string,
+    url: string | URL,
+    ...rest: Parameters<typeof originalOpen>[2][]
+  ) {
+    // Store method + url on the instance for use in send()
+    (this as XMLHttpRequest & { _csrfMethod?: string; _csrfUrl?: string })._csrfMethod = method.toUpperCase();
+    (this as XMLHttpRequest & { _csrfMethod?: string; _csrfUrl?: string })._csrfUrl =
+      typeof url === 'string' ? url : url.href;
+    return originalOpen.apply(this, [method, url, ...rest] as Parameters<typeof originalOpen>);
+  };
+
+  XMLHttpRequest.prototype.send = function patchedSend(body?: Document | XMLHttpRequestBodyInit | null) {
+    const self = this as XMLHttpRequest & { _csrfMethod?: string; _csrfUrl?: string };
+    const method = self._csrfMethod ?? 'GET';
+    const url = self._csrfUrl ?? '';
+
+    if (CSRF_MUTATION_METHODS.has(method)) {
+      const isSameOrigin = url.startsWith('/') || url.startsWith(window.location.origin);
+      if (isSameOrigin) {
+        const token = getTokenFromCookie();
+        if (token) {
+          this.setRequestHeader(CSRF_CONSTANTS.HEADER_NAME, token);
+        }
+      }
+    }
+
+    return originalSend.call(this, body);
+  };
+
+  // Return cleanup function that restores original implementations
   return () => {
     window.fetch = originalFetch;
+    XMLHttpRequest.prototype.open = originalOpen;
+    XMLHttpRequest.prototype.send = originalSend;
   };
 }
 

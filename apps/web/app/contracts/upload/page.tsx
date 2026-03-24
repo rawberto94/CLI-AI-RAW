@@ -150,10 +150,12 @@ export default function UploadPage() {
       if (skipDuplicateCheck) {
         headers['x-skip-duplicate-check'] = 'true'
       }
-      // XHR bypasses the global fetch CSRF interceptor — attach token manually
+      // XHR bypasses the global fetch CSRF interceptor — attach token manually.
+      // Use indexOf to avoid truncating base64 tokens that contain '=' padding.
       const csrfCookie = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrf_token='))
       if (csrfCookie) {
-        headers['x-csrf-token'] = decodeURIComponent(csrfCookie.split('=')[1])
+        const eqIdx = csrfCookie.indexOf('=')
+        headers['x-csrf-token'] = decodeURIComponent(csrfCookie.slice(eqIdx + 1))
       }
       
       // Adaptive timeout: 30s base + 30s per 10MB (e.g., 100MB file → 330s)

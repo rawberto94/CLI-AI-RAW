@@ -42,22 +42,10 @@ export {
   DEFAULT_ALLOWED_SCHEMES,
 } from './sanitize';
 
-// CSRF Protection
-export {
-  generateCsrfToken,
-  getCsrfToken,
-  validateCsrfToken,
-  createDoubleSubmitToken,
-  validateDoubleSubmitToken,
-  withCsrfProtection,
-  CsrfTokenStore,
-  createCsrfFetch,
-  handleCsrfRequest,
-  CSRF_COOKIE_NAME,
-  CSRF_HEADER_NAME,
-  CSRF_FORM_FIELD,
-  type CsrfOptions,
-} from './csrf';
+// CSRF Protection — re-export canonical CSRF constants only.
+// The authoritative CSRF implementation is lib/csrf.ts (HMAC-SHA256 signed tokens).
+// Do NOT use lib/security/csrf.ts — it is a legacy implementation left for deletion.
+export { CSRF_CONSTANTS } from '../csrf-constants';
 
 // Audit Logging
 export {
