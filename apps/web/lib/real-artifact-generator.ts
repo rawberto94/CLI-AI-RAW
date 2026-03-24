@@ -11,6 +11,7 @@ import { PrismaClient, ArtifactType } from '@prisma/client';
 import fs from 'fs/promises';
 import path from 'path';
 import pino from 'pino';
+import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 
 const logger = pino({ name: 'real-artifact-generator' });
 
@@ -47,7 +48,7 @@ interface ArtifactData {
  * Uses native PDF file input (NOT image_url which rejects application/pdf MIME).
  */
 async function extractScannedPDFWithVision(fileContent: Buffer): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getOpenAIApiKey();
   if (!apiKey) {
     logger.warn('OPENAI_API_KEY not set — cannot use Vision OCR for scanned PDF');
     return '';
@@ -55,7 +56,7 @@ async function extractScannedPDFWithVision(fileContent: Buffer): Promise<string>
   
   try {
     const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ apiKey });
+    const openai = createOpenAIClient(apiKey);
     const base64 = fileContent.toString('base64');
     
     const response = await openai.chat.completions.create({
@@ -224,8 +225,10 @@ async function extractContractMetadata(
   totalValue?: number;
   currency?: string;
   parties?: string[];
+  signatureStatus?: string;
+  signatureDate?: string;
 }> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getOpenAIApiKey();
   
   // Basic regex-based extraction as fallback
   const basicMetadata: {
@@ -236,6 +239,8 @@ async function extractContractMetadata(
     totalValue?: number;
     currency?: string;
     parties?: string[];
+    signatureStatus?: string;
+    signatureDate?: string;
   } = {};
 
   // Try to extract title
@@ -361,11 +366,41 @@ async function extractContractMetadata(
     basicMetadata.parties = extractedParties.slice(0, 10);
   }
 
+  // Detect signature status from text patterns
+  const signatureBlockPatterns = [
+    /(?:IN WITNESS WHEREOF|SIGNED|EXECUTED)\b/i,
+    /\bSignature[:\s]*_{3,}/i,
+    /\bSigned\s+by[:\s]/i,
+    /\/s\/\s+\w+/i,                           // e-sig marker /s/ Name
+    /\[SIGNATURE\]/i,
+  ];
+  const signedIndicators = [
+    /\/s\/\s+\S+/i,                            // /s/ ActualName
+    /(?:Signed|Executed)\s+(?:on|this)\s+\d/i, // "Signed on 12..."
+    /\bDate(?:d)?[:\s]+\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/i,
+  ];
+  const hasSignatureBlock = signatureBlockPatterns.some(p => p.test(contractText));
+  const hasSignedContent = signedIndicators.some(p => p.test(contractText));
+
+  if (hasSignedContent) {
+    basicMetadata.signatureStatus = 'signed';
+    // Try to extract signature date
+    const sigDateMatch = contractText.match(
+      /(?:Executed|Signed|Dated?)\s+(?:this\s+)?(?:on\s+)?(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\w+ \d{1,2},?\s+\d{4})/i
+    );
+    if (sigDateMatch) {
+      const parsed = tryParseDate(sigDateMatch[1]);
+      if (parsed) basicMetadata.signatureDate = parsed;
+    }
+  } else if (hasSignatureBlock) {
+    basicMetadata.signatureStatus = 'unsigned'; // Block present but no content yet
+  }
+
   // Try AI extraction if available
   if (apiKey) {
     try {
       const OpenAI = (await import('openai')).default;
-      const openai = new OpenAI({ apiKey });
+      const openai = createOpenAIClient(apiKey);
 
       const truncatedText = contractText.substring(0, 50000); // First 50k chars for metadata
 
@@ -386,6 +421,8 @@ async function extractContractMetadata(
 - totalValue: Total contract value as number (or null)
 - currency: Currency code (e.g., USD, EUR, GBP)
 - parties: Array of party names (companies/individuals)
+- signatureStatus: One of "signed", "partially_signed", "unsigned", or "unknown"
+- signatureDate: Date of final execution (ISO format YYYY-MM-DD or null)
 
 Return ONLY valid JSON.
 
@@ -409,6 +446,8 @@ ${truncatedText}`,
           totalValue: parsed.totalValue ?? basicMetadata.totalValue,
           currency: parsed.currency || basicMetadata.currency,
           parties: parsed.parties || basicMetadata.parties,
+          signatureStatus: parsed.signatureStatus || basicMetadata.signatureStatus,
+          signatureDate: parsed.signatureDate || basicMetadata.signatureDate,
         };
       }
     } catch (aiError) {
@@ -458,8 +497,10 @@ function extractBasicFieldsFromText(contractText: string): {
 
   // --- Title ---
   const titlePatterns = [
-    /^[\s\n]*((?:STATEMENT\s+OF\s+WORK|MASTER\s+SERVICE\s+AGREEMENT|NON[- ]?DISCLOSURE\s+AGREEMENT|SERVICE\s+AGREEMENT|EMPLOYMENT\s+(?:AGREEMENT|CONTRACT)|LEASE\s+AGREEMENT|SOFTWARE\s+LICENSE\s+AGREEMENT|SUBSCRIPTION\s+AGREEMENT|PURCHASE\s+(?:ORDER|AGREEMENT)|AMENDMENT)[^\n]*)/im,
-    /(?:^|\n)\s*(?:title|re|subject)[:\s]+([^\n]+)/im,
+    /^[\s\n]*((?:STATEMENT\s+OF\s+WORK|MASTER\s+SERVICE\s+AGREEMENT|NON[- ]?DISCLOSURE\s+AGREEMENT|SERVICE\s+AGREEMENT|SUPPLIER\s+AGREEMENT|SUPPLY\s+AGREEMENT|VENDOR\s+AGREEMENT|EMPLOYMENT\s+(?:AGREEMENT|CONTRACT)|LEASE\s+AGREEMENT|SOFTWARE\s+LICENSE\s+AGREEMENT|SUBSCRIPTION\s+AGREEMENT|PURCHASE\s+(?:ORDER|AGREEMENT)|AMENDMENT)[^\n]*)/im,
+    // Generic: word(s) + AGREEMENT/CONTRACT/etc at the very start of the document
+    /^[\s\n]*([A-Z][A-Z\s]{2,50}(?:AGREEMENT|CONTRACT|STATEMENT\s+OF\s+WORK|ADDENDUM|AMENDMENT))/m,
+    /(?:^|\n)\s*(?:title|re|subject)[:\s]+([^\n]{3,80}?)(?:\n|$)/im,
   ];
   for (const pattern of titlePatterns) {
     const match = contractText.match(pattern);
@@ -603,7 +644,7 @@ function extractBasicFieldsFromText(contractText: string): {
  * Generate basic artifact data without AI (fallback mode)
  * Now performs regex-based extraction from the document text
  */
-function generateBasicArtifact(type: ArtifactType, contractText: string, contractId: string): Record<string, any> {
+function generateBasicArtifact(type: ArtifactType, contractText: string, contractId: string, contractTitle?: string | null): Record<string, any> {
   const now = new Date().toISOString();
   const textPreview = contractText.substring(0, 500);
   const wordCount = contractText.split(/\s+/).length;
@@ -619,12 +660,21 @@ function generateBasicArtifact(type: ArtifactType, contractText: string, contrac
   const basicExtracted = extractBasicFieldsFromText(contractText);
 
   switch (type) {
-    case 'OVERVIEW':
+    case 'OVERVIEW': {
+      const effectiveTitle = contractTitle || basicExtracted.title || null;
+      const summaryParts: string[] = [];
+      if (effectiveTitle) summaryParts.push(effectiveTitle);
+      if (basicExtracted.contractType) summaryParts.push(`Type: ${basicExtracted.contractType}`);
+      if (basicExtracted.clientName && basicExtracted.supplierName) {
+        summaryParts.push(`Between ${basicExtracted.clientName} and ${basicExtracted.supplierName}`);
+      }
+      if (basicExtracted.totalValue) summaryParts.push(`Value: ${basicExtracted.currency || ''}${basicExtracted.totalValue.toLocaleString()}`);
+      const derivedSummary = summaryParts.length > 0 ? summaryParts.join('. ') + '.' : null;
       return {
         ...baseData,
-        summary: basicExtracted.summary || `Contract document with ${wordCount} words. Detailed AI analysis pending.`,
+        summary: derivedSummary || `Contract document with ${wordCount} words. Full analysis requires AI processing.`,
         contractType: basicExtracted.contractType || null,
-        title: basicExtracted.title || null,
+        title: effectiveTitle,
         totalValue: basicExtracted.totalValue || null,
         currency: basicExtracted.currency || null,
         effectiveDate: basicExtracted.startDate || null,
@@ -641,6 +691,7 @@ function generateBasicArtifact(type: ArtifactType, contractText: string, contrac
           preview: textPreview,
         },
       };
+    }
 
     case 'CLAUSES':
       return {
@@ -771,7 +822,7 @@ async function generateAIArtifact(
   contractId: string,
   contractType?: string
 ): Promise<Record<string, any> | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getOpenAIApiKey();
   
   if (!apiKey) {
     logger.warn('No OPENAI_API_KEY found, using basic artifact generation');
@@ -780,7 +831,7 @@ async function generateAIArtifact(
 
   try {
     const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ apiKey });
+    const openai = createOpenAIClient(apiKey);
 
     // Truncate text if too long (approximately 100k tokens ~ 400k chars)
     const maxChars = 100000;
@@ -1115,6 +1166,12 @@ export async function generateRealArtifacts(
 
     logger.info({ textLength: contractText.length }, 'Text extracted successfully');
 
+    // Persist raw text immediately so it's available for RAG and search
+    await prisma.contract.update({
+      where: { id: contractId },
+      data: { rawText: contractText, searchableText: contractText.substring(0, 65535) },
+    });
+
     // Update progress
     await prisma.processingJob.updateMany({
       where: { contractId, tenantId },
@@ -1124,16 +1181,45 @@ export async function generateRealArtifacts(
       },
     });
 
+    // ── Extract metadata FIRST so contractTitle is in DB before artifacts run ──
+    logger.info({ contractId }, 'Extracting contract metadata (pre-artifact)');
+    try {
+      const preMetadata = await extractContractMetadata(contractText, contractId);
+      const preUpdateData: Record<string, any> = {};
+      if (preMetadata.title) preUpdateData.contractTitle = preMetadata.title;
+      if (preMetadata.contractType) preUpdateData.contractType = preMetadata.contractType;
+      if (preMetadata.startDate) preUpdateData.startDate = new Date(preMetadata.startDate);
+      if (preMetadata.endDate) preUpdateData.endDate = new Date(preMetadata.endDate);
+      if (preMetadata.totalValue) preUpdateData.totalValue = preMetadata.totalValue;
+      if (preMetadata.currency) preUpdateData.currency = preMetadata.currency;
+      if (preMetadata.parties && preMetadata.parties.length > 0) {
+        if (preMetadata.parties[0]) preUpdateData.clientName = preMetadata.parties[0];
+        if (preMetadata.parties[1]) preUpdateData.supplierName = preMetadata.parties[1];
+      }
+      if (preMetadata.signatureStatus) {
+        preUpdateData.signatureStatus = preMetadata.signatureStatus;
+        preUpdateData.signatureRequiredFlag = preMetadata.signatureStatus === 'unsigned' || preMetadata.signatureStatus === 'partially_signed';
+      }
+      if (preMetadata.signatureDate) preUpdateData.signatureDate = new Date(preMetadata.signatureDate);
+      if (Object.keys(preUpdateData).length > 0) {
+        await prisma.contract.update({ where: { id: contractId }, data: preUpdateData });
+        logger.info({ contractId, fields: Object.keys(preUpdateData) }, 'Pre-artifact metadata written');
+      }
+    } catch (preMetaErr) {
+      logger.warn({ preMetaErr, contractId }, 'Pre-artifact metadata extraction failed, continuing');
+    }
+
     // Generate each artifact type
     const totalTypes = ARTIFACT_TYPES.length;
     let completed = 0;
 
-    // Query contract type for type-aware prompt enhancement
+    // Query contract record (contractTitle now populated from pre-artifact metadata)
     const contractRecord = await prisma.contract.findUnique({
       where: { id: contractId },
-      select: { contractType: true },
+      select: { contractType: true, contractTitle: true },
     });
     const contractType = contractRecord?.contractType || 'OTHER';
+    const contractTitle = contractRecord?.contractTitle || null;
 
     for (const type of ARTIFACT_TYPES) {
       try {
@@ -1144,7 +1230,7 @@ export async function generateRealArtifacts(
         
         if (!artifactData) {
           logger.info({ type }, 'Using basic artifact generation (no AI)');
-          artifactData = generateBasicArtifact(type, contractText, contractId);
+          artifactData = generateBasicArtifact(type, contractText, contractId, contractTitle);
         }
 
         // Save the artifact
@@ -1176,7 +1262,8 @@ export async function generateRealArtifacts(
       }
     }
 
-    // Extract and store basic metadata from the contract text
+    // Metadata was already extracted before the artifact loop.
+    // Update progress to reflect completion of metadata step.
     await prisma.processingJob.updateMany({
       where: { contractId, tenantId },
       data: { 
@@ -1184,38 +1271,6 @@ export async function generateRealArtifacts(
         progress: 92,
       },
     });
-
-    try {
-      logger.info({ contractId }, 'Extracting contract metadata');
-      const metadata = await extractContractMetadata(contractText, contractId);
-      
-      // Update contract with extracted metadata
-      const updateData: Record<string, any> = {};
-      
-      if (metadata.title) updateData.contractTitle = metadata.title;
-      if (metadata.contractType) updateData.contractType = metadata.contractType;
-      if (metadata.startDate) updateData.startDate = new Date(metadata.startDate);
-      if (metadata.endDate) updateData.endDate = new Date(metadata.endDate);
-      if (metadata.totalValue) updateData.totalValue = metadata.totalValue;
-      if (metadata.currency) updateData.currency = metadata.currency;
-      if (metadata.parties && metadata.parties.length > 0) {
-        // Extract first party as client, second as supplier
-        if (metadata.parties[0]) updateData.clientName = metadata.parties[0];
-        if (metadata.parties[1]) updateData.supplierName = metadata.parties[1];
-      }
-      
-      if (Object.keys(updateData).length > 0) {
-        await prisma.contract.update({
-          where: { id: contractId },
-          data: updateData,
-        });
-        logger.info({ contractId, fieldsUpdated: Object.keys(updateData) }, 'Contract metadata updated');
-      }
-    } catch (metadataError) {
-      const metadataErrorMsg = metadataError instanceof Error ? metadataError.message : String(metadataError);
-      logger.warn({ error: metadataErrorMsg, contractId }, 'Failed to extract metadata (non-fatal)');
-      // Don't fail the whole process for metadata extraction errors
-    }
 
     // Determine final status
     const finalStatus = artifactIds.length > 0 ? 'COMPLETED' : 'FAILED';
