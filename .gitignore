@@ -40,14 +40,17 @@ lerna-debug.log*
 *.swo
 *~
 
-# Uploads and test data
+# Uploads and local data
 apps/web/uploads/
 apps/web/data/contracts/
-*.pdf
-*.txt
+data/contracts/
 minio
 minio.*
 wget-log
+
+# Test reports and artifacts
+playwright-report/
+test-results/
 
 # Logs directory
 .logs/
