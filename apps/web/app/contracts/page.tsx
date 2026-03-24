@@ -1068,7 +1068,15 @@ export default function ContractsPage() {
                           handleShare(contract.id, contract.title || 'Contract');
                           break;
                         case 'favorite':
-                          // Favorites not yet persisted — no-op
+                          fetch(`/api/contracts/${contract.id}/favorite`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                          })
+                            .then(res => {
+                              if (res.ok) toast.success('Favorite toggled');
+                              else toast.error('Failed to update favorite');
+                            })
+                            .catch(() => toast.error('Failed to update favorite'));
                           break;
                       }
                     }}

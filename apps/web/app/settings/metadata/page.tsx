@@ -8,6 +8,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { getTenantId } from '@/lib/tenant';
 import { 
   Settings, 
   ChevronRight, 
@@ -186,7 +187,7 @@ export default function MetadataSettingsPage() {
           <div className="flex-1">
             {activeSection === 'metadata' && (
               <MetadataSchemaEditor
-                tenantId="demo"
+                tenantId={getTenantId()}
                 onSchemaChange={(schema) => setSchemaVersion(schema.version)}
               />
             )}

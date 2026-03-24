@@ -1,6 +1,6 @@
 'use client'
 
-import React, { memo } from 'react'
+import React, { memo, useState, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -44,6 +44,7 @@ import {
 interface ContractHeaderProps {
   contractId: string
   filename: string
+  originalName?: string
   status: string
   currentVersion?: number
   showPdfViewer: boolean
@@ -61,11 +62,13 @@ interface ContractHeaderProps {
   onCompare: () => void
   onCreateRenewal?: () => void
   onExtendContract?: () => void
+  onRename?: (newTitle: string) => void
 }
 
 export const ContractHeader = memo(function ContractHeader({
   contractId,
   filename,
+  originalName,
   status,
   currentVersion,
   showPdfViewer,
@@ -83,7 +86,34 @@ export const ContractHeader = memo(function ContractHeader({
   onCompare,
   onCreateRenewal,
   onExtendContract,
+  onRename,
 }: ContractHeaderProps) {
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState(filename || '')
+  const renameInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isRenaming && renameInputRef.current) {
+      renameInputRef.current.focus()
+      renameInputRef.current.select()
+    }
+  }, [isRenaming])
+
+  const handleRenameSubmit = useCallback(() => {
+    const trimmed = renameValue.trim()
+    if (trimmed && trimmed !== filename && onRename) {
+      onRename(trimmed)
+    }
+    setIsRenaming(false)
+  }, [renameValue, filename, onRename])
+
+  const handleRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleRenameSubmit()
+    if (e.key === 'Escape') {
+      setRenameValue(filename || '')
+      setIsRenaming(false)
+    }
+  }, [handleRenameSubmit, filename])
   return (
     <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50 sticky top-0 z-40 shadow-sm dark:shadow-slate-900/50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -109,9 +139,42 @@ export const ContractHeader = memo(function ContractHeader({
                 </div>
               </div>
               <div className="min-w-0">
-                <h1 className="text-sm sm:text-base font-semibold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-slate-100 dark:via-slate-300 dark:to-slate-400 bg-clip-text text-transparent truncate max-w-[150px] sm:max-w-[250px] lg:max-w-[350px]">
-                  {filename || 'Contract Details'}
-                </h1>
+                {isRenaming ? (
+                  <input
+                    ref={renameInputRef}
+                    type="text"
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onBlur={handleRenameSubmit}
+                    onKeyDown={handleRenameKeyDown}
+                    className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800 border border-violet-300 rounded-md px-2 py-0.5 w-full max-w-[250px] lg:max-w-[350px] outline-none focus:ring-2 focus:ring-violet-400"
+                  />
+                ) : (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <h1
+                          className="text-sm sm:text-base font-semibold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-slate-100 dark:via-slate-300 dark:to-slate-400 bg-clip-text text-transparent truncate max-w-[150px] sm:max-w-[250px] lg:max-w-[350px] cursor-pointer hover:opacity-80 transition-opacity"
+                          onDoubleClick={() => {
+                            if (onRename) {
+                              setRenameValue(filename || '')
+                              setIsRenaming(true)
+                            }
+                          }}
+                        >
+                          {filename || 'Contract Details'}
+                        </h1>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        <p>{filename}</p>
+                        {originalName && originalName !== filename && (
+                          <p className="text-xs text-slate-400 mt-0.5">Original: {originalName}</p>
+                        )}
+                        {onRename && <p className="text-xs text-slate-400 mt-0.5">Double-click to rename</p>}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
                 <div className="flex items-center gap-2 mt-0.5">
                   <CopyableId id={contractId} />
                   <span className="text-slate-300 hidden sm:inline">•</span>

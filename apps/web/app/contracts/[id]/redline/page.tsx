@@ -16,30 +16,11 @@ import {
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
-// Fallback content if contract text unavailable
-const fallbackContent = `This Master Services Agreement (the "Agreement") is entered into as of the Effective Date by and between the parties identified below. This Agreement shall govern all services provided.
-
-1. Term and Termination
-
-The initial term of this Agreement shall be one (1) year from the Effective Date. Either party may terminate this Agreement upon thirty (30) days prior written notice to the other party.
-
-2. License Grant
-
-Subject to the terms and conditions of this Agreement, Provider grants Client an exclusive license to use the Services during the Term.
-
-3. Confidentiality
-
-Each party agrees to maintain in confidence all Confidential Information disclosed by the other party and to use such information only for purposes of this Agreement.
-
-4. Limitation of Liability
-
-IN NO EVENT SHALL EITHER PARTY BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO THIS AGREEMENT.`;
-
 export default function RedlinePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [documentStatus, setDocumentStatus] = useState<'draft' | 'review' | 'approved'>('review');
-  const [content, setContent] = useState<string>(fallbackContent);
+  const [content, setContent] = useState<string>('');
   const [contractTitle, setContractTitle] = useState<string>('Contract - Redline');
   const [loading, setLoading] = useState(true);
   

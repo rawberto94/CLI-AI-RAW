@@ -354,7 +354,7 @@ export async function GET(
     // Combine contract metadata with artifacts
     const contractData = {
       id: contract.id,
-      filename: contract.fileName || "Unknown",
+      filename: contract.contractTitle || contract.originalName || contract.fileName || "Unknown",
       uploadDate:
         contract.uploadedAt?.toISOString() || new Date().toISOString(),
       status: mapContractStatus(contract.status),
@@ -391,6 +391,7 @@ export async function GET(
 
       // Provide camelCase aliases alongside the existing snake_case fields
       fileName: contract.fileName || null,
+      originalName: contract.originalName || contract.fileName || null,
       signatureStatus: contract.signatureStatus || 'unknown',
 
       // Contract metadata from DB (needed by useContractMetadata hook)

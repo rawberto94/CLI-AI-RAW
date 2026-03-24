@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getTenantId } from '@/lib/tenant';
 import {
   Tag,
   Plus,
@@ -100,14 +101,6 @@ export default function TagManagementPage() {
   
   // Summary stats
   const [summary, setSummary] = useState({ totalTags: 0, totalUsage: 0 });
-
-  // Get tenant ID from localStorage or cookie
-  const getTenantId = useCallback(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("tenantId") || "demo";
-    }
-    return "demo";
-  }, []);
 
   // Fetch tags
   const fetchTags = useCallback(async () => {

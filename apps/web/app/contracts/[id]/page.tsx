@@ -355,6 +355,24 @@ export default function ContractDetailPage() {
     router.push(`/contracts/${contractId}/esign`)
   }, [contractId, router])
 
+  const handleRename = useCallback(async (newTitle: string) => {
+    try {
+      const res = await fetch(`/api/contracts/${contractId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
+        body: JSON.stringify({ contractTitle: newTitle }),
+      })
+      if (res.ok) {
+        toast.success('Contract renamed')
+        queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) })
+      } else {
+        toast.error('Failed to rename contract')
+      }
+    } catch {
+      toast.error('Failed to rename contract')
+    }
+  }, [contractId, queryClient])
+
   const handleUploadSignedCopy = useCallback(async (file: File, signers?: string, notes?: string) => {
     try {
       await uploadSignedCopy.mutateAsync({ file, signers, notes })
@@ -610,6 +628,7 @@ export default function ContractDetailPage() {
       <ContractHeader
         contractId={contractId}
         filename={contract?.filename || ''}
+        originalName={contract?.originalName || ''}
         status={contract?.status || 'unknown'}
         currentVersion={currentVersionNumber}
         showPdfViewer={showPdfViewer}
@@ -631,6 +650,7 @@ export default function ContractDetailPage() {
         onCompare={() => openDialog('comparison')}
         onCreateRenewal={() => router.push(`/contracts/${contractId}/renew`)}
         onExtendContract={() => { openDialog('extend'); fetchAiExtensionRec() }}
+        onRename={handleRename}
       />
 
       {/* Main Content with optional PDF split */}
@@ -856,7 +876,7 @@ export default function ContractDetailPage() {
                   />
                 <EnhancedContractMetadataSection
                     contractId={contractId}
-                    tenantId="demo"
+                    tenantId={getTenantId()}
                     contract={contract as unknown as Record<string, unknown>}
                     overviewData={overviewData}
                     financialData={financialData}
@@ -1078,7 +1098,7 @@ export default function ContractDetailPage() {
                   handleCategorySelect(category.id)
                 }
               }}
-              tenantId="demo"
+              tenantId={getTenantId()}
             />
           </DialogContent>
         </Dialog>

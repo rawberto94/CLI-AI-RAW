@@ -165,8 +165,8 @@ const AGENT_CLUSTERS = {
     description: 'Execution & Monitoring',
     agents: [
       { id: 'autonomous-deadline-manager', codename: 'Clockwork', avatar: '⏰', icon: Clock, description: 'Precision timekeeper — never misses a deadline', status: 'active' },
-      { id: 'obligation-tracking-agent', codename: 'Steward', avatar: '📋', icon: CheckCircle, description: 'Dedicated steward — tracks every commitment', status: 'coming soon' },
-      { id: 'smart-gap-filling-agent', codename: 'Artificer', avatar: '🔧', icon: Wrench, description: 'Master craftsperson — fills missing data with precision', status: 'coming soon' },
+      { id: 'obligation-tracking-agent', codename: 'Steward', avatar: '📋', icon: CheckCircle, description: 'Dedicated steward — tracks every commitment', status: 'active' },
+      { id: 'smart-gap-filling-agent', codename: 'Artificer', avatar: '🔧', icon: Wrench, description: 'Master craftsperson — fills missing data with precision', status: 'active' },
     ],
   },
   strategists: {
@@ -179,7 +179,7 @@ const AGENT_CLUSTERS = {
     agents: [
       { id: 'workflow-authoring-agent', codename: 'Architect', avatar: '🏛️', icon: LayoutGrid, description: 'Master builder — designs optimal workflows', status: 'active' },
       { id: 'rfx-procurement-agent', codename: 'Merchant', avatar: '🤝', icon: Gavel, description: 'Master negotiator — manages RFx lifecycles', status: 'active' },
-      { id: 'multi-agent-coordinator', codename: 'Conductor', avatar: '🎼', icon: Users, description: 'Orchestra leader — coordinates agent symphonies', status: 'coming soon' },
+      { id: 'multi-agent-coordinator', codename: 'Conductor', avatar: '🎼', icon: Users, description: 'Orchestra leader — coordinates agent symphonies', status: 'active' },
     ],
   },
   evolution: {
@@ -190,9 +190,9 @@ const AGENT_CLUSTERS = {
     gradient: 'from-rose-500 to-pink-500',
     description: 'Learning & Improvement',
     agents: [
-      { id: 'user-feedback-learner', codename: 'Mnemosyne', avatar: '🧠', icon: Brain, description: 'Memory incarnate — learns from every interaction', status: 'coming soon' },
-      { id: 'ab-testing-engine', codename: 'A/B', avatar: '🧪', icon: Beaker, description: 'Scientist — tests and validates agent performance', status: 'coming soon' },
-      { id: 'agent-swarm', codename: 'Swarm', avatar: '🐝', icon: GitMerge, description: 'Collective intelligence — many minds, one purpose', status: 'coming soon' },
+      { id: 'user-feedback-learner', codename: 'Mnemosyne', avatar: '🧠', icon: Brain, description: 'Memory incarnate — learns from every interaction', status: 'active' },
+      { id: 'ab-testing-engine', codename: 'A/B', avatar: '🧪', icon: Beaker, description: 'Scientist — tests and validates agent performance', status: 'active' },
+      { id: 'agent-swarm', codename: 'Swarm', avatar: '🐝', icon: GitMerge, description: 'Collective intelligence — many minds, one purpose', status: 'active' },
     ],
   },
 };
@@ -2132,10 +2132,6 @@ function TemplatePreview({ template, onEdit, onUse }: { template: RFxTemplate; o
               <Edit3 className="w-4 h-4 mr-2" />
               Edit
             </Button>
-            <Button variant="outline" onClick={() => toast.info('Export functionality coming soon')} className="bg-white hover:bg-slate-50 border-slate-200 text-slate-700 transition-all duration-200">
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
             <Button onClick={onUse} className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
               <Check className="w-4 h-4 mr-2" />
               Use Template
@@ -2265,15 +2261,6 @@ function RFxStudioView() {
   const [filterUrgency, setFilterUrgency] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fallback data used only when API calls return empty
-  const fallbackRfxEvents = [
-    { id: 'rfx-1', title: 'IT Infrastructure Services 2024', type: 'RFP', status: 'active', vendors: 5, bids: 3, deadline: '2024-03-15', value: 250000, savings: 15 },
-    { id: 'rfx-2', title: 'Software Licensing Renewal', type: 'RFQ', status: 'evaluating', vendors: 3, bids: 3, deadline: '2024-02-28', value: 120000, savings: 22 },
-    { id: 'rfx-3', title: 'Consulting Services - Data Migration', type: 'RFP', status: 'draft', vendors: 0, bids: 0, deadline: '2024-04-01', value: 80000, savings: 0 },
-    { id: 'rfx-4', title: 'Office Supplies - Q1 2024', type: 'RFQ', status: 'completed', vendors: 4, bids: 4, deadline: '2024-01-15', value: 45000, savings: 18 },
-    { id: 'rfx-5', title: 'Marketing Agency Selection', type: 'RFP', status: 'awarded', vendors: 6, bids: 5, deadline: '2024-02-01', value: 200000, savings: 12 },
-  ];
-
   useEffect(() => {
     Promise.all([
       fetch('/api/agents/rfx-opportunities').then(res => res.ok ? res.json() : { opportunities: [] }).catch(() => ({ opportunities: [] })),
@@ -2283,7 +2270,7 @@ function RFxStudioView() {
       .then(([oppData, rfxData, supplierData]) => {
         setOpportunities(oppData.opportunities || []);
         const rfxItems = rfxData.data?.events || rfxData.events || [];
-        setRfxEvents(rfxItems.length > 0 ? rfxItems : fallbackRfxEvents);
+        setRfxEvents(rfxItems);
 
         // Map supplier API data to vendor format
         if (supplierData?.suppliers && supplierData.suppliers.length > 0) {
@@ -2298,24 +2285,13 @@ function RFxStudioView() {
           }));
           setVendors(mappedVendors);
         } else {
-          // Fallback vendors when API returns empty
-          setVendors([
-            { id: 'v-1', name: 'TechCorp Solutions', rating: 4.8, completedRFx: 12, avgSavings: 18, responseRate: 95, status: 'preferred' },
-            { id: 'v-2', name: 'InnovateSoft', rating: 4.5, completedRFx: 8, avgSavings: 15, responseRate: 88, status: 'active' },
-            { id: 'v-3', name: 'DataFlow Systems', rating: 4.9, completedRFx: 15, avgSavings: 22, responseRate: 98, status: 'preferred' },
-            { id: 'v-4', name: 'CloudFirst Consulting', rating: 4.2, completedRFx: 5, avgSavings: 12, responseRate: 75, status: 'active' },
-            { id: 'v-5', name: 'SecureNet Services', rating: 4.7, completedRFx: 10, avgSavings: 20, responseRate: 92, status: 'preferred' },
-          ]);
+          setVendors([]);
         }
         setLoading(false);
       })
       .catch(() => {
-        setRfxEvents(fallbackRfxEvents);
-        setVendors([
-          { id: 'v-1', name: 'TechCorp Solutions', rating: 4.8, completedRFx: 12, avgSavings: 18, responseRate: 95, status: 'preferred' },
-          { id: 'v-2', name: 'InnovateSoft', rating: 4.5, completedRFx: 8, avgSavings: 15, responseRate: 88, status: 'active' },
-          { id: 'v-3', name: 'DataFlow Systems', rating: 4.9, completedRFx: 15, avgSavings: 22, responseRate: 98, status: 'preferred' },
-        ]);
+        setRfxEvents([]);
+        setVendors([]);
         setLoading(false);
       });
   }, []);
@@ -2539,18 +2515,22 @@ function RFxStudioView() {
                   <CardTitle className="text-xl font-semibold text-slate-900">Vendor Directory</CardTitle>
                   <CardDescription className="text-slate-500 mt-1">Manage your supplier network and performance</CardDescription>
                 </div>
-                <Button onClick={() => toast.info('Vendor invitations coming soon')} className="bg-violet-600 hover:bg-violet-700 text-white shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Invite Vendor
-                </Button>
               </div>
             </CardHeader>
             <CardContent className="p-6">
+              {vendors.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {vendors.map((vendor: any) => (
                   <VendorCard key={vendor.id} vendor={vendor} />
                 ))}
               </div>
+              ) : (
+              <div className="text-center py-12">
+                <Users className="w-12 h-12 mx-auto text-slate-300 mb-4" />
+                <h3 className="text-lg font-semibold text-slate-700 mb-2">No vendors yet</h3>
+                <p className="text-sm text-slate-500 max-w-md mx-auto">Vendors will appear here once supplier data is available from your RFx processes and integrations.</p>
+              </div>
+              )}
             </CardContent>
           </Card>
         </div>
