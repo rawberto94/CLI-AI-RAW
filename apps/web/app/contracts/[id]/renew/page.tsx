@@ -198,6 +198,9 @@ export default function ContractRenewalPage() {
   const [aiAnalysis, setAiAnalysis] = useState<AIRenewalAnalysis | null>(null);
   const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
   
+  // Track if dates were auto-assumed (no expiration on original)
+  const [datesAutoAssumed, setDatesAutoAssumed] = useState(false);
+  
   // Trigger AI analysis (called from ReviewStep or ContentStep)
   const runAiAnalysis = useCallback(async () => {
     if (!draft || !originalContract || aiAnalysisLoading) return;
@@ -319,9 +322,14 @@ export default function ContractRenewalPage() {
         });
         
         // Initialize draft with original contract data
-        const originalDuration = data.effectiveDate && data.expirationDate
+        const hasOriginalDates = !!(data.effectiveDate && data.expirationDate);
+        const originalDuration = hasOriginalDates
           ? differenceInDays(new Date(data.expirationDate), new Date(data.effectiveDate))
           : 365;
+        
+        if (!hasOriginalDates) {
+          setDatesAutoAssumed(true);
+        }
         
         const newEffective = data.expirationDate 
           ? new Date(data.expirationDate) 
@@ -593,7 +601,7 @@ export default function ContractRenewalPage() {
               />
             )}
             {currentStep === 1 && (
-              <TermsStep draft={draft} onUpdate={updateDraft} original={originalContract} />
+              <TermsStep draft={draft} onUpdate={updateDraft} original={originalContract} datesAutoAssumed={datesAutoAssumed} />
             )}
             {currentStep === 2 && (
               <ContentStep draft={draft} onUpdate={updateDraft} original={originalContract} contractId={contractId} aiAnalysis={aiAnalysis} aiAnalysisLoading={aiAnalysisLoading} onRunAiAnalysis={runAiAnalysis} />
@@ -988,7 +996,11 @@ function ReviewStep({
                 <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
                 <p className="text-sm text-muted-foreground">Analyzing contract with AI...</p>
               </div>
-              <Progress value={65} className="h-1" />
+              <div className="h-1 w-full bg-violet-100 rounded-full overflow-hidden">
+                <div className="h-full w-1/3 bg-violet-500 rounded-full animate-[indeterminate_1.5s_ease-in-out_infinite]" 
+                  style={{ animation: 'indeterminate 1.5s ease-in-out infinite' }} />
+              </div>
+              <style>{`@keyframes indeterminate { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }`}</style>
             </div>
           )}
           
@@ -1079,11 +1091,13 @@ function TermsStep({
   draft, 
   onUpdate, 
   
-  original 
+  original,
+  datesAutoAssumed = false,
 }: { 
   draft: RenewalDraft; 
   onUpdate: (updates: Partial<RenewalDraft>) => void;
   original: OriginalContract;
+  datesAutoAssumed?: boolean;
 }) {
   return (
     <div className="space-y-6">
@@ -1093,6 +1107,16 @@ function TermsStep({
           Set the new terms for the renewed contract
         </p>
       </div>
+
+      {datesAutoAssumed && (
+        <div className="flex items-start gap-3 p-3 border border-amber-200 bg-amber-50 rounded-xl text-amber-800 text-sm">
+          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Dates were estimated</p>
+            <p className="text-amber-700 mt-0.5">The original contract had no expiration date, so a 1-year duration was assumed. Please review and adjust the dates below.</p>
+          </div>
+        </div>
+      )}
       
       <div className="grid lg:grid-cols-2 gap-6">
         <Card>

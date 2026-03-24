@@ -53,6 +53,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 // ============================================================================
 // Types
@@ -158,6 +168,7 @@ function DraftCard({
   onDuplicate: (id: string) => void
 }) {
   const router = useRouter()
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const updatedDate = new Date(draft.updatedAt)
   const diffMs = Date.now() - updatedDate.getTime()
   const diffMins = Math.floor(diffMs / 60000)
@@ -251,13 +262,33 @@ function DraftCard({
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={() => onDelete(draft.id)}
+                      onClick={() => setShowDeleteConfirm(true)}
                       className="gap-2 cursor-pointer text-red-600"
                     >
                       <Trash2 className="h-3.5 w-3.5" /> Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete draft?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete &ldquo;{draft.title}&rdquo;. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => onDelete(draft.id)}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           </div>
@@ -593,7 +624,10 @@ export default function DraftingPage() {
                 onClick={() => router.push('/drafting/copilot?mode=blank')}
               >
                 <Plus className="h-5 w-5 mr-2" />
-                New Document
+                <div className="text-left">
+                  <div>New Document</div>
+                  <div className="text-[10px] font-normal opacity-70">Blank canvas with AI copilot</div>
+                </div>
               </Button>
               <Button
                 size="lg"
@@ -601,7 +635,10 @@ export default function DraftingPage() {
                 onClick={() => setShowAgenticDialog(true)}
               >
                 <Sparkles className="h-5 w-5 mr-2" />
-                Generate with AI
+                <div className="text-left">
+                  <div>Generate with AI</div>
+                  <div className="text-[10px] font-normal opacity-70">6-step agentic pipeline</div>
+                </div>
               </Button>
               <Button
                 size="lg"
@@ -610,7 +647,10 @@ export default function DraftingPage() {
                 onClick={() => setActiveTab('templates')}
               >
                 <LayoutTemplate className="h-5 w-5 mr-2" />
-                Browse Templates
+                <div className="text-left">
+                  <div>Browse Templates</div>
+                  <div className="text-[10px] font-normal opacity-70">Start from a pre-built template</div>
+                </div>
               </Button>
             </div>
           </div>

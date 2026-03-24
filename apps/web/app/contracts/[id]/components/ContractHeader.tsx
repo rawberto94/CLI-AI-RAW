@@ -180,23 +180,6 @@ export const ContractHeader = memo(function ContractHeader({
                   Edit Metadata
                   <span className="ml-auto text-xs text-slate-400">E</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onAIExtract} disabled={isExtractingAI} className="cursor-pointer">
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  {isExtractingAI ? 'Extracting...' : 'AI Extract'}
-                </DropdownMenuItem>
-                {onExtractObligations && (
-                  <DropdownMenuItem onClick={onExtractObligations} disabled={isExtractingObligations} className="cursor-pointer">
-                    <ClipboardList className="h-4 w-4 mr-2" />
-                    {isExtractingObligations ? (
-                      <>
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        Extracting Obligations...
-                      </>
-                    ) : (
-                      'Extract Obligations'
-                    )}
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onDownload} className="cursor-pointer">
                   <Download className="h-4 w-4 mr-2" />
@@ -207,35 +190,9 @@ export const ContractHeader = memo(function ContractHeader({
                   <Share2 className="h-4 w-4 mr-2" />
                   Share
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onCompare} className="cursor-pointer">
                   <GitCompare className="h-4 w-4 mr-2" />
                   Compare Versions
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <div className="px-2 py-1.5 text-xs font-semibold text-violet-600 dark:text-violet-400 bg-violet-50/50 dark:bg-violet-950/30">
-                  ✨ Premium AI Features
-                </div>
-                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
-                  <Link href={`/contracts/${contractId}/legal-review`}>
-                    <Scale className="h-4 w-4 mr-2 text-violet-600" />
-                    Legal Review & Redlining
-                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
-                  <Link href={`/contracts/${contractId}/redline`}>
-                    <Edit3 className="h-4 w-4 mr-2 text-violet-600" />
-                    Redline Editor
-                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
-                  <Link href={`/obligations?contract=${contractId}`}>
-                    <Target className="h-4 w-4 mr-2 text-violet-600" />
-                    Track Obligations
-                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
-                  </Link>
                 </DropdownMenuItem>
                 {onCreateRenewal && (
                   <>
@@ -256,6 +213,50 @@ export const ContractHeader = memo(function ContractHeader({
                     </DropdownMenuItem>
                   </>
                 )}
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1.5 text-xs font-semibold text-violet-600 dark:text-violet-400 bg-violet-50/50 dark:bg-violet-950/30">
+                  ✨ AI Features
+                </div>
+                <DropdownMenuItem onClick={onAIExtract} disabled={isExtractingAI} className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
+                  <Sparkles className="h-4 w-4 mr-2 text-violet-600" />
+                  {isExtractingAI ? 'Extracting...' : 'AI Extract'}
+                  <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
+                </DropdownMenuItem>
+                {onExtractObligations && (
+                  <DropdownMenuItem onClick={onExtractObligations} disabled={isExtractingObligations} className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
+                    <ClipboardList className="h-4 w-4 mr-2 text-violet-600" />
+                    {isExtractingObligations ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        Extracting...
+                      </>
+                    ) : (
+                      'Extract Obligations'
+                    )}
+                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
+                  <Link href={`/contracts/${contractId}/legal-review`}>
+                    <Scale className="h-4 w-4 mr-2 text-violet-600" />
+                    Legal Review
+                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
+                  <Link href={`/contracts/${contractId}/redline`}>
+                    <Edit3 className="h-4 w-4 mr-2 text-violet-600" />
+                    Redline Editor
+                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
+                  <Link href={`/obligations?contract=${contractId}`}>
+                    <Target className="h-4 w-4 mr-2 text-violet-600" />
+                    Track Obligations
+                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
+                  </Link>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

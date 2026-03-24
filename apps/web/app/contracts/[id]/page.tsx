@@ -709,7 +709,7 @@ export default function ContractDetailPage() {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="mb-4 sm:mb-6"
+                  className="mb-4 sm:mb-6 no-print"
                 >
                   <Card className="border-violet-200 bg-violet-50/50">
                     <CardContent className="py-3 sm:py-4">

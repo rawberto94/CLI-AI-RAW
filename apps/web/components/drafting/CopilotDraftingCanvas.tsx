@@ -27,6 +27,19 @@ import { exportDraftAsPDF, exportDraftAsDOCX } from '@/lib/drafting/draft-export
 import { VersionDiffView } from './VersionDiffView';
 
 // ============================================================================
+// HELPERS
+// ============================================================================
+
+function formatTimeSince(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 10) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -1611,7 +1624,7 @@ export function CopilotDraftingCanvas({
                 ) : lastSaved ? (
                   <>
                     <Clock className="h-4 w-4" />
-                    <span>Saved {lastSaved.toLocaleTimeString()}</span>
+                    <span>Saved {formatTimeSince(lastSaved)}</span>
                   </>
                 ) : (
                   <>

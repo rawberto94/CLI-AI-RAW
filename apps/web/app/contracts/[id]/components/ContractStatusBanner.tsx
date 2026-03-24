@@ -1,10 +1,10 @@
 'use client'
 
-import React, { memo, useMemo } from 'react'
+import React, { memo, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/design-tokens'
-import { AlertCircle, Clock, AlertTriangle, PenLine, FileWarning, FileX as _FileX, Eye } from 'lucide-react'
+import { AlertCircle, Clock, AlertTriangle, PenLine, FileWarning, FileX as _FileX, Eye, ChevronDown, ChevronUp } from 'lucide-react'
 import type { SignatureStatus, DocumentClassification } from '@/lib/types/contract-metadata-schema'
 
 type BannerType = 'expired' | 'expiring' | 'high-risk' | 'review-needed' | 'unsigned' | 'not-a-contract' | 'pending-review' | null
@@ -78,6 +78,7 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
       title: string
       subtitle: string
       buttonText?: string
+      secondaryButtonText?: string
       buttonClass?: string
       priority: number
     }> = []
@@ -166,7 +167,8 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
         textClass: 'text-amber-700',
         title: 'Expiring Soon',
         subtitle: `${daysRemaining} days until ${formatDate(endDate!)}`,
-        buttonText: 'Set Reminder',
+        buttonText: 'Start Renewal',
+        secondaryButtonText: 'Set Reminder',
         buttonClass: 'border-amber-300 text-amber-700 hover:bg-amber-100',
         priority: 70,
       })
@@ -196,10 +198,15 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
   
   if (banners.length === 0) return null
   
+  const MAX_VISIBLE = 2
+  const [expanded, setExpanded] = useState(false)
+  const visibleBanners = expanded ? banners : banners.slice(0, MAX_VISIBLE)
+  const hiddenCount = banners.length - MAX_VISIBLE
+
   // Render all banners
   return (
     <div className="space-y-2 mb-4">
-      {banners.map((banner, index) => {
+      {visibleBanners.map((banner, index) => {
         const Icon = banner.icon
         
         const handleAction = () => {
@@ -207,12 +214,16 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
             onStartReview()
           } else if (banner.type === 'unsigned' && onRequestSignature) {
             onRequestSignature()
-          } else if (banner.type === 'expired' && onInitiateRenewal) {
+          } else if ((banner.type === 'expired' || banner.type === 'expiring') && onInitiateRenewal) {
             onInitiateRenewal()
-          } else if (banner.type === 'expiring' && onSetReminder) {
-            onSetReminder()
           } else if (onAction) {
             onAction()
+          }
+        }
+
+        const handleSecondaryAction = () => {
+          if (banner.type === 'expiring' && onSetReminder) {
+            onSetReminder()
           }
         }
         
@@ -221,8 +232,10 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
           (banner.type === 'pending-review' && onStartReview) ||
           (banner.type === 'unsigned' && onRequestSignature) ||
           (banner.type === 'expired' && onInitiateRenewal) || 
-          (banner.type === 'expiring' && onSetReminder)
+          (banner.type === 'expiring' && (onInitiateRenewal || onSetReminder))
         )
+
+        const hasSecondaryAction = banner.secondaryButtonText && banner.type === 'expiring' && onSetReminder
         
         return (
           <div
@@ -239,20 +252,50 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
               <span className="mx-2 hidden sm:inline">·</span>
               <span className="block sm:inline text-sm">{banner.subtitle}</span>
             </div>
-            {hasAction && (
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={handleAction}
-                className={cn("shrink-0", banner.buttonClass)}
-              >
-                <span className="hidden sm:inline">{banner.buttonText}</span>
-                <span className="sm:hidden">Action</span>
-              </Button>
-            )}
+            <div className="flex items-center gap-2 shrink-0">
+              {hasSecondaryAction && (
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={handleSecondaryAction}
+                  className={cn("hidden sm:inline-flex text-xs", banner.buttonClass)}
+                >
+                  {banner.secondaryButtonText}
+                </Button>
+              )}
+              {hasAction && (
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleAction}
+                  className={cn(banner.buttonClass)}
+                >
+                  <span className="hidden sm:inline">{banner.buttonText}</span>
+                  <span className="sm:hidden">Action</span>
+                </Button>
+              )}
+            </div>
           </div>
         )
       })}
+      {hiddenCount > 0 && !expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors px-1"
+        >
+          <ChevronDown className="h-3.5 w-3.5" />
+          {hiddenCount} more {hiddenCount === 1 ? 'alert' : 'alerts'}
+        </button>
+      )}
+      {expanded && hiddenCount > 0 && (
+        <button
+          onClick={() => setExpanded(false)}
+          className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors px-1"
+        >
+          <ChevronUp className="h-3.5 w-3.5" />
+          Show fewer
+        </button>
+      )}
     </div>
   )
 })
