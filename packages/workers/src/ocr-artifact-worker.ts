@@ -323,12 +323,27 @@ const logger = pino({
 });
 
 // Module-level OpenAI client singleton — avoids re-instantiation per call
+const AZURE_OPENAI_API_VERSION = process.env.AZURE_OPENAI_API_VERSION || '2024-02-01';
 let _ocrOpenAISingleton: any = null;
 async function getOCROpenAIClient(): Promise<any> {
   if (_ocrOpenAISingleton) return _ocrOpenAISingleton;
+  const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+  const azureKey = process.env.AZURE_OPENAI_API_KEY;
+  const OpenAI = (await import('openai')).default;
+  if (azureEndpoint && azureKey) {
+    // Use Azure OpenAI — supports data-residency requirements (e.g. Switzerland)
+    const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+    _ocrOpenAISingleton = new OpenAI({
+      apiKey: azureKey,
+      baseURL: `${azureEndpoint.replace(/\/$/, '')}/openai/deployments/${deployment}`,
+      defaultHeaders: { 'api-key': azureKey },
+      defaultQuery: { 'api-version': AZURE_OPENAI_API_VERSION },
+    });
+    logger.info({ endpoint: azureEndpoint, deployment }, 'Using Azure OpenAI for artifact generation');
+    return _ocrOpenAISingleton;
+  }
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
-  const OpenAI = (await import('openai')).default;
   _ocrOpenAISingleton = new OpenAI({ apiKey });
   return _ocrOpenAISingleton;
 }
@@ -4303,8 +4318,9 @@ async function callOpenAIForArtifact(
   systemPrompt: string,
   type: string
 ): Promise<{ success: boolean; data?: Record<string, any>; error?: string; tokensUsed?: number; promptTokens?: number; completionTokens?: number; model?: string }> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
+  // When Azure OpenAI is configured, require either Azure key or standard OpenAI key
+  const isAzure = !!(process.env.AZURE_OPENAI_ENDPOINT && process.env.AZURE_OPENAI_API_KEY);
+  if (!isAzure && !process.env.OPENAI_API_KEY) {
     return { success: false, error: 'OPENAI_API_KEY not configured' };
   }
 
@@ -4314,13 +4330,15 @@ async function callOpenAIForArtifact(
   for (let attempt = 1; attempt <= AI_RETRY_CONFIG.maxAttempts; attempt++) {
     try {
       const openai = await getOCROpenAIClient();
-      if (!openai) return { success: false, error: 'OPENAI_API_KEY not configured' };
+      if (!openai) return { success: false, error: 'OpenAI client unavailable — check OPENAI_API_KEY or AZURE_OPENAI_ENDPOINT/AZURE_OPENAI_API_KEY' };
       
-      logger.info({ type, attempt }, 'Calling OpenAI for artifact generation');
+      logger.info({ type, attempt, provider: isAzure ? 'azure-openai' : 'openai' }, 'Calling OpenAI for artifact generation');
       
-      // Model downgrade cascade: gpt-4o → gpt-4o-mini on rate limit retries
-      const primaryModel = process.env.OPENAI_MODEL || 'gpt-4o';
-      const currentModel = (attempt >= 3 && isDowngraded) ? 'gpt-4o-mini' : primaryModel;
+      // For Azure OpenAI the deployment is already baked into the baseURL; pass it as model too (SDK ignores it for Azure)
+      const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+      const primaryModel = isAzure ? azureDeployment : (process.env.OPENAI_MODEL || 'gpt-4o');
+      // For Azure, downgrade is not attempted (no gpt-4o-mini guaranteed); for standard OpenAI, cascade down
+      const currentModel = (!isAzure && attempt >= 3 && isDowngraded) ? 'gpt-4o-mini' : primaryModel;
       
       const response = await openai.chat.completions.create({
         model: currentModel,
