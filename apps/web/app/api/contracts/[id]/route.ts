@@ -247,6 +247,7 @@ export async function GET(
             totalValue: true,
             createdAt: true,
           },
+          take: 50,
           orderBy: {
             createdAt: 'desc',
           },
@@ -400,6 +401,8 @@ export async function GET(
       contractTitle: contract.contractTitle || null,
       document_title: contract.contractTitle || null,
       description: contract.description || null,
+      tags: contract.tags || [],
+      searchableText: contract.searchableText || null,
       effectiveDate: contract.effectiveDate?.toISOString() || null,
       expirationDate: contract.expirationDate?.toISOString() || null,
 
@@ -935,12 +938,13 @@ export async function PUT(
       metadata: { changes: prismaUpdates },
     }).catch((err) => logger.error('[ContractUpdate] Audit log failed:', err));
 
-    // Convert BigInt fields to Number so JSON.stringify works
-    const safeContract = Object.fromEntries(
-      Object.entries(updatedContract).map(([k, v]) =>
-        [k, typeof v === 'bigint' ? Number(v) : v]
-      )
-    );
+    // Convert BigInt fields to Number and add Date ISO strings so JSON.stringify works
+    const safeContract: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(updatedContract)) {
+      if (typeof v === 'bigint') safeContract[k] = Number(v);
+      else if (v instanceof Date) safeContract[k] = v.toISOString();
+      else safeContract[k] = v;
+    }
 
     return createSuccessResponse(ctx, safeContract);
   } catch (error: unknown) {

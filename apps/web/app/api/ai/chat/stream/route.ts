@@ -689,7 +689,17 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
             return { toolCallId: tc.id, result };
           });
 
-          const toolResponses = await Promise.all(toolPromises);
+          const toolSettled = await Promise.allSettled(toolPromises);
+          const toolResponses = toolSettled
+            .filter((r): r is PromiseFulfilledResult<{ toolCallId: string; result: any }> => r.status === 'fulfilled')
+            .map(r => r.value);
+
+          // Log any rejected tool calls (non-fatal)
+          for (const r of toolSettled) {
+            if (r.status === 'rejected') {
+              console.error('[ChatStream] Tool execution failed (non-fatal):', r.reason);
+            }
+          }
 
           for (const { result } of toolResponses) {
             toolsUsed.push(result.toolName);
