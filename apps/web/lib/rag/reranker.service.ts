@@ -14,6 +14,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 
 // Types
 export interface RerankResult {
@@ -37,9 +38,7 @@ export interface ProgressiveRerankOptions extends RerankOptions {
 }
 
 // Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = createOpenAIClient();
 
 // ============================================================================
 // COHERE RERANKING (Primary — 10x cheaper, purpose-built)

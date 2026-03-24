@@ -6,6 +6,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 
 // Types
 export interface QueryExpansion {
@@ -23,9 +24,7 @@ export interface ExpansionOptions {
 }
 
 // Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = createOpenAIClient();
 
 /**
  * Generate multiple query variations for better recall

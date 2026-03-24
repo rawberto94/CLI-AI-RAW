@@ -19,6 +19,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import type { SearchResult } from './advanced-rag.service';
 
 // ============================================================================
@@ -70,9 +71,7 @@ let openai: OpenAI | null = null;
 
 function getOpenAI(): OpenAI {
   if (!openai) {
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    openai = createOpenAIClient();
   }
   return openai;
 }

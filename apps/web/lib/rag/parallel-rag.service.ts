@@ -13,6 +13,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
@@ -95,7 +96,7 @@ export async function parallelMultiQueryRAG(
   const startTime = Date.now();
   const timings = { total: 0, hyde: 0, expansion: 0, search: 0, fusion: 0 };
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getOpenAIApiKey();
   if (!apiKey) {
     return {
       results: [],
@@ -104,7 +105,7 @@ export async function parallelMultiQueryRAG(
     };
   }
 
-  const openai = new OpenAI({ apiKey });
+  const openai = createOpenAIClient(apiKey);
 
   try {
     // ========================================
@@ -248,7 +249,7 @@ export async function parallelMultiQueryRAG(
     try {
       const tenantFilter = tenantId ? Prisma.sql`AND "tenantId" = ${tenantId}` : Prisma.empty;
       const rawResults = await prisma.$queryRaw<Array<{ id: string; contractTitle: string | null; fileName: string; supplierName: string | null; rawText: string }>>`
-        SELECT id, "contractTitle", "fileName" as "fileName", "supplierName", LEFT("rawText", 2000) as "rawText"
+        SELECT id, "contractTitle", filename as "fileName", "supplierName", LEFT("rawText", 2000) as "rawText"
         FROM "Contract"
         WHERE "rawText" IS NOT NULL
           AND to_tsvector('english', "rawText") @@ plainto_tsquery('english', ${query})

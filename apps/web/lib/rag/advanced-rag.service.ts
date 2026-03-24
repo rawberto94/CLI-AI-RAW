@@ -30,6 +30,7 @@ import {
   type ChunkingOptions,
 } from '@repo/utils/rag/semantic-chunker';
 import { progressiveRerank as progressiveRerankService } from './reranker.service';
+import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 
 // Re-export so existing callers (barrel, tests) keep working
 export { semanticChunk };
@@ -195,7 +196,7 @@ async function generateHypotheticalDocument(
 ): Promise<string | null> {
   try {
     const OpenAI = (await import('openai')).OpenAI;
-    const openai = new OpenAI({ apiKey });
+    const openai = createOpenAIClient(apiKey);
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -231,7 +232,7 @@ export async function expandQuery(
   
   try {
     const OpenAI = (await import('openai')).OpenAI;
-    const openai = new OpenAI({ apiKey });
+    const openai = createOpenAIClient(apiKey);
     
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -697,7 +698,7 @@ export async function hybridSearch(
   // when the query strongly signals one mode.
   const mode = routeQueryIntent(query, callerMode);
   
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getOpenAIApiKey();
   if (!apiKey) {
     return keywordOnlySearch(query, filters, k);
   }
@@ -712,7 +713,7 @@ export async function hybridSearch(
     
     // Step 0.5: Check semantic cache for similar recent queries
     const OpenAI = (await import('openai')).OpenAI;
-    const openai = new OpenAI({ apiKey });
+    const openai = createOpenAIClient(apiKey);
     
     // Generate embedding for cache lookup (we'll reuse it for search too)
     const embModel = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
@@ -1218,7 +1219,7 @@ async function rawTextFallbackSearch(
       rawText: string;
       rank: number;
     }>>`
-      SELECT c.id, c."fileName", 
+      SELECT c.id, c.filename as "fileName", 
              substring(c."rawText" from 1 for 2000) as "rawText",
              ts_rank_cd(to_tsvector('english', c."rawText"), plainto_tsquery('english', ${query})) as rank
       FROM "Contract" c
@@ -1417,7 +1418,7 @@ export async function processContractWithSemanticChunking(
   
   // Step 2: Generate embeddings in batches
   const OpenAI = (await import('openai')).OpenAI;
-  const openai = new OpenAI({ apiKey });
+  const openai = createOpenAIClient(apiKey);
   
   const BATCH_SIZE = 32;
   const embeddings: number[][] = [];

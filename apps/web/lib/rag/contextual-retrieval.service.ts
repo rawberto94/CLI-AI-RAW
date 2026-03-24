@@ -17,8 +17,9 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = createOpenAIClient();
 
 export interface ContextualizedChunk {
   originalText: string;

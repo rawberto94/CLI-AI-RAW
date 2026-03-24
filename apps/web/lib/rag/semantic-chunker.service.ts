@@ -7,6 +7,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import {
   semanticChunk as coreSemanticChunk,
   type SemanticChunk as CoreSemanticChunk,
@@ -41,9 +42,7 @@ const SECTION_PATTERNS = {
 };
 
 // OpenAI client for AI-assisted chunking
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = createOpenAIClient();
 
 /**
  * Semantic chunking that respects document structure
