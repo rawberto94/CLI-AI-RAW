@@ -335,8 +335,105 @@ class MemoryAuditStorage implements AuditStorage {
 }
 
 // ============================================================================
-// Console Logger (Always active)
+// Prisma (Database) Audit Storage
 // ============================================================================
+
+/**
+ * Persists audit entries to the AuditLog table via Prisma.
+ * Should be initialized via setAuditStorage() from instrumentation.ts
+ * (Node.js runtime only — not Edge compatible due to Prisma client).
+ */
+export class PrismaAuditStorage implements AuditStorage {
+  private prisma: {
+    auditLog: {
+      create(args: { data: Record<string, unknown> }): Promise<unknown>;
+      findMany(args?: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
+      findUnique(args: { where: { id: string } }): Promise<Record<string, unknown> | null>;
+    };
+  };
+
+  constructor(prismaClient: PrismaAuditStorage['prisma']) {
+    this.prisma = prismaClient;
+  }
+
+  async save(entry: AuditEntry): Promise<void> {
+    try {
+      const tenantId = (entry as AuditEntry & { tenantId?: string }).tenantId ?? 'system';
+      // Use lazy import to work regardless of module bundling context
+      const { prisma: lazyPrisma } = await import('@/lib/prisma');
+      await lazyPrisma.auditLog.create({
+        data: {
+          id: entry.id,
+          tenantId,
+          userId: entry.userId ?? null,
+          action: entry.action,
+          resource: entry.resourceType ?? null,
+          resourceType: entry.resourceType ?? null,
+          resourceId: entry.resourceId ?? null,
+          entityType: entry.resourceType ?? null,
+          entityId: entry.resourceId ?? null,
+          ipAddress: entry.ipAddress ?? null,
+          userAgent: entry.userAgent ?? null,
+          metadata: {
+            severity: entry.severity,
+            success: entry.success,
+            errorMessage: entry.errorMessage ?? null,
+            requestId: entry.requestId ?? null,
+            ...((entry.metadata as object) ?? {}),
+          },
+          createdAt: entry.timestamp,
+        },
+      });
+    } catch (err) {
+      console.error('[PrismaAuditStorage] Failed to persist audit entry:', err);
+      throw err;
+    }
+  }
+
+  async query(options: AuditQueryOptions): Promise<AuditEntry[]> {
+    const where: Record<string, unknown> = {};
+    if (options.userId) where['userId'] = options.userId;
+    if (options.resourceType) where['resourceType'] = options.resourceType;
+    if (options.resourceId) where['resourceId'] = options.resourceId;
+    const rows = await this.prisma.auditLog.findMany({
+      where,
+      take: options.limit ?? 100,
+      skip: options.offset ?? 0,
+      orderBy: { createdAt: options.orderDir ?? 'desc' },
+    } as Record<string, unknown>);
+    return rows.map((r) => ({
+      id: r['id'] as string,
+      action: r['action'] as AuditAction,
+      severity: ((r['metadata'] as Record<string, unknown>)?.['severity'] as AuditSeverity) ?? 'low',
+      success: ((r['metadata'] as Record<string, unknown>)?.['success'] as boolean) ?? true,
+      timestamp: r['createdAt'] as Date,
+      userId: r['userId'] as string | undefined,
+      resourceType: r['resourceType'] as string | undefined,
+      resourceId: r['resourceId'] as string | undefined,
+      ipAddress: r['ipAddress'] as string | undefined,
+      userAgent: r['userAgent'] as string | undefined,
+    }));
+  }
+
+  async getById(id: string): Promise<AuditEntry | null> {
+    const r = await this.prisma.auditLog.findUnique({ where: { id } });
+    if (!r) return null;
+    return {
+      id: r['id'] as string,
+      action: r['action'] as AuditAction,
+      severity: ((r['metadata'] as Record<string, unknown>)?.['severity'] as AuditSeverity) ?? 'low',
+      success: ((r['metadata'] as Record<string, unknown>)?.['success'] as boolean) ?? true,
+      timestamp: r['createdAt'] as Date,
+      userId: r['userId'] as string | undefined,
+      resourceType: r['resourceType'] as string | undefined,
+      resourceId: r['resourceId'] as string | undefined,
+      ipAddress: r['ipAddress'] as string | undefined,
+      userAgent: r['userAgent'] as string | undefined,
+    };
+  }
+}
+
+
 
 class ConsoleAuditLogger {
   log(_entry: AuditEntry): void {
@@ -459,10 +556,48 @@ function getAuditLogger(): AuditLogger {
 // ============================================================================
 
 /**
- * Log an audit entry
+ * Log an audit entry — always persists to DB via lazy Prisma import (server-side).
+ * Falls back to in-memory logger if DB write fails.
  */
 export async function auditLog(options: AuditLogOptions): Promise<AuditEntry> {
-  return getAuditLogger().log(options);
+  const logger = getAuditLogger();
+  // Build entry through the logger (handles severity, hooks, console logging)
+  const entry = await logger.log(options);
+
+  // Direct DB write — bypasses module singleton issues in Next.js bundle isolation
+  if (typeof window === 'undefined') {
+    try {
+      const { prisma: lazyPrisma } = await import('@/lib/prisma');
+      const tenantId = options.tenantId ?? 'system';
+      await lazyPrisma.auditLog.create({
+        data: {
+          id: entry.id,
+          tenantId,
+          userId: entry.userId ?? null,
+          action: entry.action,
+          resource: entry.resourceType ?? null,
+          resourceType: entry.resourceType ?? null,
+          resourceId: entry.resourceId ?? null,
+          entityType: entry.resourceType ?? null,
+          entityId: entry.resourceId ?? null,
+          ipAddress: entry.ipAddress ?? null,
+          userAgent: entry.userAgent ?? null,
+          metadata: {
+            severity: entry.severity,
+            success: entry.success,
+            errorMessage: entry.errorMessage ?? null,
+            requestId: entry.requestId ?? null,
+            ...((entry.metadata as object) ?? {}),
+          },
+          createdAt: entry.timestamp,
+        },
+      });
+    } catch (err) {
+      console.error('[auditLog] DB persist failed (non-fatal):', (err as Error)?.message ?? err);
+    }
+  }
+
+  return entry;
 }
 
 /**

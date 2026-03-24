@@ -196,7 +196,7 @@ providers.push(
           tenantId: user.tenantId,
           metadata: { provider: 'credentials', mfaRequired: user.mfaEnabled },
           success: true,
-        }).catch(() => {});
+        }).catch((err) => console.error('[Auth] Failed to write login audit log:', err));
 
         // C1 FIX: Flag MFA requirement in the returned user object
         return {

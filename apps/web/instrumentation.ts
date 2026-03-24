@@ -95,6 +95,16 @@ export async function register() {
     
     const { validateEnvironment } = await import('./lib/env-validation');
     
+    // Initialize DB-backed audit storage so auth/API audit events persist to AuditLog table
+    try {
+      const { prisma } = await import('./lib/prisma');
+      const { PrismaAuditStorage, setAuditStorage } = await import('./lib/security/audit');
+      setAuditStorage(new PrismaAuditStorage(prisma as Parameters<InstanceType<typeof PrismaAuditStorage>['constructor']>[0]));
+      logInfo('✅ Audit storage wired to database');
+    } catch (err) {
+      console.warn('[Instrumentation] Failed to initialize DB audit storage, falling back to in-memory:', err);
+    }
+
     const isProduction = process.env.NODE_ENV === 'production';
     
     // Validate environment variables at startup
