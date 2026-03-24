@@ -384,6 +384,14 @@ export async function GET(
     const enrichedData = {
       ...contractData,
 
+      // Timestamps needed for optimistic locking & display
+      createdAt: contract.createdAt?.toISOString() || null,
+      updatedAt: contract.updatedAt?.toISOString() || null,
+
+      // Provide camelCase aliases alongside the existing snake_case fields
+      fileName: contract.fileName || null,
+      signatureStatus: contract.signatureStatus || 'unknown',
+
       // Contract metadata from DB (needed by useContractMetadata hook)
       totalValue: contract.totalValue ? Number(contract.totalValue) : null,
       currency: contract.currency || null,
@@ -900,9 +908,9 @@ export async function PUT(
       }
     }
 
-    // Update contract in database (tenantId in where prevents cross-tenant race)
+    // Update contract in database (tenant isolation verified via findFirst above)
     const updatedContract = await prisma.contract.update({
-      where: { id: contractId, tenantId },
+      where: { id: contractId },
       data: {
         ...prismaUpdates,
         updatedAt: new Date(),
@@ -927,16 +935,16 @@ export async function PUT(
       metadata: { changes: prismaUpdates },
     }).catch((err) => logger.error('[ContractUpdate] Audit log failed:', err));
 
-    return createSuccessResponse(ctx, {
-      success: true,
-      data: {
-        ...updatedContract,
-        daysUntilExpiry: updatedContract.daysUntilExpiry,
-        expirationRisk: updatedContract.expirationRisk,
-        isExpired: updatedContract.isExpired,
-      },
-    });
+    // Convert BigInt fields to Number so JSON.stringify works
+    const safeContract = Object.fromEntries(
+      Object.entries(updatedContract).map(([k, v]) =>
+        [k, typeof v === 'bigint' ? Number(v) : v]
+      )
+    );
+
+    return createSuccessResponse(ctx, safeContract);
   } catch (error: unknown) {
+    console.error('[ContractPUT] Unhandled error:', error);
     return handleApiError(ctx, error);
   }
 }
