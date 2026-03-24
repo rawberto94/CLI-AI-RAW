@@ -99,20 +99,17 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   }, {} as Record<string, number>);
 
   return createSuccessResponse(ctx, {
-    success: true,
-    data: {
-      drafts,
+    drafts,
+    total,
+    limit,
+    offset,
+    metrics: {
       total,
-      limit,
-      offset,
-      metrics: {
-        total,
-        draft: statusCounts['DRAFT'] || 0,
-        inReview: statusCounts['IN_REVIEW'] || 0,
-        pendingApproval: statusCounts['PENDING_APPROVAL'] || 0,
-        approved: statusCounts['APPROVED'] || 0,
-        finalized: statusCounts['FINALIZED'] || 0,
-      },
+      draft: statusCounts['DRAFT'] || 0,
+      inReview: statusCounts['IN_REVIEW'] || 0,
+      pendingApproval: statusCounts['PENDING_APPROVAL'] || 0,
+      approved: statusCounts['APPROVED'] || 0,
+      finalized: statusCounts['FINALIZED'] || 0,
     },
   });
 });
@@ -189,8 +186,5 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     },
   });
 
-  return createSuccessResponse(ctx, {
-    success: true,
-    data: { draft },
-  });
+  return createSuccessResponse(ctx, { draft });
 });

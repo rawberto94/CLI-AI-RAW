@@ -68,10 +68,7 @@ export async function GET(
       return createErrorResponse(ctx, 'NOT_FOUND', 'Draft not found', 404);
     }
 
-    return createSuccessResponse(ctx, {
-      success: true,
-      data: { draft },
-    });
+    return createSuccessResponse(ctx, { draft });
   } catch (error) {
     return handleApiError(ctx, error);
   }
@@ -202,10 +199,7 @@ export async function PATCH(
       },
     });
 
-    return createSuccessResponse(ctx, {
-      success: true,
-      data: { draft },
-    });
+    return createSuccessResponse(ctx, { draft });
   } catch (error) {
     return handleApiError(ctx, error);
   }
@@ -244,7 +238,6 @@ export async function DELETE(
     });
 
     return createSuccessResponse(ctx, {
-      success: true,
       message: 'Draft deleted successfully',
     });
   } catch (error) {

@@ -113,8 +113,7 @@ export async function POST(
     }
 
     return createSuccessResponse(ctx, {
-      success: true,
-      data: { draft: updated },
+      draft: updated,
       message: 'Draft approved successfully',
     });
   } catch (error) {
