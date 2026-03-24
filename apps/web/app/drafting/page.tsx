@@ -46,6 +46,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import { AgenticDraftDialog } from '@/components/drafting/AgenticDraftDialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 // ============================================================================
 // Types
@@ -263,9 +270,11 @@ function DraftCard({
 function TemplateQuickCard({
   template,
   onClick,
+  onPreview,
 }: {
   template: Template
   onClick: () => void
+  onPreview: () => void
 }) {
   const categoryIcons: Record<string, string> = {
     Technology: '💻',
@@ -280,12 +289,7 @@ function TemplateQuickCard({
   const icon = categoryIcons[template.category || ''] || categoryIcons.Default
 
   return (
-    <motion.button
-      whileHover={{ y: -2, scale: 1.01 }}
-      whileTap={{ scale: 0.98 }}
-      onClick={onClick}
-      className="text-left w-full"
-    >
+    <div className="text-left w-full">
       <Card className="bg-white border-slate-200/80 hover:border-violet-300 hover:shadow-md transition-all duration-200 overflow-hidden group">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
@@ -312,11 +316,26 @@ function TemplateQuickCard({
                 )}
               </div>
             </div>
-            <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-violet-500 transition-colors flex-shrink-0 mt-1" />
+            <div className="flex flex-col gap-1 flex-shrink-0 mt-0.5">
+              <button
+                onClick={(e) => { e.stopPropagation(); onPreview(); }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                title="Preview template"
+              >
+                <Search className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onClick(); }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                title="Use template"
+              >
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         </CardContent>
       </Card>
-    </motion.button>
+    </div>
   )
 }
 
@@ -365,6 +384,10 @@ export default function DraftingPage() {
   const [aiPrompt, setAiPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('')
+  const [showAgenticDialog, setShowAgenticDialog] = useState(false)
+  const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null)
+  const [previewContent, setPreviewContent] = useState<string>('')
+  const [previewLoading, setPreviewLoading] = useState(false)
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
 
@@ -476,11 +499,8 @@ export default function DraftingPage() {
       toast.error('Please describe what you want to draft')
       return
     }
-    setIsGenerating(true)
-    const params = new URLSearchParams({ mode: 'ai', prompt: aiPrompt })
-    router.push(`/drafting/copilot?${params.toString()}`)
-    setIsGenerating(false)
-  }, [aiPrompt, router])
+    setShowAgenticDialog(true)
+  }, [aiPrompt])
 
   const handleTemplateUse = useCallback(
     (template: Template) => {
@@ -490,6 +510,24 @@ export default function DraftingPage() {
     },
     [router],
   )
+
+  const handleTemplatePreview = useCallback(async (template: Template) => {
+    setPreviewTemplate(template)
+    setPreviewContent('')
+    setPreviewLoading(true)
+    try {
+      const res = await fetch(`/api/templates/${template.id}`)
+      if (res.ok) {
+        const data = await res.json()
+        const tpl = data?.data?.template || data?.template || data
+        setPreviewContent(tpl?.content || tpl?.baseContent || 'No content available')
+      }
+    } catch {
+      setPreviewContent('Failed to load template content')
+    } finally {
+      setPreviewLoading(false)
+    }
+  }, [])
 
   // ============================================================================
   // Render
@@ -556,6 +594,14 @@ export default function DraftingPage() {
               >
                 <Plus className="h-5 w-5 mr-2" />
                 New Document
+              </Button>
+              <Button
+                size="lg"
+                className="bg-white/20 text-white hover:bg-white/30 font-semibold shadow-lg shadow-black/10 rounded-xl px-6 backdrop-blur-sm border border-white/30"
+                onClick={() => setShowAgenticDialog(true)}
+              >
+                <Sparkles className="h-5 w-5 mr-2" />
+                Generate with AI
               </Button>
               <Button
                 size="lg"
@@ -952,6 +998,7 @@ export default function DraftingPage() {
                         <TemplateQuickCard
                           template={template}
                           onClick={() => handleTemplateUse(template)}
+                          onPreview={() => handleTemplatePreview(template)}
                         />
                       </motion.div>
                     ))}
@@ -1027,14 +1074,25 @@ export default function DraftingPage() {
                       Experience intelligent contract drafting with real-time
                       suggestions, risk detection, and compliance checks.
                     </p>
-                    <Button
-                      size="lg"
-                      className="bg-white text-violet-700 hover:bg-violet-50 font-semibold shadow-lg rounded-xl px-8"
-                      onClick={() => router.push('/drafting/copilot?mode=blank')}
-                    >
-                      <Sparkles className="h-5 w-5 mr-2" />
-                      Start AI Copilot
-                    </Button>
+                    <div className="flex justify-center gap-3">
+                      <Button
+                        size="lg"
+                        className="bg-white text-violet-700 hover:bg-violet-50 font-semibold shadow-lg rounded-xl px-8"
+                        onClick={() => setShowAgenticDialog(true)}
+                      >
+                        <Sparkles className="h-5 w-5 mr-2" />
+                        Generate with AI
+                      </Button>
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        className="border-white/40 text-white hover:bg-white/10 font-semibold rounded-xl px-6"
+                        onClick={() => router.push('/drafting/copilot?mode=blank')}
+                      >
+                        <PenTool className="h-5 w-5 mr-2" />
+                        Blank + Copilot
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1042,6 +1100,68 @@ export default function DraftingPage() {
           </Tabs>
         </motion.div>
       </div>
+
+      {/* Template Preview Dialog */}
+      <Dialog open={!!previewTemplate} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LayoutTemplate className="h-5 w-5 text-violet-600" />
+              {previewTemplate?.name}
+            </DialogTitle>
+            {previewTemplate?.description && (
+              <p className="text-sm text-slate-500 mt-1">{previewTemplate.description}</p>
+            )}
+          </DialogHeader>
+          <div className="flex items-center gap-2 mb-3">
+            {previewTemplate?.category && (
+              <Badge variant="secondary">{previewTemplate.category}</Badge>
+            )}
+            {(previewTemplate?.usageCount ?? 0) > 0 && (
+              <span className="text-xs text-slate-400">{previewTemplate?.usageCount} uses</span>
+            )}
+          </div>
+          <div className="flex-1 overflow-y-auto border rounded-xl p-4 bg-slate-50 text-sm prose prose-sm max-w-none">
+            {previewLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            ) : (
+              <div dangerouslySetInnerHTML={{ __html: previewContent }} />
+            )}
+          </div>
+          <div className="flex justify-end gap-3 pt-3 border-t">
+            <Button variant="outline" onClick={() => setPreviewTemplate(null)}>
+              Close
+            </Button>
+            <Button
+              className="bg-violet-600 hover:bg-violet-700"
+              onClick={() => {
+                if (previewTemplate) handleTemplateUse(previewTemplate)
+              }}
+            >
+              <ArrowRight className="h-4 w-4 mr-2" />
+              Use Template
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Agentic Draft Dialog */}
+      <AgenticDraftDialog
+        open={showAgenticDialog}
+        onOpenChange={(open) => {
+          setShowAgenticDialog(open)
+          if (!open) {
+            fetchDrafts()
+            setAiPrompt('')
+          }
+        }}
+        initialPrompt={aiPrompt}
+      />
     </div>
   )
 }
