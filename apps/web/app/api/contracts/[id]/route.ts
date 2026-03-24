@@ -24,6 +24,7 @@ import { generateETag, checkETagMatch, CacheDuration } from '@/lib/api-cache-hea
 import { contractCache, apiCache, etagHeaders } from '@/lib/cache/etag-cache';
 import { deleteCachedByPattern } from '@/lib/cache';
 import { logger } from '@/lib/logger';
+import { auditLog, AuditAction } from '@/lib/security/audit';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -787,6 +788,7 @@ export async function PUT(
   try {
     const contractId = params.id;
     const body = await req.json();
+    const version = typeof body.version === 'string' ? body.version : undefined;
     let updates: any;
     // Validate update data with Zod schema
     try {
@@ -804,13 +806,19 @@ export async function PUT(
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID is required', 401);
     }
 
-    // Verify contract exists and belongs to tenant
+    // Verify contract exists and belongs to tenant (exclude soft-deleted)
     const existingContract = await prisma.contract.findFirst({
-      where: { id: contractId, tenantId },
+      where: { id: contractId, tenantId, isDeleted: false },
     });
 
     if (!existingContract) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
+    }
+
+    // Optimistic locking: reject if client's version is stale
+    if (version && existingContract.updatedAt.toISOString() !== version) {
+      return createErrorResponse(ctx, 'CONFLICT',
+        'Contract was modified by another user. Please refresh and retry.', 409);
     }
 
     // Map allowed fields to Prisma schema fields
@@ -871,9 +879,30 @@ export async function PUT(
       };
     }
 
-    // Update contract in database
+    // Auto-compute expiry fields whenever expirationDate is set
+    if (prismaUpdates.expirationDate !== undefined) {
+      const expDate = prismaUpdates.expirationDate as Date | null;
+      if (expDate) {
+        const now = new Date();
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const daysUntil = Math.ceil((expDate.getTime() - now.getTime()) / msPerDay);
+        prismaUpdates.daysUntilExpiry = daysUntil;
+        prismaUpdates.isExpired = daysUntil < 0;
+        if (daysUntil < 0) prismaUpdates.expirationRisk = 'EXPIRED';
+        else if (daysUntil <= 7) prismaUpdates.expirationRisk = 'CRITICAL';
+        else if (daysUntil <= 30) prismaUpdates.expirationRisk = 'HIGH';
+        else if (daysUntil <= 90) prismaUpdates.expirationRisk = 'MEDIUM';
+        else prismaUpdates.expirationRisk = 'LOW';
+      } else {
+        prismaUpdates.daysUntilExpiry = null;
+        prismaUpdates.isExpired = false;
+        prismaUpdates.expirationRisk = null;
+      }
+    }
+
+    // Update contract in database (tenantId in where prevents cross-tenant race)
     const updatedContract = await prisma.contract.update({
-      where: { id: contractId },
+      where: { id: contractId, tenantId },
       data: {
         ...prismaUpdates,
         updatedAt: new Date(),
@@ -889,9 +918,23 @@ export async function PUT(
       logger.error('[ContractUpdate] Semantic cache invalidation error:', err);
     });
 
+    await auditLog({
+      action: AuditAction.CONTRACT_UPDATED,
+      resourceType: 'contract',
+      resourceId: contractId,
+      userId: ctx.userId,
+      tenantId,
+      metadata: { changes: prismaUpdates },
+    }).catch((err) => logger.error('[ContractUpdate] Audit log failed:', err));
+
     return createSuccessResponse(ctx, {
       success: true,
-      data: updatedContract,
+      data: {
+        ...updatedContract,
+        daysUntilExpiry: updatedContract.daysUntilExpiry,
+        expirationRisk: updatedContract.expirationRisk,
+        isExpired: updatedContract.isExpired,
+      },
     });
   } catch (error: unknown) {
     return handleApiError(ctx, error);
@@ -961,6 +1004,15 @@ export async function DELETE(
     } catch {
       // Legacy file cleanup is optional
     }
+
+    await auditLog({
+      action: AuditAction.CONTRACT_DELETED,
+      resourceType: 'contract',
+      resourceId: contractId,
+      userId: ctx.userId,
+      tenantId,
+      metadata: { deletedAt: new Date().toISOString(), isDeleted: true },
+    }).catch((err) => logger.error('[ContractDelete] Audit log failed:', err));
 
     return createSuccessResponse(ctx, { 
       message: "Contract deleted successfully",

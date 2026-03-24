@@ -53,6 +53,7 @@ async function handler(request: NextRequest) {
   const requestedSortBy = searchParams.get("sortBy") || "createdAt";
   const sortBy = validSortFields.includes(requestedSortBy) ? requestedSortBy : "createdAt";
   const sortOrder = (searchParams.get("sortOrder") || "desc") as "asc" | "desc";
+  const cursor = searchParams.get('cursor') || undefined; // base64 encoded {createdAt, id}
   
   // Additional filter parameters
   const contractTypes = searchParams.getAll("contractType");
@@ -149,6 +150,38 @@ async function handler(request: NextRequest) {
     if (uploadedBefore) where.uploadedAt.lte = new Date(uploadedBefore);
   }
 
+  // Cursor-based pagination setup
+  let skipAmount = (page - 1) * limit;
+  if (cursor) {
+    if (sortBy !== 'createdAt') {
+      // Cursor only works cleanly with createdAt sort; fall back to offset and warn
+      logger.warn('[ContractList] Cursor pagination requested with non-createdAt sort, falling back to offset', { sortBy });
+    } else {
+      try {
+        const decoded = JSON.parse(Buffer.from(cursor, 'base64').toString('utf-8'));
+        const { createdAt: cursorCreatedAt, id: cursorId } = decoded;
+        const cursorWhere: Prisma.ContractWhereInput = {
+          OR: sortOrder === 'desc'
+            ? [
+                { createdAt: { lt: new Date(cursorCreatedAt) } },
+                { createdAt: new Date(cursorCreatedAt), id: { lt: cursorId } },
+              ]
+            : [
+                { createdAt: { gt: new Date(cursorCreatedAt) } },
+                { createdAt: new Date(cursorCreatedAt), id: { gt: cursorId } },
+              ],
+        };
+        const existingAnd = where.AND;
+        where.AND = existingAnd
+          ? [...(Array.isArray(existingAnd) ? existingAnd : [existingAnd]), cursorWhere]
+          : [cursorWhere];
+        skipAmount = 0;
+      } catch {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid cursor', 400);
+      }
+    }
+  }
+
   // Build orderBy
   const orderBy: Record<string, string> = {};
   orderBy[sortBy] = sortOrder;
@@ -178,7 +211,7 @@ async function handler(request: NextRequest) {
         prisma.contract.findMany({
           where,
           orderBy,
-          skip: (page - 1) * limit,
+          skip: skipAmount,
           take: limit,
           select: {
             id: true,
@@ -457,6 +490,12 @@ async function handler(request: NextRequest) {
             totalPages,
             hasMore: page < totalPages,
             hasPrevious: page > 1,
+            nextCursor: contracts.length === limit
+              ? Buffer.from(JSON.stringify({
+                  createdAt: contracts[contracts.length - 1].createdAt.toISOString(),
+                  id: contracts[contracts.length - 1].id,
+                })).toString('base64')
+              : null,
           },
           filters: {
             applied: {
