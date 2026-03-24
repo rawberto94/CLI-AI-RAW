@@ -11,6 +11,7 @@
 
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import { prisma } from '@/lib/prisma';
 import {
   withAuthApiHandler,
@@ -20,7 +21,7 @@ import {
 } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = createOpenAIClient();
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const { tenantId } = ctx;

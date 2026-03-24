@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import cors from '@/lib/security/cors';
 import OpenAI from 'openai';
+import { createOpenAIClient, getOpenAIApiKey, hasAIClientConfig } from '@/lib/openai-client';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { CONTRACT_METADATA_FIELDS, MetadataFieldDefinition } from '@/lib/types/contract-metadata-schema';
 import type { Prisma } from '@prisma/client';
@@ -19,9 +20,9 @@ import { logger } from '@/lib/logger';
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
   if (!_openai) {
-    const key = (process.env.OPENAI_API_KEY || '').trim();
+    const key = getOpenAIApiKey();
     if (!key) throw new Error('OPENAI_API_KEY is not configured');
-    _openai = new OpenAI({ apiKey: key });
+    _openai = createOpenAIClient(key);
   }
   return _openai;
 }
@@ -99,7 +100,7 @@ export async function POST(
       : Object.entries(fields).filter(([key]) => fieldsToValidate?.includes(key));
 
     // Check if OpenAI is configured
-    if (!process.env.OPENAI_API_KEY) {
+    if (!hasAIClientConfig()) {
       // Return deterministic rule-based validation if no API key
       return createSuccessResponse(ctx, {
         success: true,

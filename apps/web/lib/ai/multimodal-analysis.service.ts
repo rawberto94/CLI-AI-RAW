@@ -12,6 +12,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { prisma } from '@/lib/prisma';
 
 // =============================================================================
@@ -92,7 +93,7 @@ export async function analyzeDocumentImage(
 ): Promise<DocumentAnalysisResult> {
   const startTime = Date.now();
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getOpenAIApiKey();
   if (!apiKey) {
     return {
       success: false,
@@ -102,7 +103,7 @@ export async function analyzeDocumentImage(
     };
   }
 
-  const openai = new OpenAI({ apiKey });
+  const openai = createOpenAIClient(apiKey);
 
   const {
     extractText = true,
@@ -295,12 +296,12 @@ export async function compareDocumentVersions(
   }>;
   overallSimilarity: number;
 }> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getOpenAIApiKey();
   if (!apiKey) {
     return { differences: [], overallSimilarity: 0 };
   }
 
-  const openai = new OpenAI({ apiKey });
+  const openai = createOpenAIClient(apiKey);
 
   try {
     const images = [image1, image2].map(img => 

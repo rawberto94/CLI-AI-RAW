@@ -7,6 +7,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 
 export interface DetectedIntent {
   type: 'search' | 'action' | 'question' | 'workflow' | 'list' | 'analytics' | 'procurement' | 'taxonomy' | 'comparison' | 'system';
@@ -1248,9 +1249,9 @@ Only return the JSON object, nothing else.`;
 
 let _openaiForIntent: OpenAI | null = null;
 function getOpenAIClient(): OpenAI | null {
-  if (!process.env.OPENAI_API_KEY) return null;
+  if (!hasAIClientConfig()) return null;
   if (!_openaiForIntent) {
-    _openaiForIntent = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    _openaiForIntent = createOpenAIClient();
   }
   return _openaiForIntent;
 }

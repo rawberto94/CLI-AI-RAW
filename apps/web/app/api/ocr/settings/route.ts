@@ -9,6 +9,7 @@
 import { NextRequest } from 'next/server';
 import { getAvailableProviders, logProviderStatus as _logProviderStatus } from '@/lib/ai/eu-compliant-ocr';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { hasAIClientConfig } from '@/lib/openai-client';
 
 // ============================================================================
 // Types
@@ -161,7 +162,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
     enrichedProviders.push({
       id: 'gpt4',
       name: 'GPT-4 Vision',
-      configured: !!process.env.OPENAI_API_KEY,
+      configured: hasAIClientConfig(),
       region: 'US/Global',
       dataResidency: 'US',
       accuracy: 98,
@@ -376,7 +377,7 @@ async function testProviderConnection(provider: string): Promise<{
       }
 
       case 'gpt4': {
-        if (!process.env.OPENAI_API_KEY) {
+        if (!hasAIClientConfig()) {
           return {
             success: false,
             provider,

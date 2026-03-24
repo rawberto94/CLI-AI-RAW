@@ -10,6 +10,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { prisma as _prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 
@@ -99,9 +100,9 @@ const userRatings = new Map<string, { requestId: string; rating: number; model: 
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
   if (!_openai) {
-    const key = (process.env.OPENAI_API_KEY || '').trim();
+    const key = getOpenAIApiKey();
     if (!key) throw new Error('OPENAI_API_KEY is not configured');
-    _openai = new OpenAI({ apiKey: key });
+    _openai = createOpenAIClient(key);
   }
   return _openai;
 }

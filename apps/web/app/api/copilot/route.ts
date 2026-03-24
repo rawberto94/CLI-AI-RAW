@@ -16,6 +16,7 @@ import {
   type RealtimeSuggestion as _RealtimeSuggestion 
 } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 
 // ============================================================================
 // POST - Get real-time suggestions or AI-assisted generation
@@ -58,7 +59,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     if (mode === 'assist' && prompt) {
       try {
         const OpenAI = (await import('openai')).OpenAI;
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const openai = createOpenAIClient();
 
         // Build context from existing content & RAG
         let ragContext = '';

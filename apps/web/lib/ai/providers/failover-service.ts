@@ -5,6 +5,7 @@
 
 import pino from 'pino';
 import { OpenAI } from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import { anthropicProvider, type AnthropicModelName, type CompletionOptions as AnthropicOptions, type CompletionResult } from './anthropic-provider';
 
 const logger = pino({ name: 'ai-failover' });
@@ -88,10 +89,8 @@ export class AIFailoverService {
     this.config = { ...DEFAULT_CONFIG, ...config };
 
     // Initialize OpenAI client
-    if (process.env.OPENAI_API_KEY) {
-      this.openaiClient = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
+    if (hasAIClientConfig()) {
+      this.openaiClient = createOpenAIClient();
     }
 
     // Initialize circuit breakers

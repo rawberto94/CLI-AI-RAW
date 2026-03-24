@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
+import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import type { Contract, ContractStatus, Prisma } from '@prisma/client';
 import { getErrorMessage } from '@/lib/types/common';
 import { withAuthApiHandler, createSuccessResponse, getApiContext} from '@/lib/api-middleware';
@@ -9,9 +10,9 @@ import { analyticsService } from 'data-orchestration/services';
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
   if (!_openai) {
-    const key = (process.env.OPENAI_API_KEY || '').trim();
+    const key = getOpenAIApiKey();
     if (!key) throw new Error('OPENAI_API_KEY is not configured');
-    _openai = new OpenAI({ apiKey: key });
+    _openai = createOpenAIClient(key);
   }
   return _openai;
 }

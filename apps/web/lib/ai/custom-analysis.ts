@@ -14,11 +14,10 @@
 
 import { ContractAnonymizer, processWithAnonymization } from './anonymizer';
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 
 // Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = createOpenAIClient();
 
 // ============================================================================
 // Types

@@ -9,6 +9,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import {
   withAuthApiHandler,
   createSuccessResponse,
@@ -302,8 +303,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     // ── 6. Optionally enhance with LLM ──
     let recommendedActions: string[] = [];
     try {
-      if (process.env.OPENAI_API_KEY) {
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      if (hasAIClientConfig()) {
+        const openai = createOpenAIClient();
         const prompt = `You are an approval advisor for contracts. Given this context, provide 2-3 short recommended actions (one sentence each):
 Contract: "${contractName}" worth $${contractValue.toLocaleString()} from ${supplierName}.
 Workflow status: ${completedSteps}/${totalSteps} steps done.

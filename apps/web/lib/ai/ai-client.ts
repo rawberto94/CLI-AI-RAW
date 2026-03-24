@@ -11,6 +11,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 
 interface AIClient extends OpenAI {
   model: string;
@@ -26,19 +27,18 @@ let _client: AIClient | null = null;
 export async function getAIClient(): Promise<AIClient> {
   if (_client) return _client;
 
-  const openaiKey = (process.env.OPENAI_API_KEY || '').trim();
   const mistralKey = (process.env.MISTRAL_API_KEY || '').trim();
   const preferredModel = process.env.OPENAI_MODEL || '';
 
   // Decide which provider to use
-  const openaiUsable = openaiKey.length > 10 && !openaiKey.startsWith('sk-your');
+  const openaiUsable = hasAIClientConfig();
 
   let client: AIClient;
 
   if (openaiUsable) {
     // Try OpenAI — probe with a tiny request to verify the key isn't exhausted
     try {
-      const openai = new OpenAI({ apiKey: openaiKey }) as AIClient;
+      const openai = createOpenAIClient() as AIClient;
       openai.model = preferredModel || 'gpt-4o-mini';
       openai.provider = 'openai';
 
@@ -76,7 +76,7 @@ export async function getAIClient(): Promise<AIClient> {
 
   // Last resort: create an OpenAI client anyway (will fail at call time with a clear error)
   if (!client) {
-    const fallback = new OpenAI({ apiKey: openaiKey || 'missing-key' }) as AIClient;
+    const fallback = createOpenAIClient('missing-key') as AIClient;
     fallback.model = preferredModel || 'gpt-4o-mini';
     fallback.provider = 'openai';
     client = fallback;

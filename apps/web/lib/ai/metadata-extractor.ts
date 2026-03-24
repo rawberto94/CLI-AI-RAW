@@ -13,6 +13,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient } from '@/lib/openai-client';
 import { 
   MetadataFieldDefinition, 
   MetadataSchema,
@@ -114,7 +115,7 @@ export class SchemaAwareMetadataExtractor {
     if (!key) {
       throw new Error('OPENAI_API_KEY is not configured. Pass apiKey or set the env var.');
     }
-    this.openai = new OpenAI({ apiKey: key });
+    this.openai = createOpenAIClient(key);
   }
 
   // --------------------------------------------------------------------------

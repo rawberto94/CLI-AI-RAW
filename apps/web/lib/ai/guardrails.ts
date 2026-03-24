@@ -12,6 +12,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { logger } from '@/lib/logger';
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -103,9 +104,9 @@ export function detectPromptInjection(input: string): GuardrailResult {
 let _moderationClient: OpenAI | null = null;
 function getModerationClient(): OpenAI | null {
   if (_moderationClient) return _moderationClient;
-  const key = (process.env.OPENAI_API_KEY || '').trim();
+  const key = getOpenAIApiKey();
   if (!key) return null;
-  _moderationClient = new OpenAI({ apiKey: key });
+  _moderationClient = createOpenAIClient(key);
   return _moderationClient;
 }
 

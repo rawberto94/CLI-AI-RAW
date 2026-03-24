@@ -15,6 +15,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient } from '@/lib/openai-client';
 import { optionalImport } from '@/lib/server/optional-module';
 
 // ============================================================================
@@ -122,7 +123,7 @@ export class VisionDocumentAnalyzer {
       throw new Error('OpenAI API key required for Vision Document Analyzer');
     }
 
-    this.openai = new OpenAI({ apiKey });
+    this.openai = createOpenAIClient(apiKey);
     this.model = options?.model || 'gpt-4o'; // Default to GPT-4o for best quality
   }
 

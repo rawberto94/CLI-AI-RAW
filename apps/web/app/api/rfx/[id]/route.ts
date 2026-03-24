@@ -22,6 +22,7 @@ import { prisma } from '@/lib/prisma';
 /** Feature flag — when false, RFx endpoints return 503 */
 const RFX_ENABLED = process.env.RFX_AGENT_ENABLED !== 'false';
 import { z } from 'zod';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -321,7 +322,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
       const existingReqs = (event.requirements as any[]) || [];
 
       const OpenAI = (await import('openai')).default;
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const openai = createOpenAIClient();
 
       const prompt = `You are a procurement expert. Review these existing requirements for an ${event.type} titled "${event.title}" and suggest additional requirements to strengthen them.
 
@@ -362,7 +363,7 @@ async function evaluateBidsWithAI(
   responses: any[]
 ) {
   const OpenAI = (await import('openai')).default;
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = createOpenAIClient();
 
   const criteria = (event.evaluationCriteria as any[]) || [];
   const criteriaText = criteria.map((c: any) => `- ${c.name} (weight: ${c.weight}): ${c.description}`).join('\n');
@@ -488,7 +489,7 @@ Score each vendor on each criterion (0-10). Return JSON:
 async function generateAwardJustification(event: any, winner: string): Promise<string> {
   try {
     const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = createOpenAIClient();
 
     const responses = (event.responses as any[]) || [];
     const winnerBid = responses.find((r: any) => r.vendorName === winner);
@@ -524,7 +525,7 @@ async function generateNegotiationStrategy(
 ) {
   try {
     const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = createOpenAIClient();
 
     const gap = ((1 - targetPrice / currentBid) * 100).toFixed(1);
 

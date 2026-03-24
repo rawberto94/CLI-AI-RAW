@@ -56,12 +56,11 @@ import {
   type CategorizationOptions 
 } from './contract-categorizer';
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import crypto from 'crypto';
 
 // Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = createOpenAIClient();
 
 // ============================================================================
 // Caching Layer

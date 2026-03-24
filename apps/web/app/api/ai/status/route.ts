@@ -14,6 +14,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { analyticalIntelligenceService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 
 export const GET = withAuthApiHandler(async (_request, ctx) => {
   const tenantId = ctx.tenantId;
@@ -21,7 +22,7 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
   
   try {
     // Check OpenAI configuration
-    const openaiConfigured = !!process.env.OPENAI_API_KEY;
+    const openaiConfigured = hasAIClientConfig();
     const mistralConfigured = !!process.env.MISTRAL_API_KEY;
     
     // Test OpenAI connectivity (lightweight)
@@ -32,7 +33,7 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
       try {
         const testStart = Date.now();
         const OpenAI = (await import('openai')).default;
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const openai = createOpenAIClient();
         
         // Simple model list call to verify connectivity
         await openai.models.list();

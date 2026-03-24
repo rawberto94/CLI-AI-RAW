@@ -6,6 +6,7 @@
 import { prisma } from "@/lib/prisma";
 import Redis from "ioredis";
 import pino from "pino";
+import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 
 const logger = pino({ name: "health-check" });
 
@@ -230,7 +231,7 @@ export async function checkAIHealth(): Promise<HealthStatus> {
   const start = Date.now();
   
   try {
-    const openAIKey = process.env.OPENAI_API_KEY;
+    const openAIKey = getOpenAIApiKey();
     const mistralKey = process.env.MISTRAL_API_KEY;
     
     const details: Record<string, any> = {};
@@ -239,7 +240,7 @@ export async function checkAIHealth(): Promise<HealthStatus> {
     if (openAIKey && openAIKey.startsWith("sk-")) {
       try {
         const OpenAI = (await import("openai")).default;
-        const client = new OpenAI({ apiKey: openAIKey });
+        const client = createOpenAIClient(openAIKey);
         
         // Just check if we can list models (lightweight)
         await client.models.list();

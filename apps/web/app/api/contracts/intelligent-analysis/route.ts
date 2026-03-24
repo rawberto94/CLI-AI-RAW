@@ -20,6 +20,7 @@
 
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import { recordAICost, estimateTokenCost } from '@/lib/ai/model-router.service';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
@@ -247,13 +248,11 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     }
 
     // Check for OpenAI API key
-    if (!process.env.OPENAI_API_KEY) {
+    if (!hasAIClientConfig()) {
       return createErrorResponse(ctx, 'INTERNAL_ERROR', 'OpenAI API key not configured', 500);
     }
 
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    const openai = createOpenAIClient();
 
     // Load advanced services
     const intelligence = await getAdvancedIntelligence();

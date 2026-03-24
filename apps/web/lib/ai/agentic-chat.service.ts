@@ -14,6 +14,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import { prisma } from '@/lib/prisma';
 import { hybridSearch } from '@/lib/rag/advanced-rag.service';
 
@@ -669,7 +670,7 @@ export async function agenticChat(
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [],
   options?: { maxIterations?: number; model?: string }
 ): Promise<AgenticResponse> {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = createOpenAIClient();
   const maxIterations = options?.maxIterations ?? 5;
   const model = options?.model ?? process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
 

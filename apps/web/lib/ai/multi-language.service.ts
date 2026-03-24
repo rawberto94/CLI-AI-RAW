@@ -10,6 +10,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 
 // Types
 export type SupportedLanguage = 
@@ -402,9 +403,7 @@ class MultiLanguageAIService {
   private openai: OpenAI;
 
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    this.openai = createOpenAIClient();
   }
 
   /**

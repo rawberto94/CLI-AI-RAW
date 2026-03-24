@@ -4,13 +4,14 @@
  */
 
 import { NextResponse } from 'next/server';
+import { getOpenAIApiKey } from '@/lib/openai-client';
 
 /**
  * Validate that OpenAI API key is configured and valid format
  * Returns an error response if validation fails, undefined if valid
  */
 export function validateOpenAIKey(): NextResponse | undefined {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getOpenAIApiKey();
   
   if (!apiKey) {
     return NextResponse.json(
@@ -62,7 +63,7 @@ export function validateAnthropicKey(): NextResponse | undefined {
  * Get OpenAI API key or throw if not configured
  */
 export function getOpenAIKeyOrThrow(): string {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getOpenAIApiKey();
   
   if (!apiKey || !apiKey.startsWith('sk-')) {
     throw new Error('OpenAI API key not configured or invalid');
@@ -75,7 +76,7 @@ export function getOpenAIKeyOrThrow(): string {
  * Check if OpenAI is configured (for optional features)
  */
 export function isOpenAIConfigured(): boolean {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getOpenAIApiKey();
   return !!apiKey && apiKey.startsWith('sk-');
 }
 

@@ -21,6 +21,7 @@ import { MetadataSchemaService } from '@/lib/services/metadata-schema.service';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { queueRAGReindex } from '@/lib/rag/reindex-helper';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { hasAIClientConfig } from '@/lib/openai-client';
 
 interface ExtractRequest {
   documentText?: string;
@@ -75,7 +76,7 @@ export async function POST(
     const schema = await schemaService.getSchema(tenantId);
 
     // Check if OpenAI is configured
-    if (!process.env.OPENAI_API_KEY) {
+    if (!hasAIClientConfig()) {
       return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'AI extraction service not configured. Please set OPENAI_API_KEY.', 503);
     }
 

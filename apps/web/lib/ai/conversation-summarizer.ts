@@ -16,6 +16,7 @@
  */
 
 import OpenAI from 'openai';
+import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { logger } from '@/lib/logger';
 
 // ─── Config ─────────────────────────────────────────────────────────────
@@ -71,13 +72,13 @@ export async function summarizeConversationHistory(
     .join('\n');
 
   try {
-    const key = (process.env.OPENAI_API_KEY || '').trim();
+    const key = getOpenAIApiKey();
     if (!key) {
       // No API key — fall back to naive truncation
       return { summary: '', recentMessages: history.slice(-KEEP_RECENT), wasSummarized: false };
     }
 
-    const openai = new OpenAI({ apiKey: key });
+    const openai = createOpenAIClient(key);
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',

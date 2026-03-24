@@ -10,6 +10,7 @@
 
 import OpenAI from "openai";
 import type { MetadataFieldType } from "@/lib/services/metadata-schema.service";
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 
 // Local type aliases
 type FieldType = MetadataFieldType;
@@ -108,9 +109,7 @@ export class FieldValueValidator {
   private rules: ValidationRules;
 
   constructor(rules?: ValidationRules) {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    this.openai = createOpenAIClient();
     this.rules = rules ?? this.getDefaultRules();
   }
 

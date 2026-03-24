@@ -141,6 +141,7 @@ async function buildContractProfile(contractId: string, tenantId: string): Promi
           daysUntilExpiry: true, riskFlags: true, category: true,
           signatureStatus: true, documentClassification: true,
           description: true, categoryL1: true, categoryL2: true,
+          rawText: true,
         },
       }),
       prisma.contractArtifact.findMany({
@@ -187,6 +188,13 @@ async function buildContractProfile(contractId: string, tenantId: string): Promi
         context += `| Risk Flags | ${(cp.riskFlags as string[]).join(', ')} |\n`;
       }
       if (cp.categoryL1) context += `| Category | ${cp.categoryL1}${cp.categoryL2 ? ' > ' + cp.categoryL2 : ''} |\n`;
+
+      // Include raw document text for direct AI analysis when artifacts are stubs
+      if (cp.rawText && contractArtifacts.length === 0) {
+        context += `\n**📄 Full Document Text:**\n\`\`\`\n${cp.rawText.substring(0, 8000)}${cp.rawText.length > 8000 ? '\n...[truncated]' : ''}\n\`\`\`\n`;
+      } else if (cp.rawText) {
+        context += `\n**📄 Document Text Preview (first 3000 chars):**\n\`\`\`\n${cp.rawText.substring(0, 3000)}${cp.rawText.length > 3000 ? '\n...[see full text via tools]' : ''}\n\`\`\`\n`;
+      }
     }
 
     if (contractArtifacts.length > 0) {

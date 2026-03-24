@@ -12,6 +12,7 @@ import { ReActAgent, type ReActContext, type ReActResult, type ReActConfig, type
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import pino from 'pino';
+import { hasAIClientConfig } from '@/lib/openai-client';
 
 const logger = pino({ name: 'agent-integration' });
 
@@ -439,7 +440,7 @@ export async function executeWithAgent(
   
   try {
     // Check if we have OpenAI API key
-    if (!process.env.OPENAI_API_KEY) {
+    if (!hasAIClientConfig()) {
       return {
         success: false,
         response: 'Agent requires OpenAI API key to be configured.',

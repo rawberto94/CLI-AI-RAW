@@ -1,12 +1,48 @@
 /**
- * OpenAI Client for web app
- * Creates a typed OpenAI client wrapper
+ * OpenAI client for the web app.
+ * Prefers Azure OpenAI when Azure credentials are present, otherwise falls back
+ * to the standard OpenAI API client.
  */
 
-import OpenAI from 'openai';
+import OpenAI, { AzureOpenAI } from 'openai';
 
-// Initialize OpenAI client with API key from environment
-const apiKey = (process.env.OPENAI_API_KEY || '').trim();
+type ActiveProviderConfig =
+  | {
+      provider: 'azure';
+      apiKey: string;
+      endpoint: string;
+      deployment: string;
+      apiVersion: string;
+    }
+  | {
+      provider: 'openai';
+      apiKey: string;
+    };
+
+function getActiveProviderConfig(): ActiveProviderConfig | null {
+  const azureApiKey = (process.env.AZURE_OPENAI_API_KEY || '').trim();
+  const azureEndpoint = (process.env.AZURE_OPENAI_ENDPOINT || '').trim();
+
+  if (azureApiKey && azureEndpoint) {
+    return {
+      provider: 'azure',
+      apiKey: azureApiKey,
+      endpoint: azureEndpoint.replace(/\/$/, ''),
+      deployment: (process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o').trim(),
+      apiVersion: (process.env.AZURE_OPENAI_API_VERSION || '2024-02-01').trim(),
+    };
+  }
+
+  const openAiApiKey = (process.env.OPENAI_API_KEY || '').trim();
+  if (openAiApiKey) {
+    return {
+      provider: 'openai',
+      apiKey: openAiApiKey,
+    };
+  }
+
+  return null;
+}
 
 /**
  * Returns the OpenAI API key, or throws a clear error if missing.
@@ -14,13 +50,45 @@ const apiKey = (process.env.OPENAI_API_KEY || '').trim();
  * with a descriptive error rather than a cryptic 401 from OpenAI.
  */
 export function getOpenAIApiKey(): string {
-  const key = (process.env.OPENAI_API_KEY || '').trim();
+  const config = getActiveProviderConfig();
+  const key = config?.apiKey || '';
   if (!key || key.startsWith('sk-your')) {
     throw new Error(
-      'OPENAI_API_KEY is not configured. Set it in your .env file to use AI features.'
+      'No AI API key is configured. Set AZURE_OPENAI_ENDPOINT + AZURE_OPENAI_API_KEY or OPENAI_API_KEY to use AI features.'
     );
   }
   return key;
+}
+
+export function hasAIClientConfig(): boolean {
+  return getActiveProviderConfig() !== null;
+}
+
+export function isAzureOpenAIEnabled(): boolean {
+  const config = getActiveProviderConfig();
+  return config?.provider === 'azure';
+}
+
+export function createOpenAIClient(apiKeyOverride?: string): OpenAI {
+  const config = getActiveProviderConfig();
+
+  if (config?.provider === 'azure') {
+    return new AzureOpenAI({
+      endpoint: config.endpoint,
+      apiKey: config.apiKey,
+      deployment: config.deployment,
+      apiVersion: config.apiVersion,
+    }) as unknown as OpenAI;
+  }
+
+  const apiKey = (apiKeyOverride || config?.apiKey || '').trim();
+  if (!apiKey || apiKey.startsWith('sk-your')) {
+    throw new Error(
+      'OPENAI_API_KEY is not configured. Set it in your .env file to use OpenAI features.'
+    );
+  }
+
+  return new OpenAI({ apiKey });
 }
 
 // Type the client with explicit chat method signature to ensure response_format is recognized
@@ -46,8 +114,8 @@ interface TypedOpenAIClient {
 class OpenAIClient implements TypedOpenAIClient {
   private openai: OpenAI;
 
-  constructor(apiKey: string) {
-    this.openai = new OpenAI({ apiKey });
+  constructor(apiKey?: string) {
+    this.openai = createOpenAIClient(apiKey);
   }
 
   async createStructured<T>(opts: {
@@ -103,6 +171,6 @@ class OpenAIClient implements TypedOpenAIClient {
   }
 }
 
-export const openai: TypedOpenAIClient | null = apiKey ? new OpenAIClient(apiKey) : null;
+export const openai: TypedOpenAIClient | null = getActiveProviderConfig() ? new OpenAIClient() : null;
 
 export { OpenAIClient };

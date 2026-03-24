@@ -6,6 +6,7 @@
 
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
+import { createOpenAIClient, getOpenAIApiKey, hasAIClientConfig } from '@/lib/openai-client';
 import { prisma } from '@/lib/prisma';
 import { aiContractComparisonService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
@@ -13,9 +14,9 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
   if (!_openai) {
-    const key = (process.env.OPENAI_API_KEY || '').trim();
+    const key = getOpenAIApiKey();
     if (!key) throw new Error('OPENAI_API_KEY is not configured');
-    _openai = new OpenAI({ apiKey: key });
+    _openai = createOpenAIClient(key);
   }
   return _openai;
 }
@@ -63,7 +64,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Maximum 5 contracts can be compared at once', 400);
     }
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!hasAIClientConfig()) {
       return createErrorResponse(ctx, 'INTERNAL_ERROR', 'OpenAI API key not configured', 500);
     }
 

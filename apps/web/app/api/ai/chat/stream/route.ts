@@ -25,6 +25,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { hasAIClientConfig } from '@/lib/openai-client';
 import Anthropic from '@anthropic-ai/sdk';
 import { prisma } from '@/lib/prisma';
 import { semanticCache } from '@/lib/ai/semantic-cache.service';
@@ -83,7 +84,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
     conversationHistory.length = MAX_HISTORY_ITEMS;
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!hasAIClientConfig()) {
     return new NextResponse(JSON.stringify({ error: 'OpenAI API key not configured' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -556,20 +557,25 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
               });
               logger.warn(`[Stream v2] ${config.provider}/${config.model} failed`, { action: 'model-call', error: errMsg });
               
-              // FIX: Fail-fast on quota/auth errors — no point trying other models
+              // FIX: Fail-fast on quota/auth/deployment errors — no point trying other models
               // with the same API key. Prevents cascading 30s timeouts.
               const isQuotaOrAuthError = errMsg.includes('429') || 
                 errMsg.includes('quota') || 
                 errMsg.includes('billing') ||
                 errMsg.includes('401') ||
                 errMsg.includes('authentication');
-              if (isQuotaOrAuthError) {
+              const isDeploymentError = errMsg.includes('DeploymentNotFound') ||
+                errMsg.includes('deployment') ||
+                (errMsg.includes('404') && errMsg.includes('deployment'));
+              if (isQuotaOrAuthError || isDeploymentError) {
                 // Skip remaining models from the same provider
                 const failedProvider = config.provider;
-                // Send error event to client immediately
+                const userMessage = isDeploymentError
+                  ? `AI model deployment not found. Please contact your administrator to configure an Azure OpenAI deployment.`
+                  : `AI service temporarily unavailable (${failedProvider} rate limit). Please try again later.`;
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'error',
-                  error: `AI service temporarily unavailable (${failedProvider} rate limit). Please try again later.`,
+                  error: userMessage,
                   done: true,
                 })}\n\n`));
                 controller.close();

@@ -16,6 +16,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -231,7 +232,7 @@ interface AIEnhancementInput {
 
 async function generateAIEnhancedRequirements(input: AIEnhancementInput) {
   const OpenAI = (await import('openai')).default;
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = createOpenAIClient();
 
   const userReqText = input.userRequirements.length > 0
     ? `\n\nUser-provided baseline requirements:\n${input.userRequirements.map((r, i) => `${i + 1}. ${r.title}${r.description ? ': ' + r.description : ''} [${r.priority || 'should-have'}]`).join('\n')}`

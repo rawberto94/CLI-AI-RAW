@@ -18,6 +18,7 @@ import pino from 'pino';
 import { agenticChat } from '@/lib/ai/agentic-chat.service';
 import { shouldUseAgent } from '@/lib/ai/agent-integration';
 import { hybridSearch } from '@/lib/rag/advanced-rag.service';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 
 // ── Structured logger ─────────────────────────────────────────────────
 const log = pino({ name: 'agent-chat', level: process.env.LOG_LEVEL ?? 'info' });
@@ -82,11 +83,11 @@ async function enhanceWithAI(
   dbData: any,
   templateResponse: string,
 ): Promise<string> {
-  if (!process.env.OPENAI_API_KEY) return templateResponse;
+  if (!hasAIClientConfig()) return templateResponse;
 
   try {
     const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = createOpenAIClient();
 
     const completion = await withTimeout(
       openai.chat.completions.create({
@@ -406,7 +407,7 @@ async function processWithAgent(
   // The agentic loop has 8 tools (search, details, expiring, spend, risk, compare,
   // supplier info, clause extraction) and can call them iteratively.
   const decision = shouldUseAgent(message);
-  if (decision.useAgent && process.env.OPENAI_API_KEY) {
+  if (decision.useAgent && hasAIClientConfig()) {
     const codename = AGENT_CODENAMES[agentId];
     log.info({ agentId, complexity: decision.complexity, steps: decision.estimatedSteps }, 'Routing to agentic AI reasoning');
 
@@ -508,7 +509,7 @@ async function handleSageQuery(
   // Sage: AI-powered contract intelligence — uses full agentic reasoning loop
   // with 8 tools (search, details, expiring, spend, risk, compare, supplier, clause)
 
-  if (process.env.OPENAI_API_KEY) {
+  if (hasAIClientConfig()) {
     try {
       const conversationHistory = history.slice(-6).map((h: any) => ({
         role: (h.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
@@ -667,7 +668,7 @@ async function handleMerchantQuery(
       let evaluationCriteria: any[] = [];
       try {
         const OpenAI = (await import('openai')).default;
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const openai = createOpenAIClient();
         const prompt = `You are an expert procurement specialist. Generate comprehensive requirements for this ${type}:\n\nTitle: ${title}\nDescription: ${message}\n\nGenerate 6-10 requirements as JSON:\n{\n  "requirements": [{ "title": "...", "description": "...", "category": "technical|commercial|legal|delivery|quality|security|sla", "priority": "must-have|should-have|nice-to-have" }],\n  "evaluationCriteria": [{ "name": "...", "description": "...", "weight": 0.25, "scoringMethod": "numeric|pass-fail|ranking" }]\n}\nEnsure weights sum to 1.0.`;
 
         const aiRes = await withTimeout(
@@ -1477,7 +1478,7 @@ async function performContractSearch(
 ): Promise<{ count: number; summary: string; results: any[]; confidence: number }> {
   // ── Try hybrid search (semantic + keyword via RAG) first ──────────
   try {
-    if (process.env.OPENAI_API_KEY) {
+    if (hasAIClientConfig()) {
       const ragResults = await withTimeout(
         hybridSearch(query, {
           mode: 'hybrid',

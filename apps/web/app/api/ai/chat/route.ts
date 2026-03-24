@@ -29,6 +29,7 @@ import { performContractComparison, compareContractClauses, performGroupComparis
 import { getTaxonomyCategories, getCategoryDetails, suggestCategoryForContract, getContractsInCategory } from '@/lib/ai/chat/taxonomy-operations';
 import { findMasterAgreements, getContractHierarchy } from '@/lib/ai/chat/contract-hierarchy';
 import { getOpenAIResponse } from '@/lib/ai/chat/response-builder';
+import { hasAIClientConfig } from '@/lib/openai-client';
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
@@ -105,7 +106,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     }
 
     // Always use real OpenAI with real database data
-    if (!process.env.OPENAI_API_KEY) {
+    if (!hasAIClientConfig()) {
       return createErrorResponse(ctx, 'INTERNAL_ERROR', 'OpenAI API key not configured. Please add OPENAI_API_KEY to your .env file.', 500);
     }
 

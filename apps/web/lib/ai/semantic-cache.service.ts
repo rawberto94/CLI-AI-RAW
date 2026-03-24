@@ -15,6 +15,7 @@
 
 import { Redis } from '@upstash/redis';
 import OpenAI from 'openai';
+import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 
 // =============================================================================
 // TYPES
@@ -100,10 +101,8 @@ export class SemanticCacheService {
     }
 
     // Initialize OpenAI for embeddings
-    if (process.env.OPENAI_API_KEY) {
-      this.openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
+    if (hasAIClientConfig()) {
+      this.openai = createOpenAIClient();
     }
   }
 

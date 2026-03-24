@@ -6,6 +6,7 @@
 
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
+import { createOpenAIClient, getOpenAIApiKey, hasAIClientConfig } from '@/lib/openai-client';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from '@/lib/tenant-server';
@@ -14,9 +15,9 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
   if (!_openai) {
-    const key = (process.env.OPENAI_API_KEY || '').trim();
+    const key = getOpenAIApiKey();
     if (!key) throw new Error('OPENAI_API_KEY is not configured');
-    _openai = new OpenAI({ apiKey: key });
+    _openai = createOpenAIClient(key);
   }
   return _openai;
 }
@@ -121,7 +122,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     }));
 
     // Check if OpenAI is configured
-    if (!process.env.OPENAI_API_KEY) {
+    if (!hasAIClientConfig()) {
       return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'AI service not configured. Set OPENAI_API_KEY environment variable.', 503);
     }
 

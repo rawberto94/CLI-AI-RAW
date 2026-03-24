@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hybridSearch, type SearchFilters } from '@/lib/rag/advanced-rag.service';
 import OpenAI from 'openai';
+import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { aiCopilotService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
@@ -184,12 +185,12 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     }
 
     // Initialize OpenAI
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = getOpenAIApiKey();
     if (!apiKey) {
       return createErrorResponse(ctx, 'INTERNAL_ERROR', 'AI service not configured', 503);
     }
 
-    const openai = new OpenAI({ apiKey });
+    const openai = createOpenAIClient(apiKey);
 
     // Search for relevant contract sections using RAG
     const searchFilters: SearchFilters = {

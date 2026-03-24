@@ -12,6 +12,7 @@
 
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
+import { createOpenAIClient, getOpenAIApiKey, hasAIClientConfig } from '@/lib/openai-client';
 import { prisma } from '@/lib/prisma';
 import { aiInsightsGeneratorService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
@@ -19,9 +20,9 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
   if (!_openai) {
-    const key = (process.env.OPENAI_API_KEY || '').trim();
+    const key = getOpenAIApiKey();
     if (!key) throw new Error('OPENAI_API_KEY is not configured');
-    _openai = new OpenAI({ apiKey: key });
+    _openai = createOpenAIClient(key);
   }
   return _openai;
 }
@@ -214,7 +215,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     }
 
     // 7. Use OpenAI for deeper insights (if enabled and enough data)
-    if (useAI && process.env.OPENAI_API_KEY && totalContracts >= 5) {
+    if (useAI && hasAIClientConfig() && totalContracts >= 5) {
       try {
         const aiInsight = await generateAIInsight(tenantId, {
           totalContracts,

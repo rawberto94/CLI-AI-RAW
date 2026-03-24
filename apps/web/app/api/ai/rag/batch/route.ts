@@ -15,6 +15,7 @@ import { prisma } from '@/lib/prisma';
 import { processContractWithSemanticChunking } from '@/lib/rag/advanced-rag.service';
 import { aiArtifactGeneratorService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { hasAIClientConfig } from '@/lib/openai-client';
 
 interface BatchRequest {
   contractIds?: string[];
@@ -47,7 +48,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       priority: _priority = 'normal',
       maxConcurrent = 3 } = body;
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!hasAIClientConfig()) {
       return createErrorResponse(ctx, 'INTERNAL_ERROR', 'OpenAI API key not configured', 500);
     }
 
