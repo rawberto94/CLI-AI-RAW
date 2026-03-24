@@ -606,7 +606,7 @@ async function handleScoutQuery(
       content: `I found ${opportunities.length} RFx opportunities${criticalCount > 0 ? `, including ${criticalCount} critical items` : ''}:\n\n${opportunities.slice(0, 5).map(o => `• ${o.title} (${o.urgency.toLowerCase()})`).join('\n')}`,
       data: { opportunities },
       actions: [
-        { type: 'navigate', label: 'View All Opportunities', payload: { path: '/contigo-lab?tab=opportunities' } },
+        { type: 'navigate', label: 'View All Opportunities', payload: { path: '/contigo-labs?tab=opportunities' } },
         { type: 'action', label: 'Run New Scan', payload: { action: 'detect_all' } },
       ],
       confidence: 0.92,
@@ -832,7 +832,7 @@ async function handleVigilQuery(
     content,
     data: { alerts: pendingAlerts },
     actions: pendingAlerts.length > 0 ? [
-      { type: 'navigate', label: 'Review All Alerts', payload: { path: '/contigo-lab?tab=alerts' } },
+      { type: 'navigate', label: 'Review All Alerts', payload: { path: '/contigo-labs?tab=alerts' } },
     ] : [],
     confidence: 0.9,
   };
@@ -872,7 +872,7 @@ async function handleWardenQuery(
     content,
     data: { risks },
     actions: risks.length > 0 ? [
-      { type: 'navigate', label: 'View Risk Dashboard', payload: { path: '/contigo-lab?tab=risks' } },
+      { type: 'navigate', label: 'View Risk Dashboard', payload: { path: '/contigo-labs?tab=risks' } },
     ] : [],
     confidence: 0.9,
   };
@@ -912,7 +912,7 @@ async function handleClockworkQuery(
     content,
     data: { deadlines: upcomingDeadlines },
     actions: upcomingDeadlines.length > 0 ? [
-      { type: 'navigate', label: 'View Calendar', payload: { path: '/contigo-lab?tab=calendar' } },
+      { type: 'navigate', label: 'View Calendar', payload: { path: '/contigo-labs?tab=calendar' } },
     ] : [],
     confidence: 0.92,
   };
@@ -973,7 +973,7 @@ async function handleProspectorQuery(
     content,
     data: dbData,
     actions: [
-      { type: 'navigate', label: 'View Opportunities', payload: { path: '/contigo-lab?tab=opportunities' } },
+      { type: 'navigate', label: 'View Opportunities', payload: { path: '/contigo-labs?tab=opportunities' } },
     ],
     confidence: 0.9,
   };
@@ -1061,7 +1061,7 @@ async function handleArchitectQuery(
     return {
       content: "I'm **Architect**, your workflow designer. Let's build your workflow!\n\nTo design an effective workflow, tell me:\n1. **Purpose** — What process should this automate?\n2. **Trigger** — What starts the workflow? (e.g., contract upload, deadline, status change)\n3. **Steps** — What actions should happen? (approvals, notifications, escalations)\n4. **Stakeholders** — Who needs to be involved?\n\nI'll generate a workflow definition you can review and activate.",
       actions: [
-        { type: 'navigate', label: 'Workflow Templates', payload: { path: '/contigo-lab?tab=workflows' } },
+        { type: 'navigate', label: 'Workflow Templates', payload: { path: '/contigo-labs?tab=workflows' } },
       ],
       confidence: 0.9,
     };
@@ -1328,7 +1328,7 @@ async function handleOrchestratorQuery(
       'I can:\n• **Monitor** workflow progress\n• **Escalate** stalled approvals\n• **Re-route** blocked workflows\n• **Report** on execution metrics',
     data: { activeWorkflows, pendingApprovals: pendingStepCount },
     actions: activeWorkflows.length > 0 ? [
-      { type: 'navigate', label: 'View Workflows', payload: { path: '/contigo-lab?tab=workflows' } },
+      { type: 'navigate', label: 'View Workflows', payload: { path: '/contigo-labs?tab=workflows' } },
     ] : [],
     confidence: 0.88,
   };

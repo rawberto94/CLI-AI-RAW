@@ -165,8 +165,8 @@ const AGENT_CLUSTERS = {
     description: 'Execution & Monitoring',
     agents: [
       { id: 'autonomous-deadline-manager', codename: 'Clockwork', avatar: '⏰', icon: Clock, description: 'Precision timekeeper — never misses a deadline', status: 'active' },
-      { id: 'obligation-tracking-agent', codename: 'Steward', avatar: '📋', icon: CheckCircle, description: 'Dedicated steward — tracks every commitment', status: 'active' },
-      { id: 'smart-gap-filling-agent', codename: 'Artificer', avatar: '🔧', icon: Wrench, description: 'Master craftsperson — fills missing data with precision', status: 'active' },
+      { id: 'obligation-tracking-agent', codename: 'Steward', avatar: '📋', icon: CheckCircle, description: 'Dedicated steward — tracks every commitment', status: 'coming soon' },
+      { id: 'smart-gap-filling-agent', codename: 'Artificer', avatar: '🔧', icon: Wrench, description: 'Master craftsperson — fills missing data with precision', status: 'coming soon' },
     ],
   },
   strategists: {
@@ -179,7 +179,7 @@ const AGENT_CLUSTERS = {
     agents: [
       { id: 'workflow-authoring-agent', codename: 'Architect', avatar: '🏛️', icon: LayoutGrid, description: 'Master builder — designs optimal workflows', status: 'active' },
       { id: 'rfx-procurement-agent', codename: 'Merchant', avatar: '🤝', icon: Gavel, description: 'Master negotiator — manages RFx lifecycles', status: 'active' },
-      { id: 'multi-agent-coordinator', codename: 'Conductor', avatar: '🎼', icon: Users, description: 'Orchestra leader — coordinates agent symphonies', status: 'active' },
+      { id: 'multi-agent-coordinator', codename: 'Conductor', avatar: '🎼', icon: Users, description: 'Orchestra leader — coordinates agent symphonies', status: 'coming soon' },
     ],
   },
   evolution: {
@@ -190,9 +190,9 @@ const AGENT_CLUSTERS = {
     gradient: 'from-rose-500 to-pink-500',
     description: 'Learning & Improvement',
     agents: [
-      { id: 'user-feedback-learner', codename: 'Mnemosyne', avatar: '🧠', icon: Brain, description: 'Memory incarnate — learns from every interaction', status: 'active' },
-      { id: 'ab-testing-engine', codename: 'A/B', avatar: '🧪', icon: Beaker, description: 'Scientist — tests and validates agent performance', status: 'active' },
-      { id: 'agent-swarm', codename: 'Swarm', avatar: '🐝', icon: GitMerge, description: 'Collective intelligence — many minds, one purpose', status: 'active' },
+      { id: 'user-feedback-learner', codename: 'Mnemosyne', avatar: '🧠', icon: Brain, description: 'Memory incarnate — learns from every interaction', status: 'coming soon' },
+      { id: 'ab-testing-engine', codename: 'A/B', avatar: '🧪', icon: Beaker, description: 'Scientist — tests and validates agent performance', status: 'coming soon' },
+      { id: 'agent-swarm', codename: 'Swarm', avatar: '🐝', icon: GitMerge, description: 'Collective intelligence — many minds, one purpose', status: 'coming soon' },
     ],
   },
 };
@@ -681,7 +681,9 @@ function ClusterCard({ cluster }: { cluster: any }) {
                 </div>
                 <Badge className={cn(
                   "text-[10px] uppercase tracking-wider font-bold border-transparent px-2 py-0.5 rounded-md",
-                  agent.status === 'active' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                  agent.status === 'active' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" 
+                  : agent.status === 'coming soon' ? "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+                  : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                 )}>
                   {agent.status}
                 </Badge>

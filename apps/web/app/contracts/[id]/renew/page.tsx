@@ -962,10 +962,23 @@ function ReviewStep({
         <CardContent>
           {!aiAnalysis && !aiAnalysisLoading && (
             <div className="text-center py-8">
-              <Brain className="h-10 w-10 mx-auto text-violet-300 mb-3" />
-              <p className="text-sm text-muted-foreground">
-                Click &quot;Run AI Analysis&quot; to get intelligent insights about this renewal
+              <div className="mx-auto w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center mb-3">
+                <Brain className="h-7 w-7 text-violet-500" />
+              </div>
+              <p className="text-sm font-medium text-slate-700 mb-1">
+                AI-Powered Renewal Intelligence
               </p>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto mb-4">
+                Get risk scores, compliance flags, clause suggestions, and negotiation insights powered by AI
+              </p>
+              <Button
+                size="sm"
+                onClick={onRunAiAnalysis}
+                className="bg-gradient-to-r from-violet-500 to-violet-600"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Analyze This Renewal
+              </Button>
             </div>
           )}
           

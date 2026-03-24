@@ -140,7 +140,7 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
           id: 'review-approvals',
           label: 'Review Pending Approvals',
           icon: '✅',
-          href: '/contigo-lab?tab=approvals',
+          href: '/contigo-labs?tab=approvals',
           badge: pendingApprovals > 0 ? pendingApprovals.toString() : null,
         },
         {
@@ -148,7 +148,7 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
           label: 'Check Compliance Alerts',
           agent: 'vigil',
           icon: '⚠️',
-          href: '/contigo-lab?tab=alerts',
+          href: '/contigo-labs?tab=alerts',
           badge: alertStats.unacknowledgedAlerts > 0 ? alertStats.unacknowledgedAlerts.toString() : null,
         },
         {
@@ -156,7 +156,7 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
           label: 'Create New RFx',
           agent: 'merchant',
           icon: '📋',
-          href: '/contigo-lab?action=create_rfx',
+          href: '/contigo-labs?action=create_rfx',
         },
       ],
     };

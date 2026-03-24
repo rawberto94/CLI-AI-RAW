@@ -236,7 +236,9 @@ export function CopilotDraftingCanvas({
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({
-        placeholder: 'Start drafting your contract…',
+        placeholder: isBlankDocument 
+          ? 'Start drafting your contract here… Press Ctrl+/ to open AI Copilot, or check the Clause Library on the right →'
+          : 'Start drafting your contract…',
       }),
     ],
     content: initialContent || '',
@@ -1192,8 +1194,8 @@ export function CopilotDraftingCanvas({
               ) : suggestions.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 dark:text-slate-400">
                   <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No suggestions yet</p>
-                  <p className="text-xs mt-1">Keep typing to get AI recommendations</p>
+                  <p className="text-sm font-medium">No suggestions yet</p>
+                  <p className="text-xs mt-1 max-w-[200px] mx-auto">Start typing your contract content — AI will analyze and suggest improvements in real time</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1528,8 +1530,10 @@ export function CopilotDraftingCanvas({
             ) : clauses.length === 0 ? (
               <div className="text-center py-8 text-gray-500 dark:text-slate-400">
                 <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No clauses found</p>
-                <p className="text-xs mt-1 text-gray-400 dark:text-slate-500">Try changing your search or category</p>
+                <p className="text-sm font-medium">No clauses found</p>
+                <p className="text-xs mt-1 text-gray-400 dark:text-slate-500">
+                  {clauseSearch ? `No results for "${clauseSearch}". Try a different search term.` : 'Try changing your category filter or search above.'}
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -1566,6 +1570,11 @@ export function CopilotDraftingCanvas({
                     </div>
                   </div>
                 ))}
+                {clauses.length >= 30 && (
+                  <p className="text-[11px] text-center text-slate-400 dark:text-slate-500 pt-2">
+                    Showing first 30 results — refine your search to find specific clauses
+                  </p>
+                )}
               </div>
             )}
           </div>
