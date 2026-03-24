@@ -176,6 +176,49 @@ function computeDIConfidence(pages: DIPage[]): number {
   return wordCount > 0 ? totalConf / wordCount : 0;
 }
 
+/** Compute per-page word-level confidence statistics for prompt context */
+function computeWordLevelStats(pages: DIPage[]): {
+  averageConfidence: number;
+  totalWordCount: number;
+  lowConfidenceWordCount: number;
+  perPage: Array<{ page: number; wordCount: number; avgConfidence: number; lowConfWordCount: number }>;
+} {
+  if (!pages || pages.length === 0) {
+    return { averageConfidence: 0, totalWordCount: 0, lowConfidenceWordCount: 0, perPage: [] };
+  }
+  let totalConf = 0;
+  let totalWords = 0;
+  let lowConfWords = 0;
+  const perPage: Array<{ page: number; wordCount: number; avgConfidence: number; lowConfWordCount: number }> = [];
+  for (const page of pages) {
+    const words = page.words || [];
+    if (words.length === 0) continue;
+    let pageConf = 0;
+    let pageLowConf = 0;
+    for (const word of words) {
+      totalConf += word.confidence;
+      pageConf += word.confidence;
+      totalWords++;
+      if (word.confidence < 0.7) {
+        lowConfWords++;
+        pageLowConf++;
+      }
+    }
+    perPage.push({
+      page: page.pageNumber,
+      wordCount: words.length,
+      avgConfidence: pageConf / words.length,
+      lowConfWordCount: pageLowConf,
+    });
+  }
+  return {
+    averageConfidence: totalWords > 0 ? totalConf / totalWords : 0,
+    totalWordCount: totalWords,
+    lowConfidenceWordCount: lowConfWords,
+    perPage,
+  };
+}
+
 /** Extract handwritten text spans from DI styles data */
 function extractHandwrittenSpans(content: string, styles: DIStyle[]): string[] {
   if (!content || !styles || styles.length === 0) return [];
@@ -280,12 +323,27 @@ const logger = pino({
 });
 
 // Module-level OpenAI client singleton — avoids re-instantiation per call
+const AZURE_OPENAI_API_VERSION = process.env.AZURE_OPENAI_API_VERSION || '2024-02-01';
 let _ocrOpenAISingleton: any = null;
 async function getOCROpenAIClient(): Promise<any> {
   if (_ocrOpenAISingleton) return _ocrOpenAISingleton;
+  const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+  const azureKey = process.env.AZURE_OPENAI_API_KEY;
+  const OpenAI = (await import('openai')).default;
+  if (azureEndpoint && azureKey) {
+    // Use Azure OpenAI — supports data-residency requirements (e.g. Switzerland)
+    const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+    _ocrOpenAISingleton = new OpenAI({
+      apiKey: azureKey,
+      baseURL: `${azureEndpoint.replace(/\/$/, '')}/openai/deployments/${deployment}`,
+      defaultHeaders: { 'api-key': azureKey },
+      defaultQuery: { 'api-version': AZURE_OPENAI_API_VERSION },
+    });
+    logger.info({ endpoint: azureEndpoint, deployment }, 'Using Azure OpenAI for artifact generation');
+    return _ocrOpenAISingleton;
+  }
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
-  const OpenAI = (await import('openai')).default;
   _ocrOpenAISingleton = new OpenAI({ apiKey });
   return _ocrOpenAISingleton;
 }
@@ -2885,6 +2943,49 @@ export async function processOCRArtifactJob(
     });
     
     const artifactDataArray = [...generatedArtifacts, ...notApplicableArtifactData];
+
+    // Create DI_METADATA artifact directly from DI extraction results (no AI needed)
+    if (ocrResult?.isDISource) {
+      const wordStats = computeWordLevelStats(ocrResult.pages);
+      const diMetadataRecord = {
+        contractId,
+        tenantId,
+        type: 'DI_METADATA' as const,
+        data: {
+          source: ocrResult.source,
+          model: ocrResult.diResult?.metadata?.model ?? null,
+          apiVersion: ocrResult.diResult?.metadata?.apiVersion ?? null,
+          region: ocrResult.diResult?.metadata?.region ?? null,
+          processingTimeMs: ocrResult.diResult?.metadata?.processingTimeMs ?? null,
+          pageCount: ocrResult.diResult?.metadata?.pageCount ?? ocrResult.pageInfo.length,
+          extractionSummary: {
+            tablesFound: ocrResult.tables.length,
+            keyValuePairsFound: ocrResult.keyValuePairs.length,
+            paragraphsFound: ocrResult.paragraphs.length,
+            handwrittenSpansFound: ocrResult.handwrittenText.length,
+            barcodesFound: ocrResult.barcodes.length,
+            formulasFound: ocrResult.formulas.length,
+            selectionMarksFound: ocrResult.selectionMarks.length,
+          },
+          confidence: {
+            aggregate: ocrResult.confidence,
+            averageWordConfidence: wordStats.averageConfidence,
+            totalWordCount: wordStats.totalWordCount,
+            lowConfidenceWordCount: wordStats.lowConfidenceWordCount,
+            perPage: wordStats.perPage,
+          },
+          detectedLanguages: ocrResult.detectedLanguages,
+          hasContractFields: !!ocrResult.contractFields,
+          hasInvoiceFields: !!ocrResult.invoiceFields,
+          pageInfo: ocrResult.pageInfo,
+        },
+        validationStatus: 'valid' as const,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      artifactDataArray.push(diMetadataRecord);
+      jobLogger.info({ pageCount: diMetadataRecord.data.pageCount, confidence: ocrResult.confidence }, 'DI_METADATA artifact created');
+    }
     
     // Verify contract still exists before attempting artifact upsert (handles deleted-while-processing edge case)
     const contractStillExists = await prisma.contract.findUnique({ where: { id: contractId }, select: { id: true } });
@@ -4217,8 +4318,9 @@ async function callOpenAIForArtifact(
   systemPrompt: string,
   type: string
 ): Promise<{ success: boolean; data?: Record<string, any>; error?: string; tokensUsed?: number; promptTokens?: number; completionTokens?: number; model?: string }> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
+  // When Azure OpenAI is configured, require either Azure key or standard OpenAI key
+  const isAzure = !!(process.env.AZURE_OPENAI_ENDPOINT && process.env.AZURE_OPENAI_API_KEY);
+  if (!isAzure && !process.env.OPENAI_API_KEY) {
     return { success: false, error: 'OPENAI_API_KEY not configured' };
   }
 
@@ -4228,13 +4330,15 @@ async function callOpenAIForArtifact(
   for (let attempt = 1; attempt <= AI_RETRY_CONFIG.maxAttempts; attempt++) {
     try {
       const openai = await getOCROpenAIClient();
-      if (!openai) return { success: false, error: 'OPENAI_API_KEY not configured' };
+      if (!openai) return { success: false, error: 'OpenAI client unavailable — check OPENAI_API_KEY or AZURE_OPENAI_ENDPOINT/AZURE_OPENAI_API_KEY' };
       
-      logger.info({ type, attempt }, 'Calling OpenAI for artifact generation');
+      logger.info({ type, attempt, provider: isAzure ? 'azure-openai' : 'openai' }, 'Calling OpenAI for artifact generation');
       
-      // Model downgrade cascade: gpt-4o → gpt-4o-mini on rate limit retries
-      const primaryModel = process.env.OPENAI_MODEL || 'gpt-4o';
-      const currentModel = (attempt >= 3 && isDowngraded) ? 'gpt-4o-mini' : primaryModel;
+      // For Azure OpenAI the deployment is already baked into the baseURL; pass it as model too (SDK ignores it for Azure)
+      const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+      const primaryModel = isAzure ? azureDeployment : (process.env.OPENAI_MODEL || 'gpt-4o');
+      // For Azure, downgrade is not attempted (no gpt-4o-mini guaranteed); for standard OpenAI, cascade down
+      const currentModel = (!isAzure && attempt >= 3 && isDowngraded) ? 'gpt-4o-mini' : primaryModel;
       
       const response = await openai.chat.completions.create({
         model: currentModel,
@@ -4347,6 +4451,9 @@ async function generateArtifactWithAI(
     // Inject DI structured data into prompt context when available
     if (ocrResult?.isDISource) {
       promptCtx.diConfidence = ocrResult.confidence;
+      if (ocrResult.pages.length > 0) {
+        promptCtx.diWordLevelStats = computeWordLevelStats(ocrResult.pages);
+      }
       if (ocrResult.tables.length > 0) {
         promptCtx.diTables = ocrResult.tables.map(t => ({
           pageNumber: t.pageNumber,

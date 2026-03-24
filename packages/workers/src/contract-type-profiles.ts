@@ -103,7 +103,8 @@ export type ArtifactType =
   | 'TIMELINE'
   | 'DELIVERABLES'
   | 'EXECUTIVE_SUMMARY'
-  | 'RATES';
+  | 'RATES'
+  | 'DI_METADATA';
 
 export type ArtifactRelevance = 'required' | 'optional' | 'not-applicable';
 
