@@ -97,7 +97,7 @@ describe('GET /api/drafts/[id]/comments', () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data.data.data.comments).toHaveLength(1);
+    expect(data.data.comments).toHaveLength(1);
   });
 });
 
@@ -125,7 +125,7 @@ describe('POST /api/drafts/[id]/comments', () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data.data.data.comment.content).toBe('Test comment');
+    expect(data.data.comment.content).toBe('Test comment');
   });
 
   it('creates a reply', async () => {
@@ -139,7 +139,7 @@ describe('POST /api/drafts/[id]/comments', () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data.data.data.comment.parentId).toBe('c1');
+    expect(data.data.comment.parentId).toBe('c1');
   });
 
   it('returns 404 when parent comment not found', async () => {
@@ -173,7 +173,7 @@ describe('PATCH /api/drafts/[id]/comments/[commentId]', () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data.data.data.comment.resolved).toBe(true);
+    expect(data.data.comment.resolved).toBe(true);
   });
 });
 

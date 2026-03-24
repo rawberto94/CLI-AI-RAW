@@ -55,7 +55,7 @@ export async function GET(
       if (!ver) {
         return createErrorResponse(ctx, 'NOT_FOUND', 'Version not found', 404);
       }
-      return createSuccessResponse(ctx, { success: true, data: { version: ver } });
+      return createSuccessResponse(ctx, { version: ver });
     }
 
     // Otherwise return all versions (without full content to keep response small)
@@ -75,11 +75,8 @@ export async function GET(
     });
 
     return createSuccessResponse(ctx, {
-      success: true,
-      data: {
-        versions,
-        currentVersion: draft.version,
-      },
+      versions,
+      currentVersion: draft.version,
     });
   } catch (error) {
     return handleApiError(ctx, error);

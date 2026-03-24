@@ -62,7 +62,7 @@ export async function PATCH(
       },
     });
 
-    return createSuccessResponse(ctx, { success: true, data: { comment } });
+    return createSuccessResponse(ctx, { comment });
   } catch (error) {
     return handleApiError(ctx, error);
   }
@@ -93,7 +93,7 @@ export async function DELETE(
     await prisma.draftComment.deleteMany({ where: { parentId: commentId } });
     await prisma.draftComment.delete({ where: { id: commentId } });
 
-    return createSuccessResponse(ctx, { success: true, message: 'Comment deleted' });
+    return createSuccessResponse(ctx, { message: 'Comment deleted' });
   } catch (error) {
     return handleApiError(ctx, error);
   }

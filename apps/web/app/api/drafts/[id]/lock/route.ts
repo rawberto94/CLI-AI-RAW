@@ -77,7 +77,7 @@ export async function POST(
         },
       });
 
-      return createSuccessResponse(ctx, { success: true, data: { draft: updated } });
+      return createSuccessResponse(ctx, { draft: updated });
     }
 
     // action === 'unlock'
@@ -100,7 +100,7 @@ export async function POST(
       },
     });
 
-    return createSuccessResponse(ctx, { success: true, data: { draft: updated } });
+    return createSuccessResponse(ctx, { draft: updated });
   } catch (error) {
     return handleApiError(ctx, error);
   }

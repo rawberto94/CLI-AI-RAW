@@ -79,8 +79,8 @@ describe('GET /api/drafts/[id]/versions', () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data.data.data.versions).toHaveLength(2);
-    expect(data.data.data.currentVersion).toBe(3);
+    expect(data.data.versions).toHaveLength(2);
+    expect(data.data.currentVersion).toBe(3);
   });
 
   it('returns specific version with content', async () => {
@@ -94,7 +94,7 @@ describe('GET /api/drafts/[id]/versions', () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
-    expect(data.data.data.version.content).toBe('<p>Original</p>');
+    expect(data.data.version.content).toBe('<p>Original</p>');
   });
 
   it('returns 404 for non-existent version', async () => {

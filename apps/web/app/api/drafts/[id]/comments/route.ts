@@ -65,7 +65,7 @@ export async function GET(
       },
     });
 
-    return createSuccessResponse(ctx, { success: true, data: { comments } });
+    return createSuccessResponse(ctx, { comments });
   } catch (error) {
     return handleApiError(ctx, error);
   }
@@ -134,7 +134,7 @@ export async function POST(
       },
     });
 
-    return createSuccessResponse(ctx, { success: true, data: { comment } });
+    return createSuccessResponse(ctx, { comment });
   } catch (error) {
     return handleApiError(ctx, error);
   }

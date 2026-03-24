@@ -87,9 +87,8 @@ describe('POST /api/drafts/[id]/lock', () => {
 
     expect(res.status).toBe(200);
     // createSuccessResponse wraps in { success, data, meta }
-    // lock route passes { success: true, data: { draft } }
-    expect(json.data.data.draft.isLocked).toBe(true);
-    expect(json.data.data.draft.lockedBy).toBe('user-1');
+    expect(json.data.draft.isLocked).toBe(true);
+    expect(json.data.draft.lockedBy).toBe('user-1');
   });
 
   it('rejects lock when locked by another user', async () => {
@@ -134,7 +133,7 @@ describe('POST /api/drafts/[id]/lock', () => {
     const json = await res.json();
 
     expect(res.status).toBe(200);
-    expect(json.data.data.draft.isLocked).toBe(false);
+    expect(json.data.draft.isLocked).toBe(false);
   });
 
   it('rejects unlock by non-owner', async () => {
