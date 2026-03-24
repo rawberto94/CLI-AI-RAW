@@ -779,10 +779,6 @@ export default function ContractDetailPage() {
                   Auto-categorize
                 </button>
               )}
-              <button onClick={handleCopyLink} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white border border-slate-200 hover:border-violet-300 transition-colors hidden sm:flex">
-                <Link2 className="h-3 w-3" />
-                Copy Link
-              </button>
               {contract?.signature_status === 'unsigned' && (
                 <button onClick={handleRequestSignature} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 transition-colors">
                   <PenTool className="h-3 w-3" />
@@ -997,7 +993,6 @@ export default function ContractDetailPage() {
         isFavorite={isFavorite}
         hasReminder={metadata.reminder_enabled ?? contract?.reminder_enabled ?? false}
         isArchived={contract?.status === 'archived'}
-        isExpired={metadata.end_date ? new Date(metadata.end_date) < new Date() : false}
         onToggleFavorite={async () => {
           const response = await fetch(`/api/contracts/${contractId}/favorite`, {
             method: 'POST',
@@ -1016,7 +1011,7 @@ export default function ContractDetailPage() {
             headers: { 'x-tenant-id': getTenantId() }
           })
           if (!response.ok) throw new Error('Failed to delete contract')
-          await crossModule.onContractChange(contractId)
+          try { await crossModule.onContractChange(contractId) } catch {}
           router.push('/contracts')
         }}
         onArchive={async () => {
@@ -1036,17 +1031,18 @@ export default function ContractDetailPage() {
           if (!response.ok) throw new Error('Export failed')
           const blob = await response.blob()
           const url = window.URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = `contract-${contractId}.${format}`
-          document.body.appendChild(a)
-          a.click()
-          a.remove()
-          window.URL.revokeObjectURL(url)
+          try {
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `contract-${contractId}.${format}`
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+          } finally {
+            window.URL.revokeObjectURL(url)
+          }
         }}
         onPrint={() => window.print()}
-        onCreateRenewal={() => router.push(`/contracts/${contractId}/renew`)}
-        onExtendContract={() => { openDialog('extend'); fetchAiExtensionRec(); }}
       />
 
       {/* Dialogs */}

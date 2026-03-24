@@ -1,7 +1,7 @@
 'use client'
 
 import React, { memo, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import {
   Tooltip,
@@ -38,14 +38,10 @@ import {
   FileDown,
   FileSpreadsheet,
   FileText,
-  CheckCircle2,
   Loader2,
-  Copy,
   ExternalLink,
   Archive,
   ArchiveRestore,
-  RefreshCw,
-  CalendarPlus,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -55,15 +51,12 @@ interface ContractFloatingActionsProps {
   isFavorite?: boolean
   hasReminder?: boolean
   isArchived?: boolean
-  isExpired?: boolean
   onToggleFavorite: () => Promise<void>
   onToggleReminder: () => Promise<void>
   onDelete: () => Promise<void>
   onArchive: () => Promise<void>
   onExport: (format: 'pdf' | 'docx' | 'xlsx' | 'json') => Promise<void>
   onPrint: () => void
-  onCreateRenewal?: () => void
-  onExtendContract?: () => void
 }
 
 export const ContractFloatingActions = memo(function ContractFloatingActions({
@@ -72,15 +65,12 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
   isFavorite = false,
   hasReminder = false,
   isArchived = false,
-  isExpired = false,
   onToggleFavorite,
   onToggleReminder,
   onDelete,
   onArchive,
   onExport,
   onPrint,
-  onCreateRenewal,
-  onExtendContract,
 }: ContractFloatingActionsProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showArchiveDialog, setShowArchiveDialog] = useState(false)
@@ -89,15 +79,12 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
   const [isFavoriting, setIsFavoriting] = useState(false)
   const [isTogglingReminder, setIsTogglingReminder] = useState(false)
   const [exportingFormat, setExportingFormat] = useState<string | null>(null)
-  const [justCopied, setJustCopied] = useState(false)
 
   const handleCopyLink = async () => {
     try {
       const url = `${window.location.origin}/contracts/${contractId}`
       await navigator.clipboard.writeText(url)
-      setJustCopied(true)
       toast.success('Link copied to clipboard')
-      setTimeout(() => setJustCopied(false), 2000)
     } catch {
       toast.error('Failed to copy link')
     }
@@ -173,7 +160,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
         animate={{ opacity: 1, y: 0 }}
         className="fixed bottom-6 right-6 z-50"
       >
-        <div className="flex items-center gap-2 bg-white/95 backdrop-blur-xl border border-slate-200 rounded-full shadow-lg px-2 py-1.5">
+        <div className="flex items-center gap-1.5 bg-white/95 backdrop-blur-xl border border-slate-200 rounded-full shadow-lg px-2 py-1.5">
           <TooltipProvider delayDuration={300}>
             {/* Favorite */}
             <Tooltip>
@@ -222,93 +209,6 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
               </TooltipTrigger>
               <TooltipContent>{hasReminder ? 'Disable reminder' : 'Set expiry reminder'}</TooltipContent>
             </Tooltip>
-
-            {/* Copy Link */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleCopyLink}
-                  className="h-9 w-9 rounded-full transition-colors"
-                >
-                  <AnimatePresence mode="wait">
-                    {justCopied ? (
-                      <motion.div
-                        key="check"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
-                      >
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="link"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        exit={{ scale: 0 }}
-                      >
-                        <Link2 className="h-4 w-4" />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Copy link</TooltipContent>
-            </Tooltip>
-
-            {/* Print */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onPrint}
-                  className="h-9 w-9 rounded-full transition-colors"
-                >
-                  <Printer className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Print</TooltipContent>
-            </Tooltip>
-
-            {/* Create Renewal - show for expired or expiring contracts */}
-            {(isExpired || onCreateRenewal) && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onCreateRenewal}
-                    className={cn(
-                      "h-9 w-9 rounded-full transition-colors",
-                      isExpired && "text-amber-500 hover:text-amber-600"
-                    )}
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Create Renewal</TooltipContent>
-              </Tooltip>
-            )}
-
-            {/* Extend Contract */}
-            {onExtendContract && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onExtendContract}
-                    className="h-9 w-9 rounded-full transition-colors text-blue-500 hover:text-blue-600"
-                  >
-                    <CalendarPlus className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Extend Contract</TooltipContent>
-              </Tooltip>
-            )}
 
             <div className="w-px h-6 bg-slate-200" />
 
@@ -362,18 +262,25 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem 
+                  onClick={handleCopyLink}
+                  className="cursor-pointer"
+                >
+                  <Link2 className="h-4 w-4 mr-2" />
+                  Copy link
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={onPrint}
+                  className="cursor-pointer"
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print
+                </DropdownMenuItem>
+                <DropdownMenuItem 
                   onClick={() => window.open(`/contracts/${contractId}`, '_blank')}
                   className="cursor-pointer"
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Open in new tab
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => navigator.clipboard.writeText(contractId)}
-                  className="cursor-pointer"
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy contract ID
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 

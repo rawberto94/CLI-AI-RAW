@@ -1197,12 +1197,12 @@ function AITemplateGenerator({ onGenerated, onPreview }: { onGenerated: (t: RFxT
     setIsGenerating(true);
     setGenerationStep(0);
 
-    try {
-      // Step through UI indicators while waiting for AI
-      const stepTimer = setInterval(() => {
-        setGenerationStep(prev => Math.min(prev + 1, generationSteps.length - 1));
-      }, 1200);
+    // Step through UI indicators while waiting for AI
+    const stepTimer = setInterval(() => {
+      setGenerationStep(prev => Math.min(prev + 1, generationSteps.length - 1));
+    }, 1200);
 
+    try {
       // Call the real AI summarize endpoint to generate template content
       const aiPrompt = `Generate a detailed ${config.type} template for: ${prompt}. 
 Category: ${config.category}. Industry: ${config.industry}. Complexity: ${config.complexity}.
@@ -1220,7 +1220,6 @@ Include sections for: introduction, scope of work, vendor qualifications${config
         }),
       });
 
-      clearInterval(stepTimer);
       setGenerationStep(generationSteps.length - 1);
 
       let sections: TemplateSection[];
@@ -1291,6 +1290,7 @@ Include sections for: introduction, scope of work, vendor qualifications${config
       };
       onGenerated(generatedTemplate);
     } finally {
+      clearInterval(stepTimer);
       setIsGenerating(false);
     }
   };
@@ -2276,8 +2276,8 @@ function RFxStudioView() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/agents/rfx-opportunities').then(res => res.json()).catch(() => ({ opportunities: [] })),
-      fetch('/api/rfx').then(res => res.json()).catch(() => ({ data: { events: [] } })),
+      fetch('/api/agents/rfx-opportunities').then(res => res.ok ? res.json() : { opportunities: [] }).catch(() => ({ opportunities: [] })),
+      fetch('/api/rfx').then(res => res.ok ? res.json() : { data: { events: [] } }).catch(() => ({ data: { events: [] } })),
       fetch('/api/analytics/suppliers?timeframe=12months').then(res => res.ok ? res.json() : null).catch(() => null),
     ])
       .then(([oppData, rfxData, supplierData]) => {
