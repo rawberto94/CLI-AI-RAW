@@ -529,6 +529,13 @@ export interface PromptContext {
   };
   /** Aggregate DI OCR confidence (0-1, from word-level) */
   diConfidence?: number;
+  /** Word-level confidence statistics from DI page data */
+  diWordLevelStats?: {
+    averageConfidence: number;
+    totalWordCount: number;
+    lowConfidenceWordCount: number;
+    perPage: Array<{ page: number; wordCount: number; avgConfidence: number; lowConfWordCount: number }>;
+  };
   /** Handwriting/signature info from DI styles analysis */
   diHandwritingInfo?: {
     hasHandwriting: boolean;
@@ -597,52 +604,61 @@ export function buildArtifactPrompt(type: string, ctx: PromptContext): string | 
     // Contract fields — useful across nearly all artifact types
     if (ctx.diContractFields && ['OVERVIEW', 'CLAUSES', 'RISK', 'COMPLIANCE', 'OBLIGATIONS', 'RENEWAL', 'PARTIES', 'CONTACTS', 'DELIVERABLES', 'TIMELINE', 'FINANCIAL'].includes(type)) {
       const cf = ctx.diContractFields;
-      if (cf.parties.length > 0) {
-        const trustedParties = cf.parties.filter(p => p.confidence >= 0.5);
-        if (trustedParties.length > 0) {
-          diParts.push('\nPRE-VALIDATED CONTRACT PARTIES:');
-          for (const p of trustedParties) {
-            diParts.push(`  - ${p.name}${p.role ? ` (${p.role})` : ''}${p.address ? `, ${p.address}` : ''} [confidence: ${(p.confidence * 100).toFixed(0)}%]`);
-          }
+      const highConfParties = cf.parties.filter(p => p.confidence >= 0.8);
+      const medConfParties = cf.parties.filter(p => p.confidence >= 0.5 && p.confidence < 0.8);
+
+      if (highConfParties.length > 0) {
+        diParts.push('\nAUTHORITATIVE CONTRACT PARTIES (confidence ≥ 80% — use these directly, do NOT re-extract from text):');
+        for (const p of highConfParties) {
+          diParts.push(`  - ${p.name}${p.role ? ` (${p.role})` : ''}${p.address ? `, ${p.address}` : ''} [confidence: ${(p.confidence * 100).toFixed(0)}%]`);
         }
       }
-      if (cf.dates.effectiveDate) diParts.push(`PRE-VALIDATED Effective Date: ${cf.dates.effectiveDate}`);
-      if (cf.dates.expirationDate) diParts.push(`PRE-VALIDATED Expiration Date: ${cf.dates.expirationDate}`);
-      if (cf.dates.executionDate) diParts.push(`PRE-VALIDATED Execution Date: ${cf.dates.executionDate}`);
-      if (cf.jurisdiction) diParts.push(`PRE-VALIDATED Jurisdiction: ${cf.jurisdiction}`);
-      if (cf.title) diParts.push(`PRE-VALIDATED Document Title: ${cf.title}`);
+      if (medConfParties.length > 0) {
+        diParts.push('\nPRE-VALIDATED CONTRACT PARTIES (confidence 50–79% — verify against text):');
+        for (const p of medConfParties) {
+          diParts.push(`  - ${p.name}${p.role ? ` (${p.role})` : ''}${p.address ? `, ${p.address}` : ''} [confidence: ${(p.confidence * 100).toFixed(0)}%]`);
+        }
+      }
+
+      // Authoritative dates — use directly when present, fall back to text only if absent
+      if (cf.dates.effectiveDate) diParts.push(`AUTHORITATIVE Effective Date: ${cf.dates.effectiveDate} (use this value directly)`);
+      if (cf.dates.expirationDate) diParts.push(`AUTHORITATIVE Expiration Date: ${cf.dates.expirationDate} (use this value directly)`);
+      if (cf.dates.executionDate) diParts.push(`AUTHORITATIVE Execution Date: ${cf.dates.executionDate} (use this value directly)`);
+      if (cf.jurisdiction) diParts.push(`AUTHORITATIVE Jurisdiction: ${cf.jurisdiction} (use this value directly)`);
+      if (cf.title) diParts.push(`AUTHORITATIVE Document Title: ${cf.title} (use this value directly)`);
     }
 
-    // Invoice fields for FINANCIAL, OVERVIEW
+    // Invoice fields for FINANCIAL, OVERVIEW — full JSON for consistency with table format
     if (ctx.diInvoiceFields && ['FINANCIAL', 'OVERVIEW', 'RATES'].includes(type)) {
       const inv = ctx.diInvoiceFields;
-      diParts.push('\nPRE-VALIDATED INVOICE DATA:');
-      if (inv.vendorName) diParts.push(`  Vendor: ${inv.vendorName}`);
-      if (inv.customerName) diParts.push(`  Customer: ${inv.customerName}`);
-      if (inv.invoiceId) diParts.push(`  Invoice #: ${inv.invoiceId}`);
-      if (inv.invoiceDate) diParts.push(`  Date: ${inv.invoiceDate}`);
-      if (inv.invoiceTotal != null) diParts.push(`  Total: ${inv.currency || ''} ${inv.invoiceTotal}`);
-      if (inv.lineItems.length > 0) {
-        diParts.push('  Line Items:');
-        for (const li of inv.lineItems) {
-          diParts.push(`    - ${li.description || 'N/A'}: qty ${li.quantity ?? '-'} × ${li.unitPrice ?? '-'} = ${li.amount ?? '-'}`);
-        }
-      }
+      diParts.push('\nAUTHORITATIVE INVOICE DATA AS JSON (use these values directly, do NOT re-extract from text):');
+      diParts.push(JSON.stringify({
+        vendorName: inv.vendorName ?? null,
+        customerName: inv.customerName ?? null,
+        invoiceId: inv.invoiceId ?? null,
+        invoiceDate: inv.invoiceDate ?? null,
+        invoiceTotal: inv.invoiceTotal ?? null,
+        currency: inv.currency ?? null,
+        confidence: inv.confidence,
+        lineItems: inv.lineItems,
+      }, null, 2));
     }
 
-    // Tables — valuable for financial, compliance (SLA/insurance tables), clauses (amendment schedules), deliverables (milestones)
+    // Tables as JSON — preserves full structure for accurate AI parsing
     if (ctx.diTables && ctx.diTables.length > 0 && ['FINANCIAL', 'RATES', 'OVERVIEW', 'OBLIGATIONS', 'CLAUSES', 'COMPLIANCE', 'DELIVERABLES', 'TIMELINE'].includes(type)) {
       const trustedTables = ctx.diTables.filter(t => t.confidence >= 0.5);
       if (trustedTables.length > 0) {
-        diParts.push(`\nPRE-VALIDATED TABLES (${trustedTables.length} found):`);
+        diParts.push(`\nPRE-VALIDATED TABLES AS JSON (${trustedTables.length} found — use the structured data, do NOT re-parse from raw text):`);
         for (let i = 0; i < Math.min(trustedTables.length, 10); i++) {
           const t = trustedTables[i];
           if (t && t.headers.length > 0) {
-            diParts.push(`  Table ${i + 1} (page ${t.pageNumber}, confidence ${(t.confidence * 100).toFixed(0)}%):`);
-            diParts.push(`    | ${t.headers.join(' | ')} |`);
-            for (const row of t.rows.slice(0, 20)) {
-              diParts.push(`    | ${row.join(' | ')} |`);
-            }
+            diParts.push(JSON.stringify({
+              tableIndex: i + 1,
+              pageNumber: t.pageNumber,
+              confidence: t.confidence,
+              headers: t.headers,
+              rows: t.rows.slice(0, 20),
+            }, null, 2));
           }
         }
       }
@@ -701,10 +717,57 @@ export function buildArtifactPrompt(type: string, ctx: PromptContext): string | 
       }
     }
 
-    // Document language detection — helps with locale-specific formatting
+    // Document language detection — locale-specific parsing guidance
     if (ctx.diDetectedLanguages && ctx.diDetectedLanguages.length > 0) {
       diParts.push(`\nDETECTED DOCUMENT LANGUAGES: ${ctx.diDetectedLanguages.join(', ')}`);
-      diParts.push(`  Use language-aware interpretation for dates (DD.MM.YYYY vs MM/DD/YYYY), currency, and terminology.`);
+      // Map well-known BCP-47 codes to actionable locale instructions
+      const LOCALE_GUIDANCE: Record<string, string> = {
+        'de':    'German: dates are DD.MM.YYYY, decimal separator is comma (1.234,56), currency EUR or CHF.',
+        'de-CH': 'Swiss German: dates DD.MM.YYYY, currency CHF, decimal separator dot (1\'234.56).',
+        'de-DE': 'German (Germany): dates DD.MM.YYYY, currency EUR, decimal comma.',
+        'de-AT': 'Austrian German: dates DD.MM.YYYY, currency EUR, decimal comma.',
+        'fr':    'French: dates DD/MM/YYYY or DD.MM.YYYY, currency EUR, legal terminology in French.',
+        'fr-CH': 'Swiss French: dates DD.MM.YYYY, currency CHF.',
+        'fr-FR': 'French (France): dates DD/MM/YYYY, currency EUR.',
+        'it':    'Italian: dates DD/MM/YYYY, currency EUR.',
+        'it-CH': 'Swiss Italian: dates DD.MM.YYYY, currency CHF.',
+        'en':    'English: dates may be MM/DD/YYYY (US) or DD/MM/YYYY (UK/AU) — infer from context.',
+        'en-US': 'US English: dates MM/DD/YYYY, currency USD.',
+        'en-GB': 'British English: dates DD/MM/YYYY, currency GBP.',
+        'es':    'Spanish: dates DD/MM/YYYY, currency EUR or local.',
+        'pt':    'Portuguese: dates DD/MM/YYYY, decimal comma.',
+        'nl':    'Dutch: dates DD-MM-YYYY, decimal comma.',
+      };
+      for (const lang of ctx.diDetectedLanguages) {
+        const guidance = LOCALE_GUIDANCE[lang] || LOCALE_GUIDANCE[lang.split('-')[0]];
+        if (guidance) diParts.push(`  [${lang}] ${guidance}`);
+      }
+      if (ctx.diDetectedLanguages.length > 1) {
+        diParts.push(`  MULTILINGUAL DOCUMENT: Apply locale-specific parsing per section. For parties and dates, prefer the locale of the section where each value appears.`);
+      }
+    }
+
+    // Word-level confidence breakdown — flags low-quality OCR regions
+    if (ctx.diWordLevelStats && ctx.diWordLevelStats.totalWordCount > 0) {
+      const stats = ctx.diWordLevelStats;
+      const lowPct = stats.totalWordCount > 0
+        ? ((stats.lowConfidenceWordCount / stats.totalWordCount) * 100).toFixed(1)
+        : '0.0';
+      diParts.push(`\nWORD-LEVEL OCR QUALITY:`);
+      diParts.push(`  Average confidence: ${(stats.averageConfidence * 100).toFixed(1)}%, Total words: ${stats.totalWordCount}, Low-confidence words (<70%): ${stats.lowConfidenceWordCount} (${lowPct}%)`);
+      if (stats.perPage.length > 1) {
+        const worstPages = [...stats.perPage]
+          .sort((a, b) => a.avgConfidence - b.avgConfidence)
+          .slice(0, 3)
+          .filter(p => p.avgConfidence < 0.8);
+        if (worstPages.length > 0) {
+          diParts.push(`  Low-quality pages (avg confidence <80%): ${worstPages.map(p => `page ${p.page} (${(p.avgConfidence * 100).toFixed(0)}%, ${p.lowConfWordCount} low-conf words)`).join(', ')}`);
+          diParts.push(`  CAUTION: Extracted text from these pages may contain OCR errors. Cross-check numeric values and proper nouns carefully.`);
+        }
+      }
+      if (parseFloat(lowPct) > 20) {
+        diParts.push(`  WARNING: More than 20% of words have low OCR confidence. Treat extracted values with elevated scrutiny.`);
+      }
     }
 
     // Selection marks (checkboxes) — important for compliance, insurance, and intake forms
@@ -736,7 +799,7 @@ export function buildArtifactPrompt(type: string, ctx: PromptContext): string | 
       diParts.push(`  NOTE: These LaTeX formulas were extracted by DI. Use them for accurate financial calculations.`);
     }
 
-    diParts.push('\nIMPORTANT: Use the pre-validated data above as ground truth when it conflicts with OCR text. These values have been extracted by Azure Document Intelligence with high precision.');
+    diParts.push('\nIMPORTANT: When AUTHORITATIVE values are provided above, output them verbatim — do NOT re-extract or rephrase these from the OCR text. For other fields not covered by authoritative data, extract from the contract text below.');
     diParts.push('--- END PRE-VALIDATED DATA ---\n');
     diContext = diParts.join('\n');
   }

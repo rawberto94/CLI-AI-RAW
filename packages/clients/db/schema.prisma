@@ -2023,6 +2023,7 @@ enum ArtifactType {
   AUDIT_TRAIL
   EXECUTIVE_SUMMARY
   ACTION_ITEMS
+  DI_METADATA
 }
 
 enum RunStatus {
