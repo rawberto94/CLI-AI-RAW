@@ -285,21 +285,20 @@ async function createDocuSignEnvelope(params: CreateEnvelopeParams): Promise<Env
 
 async function createInternalEnvelope(params: CreateEnvelopeParams): Promise<EnvelopeResult> {
   const internalId = `int-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
 
-  // In internal mode, we create a DB record and send email notifications
+  // Build signer results — signing URLs will be updated after DB insert with real ID
   const signerResults = params.signers.map((s) => ({
     ...s,
     status: 'sent' as const,
-    signingUrl: `${process.env.NEXTAUTH_URL}/portal?token=${Buffer.from(
-      JSON.stringify({ contractId: params.contractId, email: s.email, exp: Date.now() + 14 * 86400000 })
-    ).toString('base64url')}&action=sign`,
+    _tokenPayload: { contractId: params.contractId, email: s.email, exp: Date.now() + 14 * 86400000 },
   }));
 
   return {
     envelopeId: internalId,
     provider: params.provider || 'manual',
     status: 'sent',
-    signers: signerResults,
+    signers: signerResults as any,
   };
 }
 
@@ -337,12 +336,31 @@ export async function createSignatureEnvelope(params: CreateEnvelopeParams): Pro
       contractId: params.contractId,
       provider: result.provider,
       status: result.status,
+      subject: params.message || 'Please review and sign this contract',
       externalId: result.externalEnvelopeId || null,
       message: params.message || 'Please review and sign this contract',
       createdBy: params.userId,
       expiresAt: new Date(Date.now() + (params.expiresInDays || 14) * 86400000),
       signers: JSON.parse(JSON.stringify(result.signers)),
     },
+  });
+
+  // Generate signing URLs with real DB ID for internal signers
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
+  const signersWithUrls = result.signers.map((s: any) => {
+    if (s._tokenPayload) {
+      const token = Buffer.from(JSON.stringify(s._tokenPayload)).toString('base64url');
+      const signingUrl = `${baseUrl}/signatures/${signatureRequest.id}/sign?token=${token}`;
+      const { _tokenPayload, ...rest } = s;
+      return { ...rest, signingUrl };
+    }
+    return s;
+  });
+
+  // Update signers in DB with correct URLs
+  await prisma.signatureRequest.update({
+    where: { id: signatureRequest.id },
+    data: { signers: JSON.parse(JSON.stringify(signersWithUrls)) },
   });
 
   // Update contract status
@@ -353,6 +371,7 @@ export async function createSignatureEnvelope(params: CreateEnvelopeParams): Pro
 
   return {
     ...result,
+    signers: signersWithUrls,
     envelopeId: signatureRequest.id,
   };
 }

@@ -363,6 +363,44 @@ export const emailTemplates = {
       </div>
     `,
   }),
+
+  /**
+   * Signature request notification
+   */
+  signatureRequest: (data: {
+    signerName: string;
+    contractTitle: string;
+    message: string;
+    signingUrl: string;
+  }) => ({
+    subject: `✍️ Signature requested: ${data.contractTitle}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0;">Signature Requested</h1>
+        </div>
+        <div style="padding: 30px; background: #f9fafb;">
+          <p style="font-size: 16px; color: #1f2937;">Hi ${data.signerName},</p>
+          <p style="color: #4b5563;">${data.message || 'You have been asked to review and sign a document:'}</p>
+          <div style="background: white; border-left: 4px solid #6366f1; padding: 20px; margin: 20px 0;">
+            <h2 style="margin: 0; color: #1f2937; font-size: 18px;">${data.contractTitle}</h2>
+          </div>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.signingUrl}" 
+               style="background: #4f46e5; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px;">
+              Review &amp; Sign
+            </a>
+          </div>
+          <p style="color: #9ca3af; font-size: 13px; text-align: center;">
+            This link expires in 14 days. If you have questions, please contact the sender.
+          </p>
+        </div>
+        <div style="padding: 20px; text-align: center; color: #9ca3af; font-size: 12px;">
+          <p>ConTigo CLM Platform &middot; Secure e-Signature</p>
+        </div>
+      </div>
+    `,
+  }),
 };
 
 /**

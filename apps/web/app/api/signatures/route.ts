@@ -4,6 +4,7 @@ import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
 import { eSignatureService } from '@/lib/esignature/docusign.service';
+import { sendEmail } from '@/lib/email-service';
 // Types
 interface Signer {
   id?: string;
@@ -139,6 +140,59 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     });
   } catch {
     // best-effort only
+  }
+
+  // Send email notifications to signers with signing links
+  try {
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
+      select: { contractTitle: true, originalName: true, fileName: true },
+    });
+    const contractTitle = contract?.contractTitle || contract?.originalName || contract?.fileName || 'Document';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
+
+    for (const signer of result.signers || []) {
+      if (!signer.email || signer.role === 'cc') continue;
+
+      const signingUrl = signer.signingUrl
+        || `${baseUrl}/signatures/${result.envelopeId}/sign?token=${Buffer.from(
+          JSON.stringify({ contractId, email: signer.email, exp: Date.now() + 14 * 86400000 })
+        ).toString('base64url')}`;
+
+      await sendEmail({
+        to: signer.email,
+        subject: `✍️ Signature requested: ${contractTitle}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">Signature Requested</h1>
+            </div>
+            <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; color: #1f2937;">Hi ${signer.name || 'there'},</p>
+              <p style="color: #4b5563;">${message || 'You have been asked to sign the following document:'}</p>
+              <div style="background: white; border-left: 4px solid #6366f1; padding: 16px; margin: 16px 0; border-radius: 4px;">
+                <strong style="color: #1f2937;">${contractTitle}</strong>
+              </div>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${signingUrl}"
+                   style="background: #4f46e5; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; font-size: 16px;">
+                  Review &amp; Sign
+                </a>
+              </div>
+              <p style="color: #9ca3af; font-size: 13px; text-align: center;">
+                This link expires in 14 days. If you have questions, please contact the sender.
+              </p>
+            </div>
+            <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 12px;">
+              <p>ConTigo CLM Platform &middot; Secure e-Signature</p>
+            </div>
+          </div>
+        `,
+        text: `Signature Requested\n\nHi ${signer.name || 'there'},\n\n${message || 'You have been asked to sign a document.'}\n\nDocument: ${contractTitle}\n\nReview & Sign: ${signingUrl}\n\nThis link expires in 14 days.`,
+      }).catch(() => { /* best effort */ });
+    }
+  } catch {
+    // Email sending is best-effort — don't fail the request
   }
 
   return createSuccessResponse(ctx, {

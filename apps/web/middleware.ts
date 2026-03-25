@@ -271,6 +271,8 @@ const publicPaths = [
   "/auth/verify-email",
   "/auth/mfa-verify",   // MFA verification page (user is half-authenticated)
   "/api/auth",
+  "/signatures",    // Public signing pages (token-validated, no session auth)
+  "/portal",        // Supplier portal (token-validated)
 ];
 
 // Exact-match paths (no prefix matching)
@@ -286,6 +288,7 @@ const publicApiPaths = [
   "/api/cron", // Allow cron endpoints (protected by CRON_SECRET)
   "/api/csrf", // CSRF token must be obtainable before/during login
   "/api/taxonomy/presets", // Industry preset templates (read-only, public)
+  "/api/portal/validate-token", // Portal token validation
 ];
 
 // Static/public assets that bypass auth
@@ -399,6 +402,11 @@ export default auth(async (req) => {
 
   // Allow public API paths (health checks only)
   if (publicApiPaths.some((path) => pathname.startsWith(path))) {
+    return addTracingHeaders(NextResponse.next());
+  }
+
+  // Allow public signing API (token-validated, no session auth needed)
+  if (/^\/api\/signatures\/[^/]+\/sign$/.test(pathname)) {
     return addTracingHeaders(NextResponse.next());
   }
 

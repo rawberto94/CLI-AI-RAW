@@ -765,6 +765,7 @@ export default function ContractDetailPage() {
               onSetReminder={() => openDialog('reminder')}
               onStartReview={() => router.push(`/contracts/${contractId}/legal-review`)}
               onStartRedline={() => router.push(`/contracts/${contractId}/redline`)}
+              onRequestSignature={handleRequestSignature}
             />
 
             {/* Quick Overview */}
