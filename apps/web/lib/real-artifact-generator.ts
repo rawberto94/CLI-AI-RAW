@@ -12,6 +12,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import pino from 'pino';
 import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
+import { categorizeContract } from '@/lib/categorization-service';
 
 const logger = pino({ name: 'real-artifact-generator' });
 
@@ -1271,6 +1272,25 @@ export async function generateRealArtifacts(
         progress: 92,
       },
     });
+
+    // Auto-categorize the contract using AI after artifacts are generated
+    if (artifactIds.length > 0) {
+      try {
+        logger.info({ contractId }, 'Running inline auto-categorization');
+        const catResult = await categorizeContract({
+          contractId,
+          tenantId,
+          forceRecategorize: false,
+        });
+        if (catResult.success) {
+          logger.info({ contractId, category: catResult.category, confidence: catResult.confidence }, 'Auto-categorization completed');
+        } else {
+          logger.warn({ contractId, error: catResult.error }, 'Auto-categorization returned no match');
+        }
+      } catch (catErr) {
+        logger.warn({ catErr, contractId }, 'Inline auto-categorization failed, continuing');
+      }
+    }
 
     // Determine final status
     const finalStatus = artifactIds.length > 0 ? 'COMPLETED' : 'FAILED';
