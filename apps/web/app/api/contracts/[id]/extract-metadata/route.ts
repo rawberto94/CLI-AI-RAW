@@ -253,7 +253,8 @@ async function getContractText(contractId: string): Promise<string | null> {
     }
 
     return null;
-  } catch {
+  } catch (error) {
+    console.error('[ExtractMetadata] getContractText failed:', error instanceof Error ? error.message : error);
     return null;
   }
 }
@@ -335,7 +336,8 @@ async function getExtractionResults(
 
     const customFields = metadata?.customFields as Record<string, unknown> | null;
     return (customFields?._aiExtraction as Record<string, unknown>) || null;
-  } catch {
+  } catch (error) {
+    console.error('[ExtractMetadata] getExtractionResults failed:', error instanceof Error ? error.message : error);
     return null;
   }
 }

@@ -1146,7 +1146,8 @@ export async function hybridSearch(
       
       // If no ContractEmbedding chunks exist, search Contract.rawText directly
       return rawTextFallbackSearch(query, filters, k);
-    } catch {
+    } catch (error) {
+      console.error('[RAG] fallback search failed:', error instanceof Error ? error.message : error);
       return [];
     }
   }

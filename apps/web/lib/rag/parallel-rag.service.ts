@@ -429,7 +429,8 @@ async function vectorSearch(
     `;
 
     return results;
-  } catch {
+  } catch (error) {
+    console.error('[ParallelRAG] vectorSearch failed:', error instanceof Error ? error.message : error);
     return [];
   }
 }
@@ -469,7 +470,8 @@ async function keywordSearch(
     `;
 
     return results.map((r, i) => ({ ...r, rank: i + 1 }));
-  } catch {
+  } catch (error) {
+    console.error('[ParallelRAG] keywordSearch failed:', error instanceof Error ? error.message : error);
     return [];
   }
 }

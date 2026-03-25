@@ -302,7 +302,8 @@ Generate one strategic insight about this portfolio.` },
       title: content.title || 'AI Portfolio Analysis',
       description: content.description || 'AI analysis of your contract portfolio.',
       recommendation: content.recommendation };
-  } catch {
+  } catch (error) {
+    console.error('[AIInsights] generateAIInsight parse failed:', error instanceof Error ? error.message : error);
     return null;
   }
 }

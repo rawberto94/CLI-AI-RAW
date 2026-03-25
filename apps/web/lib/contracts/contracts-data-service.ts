@@ -77,7 +77,8 @@ export async function fetchContracts(): Promise<Contract[]> {
     }
 
     return data.contracts || [];
-  } catch {
+  } catch (error) {
+    console.error('[ContractsDataService] fetchContracts failed:', error instanceof Error ? error.message : error);
     return [];
   }
 }
@@ -106,7 +107,8 @@ export async function fetchContract(id: string): Promise<Contract | null> {
     }
 
     return data.contract || null;
-  } catch {
+  } catch (error) {
+    console.error('[ContractsDataService] fetchContract failed:', error instanceof Error ? error.message : error);
     return null;
   }
 }

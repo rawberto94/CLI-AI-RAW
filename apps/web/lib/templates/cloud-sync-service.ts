@@ -266,7 +266,8 @@ async function downloadFromMicrosoft(
 
     const arrayBuffer = await response.arrayBuffer();
     return Buffer.from(arrayBuffer);
-  } catch {
+  } catch (error) {
+    console.error('[CloudSync] downloadFromMicrosoft failed:', error instanceof Error ? error.message : error);
     return null;
   }
 }
@@ -294,7 +295,8 @@ async function downloadFromGoogleDrive(
 
     const arrayBuffer = await response.arrayBuffer();
     return Buffer.from(arrayBuffer);
-  } catch {
+  } catch (error) {
+    console.error('[CloudSync] downloadFromGoogleDrive failed:', error instanceof Error ? error.message : error);
     return null;
   }
 }

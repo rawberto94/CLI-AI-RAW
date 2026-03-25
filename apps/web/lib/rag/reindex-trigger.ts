@@ -187,7 +187,8 @@ export async function findContractsNeedingReindex(
 
     // Remove duplicates
     return [...new Set(contractIds)].slice(0, limit);
-  } catch {
+  } catch (error) {
+    console.error('[ReindexTrigger] findContractsNeedingReindex failed:', error instanceof Error ? error.message : error);
     return [];
   }
 }

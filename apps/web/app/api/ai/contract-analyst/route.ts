@@ -125,7 +125,8 @@ Generate 3 follow-up questions:` },
     let content = response.choices[0]?.message?.content || '[]';
     content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
     return JSON.parse(content);
-  } catch {
+  } catch (error) {
+    console.error('[ContractAnalyst] generateFollowUps failed:', error instanceof Error ? error.message : error);
     return [];
   }
 }

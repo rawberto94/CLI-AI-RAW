@@ -63,8 +63,8 @@ async function resolveApprovalRecipients(
     }
 
     return users;
-  } catch {
-    // DB error — return empty (SSE will still work as fallback)
+  } catch (error) {
+    console.error('[HITLNotification] failed to resolve recipients:', error instanceof Error ? error.message : error);
     return [];
   }
 }

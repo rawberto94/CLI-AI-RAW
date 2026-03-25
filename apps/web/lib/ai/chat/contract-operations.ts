@@ -86,7 +86,8 @@ export async function findMatchingContracts(
     });
     
     return contracts;
-  } catch {
+  } catch (error) {
+    console.error('[ContractOperations] searchContracts failed:', error instanceof Error ? error.message : error);
     return [];
   }
 }
@@ -108,7 +109,8 @@ export async function listContractsBySupplier(
       take: 20,
     });
     return contracts;
-  } catch {
+  } catch (error) {
+    console.error('[ContractOperations] listContractsBySupplier failed:', error instanceof Error ? error.message : error);
     return [];
   }
 }
@@ -144,7 +146,8 @@ export async function listExpiringContracts(
       take: 20,
     });
     return contracts;
-  } catch {
+  } catch (error) {
+    console.error('[ContractOperations] listExpiringContracts failed:', error instanceof Error ? error.message : error);
     return [];
   }
 }
@@ -167,7 +170,8 @@ export async function listContractsByStatus(
       take: 20,
     });
     return contracts;
-  } catch {
+  } catch (error) {
+    console.error('[ContractOperations] listContractsByStatus failed:', error instanceof Error ? error.message : error);
     return [];
   }
 }
@@ -189,7 +193,8 @@ export async function listHighValueContracts(
       take: 20,
     });
     return contracts;
-  } catch {
+  } catch (error) {
+    console.error('[ContractOperations] listHighValueContracts failed:', error instanceof Error ? error.message : error);
     return [];
   }
 }
@@ -271,7 +276,8 @@ export async function listContractsBySignatureStatus(
           (parsed?.document_classification_warning as string) || null,
       };
     });
-  } catch {
+  } catch (error) {
+    console.error('[ContractOperations] listContractsBySignatureStatus failed:', error instanceof Error ? error.message : error);
     return [];
   }
 }
@@ -351,7 +357,8 @@ export async function listContractsNeedingSignature(
           (parsed?.document_classification_warning as string) || null,
       };
     });
-  } catch {
+  } catch (error) {
+    console.error('[ContractOperations] listContractsNeedingSignature failed:', error instanceof Error ? error.message : error);
     return [];
   }
 }
@@ -439,7 +446,8 @@ export async function listContractsByDocumentType(
           false,
       };
     });
-  } catch {
+  } catch (error) {
+    console.error('[ContractOperations] listContractsByType failed:', error instanceof Error ? error.message : error);
     return [];
   }
 }
@@ -523,7 +531,8 @@ export async function listNonContractDocuments(
           (parsed?.document_classification_warning as string) || null,
       };
     });
-  } catch {
+  } catch (error) {
+    console.error('[ContractOperations] listNonContractDocuments failed:', error instanceof Error ? error.message : error);
     return [];
   }
 }
@@ -596,7 +605,8 @@ export async function getContractIntelligence(
         status: c.status || '',
       })),
     };
-  } catch {
+  } catch (error) {
+    console.error('[ContractOperations] getContractIntelligence failed:', error instanceof Error ? error.message : error);
     return null;
   }
 }
@@ -626,7 +636,8 @@ export async function countContracts(
     }
 
     return await prisma.contract.count({ where });
-  } catch {
+  } catch (error) {
+    console.error('[ContractOperations] countContracts failed:', error instanceof Error ? error.message : error);
     return 0;
   }
 }
@@ -662,7 +673,8 @@ export async function getContractHierarchy(
       parent: contract.parentContract || null,
       children: contract.childContracts || [],
     };
-  } catch {
+  } catch (error) {
+    console.error('[ContractOperations] getContractHierarchy failed:', error instanceof Error ? error.message : error);
     return { contract: null, parent: null, children: [] };
   }
 }
