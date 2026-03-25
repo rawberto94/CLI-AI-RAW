@@ -672,7 +672,7 @@ class ContractSourceSyncService {
       }
       console.warn('[SyncService] CREDENTIAL_ENCRYPTION_KEY not set - using derived key from DATABASE_URL (DEV ONLY)');
       // Fallback: derive key from DATABASE_URL hash (not recommended for production)
-      const fallbackKey = process.env.DATABASE_URL || 'default-fallback-key-for-dev';
+      const fallbackKey = process.env.DATABASE_URL || '';
       return crypto.createHash('sha256').update(fallbackKey).digest();
     }
     return Buffer.from(keyBase64, 'base64');
