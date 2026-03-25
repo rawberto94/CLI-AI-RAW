@@ -280,13 +280,31 @@ const logger = pino({
 });
 
 // Module-level OpenAI client singleton — avoids re-instantiation per call
+// Supports both Azure OpenAI and standard OpenAI via env vars
 let _ocrOpenAISingleton: any = null;
 async function getOCROpenAIClient(): Promise<any> {
   if (_ocrOpenAISingleton) return _ocrOpenAISingleton;
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
+
+  const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+  const azureKey = process.env.AZURE_OPENAI_API_KEY;
+  const standardKey = process.env.OPENAI_API_KEY;
+
+  // Prefer Azure OpenAI when configured
+  if (azureEndpoint && azureKey) {
+    const { AzureOpenAI } = await import('openai');
+    _ocrOpenAISingleton = new AzureOpenAI({
+      endpoint: azureEndpoint,
+      apiKey: azureKey,
+      deployment: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o',
+      apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-02-01',
+    });
+    return _ocrOpenAISingleton;
+  }
+
+  // Fall back to standard OpenAI
+  if (!standardKey) return null;
   const OpenAI = (await import('openai')).default;
-  _ocrOpenAISingleton = new OpenAI({ apiKey });
+  _ocrOpenAISingleton = new OpenAI({ apiKey: standardKey });
   return _ocrOpenAISingleton;
 }
 
