@@ -73,15 +73,6 @@ interface ContractWorkflow {
   updatedAt: string;
 }
 
-// Available approvers (mock data - in production, fetch from API)
-const availableApprovers = [
-  { id: 'user-1', name: 'Sarah Johnson', role: 'Procurement Manager', email: 'sarah@company.com' },
-  { id: 'user-2', name: 'Michael Chen', role: 'Legal Counsel', email: 'michael@company.com' },
-  { id: 'user-3', name: 'Emily Davis', role: 'Finance Director', email: 'emily@company.com' },
-  { id: 'user-4', name: 'John Smith', role: 'CFO', email: 'john@company.com' },
-  { id: 'user-5', name: 'Lisa Wang', role: 'VP Operations', email: 'lisa@company.com' },
-];
-
 const approverRoles = [
   'Procurement Manager',
   'Legal Counsel',
@@ -106,6 +97,7 @@ export default function ContractWorkflowPage() {
   const [workflowDescription, setWorkflowDescription] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
+  const [availableApprovers, setAvailableApprovers] = useState<Array<{ id: string; name: string; role: string; email: string }>>([]);
 
   useEffect(() => {
     loadContractAndWorkflow();
@@ -122,6 +114,27 @@ export default function ContractWorkflowPage() {
       if (contractRes.ok) {
         const contractData = await contractRes.json();
         setContract(contractData);
+      }
+
+      // Load available approvers from users API
+      try {
+        const usersRes = await fetch('/api/admin/users', {
+          headers: { 'x-tenant-id': getTenantId() },
+        });
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          const users = usersData.data?.users || usersData.users || usersData.data || [];
+          setAvailableApprovers(
+            Array.isArray(users) ? users.map((u: any) => ({
+              id: u.id,
+              name: u.name || u.email?.split('@')[0] || 'Unknown',
+              role: u.role || 'User',
+              email: u.email || '',
+            })) : []
+          );
+        }
+      } catch {
+        // Users API not available — approver selection will be empty
       }
 
       // Try to load existing workflow for this contract

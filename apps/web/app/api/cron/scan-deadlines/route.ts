@@ -137,7 +137,7 @@ export const POST = withCronHandler(async (request, ctx) => {
         });
         
         // Get owner email from contract uploadedBy or fallback to admin
-        let ownerEmail = process.env.ADMIN_EMAIL || 'admin@contigo.ch';
+        let ownerEmail = process.env.ADMIN_EMAIL || '';
         if (deadline.uploadedBy) {
           const owner = await prisma.user.findUnique({
             where: { id: deadline.uploadedBy },

@@ -57,8 +57,7 @@ interface DashboardData {
 }
 
 const fetchDashboardData = async (): Promise<{ stats: DashboardData | null; recentContracts: Array<{ id: string; fileName: string; status: string; createdAt: string }> }> => {
-  const dataMode = typeof window !== 'undefined' ? localStorage.getItem('dataMode') || 'real' : 'real';
-  const headers = { 'x-data-mode': dataMode };
+  const headers: Record<string, string> = {};
   
   try {
     const [statsRes, contractsRes] = await Promise.all([

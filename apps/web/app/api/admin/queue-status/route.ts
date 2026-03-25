@@ -1,4 +1,5 @@
 import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Queue status information
@@ -57,92 +58,80 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
   let queues: QueueStatus[] = [];
   let recentJobs: JobInfo[] = [];
   const importBatches: ImportBatch[] = [];
+  const statusMap: Record<string, number> = {};
 
   try {
-    // In production, connect to actual BullMQ queues
-    // For now, provide simulated data based on what's configured
+    // Get real processing metrics from the database
+    const [jobCounts, recentJobsRaw] = await Promise.all([
+      prisma.processingJob.groupBy({
+        by: ['status'],
+        where: { tenantId: ctx.tenantId },
+        _count: true,
+      }),
+      prisma.processingJob.findMany({
+        where: { tenantId: ctx.tenantId },
+        orderBy: { createdAt: 'desc' },
+        take: 15,
+        select: {
+          id: true,
+          contractId: true,
+          status: true,
+          progress: true,
+          currentStep: true,
+          error: true,
+          createdAt: true,
+          completedAt: true,
+          retryCount: true,
+          maxRetries: true,
+        },
+      }),
+    ]);
+
+    for (const row of jobCounts) {
+      statusMap[row.status] = row._count;
+    }
+
     queues = [
       {
         name: 'contract-processing',
-        waiting: Math.floor(Math.random() * 10),
-        active: Math.floor(Math.random() * 3),
-        completed: Math.floor(Math.random() * 100) + 50,
-        failed: Math.floor(Math.random() * 5),
-        delayed: Math.floor(Math.random() * 5),
-        paused: false,
-      },
-      {
-        name: 'metadata-extraction',
-        waiting: Math.floor(Math.random() * 15),
-        active: Math.floor(Math.random() * 2),
-        completed: Math.floor(Math.random() * 80) + 30,
-        failed: Math.floor(Math.random() * 3),
-        delayed: Math.floor(Math.random() * 3),
-        paused: false,
-      },
-      {
-        name: 'categorization',
-        waiting: Math.floor(Math.random() * 8),
-        active: Math.floor(Math.random() * 2),
-        completed: Math.floor(Math.random() * 60) + 20,
-        failed: Math.floor(Math.random() * 2),
-        delayed: 0,
-        paused: false,
-      },
-      {
-        name: 'rag-indexing',
-        waiting: Math.floor(Math.random() * 20),
-        active: Math.floor(Math.random() * 4),
-        completed: Math.floor(Math.random() * 50) + 10,
-        failed: Math.floor(Math.random() * 4),
-        delayed: Math.floor(Math.random() * 10),
-        paused: false,
-      },
-      {
-        name: 'artifact-generation',
-        waiting: Math.floor(Math.random() * 5),
-        active: Math.floor(Math.random() * 2),
-        completed: Math.floor(Math.random() * 40) + 10,
-        failed: Math.floor(Math.random() * 2),
-        delayed: 0,
+        waiting: statusMap['PENDING'] || 0,
+        active: statusMap['PROCESSING'] || 0,
+        completed: statusMap['COMPLETED'] || 0,
+        failed: statusMap['FAILED'] || 0,
+        delayed: statusMap['QUEUED'] || 0,
         paused: false,
       },
     ];
 
-    // Simulated recent jobs
-    const statuses = ['waiting', 'active', 'completed', 'failed'] as const;
-    const queueNames = queues.map(q => q.name);
-
-    recentJobs = Array.from({ length: 15 }, (_, i) => ({
-      id: `job-${Date.now()}-${i}`,
-      name: `process-contract-${i}`,
-      queue: queueNames[Math.floor(Math.random() * queueNames.length)] ?? 'default',
-      status: statuses[Math.floor(Math.random() * statuses.length)] ?? 'waiting',
-      progress: Math.floor(Math.random() * 100),
+    recentJobs = recentJobsRaw.map((job) => ({
+      id: job.id,
+      name: job.currentStep || 'process-contract',
+      queue: 'contract-processing',
+      status: job.status === 'COMPLETED' ? 'completed' : job.status === 'FAILED' ? 'failed' : job.status === 'PROCESSING' ? 'active' : 'waiting',
+      progress: job.progress || 0,
       data: {
-        contractId: `contract-${i}`,
-        contractTitle: `Sample Contract ${i + 1}`,
-        tenantId: 'demo',
+        contractId: job.contractId,
+        contractTitle: '',
+        tenantId: ctx.tenantId,
         source: 'upload',
       },
-      attemptsMade: Math.floor(Math.random() * 3) + 1,
-      maxAttempts: 3,
-      createdAt: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-      duration: Math.floor(Math.random() * 5000) + 500,
-      failedReason: Math.random() > 0.8 ? 'Rate limit exceeded' : undefined,
+      attemptsMade: job.retryCount || 0,
+      maxAttempts: job.maxRetries || 3,
+      createdAt: job.createdAt.toISOString(),
+      duration: job.completedAt ? Math.abs(job.completedAt.getTime() - job.createdAt.getTime()) : 0,
+      failedReason: job.error || undefined,
     }));
   } catch {
     // Queue connection not available
   }
 
-  // System health (simulated - in production, get real metrics)
   const health = {
-    cpu: Math.floor(Math.random() * 40) + 10,
-    memory: Math.floor(Math.random() * 30) + 20,
-    queueLatency: Math.floor(Math.random() * 50) + 5,
-    dbConnections: Math.floor(Math.random() * 10) + 5,
-    redisConnected: true,
-    workersActive: Math.floor(Math.random() * 4) + 1,
+    cpu: 0,
+    memory: 0,
+    queueLatency: 0,
+    dbConnections: 0,
+    redisConnected: !!process.env.REDIS_URL,
+    workersActive: statusMap['PROCESSING'] || 0,
   };
 
   return createSuccessResponse(ctx, {

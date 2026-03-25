@@ -78,7 +78,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       source = 'database';
       break;
     default:
-      throw new Error(`Data not implemented for moduleName: ${moduleName}`);
+      return createErrorResponse(ctx, 'INVALID_PARAMETER', `Unknown module: ${moduleName}. Valid modules: spend-analytics, vendor-performance, renewal-radar, rate-benchmarking`, 400);
   }
 
   const responseData = {

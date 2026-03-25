@@ -183,7 +183,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     to: notification.recipientEmail,
     subject: emailContent.subject,
     html: emailContent.html,
-    from: 'notifications@contigo.ch',
+    from: process.env.EMAIL_FROM || process.env.ADMIN_EMAIL || 'noreply@example.com',
   });
 
   // Also create a notification record in database for in-app notifications

@@ -53,7 +53,7 @@ export default function ArtifactsAnalyticsPage() {
   const loadMetrics = async () => {
     setLoading(true);
     try {
-      const tenantId = process.env['NEXT_PUBLIC_TENANT_ID'] || 'demo';
+      const tenantId = process.env['NEXT_PUBLIC_TENANT_ID'] || '';
       
       const response = await fetch(`/api/analytics/artifacts?tenantId=${tenantId}`);
       

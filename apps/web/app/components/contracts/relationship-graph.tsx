@@ -939,7 +939,14 @@ export function RelationshipGraph({
             </DialogHeader>
             {/* Amendment form would go here */}
             <div className="space-y-4">
-              <p className="text-sm text-gray-500">Amendment form coming soon...</p>
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600">
+                  To create an amendment, navigate to the contract detail page and use the &quot;Create Amendment&quot; action from the contract menu.
+                </p>
+                <p className="text-xs text-slate-400">
+                  Amendments are tracked as linked contracts with full version history.
+                </p>
+              </div>
               <Button onClick={() => setShowAmendmentDialog(false)}>Close</Button>
             </div>
           </DialogContent>
