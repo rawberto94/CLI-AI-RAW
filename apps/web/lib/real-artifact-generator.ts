@@ -1167,10 +1167,40 @@ export async function generateRealArtifacts(
 
     logger.info({ textLength: contractText.length }, 'Text extracted successfully');
 
+    // For DOCX files, also convert to formatted HTML for the redline editor
+    let docxHtml: string | null = null;
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === '.docx' || mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      try {
+        const buf = fileContent || await fs.readFile(actualPath);
+        const mammoth = await import('mammoth');
+        const htmlResult = await mammoth.convertToHtml({ buffer: buf });
+        if (htmlResult.value && htmlResult.value.length > 20) {
+          docxHtml = htmlResult.value;
+          logger.info({ htmlChars: docxHtml.length }, 'DOCX converted to HTML for redline editor');
+        }
+      } catch (htmlErr) {
+        logger.warn({ htmlErr }, 'DOCX→HTML conversion failed (non-critical, raw text still available)');
+      }
+    }
+
     // Persist raw text immediately so it's available for RAG and search
+    // Also store formatted HTML in metadata for the redline editor
+    const existingContract = await prisma.contract.findUnique({
+      where: { id: contractId },
+      select: { metadata: true },
+    });
+    const existingMeta = (existingContract?.metadata as Record<string, unknown>) || {};
+    const updateData: Record<string, unknown> = {
+      rawText: contractText,
+      searchableText: contractText.substring(0, 65535),
+    };
+    if (docxHtml) {
+      updateData.metadata = { ...existingMeta, docxHtml };
+    }
     await prisma.contract.update({
       where: { id: contractId },
-      data: { rawText: contractText, searchableText: contractText.substring(0, 65535) },
+      data: updateData,
     });
 
     // Update progress

@@ -55,11 +55,15 @@ export async function GET(
     const meta = (contract.metadata as Record<string, unknown>) || {};
     const redline = (meta.redline as Record<string, unknown>) || null;
 
+    // Content priority: saved redline > DOCX HTML (preserves formatting) > plain rawText
+    const docxHtml = meta.docxHtml as string | undefined;
+    const fallbackContent = docxHtml || contract.rawText || '';
+
     return createSuccessResponse(authCtx, {
       contractId: contract.id,
       contractTitle: contract.contractTitle,
       status: contract.status,
-      content: redline?.content ?? contract.rawText ?? '',
+      content: redline?.content ?? fallbackContent,
       changes: redline?.changes ?? [],
       comments: redline?.comments ?? [],
       documentStatus: redline?.documentStatus ?? 'draft',
