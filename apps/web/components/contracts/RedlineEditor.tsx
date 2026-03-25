@@ -1,6 +1,12 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import UnderlineExt from '@tiptap/extension-underline';
+import Highlight from '@tiptap/extension-highlight';
+import TextAlign from '@tiptap/extension-text-align';
+import Placeholder from '@tiptap/extension-placeholder';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Edit3,
@@ -128,13 +134,6 @@ export interface DocumentSection {
   type: 'title' | 'heading' | 'paragraph';
   content: string;
   level?: number;
-}
-
-interface UndoHistoryItem {
-  type: 'content' | 'change';
-  content?: DocumentSection[];
-  changes?: Change[];
-  timestamp: Date;
 }
 
 interface RedlineEditorProps {
@@ -589,59 +588,6 @@ export function RedlineEditor({
   onAddComment,
   className,
 }: RedlineEditorProps) {
-  // Initialize state with parsed sections
-  const parseContentToSections = (content: string): DocumentSection[] => {
-    const lines = content.split('\n');
-    const sections: DocumentSection[] = [];
-    let currentParagraph = '';
-    let sectionIndex = 0;
-    
-    lines.forEach((line, idx) => {
-      const trimmed = line.trim();
-      
-      if (trimmed.match(/^\d+\.\s+/)) {
-        // It's a heading
-        if (currentParagraph) {
-          sections.push({
-            id: `section-p-${sectionIndex++}`,
-            type: 'paragraph',
-            content: currentParagraph.trim(),
-          });
-          currentParagraph = '';
-        }
-        sections.push({
-          id: `section-h-${sectionIndex++}`,
-          type: 'heading',
-          content: trimmed,
-          level: 2,
-        });
-      } else if (trimmed === '') {
-        if (currentParagraph) {
-          sections.push({
-            id: `section-p-${sectionIndex++}`,
-            type: 'paragraph',
-            content: currentParagraph.trim(),
-          });
-          currentParagraph = '';
-        }
-      } else {
-        currentParagraph += (currentParagraph ? ' ' : '') + trimmed;
-      }
-    });
-    
-    if (currentParagraph) {
-      sections.push({
-        id: `section-p-${sectionIndex++}`,
-        type: 'paragraph',
-        content: currentParagraph.trim(),
-      });
-    }
-    
-    return sections;
-  };
-
-  const [sections, setSections] = useState<DocumentSection[]>(() => parseContentToSections(initialContent));
-  const [originalSections] = useState<DocumentSection[]>(() => parseContentToSections(initialContent));
   const [changes, setChanges] = useState<Change[]>(initialChanges || []);
   const [selectedChangeId, setSelectedChangeId] = useState<string | null>(null);
   const [showChanges, setShowChanges] = useState(true);
@@ -653,123 +599,84 @@ export function RedlineEditor({
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
-  const [editingSection, setEditingSection] = useState<string | null>(null);
-  const [editBuffer, setEditBuffer] = useState<string>('');
-  const [undoStack, setUndoStack] = useState<UndoHistoryItem[]>([]);
-  const [redoStack, setRedoStack] = useState<UndoHistoryItem[]>([]);
   
   const editorRef = useRef<HTMLDivElement>(null);
-  const textareaRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
 
-  // Track if text has changed in a section
-  const handleSectionEdit = useCallback((sectionId: string, newContent: string) => {
-    const originalSection = originalSections.find(s => s.id === sectionId);
-    const currentSection = sections.find(s => s.id === sectionId);
-    
-    if (!currentSection) return;
-    
-    // Save to undo stack
-    setUndoStack(prev => [...prev, { type: 'content', content: [...sections], timestamp: new Date() }]);
-    setRedoStack([]);
-    
-    // Update section
-    setSections(prev => prev.map(s => 
-      s.id === sectionId ? { ...s, content: newContent } : s
-    ));
-    
-    // Track as a change if content differs from original
-    if (originalSection && originalSection.content !== newContent && mode === 'suggest') {
-      const existingChangeForSection = changes.find(
-        c => c.position.sectionId === sectionId && c.status === 'pending' && c.author.id === currentUser.id
-      );
-      
-      if (existingChangeForSection) {
-        // Update existing change
-        setChanges(prev => prev.map(c => 
-          c.id === existingChangeForSection.id 
-            ? { ...c, newText: newContent, originalText: originalSection.content, timestamp: new Date() }
-            : c
-        ));
-      } else {
-        // Create new change
-        const newChange: Change = {
-          id: generateId(),
-          type: 'replacement',
-          originalText: originalSection.content,
-          newText: newContent,
-          position: {
-            start: 0,
-            end: originalSection.content.length,
-            paragraph: sections.findIndex(s => s.id === sectionId),
-            sectionId,
-          },
-          author: {
-            id: currentUser.id,
-            name: currentUser.name,
-            avatar: currentUser.avatar,
-          },
-          timestamp: new Date(),
-          status: 'pending',
-          comments: [],
-        };
-        setChanges(prev => [...prev, newChange]);
-      }
-    }
-    
-    setHasUnsavedChanges(true);
-  }, [sections, originalSections, changes, currentUser, mode]);
-
-  // Start editing a section
-  const handleStartEdit = useCallback((sectionId: string) => {
-    if (mode === 'view' || readOnly) return;
-    
-    const section = sections.find(s => s.id === sectionId);
-    if (section) {
-      setEditingSection(sectionId);
-      setEditBuffer(section.content);
-    }
-  }, [sections, mode, readOnly]);
-
-  // Finish editing a section
-  const handleFinishEdit = useCallback((save: boolean = true) => {
-    if (editingSection && save && editBuffer !== sections.find(s => s.id === editingSection)?.content) {
-      handleSectionEdit(editingSection, editBuffer);
-    }
-    setEditingSection(null);
-    setEditBuffer('');
-  }, [editingSection, editBuffer, sections, handleSectionEdit]);
-
-  // Detect text changes when user types
-  const handleTextChange = useCallback((sectionId: string, e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setEditBuffer(e.target.value);
-    setHasUnsavedChanges(true);
+  // Convert plain text initialContent to HTML for TipTap
+  const contentToHtml = useCallback((text: string): string => {
+    if (!text) return '<p></p>';
+    if (text.startsWith('<')) return text; // already HTML
+    return text.split('\n').map(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return '';
+      if (trimmed.match(/^\d+\.\s+/)) return `<h2>${trimmed}</h2>`;
+      return `<p>${trimmed}</p>`;
+    }).filter(Boolean).join('');
   }, []);
+
+  const [originalHtml] = useState(() => contentToHtml(initialContent));
+
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit,
+      UnderlineExt,
+      Highlight.configure({ multicolor: true }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Placeholder.configure({ placeholder: 'Start editing the contract...' }),
+    ],
+    content: contentToHtml(initialContent),
+    editable: mode !== 'view' && !readOnly,
+    editorProps: {
+      attributes: {
+        class: 'tiptap-redline prose prose-slate max-w-none focus:outline-none min-h-[400px] px-2 py-1',
+        style: 'font-family: Georgia, "Times New Roman", serif',
+      },
+    },
+    onUpdate: ({ editor: ed }) => {
+      setHasUnsavedChanges(true);
+      // Track changes by comparing with original
+      const currentText = ed.getText();
+      const originalText = new DOMParser()
+        .parseFromString(originalHtml, 'text/html')
+        .body.textContent || '';
+      if (currentText !== originalText) {
+        const existingAutoChange = changes.find(c => c.id === 'auto-tracked');
+        const change: Change = {
+          id: 'auto-tracked',
+          type: 'replacement',
+          originalText: originalText.slice(0, 200),
+          newText: currentText.slice(0, 200),
+          position: { start: 0, end: currentText.length, paragraph: 0 },
+          author: currentUser,
+          timestamp: new Date(),
+          status: mode === 'suggest' ? 'pending' : 'accepted',
+          comments: existingAutoChange?.comments || [],
+        };
+        setChanges(prev => {
+          const filtered = prev.filter(c => c.id !== 'auto-tracked');
+          return [...filtered, change];
+        });
+      }
+    },
+  });
+
+  // Update editor editable state when mode changes
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(mode !== 'view' && !readOnly);
+    }
+  }, [editor, mode, readOnly]);
 
   // Handle undo
   const handleUndo = useCallback(() => {
-    if (undoStack.length === 0) return;
-    
-    const lastItem = undoStack[undoStack.length - 1];
-    if (lastItem?.content) {
-      setRedoStack(prev => [...prev, { type: 'content', content: [...sections], timestamp: new Date() }]);
-      setSections(lastItem.content);
-      setUndoStack(prev => prev.slice(0, -1));
-      toast.info('Undone');
-    }
-  }, [undoStack, sections]);
+    if (editor) editor.chain().focus().undo().run();
+  }, [editor]);
 
   // Handle redo
   const handleRedo = useCallback(() => {
-    if (redoStack.length === 0) return;
-    
-    const lastItem = redoStack[redoStack.length - 1];
-    if (lastItem?.content) {
-      setUndoStack(prev => [...prev, { type: 'content', content: [...sections], timestamp: new Date() }]);
-      setSections(lastItem.content);
-      setRedoStack(prev => prev.slice(0, -1));
-      toast.info('Redone');
-    }
-  }, [redoStack, sections]);
+    if (editor) editor.chain().focus().redo().run();
+  }, [editor]);
 
   const handleAcceptChange = useCallback((changeId: string) => {
     setChanges(prev => prev.map(c => 
@@ -783,11 +690,9 @@ export function RedlineEditor({
   const handleRejectChange = useCallback((changeId: string) => {
     const change = changes.find(c => c.id === changeId);
     
-    // If rejecting, revert the content to original
-    if (change?.position.sectionId && change.originalText) {
-      setSections(prev => prev.map(s => 
-        s.id === change.position.sectionId ? { ...s, content: change.originalText! } : s
-      ));
+    // If rejecting, restore original content via editor
+    if (change?.originalText && editor) {
+      editor.commands.setContent(contentToHtml(change.originalText));
     }
     
     setChanges(prev => prev.map(c => 
@@ -796,7 +701,7 @@ export function RedlineEditor({
     onRejectChange?.(changeId);
     setHasUnsavedChanges(true);
     toast.success('Change rejected');
-  }, [changes, onRejectChange]);
+  }, [changes, onRejectChange, editor, contentToHtml]);
 
   const handleAcceptAll = useCallback(() => {
     const pendingCount = changes.filter(c => c.status === 'pending').length;
@@ -810,23 +715,17 @@ export function RedlineEditor({
   const handleRejectAll = useCallback(() => {
     const pendingChanges = changes.filter(c => c.status === 'pending');
     
-    // Revert all pending changes
-    let updatedSections = [...sections];
-    pendingChanges.forEach(change => {
-      if (change.position.sectionId && change.originalText) {
-        updatedSections = updatedSections.map(s => 
-          s.id === change.position.sectionId ? { ...s, content: change.originalText! } : s
-        );
-      }
-    });
-    setSections(updatedSections);
+    // Revert to original content
+    if (editor) {
+      editor.commands.setContent(contentToHtml(initialContent));
+    }
     
     setChanges(prev => prev.map(c => 
       c.status === 'pending' ? { ...c, status: 'rejected' as const } : c
     ));
     setHasUnsavedChanges(true);
     toast.success(`${pendingChanges.length} changes rejected`);
-  }, [changes, sections]);
+  }, [changes, editor, contentToHtml, initialContent]);
 
   const handleAddComment = useCallback((changeId: string, content: string) => {
     const newComment: ChangeComment = {
@@ -863,7 +762,7 @@ export function RedlineEditor({
   const handleAISuggestions = useCallback(async () => {
     setIsAISuggesting(true);
     try {
-      const fullContent = sections.map(s => s.content).join('\n\n');
+      const fullContent = editor?.getText() || '';
       const response = await fetch('/api/copilot/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -886,95 +785,60 @@ export function RedlineEditor({
       // Switch to suggest mode so AI changes are tracked 
       setMode('suggest');
 
-      // Apply AI suggestion as a tracked change on the first paragraph section
-      const targetSection = sections.find(s => s.type === 'paragraph');
-      if (targetSection) {
-        const newChange: Change = {
-          id: generateId(),
-          type: 'replacement',
-          originalText: targetSection.content,
-          newText: suggestion.slice(0, targetSection.content.length + 500),
-          position: {
-            start: 0,
-            end: targetSection.content.length,
-            paragraph: sections.findIndex(s => s.id === targetSection.id),
-            sectionId: targetSection.id,
-          },
-          author: {
-            id: 'ai-copilot',
-            name: 'AI Copilot',
-            avatar: undefined,
-          },
-          timestamp: new Date(),
-          status: 'pending',
-          comments: [],
-        };
-        setChanges(prev => [...prev, newChange]);
-        setSections(prev => prev.map(s => 
-          s.id === targetSection.id ? { ...s, content: suggestion.slice(0, targetSection.content.length + 500) } : s
-        ));
-        setHasUnsavedChanges(true);
-        toast.success('AI suggestions added as tracked changes', {
-          description: 'Review and accept or reject them in the changes panel.',
-        });
-      }
+      // Apply AI suggestion as a tracked change
+      const newChange: Change = {
+        id: generateId(),
+        type: 'replacement',
+        originalText: fullContent.slice(0, 200),
+        newText: suggestion.slice(0, 200),
+        position: {
+          start: 0,
+          end: fullContent.length,
+          paragraph: 0,
+        },
+        author: {
+          id: 'ai-copilot',
+          name: 'AI Copilot',
+          avatar: undefined,
+        },
+        timestamp: new Date(),
+        status: 'pending',
+        comments: [],
+      };
+      setChanges(prev => [...prev, newChange]);
+      editor?.commands.setContent(contentToHtml(suggestion));
+      setHasUnsavedChanges(true);
+      toast.success('AI suggestions added as tracked changes', {
+        description: 'Review and accept or reject them in the changes panel.',
+      });
     } catch (err) {
       console.error('AI suggestions failed:', err);
       toast.error('Failed to get AI suggestions');
     } finally {
       setIsAISuggesting(false);
     }
-  }, [sections]);
+  }, [editor, contentToHtml]);
 
   // Formatting helpers for the text editor
   const applyFormatting = useCallback((format: 'bold' | 'italic' | 'underline' | 'highlight') => {
-    if (!editingSection) {
-      toast.info('Click on a paragraph to edit it first');
-      return;
+    if (!editor) return;
+    switch (format) {
+      case 'bold': editor.chain().focus().toggleBold().run(); break;
+      case 'italic': editor.chain().focus().toggleItalic().run(); break;
+      case 'underline': editor.chain().focus().toggleUnderline().run(); break;
+      case 'highlight': editor.chain().focus().toggleHighlight().run(); break;
     }
-    const textarea = textareaRefs.current.get(editingSection);
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = editBuffer.slice(start, end);
-
-    if (!selected) {
-      toast.info('Select text to format');
-      return;
-    }
-
-    const markers: Record<string, [string, string]> = {
-      bold: ['**', '**'],
-      italic: ['_', '_'],
-      underline: ['__', '__'],
-      highlight: ['==', '=='],
-    };
-
-    const [pre, post] = markers[format];
-    const newText = editBuffer.slice(0, start) + pre + selected + post + editBuffer.slice(end);
-    setEditBuffer(newText);
-    setHasUnsavedChanges(true);
-
-    // Restore cursor position after the formatted text
-    requestAnimationFrame(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + pre.length, end + pre.length);
-    });
-  }, [editingSection, editBuffer]);
+  }, [editor]);
 
   const handleSave = useCallback(() => {
-    // Convert sections back to content string
-    const content = sections.map(s => {
-      if (s.type === 'heading') return `\n${s.content}\n`;
-      return s.content;
-    }).join('\n\n');
+    if (!editor) return;
+    const content = editor.getHTML();
     
     onSave?.(content, changes);
     setHasUnsavedChanges(false);
     setLastSaved(new Date());
     toast.success('Document saved successfully');
-  }, [sections, changes, onSave]);
+  }, [editor, changes, onSave]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -997,90 +861,6 @@ export function RedlineEditor({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleSave, handleUndo, handleRedo]);
 
-  // Auto-resize textarea
-  const adjustTextareaHeight = useCallback((textarea: HTMLTextAreaElement) => {
-    textarea.style.height = 'auto';
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, []);
-
-  // Render editable section
-  const renderSection = (section: DocumentSection, index: number) => {
-    const isEditing = editingSection === section.id;
-    const change = changes.find(c => 
-      c.position.sectionId === section.id && c.status === 'pending'
-    );
-    
-    if (section.type === 'heading') {
-      return (
-        <h2 
-          key={section.id}
-          className="text-lg font-semibold text-slate-900 mt-6 mb-3"
-        >
-          {section.content}
-        </h2>
-      );
-    }
-    
-    if (isEditing) {
-      return (
-        <div key={section.id} className="relative mb-4">
-          <textarea
-            ref={(el) => {
-              if (el) {
-                textareaRefs.current.set(section.id, el);
-                adjustTextareaHeight(el);
-              }
-            }}
-            value={editBuffer}
-            onChange={(e) => {
-              handleTextChange(section.id, e);
-              adjustTextareaHeight(e.target);
-            }}
-            onBlur={() => handleFinishEdit(true)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                handleFinishEdit(false);
-              }
-            }}
-            className={cn(
-              "w-full p-3 text-slate-700 leading-relaxed bg-violet-50 border-2 border-violet-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-violet-500",
-              mode === 'suggest' && "bg-yellow-50 border-yellow-300"
-            )}
-            autoFocus
-          />
-          <div className="absolute -top-2 -right-2 flex items-center gap-1">
-            <span className={cn(
-              "px-2 py-0.5 text-xs rounded-full",
-              mode === 'edit' ? "bg-violet-500 text-white" : "bg-yellow-500 text-white"
-            )}>
-              {mode === 'edit' ? 'Editing' : 'Suggesting'}
-            </span>
-          </div>
-        </div>
-      );
-    }
-    
-    return (
-      <p
-        key={section.id}
-        onClick={() => handleStartEdit(section.id)}
-        className={cn(
-          "mb-4 text-slate-700 leading-relaxed transition-all cursor-text",
-          mode !== 'view' && "hover:bg-slate-50 hover:ring-2 hover:ring-slate-200 rounded p-2 -m-2",
-          change && "bg-yellow-50 ring-2 ring-yellow-300 rounded p-2 -m-2"
-        )}
-      >
-        {section.content}
-        {change && (
-          <span className="ml-2 inline-flex items-center gap-1 text-xs text-yellow-600">
-            <AlertCircle className="w-3 h-3" />
-            Pending change
-          </span>
-        )}
-      </p>
-    );
-  };
-
   return (
     <TooltipProvider>
       <div className={cn("h-full flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden", className)}>
@@ -1100,7 +880,6 @@ export function RedlineEditor({
                       <button
                         onClick={() => {
                           setMode(m);
-                          setEditingSection(null);
                         }}
                         disabled={readOnly && m !== 'view'}
                         className={cn(
@@ -1127,7 +906,10 @@ export function RedlineEditor({
                   <div className="flex items-center gap-1">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button onClick={() => applyFormatting('bold')} className="p-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">
+                        <button onClick={() => applyFormatting('bold')} className={cn(
+                          "p-2 rounded transition-colors",
+                          editor?.isActive('bold') ? "bg-violet-100 text-violet-700" : "text-slate-600 hover:bg-slate-100"
+                        )}>
                           <Bold className="w-4 h-4" />
                         </button>
                       </TooltipTrigger>
@@ -1135,7 +917,10 @@ export function RedlineEditor({
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button onClick={() => applyFormatting('italic')} className="p-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">
+                        <button onClick={() => applyFormatting('italic')} className={cn(
+                          "p-2 rounded transition-colors",
+                          editor?.isActive('italic') ? "bg-violet-100 text-violet-700" : "text-slate-600 hover:bg-slate-100"
+                        )}>
                           <Italic className="w-4 h-4" />
                         </button>
                       </TooltipTrigger>
@@ -1143,7 +928,10 @@ export function RedlineEditor({
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button onClick={() => applyFormatting('underline')} className="p-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">
+                        <button onClick={() => applyFormatting('underline')} className={cn(
+                          "p-2 rounded transition-colors",
+                          editor?.isActive('underline') ? "bg-violet-100 text-violet-700" : "text-slate-600 hover:bg-slate-100"
+                        )}>
                           <Underline className="w-4 h-4" />
                         </button>
                       </TooltipTrigger>
@@ -1151,7 +939,10 @@ export function RedlineEditor({
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button onClick={() => applyFormatting('highlight')} className="p-2 text-slate-600 hover:bg-slate-100 rounded transition-colors">
+                        <button onClick={() => applyFormatting('highlight')} className={cn(
+                          "p-2 rounded transition-colors",
+                          editor?.isActive('highlight') ? "bg-violet-100 text-violet-700" : "text-slate-600 hover:bg-slate-100"
+                        )}>
                           <Highlighter className="w-4 h-4" />
                         </button>
                       </TooltipTrigger>
@@ -1168,10 +959,10 @@ export function RedlineEditor({
                   <TooltipTrigger asChild>
                     <button 
                       onClick={handleUndo}
-                      disabled={undoStack.length === 0}
+                      disabled={!editor?.can().undo()}
                       className={cn(
                         "p-2 text-slate-600 hover:bg-slate-100 rounded transition-colors",
-                        undoStack.length === 0 && "opacity-50 cursor-not-allowed"
+                        !editor?.can().undo() && "opacity-50 cursor-not-allowed"
                       )}
                     >
                       <Undo2 className="w-4 h-4" />
@@ -1183,10 +974,10 @@ export function RedlineEditor({
                   <TooltipTrigger asChild>
                     <button 
                       onClick={handleRedo}
-                      disabled={redoStack.length === 0}
+                      disabled={!editor?.can().redo()}
                       className={cn(
                         "p-2 text-slate-600 hover:bg-slate-100 rounded transition-colors",
-                        redoStack.length === 0 && "opacity-50 cursor-not-allowed"
+                        !editor?.can().redo() && "opacity-50 cursor-not-allowed"
                       )}
                     >
                       <Redo2 className="w-4 h-4" />
@@ -1274,18 +1065,12 @@ export function RedlineEditor({
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent>
                       <DropdownMenuItem onClick={() => {
-                        const content = sections.map(s => {
-                          const change = changes.find(c => c.position.sectionId === s.id && c.status === 'pending');
-                          if (change) {
-                            return `${s.content}\n  [CHANGE: ${change.originalText?.slice(0, 50)}... → ${change.newText?.slice(0, 50)}...]`;
-                          }
-                          return s.content;
-                        }).join('\n\n');
-                        const blob = new Blob([content], { type: 'text/plain' });
+                        const content = editor?.getHTML() || '';
+                        const blob = new Blob([content], { type: 'text/html' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = `${documentId}-redlined.txt`;
+                        a.download = `${documentId}-redlined.html`;
                         a.click();
                         URL.revokeObjectURL(url);
                         toast.success('Exported with redlines');
@@ -1294,7 +1079,7 @@ export function RedlineEditor({
                         Export with redlines
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => {
-                        const content = sections.map(s => s.content).join('\n\n');
+                        const content = editor?.getText() || '';
                         const blob = new Blob([content], { type: 'text/plain' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -1317,7 +1102,7 @@ export function RedlineEditor({
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
                   <DropdownMenuItem onClick={() => {
-                    navigator.clipboard.writeText(sections.map(s => s.content).join('\n\n'));
+                    navigator.clipboard.writeText(editor?.getText() || '');
                     toast.success('Content copied to clipboard');
                   }}>
                     <Copy className="w-4 h-4 mr-2" />
@@ -1334,9 +1119,7 @@ export function RedlineEditor({
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => {
-                    // Restore to original content
-                    setUndoStack(prev => [...prev, { type: 'content', content: [...sections], timestamp: new Date() }]);
-                    setSections(parseContentToSections(initialContent));
+                    editor?.commands.setContent(contentToHtml(initialContent));
                     setChanges([]);
                     setHasUnsavedChanges(true);
                     toast.success('Restored to original version');
@@ -1354,20 +1137,7 @@ export function RedlineEditor({
         <div className="flex-1 flex overflow-hidden">
           {/* Editor */}
           <div className="flex-1 overflow-y-auto p-8">
-            <div 
-              ref={editorRef}
-              className={cn(
-                "max-w-3xl mx-auto",
-                mode === 'edit' && "cursor-text"
-              )}
-            >
-              {/* Document Title */}
-              <h1 className="text-2xl font-bold text-slate-900 mb-6">
-                {sections.find(s => s.type === 'title')?.content 
-                  || sections.find(s => s.type === 'heading')?.content 
-                  || 'Contract Document'}
-              </h1>
-
+            <div ref={editorRef} className="max-w-3xl mx-auto">
               {/* Mode indicator */}
               {mode !== 'view' && (
                 <div className={cn(
@@ -1377,21 +1147,18 @@ export function RedlineEditor({
                   {mode === 'edit' ? (
                     <>
                       <Edit3 className="w-4 h-4" />
-                      <span><strong>Edit Mode:</strong> Click on any paragraph to edit. Changes are applied directly.</span>
+                      <span><strong>Edit Mode:</strong> Edit directly in the document. Formatting is preserved.</span>
                     </>
                   ) : (
                     <>
                       <MessageSquare className="w-4 h-4" />
-                      <span><strong>Suggest Mode:</strong> Click on any paragraph to suggest changes. Your edits will be tracked for review.</span>
+                      <span><strong>Suggest Mode:</strong> Your edits will be tracked as suggestions for review.</span>
                     </>
                   )}
                 </div>
               )}
-
-              {/* Document content */}
-              <div className="prose prose-slate max-w-none">
-                {sections.map((section, index) => renderSection(section, index))}
-              </div>
+              {/* TipTap Editor */}
+              <EditorContent editor={editor} />
             </div>
           </div>
 
@@ -1445,6 +1212,8 @@ export function RedlineEditor({
             <span>Version {versions.find(v => v.id === currentVersionId)?.version || 1}</span>
             <span>•</span>
             <span>{changes.filter(c => c.status === 'pending').length} pending changes</span>
+            <span>•</span>
+            <span>{editor?.getText().split(/\s+/).filter(Boolean).length || 0} words</span>
             <span>•</span>
             <span>
               {lastSaved 
