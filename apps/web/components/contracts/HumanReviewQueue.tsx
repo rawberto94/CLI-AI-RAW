@@ -631,13 +631,16 @@ export const HumanReviewQueue: React.FC<HumanReviewQueueProps> = ({
 
   // Load data
   useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+
     const loadData = async () => {
       setLoading(true);
       try {
         // Fetch from OCR review queue API
         const [itemsRes, statsRes] = await Promise.all([
-          fetch(`/api/ocr/review-queue?status=${statusFilter}${tenantId ? `&tenantId=${tenantId}` : ''}`).then(r => r.ok ? r.json() : null),
-          fetch(`/api/ocr/review-queue/stats${tenantId ? `?tenantId=${tenantId}` : ''}`).then(r => r.ok ? r.json() : null),
+          fetch(`/api/ocr/review-queue?status=${statusFilter}${tenantId ? `&tenantId=${tenantId}` : ''}`, { signal }).then(r => r.ok ? r.json() : null),
+          fetch(`/api/ocr/review-queue/stats${tenantId ? `?tenantId=${tenantId}` : ''}`, { signal }).then(r => r.ok ? r.json() : null),
         ]);
 
         if (itemsRes?.items?.length) {
@@ -663,6 +666,7 @@ export const HumanReviewQueue: React.FC<HumanReviewQueueProps> = ({
           });
         }
       } catch (error) {
+        if ((error as Error)?.name === 'AbortError') return;
         console.error('Failed to load review queue:', error);
       } finally {
         setLoading(false);
@@ -670,6 +674,8 @@ export const HumanReviewQueue: React.FC<HumanReviewQueueProps> = ({
     };
 
     loadData();
+
+    return () => controller.abort();
   }, [tenantId, statusFilter]);
 
   // Filter items

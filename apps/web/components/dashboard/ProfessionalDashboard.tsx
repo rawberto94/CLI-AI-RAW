@@ -62,22 +62,22 @@ import { SavingsTrackerWidget, type SavingsData } from './SavingsTrackerWidget';
 import { TeamActivityWidget, type TeamActivity, type TeamMember } from './TeamActivityWidget';
 import { IntegrationStatusWidget, type Integration } from './IntegrationStatusWidget';
 import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
+  LazyLineChart as LineChart,
+  LazyLine as Line,
+  LazyAreaChart as AreaChart,
+  LazyArea as Area,
+  LazyBarChart as BarChart,
+  LazyBar as Bar,
+  LazyPieChart as PieChart,
+  LazyPie as Pie,
+  LazyCell as Cell,
+  LazyXAxis as XAxis,
+  LazyYAxis as YAxis,
+  LazyCartesianGrid as CartesianGrid,
+  LazyTooltip as Tooltip,
+  LazyLegend as Legend,
+  LazyResponsiveContainer as ResponsiveContainer,
+} from '@/components/charts/lazy-charts';
 
 // ============ TYPES ============
 

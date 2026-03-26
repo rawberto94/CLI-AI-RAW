@@ -6,7 +6,14 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import {
+  LazyPieChart as PieChart,
+  LazyPie as Pie,
+  LazyCell as Cell,
+  LazyResponsiveContainer as ResponsiveContainer,
+  LazyLegend as Legend,
+  LazyTooltip as Tooltip,
+} from "@/components/charts/lazy-charts";
 import { motion } from "framer-motion";
 import { FileText, PieChart as PieChartIcon } from "lucide-react";
 

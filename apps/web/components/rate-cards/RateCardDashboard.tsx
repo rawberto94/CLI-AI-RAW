@@ -74,22 +74,29 @@ export function RateCardDashboard() {
   const [opportunities, setOpportunities] = React.useState<SavingsOpportunity[]>([]);
 
   React.useEffect(() => {
-    loadDashboardData();
+    const controller = new AbortController();
+    loadDashboardData(controller.signal);
+    return () => controller.abort();
   }, []);
 
-  const loadDashboardData = async () => {
-    // Load all dashboard data
-    const [statsData, rolesData, suppliersData, oppsData] = await Promise.all([
-      fetch('/api/rate-cards/stats').then(r => r.json()),
-      fetch('/api/rate-cards/trending').then(r => r.json()),
-      fetch('/api/suppliers/top').then(r => r.json()),
-      fetch('/api/opportunities?status=IDENTIFIED&limit=5').then(r => r.json()),
-    ]);
+  const loadDashboardData = async (signal?: AbortSignal) => {
+    try {
+      // Load all dashboard data
+      const [statsData, rolesData, suppliersData, oppsData] = await Promise.all([
+        fetch('/api/rate-cards/stats', { signal }).then(r => r.json()),
+        fetch('/api/rate-cards/trending', { signal }).then(r => r.json()),
+        fetch('/api/suppliers/top', { signal }).then(r => r.json()),
+        fetch('/api/opportunities?status=IDENTIFIED&limit=5', { signal }).then(r => r.json()),
+      ]);
 
-    setStats(statsData.data);
-    setTrendingRoles(rolesData.data);
-    setTopSuppliers(suppliersData.data);
-    setOpportunities(oppsData.data.opportunities);
+      setStats(statsData.data);
+      setTrendingRoles(rolesData.data);
+      setTopSuppliers(suppliersData.data);
+      setOpportunities(oppsData.data.opportunities);
+    } catch (error) {
+      if ((error as Error)?.name === 'AbortError') return;
+      console.error('Failed to load dashboard data:', error);
+    }
   };
 
   if (!stats) {

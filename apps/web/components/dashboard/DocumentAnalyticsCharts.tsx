@@ -11,19 +11,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
-  AreaChart, 
-  Area, 
-  Bar,
-  LineChart,
-  Line,
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  Legend,
-  ComposedChart
-} from "recharts";
+  LazyAreaChart as AreaChart, 
+  LazyArea as Area, 
+  LazyBar as Bar,
+  LazyLineChart as LineChart,
+  LazyLine as Line,
+  LazyXAxis as XAxis, 
+  LazyYAxis as YAxis, 
+  LazyCartesianGrid as CartesianGrid, 
+  LazyTooltip as Tooltip, 
+  LazyResponsiveContainer as ResponsiveContainer,
+  LazyLegend as Legend,
+  LazyComposedChart as ComposedChart,
+} from "@/components/charts/lazy-charts";
 import { motion } from "framer-motion";
 import { 
   TrendingUp, 

@@ -353,13 +353,13 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
   const [workflowMetrics, setWorkflowMetrics] = useState<WorkflowMetrics[]>([]);
   const [stepMetrics, setStepMetrics] = useState<StepMetrics[]>([]);
 
-  const fetchData = async () => {
+  const fetchData = async (signal?: AbortSignal) => {
     setIsRefreshing(true);
     try {
       const [wfRes, execRes, slaRes] = await Promise.all([
-        fetch('/api/workflows').then(r => r.ok ? r.json() : null),
-        fetch('/api/workflows/executions').then(r => r.ok ? r.json() : null),
-        fetch('/api/workflows/sla').then(r => r.ok ? r.json() : null),
+        fetch('/api/workflows', { signal }).then(r => r.ok ? r.json() : null),
+        fetch('/api/workflows/executions', { signal }).then(r => r.ok ? r.json() : null),
+        fetch('/api/workflows/sla', { signal }).then(r => r.ok ? r.json() : null),
       ]);
 
       // Map workflows + executions into WorkflowMetrics
@@ -411,7 +411,8 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
           topApprover: s.topApprover,
         })));
       }
-    } catch {
+    } catch (error) {
+      if ((error as Error)?.name === 'AbortError') return;
       // API unavailable — show empty state
     } finally {
       setIsRefreshing(false);
@@ -419,7 +420,9 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+    fetchData(controller.signal);
+    return () => controller.abort();
   }, [timeRange]);
 
   // Aggregate statistics

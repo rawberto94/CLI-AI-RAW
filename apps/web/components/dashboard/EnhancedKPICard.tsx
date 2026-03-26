@@ -18,11 +18,11 @@ import {
   ArrowDownRight,
 } from 'lucide-react';
 import {
-  LineChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-} from 'recharts';
+  LazyLineChart as LineChart,
+  LazyLine as Line,
+  LazyResponsiveContainer as ResponsiveContainer,
+  LazyTooltip as Tooltip,
+} from '@/components/charts/lazy-charts';
 
 export interface SparklineData {
   value: number;
