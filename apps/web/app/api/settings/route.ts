@@ -89,7 +89,7 @@ export const PUT = withAuthApiHandler(async (request, ctx) => {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'section and updates are required', 400);
     }
 
-    const validSections = ['system', 'notifications', 'security', 'display'];
+    const validSections = ['system', 'notifications', 'security', 'display', 'processing'];
     if (!validSections.includes(section)) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', `Invalid section: ${section}. Must be one of: ${validSections.join(', ')}`, 400);
     }

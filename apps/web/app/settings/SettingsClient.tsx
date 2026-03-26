@@ -1,16 +1,14 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { PageBreadcrumb } from '@/components/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Toggle } from "@/components/toggle";
-import { Alert, InlineAlert } from "@/components/alert";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/accordion";
+import { Alert } from "@/components/alert";
 import {
   Settings,
   User,
@@ -29,106 +27,166 @@ import {
   EyeOff,
   Save,
   RefreshCw,
-  CheckCircle,
   Tag,
   FolderTree,
   HelpCircle,
   Play,
   FolderSync,
+  Loader2,
 } from "lucide-react";
 
-// Mock settings data (kept local to the client component)
-const settingsData = {
-  user: {
-    name: "Roberto Ostojic",
-    email: "roberto@company.com",
-    role: "System Administrator",
-    lastLogin: "2024-01-20 09:30:00",
-    avatar: null,
-  },
+// Default settings matching the API defaults
+const DEFAULT_SETTINGS = {
   system: {
-    timezone: "UTC-8 (Pacific)",
-    language: "English (US)",
-    dateFormat: "MM/DD/YYYY",
-    currency: "USD",
-    theme: "Light",
-  },
-  security: {
-    twoFactorEnabled: true,
-    sessionTimeout: 8, // hours
-    passwordPolicy: "Strong",
-    apiTokens: 3,
-    lastPasswordChange: "2024-01-10",
+    timezone: 'America/New_York',
+    language: 'en',
+    dateFormat: 'MM/DD/YYYY',
+    currency: 'USD',
+    theme: 'system',
   },
   notifications: {
-    email: {
-      contractUploaded: true,
-      processingComplete: true,
-      riskAlerts: true,
-      complianceIssues: true,
-      systemMaintenance: false,
-      weeklyReports: true,
-    },
-    push: {
-      enabled: true,
-      criticalAlerts: true,
-      processingUpdates: false,
-      weeklyDigest: true,
-    },
+    emailEnabled: true,
+    pushEnabled: true,
+    contractAlerts: true,
+    renewalReminders: true,
+    complianceAlerts: true,
+    weeklyDigest: true,
   },
-  processing: {
-    autoProcessing: true,
-    aiAnalysis: true,
-    riskAssessment: true,
-    complianceCheck: true,
-    ocrEnabled: true,
-    retentionPeriod: 7, // years
-    backupFrequency: "Daily",
+  security: {
+    sessionTimeout: 480,
+    requireMFA: false,
+    passwordMinLength: 8,
   },
-  integrations: {
-    sharepoint: { enabled: false, configured: false },
-    salesforce: { enabled: true, configured: true },
-    slack: { enabled: true, configured: true },
-    teams: { enabled: false, configured: false },
-    webhook: { enabled: true, configured: true },
+  display: {
+    defaultDashboard: 'overview',
+    contractsPerPage: 25,
+    showWelcomeScreen: true,
+    compactMode: false,
   },
 };
+
+interface UserInfo {
+  name: string;
+  email: string;
+  role: string;
+  avatar: string | null;
+}
 
 export default function SettingsClient() {
   const [activeTab, setActiveTab] = React.useState("general");
   const [showApiKey, setShowApiKey] = React.useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
   
-  // State for toggles
-  const [emailNotifications, setEmailNotifications] = useState(settingsData.notifications.email);
-  const [pushNotifications, setPushNotifications] = useState(settingsData.notifications.push);
-  const [processingSettings, setProcessingSettings] = useState(settingsData.processing);
-  const [integrationSettings, setIntegrationSettings] = useState(settingsData.integrations);
+  // Real settings state fetched from API
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [systemSettings, setSystemSettings] = useState(DEFAULT_SETTINGS.system);
+  const [notificationSettings, setNotificationSettings] = useState(DEFAULT_SETTINGS.notifications);
+  const [securitySettings, setSecuritySettings] = useState(DEFAULT_SETTINGS.security);
+  const [displaySettings, setDisplaySettings] = useState(DEFAULT_SETTINGS.display);
+  const [processingSettings, setProcessingSettings] = useState({
+    autoProcessing: true,
+    aiAnalysis: true,
+    riskAssessment: true,
+    ocrEnabled: true,
+    retentionPeriod: '7',
+    backupFrequency: 'daily',
+  });
 
-  // Handle save changes
-  const handleSaveChanges = useCallback(async () => {
-    toast.info('Saving settings...');
-    try {
-      const res = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settingsData),
-      });
-      if (res.ok) {
-        toast.success('Settings saved successfully');
-      } else {
-        throw new Error('Failed to save');
+  // Fetch settings from API on mount
+  useEffect(() => {
+    async function fetchSettings() {
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          const settings = data.data?.settings || data.settings || DEFAULT_SETTINGS;
+          const user = data.data?.user || data.user;
+          if (user) setUserInfo(user);
+          if (settings.system) setSystemSettings(s => ({ ...s, ...settings.system }));
+          if (settings.notifications) setNotificationSettings(s => ({ ...s, ...settings.notifications }));
+          if (settings.security) setSecuritySettings(s => ({ ...s, ...settings.security }));
+          if (settings.display) setDisplaySettings(s => ({ ...s, ...settings.display }));
+        }
+      } catch {
+        toast.error('Failed to load settings');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      toast.error('Failed to save settings');
     }
+    fetchSettings();
   }, []);
 
-  // Handle reset to defaults
+  // Mark dirty when any setting changes
+  const updateSystem = useCallback((updates: Partial<typeof DEFAULT_SETTINGS.system>) => {
+    setSystemSettings(prev => ({ ...prev, ...updates }));
+    setDirty(true);
+  }, []);
+
+  const updateNotifications = useCallback((updates: Partial<typeof DEFAULT_SETTINGS.notifications>) => {
+    setNotificationSettings(prev => ({ ...prev, ...updates }));
+    setDirty(true);
+  }, []);
+
+  const updateSecurity = useCallback((updates: Partial<typeof DEFAULT_SETTINGS.security>) => {
+    setSecuritySettings(prev => ({ ...prev, ...updates }));
+    setDirty(true);
+  }, []);
+
+  const updateDisplay = useCallback((updates: Partial<typeof DEFAULT_SETTINGS.display>) => {
+    setDisplaySettings(prev => ({ ...prev, ...updates }));
+    setDirty(true);
+  }, []);
+
+  const updateProcessing = useCallback((updates: Record<string, boolean | string>) => {
+    setProcessingSettings(prev => ({ ...prev, ...updates }));
+    setDirty(true);
+  }, []);
+
+  // Save settings per-section to the real API
+  const handleSaveChanges = useCallback(async () => {
+    setSaving(true);
+    try {
+      const sections = [
+        { section: 'system', updates: systemSettings },
+        { section: 'notifications', updates: notificationSettings },
+        { section: 'security', updates: securitySettings },
+        { section: 'display', updates: displaySettings },
+        { section: 'processing', updates: processingSettings },
+      ];
+
+      const results = await Promise.all(
+        sections.map(({ section, updates }) =>
+          fetch('/api/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ section, updates }),
+          })
+        )
+      );
+
+      if (results.every(r => r.ok)) {
+        toast.success('Settings saved successfully');
+        setDirty(false);
+      } else {
+        toast.error('Some settings failed to save');
+      }
+    } catch {
+      toast.error('Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
+  }, [systemSettings, notificationSettings, securitySettings, displaySettings, processingSettings]);
+
+  // Reset to defaults
   const handleResetDefaults = useCallback(() => {
-    toast.info('Resetting settings to defaults...');
-    setTimeout(() => {
-      toast.success('Settings reset to defaults');
-    }, 1000);
+    setSystemSettings(DEFAULT_SETTINGS.system);
+    setNotificationSettings(DEFAULT_SETTINGS.notifications);
+    setSecuritySettings(DEFAULT_SETTINGS.security);
+    setDisplaySettings(DEFAULT_SETTINGS.display);
+    setDirty(true);
+    toast.info('Settings reset to defaults. Click Save to apply.');
   }, []);
 
   const tabs = [
@@ -224,10 +282,15 @@ export default function SettingsClient() {
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="motion-reduce:transform-none">
               <Button 
                 onClick={handleSaveChanges}
-                className="bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 shadow-lg shadow-slate-500/25"
+                disabled={!dirty || saving}
+                className="bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 shadow-lg shadow-slate-500/25 disabled:opacity-50"
               >
-                <Save className="w-4 h-4 mr-2" />
-                Save Changes
+                {saving ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                {saving ? 'Saving...' : dirty ? 'Save Changes' : 'Saved'}
               </Button>
             </motion.div>
           </div>
@@ -302,6 +365,15 @@ export default function SettingsClient() {
           {/* General Settings */}
           {activeTab === "general" && (
             <>
+              {loading ? (
+                <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
+                  <CardContent className="p-8 flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                    <span className="ml-2 text-slate-500">Loading settings...</span>
+                  </CardContent>
+                </Card>
+              ) : (
+              <>
               <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -320,9 +392,13 @@ export default function SettingsClient() {
                       <input
                         id="fullName"
                         type="text"
-                        defaultValue={settingsData.user.name}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                        value={userInfo?.name ?? ''}
+                        disabled
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                       />
+                      <p className="mt-1 text-xs text-slate-400">
+                        <Link href="/settings/profile" className="text-violet-500 hover:underline">Edit in Profile Settings →</Link>
+                      </p>
                     </div>
                     <div>
                       <label htmlFor="emailAddress" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -331,8 +407,9 @@ export default function SettingsClient() {
                       <input
                         id="emailAddress"
                         type="email"
-                        defaultValue={settingsData.user.email}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                        value={userInfo?.email ?? ''}
+                        disabled
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                       />
                     </div>
                   </div>
@@ -344,17 +421,10 @@ export default function SettingsClient() {
                     <input
                       id="userRole"
                       type="text"
-                      value={settingsData.user.role}
+                      value={userInfo?.role ?? ''}
                       disabled
                       className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                     />
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 bg-slate-50/80 dark:bg-slate-700/50 rounded-lg">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">Last Login:</span>
-                    <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {settingsData.user.lastLogin}
-                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -374,22 +444,35 @@ export default function SettingsClient() {
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Timezone
                       </label>
-                      <select className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent">
-                        <option value="UTC-8">UTC-8 (Pacific)</option>
-                        <option value="UTC-5">UTC-5 (Eastern)</option>
-                        <option value="UTC+0">UTC+0 (GMT)</option>
-                        <option value="UTC+1">UTC+1 (CET)</option>
+                      <select
+                        value={systemSettings.timezone}
+                        onChange={(e) => updateSystem({ timezone: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                      >
+                        <option value="America/Los_Angeles">Pacific (PT)</option>
+                        <option value="America/Denver">Mountain (MT)</option>
+                        <option value="America/Chicago">Central (CT)</option>
+                        <option value="America/New_York">Eastern (ET)</option>
+                        <option value="Europe/London">London (GMT)</option>
+                        <option value="Europe/Zurich">Zurich (CET)</option>
+                        <option value="Europe/Berlin">Berlin (CET)</option>
+                        <option value="Asia/Tokyo">Tokyo (JST)</option>
                       </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Language
                       </label>
-                      <select className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent">
-                        <option value="en-US">English (US)</option>
+                      <select
+                        value={systemSettings.language}
+                        onChange={(e) => updateSystem({ language: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                      >
+                        <option value="en">English (US)</option>
                         <option value="en-GB">English (UK)</option>
-                        <option value="es-ES">Spanish</option>
-                        <option value="fr-FR">French</option>
+                        <option value="de">German</option>
+                        <option value="fr">French</option>
+                        <option value="es">Spanish</option>
                       </select>
                     </div>
                   </div>
@@ -399,20 +482,29 @@ export default function SettingsClient() {
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Date Format
                       </label>
-                      <select className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                      <select
+                        value={systemSettings.dateFormat}
+                        onChange={(e) => updateSystem({ dateFormat: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                      >
                         <option value="MM/DD/YYYY">MM/DD/YYYY</option>
                         <option value="DD/MM/YYYY">DD/MM/YYYY</option>
                         <option value="YYYY-MM-DD">YYYY-MM-DD</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Currency
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                      <select
+                        value={systemSettings.currency}
+                        onChange={(e) => updateSystem({ currency: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                      >
                         <option value="USD">USD ($)</option>
                         <option value="EUR">EUR (€)</option>
                         <option value="GBP">GBP (£)</option>
+                        <option value="CHF">CHF (Fr)</option>
                         <option value="JPY">JPY (¥)</option>
                       </select>
                     </div>
@@ -476,13 +568,15 @@ export default function SettingsClient() {
                   </div>
                 </CardContent>
               </Card>
+              </>
+              )}
             </>
           )}
 
           {/* Security Settings */}
           {activeTab === "security" && (
             <>
-              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+              <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <div className="p-2 bg-gradient-to-br from-red-500 to-rose-500 rounded-lg shadow-lg shadow-red-500/25">
@@ -492,64 +586,69 @@ export default function SettingsClient() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
                     <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <Shield className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                       <div>
-                        <h4 className="font-medium text-green-800">
+                        <h4 className="font-medium text-slate-800 dark:text-slate-200">
                           Two-Factor Authentication
                         </h4>
-                        <p className="text-sm text-green-600">
-                          Your account is protected with 2FA
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          {securitySettings.requireMFA ? 'Required for all users' : 'Optional'}
                         </p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm">
-                      Configure
-                    </Button>
+                    <Toggle
+                      checked={securitySettings.requireMFA}
+                      onChange={(checked) => updateSecurity({ requireMFA: checked })}
+                      size="sm"
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Session Timeout
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Session Timeout (minutes)
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent">
-                        <option value="1">1 hour</option>
-                        <option value="4">4 hours</option>
-                        <option value="8">8 hours</option>
-                        <option value="24">24 hours</option>
+                      <select
+                        value={securitySettings.sessionTimeout}
+                        onChange={(e) => updateSecurity({ sessionTimeout: Number(e.target.value) })}
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                      >
+                        <option value={60}>1 hour</option>
+                        <option value={240}>4 hours</option>
+                        <option value={480}>8 hours</option>
+                        <option value={1440}>24 hours</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Password Policy
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Min Password Length
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent">
-                        <option value="basic">Basic</option>
-                        <option value="strong">Strong</option>
-                        <option value="enterprise">Enterprise</option>
+                      <select
+                        value={securitySettings.passwordMinLength}
+                        onChange={(e) => updateSecurity({ passwordMinLength: Number(e.target.value) })}
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                      >
+                        <option value={6}>6 characters</option>
+                        <option value={8}>8 characters</option>
+                        <option value={12}>12 characters</option>
+                        <option value={16}>16 characters</option>
                       </select>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-600">
-                      Last Password Change:
-                    </span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {settingsData.security.lastPasswordChange}
-                    </span>
-                  </div>
-
-                  <Button variant="outline">
+                  <Button
+                    variant="outline"
+                    onClick={() => toast.info('Password change is available in Profile Settings → /settings/profile')}
+                  >
                     <Key className="w-4 h-4 mr-2" />
                     Change Password
                   </Button>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+              <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg shadow-lg shadow-violet-500/25">
@@ -559,32 +658,35 @@ export default function SettingsClient() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-violet-50 rounded-lg border border-violet-200">
+                  <div className="flex items-center justify-between p-4 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-200 dark:border-violet-800">
                     <div>
-                      <h4 className="font-medium text-violet-800">
-                        Active API Tokens
+                      <h4 className="font-medium text-violet-800 dark:text-violet-300">
+                        API Tokens
                       </h4>
-                      <p className="text-sm text-violet-600">
-                        {settingsData.security.apiTokens} tokens currently
-                        active
+                      <p className="text-sm text-violet-600 dark:text-violet-400">
+                        Manage API keys for programmatic access
                       </p>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toast.info('API token management coming soon')}
+                    >
                       Manage Tokens
                     </Button>
                   </div>
 
                   <div>
-                    <label htmlFor="primaryApiKey" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="primaryApiKey" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       Primary API Key
                     </label>
                     <div className="flex items-center gap-2">
                       <input
                         id="primaryApiKey"
                         type={showApiKey ? "text" : "password"}
-                        value="sk-1234567890abcdef..."
+                        value="Contact admin to generate API keys"
                         disabled
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-mono text-sm"
+                        className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-sm"
                       />
                       <Button
                         variant="outline"
@@ -607,7 +709,7 @@ export default function SettingsClient() {
 
           {/* Notifications Settings */}
           {activeTab === "notifications" && (
-            <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-lg shadow-lg shadow-yellow-500/25">
@@ -618,63 +720,64 @@ export default function SettingsClient() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+                  <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                     <Mail className="w-5 h-5 text-violet-600" />
                     Email Notifications
                   </h4>
                   <div className="space-y-3">
-                    {Object.entries(emailNotifications).map(
-                      ([key, value]) => (
-                        <div
-                          key={key}
-                          className="flex items-center justify-between"
-                        >
-                          <span className="text-sm text-gray-700 capitalize">
-                            {key.replace(/([A-Z])/g, " $1").trim()}
-                          </span>
-                          <Toggle
-                            checked={value as boolean}
-                            onChange={(checked) => setEmailNotifications(prev => ({ ...prev, [key]: checked }))}
-                            size="sm"
-                          />
-                        </div>
-                      )
-                    )}
+                    {([
+                      ['contractUpdates', 'Contract Updates'],
+                      ['renewalReminders', 'Renewal Reminders'],
+                      ['complianceAlerts', 'Compliance Alerts'],
+                      ['systemUpdates', 'System Updates'],
+                    ] as const).map(([key, label]) => (
+                      <div key={key} className="flex items-center justify-between">
+                        <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
+                        <Toggle
+                          checked={notificationSettings[key] ?? false}
+                          onChange={(checked) => updateNotifications({ [key]: checked })}
+                          size="sm"
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
 
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+                  <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                     <Smartphone className="w-5 h-5 text-green-600" />
                     Push Notifications
                   </h4>
                   <div className="space-y-3">
-                    {Object.entries(pushNotifications).map(
-                      ([key, value]) => (
-                        <div
-                          key={key}
-                          className="flex items-center justify-between"
-                        >
-                          <span className="text-sm text-gray-700 capitalize">
-                            {key.replace(/([A-Z])/g, " $1").trim()}
-                          </span>
-                          <Toggle
-                            checked={value as boolean}
-                            onChange={(checked) => setPushNotifications(prev => ({ ...prev, [key]: checked }))}
-                            size="sm"
-                          />
-                        </div>
-                      )
-                    )}
+                    {([
+                      ['browserNotifications', 'Browser Notifications'],
+                      ['desktopNotifications', 'Desktop Notifications'],
+                    ] as const).map(([key, label]) => (
+                      <div key={key} className="flex items-center justify-between">
+                        <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
+                        <Toggle
+                          checked={notificationSettings[key] ?? false}
+                          onChange={(checked) => updateNotifications({ [key]: checked })}
+                          size="sm"
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
+
+                <p className="text-xs text-slate-400">
+                  For more granular notification settings, visit{' '}
+                  <Link href="/settings/notifications" className="text-violet-500 hover:underline">
+                    Notification Settings →
+                  </Link>
+                </p>
               </CardContent>
             </Card>
           )}
 
           {/* Processing Settings */}
           {activeTab === "processing" && (
-            <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <div className="p-2 bg-gradient-to-br from-violet-500 to-pink-500 rounded-lg shadow-lg shadow-violet-500/25">
@@ -686,53 +789,42 @@ export default function SettingsClient() {
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-4">
+                    <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-4">
                       Automated Processing
                     </h4>
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-700">
-                          Auto-process uploads
-                        </span>
-                        <Toggle
-                          checked={processingSettings.autoProcessing}
-                          onChange={(checked) => setProcessingSettings(prev => ({ ...prev, autoProcessing: checked }))}
-                          size="sm"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-700">
-                          AI Analysis
-                        </span>
-                        <Toggle
-                          checked={processingSettings.aiAnalysis}
-                          onChange={(checked) => setProcessingSettings(prev => ({ ...prev, aiAnalysis: checked }))}
-                          size="sm"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-700">
-                          Risk Assessment
-                        </span>
-                        <Toggle
-                          checked={processingSettings.riskAssessment}
-                          onChange={(checked) => setProcessingSettings(prev => ({ ...prev, riskAssessment: checked }))}
-                          size="sm"
-                        />
-                      </div>
+                      {([
+                        ['autoProcessing', 'Auto-process uploads'],
+                        ['aiAnalysis', 'AI Analysis'],
+                        ['riskAssessment', 'Risk Assessment'],
+                        ['ocrEnabled', 'OCR Processing'],
+                      ] as const).map(([key, label]) => (
+                        <div key={key} className="flex items-center justify-between">
+                          <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
+                          <Toggle
+                            checked={(processingSettings as Record<string, boolean>)[key] ?? true}
+                            onChange={(checked) => updateProcessing({ [key]: checked })}
+                            size="sm"
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-4">
+                    <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-4">
                       Data Management
                     </h4>
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                           Retention Period
                         </label>
-                        <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                        <select
+                          value={(processingSettings as Record<string, string>).retentionPeriod ?? '7'}
+                          onChange={(e) => updateProcessing({ retentionPeriod: e.target.value })}
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                        >
                           <option value="1">1 year</option>
                           <option value="3">3 years</option>
                           <option value="7">7 years</option>
@@ -740,10 +832,14 @@ export default function SettingsClient() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                           Backup Frequency
                         </label>
-                        <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                        <select
+                          value={(processingSettings as Record<string, string>).backupFrequency ?? 'daily'}
+                          onChange={(e) => updateProcessing({ backupFrequency: e.target.value })}
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                        >
                           <option value="hourly">Hourly</option>
                           <option value="daily">Daily</option>
                           <option value="weekly">Weekly</option>
@@ -758,7 +854,7 @@ export default function SettingsClient() {
 
           {/* Integrations Settings */}
           {activeTab === "integrations" && (
-            <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <div className="p-2 bg-gradient-to-br from-violet-500 to-violet-500 rounded-lg shadow-lg shadow-green-500/25">
@@ -769,80 +865,42 @@ export default function SettingsClient() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {Object.entries(settingsData.integrations).map(
-                    ([key, integration]) => (
+                  {([
+                    { key: 'sharepoint', label: 'SharePoint', icon: FileText, description: 'Document management' },
+                    { key: 'salesforce', label: 'Salesforce', icon: BarChart3, description: 'CRM integration' },
+                    { key: 'slack', label: 'Slack', icon: Bell, description: 'Team notifications' },
+                    { key: 'teams', label: 'Microsoft Teams', icon: Users, description: 'Collaboration' },
+                    { key: 'webhook', label: 'Webhooks', icon: Globe, description: 'Custom integrations' },
+                  ] as const).map((integration) => {
+                    const Icon = integration.icon;
+                    return (
                       <div
-                        key={key}
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                        key={integration.key}
+                        className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg"
                       >
                         <div className="flex items-center gap-3">
-                          <div
-                            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                              (integration as { enabled: boolean }).enabled
-                                ? "bg-green-100"
-                                : "bg-gray-100"
-                            }`}
-                          >
-                            {key === "sharepoint" && (
-                              <FileText className="w-5 h-5 text-violet-600" />
-                            )}
-                            {key === "salesforce" && (
-                              <BarChart3 className="w-5 h-5 text-violet-600" />
-                            )}
-                            {key === "slack" && (
-                              <Bell className="w-5 h-5 text-violet-600" />
-                            )}
-                            {key === "teams" && (
-                              <Users className="w-5 h-5 text-violet-600" />
-                            )}
-                            {key === "webhook" && (
-                              <Globe className="w-5 h-5 text-green-600" />
-                            )}
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-700">
+                            <Icon className="w-5 h-5 text-violet-600" />
                           </div>
                           <div>
-                            <h4 className="font-medium text-gray-900 capitalize">
-                              {key}
+                            <h4 className="font-medium text-slate-900 dark:text-slate-100">
+                              {integration.label}
                             </h4>
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                className={
-                                  (integration as { enabled: boolean }).enabled
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-gray-100 text-gray-800"
-                                }
-                              >
-                                {(integration as { enabled: boolean }).enabled
-                                  ? "Enabled"
-                                  : "Disabled"}
-                              </Badge>
-                              {(integration as { configured?: boolean })
-                                .configured && (
-                                <Badge variant="outline">Configured</Badge>
-                              )}
-                            </div>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              {integration.description}
+                            </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm">
-                            {(integration as { configured?: boolean })
-                              .configured
-                              ? "Configure"
-                              : "Setup"}
-                          </Button>
-                          <Toggle
-                            checked={(integration as { enabled: boolean }).enabled}
-                            onChange={(checked) => {
-                              setIntegrationSettings(prev => ({
-                                ...prev,
-                                [key]: { ...prev[key as keyof typeof prev], enabled: checked }
-                              }));
-                            }}
-                            size="sm"
-                          />
-                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toast.info(`${integration.label} integration coming soon`)}
+                        >
+                          Setup
+                        </Button>
                       </div>
-                    )
-                  )}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
