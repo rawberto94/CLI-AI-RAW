@@ -150,6 +150,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
     } catch (error) {
       logger.error('Delete failed', error instanceof Error ? error : undefined);
       toast.error('Failed to delete contract')
+    } finally {
       setIsDeleting(false)
     }
   }

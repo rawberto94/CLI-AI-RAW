@@ -39,6 +39,7 @@ import {
   ClipboardList,
   Loader2,
   CalendarPlus,
+  FileDown,
 } from 'lucide-react'
 
 interface ContractHeaderProps {
@@ -58,6 +59,8 @@ interface ContractHeaderProps {
   onAIExtract: () => void
   onExtractObligations?: () => void
   onDownload: () => void
+  onDownloadReport: () => void
+  isDownloadingReport?: boolean
   onShare: () => void
   onCompare: () => void
   onCreateRenewal?: () => void
@@ -82,6 +85,8 @@ export const ContractHeader = memo(function ContractHeader({
   onAIExtract,
   onExtractObligations,
   onDownload,
+  onDownloadReport,
+  isDownloadingReport = false,
   onShare,
   onCompare,
   onCreateRenewal,
@@ -220,6 +225,29 @@ export const ContractHeader = memo(function ContractHeader({
                 <TooltipContent>Refresh (Ctrl+R)</TooltipContent>
               </Tooltip>
             </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={onDownloadReport}
+                    disabled={isDownloadingReport}
+                    className="shadow-sm bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white transition-all"
+                    aria-label="Download contract report as PDF"
+                  >
+                    {isDownloadingReport ? (
+                      <Loader2 className="h-4 w-4 animate-spin sm:mr-1.5" />
+                    ) : (
+                      <FileDown className="h-4 w-4 sm:mr-1.5" />
+                    )}
+                    <span className="hidden sm:inline">Report</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Download full report (PDF)</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -227,6 +255,7 @@ export const ContractHeader = memo(function ContractHeader({
                   variant="outline" 
                   size="sm" 
                   className="shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all"
+                  aria-label="Contract actions menu"
                 >
                   <span className="hidden sm:inline">Actions</span>
                   <ChevronDown className="h-4 w-4 sm:ml-1.5" />

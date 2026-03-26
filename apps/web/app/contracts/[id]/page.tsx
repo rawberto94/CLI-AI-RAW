@@ -179,6 +179,7 @@ export default function ContractDetailPage() {
   const signedFileRef = React.useRef<HTMLInputElement>(null)
   const lastAIActionRef = React.useRef<number>(0)
   const AI_COOLDOWN_MS = 5000
+  const [isDownloadingReport, setIsDownloadingReport] = React.useState(false)
 
   // ── Split pane for PDF viewer ─────────────────────────────────────────────
   const isMobile = useMediaQuery('(max-width: 768px)')
@@ -377,6 +378,39 @@ export default function ContractDetailPage() {
       toast.success('Download started')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to download contract')
+    }
+  }, [contractId, contract?.filename])
+
+  const handleDownloadReport = useCallback(async () => {
+    setIsDownloadingReport(true)
+    try {
+      const csrfRes = await fetch('/api/csrf-token')
+      const { token: csrfToken } = await csrfRes.json()
+      const res = await fetch(`/api/contracts/${contractId}/export?format=pdf`, {
+        headers: { 'x-csrf-token': csrfToken },
+      })
+      if (!res.ok) throw new Error('Failed to generate report')
+      const blob = await res.blob()
+      if (blob.size === 0) throw new Error('Report was empty')
+      const disposition = res.headers.get('Content-Disposition') || ''
+      const filenameMatch = disposition.match(/filename="?([^";\n]+)"?/)
+      const downloadName = filenameMatch?.[1] || `${contract?.filename || 'contract'}-report.pdf`
+      const url = window.URL.createObjectURL(blob)
+      try {
+        const a = document.createElement('a')
+        a.href = url
+        a.download = downloadName
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+      } finally {
+        window.URL.revokeObjectURL(url)
+      }
+      toast.success('Report downloaded')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to download report')
+    } finally {
+      setIsDownloadingReport(false)
     }
   }, [contractId, contract?.filename])
 
@@ -726,6 +760,8 @@ export default function ContractDetailPage() {
         onAIExtract={handleAIExtraction}
         onExtractObligations={handleExtractObligations}
         onDownload={handleDownload}
+        onDownloadReport={handleDownloadReport}
+        isDownloadingReport={isDownloadingReport}
         onShare={() => openDialog('share')}
         onCompare={() => openDialog('comparison')}
         onCreateRenewal={() => router.push(`/contracts/${contractId}/renew`)}
@@ -869,25 +905,25 @@ export default function ContractDetailPage() {
             {/* Quick Actions Bar */}
             <div className="flex flex-wrap items-center gap-2 mb-6 sm:mb-8 no-print">
               {contract?.category && (
-                <button onClick={() => openDialog('categorySelector')} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white border border-slate-200 hover:border-violet-300 transition-colors">
+                <button onClick={() => openDialog('categorySelector')} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white border border-slate-200 hover:border-violet-300 transition-colors" aria-label={`Change category: ${contract.category.name}`}>
                   <Tag className="h-3 w-3" />
                   {contract.category.name}
                 </button>
               )}
               {!contract?.category && (
-                <button onClick={handleAICategorize} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-violet-50 border border-violet-200 hover:bg-violet-100 text-violet-700 transition-colors">
-                  <Sparkles className="h-3 w-3" />
-                  Auto-categorize
+                <button onClick={handleAICategorize} disabled={aiCategorize.isPending} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-violet-50 border border-violet-200 hover:bg-violet-100 text-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Auto-categorize contract with AI">
+                  {aiCategorize.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  {aiCategorize.isPending ? 'Categorizing…' : 'Auto-categorize'}
                 </button>
               )}
               {contract?.signature_status === 'unsigned' && (
-                <button onClick={handleRequestSignature} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 transition-colors">
+                <button onClick={handleRequestSignature} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 transition-colors" aria-label="Request e-signature for this contract">
                   <PenTool className="h-3 w-3" />
                   Request Signature
                 </button>
               )}
               {contract?.signature_status === 'signed' && (
-                <button onClick={handleDownloadSignedCopy} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 border border-green-200 hover:bg-green-100 text-green-700 transition-colors">
+                <button onClick={handleDownloadSignedCopy} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 border border-green-200 hover:bg-green-100 text-green-700 transition-colors" aria-label="Download signed copy of this contract">
                   <CheckCircle2 className="h-3 w-3" />
                   Download Signed
                 </button>
