@@ -81,7 +81,9 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
     })),
   ];
 
-  return createSuccessResponse(ctx, { departments });
+  return createSuccessResponse(ctx, { departments }, {
+    headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=600' },
+  });
 });
 
 /**

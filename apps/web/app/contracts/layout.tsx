@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Contracts | ConTigo',
-  description: 'Contracts — Manage and monitor your contract intelligence platform',
+  description: 'Browse, search, and manage your contract library with AI-powered analysis and extraction',
 };
 
 import { AutoBreadcrumbs } from '@/components/navigation/AutoBreadcrumbs';

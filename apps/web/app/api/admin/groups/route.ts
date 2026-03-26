@@ -64,6 +64,8 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
       })),
       createdAt: g.createdAt,
     })),
+  }, {
+    headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=600' },
   });
 });
 

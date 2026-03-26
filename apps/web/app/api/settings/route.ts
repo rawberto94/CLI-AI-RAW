@@ -71,10 +71,14 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
           role: user.role,
           avatar: user.avatar,
         } : null,
+      }, {
+        headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=120' },
       });
     }
 
-    return createSuccessResponse(ctx, { settings, user: null });
+    return createSuccessResponse(ctx, { settings, user: null }, {
+      headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=120' },
+    });
   } catch (error) {
     return handleApiError(error, ctx);
   }
