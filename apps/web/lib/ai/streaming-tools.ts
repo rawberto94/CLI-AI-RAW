@@ -1632,16 +1632,14 @@ async function executeAgentInsights(args: Record<string, unknown>, tenantId: str
 
   try {
     // 1. Query agent_goals for recent findings
-    const recentGoals = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT type, status, result, error, created_at, completed_at
+    const recentGoals = await prisma.$queryRaw<Array<{ type: string; status: string; result: unknown; error: string; created_at: Date; completed_at: Date | null }>>`
+      SELECT type, status, result, error, created_at, completed_at
        FROM agent_goals
-       WHERE tenant_id = $1
+       WHERE tenant_id = ${tenantId}
          AND created_at > NOW() - INTERVAL '7 days'
        ORDER BY created_at DESC
-       LIMIT $2`,
-      tenantId,
-      limit
-    );
+       LIMIT ${limit}
+    `;
 
     for (const goal of recentGoals) {
       if (goal.status === 'COMPLETED' && goal.result) {
@@ -1673,15 +1671,14 @@ async function executeAgentInsights(args: Record<string, unknown>, tenantId: str
   try {
     // 2. Query learning_records for learned patterns
     if (category === 'all' || category === 'learning') {
-      const learnings = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT field, correction_type, confidence, created_at
+      const learnings = await prisma.$queryRaw<Array<{ field: string; correction_type: string; confidence: number; created_at: Date }>>`
+        SELECT field, correction_type, confidence, created_at
          FROM learning_records
-         WHERE tenant_id = $1
+         WHERE tenant_id = ${tenantId}
            AND created_at > NOW() - INTERVAL '30 days'
          ORDER BY created_at DESC
-         LIMIT 5`,
-        tenantId
-      );
+         LIMIT 5
+      `;
 
       for (const learning of learnings) {
         insights.push({
@@ -1870,15 +1867,10 @@ async function executeRateResponse(args: Record<string, unknown>, tenantId: stri
 
   try {
     // Store feedback in the database
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO learning_records (tenant_id, user_id, field, correction_type, confidence, metadata, created_at)
-       VALUES ($1, $2, 'response_quality', $3, $4, $5::jsonb, NOW())`,
-      tenantId,
-      userId,
-      rating === 'positive' ? 'positive_feedback' : 'negative_feedback',
-      rating === 'positive' ? 0.9 : 0.1,
-      JSON.stringify({ reason: reason || null, source: 'chat_feedback' })
-    );
+    await prisma.$executeRaw`
+      INSERT INTO learning_records (tenant_id, user_id, field, correction_type, confidence, metadata, created_at)
+       VALUES (${tenantId}, ${userId}, 'response_quality', ${rating === 'positive' ? 'positive_feedback' : 'negative_feedback'}, ${rating === 'positive' ? 0.9 : 0.1}, ${JSON.stringify({ reason: reason || null, source: 'chat_feedback' })}::jsonb, NOW())
+    `;
   } catch {
     // learning_records table may not exist — still acknowledge the feedback
   }

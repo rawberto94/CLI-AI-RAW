@@ -212,11 +212,10 @@ async function buildDynamicSuggestions(tenantId: string, pageContext: string): P
 
     // 5. Agent insights nudge
     try {
-      const recentGoals = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT COUNT(*) as cnt FROM agent_goals
-         WHERE tenant_id = $1 AND status = 'COMPLETED' AND created_at > NOW() - INTERVAL '24 hours'`,
-        tenantId
-      );
+      const recentGoals = await prisma.$queryRaw<Array<{ cnt: string }>>`
+        SELECT COUNT(*) as cnt FROM agent_goals
+         WHERE tenant_id = ${tenantId} AND status = 'COMPLETED' AND created_at > NOW() - INTERVAL '24 hours'
+      `;
       const cnt = parseInt(recentGoals[0]?.cnt || '0');
       if (cnt > 0) {
         suggestions.push({

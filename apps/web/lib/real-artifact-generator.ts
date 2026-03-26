@@ -1110,8 +1110,8 @@ export async function generateRealArtifacts(
             endpoint,
             region: process.env.S3_REGION || process.env.AWS_REGION || 'us-east-1',
             credentials: {
-              accessKeyId: accessKeyId || (isProduction ? '' : 'minioadmin'),
-              secretAccessKey: secretAccessKey || (isProduction ? '' : 'minioadmin'),
+              accessKeyId: accessKeyId || (isProduction ? '' : (process.env.MINIO_ACCESS_KEY || 'minioadmin')),
+              secretAccessKey: secretAccessKey || (isProduction ? '' : (process.env.MINIO_SECRET_KEY || 'minioadmin')),
             },
             forcePathStyle: true, // Required for MinIO
           });
@@ -1252,45 +1252,58 @@ export async function generateRealArtifacts(
     const contractType = contractRecord?.contractType || 'OTHER';
     const contractTitle = contractRecord?.contractTitle || null;
 
-    for (const type of ARTIFACT_TYPES) {
-      try {
-        logger.info({ contractId, type }, `Generating ${type} artifact`);
-        
-        // Try AI generation first, fall back to basic
-        let artifactData = await generateAIArtifact(type, contractText, contractId, contractType);
-        
-        if (!artifactData) {
-          logger.info({ type }, 'Using basic artifact generation (no AI)');
-          artifactData = generateBasicArtifact(type, contractText, contractId, contractTitle);
-        }
+    // Process artifacts in parallel batches for ~4x speed improvement
+    const BATCH_SIZE = parseInt(process.env.ARTIFACT_BATCH_SIZE || '5', 10);
+    for (let batchStart = 0; batchStart < ARTIFACT_TYPES.length; batchStart += BATCH_SIZE) {
+      const batch = ARTIFACT_TYPES.slice(batchStart, batchStart + BATCH_SIZE);
+      
+      const results = await Promise.allSettled(
+        batch.map(async (type) => {
+          logger.info({ contractId, type }, `Generating ${type} artifact`);
+          
+          // Try AI generation first, fall back to basic
+          let artifactData = await generateAIArtifact(type, contractText, contractId, contractType);
+          
+          if (!artifactData) {
+            logger.info({ type }, 'Using basic artifact generation (no AI)');
+            artifactData = generateBasicArtifact(type, contractText, contractId, contractTitle);
+          }
 
-        // Save the artifact
-        const artifactId = await saveArtifact(prisma, contractId, tenantId, type, artifactData);
-        artifactIds.push(artifactId);
-        
-        logger.info({ contractId, type, artifactId }, `${type} artifact saved`);
-        
-        completed++;
-        const progress = 30 + Math.floor((completed / totalTypes) * 60);
-        
-        // Heartbeat: touch contract.updatedAt so auto-resolve doesn't fire mid-processing
-        await prisma.contract.update({
-          where: { id: contractId },
-          data: { updatedAt: new Date() },
-        });
-        
-        await prisma.processingJob.updateMany({
-          where: { contractId, tenantId },
-          data: { 
-            currentStep: `artifact_${type.toLowerCase()}`,
-            progress,
-          },
-        });
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        logger.error({ error: errorMsg, type, contractId }, `Failed to generate ${type} artifact`);
-        errors.push(`${type}: ${errorMsg}`);
+          // Save the artifact
+          const artifactId = await saveArtifact(prisma, contractId, tenantId, type, artifactData);
+          logger.info({ contractId, type, artifactId }, `${type} artifact saved`);
+          return { type, artifactId };
+        })
+      );
+
+      // Collect results from this batch
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          artifactIds.push(result.value.artifactId);
+        } else {
+          const errorMsg = result.reason instanceof Error ? result.reason.message : String(result.reason);
+          const failedType = batch[results.indexOf(result)] || 'unknown';
+          logger.error({ error: errorMsg, type: failedType, contractId }, `Failed to generate ${failedType} artifact`);
+          errors.push(`${failedType}: ${errorMsg}`);
+        }
       }
+
+      completed += batch.length;
+      const progress = 30 + Math.floor((completed / totalTypes) * 60);
+
+      // Heartbeat: touch contract.updatedAt so auto-resolve doesn't fire mid-processing
+      await prisma.contract.update({
+        where: { id: contractId },
+        data: { updatedAt: new Date() },
+      });
+      
+      await prisma.processingJob.updateMany({
+        where: { contractId, tenantId },
+        data: { 
+          currentStep: `artifact_batch_${Math.ceil(completed / BATCH_SIZE)}`,
+          progress,
+        },
+      });
     }
 
     // Metadata was already extracted before the artifact loop.

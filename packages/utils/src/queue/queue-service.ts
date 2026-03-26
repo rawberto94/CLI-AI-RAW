@@ -199,7 +199,7 @@ export class QueueService {
       const queue = new Queue(queueName, {
         connection: this.connection,
         defaultJobOptions: options?.defaultJobOptions || {
-          attempts: 3,
+          attempts: 5,
           backoff: {
             type: 'exponential',
             delay: 2000,

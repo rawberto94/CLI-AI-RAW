@@ -292,7 +292,7 @@ export async function consolidateMemories(
     // using pgvector's <=> operator. Limit to 50 pairs per run to
     // avoid long-running transactions.
     const pairs: Array<{ id_a: string; id_b: string; importance_a: number; importance_b: number; similarity: number }> =
-      await prisma.$queryRawUnsafe(`
+      await prisma.$queryRaw`
         SELECT
           a.id AS id_a,
           b.id AS id_b,
@@ -301,17 +301,17 @@ export async function consolidateMemories(
           1 - (a.embedding <=> b.embedding) AS similarity
         FROM ai_memories a
         JOIN ai_memories b
-          ON a.user_id = $1
-          AND b.user_id = $1
-          AND a.tenant_id = $2
-          AND b.tenant_id = $2
+          ON a.user_id = ${userId}
+          AND b.user_id = ${userId}
+          AND a.tenant_id = ${tenantId}
+          AND b.tenant_id = ${tenantId}
           AND a.id < b.id
           AND a.embedding IS NOT NULL
           AND b.embedding IS NOT NULL
           AND 1 - (a.embedding <=> b.embedding) > 0.93
         ORDER BY similarity DESC
         LIMIT 50
-      `, userId, tenantId);
+      `;
 
     if (pairs.length === 0) return 0;
 

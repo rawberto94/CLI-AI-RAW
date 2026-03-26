@@ -9,7 +9,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const { prisma } = await import('@/lib/prisma');
 
     // Ensure table exists
-    await prisma.$executeRawUnsafe(`
+    await prisma.$executeRaw`
       CREATE TABLE IF NOT EXISTS saved_searches (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         tenant_id TEXT NOT NULL,
@@ -26,7 +26,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       )
-    `);
+    `;
 
     const searches = await prisma.$queryRaw`
       SELECT * FROM saved_searches 
@@ -63,26 +63,26 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const { prisma } = await import('@/lib/prisma');
 
     if (body.action === 'toggle-alert') {
-      await prisma.$executeRawUnsafe(`
+      await prisma.$executeRaw`
         UPDATE saved_searches SET alert_enabled = NOT alert_enabled, updated_at = NOW()
-        WHERE id = $1::uuid AND tenant_id = $2 AND user_id = $3
-      `, body.id, ctx.tenantId, ctx.userId);
+        WHERE id = ${body.id}::uuid AND tenant_id = ${ctx.tenantId} AND user_id = ${ctx.userId}
+      `;
     } else if (body.action === 'toggle-pin') {
-      await prisma.$executeRawUnsafe(`
+      await prisma.$executeRaw`
         UPDATE saved_searches SET is_pinned = NOT is_pinned, updated_at = NOW()
-        WHERE id = $1::uuid AND tenant_id = $2 AND user_id = $3
-      `, body.id, ctx.tenantId, ctx.userId);
+        WHERE id = ${body.id}::uuid AND tenant_id = ${ctx.tenantId} AND user_id = ${ctx.userId}
+      `;
     } else {
-      await prisma.$executeRawUnsafe(`
+      await prisma.$executeRaw`
         UPDATE saved_searches SET 
-          name = COALESCE($4, name),
-          query = COALESCE($5, query),
-          filters = COALESCE($6::jsonb, filters),
-          alert_enabled = COALESCE($7, alert_enabled),
-          alert_frequency = COALESCE($8, alert_frequency),
+          name = COALESCE(${body.name}, name),
+          query = COALESCE(${body.query}, query),
+          filters = COALESCE(${body.filters ? JSON.stringify(body.filters) : null}::jsonb, filters),
+          alert_enabled = COALESCE(${body.alertEnabled}, alert_enabled),
+          alert_frequency = COALESCE(${body.alertFrequency}, alert_frequency),
           updated_at = NOW()
-        WHERE id = $1::uuid AND tenant_id = $2 AND user_id = $3
-      `, body.id, ctx.tenantId, ctx.userId, body.name, body.query, body.filters ? JSON.stringify(body.filters) : null, body.alertEnabled, body.alertFrequency);
+        WHERE id = ${body.id}::uuid AND tenant_id = ${ctx.tenantId} AND user_id = ${ctx.userId}
+      `;
     }
 
     return createSuccessResponse(ctx, { updated: true });
@@ -98,9 +98,9 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
     if (!id) return createErrorResponse(ctx, 'VALIDATION_ERROR', 'id required', 400);
     const { prisma } = await import('@/lib/prisma');
 
-    await prisma.$executeRawUnsafe(`
-      DELETE FROM saved_searches WHERE id = $1::uuid AND tenant_id = $2 AND user_id = $3
-    `, id, ctx.tenantId, ctx.userId);
+    await prisma.$executeRaw`
+      DELETE FROM saved_searches WHERE id = ${id}::uuid AND tenant_id = ${ctx.tenantId} AND user_id = ${ctx.userId}
+    `;
 
     return createSuccessResponse(ctx, { deleted: true });
   } catch (error: unknown) {

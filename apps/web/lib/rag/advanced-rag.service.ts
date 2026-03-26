@@ -366,7 +366,8 @@ async function vectorSearch(
     // Default 100 gives 95%+ recall. Enterprise scale can lower to 64 for
     // ~30% faster searches with 92% recall. Override via RAG_EF_SEARCH env.
     const efSearch = parseInt(process.env.RAG_EF_SEARCH || '100', 10);
-    await prisma.$executeRawUnsafe(`SET hnsw.ef_search = ${Math.max(10, Math.min(400, efSearch))}`);
+    const clampedEfSearch = Math.max(10, Math.min(400, efSearch));
+    await prisma.$executeRaw`SET hnsw.ef_search = ${clampedEfSearch}`;
     
     // Only JOIN Contract table when date/status filters are used.
     // tenantId and chunkType filters hit denormalized ContractEmbedding columns directly.
@@ -1467,10 +1468,14 @@ export async function processContractWithSemanticChunking(
       const r = batch[idx]!;
       params.push(r.contractId, r.chunkIndex, r.chunkText, r.embedding, r.chunkType, r.section ?? null);
     }
+    // Note: Bulk insert with dynamic VALUES lists requires $executeRawUnsafe since
+    // Prisma.sql tagged templates can't build dynamic numbers of value groups.
+    // All parameters are positionally bound ($1, $2, ...) — no string interpolation of values.
     await prisma.$executeRawUnsafe(
       `INSERT INTO "ContractEmbedding" ("id", "contractId", "chunkIndex", "chunkText", "embedding", "chunkType", "section", "createdAt", "updatedAt") VALUES ${paramParts.join(', ')}`,
       ...params,
     );
+    // TODO: Consider migrating to prisma.contractEmbedding.createMany() when vector type support is added
   }
   
   // Step 4: Build chunk relationship graph for this contract

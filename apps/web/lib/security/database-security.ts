@@ -76,7 +76,7 @@ export class DatabaseSecurityService {
     cipher: string;
     verified: boolean;
   }> {
-    const result = await this.prisma.$queryRaw<any[]>`
+    const result = await this.prisma.$queryRaw<Array<{ ssl: boolean; version: string; cipher: string }>>`
       SELECT 
         ssl,
         version,
@@ -450,7 +450,7 @@ export class DatabaseSecurityService {
     auditTablesCount: number;
   }> {
     // Count SSL connections
-    const sslStats = await this.prisma.$queryRaw<any[]>`
+    const sslStats = await this.prisma.$queryRaw<Array<{ ssl_count: number; non_ssl_count: number }>>`
       SELECT 
         COUNT(*) FILTER (WHERE ssl) as ssl_count,
         COUNT(*) FILTER (WHERE NOT ssl) as non_ssl_count
@@ -459,7 +459,7 @@ export class DatabaseSecurityService {
     `;
 
     // Count RLS-enabled tables
-    const rlsStats = await this.prisma.$queryRaw<any[]>`
+    const rlsStats = await this.prisma.$queryRaw<Array<{ rls_count: number }>>`
       SELECT COUNT(*) as rls_count
       FROM pg_tables t
       JOIN pg_class c ON t.tablename = c.relname
@@ -467,7 +467,7 @@ export class DatabaseSecurityService {
     `;
 
     // Count audit triggers
-    const auditStats = await this.prisma.$queryRaw<any[]>`
+    const auditStats = await this.prisma.$queryRaw<Array<{ audit_count: number }>>`
       SELECT COUNT(DISTINCT event_object_table) as audit_count
       FROM information_schema.triggers
       WHERE trigger_name LIKE 'audit_%'
@@ -560,7 +560,7 @@ export function createEncryptionMiddleware(
   dbSecurity: DatabaseSecurityService,
   encryptedFields: { model: string; field: string }[]
 ) {
-  return async (params: any, next: any) => {
+  return async (params: { action: string; model?: string; args: Record<string, any> }, next: (params: unknown) => Promise<unknown>) => {
     // Encrypt on write
     if (['create', 'update', 'upsert'].includes(params.action)) {
       const fieldConfig = encryptedFields.find(
@@ -587,10 +587,10 @@ export function createEncryptionMiddleware(
       );
 
       if (fieldConfig) {
-        const decryptRecord = (record: any) => {
+        const decryptRecord = (record: Record<string, unknown>) => {
           if (record?.[`${fieldConfig.field}_encrypted`]) {
             record[fieldConfig.field] = dbSecurity.decryptValue(
-              record[`${fieldConfig.field}_encrypted`]
+              record[`${fieldConfig.field}_encrypted`] as string
             );
             delete record[`${fieldConfig.field}_encrypted`];
             delete record[`${fieldConfig.field}_hash`];
@@ -601,7 +601,7 @@ export function createEncryptionMiddleware(
         if (Array.isArray(result)) {
           return result.map(decryptRecord);
         }
-        return decryptRecord(result);
+        return decryptRecord(result as Record<string, unknown>);
       }
     }
 
@@ -613,9 +613,8 @@ export function createEncryptionMiddleware(
  * Prisma middleware for RLS context setting
  */
 export function createRLSMiddleware(dbSecurity: DatabaseSecurityService) {
-  return async (params: any, next: any) => {
-    // Get context from async local storage or request context
-    const context = (global as any).__dbContext;
+  return async (params: { action: string; model?: string; args: Record<string, unknown> }, next: (params: unknown) => Promise<unknown>) => {
+    const context = (global as Record<string, unknown>).__dbContext as Parameters<DatabaseSecurityService['setSessionContext']>[0] | undefined;
 
     if (context) {
       await dbSecurity.setSessionContext(context);

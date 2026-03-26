@@ -156,10 +156,35 @@ providers.push(
           return null;
         }
 
-        const isPasswordValid = await compare(
-          credentials.password as string,
-          user.passwordHash
-        );
+        // Validate bcrypt hash format before comparing
+        if (!/^\$2[aby]\$\d{2}\$.{53}$/.test(user.passwordHash)) {
+          console.error('[Auth] Invalid password hash format for user:', email);
+          await auditLog({
+            action: AuditAction.LOGIN_FAILED,
+            userEmail: email,
+            metadata: { reason: 'invalid_password_hash_format' },
+            success: false,
+            errorMessage: 'Account password not properly configured',
+          }).catch(() => {});
+          return null;
+        }
+
+        let isPasswordValid = false;
+        try {
+          isPasswordValid = await compare(
+            credentials.password as string,
+            user.passwordHash
+          );
+        } catch (hashError) {
+          console.error('[Auth] bcryptjs.compare() error:', hashError instanceof Error ? hashError.message : hashError);
+          await auditLog({
+            action: AuditAction.LOGIN_FAILED,
+            userEmail: email,
+            metadata: { reason: 'hash_validation_error' },
+            success: false,
+          }).catch(() => {});
+          return null;
+        }
 
         if (!isPasswordValid) {
           await lockout.recordFailedAttempt(email, 'unknown').catch(() => {});

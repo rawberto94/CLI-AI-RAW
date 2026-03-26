@@ -55,12 +55,14 @@ docker exec contract-intelligence-postgres-dev psql -U postgres -d contracts
 
 ## Authentication
 
-### Seeded users (password: `password123` for all)
-| Email | Tenant | Role |
-|---|---|---|
-| `admin@acme.com` | `acme` | admin |
-| `roberto@acme.com` | `acme` | admin |
-| `demo@example.com` | `demo` | user |
+### Seeded users
+
+| Email | Tenant | Password | Script |
+|---|---|---|---|
+| `florian@florian.com` | `tenant-florian` | `password123` | seed-tenants.ts |
+| `roberto@roberto.com` | `tenant-roberto` | `password123` | seed-tenants.ts |
+| `admin@acme.com` | `acme` | `password123` | seed-users.ts |
+| `demo@example.com` | `demo` | `demo123` | create-demo-user.ts |
 
 ### Login flow (for scripted API calls)
 ```bash

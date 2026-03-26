@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 
 // Ensure table exists (idempotent)
 const ensureTable = async () => {
-  await prisma.$executeRawUnsafe(`
+  await prisma.$executeRaw`
     CREATE TABLE IF NOT EXISTS report_schedules (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       tenant_id UUID NOT NULL,
@@ -22,7 +22,7 @@ const ensureTable = async () => {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
-  `);
+  `;
 };
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {

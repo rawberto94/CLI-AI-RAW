@@ -413,7 +413,7 @@ async function vectorSearch(
       : Prisma.empty;
 
     // Set HNSW ef_search for high recall (95%+)
-    await prisma.$executeRawUnsafe('SET hnsw.ef_search = 100');
+    await prisma.$executeRaw`SET hnsw.ef_search = 100`;
 
     const results = await prisma.$queryRaw<VectorSearchResult[]>`
       SELECT 
