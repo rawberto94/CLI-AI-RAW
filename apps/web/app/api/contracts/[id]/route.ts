@@ -949,7 +949,7 @@ export async function PUT(
 
     return createSuccessResponse(ctx, safeContract);
   } catch (error: unknown) {
-    console.error('[ContractPUT] Unhandled error:', error);
+    logger.error('[ContractPUT] Unhandled error', error);
     return handleApiError(ctx, error);
   }
 }

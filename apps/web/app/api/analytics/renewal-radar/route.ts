@@ -15,6 +15,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type Au
 import { renewalIntelligenceService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 
 // Validation schemas
 const getRadarSchema = z.object({
@@ -213,7 +214,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
 
     return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
   } catch (error) {
-    console.error('[Renewal Radar API] Error:', error);
+    logger.error('[RenewalRadar] API error', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to process request', 500);
   }
 });
@@ -269,7 +270,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
             });
           }
         } catch (dbError) {
-          console.warn('[Renewal Radar] Failed to store alerts (migration may be needed):', dbError);
+          logger.warn('[RenewalRadar] Failed to store alerts (migration may be needed)', { error: dbError });
           // Continue without storing - alerts are still returned in response
         }
 
@@ -361,7 +362,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
 
     return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
   } catch (error) {
-    console.error('[Renewal Radar API] Error:', error);
+    logger.error('[RenewalRadar] API error', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to process action', 500);
   }
 });

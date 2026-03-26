@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendEmail } from '@/lib/email-service';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
+import { logger } from '@/lib/logger';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -113,7 +114,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Signing validation error:', error);
+    logger.error('[Signing] Validation error', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -336,7 +337,7 @@ export async function POST(
       allSigned,
     });
   } catch (error) {
-    console.error('Signing submission error:', error);
+    logger.error('[Signing] Submission error', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

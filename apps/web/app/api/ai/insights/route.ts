@@ -16,6 +16,7 @@ import { createOpenAIClient, getOpenAIApiKey, hasAIClientConfig } from '@/lib/op
 import { prisma } from '@/lib/prisma';
 import { aiInsightsGeneratorService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
@@ -303,7 +304,7 @@ Generate one strategic insight about this portfolio.` },
       description: content.description || 'AI analysis of your contract portfolio.',
       recommendation: content.recommendation };
   } catch (error) {
-    console.error('[AIInsights] generateAIInsight parse failed:', error instanceof Error ? error.message : error);
+    logger.warn('[AIInsights] generateAIInsight parse failed', { error: error instanceof Error ? error.message : error });
     return null;
   }
 }

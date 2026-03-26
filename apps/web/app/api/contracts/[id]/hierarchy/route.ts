@@ -25,6 +25,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type Au
 import { contractHierarchyService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 
 // Validation schemas
 const getHierarchySchema = z.object({
@@ -283,7 +284,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
         return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${params.action}`, 400);
     }
   } catch (error) {
-    console.error('[Hierarchy API] Error:', error);
+    logger.error('[Hierarchy] API error', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to process request', 500);
   }
 });
@@ -371,7 +372,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
 
     return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
   } catch (error) {
-    console.error('[Hierarchy API] Error:', error);
+    logger.error('[Hierarchy] API error', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 
       error instanceof Error ? error.message : 'Failed to process request', 
       500
@@ -417,7 +418,7 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx: Authe
       targetContractId: relationship.targetContractId,
     });
   } catch (error) {
-    console.error('[Hierarchy API] Error:', error);
+    logger.error('[Hierarchy] API error', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to unlink contract', 500);
   }
 });

@@ -128,7 +128,7 @@ const quickActions = [
     icon: MessageSquare,
     label: "AI Assistant",
     description: "Ask about contracts",
-    href: "/ai/chat",
+    href: "/contigo-labs?tab=chat",
     color: "bg-pink-100 dark:bg-pink-900/40 text-pink-600 dark:text-pink-400",
   },
   {

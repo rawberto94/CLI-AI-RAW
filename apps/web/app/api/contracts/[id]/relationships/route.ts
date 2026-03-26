@@ -18,6 +18,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type Au
 import { relationshipDetectionService, RelationshipType } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 
 // Validation schemas
 const createRelationshipSchema = z.object({
@@ -169,7 +170,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
 
     return createSuccessResponse(ctx, result);
   } catch (error) {
-    console.error('[Relationships API] Error:', error);
+    logger.error('[Relationships] API error', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch relationships', 500);
   }
 });
@@ -291,7 +292,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
     if (error instanceof z.ZodError) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', error.message, 400);
     }
-    console.error('[Relationships API] Error:', error);
+    logger.error('[Relationships] API error', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to process relationship', 500);
   }
 });
@@ -337,7 +338,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx: Authen
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('[Relationships API] Error:', error);
+    logger.error('[Relationships] API error', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update relationship', 500);
   }
 });
@@ -378,7 +379,7 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx: Authe
       relationshipId,
     });
   } catch (error) {
-    console.error('[Relationships API] Error:', error);
+    logger.error('[Relationships] API error', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to delete relationship', 500);
   }
 });

@@ -22,6 +22,7 @@ import { getApiTenantId } from '@/lib/tenant-server';
 import { queueRAGReindex } from '@/lib/rag/reindex-helper';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { hasAIClientConfig } from '@/lib/openai-client';
+import { logger } from '@/lib/logger';
 
 interface ExtractRequest {
   documentText?: string;
@@ -254,7 +255,7 @@ async function getContractText(contractId: string): Promise<string | null> {
 
     return null;
   } catch (error) {
-    console.error('[ExtractMetadata] getContractText failed:', error instanceof Error ? error.message : error);
+    logger.error('[ExtractMetadata] getContractText failed', error);
     return null;
   }
 }
@@ -337,7 +338,7 @@ async function getExtractionResults(
     const customFields = metadata?.customFields as Record<string, unknown> | null;
     return (customFields?._aiExtraction as Record<string, unknown>) || null;
   } catch (error) {
-    console.error('[ExtractMetadata] getExtractionResults failed:', error instanceof Error ? error.message : error);
+    logger.error('[ExtractMetadata] getExtractionResults failed', error);
     return null;
   }
 }

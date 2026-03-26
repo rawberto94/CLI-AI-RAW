@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { auditTrailService } from 'data-orchestration/services';
 import { getPublicApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -278,7 +279,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the actual error for debugging
-    console.error('[Signup Error]', error);
+    logger.error('[Signup] Error', error);
     
     // Extract useful error message
     const errorMessage = error instanceof Error 

@@ -1020,6 +1020,7 @@ export async function generateRealArtifacts(
 ): Promise<{ success: boolean; artifactsCreated: number; errors?: string[] }> {
   const errors: string[] = [];
   const artifactIds: string[] = [];
+  const startTime = performance.now();
 
   logger.info({ contractId, tenantId, filePath }, 'Starting artifact generation');
 
@@ -1359,12 +1360,15 @@ export async function generateRealArtifacts(
       },
     });
 
+    const totalDurationMs = Math.round(performance.now() - startTime);
     logger.info({ 
       contractId, 
       artifactsCreated: artifactIds.length,
       errors: errors.length,
       status: finalStatus,
-    }, 'Artifact generation completed');
+      durationMs: totalDurationMs,
+      durationSec: (totalDurationMs / 1000).toFixed(1),
+    }, `Artifact generation completed in ${(totalDurationMs / 1000).toFixed(1)}s`);
 
     return {
       success: artifactIds.length > 0,
@@ -1373,7 +1377,8 @@ export async function generateRealArtifacts(
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    logger.error({ error: errorMsg, contractId }, 'Artifact generation failed');
+    const totalDurationMs = Math.round(performance.now() - startTime);
+    logger.error({ error: errorMsg, contractId, durationMs: totalDurationMs }, `Artifact generation failed after ${(totalDurationMs / 1000).toFixed(1)}s`);
 
     // Update contract status to FAILED
     await prisma.contract.update({

@@ -1063,14 +1063,26 @@ export function FloatingAIBubble() {
         });
 
         if (!response.ok) {
-          // Check for retryable status codes
-          if (response.status >= 500 && retryCount < MAX_RETRIES) {
+          // Try to parse error body for specific error types
+          let errorBody: { error?: string; message?: string } | null = null;
+          try {
+            errorBody = await response.clone().json();
+          } catch { /* ignore parse errors */ }
+
+          // Don't retry non-transient errors (AI not configured, bad request, etc.)
+          const isNonTransient = response.status === 503 || response.status === 400 ||
+            errorBody?.error === 'AI_NOT_CONFIGURED';
+
+          if (!isNonTransient && response.status >= 500 && retryCount < MAX_RETRIES) {
             clearTimeout(timeoutId);
             const backoffMs = Math.min(1000 * Math.pow(2, retryCount), 5000);
             await new Promise(resolve => setTimeout(resolve, backoffMs));
             return await handleSendMessage(messageContent, retryCount + 1);
           }
-          throw new Error(`Stream request failed: ${response.status}`);
+
+          // Use server-provided message if available
+          const errorMessage = errorBody?.message || errorBody?.error || `Stream request failed: ${response.status}`;
+          throw new Error(errorMessage);
         }
 
         // Add placeholder for streaming message

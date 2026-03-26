@@ -85,8 +85,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   }
 
   if (!hasAIClientConfig()) {
-    return new NextResponse(JSON.stringify({ error: 'OpenAI API key not configured' }), {
-      status: 500,
+    return new NextResponse(JSON.stringify({ 
+      error: 'AI_NOT_CONFIGURED',
+      message: 'AI service is not configured. Please contact your administrator to set up OpenAI API keys.',
+    }), {
+      status: 503,
       headers: { 'Content-Type': 'application/json' },
     });
   }
@@ -697,7 +700,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           // Log any rejected tool calls (non-fatal)
           for (const r of toolSettled) {
             if (r.status === 'rejected') {
-              console.error('[ChatStream] Tool execution failed (non-fatal):', r.reason);
+      logger.warn('[ChatStream] Tool execution failed (non-fatal)', { reason: r.reason });
             }
           }
 

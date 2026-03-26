@@ -75,7 +75,7 @@ async function checkUploadRateLimit(tenantId: string): Promise<{ allowed: boolea
       }
       return { allowed: true };
     } catch (redisErr) {
-      console.warn('[RateLimit] Redis unavailable, falling back to in-memory rate limiter — multi-instance deployments are NOT protected', (redisErr as Error).message);
+      logger.warn('[RateLimit] Redis unavailable, falling back to in-memory rate limiter — multi-instance deployments are NOT protected', { error: (redisErr as Error).message });
     }
   }
 

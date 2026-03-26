@@ -212,6 +212,40 @@ export function validateEnvironment(options?: {
     };
   }
 
+  // Cross-cutting dependency checks — related env vars that must be set together
+  const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+  const azureKey = process.env.AZURE_OPENAI_API_KEY;
+  const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT;
+  if (azureEndpoint || azureKey || azureDeployment) {
+    const missing: string[] = [];
+    if (!azureEndpoint) missing.push('AZURE_OPENAI_ENDPOINT');
+    if (!azureKey) missing.push('AZURE_OPENAI_API_KEY');
+    if (!azureDeployment) missing.push('AZURE_OPENAI_DEPLOYMENT');
+    if (missing.length > 0) {
+      warnings.push(`Partial Azure OpenAI config — missing: ${missing.join(', ')}. AI features may fail at runtime.`);
+    }
+  }
+
+  const minioEndpoint = process.env.MINIO_ENDPOINT;
+  const minioAccess = process.env.MINIO_ACCESS_KEY;
+  const minioSecret = process.env.MINIO_SECRET_KEY;
+  if (minioEndpoint || minioAccess || minioSecret) {
+    const missing: string[] = [];
+    if (!minioEndpoint) missing.push('MINIO_ENDPOINT');
+    if (!minioAccess) missing.push('MINIO_ACCESS_KEY');
+    if (!minioSecret) missing.push('MINIO_SECRET_KEY');
+    if (missing.length > 0) {
+      warnings.push(`Partial MinIO/S3 config — missing: ${missing.join(', ')}. File storage may fail.`);
+    }
+  }
+
+  const diEndpoint = process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
+  const diKey = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
+  if ((diEndpoint && !diKey) || (!diEndpoint && diKey)) {
+    const missing = !diEndpoint ? 'AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT' : 'AZURE_DOCUMENT_INTELLIGENCE_KEY';
+    warnings.push(`Partial Document Intelligence config — missing: ${missing}. OCR will fail.`);
+  }
+
   const result: ValidationResult = {
     valid: errors.length === 0,
     errors,

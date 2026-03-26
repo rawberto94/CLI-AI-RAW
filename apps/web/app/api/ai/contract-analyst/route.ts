@@ -13,6 +13,7 @@ import OpenAI from 'openai';
 import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { aiCopilotService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 // ============================================================================
 // Types
@@ -126,7 +127,7 @@ Generate 3 follow-up questions:` },
     content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
     return JSON.parse(content);
   } catch (error) {
-    console.error('[ContractAnalyst] generateFollowUps failed:', error instanceof Error ? error.message : error);
+    logger.warn('[ContractAnalyst] generateFollowUps failed', error);
     return [];
   }
 }
