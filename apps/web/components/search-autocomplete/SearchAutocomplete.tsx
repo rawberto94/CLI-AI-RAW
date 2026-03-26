@@ -519,7 +519,7 @@ export function useSearchHistory(key: string = 'search-history', maxItems: numbe
     if (stored) {
       try {
         setHistory(JSON.parse(stored));
-      } catch {}
+      } catch { /* localStorage parse error */ }
     }
   }, [key]);
 

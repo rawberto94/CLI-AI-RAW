@@ -91,7 +91,7 @@ function getProgress(): OnboardingProgress {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) return JSON.parse(stored);
-  } catch {}
+  } catch { /* localStorage unavailable (private browsing) */ }
   return { completedSteps: [], dismissed: false, startedAt: Date.now() };
 }
 
@@ -99,7 +99,7 @@ function saveProgress(progress: OnboardingProgress) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-  } catch {}
+  } catch { /* localStorage unavailable (private browsing) */ }
 }
 
 export function OnboardingChecklist() {

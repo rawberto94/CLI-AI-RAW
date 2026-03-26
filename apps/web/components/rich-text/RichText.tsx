@@ -105,7 +105,7 @@ export function RichTextEditor({
 
   useEffect(() => {
     if (editorRef.current && value !== editorRef.current.innerHTML) {
-      editorRef.current.innerHTML = value;
+      editorRef.current.innerHTML = sanitizeHtml(value);
     }
   }, [value]);
 

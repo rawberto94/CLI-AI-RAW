@@ -12,10 +12,10 @@ export function RunDetailClient({ params }: { params: { runId: string } }) {
     const es = new EventSource(`/api/v2/stream/${runId}`);
     esRef.current = es;
     es.addEventListener('step', (ev) => {
-      try { setSteps((prev) => [...prev, JSON.parse((ev as MessageEvent).data)]); } catch {}
+      try { setSteps((prev) => [...prev, JSON.parse((ev as MessageEvent).data)]); } catch (err) { console.error('[RunDetail] Failed to parse step event:', err); }
     });
     es.addEventListener('done', (ev) => {
-      try { const data = JSON.parse((ev as MessageEvent).data); setSummary(data.summary || null); } catch {}
+      try { const data = JSON.parse((ev as MessageEvent).data); setSummary(data.summary || null); } catch (err) { console.error('[RunDetail] Failed to parse done event:', err); }
       setDone(true);
       es.close(); esRef.current = null;
     });

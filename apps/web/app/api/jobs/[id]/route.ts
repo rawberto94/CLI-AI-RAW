@@ -9,8 +9,12 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
   if (!ctx) {
     return createErrorResponse(getApiContext(_req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
-  const params = await context.params
-  const job = getJob(params.id)
-  if (!job) return createErrorResponse(ctx, 'NOT_FOUND', 'Not found', 404);
-  return createSuccessResponse(ctx, { id: job.id, status: job.status, progress: job.progress, result: job.result, error: job.error });
+  try {
+    const params = await context.params;
+    const job = getJob(params.id);
+    if (!job) return createErrorResponse(ctx, 'NOT_FOUND', 'Not found', 404);
+    return createSuccessResponse(ctx, { id: job.id, status: job.status, progress: job.progress, result: job.result, error: job.error });
+  } catch (error) {
+    return handleApiError(error, ctx);
+  }
 }
