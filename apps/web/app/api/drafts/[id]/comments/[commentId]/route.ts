@@ -15,6 +15,8 @@ import {
   createErrorResponse,
   handleApiError,
 } from '@/lib/api-middleware';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +32,9 @@ export async function PATCH(
 
   try {
     const tenantId = await getApiTenantId(request);
+    const rl = checkRateLimit(tenantId, ctx.userId, '/api/drafts/[id]/comments/[commentId]', AI_RATE_LIMITS.standard);
+    if (!rl.allowed) return rateLimitResponse(rl);
+
     const { id: draftId, commentId } = await params;
     const body = await request.json();
 
@@ -62,6 +67,15 @@ export async function PATCH(
       },
     });
 
+    await auditLog({
+      action: AuditAction.CONTRACT_UPDATED,
+      resourceType: 'draft_comment',
+      resourceId: commentId,
+      userId: ctx.userId,
+      tenantId,
+      metadata: { operation: 'update', draftId },
+    }).catch(err => console.error('[Draft] Audit log failed:', err));
+
     return createSuccessResponse(ctx, { comment });
   } catch (error) {
     return handleApiError(ctx, error);
@@ -80,6 +94,9 @@ export async function DELETE(
 
   try {
     const tenantId = await getApiTenantId(request);
+    const rl2 = checkRateLimit(tenantId, ctx.userId, '/api/drafts/[id]/comments/[commentId]', AI_RATE_LIMITS.standard);
+    if (!rl2.allowed) return rateLimitResponse(rl2);
+
     const { id: draftId, commentId } = await params;
 
     const existing = await prisma.draftComment.findFirst({
@@ -92,6 +109,15 @@ export async function DELETE(
     // Cascade delete replies first
     await prisma.draftComment.deleteMany({ where: { parentId: commentId } });
     await prisma.draftComment.delete({ where: { id: commentId } });
+
+    await auditLog({
+      action: AuditAction.CONTRACT_DELETED,
+      resourceType: 'draft_comment',
+      resourceId: commentId,
+      userId: ctx.userId,
+      tenantId,
+      metadata: { operation: 'delete', draftId },
+    }).catch(err => console.error('[Draft] Audit log failed:', err));
 
     return createSuccessResponse(ctx, { message: 'Comment deleted' });
   } catch (error) {

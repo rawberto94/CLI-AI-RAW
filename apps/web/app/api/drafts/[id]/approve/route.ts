@@ -15,6 +15,8 @@ import {
   handleApiError,
 } from '@/lib/api-middleware';
 import { pushAgentNotification } from '@/lib/ai/agent-notifications';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +31,9 @@ export async function POST(
 
   try {
     const tenantId = await getApiTenantId(request);
+    const rl = checkRateLimit(tenantId, ctx.userId, '/api/drafts/[id]/approve', AI_RATE_LIMITS.standard);
+    if (!rl.allowed) return rateLimitResponse(rl);
+
     const { id: draftId } = await params;
     const body = await request.json().catch(() => ({}));
     const comment = typeof body.comment === 'string' ? body.comment : '';
@@ -111,6 +116,15 @@ export async function POST(
         }),
       }).catch(() => { /* fire-and-forget */ });
     }
+
+    await auditLog({
+      action: AuditAction.APPROVAL_APPROVED,
+      resourceType: 'draft',
+      resourceId: draftId,
+      userId: ctx.userId,
+      tenantId,
+      metadata: { operation: 'approve', title: updated.title },
+    }).catch(err => console.error('[Draft] Audit log failed:', err));
 
     return createSuccessResponse(ctx, {
       draft: updated,

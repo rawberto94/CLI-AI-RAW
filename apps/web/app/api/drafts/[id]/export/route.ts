@@ -13,6 +13,8 @@ import {
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { generateDraftPDF, generateDraftDOCX } from '@/lib/drafting/draft-export';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 const ALLOWED_FORMATS = ['pdf', 'docx', 'json'] as const;
 type ExportFormat = (typeof ALLOWED_FORMATS)[number];
@@ -26,6 +28,9 @@ export const GET = withAuthApiHandler(
     if (!draftId) {
       return createErrorResponse('Draft ID is required', 400, ctx.requestId);
     }
+
+    const rl = checkRateLimit(tenantId, userId, '/api/drafts/[id]/export', AI_RATE_LIMITS.lightweight);
+    if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
     if (!ALLOWED_FORMATS.includes(format)) {
       return createErrorResponse(
@@ -77,6 +82,15 @@ export const GET = withAuthApiHandler(
           exportedAt: new Date().toISOString(),
         };
 
+        await auditLog({
+          action: AuditAction.DATA_EXPORTED,
+          resourceType: 'draft',
+          resourceId: draftId,
+          userId,
+          tenantId,
+          metadata: { operation: 'export', format: 'json', title: draft.title },
+        }).catch(err => logger.error('[Draft] Audit log failed:', err));
+
         return new NextResponse(JSON.stringify(payload, null, 2), {
           status: 200,
           headers: {
@@ -98,6 +112,16 @@ export const GET = withAuthApiHandler(
       // PDF export
       if (format === 'pdf') {
         const pdfBytes = generateDraftPDF(exportInput);
+
+        await auditLog({
+          action: AuditAction.DATA_EXPORTED,
+          resourceType: 'draft',
+          resourceId: draftId,
+          userId,
+          tenantId,
+          metadata: { operation: 'export', format: 'pdf', title: draft.title },
+        }).catch(err => logger.error('[Draft] Audit log failed:', err));
+
         return new NextResponse(pdfBytes, {
           status: 200,
           headers: {
@@ -111,6 +135,16 @@ export const GET = withAuthApiHandler(
 
       // DOCX export
       const docxBytes = await generateDraftDOCX(exportInput);
+
+      await auditLog({
+        action: AuditAction.DATA_EXPORTED,
+        resourceType: 'draft',
+        resourceId: draftId,
+        userId,
+        tenantId,
+        metadata: { operation: 'export', format: 'docx', title: draft.title },
+      }).catch(err => logger.error('[Draft] Audit log failed:', err));
+
       return new NextResponse(docxBytes, {
         status: 200,
         headers: {

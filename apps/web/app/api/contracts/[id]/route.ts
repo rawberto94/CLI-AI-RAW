@@ -667,7 +667,7 @@ export async function GET(
         supplierName: child.supplierName,
         effectiveDate: child.effectiveDate?.toISOString(),
         expirationDate: child.expirationDate?.toISOString(),
-        totalValue: child.totalValue,
+        totalValue: child.totalValue ? Number(child.totalValue) : null,
         createdAt: child.createdAt?.toISOString(),
       })) || [],
       

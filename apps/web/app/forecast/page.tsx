@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { ForecastingDashboard } from '@/components/analytics/ForecastingDashboard';
+import React, { lazy, Suspense } from 'react';
+const ForecastingDashboard = lazy(() => import('@/components/analytics/ForecastingDashboard').then(m => ({ default: m.ForecastingDashboard })));
 import { PageBreadcrumb } from '@/components/navigation';
 
 export default function ForecastPage() {
@@ -13,7 +13,9 @@ export default function ForecastPage() {
       </div>
       
       {/* Main Content */}
-      <ForecastingDashboard />
+      <Suspense fallback={<div className="h-64 bg-slate-100 rounded-lg animate-pulse" />}>
+        <ForecastingDashboard />
+      </Suspense>
     </div>
   );
 }

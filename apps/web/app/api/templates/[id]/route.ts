@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 // Helper to transform Prisma template to UI-expected format
 function transformTemplate(template: Record<string, unknown>) {
@@ -84,6 +86,10 @@ export async function PUT(
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
+
+  const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/templates', AI_RATE_LIMITS.standard);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
+
   try {
     const tenantId = await getApiTenantId(request);
     const { id } = await params;
@@ -145,6 +151,15 @@ export async function PUT(
       data: updateData,
     });
 
+    await auditLog({
+      action: AuditAction.CONTRACT_UPDATED,
+      resourceType: 'template',
+      resourceId: template.id,
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      metadata: { operation: 'update', title: template.name },
+    }).catch(err => console.error('[Template] Audit log failed:', err));
+
     return createSuccessResponse(ctx, {
       success: true,
       template: transformTemplate(template as unknown as Record<string, unknown>),
@@ -163,6 +178,10 @@ export async function DELETE(
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
+
+  const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/templates', AI_RATE_LIMITS.standard);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
+
   try {
     const tenantId = await getApiTenantId(request);
     const { id } = await params;
@@ -183,6 +202,15 @@ export async function DELETE(
     await prisma.contractTemplate.delete({
       where: { id },
     });
+
+    await auditLog({
+      action: AuditAction.CONTRACT_DELETED,
+      resourceType: 'template',
+      resourceId: id,
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      metadata: { operation: 'delete', title: existingTemplate.name },
+    }).catch(err => console.error('[Template] Audit log failed:', err));
 
     return createSuccessResponse(ctx, {
       success: true,

@@ -4,7 +4,12 @@
  */
 
 import { Metadata } from "next";
-import DocumentAnalyticsCharts from "@/components/dashboard/DocumentAnalyticsCharts";
+import dynamic from "next/dynamic";
+
+const DocumentAnalyticsCharts = dynamic(
+  () => import("@/components/dashboard/DocumentAnalyticsCharts"),
+  { loading: () => <div className="h-64 bg-slate-100 rounded-lg animate-pulse" /> }
+);
 
 export const metadata: Metadata = {
   title: "Document Analytics | Contigo",

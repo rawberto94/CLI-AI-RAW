@@ -130,7 +130,7 @@ export async function GET(
     const fields: FieldConfidence[] = [
       { name: 'supplierName', label: 'Supplier', value: contract.supplierName },
       { name: 'clientName', label: 'Client', value: contract.clientName },
-      { name: 'totalValue', label: 'Total Value', value: contract.totalValue },
+      { name: 'totalValue', label: 'Total Value', value: contract.totalValue ? Number(contract.totalValue) : contract.totalValue },
       { name: 'effectiveDate', label: 'Effective Date', value: contract.effectiveDate },
       { name: 'expirationDate', label: 'Expiration Date', value: contract.expirationDate },
       { name: 'contractType', label: 'Contract Type', value: contract.contractType },

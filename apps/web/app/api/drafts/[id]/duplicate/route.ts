@@ -13,11 +13,16 @@ import {
 } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 export const POST = withAuthApiHandler(
   async (request: NextRequest, ctx: AuthenticatedApiContext) => {
     const { tenantId, userId } = ctx;
     const draftId = ctx.params?.id as string;
+
+    const rl = checkRateLimit(tenantId, userId, '/api/drafts/[id]/duplicate', AI_RATE_LIMITS.standard);
+    if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
     if (!draftId) {
       return createErrorResponse('Draft ID is required', 400, ctx.requestId);
@@ -87,6 +92,15 @@ export const POST = withAuthApiHandler(
         tenantId,
         userId,
       });
+
+      await auditLog({
+        action: AuditAction.CONTRACT_CREATED,
+        resourceType: 'draft',
+        resourceId: duplicate.id,
+        userId,
+        tenantId,
+        metadata: { operation: 'duplicate', sourceId: draftId, title: duplicate.title },
+      }).catch(err => logger.error('[Draft] Audit log failed:', err));
 
       return createSuccessResponse(
         { draft: duplicate, editUrl: `/drafting?draftId=${duplicate.id}` },

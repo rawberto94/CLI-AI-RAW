@@ -16,6 +16,8 @@ import {
 import type { ContractTemplate } from '@/lib/templates/document-service';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 export async function POST(
   request: NextRequest,
@@ -25,6 +27,10 @@ export async function POST(
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
+
+  const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/templates/sync', AI_RATE_LIMITS.standard);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
+
   try {
     const tenantId = ctx.tenantId;
     if (!tenantId) {
@@ -130,6 +136,15 @@ export async function POST(
         },
       },
     });
+
+    await auditLog({
+      action: AuditAction.CONTRACT_UPDATED,
+      resourceType: 'template',
+      resourceId: id,
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      metadata: { operation: 'sync', provider },
+    }).catch(err => console.error('[Template] Audit log failed:', err));
 
     return createSuccessResponse(ctx, {
       success: true,

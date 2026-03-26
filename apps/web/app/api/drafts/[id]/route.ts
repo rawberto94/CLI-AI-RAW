@@ -12,6 +12,8 @@ import { getApiTenantId } from '@/lib/tenant-server';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
 import { logger } from '@/lib/logger';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,6 +87,9 @@ export async function PATCH(
   }
   try {
     const tenantId = await getApiTenantId(request);
+    const rl = checkRateLimit(tenantId, ctx.userId, '/api/drafts/[id]', AI_RATE_LIMITS.standard);
+    if (!rl.allowed) return rateLimitResponse(rl);
+
     const { id } = await params;
     const body = await request.json();
 
@@ -210,6 +215,15 @@ export async function PATCH(
       },
     });
 
+    await auditLog({
+      action: AuditAction.CONTRACT_UPDATED,
+      resourceType: 'draft',
+      resourceId: id,
+      userId: ctx.userId,
+      tenantId,
+      metadata: { operation: 'update' },
+    }).catch(err => logger.error('[Draft] Audit log failed:', err));
+
     return createSuccessResponse(ctx, { draft });
   } catch (error) {
     return handleApiError(ctx, error);
@@ -226,8 +240,10 @@ export async function DELETE(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
-
     const tenantId = await getApiTenantId(request);
+    const rl = checkRateLimit(tenantId, ctx.userId, '/api/drafts/[id]', AI_RATE_LIMITS.standard);
+    if (!rl.allowed) return rateLimitResponse(rl);
+
     const { id } = await params;
 
     // Check if draft exists and belongs to tenant
@@ -247,6 +263,15 @@ export async function DELETE(
     await prisma.contractDraft.delete({
       where: { id },
     });
+
+    await auditLog({
+      action: AuditAction.CONTRACT_DELETED,
+      resourceType: 'draft',
+      resourceId: id,
+      userId: ctx.userId,
+      tenantId,
+      metadata: { operation: 'delete', title: existing.title },
+    }).catch(err => logger.error('[Draft] Audit log failed:', err));
 
     return createSuccessResponse(ctx, {
       message: 'Draft deleted successfully',

@@ -2,8 +2,8 @@
 
 export const dynamic = 'force-dynamic'
 
-import React, { useEffect as _useEffect, useState, useMemo } from 'react'
-import { AnalyticsHub } from '@/components/analytics/AnalyticsHub'
+import React, { useEffect as _useEffect, useState, useMemo, lazy, Suspense } from 'react'
+const AnalyticsHub = lazy(() => import('@/components/analytics/AnalyticsHub').then(m => ({ default: m.AnalyticsHub })));
 import { PageBreadcrumb } from '@/components/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button as _Button } from '@/components/ui/button'
@@ -158,7 +158,9 @@ export default function ImprovedAnalyticsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        <AnalyticsHub key={refreshKey} />
+        <Suspense fallback={<div className="h-64 bg-slate-100 rounded-lg animate-pulse" />}>
+          <AnalyticsHub key={refreshKey} />
+        </Suspense>
       </motion.div>
 
       {/* Detailed Analytics Links */}

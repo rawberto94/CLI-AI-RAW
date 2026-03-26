@@ -16,6 +16,8 @@ import {
   createErrorResponse,
   handleApiError,
 } from '@/lib/api-middleware';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +34,9 @@ export async function POST(
 
   try {
     const tenantId = await getApiTenantId(request);
+    const rl = checkRateLimit(tenantId, ctx.userId, '/api/drafts/[id]/lock', AI_RATE_LIMITS.standard);
+    if (!rl.allowed) return rateLimitResponse(rl);
+
     const { id: draftId } = await params;
     const body = await request.json().catch(() => ({}));
     const action = body.action as string;
@@ -77,6 +82,15 @@ export async function POST(
         },
       });
 
+      await auditLog({
+        action: AuditAction.CONTRACT_UPDATED,
+        resourceType: 'draft',
+        resourceId: draftId,
+        userId: ctx.userId,
+        tenantId,
+        metadata: { operation: 'lock' },
+      }).catch(err => console.error('[Draft] Audit log failed:', err));
+
       return createSuccessResponse(ctx, { draft: updated });
     }
 
@@ -99,6 +113,15 @@ export async function POST(
         lockedAt: true,
       },
     });
+
+    await auditLog({
+      action: AuditAction.CONTRACT_UPDATED,
+      resourceType: 'draft',
+      resourceId: draftId,
+      userId: ctx.userId,
+      tenantId,
+      metadata: { operation: 'unlock' },
+    }).catch(err => console.error('[Draft] Audit log failed:', err));
 
     return createSuccessResponse(ctx, { draft: updated });
   } catch (error) {

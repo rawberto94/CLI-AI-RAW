@@ -17,6 +17,8 @@ import {
   createErrorResponse,
   handleApiError,
 } from '@/lib/api-middleware';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +39,9 @@ export async function POST(
 
   try {
     const tenantId = await getApiTenantId(request);
+    const rl = checkRateLimit(tenantId, ctx.userId, '/api/drafts/[id]/finalize', AI_RATE_LIMITS.standard);
+    if (!rl.allowed) return rateLimitResponse(rl);
+
     const { id } = await params;
 
     // Fetch the draft
@@ -152,6 +157,15 @@ export async function POST(
 
       return { draft: finalizedDraft, contract };
     });
+
+    await auditLog({
+      action: AuditAction.CONTRACT_UPDATED,
+      resourceType: 'draft',
+      resourceId: id,
+      userId: ctx.userId,
+      tenantId,
+      metadata: { operation: 'finalize', title: draft.title, contractId: result.contract.id },
+    }).catch(err => console.error('[Draft] Audit log failed:', err));
 
     return createSuccessResponse(ctx, {
       message: 'Draft finalized successfully',

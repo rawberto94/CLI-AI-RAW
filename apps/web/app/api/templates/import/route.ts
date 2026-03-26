@@ -12,8 +12,13 @@ import { prisma } from '@/lib/prisma';
 import { parseWordDocument } from '@/lib/templates/document-service';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/templates/import', AI_RATE_LIMITS.standard);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
+
   const tenantId = ctx.tenantId;
   if (!tenantId) {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant not found', 400);
@@ -89,6 +94,15 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         isActive: true,
       },
     });
+
+    await auditLog({
+      action: AuditAction.CONTRACT_CREATED,
+      resourceType: 'template',
+      resourceId: template.id,
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      metadata: { operation: 'import', title: template.name },
+    }).catch(err => console.error('[Template] Audit log failed:', err));
 
     return createSuccessResponse(ctx, {
       success: true,

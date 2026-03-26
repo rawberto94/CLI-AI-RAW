@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/layout/AppLayout";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,8 +33,10 @@ import {
 import Link from "next/link";
 import { DashboardSkeleton } from "@/components/ui/skeletons";
 import { useRealTimeEvents } from "@/contexts/RealTimeContext";
-import ContractLifecyclePipeline from "@/components/dashboard/ContractLifecyclePipeline";
-import CustomDashboardBuilder, { type DashboardWidget} from "@/components/dashboard/CustomDashboardBuilder";
+import { type DashboardWidget } from "@/components/dashboard/CustomDashboardBuilder";
+
+const ContractLifecyclePipeline = lazy(() => import("@/components/dashboard/ContractLifecyclePipeline"));
+const CustomDashboardBuilder = lazy(() => import("@/components/dashboard/CustomDashboardBuilder"));
 
 interface DashboardData {
   overview: {
@@ -469,7 +471,9 @@ export default function DashboardPage() {
 
         {/* Contract Lifecycle Pipeline */}
         <motion.div variants={itemVariants}>
-          <ContractLifecyclePipeline />
+          <Suspense fallback={<div className="h-32 bg-slate-100 rounded-lg animate-pulse" />}>
+            <ContractLifecyclePipeline />
+          </Suspense>
         </motion.div>
 
         {/* Quick Actions */}
@@ -664,12 +668,14 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* Dashboard Customizer Dialog */}
-      <CustomDashboardBuilder
-        open={customizerOpen}
-        onOpenChange={setCustomizerOpen}
-        onSave={setDashboardWidgets}
-        currentWidgets={dashboardWidgets.length > 0 ? dashboardWidgets : undefined}
-      />
+      <Suspense fallback={null}>
+        <CustomDashboardBuilder
+          open={customizerOpen}
+          onOpenChange={setCustomizerOpen}
+          onSave={setDashboardWidgets}
+          currentWidgets={dashboardWidgets.length > 0 ? dashboardWidgets : undefined}
+        />
+      </Suspense>
     </DashboardLayout>
   );
 }

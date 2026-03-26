@@ -7,12 +7,12 @@
  * real-time metrics, performance data, and system health.
  */
 
-import { Suspense } from 'react';
+import { Suspense, lazy } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RealTimeDashboard } from '@/components/analytics/RealTimeDashboard';
-import { DashboardBuilder } from '@/components/analytics/DashboardBuilder';
-import { PerformanceMonitoringDashboard } from '@/components/monitoring/PerformanceMonitoringDashboard';
+const RealTimeDashboard = lazy(() => import('@/components/analytics/RealTimeDashboard').then(m => ({ default: m.RealTimeDashboard })));
+const DashboardBuilder = lazy(() => import('@/components/analytics/DashboardBuilder').then(m => ({ default: m.DashboardBuilder })));
+const PerformanceMonitoringDashboard = lazy(() => import('@/components/monitoring/PerformanceMonitoringDashboard').then(m => ({ default: m.PerformanceMonitoringDashboard })));
 
 function LoadingSkeleton() {
   return (

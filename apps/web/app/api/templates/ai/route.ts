@@ -21,6 +21,7 @@ import {
   createErrorResponse,
 } from '@/lib/api-middleware';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
+import { auditLog, AuditAction } from '@/lib/security/audit';
 import { logger } from '@/lib/logger';
 
 // ── Request schema ─────────────────────────────────────────────────────
@@ -127,6 +128,14 @@ Use camelCase for variable names. Return complete, production-ready clause text 
         });
 
         logger.info('AI template clauses generated', { templateName: input.templateName, count: object.clauses.length });
+        await auditLog({
+          action: AuditAction.CONTRACT_CREATED,
+          resourceType: 'template',
+          resourceId: ctx.requestId || 'ai-clauses',
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
+          metadata: { operation: 'ai_generated', aiAction: 'generate-clauses', templateName: input.templateName },
+        }).catch(err => logger.error('[Template] Audit log failed:', err));
         return createSuccessResponse(ctx, object);
       }
 
@@ -155,6 +164,14 @@ Return the improved clause with {{variableName}} placeholders preserved. Do not 
         });
 
         logger.info('AI clause improved', { clause: input.clauseTitle, instruction: input.instruction });
+        await auditLog({
+          action: AuditAction.CONTRACT_CREATED,
+          resourceType: 'template',
+          resourceId: ctx.requestId || 'ai-improve',
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
+          metadata: { operation: 'ai_generated', aiAction: 'improve-clause', clauseTitle: input.clauseTitle },
+        }).catch(err => logger.error('[Template] Audit log failed:', err));
         return createSuccessResponse(ctx, object);
       }
 
@@ -180,6 +197,14 @@ Use proper formatting with section headers. Use camelCase for variable names.`,
         });
 
         logger.info('AI template generated', { description: input.description.slice(0, 50) });
+        await auditLog({
+          action: AuditAction.CONTRACT_CREATED,
+          resourceType: 'template',
+          resourceId: ctx.requestId || 'ai-template',
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
+          metadata: { operation: 'ai_generated', aiAction: 'generate-template' },
+        }).catch(err => logger.error('[Template] Audit log failed:', err));
         return createSuccessResponse(ctx, object);
       }
 
@@ -198,6 +223,14 @@ Return variable names in camelCase format. Mark date, currency, and numeric vari
         });
 
         logger.info('AI variables extracted', { count: object.variables.length });
+        await auditLog({
+          action: AuditAction.CONTRACT_CREATED,
+          resourceType: 'template',
+          resourceId: ctx.requestId || 'ai-variables',
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
+          metadata: { operation: 'ai_generated', aiAction: 'extract-variables' },
+        }).catch(err => logger.error('[Template] Audit log failed:', err));
         return createSuccessResponse(ctx, object);
       }
     }

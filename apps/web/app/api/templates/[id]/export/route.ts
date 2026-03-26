@@ -16,6 +16,8 @@ import {
 } from '@/lib/templates/document-service';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 export async function GET(
   request: NextRequest,
@@ -25,6 +27,9 @@ export async function GET(
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
+  const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/templates/export', AI_RATE_LIMITS.lightweight);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
+
   try {
     const session = await auth();
     if (!session?.user) {
@@ -84,6 +89,15 @@ export async function GET(
 
     // Generate the document based on format
     const sanitizedName = template.name.replace(/[^a-zA-Z0-9-_\s]/g, '').replace(/\s+/g, '_');
+
+    await auditLog({
+      action: AuditAction.DATA_EXPORTED,
+      resourceType: 'template',
+      resourceId: template.id,
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      metadata: { operation: 'export', format },
+    }).catch(err => console.error('[Template] Audit log failed:', err));
 
     if (format === 'pdf') {
       const pdfBuffer = await generatePDFDocument(templateData);

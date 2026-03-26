@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 // GET /api/templates/[id]/variables - Get template variables
 export async function GET(
@@ -60,6 +62,10 @@ export async function PUT(
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
+
+  const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/templates/variables', AI_RATE_LIMITS.standard);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
+
   try {
 
     const { id: templateId } = await params;
@@ -85,6 +91,15 @@ export async function PUT(
             },
           },
         });
+
+        await auditLog({
+          action: AuditAction.CONTRACT_UPDATED,
+          resourceType: 'template',
+          resourceId: templateId,
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
+          metadata: { operation: 'update_variables' },
+        }).catch(err => console.error('[Template] Audit log failed:', err));
 
         return createSuccessResponse(ctx, { 
           variables,
@@ -113,6 +128,10 @@ export async function POST(
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
+
+  const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/templates/variables', AI_RATE_LIMITS.standard);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
+
   try {
 
     const { id: templateId } = await params;
@@ -150,6 +169,15 @@ export async function POST(
             })),
           },
         });
+
+        await auditLog({
+          action: AuditAction.CONTRACT_UPDATED,
+          resourceType: 'template',
+          resourceId: templateId,
+          userId: ctx.userId,
+          tenantId: ctx.tenantId,
+          metadata: { operation: 'add_variable' },
+        }).catch(err => console.error('[Template] Audit log failed:', err));
 
         return createSuccessResponse(ctx, { 
           variable: newVariable,
