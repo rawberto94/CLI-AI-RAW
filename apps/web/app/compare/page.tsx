@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { PageBreadcrumb } from "@/components/navigation";
 import { sanitizeHtml } from '@/lib/security/sanitize';
 
@@ -22,41 +23,27 @@ import {
   X,
   FileText,
   DollarSign,
-  Calendar as _Calendar,
-  Clock as _Clock,
   AlertTriangle,
-  CheckCircle as _CheckCircle,
-  RefreshCw as _RefreshCw,
   Download,
-  ChevronDown as _ChevronDown,
-  ChevronUp as _ChevronUp,
   Building2,
   Scale,
   Shield,
   TrendingUp,
-  TrendingDown as _TrendingDown,
-  Minus as _Minus,
-  Info as _Info,
   Loader2,
-  ExternalLink as _ExternalLink,
   Plus,
   Filter,
   Sparkles,
   Brain,
-  Target as _Target,
   Activity,
   BarChart3,
-  PieChart as _PieChart,
   Percent,
   Zap,
-  Award as _Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress as _Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -78,14 +65,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Collapsible as _Collapsible,
-  CollapsibleContent as _CollapsibleContent,
-  CollapsibleTrigger as _CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { motion, AnimatePresence as _AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -587,8 +569,9 @@ export default function ContractComparisonPage() {
         }
         
         setContracts(contractsList);
-      } catch {
-        // Optionally show error to user
+      } catch (err) {
+        console.error('[Compare] Failed to load contracts:', err);
+        toast.error('Failed to load contracts. Please try again.');
         setContracts([]);
       } finally {
         setIsLoadingContracts(false);

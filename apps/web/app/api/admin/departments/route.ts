@@ -38,6 +38,7 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
       },
     },
     orderBy: { name: 'asc' },
+    take: 100,
   });
 
   // Get user counts per department

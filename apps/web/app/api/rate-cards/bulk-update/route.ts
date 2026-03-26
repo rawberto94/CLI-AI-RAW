@@ -28,7 +28,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     }
 
     const body = await request.json();
-    const { ids, updates, userId = 'system' } = body;
+    const { ids, updates } = body;
+    const userId = ctx.userId;
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid or empty ids array', 400);

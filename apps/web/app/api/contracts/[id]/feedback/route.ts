@@ -234,7 +234,8 @@ export async function GET(
         select: {
           fieldName: true,
           wasCorrect: true,
-        }
+        },
+        take: 100,
       })
 
       const fieldStats = allCorrections.reduce((acc, c) => {
@@ -292,7 +293,8 @@ async function analyzeCorrectionsForPatterns(
         fieldName: true,
         originalValue: true,
         correctedValue: true,
-      }
+      },
+      take: 100,
     })
 
     // Group by field and find patterns

@@ -66,6 +66,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       },
     },
     orderBy: { createdAt: 'desc' },
+    take: 100,
   });
 
   return createSuccessResponse(ctx, {

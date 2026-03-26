@@ -74,7 +74,8 @@ export async function GET(
         wasCorrect: true,
         confidence: true,
         createdAt: true,
-      }
+      },
+      take: 100,
     })
 
     // Build confidence map from various sources

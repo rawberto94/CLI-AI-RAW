@@ -141,6 +141,7 @@ export async function GET(
     const allLogs = await prisma.auditLog.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      take: 500,
     });
 
     // Transform and filter by category if needed

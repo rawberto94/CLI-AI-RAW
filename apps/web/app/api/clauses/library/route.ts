@@ -159,6 +159,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         { usageCount: 'desc' },
         { title: 'asc' },
       ],
+      take: 200,
     });
 
     return createSuccessResponse(ctx, { 

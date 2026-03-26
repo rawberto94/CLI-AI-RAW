@@ -30,22 +30,18 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       const record = records[i];
 
       try {
-        // Find or create supplier (tenant-scoped)
-        let supplier = await db.rateCardSupplier.findFirst({
-          where: { name: record.supplierName, tenantId },
+        // Upsert supplier (tenant-scoped) to avoid race conditions on concurrent imports
+        const supplier = await db.rateCardSupplier.upsert({
+          where: { tenantId_name: { tenantId, name: record.supplierName } },
+          update: {},
+          create: {
+            tenantId,
+            name: record.supplierName,
+            tier: 'TIER_2',
+            country: record.location || 'US',
+            region: 'North America',
+          },
         });
-
-        if (!supplier) {
-          supplier = await db.rateCardSupplier.create({
-            data: {
-              tenantId,
-              name: record.supplierName,
-              tier: 'TIER_2',
-              country: record.location || 'US',
-              region: 'North America',
-            },
-          });
-        }
 
         // Create rate card entry
         await db.rateCardEntry.create({
