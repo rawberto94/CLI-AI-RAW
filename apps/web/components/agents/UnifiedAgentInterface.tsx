@@ -404,7 +404,7 @@ export function UnifiedAgentInterface() {
       if (statusRes.ok) {
         const statusData = await statusRes.json();
         // Update stats from status API
-        console.log('Agent status:', statusData);
+        void statusData;
       }
 
       if (activitiesRes.ok) {

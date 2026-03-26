@@ -131,7 +131,6 @@ export function RealtimeArtifactViewer({
   // Notify parent if contract not found (only after retries exhausted)
   useEffect(() => {
     if (contractNotFound && onContractNotFound) {
-      console.log('[RealtimeArtifactViewer] Contract not found, notifying parent');
       onContractNotFound();
     }
   }, [contractNotFound, onContractNotFound]);

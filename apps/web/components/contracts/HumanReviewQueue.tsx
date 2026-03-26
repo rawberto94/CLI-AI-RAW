@@ -692,7 +692,6 @@ export const HumanReviewQueue: React.FC<HumanReviewQueueProps> = ({
     score: number
   ) => {
     // In production, call API
-    console.log('Submitting corrections:', { corrections, notes, score });
     setDialogOpen(false);
     setSelectedItem(null);
     
@@ -791,8 +790,8 @@ export const HumanReviewQueue: React.FC<HumanReviewQueueProps> = ({
                     key={item.id}
                     item={item}
                     onSelect={() => handleSelectItem(item)}
-                    onAssign={(userId) => console.log('Assign to:', userId)}
-                    onEscalate={() => console.log('Escalate item:', item.id)}
+                    onAssign={() => { /* TODO: implement assignment API */ }}
+                    onEscalate={() => { /* TODO: implement escalation API */ }}
                   />
                 ))}
               </div>

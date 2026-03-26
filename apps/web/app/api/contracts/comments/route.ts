@@ -10,6 +10,7 @@ import { getApiTenantId } from '@/lib/tenant-server';
 // TODO: Migrate contractComment/contractActivity operations to dedicated comment service
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
+import { auditLog, AuditAction } from '@/lib/security/audit';
 
 // Response type that maps to ContractComment model
 interface CommentResponse {
@@ -172,6 +173,15 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
   const comment = transformComment(dbComment);
 
+  await auditLog({
+    action: AuditAction.COLLABORATOR_COMMENTED,
+    resourceType: 'contract',
+    resourceId: contractId,
+    userId: ctx.userId,
+    tenantId,
+    metadata: { commentId: dbComment.id },
+  }).catch(err => logger.error('[Comments] Audit log failed:', err));
+
   return createSuccessResponse(ctx, { comment }, { status: 201 });
 });
 
@@ -228,6 +238,15 @@ export const PUT = withAuthApiHandler(async (request, ctx) => {
 
   const comment = transformComment(dbComment);
 
+  await auditLog({
+    action: AuditAction.CONTRACT_UPDATED,
+    resourceType: 'contract',
+    resourceId: body.contractId || dbComment.contractId,
+    userId: ctx.userId,
+    tenantId: tenantId || '',
+    metadata: { commentId: dbComment.id, action: 'comment_edited' },
+  }).catch(err => logger.error('[Comments] Audit log failed:', err));
+
   return createSuccessResponse(ctx, { comment });
 });
 
@@ -258,6 +277,15 @@ export const DELETE = withAuthApiHandler(async (request, ctx) => {
   await prisma.contractComment.delete({
     where: { id: commentId },
   });
+
+  await auditLog({
+    action: AuditAction.CONTRACT_UPDATED,
+    resourceType: 'contract',
+    resourceId: existing.contractId,
+    userId: ctx.userId,
+    tenantId: tenantId || existing.tenantId,
+    metadata: { commentId, action: 'comment_deleted' },
+  }).catch(err => logger.error('[Comments] Audit log failed:', err));
 
   return createSuccessResponse(ctx, { deleted: true });
 });

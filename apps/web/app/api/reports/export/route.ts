@@ -45,9 +45,19 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 async function generateSupplierData(_fields: string[], _filters: any) {
   const suppliers = await db.rateCardSupplier.findMany({
-    include: {
-      rateCards: true,
+    select: {
+      name: true,
+      totalRateCards: true,
+      averageRate: true,
+      tier: true,
+      rateCards: {
+        select: {
+          roleOriginal: true,
+          dailyRate: true,
+        },
+      },
     },
+    take: 500,
   });
 
   return suppliers.map((s) => ({
@@ -61,7 +71,13 @@ async function generateSupplierData(_fields: string[], _filters: any) {
 
 async function generateRateCardData(_fields: string[], _filters: any) {
   const rateCards = await db.rateCardEntry.findMany({
-    include: { supplier: true },
+    select: {
+      roleOriginal: true,
+      seniority: true,
+      dailyRate: true,
+      supplierName: true,
+    },
+    take: 1000,
   });
 
   return rateCards.map((rc) => ({
@@ -74,7 +90,19 @@ async function generateRateCardData(_fields: string[], _filters: any) {
 
 async function generateContractData(_fields: string[], _filters: any) {
   const contracts = await db.contract.findMany({
-    include: { supplier: true },
+    select: {
+      contractTitle: true,
+      fileName: true,
+      totalValue: true,
+      startDate: true,
+      endDate: true,
+      status: true,
+      supplierName: true,
+      supplier: {
+        select: { name: true },
+      },
+    },
+    take: 500,
   });
 
   return contracts.map((c) => ({
@@ -88,7 +116,10 @@ async function generateContractData(_fields: string[], _filters: any) {
 }
 
 async function generatePerformanceData(_fields: string[], _filters: any) {
-  const suppliers = await db.rateCardSupplier.findMany();
+  const suppliers = await db.rateCardSupplier.findMany({
+    select: { name: true },
+    take: 500,
+  });
 
   return suppliers.map((s) => ({
     supplierName: s.name,
@@ -100,7 +131,13 @@ async function generatePerformanceData(_fields: string[], _filters: any) {
 }
 
 async function generateFinancialData(_fields: string[], _filters: any) {
-  const contracts = await db.contract.findMany();
+  const contracts = await db.contract.findMany({
+    select: {
+      startDate: true,
+      totalValue: true,
+    },
+    take: 1000,
+  });
 
   const monthlyData = new Map<string, any>();
   contracts.forEach((c) => {

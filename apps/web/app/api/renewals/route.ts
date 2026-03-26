@@ -168,7 +168,31 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    // Transform to renewal records (async for user lookups)
+    // Pre-fetch all assigned users to avoid N+1 queries
+    const userIds = new Set<string>();
+    for (const contract of contracts) {
+      if (contract.workflowExecutions?.length) {
+        for (const we of contract.workflowExecutions) {
+          const steps = (we as { stepExecutions?: Array<{ assignedTo?: string | null }> }).stepExecutions;
+          if (steps) {
+            for (const se of steps) {
+              if (se.assignedTo) userIds.add(se.assignedTo);
+            }
+          }
+        }
+      }
+      if (contract.renewalInitiatedBy) userIds.add(contract.renewalInitiatedBy);
+    }
+    const userMap = new Map<string, { id: string; firstName: string | null; lastName: string | null; email: string }>();
+    if (userIds.size > 0) {
+      const users = await prisma.user.findMany({
+        where: { id: { in: [...userIds] } },
+        select: { id: true, firstName: true, lastName: true, email: true },
+      });
+      for (const u of users) userMap.set(u.id, u);
+    }
+
+    // Transform to renewal records
     let renewals: RenewalContract[] = await Promise.all(contracts.map(async (contract) => {
       // Use endDate or expirationDate
       const expiryDate = contract.endDate || contract.expirationDate;
@@ -216,11 +240,8 @@ export async function GET(request: NextRequest) {
               se.assignedTo && (se.status === 'PENDING' || se.status === 'IN_PROGRESS')
           );
           if (currentStep?.assignedTo) {
-            // Look up user info
-            const user = await prisma.user.findUnique({
-              where: { id: currentStep.assignedTo },
-              select: { id: true, firstName: true, lastName: true, email: true },
-            });
+            // Use pre-fetched user map
+            const user = userMap.get(currentStep.assignedTo);
             if (user) {
               assignedTo = {
                 id: user.id,
@@ -234,10 +255,7 @@ export async function GET(request: NextRequest) {
 
       // Fallback to renewalInitiatedBy user if no workflow assignment
       if (!assignedTo && contract.renewalInitiatedBy) {
-        const user = await prisma.user.findUnique({
-          where: { id: contract.renewalInitiatedBy },
-          select: { id: true, firstName: true, lastName: true, email: true },
-        });
+        const user = userMap.get(contract.renewalInitiatedBy);
         if (user) {
           assignedTo = {
             id: user.id,

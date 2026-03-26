@@ -46,9 +46,16 @@ async function generateSupplierReport(
   _filters: Record<string, any>
 ): Promise<any[]> {
   const suppliers = await db.rateCardSupplier.findMany({
-    include: {
-      rateCards: true,
+    select: {
+      name: true,
+      totalContracts: true,
+      rateCards: {
+        select: {
+          dailyRate: true,
+        },
+      },
     },
+    take: 500,
   });
 
   return suppliers.map((supplier) => {
@@ -75,9 +82,12 @@ async function generateRateCardReport(
   _filters: Record<string, any>
 ): Promise<any[]> {
   const rateCards = await db.rateCardEntry.findMany({
-    include: {
-      supplier: true,
+    select: {
+      roleOriginal: true,
+      seniority: true,
+      dailyRate: true,
     },
+    take: 1000,
   });
 
   return rateCards.map((card) => {
@@ -100,9 +110,14 @@ async function generateContractReport(
   _filters: Record<string, any>
 ): Promise<any[]> {
   const contracts = await db.contract.findMany({
-    include: {
-      supplier: true,
+    select: {
+      contractTitle: true,
+      fileName: true,
+      totalValue: true,
+      startDate: true,
+      endDate: true,
     },
+    take: 500,
   });
 
   return contracts.map((contract) => {
@@ -132,7 +147,10 @@ async function generatePerformanceReport(
   fields: string[],
   _filters: Record<string, any>
 ): Promise<any[]> {
-  const suppliers = await db.rateCardSupplier.findMany();
+  const suppliers = await db.rateCardSupplier.findMany({
+    select: { name: true },
+    take: 500,
+  });
 
   return suppliers.map((supplier) => {
     const result: any = {};
@@ -158,9 +176,11 @@ async function generateFinancialReport(
   _filters: Record<string, any>
 ): Promise<any[]> {
   const contracts = await db.contract.findMany({
-    include: {
-      supplier: true,
+    select: {
+      startDate: true,
+      totalValue: true,
     },
+    take: 1000,
   });
 
   // Group by month

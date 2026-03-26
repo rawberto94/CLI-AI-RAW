@@ -11,6 +11,8 @@ import { prisma } from "@/lib/prisma";
 import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from "@/lib/tenant-server";
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { logger } from '@/lib/logger';
 
 const categoryPostSchema = z.object({
   force: z.boolean().default(false),
@@ -236,6 +238,15 @@ export async function PUT(
         updatedAt: new Date(),
       },
     });
+
+    await auditLog({
+      action: AuditAction.CONTRACT_UPDATED,
+      resourceType: 'contract',
+      resourceId: contractId,
+      userId: ctx.userId,
+      tenantId,
+      metadata: { action: 'category_changed', categoryId, feedbackType: feedbackType || 'manual' },
+    }).catch(err => logger.error('[Category] Audit log failed:', err));
 
     return createSuccessResponse(ctx, {
       success: true,

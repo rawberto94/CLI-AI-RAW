@@ -832,6 +832,7 @@ export default function ContractsPage() {
               <DropdownMenuTrigger asChild>
                 <button 
                   className="inline-flex items-center gap-2 px-3.5 py-2 text-xs border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors bg-white focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 outline-none"
+                  aria-label="Sort contracts"
                 >
                   <div className="p-1 rounded-md bg-slate-100">
                     <ArrowUp className={cn("h-3 w-3 text-slate-600 transition-transform", sortDirection === 'desc' && "rotate-180")} />
@@ -913,6 +914,7 @@ export default function ContractsPage() {
               <DropdownMenuTrigger asChild>
                 <button 
                   className="inline-flex items-center gap-2 px-3.5 py-2 text-xs border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors text-slate-700 font-medium bg-white focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 outline-none"
+                  aria-label="Export contracts"
                 >
                   <div className="p-1 rounded-md bg-slate-100">
                     <Download className="h-3 w-3 text-slate-600" />

@@ -1071,7 +1071,7 @@ export default function ContractDetailPage() {
                         className="mb-6"
                       />
                       <ComprehensiveAIAnalysis
-                        artifacts={contract?.extractedData as any}
+                        artifacts={contract?.extractedData ?? undefined}
                         contractId={contractId}
                         contractType={contract?.category?.name || metadata.contract_type}
                         className="w-full"

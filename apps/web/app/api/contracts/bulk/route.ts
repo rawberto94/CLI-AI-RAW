@@ -12,6 +12,8 @@ import {
   triggerNonContractDetected,
 } from '@/lib/webhook-triggers'
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { logger } from '@/lib/logger';
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId
@@ -132,6 +134,16 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       await deleteCachedByPattern('contracts:stats').catch(() => {})
 
       // Realtime events already published by safeDeleteContract
+
+      await auditLog({
+        action: AuditAction.CONTRACT_DELETED,
+        resourceType: 'contract',
+        resourceId: contractIds.join(','),
+        userId: ctx.userId,
+        tenantId,
+        metadata: { bulk: true, count: successCount, failed: failedCount },
+      }).catch(err => logger.error('[Bulk] Audit log failed:', err));
+
       return createSuccessResponse(ctx, {
         message: `Deleted ${successCount} contracts${failedCount > 0 ? `, ${failedCount} failed` : ''}`,
         deleted: successCount,
@@ -160,6 +172,16 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           })
         )
       )
+
+      await auditLog({
+        action: AuditAction.CONTRACT_UPDATED,
+        resourceType: 'contract',
+        resourceId: contractIds.join(','),
+        userId: ctx.userId,
+        tenantId,
+        metadata: { bulk: true, action: 'archive', count: contractIds.length },
+      }).catch(err => logger.error('[Bulk] Audit log failed:', err));
+
       return createSuccessResponse(ctx, {
         message: `Archived ${contractIds.length} contracts`
       })

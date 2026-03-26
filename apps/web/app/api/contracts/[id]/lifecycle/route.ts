@@ -109,11 +109,15 @@ export async function POST(
 
     // Queue RAG re-indexing when lifecycle/status changes
     if (tenantId) {
-      await queueRAGReindex({
-        contractId,
-        tenantId,
-        reason: 'lifecycle/status updated',
-      });
+      try {
+        await queueRAGReindex({
+          contractId,
+          tenantId,
+          reason: 'lifecycle/status updated',
+        });
+      } catch {
+        // RAG re-indexing is non-critical background work
+      }
     }
 
     return createSuccessResponse(ctx, {
