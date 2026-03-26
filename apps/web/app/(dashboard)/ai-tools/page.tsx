@@ -21,9 +21,45 @@ import {
   BarChart3,
   FlaskConical,
   Bot,
+  AlertTriangle,
 } from 'lucide-react';
 import { BatchContractAnalysis } from '@/components/ai/BatchContractAnalysis';
 import { AIAnalyticsDashboard } from '@/components/ai/AIAnalyticsDashboard';
+
+class TabErrorBoundary extends React.Component<
+  { children: React.ReactNode; tabName: string },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode; tabName: string }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 text-center border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-900/20">
+          <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-red-800 dark:text-red-300 mb-1">
+            {this.props.tabName} failed to load
+          </h3>
+          <p className="text-sm text-red-600 dark:text-red-400 mb-4">
+            {this.state.error?.message || 'An unexpected error occurred'}
+          </p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function AIToolsPage() {
   const [activeTab, setActiveTab] = useState('batch');
@@ -57,15 +93,21 @@ export default function AIToolsPage() {
         </TabsList>
 
         <TabsContent value="batch">
-          <BatchContractAnalysis />
+          <TabErrorBoundary tabName="Batch Analysis">
+            <BatchContractAnalysis />
+          </TabErrorBoundary>
         </TabsContent>
 
         <TabsContent value="analytics">
-          <AIAnalyticsDashboard />
+          <TabErrorBoundary tabName="AI Analytics">
+            <AIAnalyticsDashboard />
+          </TabErrorBoundary>
         </TabsContent>
 
         <TabsContent value="testing">
-          <ABTestingInterface />
+          <TabErrorBoundary tabName="A/B Testing">
+            <ABTestingInterface />
+          </TabErrorBoundary>
         </TabsContent>
       </Tabs>
     </div>

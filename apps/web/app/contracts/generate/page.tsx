@@ -62,6 +62,7 @@ export default function GenerateContractPage() {
   const [formData, setFormData] = useState<FormData>({})
   const [generatedContract, setGeneratedContract] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [generationError, setGenerationError] = useState<string | null>(null)
 
   const totalSteps = 4
 
@@ -272,6 +273,7 @@ export default function GenerateContractPage() {
     if (!selectedTemplate) return
     
     setGenerating(true)
+    setGenerationError(null)
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000))
@@ -502,8 +504,8 @@ export default function GenerateContractPage() {
       
       setGeneratedContract(content)
       setStep(4)
-    } catch {
-      // Error handled silently
+    } catch (err) {
+      setGenerationError(err instanceof Error ? err.message : 'Failed to generate contract. Please try again.');
     } finally {
       setGenerating(false)
     }
@@ -731,6 +733,11 @@ export default function GenerateContractPage() {
                     </>
                   )}
                 </Button>
+                {generationError && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                    {generationError}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

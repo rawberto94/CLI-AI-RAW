@@ -19,6 +19,8 @@ export default function CompareRatesPage() {
   const [bench, setBench] = useState<BenchRow[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [filters, setFilters] = useState<FilterValue>({});
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   // Reference selection state
   const [compareMode, setCompareMode] = useState<'market' | 'custom'>('market');
   const [marketTarget, setMarketTarget] = useState<'p50' | 'p75' | 'p90'>('p75');
@@ -33,6 +35,8 @@ export default function CompareRatesPage() {
   useEffect(() => {
     const load = async () => {
       try {
+        setLoading(true);
+        setLoadError(null);
   const cRes = await fetch(`${API_BASE_URL}/api/contracts`, { headers: tenantHeaders() });
   const cJson = cRes.ok ? (await cRes.json()) : [];
   const c = Array.isArray(cJson) ? cJson : (cJson?.items || []);
@@ -52,7 +56,11 @@ export default function CompareRatesPage() {
         ]);
         setRates((r?.items || []) as Rate[]);
         setBench((b?.items || []) as BenchRow[]);
-      } catch {}
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : 'Failed to load benchmark data');
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, []);
@@ -235,6 +243,32 @@ export default function CompareRatesPage() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto mb-4" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading benchmark data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="text-red-500 text-4xl mb-4">⚠</div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Failed to Load Data</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{loadError}</p>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
