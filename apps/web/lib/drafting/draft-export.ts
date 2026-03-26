@@ -17,7 +17,10 @@ import {
   AlignmentType,
   Footer,
   PageNumber,
-  NumberFormat,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
 } from 'docx';
 
 // =============================================================================
@@ -61,17 +64,51 @@ function htmlToPlainText(html: string): string {
  * Parse HTML into simple block structure for DOCX generation.
  */
 interface ContentBlock {
-  type: 'h1' | 'h2' | 'h3' | 'paragraph' | 'list-item' | 'blockquote';
+  type: 'h1' | 'h2' | 'h3' | 'paragraph' | 'list-item' | 'blockquote' | 'table';
   text: string;
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
+  rows?: Array<{ cells: string[]; isHeader?: boolean }>;
 }
 
 function parseHtmlToBlocks(html: string): ContentBlock[] {
   const blocks: ContentBlock[] = [];
+
+  // Extract tables first, replacing them with placeholders
+  const tableRegex = /<table[^>]*>([\s\S]*?)<\/table>/gi;
+  let tableIndex = 0;
+  const tables: ContentBlock[] = [];
+  const htmlWithoutTables = html.replace(tableRegex, (_match, tableContent: string) => {
+    const rows: Array<{ cells: string[]; isHeader: boolean }> = [];
+    const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    let rowMatch;
+    while ((rowMatch = rowRegex.exec(tableContent)) !== null) {
+      const cellRegex = /<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi;
+      const cells: string[] = [];
+      const isHeader = rowMatch[1].includes('<th');
+      let cellMatch;
+      while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) {
+        cells.push(
+          cellMatch[1]
+            .replace(/<[^>]+>/g, '')
+            .replace(/&amp;/g, '&')
+            .replace(/&nbsp;/g, ' ')
+            .trim()
+        );
+      }
+      if (cells.length > 0) {
+        rows.push({ cells, isHeader });
+      }
+    }
+    if (rows.length > 0) {
+      tables.push({ type: 'table', text: '', rows });
+    }
+    return `__TABLE_PLACEHOLDER_${tableIndex++}__`;
+  });
+
   // Split on block-level tags
-  const parts = html.split(/(<\/?(?:h[1-3]|p|li|blockquote|ul|ol)[^>]*>)/gi);
+  const parts = htmlWithoutTables.split(/(<\/?(?:h[1-3]|p|li|blockquote|ul|ol)[^>]*>)/gi);
 
   let currentType: ContentBlock['type'] = 'paragraph';
   let buffer = '';
@@ -103,7 +140,14 @@ function parseHtmlToBlocks(html: string): ContentBlock[] {
             .replace(/&nbsp;/g, ' ')
             .trim();
           if (text) {
-            blocks.push({ type: currentType, text });
+            // Check for table placeholders in text
+            const placeholderMatch = text.match(/__TABLE_PLACEHOLDER_(\d+)__/);
+            if (placeholderMatch) {
+              const tIdx = parseInt(placeholderMatch[1], 10);
+              if (tables[tIdx]) blocks.push(tables[tIdx]);
+            } else {
+              blocks.push({ type: currentType, text });
+            }
           }
           buffer = '';
           currentType = 'paragraph';
@@ -121,7 +165,20 @@ function parseHtmlToBlocks(html: string): ContentBlock[] {
     .replace(/&nbsp;/g, ' ')
     .trim();
   if (remaining) {
-    blocks.push({ type: 'paragraph', text: remaining });
+    const placeholderMatch = remaining.match(/__TABLE_PLACEHOLDER_(\d+)__/);
+    if (placeholderMatch) {
+      const tIdx = parseInt(placeholderMatch[1], 10);
+      if (tables[tIdx]) blocks.push(tables[tIdx]);
+    } else {
+      blocks.push({ type: 'paragraph', text: remaining });
+    }
+  }
+
+  // Append any remaining tables not captured by placeholders
+  for (let i = 0; i < tables.length; i++) {
+    if (!blocks.includes(tables[i])) {
+      blocks.push(tables[i]);
+    }
   }
 
   return blocks;
@@ -172,33 +229,86 @@ export function generateDraftPDF(input: DraftExportInput): Uint8Array {
   y = 42;
 
   // --- Content ---
-  const plainText = htmlToPlainText(content);
-  const lines = plainText.split('\n');
+  const blocks = parseHtmlToBlocks(content);
 
   doc.setTextColor(dark[0], dark[1], dark[2]);
 
-  for (const line of lines) {
+  for (const block of blocks) {
+    if (block.type === 'table' && block.rows) {
+      // Render table as grid
+      const rows = block.rows;
+      if (rows.length === 0) continue;
+
+      const colCount = Math.max(...rows.map(r => r.cells.length));
+      const colWidth = contentWidth / colCount;
+      const cellPadding = 2;
+      const rowHeight = 7;
+
+      for (const row of rows) {
+        if (y + rowHeight > pageHeight - margin) {
+          doc.addPage();
+          y = margin;
+        }
+
+        for (let c = 0; c < colCount; c++) {
+          const cellX = margin + c * colWidth;
+          const cellText = row.cells[c] || '';
+
+          // Draw cell border
+          doc.setDrawColor(200, 200, 200);
+          doc.rect(cellX, y - 4, colWidth, rowHeight);
+
+          // Cell background for header
+          if (row.isHeader) {
+            doc.setFillColor(245, 243, 255);
+            doc.rect(cellX, y - 4, colWidth, rowHeight, 'F');
+            doc.rect(cellX, y - 4, colWidth, rowHeight, 'S');
+          }
+
+          doc.setFontSize(9);
+          doc.setFont('helvetica', row.isHeader ? 'bold' : 'normal');
+          doc.setTextColor(dark[0], dark[1], dark[2]);
+
+          const truncated = cellText.length > 30 ? cellText.slice(0, 28) + '…' : cellText;
+          doc.text(truncated, cellX + cellPadding, y);
+        }
+        y += rowHeight;
+      }
+      y += 4;
+      continue;
+    }
+
+    // Regular text blocks
+    const line = block.text;
     if (!line.trim()) {
       y += 4;
       continue;
     }
 
-    // Check headings (from plain text, headings will just be text)
-    const fontSize = 11;
-    doc.setFontSize(fontSize);
-    doc.setFont('helvetica', 'normal');
+    let fontSize = 11;
+    let fontStyle: 'normal' | 'bold' | 'italic' = 'normal';
 
-    const wrappedLines = doc.splitTextToSize(line, contentWidth);
+    if (block.type === 'h1') { fontSize = 16; fontStyle = 'bold'; }
+    else if (block.type === 'h2') { fontSize = 14; fontStyle = 'bold'; }
+    else if (block.type === 'h3') { fontSize = 12; fontStyle = 'bold'; }
+    else if (block.type === 'blockquote') { fontStyle = 'italic'; }
+
+    doc.setFontSize(fontSize);
+    doc.setFont('helvetica', fontStyle);
+
+    const indentX = block.type === 'list-item' || block.type === 'blockquote' ? margin + 8 : margin;
+    const prefix = block.type === 'list-item' ? '• ' : '';
+    const wrappedLines = doc.splitTextToSize(prefix + line, contentWidth - (indentX - margin));
 
     for (const wl of wrappedLines) {
       if (y + 6 > pageHeight - margin) {
         doc.addPage();
         y = margin;
       }
-      doc.text(wl, margin, y);
+      doc.text(wl, indentX, y);
       y += 6;
     }
-    y += 2;
+    y += (block.type.startsWith('h') ? 4 : 2);
   }
 
   // --- Footer on each page ---
@@ -232,7 +342,7 @@ export async function generateDraftDOCX(input: DraftExportInput): Promise<Uint8A
     day: 'numeric',
   });
 
-  const children: Paragraph[] = [];
+  const children: (Paragraph | Table)[] = [];
 
   // Title
   children.push(
@@ -327,14 +437,50 @@ export async function generateDraftDOCX(input: DraftExportInput): Promise<Uint8A
         );
         break;
       default:
-        children.push(
-          new Paragraph({
-            children: [
-              new TextRun({ text: block.text, size: 22, font: 'Calibri', color: '334155' }),
-            ],
-            spacing: { after: 120 },
-          })
-        );
+        if (block.type === 'table' && block.rows) {
+          // Render as DOCX table
+          const tableRows = block.rows.map((row) => {
+            return new TableRow({
+              children: row.cells.map((cell) => {
+                return new TableCell({
+                  children: [
+                    new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: cell,
+                          bold: row.isHeader,
+                          size: 20,
+                          font: 'Calibri',
+                          color: '334155',
+                        }),
+                      ],
+                    }),
+                  ],
+                  shading: row.isHeader ? { fill: 'F5F3FF' } : undefined,
+                  width: { size: 100 / Math.max(row.cells.length, 1), type: WidthType.PERCENTAGE },
+                });
+              }),
+            });
+          });
+
+          if (tableRows.length > 0) {
+            children.push(
+              new Table({
+                rows: tableRows,
+                width: { size: 100, type: WidthType.PERCENTAGE },
+              })
+            );
+          }
+        } else {
+          children.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: block.text, size: 22, font: 'Calibri', color: '334155' }),
+              ],
+              spacing: { after: 120 },
+            })
+          );
+        }
     }
   }
 
@@ -388,12 +534,12 @@ export function downloadFile(data: Uint8Array, filename: string, mimeType: strin
 
 export async function exportDraftAsPDF(input: DraftExportInput): Promise<void> {
   const data = generateDraftPDF(input);
-  const filename = `${(input.title || 'draft').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+  const filename = `${(input.title || 'draft').replace(/[^a-zA-Z0-9\-_ ]/g, '').trim()}.pdf`;
   downloadFile(data, filename, 'application/pdf');
 }
 
 export async function exportDraftAsDOCX(input: DraftExportInput): Promise<void> {
   const data = await generateDraftDOCX(input);
-  const filename = `${(input.title || 'draft').replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
+  const filename = `${(input.title || 'draft').replace(/[^a-zA-Z0-9\-_ ]/g, '').trim()}.docx`;
   downloadFile(data, filename, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
 }
