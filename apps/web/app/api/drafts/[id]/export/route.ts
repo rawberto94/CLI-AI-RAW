@@ -22,11 +22,11 @@ type ExportFormat = (typeof ALLOWED_FORMATS)[number];
 export const GET = withAuthApiHandler(
   async (request: NextRequest, ctx: AuthenticatedApiContext) => {
     const { tenantId, userId } = ctx;
-    const draftId = ctx.params?.id as string;
+    const draftId = request.nextUrl.pathname.split('/').at(-2)!;
     const format = (request.nextUrl.searchParams.get('format') || 'pdf') as ExportFormat;
 
     if (!draftId) {
-      return createErrorResponse('Draft ID is required', 400, ctx.requestId);
+      return createErrorResponse(ctx, 'INVALID_INPUT', 'Draft ID is required', 400);
     }
 
     const rl = checkRateLimit(tenantId, userId, '/api/drafts/[id]/export', AI_RATE_LIMITS.lightweight);
@@ -34,9 +34,10 @@ export const GET = withAuthApiHandler(
 
     if (!ALLOWED_FORMATS.includes(format)) {
       return createErrorResponse(
+        ctx,
+        'INVALID_INPUT',
         `Invalid format "${format}". Allowed: ${ALLOWED_FORMATS.join(', ')}`,
         400,
-        ctx.requestId,
       );
     }
 
@@ -50,7 +51,7 @@ export const GET = withAuthApiHandler(
       });
 
       if (!draft) {
-        return createErrorResponse('Draft not found', 404, ctx.requestId);
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Draft not found', 404);
       }
 
       const safeTitle = (draft.title || 'Untitled Draft').replace(/[^a-zA-Z0-9\s-_]/g, '');
@@ -122,7 +123,7 @@ export const GET = withAuthApiHandler(
           metadata: { operation: 'export', format: 'pdf', title: draft.title },
         }).catch(err => logger.error('[Draft] Audit log failed:', err));
 
-        return new NextResponse(pdfBytes, {
+        return new NextResponse(Buffer.from(pdfBytes), {
           status: 200,
           headers: {
             'Content-Type': 'application/pdf',
@@ -145,7 +146,7 @@ export const GET = withAuthApiHandler(
         metadata: { operation: 'export', format: 'docx', title: draft.title },
       }).catch(err => logger.error('[Draft] Audit log failed:', err));
 
-      return new NextResponse(docxBytes, {
+      return new NextResponse(Buffer.from(docxBytes), {
         status: 200,
         headers: {
           'Content-Type':
@@ -158,7 +159,7 @@ export const GET = withAuthApiHandler(
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Export failed';
       logger.error('Draft export failed', { draftId, format, tenantId, error: msg });
-      return createErrorResponse('Failed to export draft', 500, ctx.requestId);
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to export draft', 500);
     }
   },
 );

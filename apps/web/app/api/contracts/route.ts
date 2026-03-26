@@ -428,12 +428,6 @@ async function handler(request: NextRequest) {
               viewCount: contract.viewCount,
               updatedAt: contract.updatedAt?.toISOString() || null,
               fileName: contract.fileName,
-              signatureStatus: contract.signatureStatus || null,
-              signatureDate: contract.signatureDate?.toISOString() || null,
-              signatureRequiredFlag: (contract as any).signatureRequiredFlag ?? null,
-              documentClassification: (contract as any).documentClassification || null,
-              documentClassificationConfidence: (contract as any).documentClassificationConf ?? null,
-              documentClassificationWarning: (contract as any).documentClassificationWarning || null,
               lastViewedAt: contract.lastViewedAt?.toISOString(),
               // Enterprise metadata fields
               jurisdiction: contract.jurisdiction || (contract.aiMetadata as any)?.jurisdiction || null,

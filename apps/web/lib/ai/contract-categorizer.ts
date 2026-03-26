@@ -933,7 +933,7 @@ ${industries}${customIndustriesSection}
             : undefined,
           ambiguityNotes: parsed.classificationSignals.ambiguityNotes,
         }
-      : undefined;
+      : { titleMatch: null, partyRoles: null, keyClausesDetected: null, ambiguityNotes: null };
 
     return {
       contractType,

@@ -748,7 +748,7 @@ function renderComplianceSection(doc: jsPDF, y: number, compliance: Record<strin
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     const scoreColor = Number(score) >= 80 ? C.green : Number(score) >= 50 ? C.amber : C.red;
-    doc.setTextColor(...scoreColor);
+    doc.setTextColor(scoreColor[0], scoreColor[1], scoreColor[2]);
     doc.text(`${score}%`, MARGIN + 5, y + 12);
     doc.setFont('helvetica', 'normal');
     y += 20;

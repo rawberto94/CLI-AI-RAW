@@ -19,13 +19,13 @@ import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate
 export const POST = withAuthApiHandler(
   async (request: NextRequest, ctx: AuthenticatedApiContext) => {
     const { tenantId, userId } = ctx;
-    const draftId = ctx.params?.id as string;
+    const draftId = request.nextUrl.pathname.split('/').at(-2)!;
 
     const rl = checkRateLimit(tenantId, userId, '/api/drafts/[id]/duplicate', AI_RATE_LIMITS.standard);
     if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
     if (!draftId) {
-      return createErrorResponse('Draft ID is required', 400, ctx.requestId);
+      return createErrorResponse(ctx, 'INVALID_INPUT', 'Draft ID is required', 400);
     }
 
     try {
@@ -35,7 +35,7 @@ export const POST = withAuthApiHandler(
       });
 
       if (!source) {
-        return createErrorResponse('Draft not found', 404, ctx.requestId);
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Draft not found', 404);
       }
 
       // Generate a unique title
@@ -103,14 +103,14 @@ export const POST = withAuthApiHandler(
       }).catch(err => logger.error('[Draft] Audit log failed:', err));
 
       return createSuccessResponse(
+        ctx,
         { draft: duplicate, editUrl: `/drafting?draftId=${duplicate.id}` },
-        201,
-        ctx.requestId,
+        { status: 201 },
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to duplicate draft';
       logger.error('Draft duplication failed', { draftId, tenantId, error: msg });
-      return createErrorResponse('Failed to duplicate draft', 500, ctx.requestId);
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to duplicate draft', 500);
     }
   },
 );
