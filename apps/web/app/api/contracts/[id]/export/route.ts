@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { contractService } from 'data-orchestration/services'
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { generateContractReportPDF } from '@/lib/reports/contract-report-pdf';
 
 /**
  * Export data types
@@ -58,6 +59,11 @@ interface RiskItem {
 // Tenant isolation helper
 function getTenantId(request: NextRequest): string | null {
   return request.headers.get('x-tenant-id');
+}
+
+function safeJsonParse(data: string | Record<string, any>): Record<string, any> {
+  if (typeof data !== 'string') return data || {};
+  try { return JSON.parse(data); } catch { return {}; }
 }
 
 // Simple XLSX generator (no external dependencies)
@@ -357,19 +363,57 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           }
         })
 
-      case 'pdf':
-      case 'html':
-        // Generate HTML that can be printed as PDF in browser
+      case 'pdf': {
+        // Generate a real binary PDF report using jsPDF
+        const pdfBytes = generateContractReportPDF({
+          contract: {
+            id: contract.id,
+            contractTitle: contract.contractTitle,
+            fileName: contract.fileName,
+            status: contract.status,
+            contractType: contract.contractType,
+            clientName: contract.clientName,
+            supplierName: contract.supplierName,
+            description: contract.description,
+            totalValue: contract.totalValue ? Number(contract.totalValue) : null,
+            currency: contract.currency,
+            startDate: contract.startDate,
+            endDate: contract.endDate,
+            effectiveDate: contract.effectiveDate,
+            expirationDate: contract.expirationDate,
+            uploadedAt: contract.uploadedAt,
+            jurisdiction: contract.jurisdiction,
+            signatureStatus: contract.signatureStatus,
+            tenantId: contract.tenantId,
+          },
+          artifacts: (contract.artifacts || []).map((a: ExportArtifact) => ({
+            type: a.type,
+            data: typeof a.data === 'string' ? safeJsonParse(a.data) : (a.data as Record<string, any>) || {},
+            confidence: null,
+          })),
+          tenantName: tenantId || undefined,
+        });
+        const safeName = (contract.contractTitle || contract.fileName || 'contract')
+          .replace(/[^a-zA-Z0-9_-]/g, '_')
+          .slice(0, 60);
+        return new NextResponse(pdfBytes, {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${safeName}-report.pdf"`,
+          },
+        });
+      }
+
+      case 'html': {
+        // HTML preview (legacy format)
         const htmlContent = generatePDFContent(contract);
         return new NextResponse(htmlContent, {
           headers: {
-            'Content-Type': format === 'pdf' ? 'text/html' : 'text/html',
-            'Content-Disposition': format === 'pdf' 
-              ? `inline; filename="contract-${params.id}.html"` 
-              : `attachment; filename="contract-${params.id}.html"`,
-            // Note: For true PDF, client should use browser print or a PDF service
-          }
-        })
+            'Content-Type': 'text/html',
+            'Content-Disposition': `attachment; filename="contract-${params.id}.html"`,
+          },
+        });
+      }
 
       case 'excel':
       case 'xlsx':

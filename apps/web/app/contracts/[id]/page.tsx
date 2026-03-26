@@ -1059,11 +1059,15 @@ export default function ContractDetailPage() {
           })
           if (!response.ok) throw new Error('Export failed')
           const blob = await response.blob()
+          // Extract filename from Content-Disposition if available
+          const disposition = response.headers.get('Content-Disposition')
+          const match = disposition?.match(/filename="?([^"]+)"?/)
+          const filename = match?.[1] || `contract-${contractId}.${format}`
           const url = window.URL.createObjectURL(blob)
           try {
             const a = document.createElement('a')
             a.href = url
-            a.download = `contract-${contractId}.${format}`
+            a.download = filename
             document.body.appendChild(a)
             a.click()
             a.remove()
