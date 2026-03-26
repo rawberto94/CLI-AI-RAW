@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { contractService } from 'data-orchestration/services'
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { generateContractReportPDF } from '@/lib/reports/contract-report-pdf';
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, BorderStyle, AlignmentType } from 'docx';
 
 /**
  * Export data types
@@ -133,6 +134,86 @@ function generateXLSX(contract: ContractExportData): Buffer {
   const bom = Buffer.from([0xEF, 0xBB, 0xBF]);
   const content = Buffer.from(csvContent, 'utf-8');
   return Buffer.concat([bom, content]);
+}
+
+// DOCX generation using docx library
+async function generateDOCX(contract: ContractExportData): Promise<Buffer> {
+  const fmtDate = (d: Date | null | undefined) => d ? new Date(d).toLocaleDateString() : 'N/A';
+  const fmtVal = (v: number | null | undefined, c?: string | null) =>
+    v ? `${c || 'USD'} ${Number(v).toLocaleString()}` : 'N/A';
+
+  const mkRow = (label: string, value: string) =>
+    new TableRow({
+      children: [
+        new TableCell({
+          width: { size: 3000, type: WidthType.DXA },
+          children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 20 })] })],
+        }),
+        new TableCell({
+          width: { size: 7000, type: WidthType.DXA },
+          children: [new Paragraph({ children: [new TextRun({ text: value, size: 20 })] })],
+        }),
+      ],
+    });
+
+  const sections: Paragraph[] = [];
+  const artifacts = contract.artifacts || [];
+  for (const artifact of artifacts) {
+    const data = typeof artifact.data === 'string' ? safeJsonParse(artifact.data) : (artifact.data || {});
+    const preview = JSON.stringify(data, null, 2).slice(0, 500);
+    sections.push(
+      new Paragraph({ text: artifact.type.replace(/_/g, ' '), heading: HeadingLevel.HEADING_2, spacing: { before: 300 } }),
+      new Paragraph({ children: [new TextRun({ text: preview, size: 18, font: 'Courier New' })] }),
+    );
+  }
+
+  const doc = new Document({
+    sections: [{
+      children: [
+        new Paragraph({
+          text: contract.contractTitle || contract.fileName || 'Contract Report',
+          heading: HeadingLevel.TITLE,
+          alignment: AlignmentType.CENTER,
+        }),
+        new Paragraph({ text: `Generated: ${new Date().toLocaleDateString()}`, alignment: AlignmentType.CENTER, spacing: { after: 400 } }),
+        new Paragraph({ text: 'Contract Details', heading: HeadingLevel.HEADING_1 }),
+        new Table({
+          rows: [
+            mkRow('Title', contract.contractTitle || 'N/A'),
+            mkRow('Status', contract.status),
+            mkRow('Type', contract.contractType || 'N/A'),
+            mkRow('Client', contract.clientName || 'N/A'),
+            mkRow('Supplier', contract.supplierName || 'N/A'),
+            mkRow('Total Value', fmtVal(contract.totalValue ? Number(contract.totalValue) : null, contract.currency)),
+            mkRow('Start Date', fmtDate(contract.startDate)),
+            mkRow('End Date', fmtDate(contract.endDate)),
+            mkRow('Expiration', fmtDate(contract.expirationDate)),
+            mkRow('Jurisdiction', contract.jurisdiction || 'N/A'),
+            mkRow('Uploaded', fmtDate(contract.uploadedAt)),
+          ],
+          width: { size: 10000, type: WidthType.DXA },
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 1 },
+            bottom: { style: BorderStyle.SINGLE, size: 1 },
+            left: { style: BorderStyle.SINGLE, size: 1 },
+            right: { style: BorderStyle.SINGLE, size: 1 },
+            insideHorizontal: { style: BorderStyle.SINGLE, size: 1 },
+            insideVertical: { style: BorderStyle.SINGLE, size: 1 },
+          },
+        }),
+        ...(contract.description ? [
+          new Paragraph({ text: 'Description', heading: HeadingLevel.HEADING_1, spacing: { before: 400 } }),
+          new Paragraph({ children: [new TextRun({ text: contract.description, size: 22 })] }),
+        ] : []),
+        ...(sections.length > 0 ? [
+          new Paragraph({ text: 'Artifacts', heading: HeadingLevel.HEADING_1, spacing: { before: 400 } }),
+          ...sections,
+        ] : []),
+      ],
+    }],
+  });
+
+  return Buffer.from(await Packer.toBuffer(doc));
 }
 
 // PDF generation using text-based format (HTML that can be printed as PDF)
@@ -415,19 +496,35 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         });
       }
 
+      case 'docx':
+      case 'word': {
+        const docxBuffer = await generateDOCX(contract);
+        const docxName = (contract.contractTitle || contract.fileName || 'contract')
+          .replace(/[^a-zA-Z0-9_-]/g, '_')
+          .slice(0, 60);
+        return new NextResponse(new Uint8Array(docxBuffer), {
+          headers: {
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Disposition': `attachment; filename="${docxName}-report.docx"`,
+          },
+        });
+      }
+
       case 'excel':
       case 'xlsx':
-      case 'csv':
+      case 'csv': {
         const xlsxBuffer = generateXLSX(contract);
+        const isCsv = format === 'csv';
         return new NextResponse(new Uint8Array(xlsxBuffer), {
           headers: {
-            'Content-Type': 'text/csv; charset=utf-8',
-            'Content-Disposition': `attachment; filename="contract-${params.id}.csv"`
-          }
-        })
+            'Content-Type': isCsv ? 'text/csv; charset=utf-8' : 'application/vnd.ms-excel',
+            'Content-Disposition': `attachment; filename="contract-${params.id}.${isCsv ? 'csv' : 'xls'}"`,
+          },
+        });
+      }
 
       default:
-        return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid format. Supported formats: json, pdf, html, excel, csv', 400);
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid format. Supported formats: json, pdf, docx, html, excel, csv', 400);
     }
   } catch (error: unknown) {
     return handleApiError(ctx, error);

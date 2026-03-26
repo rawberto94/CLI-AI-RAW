@@ -82,12 +82,25 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
   const [exportingFormat, setExportingFormat] = useState<string | null>(null)
 
   const handleCopyLink = async () => {
+    const url = `${window.location.origin}/contracts/${contractId}`
     try {
-      const url = `${window.location.origin}/contracts/${contractId}`
-      await navigator.clipboard.writeText(url)
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url)
+      } else {
+        // Fallback for older browsers
+        const el = document.createElement('textarea')
+        el.value = url
+        el.setAttribute('readonly', '')
+        el.style.position = 'absolute'
+        el.style.left = '-9999px'
+        document.body.appendChild(el)
+        el.select()
+        document.execCommand('copy')
+        el.remove()
+      }
       toast.success('Link copied to clipboard')
     } catch {
-      toast.error('Failed to copy link')
+      toast.error('Failed to copy link. Try copying from the address bar.')
     }
   }
 

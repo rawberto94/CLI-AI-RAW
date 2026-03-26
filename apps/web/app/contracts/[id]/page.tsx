@@ -177,6 +177,8 @@ export default function ContractDetailPage() {
   const [aiExtensionRec, setAiExtensionRec] = React.useState<AIExtensionRecommendation | null>(null)
   const [aiExtensionLoading, setAiExtensionLoading] = React.useState(false)
   const signedFileRef = React.useRef<HTMLInputElement>(null)
+  const lastAIActionRef = React.useRef<number>(0)
+  const AI_COOLDOWN_MS = 5000
 
   // ── Split pane for PDF viewer ─────────────────────────────────────────────
   const isMobile = useMediaQuery('(max-width: 768px)')
@@ -297,6 +299,17 @@ export default function ContractDetailPage() {
       toast.error('Please select a new expiration date')
       return
     }
+    const selectedDate = new Date(extensionDate)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (selectedDate <= today) {
+      toast.error('Expiration date must be in the future')
+      return
+    }
+    if (contract?.expirationDate && selectedDate <= new Date(contract.expirationDate)) {
+      toast.error('New date must be after current expiration date')
+      return
+    }
     try {
       const result = await extendContract.mutateAsync({
         newExpirationDate: new Date(extensionDate).toISOString(),
@@ -313,7 +326,7 @@ export default function ContractDetailPage() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to extend contract')
     }
-  }, [extensionDate, extensionNote, extensionValue, contractId, extendContract, crossModule, closeDialog])
+  }, [extensionDate, extensionNote, extensionValue, contractId, extendContract, crossModule, closeDialog, contract?.expirationDate])
 
   const handleDownload = useCallback(async () => {
     try {
@@ -328,14 +341,18 @@ export default function ContractDetailPage() {
         })
         if (!exportResp.ok) throw new Error('Export failed')
         const blob = await exportResp.blob()
+        if (!blob.size) throw new Error('Server returned empty file')
         const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `contract-${contractId}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        window.URL.revokeObjectURL(url)
+        try {
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `contract-${contractId}.pdf`
+          document.body.appendChild(a)
+          a.click()
+          a.remove()
+        } finally {
+          window.URL.revokeObjectURL(url)
+        }
         toast.success('Download started (exported)')
         return
       }
@@ -345,17 +362,21 @@ export default function ContractDetailPage() {
       const downloadName = filenameMatch?.[1] || contract?.filename || `contract-${contractId}`
 
       const blob = await response.blob()
+      if (!blob.size) throw new Error('Server returned empty file')
       const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = downloadName
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
+      try {
+        const a = document.createElement('a')
+        a.href = url
+        a.download = downloadName
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+      } finally {
+        window.URL.revokeObjectURL(url)
+      }
       toast.success('Download started')
-    } catch {
-      toast.error('Failed to download contract')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to download contract')
     }
   }, [contractId, contract?.filename])
 
@@ -364,11 +385,20 @@ export default function ContractDetailPage() {
   }, [contractId, router])
 
   const handleRename = useCallback(async (newTitle: string) => {
+    const trimmed = newTitle?.trim()
+    if (!trimmed) {
+      toast.error('Contract title cannot be empty')
+      return
+    }
+    if (trimmed.length > 500) {
+      toast.error('Title must be less than 500 characters')
+      return
+    }
     try {
       const res = await fetch(`/api/contracts/${contractId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
-        body: JSON.stringify({ contractTitle: newTitle }),
+        body: JSON.stringify({ contractTitle: trimmed }),
       })
       if (res.ok) {
         toast.success('Contract renamed')
@@ -382,11 +412,21 @@ export default function ContractDetailPage() {
   }, [contractId, queryClient])
 
   const handleUploadSignedCopy = useCallback(async (file: File, signers?: string, notes?: string) => {
+    const MAX_SIZE = 50 * 1024 * 1024
+    if (file.size > MAX_SIZE) {
+      toast.error('File too large. Maximum size is 50 MB.')
+      return
+    }
+    const ALLOWED_TYPES = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'image/png', 'image/jpeg']
+    if (file.type && !ALLOWED_TYPES.includes(file.type)) {
+      toast.error('Invalid file type. Allowed: PDF, DOCX, DOC, PNG, JPEG')
+      return
+    }
     try {
       await uploadSignedCopy.mutateAsync({ file, signers, notes })
       closeDialog('uploadSigned')
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to upload signed copy')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to upload signed copy')
     }
   }, [uploadSignedCopy, closeDialog])
 
@@ -396,32 +436,49 @@ export default function ContractDetailPage() {
       const response = await fetch(`/api/contracts/${contractId}/signed-copy`, {
         headers: { 'x-tenant-id': getTenantId() },
       })
-      if (!response.ok) throw new Error('Signed copy not found')
+      if (response.status === 404) throw new Error('No signed copy has been uploaded for this contract')
+      if (!response.ok) throw new Error(`Download failed (${response.status})`)
 
       const disposition = response.headers.get('Content-Disposition')
       const filenameMatch = disposition?.match(/filename="?(.+?)"?$/)
       const downloadName = filenameMatch?.[1] || `signed-contract-${contractId}.pdf`
 
       const blob = await response.blob()
+      if (!blob.size) throw new Error('Received empty file')
       const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = downloadName
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
+      try {
+        const a = document.createElement('a')
+        a.href = url
+        a.download = downloadName
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+      } finally {
+        window.URL.revokeObjectURL(url)
+      }
       toast.success('Signed copy downloaded')
-    } catch {
-      toast.error('Failed to download signed copy')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to download signed copy')
     }
   }, [contractId])
 
   const handleAIExtraction = useCallback(async () => {
+    const now = Date.now()
+    if (now - lastAIActionRef.current < AI_COOLDOWN_MS) {
+      toast.info('Please wait a few seconds before retrying')
+      return
+    }
+    lastAIActionRef.current = now
     aiExtraction.mutate()
   }, [aiExtraction])
 
   const handleExtractObligations = useCallback(async () => {
+    const now = Date.now()
+    if (now - lastAIActionRef.current < AI_COOLDOWN_MS) {
+      toast.info('Please wait a few seconds before retrying')
+      return
+    }
+    lastAIActionRef.current = now
     extractObligations.mutate(undefined, {
       onSuccess: (data) => {
         const count = data?.obligations?.length || 0
@@ -447,20 +504,35 @@ export default function ContractDetailPage() {
       onSuccess: () => {
         closeDialog('categorySelector')
         crossModule.onTaxonomyChange()
+        toast.success('Category updated')
       },
-      onError: () => {
-        toast.error('Failed to update category')
+      onError: (err: unknown) => {
+        toast.error(err instanceof Error ? err.message : 'Failed to update category')
       },
     })
   }, [setCategory, crossModule, closeDialog])
 
   const handleAICategorize = useCallback(async () => {
+    const now = Date.now()
+    if (now - lastAIActionRef.current < AI_COOLDOWN_MS) {
+      toast.info('Please wait a few seconds before retrying')
+      return
+    }
+    lastAIActionRef.current = now
     aiCategorize.mutate(undefined, {
       onSuccess: () => {
         crossModule.onTaxonomyChange()
+        toast.success('Contract categorized successfully')
       },
-      onError: () => {
-        toast.error('Failed to run AI categorization')
+      onError: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : ''
+        if (msg.includes('No taxonomy') || msg.includes('no categories')) {
+          toast.error('No taxonomy categories defined. Set up categories in Settings first.')
+        } else if (msg.includes('No text') || msg.includes('no contract text')) {
+          toast.warning('Cannot categorize: no contract text available.')
+        } else {
+          toast.error(msg || 'Failed to run AI categorization')
+        }
       },
     })
   }, [aiCategorize, crossModule])
@@ -1041,7 +1113,7 @@ export default function ContractDetailPage() {
           })
           if (!response.ok) throw new Error('Failed to delete contract')
           try { await crossModule.onContractChange(contractId) } catch { /* non-critical notification */ }
-          router.push('/contracts')
+          router.replace('/contracts')
         }}
         onArchive={async () => {
           const newStatus = contract?.status === 'archived' ? 'active' : 'archived'
@@ -1059,7 +1131,7 @@ export default function ContractDetailPage() {
           })
           if (!response.ok) throw new Error('Export failed')
           const blob = await response.blob()
-          // Extract filename from Content-Disposition if available
+          if (!blob.size) throw new Error('Server returned empty file')
           const disposition = response.headers.get('Content-Disposition')
           const match = disposition?.match(/filename="?([^"]+)"?/)
           const filename = match?.[1] || `contract-${contractId}.${format}`
