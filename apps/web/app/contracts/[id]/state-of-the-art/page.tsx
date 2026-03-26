@@ -66,7 +66,12 @@ export default function StateOfTheArtContractPage() {
       }
     } catch {
       toast.error('Failed to load contract data');
-    } finally { = async (artifactId: string, updates: any) => {
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateArtifact = async (artifactId: string, updates: any) => {
     try {
       const response = await fetch(`/api/contracts/${contractId}/artifacts/${artifactId}`, {
         method: 'PUT',

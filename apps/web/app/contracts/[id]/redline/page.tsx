@@ -69,6 +69,10 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
       } catch {
         toast.error('Failed to load contract content');
       } finally {
+        setLoading(false);
+      }
+    }
+    fetchContractContent();
   }, [id]);
 
   const [isSaving, setIsSaving] = useState(false);

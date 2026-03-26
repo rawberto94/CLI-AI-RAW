@@ -81,7 +81,7 @@ export function canUseTool(toolName: string, userRole: string): boolean {
 }
 
 // Maximum tool-calling iterations before forcing a final response
-export const MAX_TOOL_ITERATIONS = 5;
+export const MAX_TOOL_ITERATIONS = parseInt(process.env.MAX_TOOL_ITERATIONS || '5', 10);
 
 // ─── Smart Model Routing ────────────────────────────────────────────────
 
@@ -94,6 +94,9 @@ const DEFAULT_COMPLEX_KEYWORDS = [
   'implications', 'recommend', 'evaluate', 'what should',
   'how can we', 'optimize', 'consolidate', 'benchmark',
   'clause by clause', 'draft a', 'create a report', 'full analysis',
+  'generate contract', 'redline', 'indemnification', 'force majeure',
+  'liability cap', 'termination clause', 'intellectual property',
+  'data privacy', 'portfolio risk', 'spend analysis',
 ];
 
 function getComplexKeywords(): string[] {

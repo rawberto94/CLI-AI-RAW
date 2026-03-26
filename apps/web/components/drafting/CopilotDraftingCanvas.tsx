@@ -1543,6 +1543,8 @@ export function CopilotDraftingCanvas({
             )}
           </div>
         )}
+
+        {activeTab === 'ai-chat' && (
           <div id="panel-ai-chat" role="tabpanel" aria-labelledby="tab-ai-chat" className="flex flex-col h-[calc(100vh-200px)]">
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto space-y-3 pb-3">

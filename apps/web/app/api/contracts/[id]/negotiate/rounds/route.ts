@@ -60,12 +60,6 @@ export async function GET(
 
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId: ctx.tenantId },
-      select: {
-        id: true,
-        negotiationStatus: true,
-        negotiationRound: true,
-        negotiationNotes: true,
-      },
     });
 
     if (!contract) {
@@ -74,9 +68,10 @@ export async function GET(
 
     // Rounds stored as JSON in negotiationNotes
     let rounds: NegotiationRound[] = [];
-    if (contract.negotiationNotes) {
+    const negotiationNotes = (contract as any).negotiationNotes;
+    if (negotiationNotes) {
       try {
-        const parsed = JSON.parse(contract.negotiationNotes);
+        const parsed = JSON.parse(negotiationNotes);
         rounds = Array.isArray(parsed) ? parsed : [];
       } catch {
         rounds = [];
@@ -85,8 +80,8 @@ export async function GET(
 
     return createSuccessResponse(ctx, {
       rounds,
-      negotiationStatus: contract.negotiationStatus,
-      currentRound: contract.negotiationRound,
+      negotiationStatus: (contract as any).negotiationStatus || 'DRAFT',
+      currentRound: (contract as any).negotiationRound || 0,
     });
   } catch (error) {
     return handleApiError(ctx, error);
@@ -112,13 +107,6 @@ export async function POST(
 
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId: ctx.tenantId },
-      select: {
-        id: true,
-        contractTitle: true,
-        negotiationStatus: true,
-        negotiationRound: true,
-        negotiationNotes: true,
-      },
     });
 
     if (!contract) {
@@ -127,9 +115,10 @@ export async function POST(
 
     // Parse existing rounds
     let rounds: NegotiationRound[] = [];
-    if (contract.negotiationNotes) {
+    const negotiationNotes = (contract as any).negotiationNotes;
+    if (negotiationNotes) {
       try {
-        const parsed = JSON.parse(contract.negotiationNotes);
+        const parsed = JSON.parse(negotiationNotes);
         rounds = Array.isArray(parsed) ? parsed : [];
       } catch {
         rounds = [];
@@ -155,7 +144,7 @@ export async function POST(
 
       await prisma.contract.update({
         where: { id: contractId },
-        data: { negotiationNotes: JSON.stringify(rounds) },
+        data: { negotiationNotes: JSON.stringify(rounds) } as any,
       });
 
       logger.info('Negotiation round updated', { contractId, roundId: validated.roundId, status: validated.status });
@@ -196,8 +185,8 @@ export async function POST(
         negotiationNotes: JSON.stringify(rounds),
         negotiationRound: rounds.length,
         negotiationStatus: 'IN_NEGOTIATION',
-        negotiationStartedAt: contract.negotiationStatus === null ? new Date() : undefined,
-      },
+        ...((contract as any).negotiationStatus === null ? { negotiationStartedAt: new Date() } : {}),
+      } as any,
     });
 
     // Audit log
@@ -233,7 +222,7 @@ export async function POST(
 
     logger.info('Negotiation round created', { contractId, roundId: newRound.id, round: newRound.round });
 
-    return createSuccessResponse(ctx, { round: newRound, rounds }, 201);
+    return createSuccessResponse(ctx, { round: newRound, rounds }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', error.errors[0].message, 422);

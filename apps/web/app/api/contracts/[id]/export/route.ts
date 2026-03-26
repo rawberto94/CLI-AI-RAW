@@ -477,7 +477,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         const safeName = (contract.contractTitle || contract.fileName || 'contract')
           .replace(/[^a-zA-Z0-9_-]/g, '_')
           .slice(0, 60);
-        return new NextResponse(pdfBytes, {
+        return new NextResponse(Buffer.from(pdfBytes), {
           headers: {
             'Content-Type': 'application/pdf',
             'Content-Disposition': `attachment; filename="${safeName}-report.pdf"`,

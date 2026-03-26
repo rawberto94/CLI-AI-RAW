@@ -63,7 +63,7 @@ export async function POST(
       where: {
         contractId,
         tenantId: ctx.tenantId,
-        type: 'NEGOTIATION_PLAYBOOK',
+        type: 'NEGOTIATION_POINTS' as any,
         status: 'active',
       },
       orderBy: { createdAt: 'desc' },

@@ -698,7 +698,7 @@ ${variableBlock || 'None specified — use standard placeholders'}${templateBloc
         clauses: clauses.map((c) => ({ id: c.id, title: c.title, category: c.category })),
         variables,
         structure: {
-          risks,
+          risks: risks as any[],
           generatedAt: new Date().toISOString(),
           generatedBy: 'draft-assistant',
           context: {
@@ -706,7 +706,7 @@ ${variableBlock || 'None specified — use standard placeholders'}${templateBloc
             jurisdiction: context.jurisdiction,
             tone: context.tone,
           },
-        },
+        } as any,
         status: 'DRAFT',
         createdBy: userId,
       },

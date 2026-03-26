@@ -95,7 +95,7 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
       {
         name: 'contract-processing',
         waiting: statusMap['PENDING'] || 0,
-        active: statusMap['PROCESSING'] || 0,
+        active: statusMap['RUNNING'] || 0,
         completed: statusMap['COMPLETED'] || 0,
         failed: statusMap['FAILED'] || 0,
         delayed: statusMap['QUEUED'] || 0,
@@ -107,7 +107,7 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
       id: job.id,
       name: job.currentStep || 'process-contract',
       queue: 'contract-processing',
-      status: job.status === 'COMPLETED' ? 'completed' : job.status === 'FAILED' ? 'failed' : job.status === 'PROCESSING' ? 'active' : 'waiting',
+      status: job.status === 'COMPLETED' ? 'completed' : job.status === 'FAILED' ? 'failed' : job.status === 'RUNNING' ? 'active' : 'waiting',
       progress: job.progress || 0,
       data: {
         contractId: job.contractId,

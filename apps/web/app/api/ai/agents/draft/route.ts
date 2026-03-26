@@ -350,10 +350,10 @@ async function saveDraft(
       clauses: params.clauses.map(c => ({ id: c.id, title: c.title, category: c.category })),
       variables: params.variables,
       structure: {
-        risks: params.risks,
+        risks: params.risks as any[],
         generatedAt: new Date().toISOString(),
         generatedBy: 'agent',
-      },
+      } as any,
       status: 'DRAFT',
       createdBy: userId,
     },
@@ -432,6 +432,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         emit('step', step);
       };
 
+      const draftBreaker = getCircuitBreaker('ai-draft', { failureThreshold: 3, resetTimeoutMs: 90_000 });
+
       try {
         emit('metadata', {
           requestId: ctx.requestId,
@@ -442,7 +444,6 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         // ---------------------------------------------------------------
         // Circuit breaker check — reject if AI service is overwhelmed
         // ---------------------------------------------------------------
-        const draftBreaker = getCircuitBreaker('ai-draft', { failureThreshold: 3, resetTimeoutMs: 90_000 });
         const breakerCheck = draftBreaker.canExecute();
         if (!breakerCheck.allowed) {
           emit('error', { message: 'AI service is temporarily unavailable due to high error rate. Please try again in a few minutes.' });

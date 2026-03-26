@@ -96,7 +96,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         status: true,
         artifacts: {
           where: { type: { in: ['CLAUSES', 'RISK', 'FINANCIAL', 'OBLIGATIONS'] } },
-          select: { type: true, content: true },
+          select: { type: true, data: true },
           take: 4,
         },
       },
@@ -127,8 +127,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       ].filter(Boolean).join('\n');
 
       // Include artifact summaries for structured comparison
-      const artifactSummaries = (c.artifacts || []).map(a => {
-        const content = typeof a.content === 'string' ? a.content : JSON.stringify(a.content);
+      const artifactSummaries = ((c as any).artifacts || []).map((a: any) => {
+        const content = typeof a.data === 'string' ? a.data : JSON.stringify(a.data);
         return `[${a.type}]: ${content.slice(0, 1500)}`;
       }).join('\n');
 

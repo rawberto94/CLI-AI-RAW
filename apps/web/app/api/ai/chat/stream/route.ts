@@ -372,7 +372,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         const breakerCheck = chatBreaker.canExecute();
         if (!breakerCheck.allowed) {
           logger.warn('[Chat] Circuit breaker OPEN — rejecting request');
-          emit('error', { error: 'AI service is temporarily unavailable due to high error rate. Please try again in a minute.' });
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: 'AI service is temporarily unavailable due to high error rate. Please try again in a minute.' })}\n\n`));
           controller.close();
           return;
         }

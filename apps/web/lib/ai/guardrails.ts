@@ -178,9 +178,57 @@ export async function checkInputGuardrails(input: string): Promise<GuardrailResu
   const injectionCheck = detectPromptInjection(input);
   if (!injectionCheck.safe) return injectionCheck;
 
-  // 2. OpenAI Moderation API (~100-300ms)
+  // 2. Topic boundary check (~0ms)
+  const topicCheck = checkTopicBoundary(input);
+  if (!topicCheck.safe) return topicCheck;
+
+  // 3. OpenAI Moderation API (~100-300ms)
   const moderationCheck = await checkModeration(input);
   if (!moderationCheck.safe) return moderationCheck;
+
+  return { safe: true };
+}
+
+// ─── Topic Boundary Enforcement ─────────────────────────────────────────
+
+/**
+ * Lightweight check that the query is within the contract/legal/business domain.
+ * Short messages (greetings, follow-ups) are allowed through.
+ * Only blocks clearly off-topic requests (e.g. "write me a poem about cats").
+ */
+const OFF_TOPIC_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
+  { pattern: /\b(write|compose|create)\s+(me\s+)?(a\s+)?(poem|song|story|novel|essay|haiku|limerick)\b/i, label: 'creative-writing' },
+  { pattern: /\b(recipe|cook|bake|ingredients|calories)\b.*\b(for|to make)\b/i, label: 'cooking' },
+  { pattern: /\b(play|game|trivia|quiz|riddle|joke)\b/i, label: 'entertainment' },
+  { pattern: /\b(weather|forecast|temperature)\b.*\b(today|tomorrow|this week)\b/i, label: 'weather' },
+  { pattern: /\b(translate|translation)\b.*\b(to|into)\s+(spanish|french|german|chinese|japanese|korean|arabic|hindi|portuguese|italian|russian)\b/i, label: 'translation' },
+  { pattern: /\b(code|program|debug|implement)\b.*\b(python|javascript|java|c\+\+|rust|golang|react|vue|angular|flutter)\b/i, label: 'programming' },
+  { pattern: /\b(math|calculate|solve)\b.*\b(equation|integral|derivative|algebra|calculus|geometry)\b/i, label: 'math' },
+  { pattern: /\b(dating|relationship|love|romantic)\b.*\b(advice|tips|help)\b/i, label: 'personal' },
+  { pattern: /\b(medical|health|symptom|diagnos|prescription|medication)\b.*\b(advice|what should|recommend)\b/i, label: 'medical' },
+];
+
+const ON_TOPIC_KEYWORDS = /\b(contract|agreement|clause|term|legal|compliance|risk|obligation|liability|indemnit|nda|msa|sow|sla|lease|license|amendment|negotiat|draft|sign|party|parties|vendor|supplier|client|confidential|payment|invoice|renewal|terminat|breach|dispute|arbitrat|jurisdiction|governing law|force majeure|intellectual property|data privacy|gdpr|hipaa|audit|tender|procurement|rfp|rfi|rfq|bid|proposal|warranty|guarantee|escrow|milestone|deliverable|penalty|liquidated damages|non-compete|non-solicitation|assignment|subcontract|insurance|bond|lien|notari|attest|seal|witness|exhibit|appendix|schedule|addendum|memorandum|letter of intent|engagement letter|retainer|settlement|consent|waiver|release|disclosure|fiduciary|tort|statute|regulation|ordinance|bylaw|charter|constitution|policy|procedure|standard|benchmark|kpi|sla|uptime|availability|remedy|cure period|notice|force majeure)\b/i;
+
+export function checkTopicBoundary(input: string): GuardrailResult {
+  // Allow short messages (greetings, follow-ups, confirmations)
+  if (input.length < 30) return { safe: true };
+
+  // If the message contains any on-topic keyword, allow it
+  if (ON_TOPIC_KEYWORDS.test(input)) return { safe: true };
+
+  // Check for clearly off-topic patterns
+  for (const { pattern, label } of OFF_TOPIC_PATTERNS) {
+    if (pattern.test(input)) {
+      logger.info('[Guardrails] Off-topic query detected', { category: label });
+      return {
+        safe: false,
+        reason: `I'm a contract intelligence assistant — I can help with contracts, legal documents, compliance, and negotiations. Could you rephrase your question in a contract context?`,
+        category: `off-topic:${label}`,
+        severity: 0.3,
+      };
+    }
+  }
 
   return { safe: true };
 }
