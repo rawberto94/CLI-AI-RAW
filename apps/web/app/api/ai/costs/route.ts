@@ -140,7 +140,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       }
 
       case 'record-usage': {
-        const { tenantId = 'default', model, taskType, inputTokens, outputTokens } = body;
+        const tenantId = ctx.tenantId || 'system';
+        const { model, taskType, inputTokens, outputTokens } = body;
         if (!model || !taskType || inputTokens === undefined || outputTokens === undefined) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'model, taskType, inputTokens, and outputTokens are required', 400);
         }

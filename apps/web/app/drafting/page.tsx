@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTemplates } from '@/hooks/use-queries'
 import { cn } from '@/lib/utils'
+import { sanitizeHtml } from '@/lib/security/sanitize'
 import { toast } from 'sonner'
 import {
   FileText,
@@ -1170,7 +1171,7 @@ export default function DraftingPage() {
                 <Skeleton className="h-4 w-2/3" />
               </div>
             ) : (
-              <div dangerouslySetInnerHTML={{ __html: previewContent }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(previewContent) }} />
             )}
           </div>
           <div className="flex justify-end gap-3 pt-3 border-t">

@@ -6,11 +6,38 @@
  */
 
 import { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { contractService } from 'data-orchestration/services'
 import type { Prisma } from '@prisma/client'
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { invalidateLearnedHintsCache } from '@/lib/ai/self-improving-prompt-loop';
+
+const feedbackItemSchema = z.object({
+  fieldName: z.string().min(1, 'fieldName is required'),
+  extractedValue: z.unknown().optional(),
+  correctedValue: z.unknown().optional(),
+  wasCorrect: z.boolean(),
+  extractionSource: z.string().default('ai'),
+  extractionConfidence: z.number(),
+})
+
+const singleFeedbackSchema = z.object({
+  contractId: z.string().min(1, 'contractId is required'),
+  fieldName: z.string().min(1, 'fieldName is required'),
+  extractedValue: z.unknown().optional(),
+  correctedValue: z.unknown().optional(),
+  wasCorrect: z.boolean(),
+  extractionSource: z.string().default('ai'),
+  extractionConfidence: z.number(),
+  contractType: z.string().optional(),
+})
+
+const batchFeedbackSchema = z.object({
+  contractId: z.string().min(1, 'contractId is required'),
+  contractType: z.string().optional(),
+  feedback: z.array(feedbackItemSchema).min(1, 'feedback array must not be empty'),
+})
 
 // ============================================================================
 // TYPES
@@ -48,12 +75,30 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
   const body = await request.json()
   const tenantId = ctx.tenantId
-  
+
   // Check if it's batch or single feedback
   if (Array.isArray(body.feedback)) {
-    return handleBatchFeedback(body as BatchFeedbackRequest, tenantId, ctx)
+    let validated;
+    try {
+      validated = batchFeedbackSchema.parse(body);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', error.errors.map(e => e.message).join(', '), 400)
+      }
+      throw error;
+    }
+    return handleBatchFeedback(validated as BatchFeedbackRequest, tenantId, ctx)
   } else {
-    return handleSingleFeedback(body as FeedbackRequest, tenantId, ctx)
+    let validated;
+    try {
+      validated = singleFeedbackSchema.parse(body);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', error.errors.map(e => e.message).join(', '), 400)
+      }
+      throw error;
+    }
+    return handleSingleFeedback(validated as FeedbackRequest, tenantId, ctx)
   }
 });
 

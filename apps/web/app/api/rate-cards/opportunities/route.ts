@@ -92,7 +92,12 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
-    const { tenantId = 'demo-tenant', options = {} } = body;
+    const tenantId = ctx.tenantId;
+    const { options = {} } = body;
+
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID is required', 401);
+    }
 
     const service = new SavingsOpportunityService(prisma);
 

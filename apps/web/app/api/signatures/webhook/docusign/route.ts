@@ -10,9 +10,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eSignatureService } from '@/lib/esignature/docusign.service';
 import { logger } from '@/lib/logger';
+import { applyRateLimit } from '@/lib/middleware/rate-limit.middleware';
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit webhook calls (max 60/min per IP)
+    const rateLimited = await applyRateLimit(request, { max: 60, windowMs: 60000, message: 'Too many webhook requests' });
+    if (rateLimited) return rateLimited;
     // DocuSign sends XML by default, but we configure JSON
     const contentType = request.headers.get('content-type') || '';
     let payload: Record<string, unknown>;

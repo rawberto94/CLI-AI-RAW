@@ -1,16 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-
-// Sanitize HTML to prevent XSS attacks
-const sanitizeHtml = (str: string): string => {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-};
+import { sanitizeHtml } from '@/lib/security/sanitize';
 
 // Format AI content with markdown and sanitization
 const formatAIContent = (content: string): string => {

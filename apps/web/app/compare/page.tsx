@@ -3,16 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { PageBreadcrumb } from "@/components/navigation";
-
-// Sanitize HTML to prevent XSS attacks
-const sanitizeHtml = (str: string): string => {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-};
+import { sanitizeHtml } from '@/lib/security/sanitize';
 
 // Format AI analysis content with markdown and sanitization
 const formatAIAnalysis = (content: string): string => {

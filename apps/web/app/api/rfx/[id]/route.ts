@@ -23,6 +23,7 @@ import { prisma } from '@/lib/prisma';
 const RFX_ENABLED = process.env.RFX_AGENT_ENABLED !== 'false';
 import { z } from 'zod';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -126,26 +127,30 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   if (event.invitedVendors.length > 0) {
     try {
-      const profiles = await Promise.all(
-        event.invitedVendors.map(async (vendor) => {
-          const contracts = await prisma.contract.findMany({
-            where: { tenantId: ctx.tenantId, supplierName: vendor },
-            select: { id: true, contractTitle: true, totalValue: true },
-            take: 5,
-            orderBy: { updatedAt: 'desc' },
-          });
-          const values = contracts.map((c) => Number(c.totalValue ?? 0));
-          return {
-            name: vendor,
-            contractCount: contracts.length,
-            avgValue: values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0,
-            latestContract: contracts[0]?.contractTitle ?? undefined,
-          };
-        })
-      );
-      vendorProfiles = profiles;
-    } catch {
-      // best-effort enrichment
+      // Batch query — single DB call instead of N+1
+      const allContracts = await prisma.contract.findMany({
+        where: { tenantId: ctx.tenantId, supplierName: { in: event.invitedVendors } },
+        select: { supplierName: true, contractTitle: true, totalValue: true, updatedAt: true },
+        orderBy: { updatedAt: 'desc' },
+      });
+      const byVendor = new Map<string, typeof allContracts>();
+      for (const c of allContracts) {
+        const key = c.supplierName || '';
+        if (!byVendor.has(key)) byVendor.set(key, []);
+        byVendor.get(key)!.push(c);
+      }
+      vendorProfiles = event.invitedVendors.map((vendor) => {
+        const contracts = (byVendor.get(vendor) || []).slice(0, 5);
+        const values = contracts.map((c) => Number(c.totalValue ?? 0));
+        return {
+          name: vendor,
+          contractCount: contracts.length,
+          avgValue: values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0,
+          latestContract: contracts[0]?.contractTitle ?? undefined,
+        };
+      });
+    } catch (err) {
+      logger.warn('[RFx] Vendor profile enrichment failed', { eventId: event.id, error: String(err) });
     }
   }
 
@@ -512,7 +517,8 @@ Generate a professional justification suitable for procurement records.`;
     });
 
     return response.choices[0]?.message?.content || `Award to ${winner} based on best-value evaluation.`;
-  } catch {
+  } catch (err) {
+    logger.warn('[RFx] AI award justification failed, using fallback', { error: String(err) });
     return `Award to ${winner} based on evaluation scoring. Formal justification pending.`;
   }
 }
@@ -557,7 +563,8 @@ Provide as JSON:
     });
 
     return JSON.parse(response.choices[0]?.message?.content || '{}');
-  } catch {
+  } catch (err) {
+    logger.warn('[RFx] AI negotiation strategy failed, using fallback', { error: String(err) });
     return {
       openingPosition: `Open at $${targetPrice.toLocaleString()} with justification based on market rates`,
       keyLevers: ['Volume commitment', 'Multi-year deal', 'Early payment terms'],

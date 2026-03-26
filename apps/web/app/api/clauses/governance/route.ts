@@ -1,6 +1,19 @@
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
+
+const governanceSubmitSchema = z.object({
+  clauseId: z.string().min(1, 'clauseId is required'),
+  version: z.number().optional(),
+  changesSummary: z.string().optional(),
+});
+
+const governanceReviewSchema = z.object({
+  id: z.string().min(1, 'id is required'),
+  action: z.enum(['approve', 'reject', 'request_changes'], { required_error: 'action is required' }),
+  notes: z.string().optional(),
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -29,13 +42,27 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();
+
+    let validated;
+    try {
+      validated = governanceSubmitSchema.parse(body);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', error.errors.map(e => e.message).join(', '), 400);
+      }
+      throw error;
+    }
+
     const { prisma } = await import('@/lib/prisma');
 
     const result = await prisma.$queryRaw`INSERT INTO clause_approvals (id, tenant_id, clause_id, status, submitted_by, version, changes_summary)
-       VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${body.clauseId}, 'PENDING', ${ctx.userId}, ${body.version || 1}, ${body.changesSummary || null}) RETURNING *`;
+       VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${validated.clauseId}, 'PENDING', ${ctx.userId}, ${validated.version || 1}, ${validated.changesSummary || null}) RETURNING *`;
 
     return createSuccessResponse(ctx, { approval: (result as any[])[0] });
   } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', error.errors.map(e => e.message).join(', '), 400);
+    }
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to submit clause for approval. Please try again.', 500);
   }
 });
@@ -43,10 +70,21 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();
+
+    let validated;
+    try {
+      validated = governanceReviewSchema.parse(body);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', error.errors.map(e => e.message).join(', '), 400);
+      }
+      throw error;
+    }
+
     const { prisma } = await import('@/lib/prisma');
 
-    if (body.action === 'approve') {
-      const result = await prisma.$queryRaw`UPDATE clause_approvals SET status = 'APPROVED', reviewed_by = ${ctx.userId}, reviewed_at = NOW(), review_notes = ${body.notes || null}, updated_at = NOW() WHERE id = ${body.id} AND tenant_id = ${ctx.tenantId} RETURNING *`;
+    if (validated.action === 'approve') {
+      const result = await prisma.$queryRaw`UPDATE clause_approvals SET status = 'APPROVED', reviewed_by = ${ctx.userId}, reviewed_at = NOW(), review_notes = ${validated.notes || null}, updated_at = NOW() WHERE id = ${validated.id} AND tenant_id = ${ctx.tenantId} RETURNING *`;
       // Also update the clause library entry
       const approval = (result as any[])[0];
       if (approval) {
@@ -55,13 +93,16 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
       return createSuccessResponse(ctx, { approval });
     }
 
-    if (body.action === 'reject') {
-      const result = await prisma.$queryRaw`UPDATE clause_approvals SET status = 'REJECTED', reviewed_by = ${ctx.userId}, reviewed_at = NOW(), review_notes = ${body.notes || ''}, updated_at = NOW() WHERE id = ${body.id} AND tenant_id = ${ctx.tenantId} RETURNING *`;
+    if (validated.action === 'reject') {
+      const result = await prisma.$queryRaw`UPDATE clause_approvals SET status = 'REJECTED', reviewed_by = ${ctx.userId}, reviewed_at = NOW(), review_notes = ${validated.notes || ''}, updated_at = NOW() WHERE id = ${validated.id} AND tenant_id = ${ctx.tenantId} RETURNING *`;
       return createSuccessResponse(ctx, { approval: (result as any[])[0] });
     }
 
-    return createErrorResponse(ctx, 'BAD_REQUEST', 'Action must be approve or reject', 400);
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Action must be approve, reject, or request_changes', 400);
   } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', error.errors.map(e => e.message).join(', '), 400);
+    }
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to review clause. Please try again.', 500);
   }
 });

@@ -23,16 +23,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-
-// Sanitize HTML to prevent XSS attacks
-const sanitizeHtml = (str: string): string => {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-};
+import { sanitizeHtml } from '@/lib/security/sanitize';
 
 // Mock search results data
 const searchData = {

@@ -8,6 +8,7 @@ import {
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Undo, Redo, Type, Palette, X
 } from 'lucide-react';
+import { sanitizeHtml, sanitizeUrl } from '@/lib/security/sanitize';
 
 // ============================================================================
 // Toolbar Button
@@ -305,16 +306,6 @@ export function MarkdownEditor({
     }, 0);
   };
 
-  // Sanitize HTML to prevent XSS attacks
-  const sanitizeHtml = (str: string): string => {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  };
-
   // Simple markdown to HTML conversion (for preview) - with XSS protection
   const parseMarkdown = (md: string): string => {
     // Sanitize first to prevent XSS
@@ -327,7 +318,7 @@ export function MarkdownEditor({
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/~~(.+?)~~/g, '<del>$1</del>')
       .replace(/`(.+?)`/g, '<code>$1</code>')
-      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
+      .replace(/\[(.+?)\]\((.+?)\)/g, (_m, text, url) => `<a href="${sanitizeUrl(url)}">${text}</a>`)
       .replace(/^\* (.+$)/gm, '<li>$1</li>')
       .replace(/^\d\. (.+$)/gm, '<li>$1</li>')
       .replace(/\n/g, '<br />');

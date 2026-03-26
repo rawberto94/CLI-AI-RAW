@@ -165,8 +165,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   // Suggest vendors from existing contract data
   try {
     suggestedVendors = await suggestVendorsFromHistory(ctx.tenantId, input.category);
-  } catch {
-    // ok — vendor suggestion is best-effort
+  } catch (err) {
+    logger.warn('[RFx] Vendor suggestion from history failed', { tenantId: ctx.tenantId, error: String(err) });
   }
   const allVendors = [...new Set([...input.vendors, ...suggestedVendors])];
 

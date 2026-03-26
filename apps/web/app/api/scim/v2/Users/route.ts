@@ -36,19 +36,18 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const email = body.emails?.[0]?.value || body.userName;
     const displayName = body.displayName || body.name?.formatted || `${body.name?.givenName || ''} ${body.name?.familyName || ''}`.trim();
 
-    // Create or find user in system
-    let user = await prisma.user.findFirst({ where: { email, tenantId: ctx.tenantId } });
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email,
-          name: displayName,
-          tenantId: ctx.tenantId,
-          role: 'member',
-          status: 'ACTIVE',
-        } as any,
-      });
-    }
+    // Create or find user in system (upsert to prevent race conditions)
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: { name: displayName },
+      create: {
+        email,
+        name: displayName,
+        tenantId: ctx.tenantId,
+        role: 'member',
+        status: 'ACTIVE',
+      } as any,
+    });
 
     // Store SCIM mapping
     const result = await prisma.$queryRaw`INSERT INTO scim_sync_records (id, tenant_id, scim_id, resource_type, internal_id, display_name, email, active, sync_source, raw_attributes, last_synced_at)

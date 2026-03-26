@@ -57,7 +57,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
   const skipDupCheck = request.headers.get('x-skip-duplicate-check') === 'true';
 
   const tenantId = await getServerTenantId();
-  const userId = "user"; // From session when authenticated
+  const userId = ctx.userId || 'system';
 
   for (const file of files) {
     // Read file bytes

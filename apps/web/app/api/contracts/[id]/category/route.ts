@@ -6,10 +6,16 @@
  */
 
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from "@/lib/tenant-server";
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+
+const categoryPostSchema = z.object({
+  force: z.boolean().default(false),
+  useAISelection: z.boolean().default(true),
+});
 
 /**
  * GET /api/contracts/[id]/category
@@ -262,8 +268,19 @@ export async function POST(
     const params = await context.params;
     const contractId = params.id;
     const tenantId = await getServerTenantId();
-    const body = await request.json().catch(() => ({}));
-    const { force = false, useAISelection: _useAISelection = true } = body;
+    const body = await request.json();
+
+    let validated;
+    try {
+      validated = categoryPostSchema.parse(body);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', error.errors.map(e => e.message).join(', '), 400);
+      }
+      throw error;
+    }
+
+    const { force, useAISelection: _useAISelection } = validated;
 
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },

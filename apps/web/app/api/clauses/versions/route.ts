@@ -1,5 +1,13 @@
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
+
+const clauseVersionCreateSchema = z.object({
+  clauseId: z.string().min(1, 'clauseId is required'),
+  text: z.string().min(1, 'text is required'),
+  plainText: z.string().optional(),
+  changeNotes: z.string().optional(),
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -48,11 +56,22 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();
+
+    let validated;
+    try {
+      validated = clauseVersionCreateSchema.parse(body);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', error.errors.map(e => e.message).join(', '), 400);
+      }
+      throw error;
+    }
+
     const { prisma } = await import('@/lib/prisma');
 
     // Create a new version
     const latestVersion = await (prisma as any).clauseVersion.findFirst({
-      where: { clauseId: body.clauseId },
+      where: { clauseId: validated.clauseId },
       orderBy: { version: 'desc' },
     });
 
@@ -60,19 +79,19 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
     const version = await (prisma as any).clauseVersion.create({
       data: {
-        clauseId: body.clauseId,
+        clauseId: validated.clauseId,
         version: newVersion,
-        text: body.text,
-        plainText: body.plainText || body.text?.replace(/<[^>]*>/g, '') || '',
-        changeNotes: body.changeNotes || null,
+        text: validated.text,
+        plainText: validated.plainText || validated.text?.replace(/<[^>]*>/g, '') || '',
+        changeNotes: validated.changeNotes || null,
         createdById: ctx.userId,
       },
     });
 
     // Update the clause library entry with new text
     await prisma.clauseLibrary.update({
-      where: { id: body.clauseId },
-      data: { content: body.text, updatedAt: new Date() },
+      where: { id: validated.clauseId },
+      data: { content: validated.text, updatedAt: new Date() },
     });
 
     return createSuccessResponse(ctx, { version });

@@ -20,6 +20,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useComments } from '@/hooks/use-collaboration';
+import { sanitizeHtml } from '@/lib/security/sanitize';
 
 interface CommentThreadsProps {
   contractId: string;
@@ -122,16 +123,6 @@ export function CommentThreads({ contractId, className }: CommentThreadsProps) {
       .join('')
       .toUpperCase()
       .slice(0, 2);
-  };
-
-  // Sanitize HTML to prevent XSS attacks
-  const sanitizeHtml = (str: string): string => {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
   };
 
   const highlightMentions = (content: string) => {

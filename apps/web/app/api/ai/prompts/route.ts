@@ -101,7 +101,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       }
 
       case 'activate': {
-        const { artifactType, promptId, tenantId = 'default' } = body;
+        const tenantId = ctx.tenantId || 'system';
+        const { artifactType, promptId } = body;
         if (!artifactType || !promptId) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'artifactType and promptId are required', 400);
         }
@@ -113,7 +114,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       }
 
       case 'record-metrics': {
-        const { artifactType, promptId, metrics, tenantId = 'default' } = body;
+        const tenantId = ctx.tenantId || 'system';
+        const { artifactType, promptId, metrics } = body;
         if (!artifactType || !promptId || !metrics) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'artifactType, promptId, and metrics are required', 400);
         }
@@ -129,7 +131,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       }
 
       case 'optimize': {
-        const { artifactType, promptId, tenantId = 'default' } = body;
+        const tenantId = ctx.tenantId || 'system';
+        const { artifactType, promptId } = body;
         if (!artifactType || !promptId) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'artifactType and promptId are required', 400);
         }

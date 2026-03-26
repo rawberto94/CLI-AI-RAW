@@ -1,8 +1,24 @@
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { getTenantIdFromRequest } from '@/lib/tenant-server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
+
+const clauseLibraryCreateSchema = z.object({
+  name: z.string().min(1, 'name is required'),
+  title: z.string().min(1, 'title is required'),
+  category: z.string().min(1, 'category is required'),
+  content: z.string().min(1, 'content is required'),
+  riskLevel: z.string().default('MEDIUM'),
+  isStandard: z.boolean().default(false),
+  isMandatory: z.boolean().default(false),
+  isNegotiable: z.boolean().default(true),
+  tags: z.array(z.string()).default([]),
+  jurisdiction: z.string().optional(),
+  contractTypes: z.array(z.string()).default([]),
+  alternativeText: z.string().optional(),
+});
 // Default library clauses to seed if database is empty
 const defaultLibraryClauses = [
   {
@@ -191,24 +207,31 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const tenantId = await getTenantIdFromRequest(request);
   const body = await request.json();
+
+  let validated;
+  try {
+    validated = clauseLibraryCreateSchema.parse(body);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', error.errors.map(e => e.message).join(', '), 400);
+    }
+    throw error;
+  }
+
   const { 
     name, 
     title, 
     category, 
     content, 
-    riskLevel = 'MEDIUM',
-    isStandard = false,
-    isMandatory = false,
-    isNegotiable = true,
-    tags = [],
+    riskLevel,
+    isStandard,
+    isMandatory,
+    isNegotiable,
+    tags,
     jurisdiction,
-    contractTypes = [],
+    contractTypes,
     alternativeText,
-  } = body;
-
-  if (!name || !title || !category || !content) {
-    return createErrorResponse(ctx, 'BAD_REQUEST', 'Missing required fields: name, title, category, content', 400);
-  }
+  } = validated;
 
   try {
     const clause = await prisma.clauseLibrary.create({

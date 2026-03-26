@@ -99,7 +99,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       }
 
       case 'recalculate': {
-        const { artifactType, tenantId = 'default' } = body;
+        const tenantId = ctx.tenantId || 'system';
+        const { artifactType } = body;
         if (!artifactType) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'artifactType is required', 400);
         }
