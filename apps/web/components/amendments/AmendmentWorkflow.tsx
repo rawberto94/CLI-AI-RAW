@@ -27,6 +27,8 @@ export default function AmendmentWorkflow() {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ originalContractId: '', title: '', description: '', amendmentType: 'MODIFICATION', financialImpact: '', effectiveDate: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [changingId, setChangingId] = useState<string | null>(null);
 
   const fetchAmendments = useCallback(async () => {
     try {
@@ -41,17 +43,21 @@ export default function AmendmentWorkflow() {
 
   const handleAdd = async () => {
     if (!form.originalContractId || !form.title) { toast.error('Contract ID and title required'); return; }
+    setIsSubmitting(true);
     try {
       const res = await fetch('/api/amendments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, financialImpact: form.financialImpact ? parseFloat(form.financialImpact) : null }) });
       if ((await res.json()).success) { toast.success('Amendment created'); setShowAdd(false); fetchAmendments(); }
     } catch { toast.error('Failed'); }
+    finally { setIsSubmitting(false); }
   };
 
   const handleStatusChange = async (id: string, status: string) => {
+    setChangingId(id);
     try {
       const res = await fetch('/api/amendments', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) });
       if ((await res.json()).success) { toast.success(`Amendment ${status.toLowerCase()}`); fetchAmendments(); }
     } catch { toast.error('Failed'); }
+    finally { setChangingId(null); }
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
@@ -91,12 +97,12 @@ export default function AmendmentWorkflow() {
                 </div>
               </div>
               <div className="flex gap-2">
-                {a.status === 'DRAFT' && <Button size="sm" onClick={() => handleStatusChange(a.id, 'IN_REVIEW')}>Submit for Review</Button>}
+                {a.status === 'DRAFT' && <Button size="sm" disabled={changingId === a.id} onClick={() => handleStatusChange(a.id, 'IN_REVIEW')}>Submit for Review</Button>}
                 {a.status === 'IN_REVIEW' && <>
-                  <Button size="sm" onClick={() => handleStatusChange(a.id, 'APPROVED')}>Approve</Button>
-                  <Button size="sm" variant="destructive" onClick={() => handleStatusChange(a.id, 'REJECTED')}>Reject</Button>
+                  <Button size="sm" disabled={changingId === a.id} onClick={() => handleStatusChange(a.id, 'APPROVED')}>Approve</Button>
+                  <Button size="sm" variant="destructive" disabled={changingId === a.id} onClick={() => handleStatusChange(a.id, 'REJECTED')}>Reject</Button>
                 </>}
-                {a.status === 'APPROVED' && <Button size="sm" onClick={() => handleStatusChange(a.id, 'EXECUTED')}>Execute</Button>}
+                {a.status === 'APPROVED' && <Button size="sm" disabled={changingId === a.id} onClick={() => handleStatusChange(a.id, 'EXECUTED')}>Execute</Button>}
               </div>
             </CardContent>
           </Card>
@@ -116,7 +122,7 @@ export default function AmendmentWorkflow() {
               <div><Label>Financial Impact</Label><Input type="number" value={form.financialImpact} onChange={(e) => setForm(p => ({ ...p, financialImpact: e.target.value }))} /></div>
             </div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button><Button onClick={handleAdd}>Create</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button><Button disabled={isSubmitting} onClick={handleAdd}>{isSubmitting ? 'Creating…' : 'Create'}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

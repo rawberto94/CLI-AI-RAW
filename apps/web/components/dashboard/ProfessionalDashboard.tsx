@@ -430,9 +430,10 @@ function PendingApprovalsWidget() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const controller = new AbortController();
     const fetchApprovals = async () => {
       try {
-        const response = await fetch('/api/approvals?status=pending');
+        const response = await fetch('/api/approvals?status=pending', { signal: controller.signal });
         if (response.ok) {
           const data = await response.json();
           const items = (data.data?.items || []).slice(0, 5).map((item: any) => ({
@@ -446,7 +447,8 @@ function PendingApprovalsWidget() {
           }));
           setApprovals(items);
         }
-      } catch (error) {
+      } catch (error: any) {
+        if (error?.name === 'AbortError') return;
         // Use mock data on error
         setApprovals([
           { id: '1', title: 'Master Agreement - CloudTech', type: 'contract', priority: 'high', requestedBy: 'Sarah Johnson', dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), value: 450000 },
@@ -458,6 +460,7 @@ function PendingApprovalsWidget() {
       }
     };
     fetchApprovals();
+    return () => controller.abort();
   }, []);
 
   const getPriorityConfig = (priority: string) => {
@@ -620,9 +623,10 @@ function PortfolioHealthWidget() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const controller = new AbortController();
     const fetchHealth = async () => {
       try {
-        const response = await fetch('/api/contracts/health-scores');
+        const response = await fetch('/api/contracts/health-scores', { signal: controller.signal });
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.data?.stats) {
@@ -642,13 +646,15 @@ function PortfolioHealthWidget() {
             });
           }
         }
-      } catch {
+      } catch (error: any) {
+        if (error?.name === 'AbortError') return;
         // Silent error - health data is non-critical
       } finally {
         setLoading(false);
       }
     };
     fetchHealth();
+    return () => controller.abort();
   }, []);
 
   if (loading || !healthData) {
@@ -771,8 +777,11 @@ export function ProfessionalDashboard() {
 
   // Fetch all widget data from APIs
   useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+
     // Favorites
-    fetch('/api/user/favorites').then(r => r.ok ? r.json() : null).then(data => {
+    fetch('/api/user/favorites', { signal }).then(r => r.ok ? r.json() : null).then(data => {
       if (data?.favorites?.length) {
         setFavoriteContracts(data.favorites.map((f: any) => ({
           id: f.contractId || f.id,
@@ -785,10 +794,10 @@ export function ProfessionalDashboard() {
           addedAt: new Date(f.createdAt || Date.now()),
         })));
       }
-    }).catch(() => {});
+    }).catch((err: any) => { if (err?.name === 'AbortError') return; });
 
     // Recent Activity
-    fetch('/api/activity?limit=10').then(r => r.ok ? r.json() : null).then(data => {
+    fetch('/api/activity?limit=10', { signal }).then(r => r.ok ? r.json() : null).then(data => {
       const items = Array.isArray(data) ? data : data?.activities || [];
       if (items.length) {
         setRecentActivity(items.map((a: any) => ({
@@ -802,10 +811,10 @@ export function ProfessionalDashboard() {
           metadata: a.metadata,
         })));
       }
-    }).catch(() => {});
+    }).catch((err: any) => { if (err?.name === 'AbortError') return; });
 
     // Renewals
-    fetch('/api/renewals').then(r => r.ok ? r.json() : null).then(json => {
+    fetch('/api/renewals', { signal }).then(r => r.ok ? r.json() : null).then(json => {
       if (json?.data?.renewals?.length) {
         setUpcomingRenewals(json.data.renewals.map((r: any) => ({
           id: r.id || r.contractId,
@@ -822,10 +831,10 @@ export function ProfessionalDashboard() {
           renewalCount: r.renewalCount,
         })));
       }
-    }).catch(() => {});
+    }).catch((err: any) => { if (err?.name === 'AbortError') return; });
 
     // AI Insights
-    fetch('/api/ai/insights').then(r => r.ok ? r.json() : null).then(data => {
+    fetch('/api/ai/insights', { signal }).then(r => r.ok ? r.json() : null).then(data => {
       const items = Array.isArray(data) ? data : data?.insights || [];
       if (items.length) {
         setAiInsights(items.slice(0, 6).map((i: any) => ({
@@ -839,10 +848,10 @@ export function ProfessionalDashboard() {
           generatedAt: new Date(i.createdAt || i.generatedAt || Date.now()),
         })));
       }
-    }).catch(() => {});
+    }).catch((err: any) => { if (err?.name === 'AbortError') return; });
 
     // AI Metrics (from analytics)
-    fetch('/api/ai/analytics?period=30d').then(r => r.ok ? r.json() : null).then(data => {
+    fetch('/api/ai/analytics?period=30d', { signal }).then(r => r.ok ? r.json() : null).then(data => {
       if (data?.success && data.data) {
         setAiMetrics({
           extractionAccuracy: data.data.successRate || 95,
@@ -855,10 +864,10 @@ export function ProfessionalDashboard() {
           avgConfidence: 0.89,
         });
       }
-    }).catch(() => {});
+    }).catch((err: any) => { if (err?.name === 'AbortError') return; });
 
     // Notifications
-    fetch('/api/notifications').then(r => r.ok ? r.json() : null).then(data => {
+    fetch('/api/notifications', { signal }).then(r => r.ok ? r.json() : null).then(data => {
       if (data?.notifications?.length) {
         setNotifications(data.notifications.slice(0, 12).map((n: any) => ({
           id: n.id,
@@ -875,10 +884,10 @@ export function ProfessionalDashboard() {
           actionUrl: n.actionUrl,
         })));
       }
-    }).catch(() => {});
+    }).catch((err: any) => { if (err?.name === 'AbortError') return; });
 
     // Savings
-    fetch('/api/analytics/savings').then(r => r.ok ? r.json() : null).then(data => {
+    fetch('/api/analytics/savings', { signal }).then(r => r.ok ? r.json() : null).then(data => {
       if (data?.data) {
         setSavingsData({
           totalSavings: data.data.totalSavings || 0,
@@ -889,12 +898,12 @@ export function ProfessionalDashboard() {
           monthlyTrend: data.data.monthlyTrend || [],
         });
       }
-    }).catch(() => {});
+    }).catch((err: any) => { if (err?.name === 'AbortError') return; });
 
     // Team
     Promise.all([
-      fetch('/api/team').then(r => r.ok ? r.json() : null),
-      fetch('/api/activity?limit=10').then(r => r.ok ? r.json() : null),
+      fetch('/api/team', { signal }).then(r => r.ok ? r.json() : null),
+      fetch('/api/activity?limit=10', { signal }).then(r => r.ok ? r.json() : null),
     ]).then(([teamRes, activityRes]) => {
       const members = (teamRes?.members || []).map((m: any) => ({
         id: m.id,
@@ -916,10 +925,10 @@ export function ProfessionalDashboard() {
         details: a.description,
       }));
       setTeamData({ activities, members });
-    }).catch(() => {});
+    }).catch((err: any) => { if (err?.name === 'AbortError') return; });
 
     // Integrations
-    fetch('/api/integrations').then(r => r.ok ? r.json() : null).then(data => {
+    fetch('/api/integrations', { signal }).then(r => r.ok ? r.json() : null).then(data => {
       if (data?.integrations?.length) {
         setIntegrations(data.integrations.map((i: any) => ({
           id: i.id,
@@ -932,7 +941,9 @@ export function ProfessionalDashboard() {
           errorMessage: i.errorMessage,
         })));
       }
-    }).catch(() => {});
+    }).catch((err: any) => { if (err?.name === 'AbortError') return; });
+
+    return () => controller.abort();
   }, []);
 
   const handleExport = () => {

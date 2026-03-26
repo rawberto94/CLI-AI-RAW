@@ -7,6 +7,7 @@
 'use client';
 
 import { memo, useState, useMemo, useEffect, useCallback } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   Library,
   Search,
@@ -144,6 +145,7 @@ export const ClausesLibrary = memo(function ClausesLibrary({
   const [clauses, setClauses] = useState<Clause[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [categoryFilter, setCategoryFilter] = useState<ClauseCategory | 'all'>('all');
   const [riskFilter, setRiskFilter] = useState<RiskLevel | 'all'>('all');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
@@ -168,7 +170,7 @@ export const ClausesLibrary = memo(function ClausesLibrary({
       const params = new URLSearchParams();
       if (categoryFilter !== 'all') params.set('category', categoryFilter);
       if (riskFilter !== 'all') params.set('riskLevel', riskFilter);
-      if (search) params.set('search', search);
+      if (debouncedSearch) params.set('search', debouncedSearch);
       
       const response = await fetch(`/api/clauses?${params}`);
       if (!response.ok) throw new Error('Failed to fetch clauses');
@@ -182,7 +184,7 @@ export const ClausesLibrary = memo(function ClausesLibrary({
     } finally {
       setLoading(false);
     }
-  }, [categoryFilter, riskFilter, search]);
+  }, [categoryFilter, riskFilter, debouncedSearch]);
 
   // Initial fetch
   useEffect(() => {
