@@ -137,8 +137,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
       const summarized = await summarizeConversationHistory(conversationHistory);
       conversationSummary = summarized.summary;
       effectiveHistory = summarized.recentMessages;
-    } catch {
-      // Non-critical — fall back to raw history
+    } catch (err) {
+      logger.warn('[Stream v2] Conversation summarization failed, using raw history', { error: err instanceof Error ? err.message : String(err) });
       effectiveHistory = conversationHistory.slice(-10);
     }
   }
@@ -684,17 +684,27 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
               args: Object.fromEntries(Object.entries(args).slice(0, 5)),
             })}\n\n`));
 
+            // Tool-specific timeouts: analytics/search may need more time
+            const TOOL_TIMEOUTS: Record<string, number> = {
+              search_contracts: 20_000,
+              get_analytics: 25_000,
+              run_workflow: 25_000,
+              create_contract: 20_000,
+              bulk_update: 25_000,
+            };
+            const toolTimeout = TOOL_TIMEOUTS[toolName] ?? 15_000;
+
             const result = await Promise.race([
               executeTool(toolName, args, tenantId, userId),
               new Promise<ToolResult>((_, reject) =>
-                setTimeout(() => reject(new Error(`Tool '${toolName}' timed out after 15s`)), 15_000)
+                setTimeout(() => reject(new Error(`Tool '${toolName}' timed out after ${toolTimeout / 1000}s`)), toolTimeout)
               ),
             ]).catch(err => ({
               toolName,
               success: false,
               data: null,
               error: err instanceof Error ? err.message : 'Tool execution failed',
-              executionTimeMs: 15_000,
+              executionTimeMs: toolTimeout,
             } as ToolResult));
 
             // Emit tool preview with partial data for streaming UX (#9)

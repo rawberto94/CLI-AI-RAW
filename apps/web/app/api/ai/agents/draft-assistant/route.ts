@@ -24,6 +24,7 @@ import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { getCircuitBreaker } from '@/lib/ai/circuit-breaker';
 
 export const maxDuration = 120;
 
@@ -829,6 +830,16 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         }
       };
 
+      // Circuit breaker check
+      const assistantBreaker = getCircuitBreaker('ai-draft-assistant', { failureThreshold: 5, resetTimeoutMs: 60_000 });
+      const breakerCheck = assistantBreaker.canExecute();
+      if (!breakerCheck.allowed) {
+        emit('message', { content: 'AI service is temporarily unavailable due to high error rate. Please try again in a minute.' });
+        emit('done', {});
+        controller.close();
+        return;
+      }
+
       try {
         // ---------------------------------------------------------------
         // Action: generate — run the draft generation pipeline
@@ -1009,8 +1020,14 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           }
         }
 
+        assistantBreaker.recordSuccess();
         emit('done', { done: true });
       } catch (error: unknown) {
+        // Record transient failures in circuit breaker
+        if (assistantBreaker.isTransientError(error)) {
+          assistantBreaker.recordFailure(error instanceof Error ? error.message : String(error));
+        }
+
         logger.error('Draft assistant error', {
           requestId: ctx.requestId,
           error: error instanceof Error ? error.message : 'Unknown error',
