@@ -638,13 +638,12 @@ export default function SettingsClient() {
                     </div>
                   </div>
 
-                  <Button
-                    variant="outline"
-                    onClick={() => toast.info('Password change is available in Profile Settings → /settings/profile')}
-                  >
-                    <Key className="w-4 h-4 mr-2" />
-                    Change Password
-                  </Button>
+                  <Link href="/settings/profile">
+                    <Button variant="outline">
+                      <Key className="w-4 h-4 mr-2" />
+                      Change Password
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
 
@@ -670,9 +669,10 @@ export default function SettingsClient() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => toast.info('API token management coming soon')}
+                      disabled
+                      className="opacity-60"
                     >
-                      Manage Tokens
+                      Coming Soon
                     </Button>
                   </div>
 
@@ -894,9 +894,10 @@ export default function SettingsClient() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => toast.info(`${integration.label} integration coming soon`)}
+                          disabled
+                          className="opacity-60"
                         >
-                          Setup
+                          Coming Soon
                         </Button>
                       </div>
                     );
