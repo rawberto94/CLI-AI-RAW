@@ -42,6 +42,7 @@ import { summarizeConversationHistory } from '@/lib/ai/conversation-summarizer';
 import { aiTracer } from '@/lib/ai/ai-tracing';
 import { countTokens } from '@/lib/ai/token-counter';
 import { logger } from '@/lib/logger';
+import { getCircuitBreaker } from '@/lib/ai/circuit-breaker';
 
 // ─── Decomposed modules ─────────────────────────────────────────────────
 import {
@@ -366,6 +367,16 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
               ],
         })}\n\n`));
 
+        // ── Circuit breaker — reject if AI service is overwhelmed ──
+        const chatBreaker = getCircuitBreaker('ai-chat', { failureThreshold: 5, resetTimeoutMs: 60_000 });
+        const breakerCheck = chatBreaker.canExecute();
+        if (!breakerCheck.allowed) {
+          logger.warn('[Chat] Circuit breaker OPEN — rejecting request');
+          emit('error', { error: 'AI service is temporarily unavailable due to high error rate. Please try again in a minute.' });
+          controller.close();
+          return;
+        }
+
         // ── Smart model routing based on query complexity ──────────
         const queryComplexity = detectQueryComplexity(message);
         const modelChain = buildModelChain(queryComplexity, message);
@@ -574,6 +585,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
                 errorMessage: errMsg,
               });
               logger.warn(`[Stream v2] ${config.provider}/${config.model} failed`, { action: 'model-call', error: errMsg });
+              
+              // Record transient failures in circuit breaker
+              if (chatBreaker.isTransientError(error)) {
+                chatBreaker.recordFailure(errMsg);
+              }
               
               // FIX: Fail-fast on quota/auth/deployment errors — no point trying other models
               // with the same API key. Prevents cascading 30s timeouts.
@@ -948,6 +964,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           tenantId,
           userId,
         });
+
+        // Record success in circuit breaker
+        chatBreaker.recordSuccess();
 
         // Send done event
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({

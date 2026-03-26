@@ -613,11 +613,26 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         const step5Start = Date.now();
         addStep({ step: 5, name: 'Risk Analysis', status: 'running' });
 
-        let risks: unknown[] = [];
+        let risks: Array<{ category: string; severity: string; description: string; clause: string; suggestion: string }> = [];
         if (hasAI && plainText.length > 100) {
           try {
             const openai = createOpenAIClient();
             risks = await analyzeRisks(openai, model, plainText, contractType);
+            
+            // Emit risk warnings for critical/high severity items
+            const criticalRisks = risks.filter(r => r.severity === 'CRITICAL');
+            const highRisks = risks.filter(r => r.severity === 'HIGH');
+            if (criticalRisks.length > 0 || highRisks.length > 0) {
+              emit('risk_warning', {
+                critical: criticalRisks.length,
+                high: highRisks.length,
+                message: criticalRisks.length > 0
+                  ? `⚠️ ${criticalRisks.length} critical risk(s) detected — review before finalizing`
+                  : `${highRisks.length} high-severity risk(s) detected — consider review`,
+                risks: [...criticalRisks, ...highRisks].slice(0, 5),
+              });
+            }
+            
             addStep({ step: 5, name: 'Risk Analysis', status: 'completed', durationMs: Date.now() - step5Start, result: { riskCount: risks.length, risks } });
           } catch (error: any) {
             const msg = error?.message || '';
@@ -661,6 +676,13 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           templateUsed: template ? { id: template.id, name: template.name } : null,
           clausesIncorporated: clauses.length,
           risksIdentified: risks.length,
+          riskSummary: {
+            critical: risks.filter(r => r.severity === 'CRITICAL').length,
+            high: risks.filter(r => r.severity === 'HIGH').length,
+            medium: risks.filter(r => r.severity === 'MEDIUM').length,
+            low: risks.filter(r => r.severity === 'LOW').length,
+            requiresReview: risks.some(r => r.severity === 'CRITICAL' || r.severity === 'HIGH'),
+          },
           contentLength: html.length,
           steps: steps.map(s => ({ step: s.step, name: s.name, status: s.status, durationMs: s.durationMs })),
           totalDurationMs: Date.now() - step1Start,
