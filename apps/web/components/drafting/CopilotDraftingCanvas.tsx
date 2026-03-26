@@ -1491,19 +1491,51 @@ export function CopilotDraftingCanvas({
                     key={i}
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div
-                      className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${
-                        msg.role === 'user'
-                          ? 'bg-violet-600 text-white rounded-br-none'
-                          : 'bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-slate-100 rounded-bl-none'
-                      }`}
-                    >
-                      {msg.content || (isAiChatStreaming && i === aiChatMessages.length - 1 ? (
-                        <span className="flex items-center gap-1">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          <span className="text-xs opacity-70">Thinking...</span>
-                        </span>
-                      ) : null)}
+                    <div className="max-w-[85%]">
+                      <div
+                        className={`px-3 py-2 rounded-lg text-sm ${
+                          msg.role === 'user'
+                            ? 'bg-violet-600 text-white rounded-br-none'
+                            : 'bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-slate-100 rounded-bl-none'
+                        }`}
+                      >
+                        {msg.content || (isAiChatStreaming && i === aiChatMessages.length - 1 ? (
+                          <span className="flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <span className="text-xs opacity-70">Thinking...</span>
+                          </span>
+                        ) : null)}
+                      </div>
+                      {/* Apply button for assistant messages with content */}
+                      {msg.role === 'assistant' && msg.content && !isAiChatStreaming && (
+                        <div className="flex gap-1 mt-1">
+                          <button
+                            onClick={() => {
+                              if (!editor) return;
+                              const { from, to } = editor.state.selection;
+                              if (from !== to) {
+                                editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, msg.content).run();
+                              } else {
+                                editor.chain().focus().insertContent(msg.content).run();
+                              }
+                              setContent(editor.getHTML());
+                              toast.success('AI suggestion applied');
+                            }}
+                            className="text-xs px-2 py-1 rounded bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-900/70 transition-colors flex items-center gap-1"
+                          >
+                            <Check className="h-3 w-3" /> Apply
+                          </button>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(msg.content);
+                              toast.success('Copied to clipboard');
+                            }}
+                            className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))

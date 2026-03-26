@@ -39,6 +39,7 @@ import {
   LayoutTemplate,
   Bot,
   FileCheck,
+  Download,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -164,10 +165,12 @@ function DraftCard({
   draft,
   onDelete,
   onDuplicate,
+  onExport,
 }: {
   draft: Draft
   onDelete: (id: string) => void
   onDuplicate: (id: string) => void
+  onExport: (id: string, format: 'pdf' | 'docx' | 'json') => void
 }) {
   const router = useRouter()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -261,6 +264,19 @@ function DraftCard({
                       className="gap-2 cursor-pointer"
                     >
                       <Copy className="h-3.5 w-3.5" /> Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => onExport(draft.id, 'pdf')}
+                      className="gap-2 cursor-pointer"
+                    >
+                      <Download className="h-3.5 w-3.5" /> Export PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onExport(draft.id, 'docx')}
+                      className="gap-2 cursor-pointer"
+                    >
+                      <Download className="h-3.5 w-3.5" /> Export DOCX
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
@@ -503,29 +519,50 @@ export default function DraftingPage() {
 
   const handleDuplicateDraft = useCallback(
     async (id: string) => {
-      const draft = drafts.find((d) => d.id === id)
-      if (!draft) return
       try {
-        const res = await fetch('/api/drafts', {
+        const res = await fetch(`/api/drafts/${id}/duplicate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: `${draft.title} (Copy)`,
-            content: draft.content || '',
-            type: draft.type || 'contract',
-            status: 'DRAFT',
-            sourceType: draft.sourceType || 'blank',
-          }),
         })
         if (res.ok) {
           toast.success('Draft duplicated')
           fetchDrafts()
+        } else {
+          toast.error('Failed to duplicate draft')
         }
       } catch {
         toast.error('Failed to duplicate draft')
       }
     },
-    [drafts, fetchDrafts],
+    [fetchDrafts],
+  )
+
+  const handleExportDraft = useCallback(
+    async (id: string, format: 'pdf' | 'docx' | 'json') => {
+      try {
+        const res = await fetch(`/api/drafts/${id}/export?format=${format}`)
+        if (!res.ok) {
+          toast.error('Failed to export draft')
+          return
+        }
+        const blob = await res.blob()
+        const disposition = res.headers.get('Content-Disposition') || ''
+        const filenameMatch = disposition.match(/filename="(.+?)"/)
+        const filename = filenameMatch?.[1] || `draft.${format}`
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        toast.success(`Draft exported as ${format.toUpperCase()}`)
+      } catch {
+        toast.error('Failed to export draft')
+      }
+    },
+    [],
   )
 
   const handleAIGenerate = useCallback(() => {
@@ -993,6 +1030,7 @@ export default function DraftingPage() {
                         draft={draft}
                         onDelete={handleDeleteDraft}
                         onDuplicate={handleDuplicateDraft}
+                        onExport={handleExportDraft}
                       />
                     </motion.div>
                   ))}

@@ -47,7 +47,7 @@ export function useAgentSSE(options?: UseAgentSSEOptions): UseAgentSSEReturn {
     newOpportunities: 0,
   });
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  const MAX_RECONNECT_ATTEMPTS = 5;
+  const MAX_RECONNECT_ATTEMPTS = 10;
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -167,7 +167,7 @@ export function useAgentSSE(options?: UseAgentSSEOptions): UseAgentSSEReturn {
           }
           console.log('[SSE] Reconnecting...');
           connect();
-        }, 5000);
+        }, Math.min(1000 * Math.pow(2, next), 30000));
         return next;
       });
     };
