@@ -684,31 +684,39 @@ ${variableBlock || 'None specified — use standard placeholders'}${templateBloc
   const step5Start = Date.now();
   emit('generation_step', { step: 5, name: 'Saving Draft', status: 'running' });
 
-  const draft = await prisma.contractDraft.create({
-    data: {
-      tenantId,
-      title,
-      type: contractType,
-      sourceType: template ? 'TEMPLATE' : 'NEW',
-      templateId: template?.id || null,
-      content: html,
-      clauses: clauses.map((c) => ({ id: c.id, title: c.title, category: c.category })),
-      variables,
-      structure: {
-        risks,
-        generatedAt: new Date().toISOString(),
-        generatedBy: 'draft-assistant',
-        context: {
-          parties: context.parties,
-          jurisdiction: context.jurisdiction,
-          tone: context.tone,
+  let draft;
+  try {
+    draft = await prisma.contractDraft.create({
+      data: {
+        tenantId,
+        title,
+        type: contractType,
+        sourceType: template ? 'TEMPLATE' : 'NEW',
+        templateId: template?.id || null,
+        content: html,
+        clauses: clauses.map((c) => ({ id: c.id, title: c.title, category: c.category })),
+        variables,
+        structure: {
+          risks,
+          generatedAt: new Date().toISOString(),
+          generatedBy: 'draft-assistant',
+          context: {
+            parties: context.parties,
+            jurisdiction: context.jurisdiction,
+            tone: context.tone,
+          },
         },
+        status: 'DRAFT',
+        createdBy: userId,
       },
-      status: 'DRAFT',
-      createdBy: userId,
-    },
-    select: { id: true, title: true, status: true },
-  });
+      select: { id: true, title: true, status: true },
+    });
+  } catch (dbError: unknown) {
+    const msg = dbError instanceof Error ? dbError.message : 'Database error';
+    logger.error('Failed to save draft', { tenantId, error: msg });
+    emit('error', { message: 'Failed to save draft. Please try again.' });
+    return;
+  }
 
   if (template) {
     await prisma.contractTemplate
@@ -810,7 +818,13 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         // Action: generate — run the draft generation pipeline
         // ---------------------------------------------------------------
         if (body.action === 'generate') {
-          await runGenerationPipeline(tenantId, userId, body.context, emit);
+          try {
+            await runGenerationPipeline(tenantId, userId, body.context, emit);
+          } catch (pipelineError: unknown) {
+            const msg = pipelineError instanceof Error ? pipelineError.message : 'Draft generation failed';
+            logger.error('Generation pipeline error', { requestId: ctx.requestId, error: msg });
+            emit('error', { message: 'Draft generation failed. Please try again.' });
+          }
           emit('done', { done: true });
           controller.close();
           return;
@@ -959,7 +973,13 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
 
                   case 'generate_draft':
                     if (args.confirmation) {
-                      await runGenerationPipeline(tenantId, userId, body.context, emit);
+                      try {
+                        await runGenerationPipeline(tenantId, userId, body.context, emit);
+                      } catch (genErr: unknown) {
+                        const gm = genErr instanceof Error ? genErr.message : 'Generation failed';
+                        logger.error('In-chat generation failed', { error: gm });
+                        emit('error', { message: 'Draft generation failed. Please try again.' });
+                      }
                     }
                     break;
                 }

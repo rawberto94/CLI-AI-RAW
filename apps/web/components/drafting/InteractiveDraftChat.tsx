@@ -25,6 +25,7 @@ import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { sanitizeHtml } from '@/lib/security/sanitize';
 import {
   useInteractiveDraft,
   type ChatMessage,
@@ -107,17 +108,22 @@ function renderSimpleMarkdown(text: string): React.ReactNode {
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i];
 
-    // Bold
-    line = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Bold — safe inline rendering
+    const parts = line.split(/\*\*(.+?)\*\*/g);
+    const renderLine = (raw: string) => (
+      <>
+        {raw.split(/\*\*(.+?)\*\*/g).map((part, j) =>
+          j % 2 === 1 ? <strong key={j}>{part}</strong> : <React.Fragment key={j}>{part}</React.Fragment>
+        )}
+      </>
+    );
 
     // Unordered list
     if (/^[-•]\s/.test(line)) {
       elements.push(
-        <li
-          key={i}
-          className="ml-4 list-disc"
-          dangerouslySetInnerHTML={{ __html: line.replace(/^[-•]\s/, '') }}
-        />
+        <li key={i} className="ml-4 list-disc">
+          {renderLine(line.replace(/^[-•]\s/, ''))}
+        </li>
       );
       continue;
     }
@@ -125,11 +131,9 @@ function renderSimpleMarkdown(text: string): React.ReactNode {
     // Numbered list
     if (/^\d+\.\s/.test(line)) {
       elements.push(
-        <li
-          key={i}
-          className="ml-4 list-decimal"
-          dangerouslySetInnerHTML={{ __html: line.replace(/^\d+\.\s/, '') }}
-        />
+        <li key={i} className="ml-4 list-decimal">
+          {renderLine(line.replace(/^\d+\.\s/, ''))}
+        </li>
       );
       continue;
     }
@@ -141,7 +145,7 @@ function renderSimpleMarkdown(text: string): React.ReactNode {
     }
 
     elements.push(
-      <p key={i} dangerouslySetInnerHTML={{ __html: line }} />
+      <p key={i}>{renderLine(line)}</p>
     );
   }
 
@@ -652,14 +656,13 @@ export function InteractiveDraftChat({
 
   const [inputValue, setInputValue] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-scroll on new messages
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, isStreaming]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
 
   // Show error as toast
   useEffect(() => {
@@ -791,6 +794,9 @@ export function InteractiveDraftChat({
               <ScrollArea
                 ref={scrollRef}
                 className="flex-1 min-h-0 px-4 py-4 bg-slate-50/50 dark:bg-slate-950/30"
+                role="log"
+                aria-label="Contract drafting conversation"
+                aria-live="polite"
               >
                 {showWelcome ? (
                   <WelcomeState
@@ -855,6 +861,9 @@ export function InteractiveDraftChat({
                         {error}
                       </div>
                     )}
+
+                    {/* Scroll anchor */}
+                    <div ref={messagesEndRef} />
                   </div>
                 )}
               </ScrollArea>
@@ -869,6 +878,7 @@ export function InteractiveDraftChat({
                     onKeyDown={handleKeyDown}
                     placeholder="Describe your contract needs..."
                     disabled={isStreaming || isGenerating}
+                    aria-label="Contract drafting message"
                     className="flex-1"
                   />
                   {isStreaming ? (
@@ -876,6 +886,7 @@ export function InteractiveDraftChat({
                       variant="destructive"
                       size="icon"
                       onClick={abort}
+                      aria-label="Stop generating"
                       title="Stop generating"
                     >
                       <Square className="w-4 h-4" />
@@ -886,9 +897,14 @@ export function InteractiveDraftChat({
                       size="icon"
                       onClick={handleSend}
                       disabled={!inputValue.trim() || isGenerating}
-                      title="Send message"
+                      aria-label="Send message"
+                      title={isGenerating ? 'Generating draft...' : 'Send message'}
                     >
-                      <Send className="w-4 h-4" />
+                      {isGenerating ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
                     </Button>
                   )}
                 </div>

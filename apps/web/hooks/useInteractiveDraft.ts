@@ -117,6 +117,7 @@ export function useInteractiveDraft() {
   const [generationSteps, setGenerationSteps] = useState<InteractiveDraftState['generationSteps']>(INITIAL_STATE.generationSteps);
 
   const abortRef = useRef<AbortController | null>(null);
+  const isStreamingRef = useRef(false);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
@@ -340,6 +341,8 @@ export function useInteractiveDraft() {
 
   const sendMessage = useCallback(
     async (message: string) => {
+      if (isStreamingRef.current) return;
+      isStreamingRef.current = true;
       setError(null);
 
       const userMessage: ChatMessage = {
@@ -418,6 +421,7 @@ export function useInteractiveDraft() {
         );
       } finally {
         abortRef.current = null;
+        isStreamingRef.current = false;
       }
     },
     [messages, context, consumeStream]
@@ -502,6 +506,7 @@ export function useInteractiveDraft() {
   const reset = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
+    isStreamingRef.current = false;
     setMessages(INITIAL_STATE.messages);
     setContext(INITIAL_CONTEXT);
     setIsStreaming(INITIAL_STATE.isStreaming);
@@ -522,6 +527,7 @@ export function useInteractiveDraft() {
       abortRef.current.abort();
       abortRef.current = null;
     }
+    isStreamingRef.current = false;
     setIsStreaming(false);
     setIsGenerating(false);
     setMessages(prev =>
