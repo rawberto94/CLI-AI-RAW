@@ -1866,11 +1866,17 @@ async function executeRateResponse(args: Record<string, unknown>, tenantId: stri
   const reason = args.reason as string | undefined;
 
   try {
-    // Store feedback in the database
-    await prisma.$executeRaw`
-      INSERT INTO learning_records (tenant_id, user_id, field, correction_type, confidence, metadata, created_at)
-       VALUES (${tenantId}, ${userId}, 'response_quality', ${rating === 'positive' ? 'positive_feedback' : 'negative_feedback'}, ${rating === 'positive' ? 0.9 : 0.1}, ${JSON.stringify({ reason: reason || null, source: 'chat_feedback' })}::jsonb, NOW())
-    `;
+    await prisma.learningRecord.create({
+      data: {
+        tenantId,
+        artifactType: 'chat_response',
+        field: 'response_quality',
+        correctionType: rating === 'positive' ? 'positive_feedback' : 'negative_feedback',
+        confidence: rating === 'positive' ? 0.9 : 0.1,
+        aiExtracted: reason || null,
+        userCorrected: rating,
+      },
+    });
   } catch {
     // learning_records table may not exist — still acknowledge the feedback
   }

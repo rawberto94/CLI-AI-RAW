@@ -939,6 +939,30 @@ export async function PUT(
       metadata: { changes: prismaUpdates },
     }).catch((err) => logger.error('[ContractUpdate] Audit log failed:', err));
 
+    // Track AI-extractable field corrections as learning records
+    const AI_FIELDS = ['contractType', 'clientName', 'supplierName', 'contractTitle', 'jurisdiction', 'totalValue', 'currency', 'effectiveDate', 'expirationDate', 'paymentTerms'];
+    const changedAIFields = AI_FIELDS.filter(f => prismaUpdates[f] !== undefined);
+    if (changedAIFields.length > 0) {
+      try {
+        await Promise.all(changedAIFields.map(field =>
+          prisma.learningRecord.create({
+            data: {
+              tenantId,
+              artifactType: 'contract_metadata',
+              contractType: existingContract.contractType || undefined,
+              field,
+              aiExtracted: String((existingContract as Record<string, unknown>)[field] ?? ''),
+              userCorrected: String(prismaUpdates[field] ?? ''),
+              correctionType: (existingContract as Record<string, unknown>)[field] ? 'value' : 'missing',
+              confidence: 1.0,
+            },
+          })
+        ));
+      } catch {
+        // Non-critical — learning records are optional
+      }
+    }
+
     // Convert BigInt fields to Number and add Date ISO strings so JSON.stringify works
     const safeContract: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(updatedContract)) {

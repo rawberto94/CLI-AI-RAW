@@ -93,6 +93,22 @@ export async function POST(
       }
     });
 
+    // Store learning record for dashboard metrics
+    try {
+      await prisma.learningRecord.create({
+        data: {
+          tenantId: tenantId || ctx.tenantId || 'unknown',
+          artifactType: updated.type || 'unknown',
+          field: verified !== undefined ? 'verification' : 'rating',
+          correctionType: verified !== undefined ? 'verification' : 'quality_feedback',
+          confidence: rating ? rating / 5 : undefined,
+          userCorrected: notes || (verified ? 'verified' : rating ? `rating_${rating}` : null),
+        },
+      });
+    } catch {
+      // Non-critical
+    }
+
     return createSuccessResponse(ctx, {
       success: true,
       artifact: updated

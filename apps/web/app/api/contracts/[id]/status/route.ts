@@ -17,10 +17,16 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { pushAgentNotification } from '@/lib/ai/agent-notifications';
+import { logger } from '@/lib/logger';
 
 const statusUpdateSchema = z.object({
   status: z.string().min(1, 'status is required'),
   reason: z.string().optional(),
+  notes: z.string().optional(),
+  effectiveDate: z.string().optional(),
+  notifyCounterparty: z.boolean().optional(),
+  notifyStakeholders: z.boolean().optional(),
   workflowExecutionId: z.string().optional(),
 });
 
@@ -315,17 +321,18 @@ function formatDuration(ms: number): string {
 // Valid transitions: fromStatus → Set<validTargetStatuses>
 const VALID_TRANSITIONS: Record<string, Set<string>> = {
   DRAFT:      new Set(['PENDING', 'ACTIVE', 'PROCESSING', 'CANCELLED']),
-  PENDING:    new Set(['ACTIVE', 'DRAFT', 'CANCELLED', 'PROCESSING']),
+  PENDING:    new Set(['ACTIVE', 'DRAFT', 'CANCELLED', 'PROCESSING', 'TERMINATED']),
   QUEUED:     new Set(['PROCESSING', 'FAILED', 'CANCELLED', 'DRAFT']),
   PROCESSING: new Set(['COMPLETED', 'FAILED', 'PENDING']),
   COMPLETED:  new Set(['ACTIVE', 'ARCHIVED', 'DRAFT', 'PENDING']),
-  ACTIVE:     new Set(['EXPIRED', 'ARCHIVED', 'CANCELLED', 'DRAFT', 'PENDING']),
-  EXPIRED:    new Set(['ACTIVE', 'ARCHIVED']),
+  ACTIVE:     new Set(['EXPIRED', 'ARCHIVED', 'CANCELLED', 'DRAFT', 'PENDING', 'TERMINATED']),
+  EXPIRED:    new Set(['ACTIVE', 'ARCHIVED', 'TERMINATED']),
   FAILED:     new Set(['PROCESSING', 'DRAFT']),
   ARCHIVED:   new Set(['ACTIVE', 'DRAFT']),
   CANCELLED:  new Set(['DRAFT']),
   UPLOADED:   new Set(['QUEUED', 'PROCESSING', 'DRAFT', 'PENDING', 'ACTIVE']),
   DELETED:    new Set([]),
+  TERMINATED: new Set(['ARCHIVED']),
 };
 
 export async function PATCH(
@@ -411,6 +418,77 @@ export async function PATCH(
       } catch {
         // Non-critical
       }
+    }
+
+    // Termination-specific: notifications + audit
+    if (normalizedStatus === 'TERMINATED') {
+      const { reason: termReason, notes, effectiveDate, notifyCounterparty, notifyStakeholders } = statusUpdateSchema.parse(await request.clone().json().catch(() => ({})));
+
+      // Audit log for termination
+      try {
+        await prisma.auditLog.create({
+          data: {
+            tenantId,
+            userId: ctx.userId,
+            action: 'CONTRACT_TERMINATED',
+            resourceType: 'Contract',
+            entityType: 'Contract',
+            entityId: contractId,
+            resource: contractId,
+            details: { description: `Contract "${contract.contractTitle || contract.fileName}" terminated. Reason: ${termReason || reason || 'Not specified'}` },
+            metadata: {
+              reason: termReason || reason,
+              notes,
+              effectiveDate,
+              notifyCounterparty,
+              notifyStakeholders,
+              previousStatus: currentStatus,
+            },
+          },
+        });
+      } catch (auditErr) {
+        logger.error('Failed to create termination audit log', auditErr instanceof Error ? auditErr : undefined);
+      }
+
+      // Push agent notifications
+      pushAgentNotification({
+        tenantId,
+        type: 'risk_alert',
+        severity: 'high',
+        title: 'Contract Terminated',
+        message: `"${contract.contractTitle || contract.fileName}" has been terminated. Reason: ${termReason || reason || 'Not specified'}`,
+        source: 'termination-workflow',
+        metadata: { contractId, reason: termReason || reason, effectiveDate },
+        actionUrl: `/contracts/${contractId}`,
+      });
+
+      if (notifyStakeholders) {
+        pushAgentNotification({
+          tenantId,
+          type: 'compliance_issue',
+          severity: 'medium',
+          title: 'Stakeholder Notification Required',
+          message: `Internal stakeholders should be notified about the termination of "${contract.contractTitle || contract.fileName}"`,
+          source: 'termination-workflow',
+          metadata: { contractId, action: 'notify_stakeholders' },
+          actionUrl: `/contracts/${contractId}`,
+        });
+      }
+
+      if (notifyCounterparty) {
+        pushAgentNotification({
+          tenantId,
+          type: 'deadline',
+          severity: 'high',
+          title: 'Counterparty Notice Required',
+          message: `Send termination notice to counterparty for "${contract.contractTitle || contract.fileName}"`,
+          source: 'termination-workflow',
+          metadata: { contractId, action: 'notify_counterparty' },
+          actionUrl: `/contracts/${contractId}`,
+        });
+      }
+
+      logger.info('Contract terminated with notifications', { contractId, reason: termReason || reason, notifyCounterparty, notifyStakeholders });
     }
 
     return createSuccessResponse(ctx, {

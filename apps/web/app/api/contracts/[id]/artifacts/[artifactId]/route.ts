@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import { getContractQueue } from '@repo/utils/queue/contract-queue';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 
 // Artifact types that should trigger RAG re-indexing when updated
 const RAG_TRIGGER_ARTIFACT_TYPES = [
@@ -105,6 +107,23 @@ export async function PUT(
       });
     } catch {
       // Import or instantiation failure — feedback learning is optional
+    }
+
+    // Direct learning record for dashboard metrics (reliable fallback)
+    try {
+      await prisma.learningRecord.create({
+        data: {
+          tenantId: ctx.tenantId || 'unknown',
+          artifactType: updatedArtifact.artifactType || 'unknown',
+          field: 'artifact_content',
+          correctionType: 'artifact_edit',
+          confidence: 1.0,
+          aiExtracted: JSON.stringify(updatedArtifact.previousContent ?? {}).slice(0, 2000),
+          userCorrected: JSON.stringify(updates).slice(0, 2000),
+        },
+      });
+    } catch {
+      // Non-critical — learning record insert can fail silently
     }
 
     // Queue RAG re-indexing if this is a critical artifact type
