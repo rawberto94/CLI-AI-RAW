@@ -84,6 +84,21 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
     conversationHistory.length = MAX_HISTORY_ITEMS;
   }
 
+  // Validate conversation history items — reject malformed entries
+  if (Array.isArray(conversationHistory)) {
+    for (let i = conversationHistory.length - 1; i >= 0; i--) {
+      const item = conversationHistory[i];
+      if (
+        !item ||
+        typeof item.role !== 'string' ||
+        !['user', 'assistant', 'system'].includes(item.role) ||
+        typeof item.content !== 'string'
+      ) {
+        conversationHistory.splice(i, 1);
+      }
+    }
+  }
+
   if (!hasAIClientConfig()) {
     return new NextResponse(JSON.stringify({ 
       error: 'AI_NOT_CONFIGURED',

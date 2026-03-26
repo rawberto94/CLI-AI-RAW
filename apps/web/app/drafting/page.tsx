@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTemplates } from '@/hooks/use-queries'
+import { useDebounce } from '@/hooks/useDebounce'
 import { cn } from '@/lib/utils'
 import { sanitizeHtml } from '@/lib/security/sanitize'
 import { toast } from 'sonner'
@@ -429,6 +430,7 @@ export default function DraftingPage() {
   const [drafts, setDrafts] = useState<Draft[]>([])
   const [draftsLoading, setDraftsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const debouncedSearch = useDebounce(searchQuery, 300)
   const [activeTab, setActiveTab] = useState('drafts')
   const [aiPrompt, setAiPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -455,7 +457,7 @@ export default function DraftingPage() {
     try {
       setDraftsLoading(true)
       const params = new URLSearchParams({ limit: '50', sortBy: 'updatedAt', sortOrder: 'desc' })
-      if (searchQuery.trim()) params.set('search', searchQuery.trim())
+      if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim())
       if (statusFilter) params.set('status', statusFilter)
       if (dateFrom) params.set('dateFrom', new Date(dateFrom).toISOString())
       if (dateTo) params.set('dateTo', new Date(dateTo + 'T23:59:59').toISOString())
@@ -469,7 +471,7 @@ export default function DraftingPage() {
     } finally {
       setDraftsLoading(false)
     }
-  }, [searchQuery, statusFilter, dateFrom, dateTo])
+  }, [debouncedSearch, statusFilter, dateFrom, dateTo])
 
   useEffect(() => {
     fetchDrafts()
@@ -479,15 +481,15 @@ export default function DraftingPage() {
   const recentDrafts = useMemo(() => drafts, [drafts])
 
   const filteredTemplates = useMemo(() => {
-    if (!searchQuery) return templates
-    const q = searchQuery.toLowerCase()
+    if (!debouncedSearch) return templates
+    const q = debouncedSearch.toLowerCase()
     return templates.filter(
       (t) =>
         t.name.toLowerCase().includes(q) ||
         (t.description || '').toLowerCase().includes(q) ||
         (t.category || '').toLowerCase().includes(q),
     )
-  }, [templates, searchQuery])
+  }, [templates, debouncedSearch])
 
   const stats = useMemo(
     () => ({

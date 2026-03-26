@@ -51,7 +51,10 @@ const QUICK_START_OPTIONS = [
   { label: 'MSA', value: 'I need a Master Service Agreement', emoji: '🤝' },
   { label: 'SOW', value: 'I need a Statement of Work', emoji: '📋' },
   { label: 'Employment', value: 'I need an Employment Agreement', emoji: '👔' },
+  { label: 'SLA', value: 'I need a Service Level Agreement', emoji: '📊' },
+  { label: 'License', value: 'I need a License Agreement', emoji: '📜' },
   { label: 'Lease', value: 'I need a Lease Agreement', emoji: '🏢' },
+  { label: 'Consulting', value: 'I need a Consulting Agreement', emoji: '💼' },
   { label: 'Amendment', value: 'I need a Contract Amendment', emoji: '📝' },
 ];
 
@@ -596,11 +599,11 @@ function WelcomeState({
 
       <div className="space-y-2">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          👋 Hi! I&apos;m your contract drafting assistant.
+          👋 Let&apos;s draft your contract
         </h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
-          Tell me what kind of contract you need and I&apos;ll help you draft it.
-          I&apos;ll ask a few questions to understand your requirements.
+          I&apos;ll guide you through a few smart questions, then generate a complete
+          draft ready for review. Typically takes 2–3 minutes.
         </p>
       </div>
 

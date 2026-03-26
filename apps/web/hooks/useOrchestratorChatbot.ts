@@ -125,10 +125,10 @@ You have access to real-time orchestrator information. When users ask about:
 
       try {
         // Check for orchestrator commands
-        const lowerContent = content.toLowerCase();
+        const lowerContent = content.toLowerCase().trim();
         
-        // Handle artifact generation requests
-        const artifactMatch = content.match(/generate\s+(\w+)/i);
+        // Handle artifact generation requests — match "generate OVERVIEW" but not "let me regenerate"
+        const artifactMatch = content.match(/^(?:please\s+)?generate\s+(\w+)/i);
         if (artifactMatch && contractId) {
           const artifactType = artifactMatch[1].toUpperCase();
           await generateArtifact(artifactType);
