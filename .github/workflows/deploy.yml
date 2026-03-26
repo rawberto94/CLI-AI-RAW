@@ -1,10 +1,22 @@
 name: Build and Deploy Agentic AI Platform
 
+# CI quality checks run on PR. Builds & deploys are manual only.
+# ⛔ All dev/test builds happen locally on Hetzner. See docs/LOCAL_E2E_TESTING.md
 on:
-  push:
-    branches: [main, staging]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: "Deploy target"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      confirm:
+        description: "Type 'deploy' to confirm"
+        required: true
 
 env:
   REGISTRY: ghcr.io
@@ -146,12 +158,12 @@ jobs:
           " --url="postgresql://postgres:postgres@localhost:5432/test"
           echo "✅ Agent tables verified"
 
-  # Build Docker images
+  # Build Docker images — manual deploy only
   docker-build:
     name: Build Docker Images
     runs-on: ubuntu-latest
     needs: [build, migration-check]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging')
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'deploy'
     
     permissions:
       contents: read
@@ -213,12 +225,12 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Deploy to staging (AWS ECS example)
+  # Deploy to staging (AWS ECS)
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: docker-build
-    if: github.ref == 'refs/heads/staging'
+    if: github.event.inputs.deploy_target == 'staging'
     environment:
       name: staging
       url: https://staging.yourapp.com
@@ -262,12 +274,12 @@ jobs:
             --cluster contract-intelligence-staging \
             --services web workers
 
-  # Deploy to production (AWS ECS example)
+  # Deploy to production (AWS ECS)
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: docker-build
-    if: github.ref == 'refs/heads/main'
+    if: github.event.inputs.deploy_target == 'production'
     environment:
       name: production
       url: https://app.yourapp.com
@@ -374,7 +386,7 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     needs: docker-build
-    if: github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch'
     
     steps:
       - uses: actions/checkout@v4

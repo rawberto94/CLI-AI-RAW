@@ -1,14 +1,17 @@
 name: Deploy to Azure Container Apps
 
+# ⛔ PRODUCTION DEPLOY — Manual only. Never auto-deploy on push.
+# All dev/test builds happen locally on Hetzner. See docs/LOCAL_E2E_TESTING.md
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       version:
         description: "Image version tag (e.g., v1.0.5)"
         required: false
         default: ""
+      confirm_production:
+        description: "Type 'deploy-production' to confirm"
+        required: true
 
 env:
   AZURE_RESOURCE_GROUP: contigoContainerApps
@@ -18,6 +21,8 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    if: github.event.inputs.confirm_production == 'deploy-production'
+    environment: production
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

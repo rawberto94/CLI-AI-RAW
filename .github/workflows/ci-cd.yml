@@ -1,10 +1,22 @@
 name: CI/CD Pipeline
 
+# CI runs on push/PR. Builds & deploys are manual only.
+# ⛔ All dev/test builds happen locally on Hetzner. See docs/LOCAL_E2E_TESTING.md
 on:
-  push:
-    branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: "Deploy target (after build)"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      confirm:
+        description: "Type 'deploy' to confirm"
+        required: true
 
 env:
   REGISTRY: ghcr.io
@@ -90,7 +102,7 @@ jobs:
   build-web:
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'deploy'
     
     permissions:
       contents: read
@@ -131,7 +143,7 @@ jobs:
   build-workers:
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'deploy'
     
     permissions:
       contents: read
@@ -172,7 +184,7 @@ jobs:
   deploy-staging:
     needs: [build-web, build-workers]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
+    if: github.event.inputs.deploy_target == 'staging'
     environment: staging
 
     steps:
@@ -208,7 +220,7 @@ jobs:
   deploy-production:
     needs: [build-web, build-workers]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.event.inputs.deploy_target == 'production'
     environment: production
 
     steps:

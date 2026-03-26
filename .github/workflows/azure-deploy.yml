@@ -1,8 +1,8 @@
 name: Azure Deploy
 
+# ⛔ PRODUCTION DEPLOY — Manual only. Never auto-deploy on push.
+# All dev/test builds happen locally on Hetzner. See docs/LOCAL_E2E_TESTING.md
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -17,6 +17,9 @@ on:
         description: "Image version tag (optional, defaults to commit SHA)"
         required: false
         default: ""
+      confirm_production:
+        description: "Type 'deploy-production' to confirm"
+        required: true
 
 env:
   AZURE_RESOURCE_GROUP: contigoContainerApps
@@ -26,6 +29,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: github.event.inputs.confirm_production == 'deploy-production'
     outputs:
       image-tag: ${{ steps.prep.outputs.tag }}
     steps:
