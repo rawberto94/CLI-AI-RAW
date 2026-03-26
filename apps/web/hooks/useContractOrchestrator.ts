@@ -130,7 +130,11 @@ export function useContractOrchestrator({
       setIsConnected(false);
       eventSource.close();
       
-      // Fallback to polling
+      // Fallback to polling — clear any existing interval first
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
       if (enabled) {
         pollTimerRef.current = setInterval(fetchProgress, pollInterval);
       }

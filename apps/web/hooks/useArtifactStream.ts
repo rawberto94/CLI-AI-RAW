@@ -125,7 +125,7 @@ export function useArtifactStream({
         const timeSinceLastUpdate = Date.now() - lastUpdateTimeRef.current;
         if (timeSinceLastUpdate > HEARTBEAT_EXPECTED_INTERVAL) {
           reconnectAttemptsRef.current = 0; // Reset attempts on visibility change
-          // Call connect directly via ref pattern to avoid stale closure
+          connectRef.current();
         }
       }
     };

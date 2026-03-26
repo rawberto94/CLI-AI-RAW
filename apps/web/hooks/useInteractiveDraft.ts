@@ -158,7 +158,11 @@ export function useInteractiveDraft() {
               let parsed: Record<string, unknown>;
               try {
                 parsed = JSON.parse(dataStr);
-              } catch {
+              } catch (err) {
+                console.warn('[useInteractiveDraft] Failed to parse SSE data', {
+                  preview: dataStr.slice(0, 100),
+                  error: err instanceof Error ? err.message : String(err),
+                });
                 continue;
               }
 

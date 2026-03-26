@@ -59,6 +59,16 @@ export function useOrchestratorChatbot({
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Cleanup in-flight requests on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
+
   // Add orchestrator context to system messages
   const getSystemContext = useCallback(() => {
     if (!contractId || !orchestratorProgress) return '';
@@ -288,4 +298,5 @@ ${orchestratorSuggestions.slice(0, 3).map((s) => `- **${s.type}** (${s.relevance
     generateArtifact,
     triggerOrchestrator,
   };
+}
 }

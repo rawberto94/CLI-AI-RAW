@@ -40,6 +40,49 @@ function formatTimeSince(date: Date): string {
 }
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const AI_QUICK_PROMPTS: Record<string, string[]> = {
+  NDA: [
+    'Add mutual disclosure terms',
+    'Set confidentiality period',
+    'Add permitted disclosures',
+    'Make more protective',
+  ],
+  MSA: [
+    'Add payment terms',
+    'Define scope of services',
+    'Add termination clause',
+    'Simplify the language',
+  ],
+  EMPLOYMENT: [
+    'Add non-compete clause',
+    'Set notice period',
+    'Add benefits section',
+    'Simplify the language',
+  ],
+  SOW: [
+    'Add deliverables table',
+    'Define acceptance criteria',
+    'Add milestone payments',
+    'Make more protective',
+  ],
+  SLA: [
+    'Define uptime requirements',
+    'Add penalty provisions',
+    'Set response times',
+    'Add escalation process',
+  ],
+  DEFAULT: [
+    'Make more protective',
+    'Add a termination clause',
+    'Simplify the language',
+    'Add compliance notes',
+  ],
+};
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -442,29 +485,43 @@ export function CopilotDraftingCanvas({
   // Track last saved content to avoid redundant auto-saves
   const lastSavedContentRef = useRef(initialContent);
 
-  // Auto-save
+  // Auto-save: triggered by content changes (debounced 500ms) + periodic fallback
   useEffect(() => {
-    const autoSave = setInterval(async () => {
-      if (editor && onSave) {
-        const html = editor.getHTML();
-        if (html !== lastSavedContentRef.current) {
-          setIsSaving(true);
-          try {
-            await onSave(html);
-            lastSavedContentRef.current = html;
-            setLastSaved(new Date());
-          } catch (error) {
-            console.error('Auto-save failed:', error);
-            toast.error('Auto-save failed');
-          } finally {
-            setIsSaving(false);
-          }
-        }
-      }
-    }, 60000); // Every minute
+    if (!editor) return;
 
-    return () => clearInterval(autoSave);
-  }, [editor, onSave]);
+    const html = editor.getHTML();
+    if (html === lastSavedContentRef.current) return;
+
+    const timer = setTimeout(async () => {
+      // Content changed — save via onSave callback or direct API
+      setIsSaving(true);
+      try {
+        if (onSave) {
+          await onSave(html);
+        } else if (draftId) {
+          const csrfCookie = document.cookie.split('; ').find(c => c.startsWith('csrf_token='));
+          const csrfToken = csrfCookie?.split('=').slice(1).join('=') || '';
+          await fetch(`/api/drafts/${draftId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+            },
+            body: JSON.stringify({ content: html }),
+          });
+        }
+        lastSavedContentRef.current = html;
+        setLastSaved(new Date());
+      } catch (error) {
+        console.error('Auto-save failed:', error);
+      } finally {
+        setIsSaving(false);
+      }
+    }, 5000); // 5s after last debounced content change
+
+    return () => clearTimeout(timer);
+  }, [debouncedContent, editor, onSave, draftId]);
 
   // ====================================================================
   // FETCH COMMENTS, VERSIONS, CLAUSES, LOCK INFO from API
@@ -1148,6 +1205,14 @@ export function CopilotDraftingCanvas({
       const selectedText = editor?.state?.selection ? 
         editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to, ' ') : '';
 
+      // Extract document headings for structural context
+      const headings: string[] = [];
+      editor?.state?.doc?.descendants?.((node) => {
+        if (node.type.name === 'heading' && node.textContent) {
+          headings.push(node.textContent);
+        }
+      });
+
       const response = await fetch('/api/ai/agents/draft-assistant', {
         method: 'POST',
         headers: {
@@ -1160,8 +1225,9 @@ export function CopilotDraftingCanvas({
           conversationHistory: aiChatMessages.map(m => ({ role: m.role, content: m.content })),
           context: {
             contractType,
-            currentContent: editor?.getText()?.slice(0, 4000) || '',
+            currentContent: editor?.getText()?.slice(0, 8000) || '',
             selectedText: selectedText || undefined,
+            documentSections: headings.length > 0 ? headings : undefined,
           },
           action: 'chat',
         }),
@@ -1474,7 +1540,7 @@ export function CopilotDraftingCanvas({
                   <p className="text-sm font-medium">AI Assistant</p>
                   <p className="text-xs mt-1 max-w-[200px] mx-auto">Ask me to rewrite sections, add clauses, or improve your contract</p>
                   <div className="flex flex-wrap gap-2 mt-4 justify-center">
-                    {['Make this more protective', 'Add a termination clause', 'Simplify the language'].map((prompt) => (
+                    {(AI_QUICK_PROMPTS[contractType?.toUpperCase() || ''] || AI_QUICK_PROMPTS.DEFAULT).map((prompt) => (
                       <button
                         key={prompt}
                         onClick={() => sendAiChatMessage(prompt)}

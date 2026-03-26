@@ -767,6 +767,12 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'A "message" string is required.', 400);
   }
 
+  // Trim whitespace and reject empty messages
+  body.message = body.message.trim();
+  if (!body.message) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Message cannot be empty.', 400);
+  }
+
   if (body.message.length > MAX_MESSAGE_LENGTH) {
     return createErrorResponse(
       ctx,
@@ -779,6 +785,16 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   if (!Array.isArray(body.conversationHistory)) {
     body.conversationHistory = [];
   }
+
+  // Validate conversation history items
+  body.conversationHistory = body.conversationHistory.filter(
+    (msg: { role?: string; content?: string }) =>
+      msg &&
+      typeof msg.role === 'string' &&
+      ['user', 'assistant'].includes(msg.role) &&
+      typeof msg.content === 'string' &&
+      msg.content.trim().length > 0
+  );
 
   if (body.conversationHistory.length > MAX_HISTORY_ITEMS) {
     body.conversationHistory = body.conversationHistory.slice(-MAX_HISTORY_ITEMS);
