@@ -1597,7 +1597,11 @@ async function executeComplianceSummary(tenantId: string, start: number): Promis
 // ── Contract Stats ─────────────────────────────────────────────────────
 
 async function executeContractStats(tenantId: string, start: number): Promise<ToolResult> {
-  const [statusCounts, total, totalValue] = await Promise.all([
+  const now = new Date();
+  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const [statusCounts, total, totalValue, typeCounts, expiringCount, recentlyAdded] = await Promise.all([
     prisma.contract.groupBy({
       by: ['status'],
       where: { tenantId },
@@ -1606,6 +1610,17 @@ async function executeContractStats(tenantId: string, start: number): Promise<To
     }),
     prisma.contract.count({ where: { tenantId } }),
     prisma.contract.aggregate({ where: { tenantId }, _sum: { totalValue: true }, _avg: { totalValue: true } }),
+    prisma.contract.groupBy({
+      by: ['contractType'],
+      where: { tenantId },
+      _count: { id: true },
+    }),
+    prisma.contract.count({
+      where: { tenantId, expirationDate: { gte: now, lte: thirtyDaysFromNow } },
+    }),
+    prisma.contract.count({
+      where: { tenantId, createdAt: { gte: thirtyDaysAgo } },
+    }),
   ]);
 
   return {
@@ -1613,12 +1628,25 @@ async function executeContractStats(tenantId: string, start: number): Promise<To
     success: true,
     data: {
       totalContracts: total,
-      totalValue: totalValue._sum.totalValue || 0,
+      totalValue: totalValue._sum.totalValue ? Number(totalValue._sum.totalValue) : 0,
       avgValue: Math.round(Number(totalValue._avg.totalValue || 0)),
-      byStatus: statusCounts.map(s => ({ status: s.status, count: s._count.id, totalValue: s._sum.totalValue || 0 })),
+      byStatus: statusCounts.map(s => ({
+        status: s.status,
+        count: s._count.id,
+        totalValue: s._sum.totalValue ? Number(s._sum.totalValue) : 0,
+      })),
+      byType: typeCounts
+        .map(t => ({ type: t.contractType || 'Unknown', count: t._count.id }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10),
+      expiringNext30Days: expiringCount,
+      addedLast30Days: recentlyAdded,
     },
     executionTimeMs: Date.now() - start,
-    suggestedActions: [{ label: '📊 Dashboard', action: 'navigate:/dashboard' }],
+    suggestedActions: [
+      { label: '📊 Dashboard', action: 'navigate:/dashboard' },
+      ...(expiringCount > 0 ? [{ label: `⏰ ${expiringCount} Expiring Soon`, action: 'navigate:/contracts?filter=expiring' }] : []),
+    ],
   };
 }
 

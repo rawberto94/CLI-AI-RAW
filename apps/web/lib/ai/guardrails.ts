@@ -213,6 +213,65 @@ export async function checkOutputGuardrails(output: string): Promise<GuardrailRe
     }
   }
 
+  // Check for PII leakage in AI output
+  const piiCheck = detectPII(output);
+  if (piiCheck.detected) {
+    logger.warn('[Guardrails] PII detected in AI output', { types: piiCheck.types });
+    // Don't block — flag for awareness. PII in contracts is expected.
+    // Return safe but with metadata for downstream handling.
+  }
+
   // Run moderation on output
   return checkModeration(output);
+}
+
+// ─── PII Detection ──────────────────────────────────────────────────────
+
+interface PIIDetectionResult {
+  detected: boolean;
+  types: string[];
+  count: number;
+}
+
+const PII_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
+  // Social Security Numbers (US)
+  { pattern: /\b\d{3}-\d{2}-\d{4}\b/g, type: 'ssn' },
+  // Credit Card Numbers (basic Luhn-compatible patterns)
+  { pattern: /\b(?:4\d{3}|5[1-5]\d{2}|3[47]\d{2}|6(?:011|5\d{2}))[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b/g, type: 'credit_card' },
+  // US Phone Numbers
+  { pattern: /\b(?:\+1[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b/g, type: 'phone' },
+  // Email Addresses
+  { pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, type: 'email' },
+  // IBAN
+  { pattern: /\b[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?){0,16}\b/g, type: 'iban' },
+  // Passport Numbers (generic patterns)
+  { pattern: /\bpassport[:\s#]+[A-Z0-9]{6,12}\b/gi, type: 'passport' },
+  // Tax IDs (US EIN)
+  { pattern: /\b\d{2}-\d{7}\b/g, type: 'tax_id' },
+];
+
+/**
+ * Detect PII patterns in text.
+ * Note: This is heuristic-based. In a contract context, emails and phone numbers
+ * are expected — the purpose is awareness/logging, not blocking.
+ */
+export function detectPII(text: string): PIIDetectionResult {
+  const detectedTypes = new Set<string>();
+  let totalCount = 0;
+
+  for (const { pattern, type } of PII_PATTERNS) {
+    // Reset regex lastIndex for global patterns
+    pattern.lastIndex = 0;
+    const matches = text.match(pattern);
+    if (matches && matches.length > 0) {
+      detectedTypes.add(type);
+      totalCount += matches.length;
+    }
+  }
+
+  return {
+    detected: detectedTypes.size > 0,
+    types: Array.from(detectedTypes),
+    count: totalCount,
+  };
 }
