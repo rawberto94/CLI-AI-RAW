@@ -11,8 +11,9 @@
  *   - Summarize everything older into a short "Previously discussed:" block.
  *   - The summary is injected as a system-level context note so the model
  *     still has access to long-range information.
+ *   - Falls back to extractive summarization when no AI model is available.
  *
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import OpenAI from 'openai';
@@ -41,6 +42,58 @@ export interface SummarizedHistory {
   recentMessages: ChatMessage[];
   /** Whether summarization was applied */
   wasSummarized: boolean;
+}
+
+// ─── Extractive Fallback ────────────────────────────────────────────────
+
+const CONTRACT_ID_PATTERN = /\b(cl[a-z0-9]{20,30}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/g;
+const ENTITY_PATTERNS = [
+  /(?:contract|agreement)\s+(?:titled?|named?|called)\s+"([^"]+)"/gi,
+  /(?:company|vendor|supplier|client|party)\s+(?:named?|called)\s+"?([A-Z][A-Za-z\s&.]+)"?/g,
+];
+
+/**
+ * Rule-based fallback summarization — extracts key entities, topics,
+ * and user questions from the conversation when no AI is available.
+ */
+function extractiveSummary(messages: ChatMessage[]): string {
+  const contractIds = new Set<string>();
+  const entities = new Set<string>();
+  const userQuestions: string[] = [];
+
+  for (const msg of messages) {
+    // Extract contract IDs
+    const ids = msg.content.match(CONTRACT_ID_PATTERN);
+    if (ids) ids.forEach(id => contractIds.add(id));
+
+    // Extract named entities
+    for (const pattern of ENTITY_PATTERNS) {
+      pattern.lastIndex = 0;
+      let match;
+      while ((match = pattern.exec(msg.content)) !== null) {
+        entities.add(match[1].trim());
+      }
+    }
+
+    // Capture user questions (first 120 chars of each)
+    if (msg.role === 'user' && msg.content.length > 15) {
+      const q = msg.content.slice(0, 120).replace(/\n/g, ' ').trim();
+      if (userQuestions.length < 5) userQuestions.push(q);
+    }
+  }
+
+  const parts: string[] = [];
+  if (userQuestions.length > 0) {
+    parts.push(`User asked about: ${userQuestions.join('; ')}`);
+  }
+  if (contractIds.size > 0) {
+    parts.push(`Contracts referenced: ${[...contractIds].slice(0, 5).join(', ')}`);
+  }
+  if (entities.size > 0) {
+    parts.push(`Entities mentioned: ${[...entities].slice(0, 5).join(', ')}`);
+  }
+
+  return parts.length > 0 ? `**Previously discussed:** ${parts.join('. ')}.` : '';
 }
 
 // ─── Core ───────────────────────────────────────────────────────────────
@@ -74,8 +127,13 @@ export async function summarizeConversationHistory(
   try {
     const key = getOpenAIApiKey();
     if (!key) {
-      // No API key — fall back to naive truncation
-      return { summary: '', recentMessages: history.slice(-KEEP_RECENT), wasSummarized: false };
+      // No API key — fall back to extractive summarization
+      const fallback = extractiveSummary(olderMessages);
+      return {
+        summary: fallback,
+        recentMessages,
+        wasSummarized: !!fallback,
+      };
     }
 
     const openai = createOpenAIClient(key);
@@ -91,6 +149,7 @@ export async function summarizeConversationHistory(
             'You are a conversation summarizer for a contract management assistant. ' +
             'Summarize the following conversation excerpt into a concise paragraph (max 3 sentences). ' +
             'Focus on: what the user asked about, key facts/contracts discussed, any decisions or actions taken. ' +
+            'Include specific contract IDs, company names, and values mentioned. ' +
             'Do NOT make up information. Write in third person ("The user asked about…").',
         },
         { role: 'user', content: transcript },
@@ -113,14 +172,16 @@ export async function summarizeConversationHistory(
       wasSummarized: !!summary,
     };
   } catch (err) {
-    logger.warn('[ConvSummarizer] Summarization failed — using truncation', {
+    logger.warn('[ConvSummarizer] Summarization failed — using extractive fallback', {
       action: 'summarize-error',
       error: err instanceof Error ? err.message : String(err),
     });
+    // Fallback to extractive summarization instead of returning nothing
+    const fallback = extractiveSummary(olderMessages);
     return {
-      summary: '',
-      recentMessages: history.slice(-KEEP_RECENT),
-      wasSummarized: false,
+      summary: fallback,
+      recentMessages,
+      wasSummarized: !!fallback,
     };
   }
 }
