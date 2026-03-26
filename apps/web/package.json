@@ -89,6 +89,7 @@
     "bcryptjs": "^3.0.3",
     "bullmq": "^4.18.3",
     "class-variance-authority": "^0.7.1",
+    "clients-db": "workspace:^",
     "clsx": "^2.1.1",
     "cohere-ai": "^7.20.0",
     "d3": "^7.9.0",

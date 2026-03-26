@@ -3,8 +3,45 @@
 > **Purpose**: Test the full contract processing pipeline locally on the Hetzner server.
 > All Docker builds happen **locally** — never push to Azure ACR for dev/test.
 >
-> Azure deployments (`contigoacr2026`, GitHub Actions CI/CD) are **only** for production releases.
-> For development and e2e testing, everything runs on this server.
+> Azure deployments (`contigoacr2026`, GitHub Actions CI/CD) are **only** for manual production releases.
+> All deploy workflows require `workflow_dispatch` + typed confirmation. No push auto-deploys.
+
+---
+
+## Development Modes
+
+### 🔥 Mode 1: Next.js Dev Server (PREFERRED for code changes)
+
+Run the Next.js app **directly on the host** — instant hot-reload on code changes, no Docker rebuild.
+
+```bash
+# One-time setup (only needed once after fresh clone)
+n 22                              # Node 22 required
+npm install -g pnpm@8
+cd /root/app && pnpm install
+cd packages/clients/db && pnpm prisma generate
+
+# Start dev server (uses .env.local with localhost DB/Redis URLs)
+cd /root/app/apps/web && pnpm dev
+# → http://localhost:3005 with hot-reload
+```
+
+**Infra stays in Docker** (Postgres + Redis):
+```bash
+docker compose -f docker-compose.dev.yml up -d postgres redis
+```
+
+> Edit any file in `apps/web/` → save → browser auto-refreshes. No rebuild needed.
+
+### 📦 Mode 2: Docker Container (for production-like testing)
+
+Only use when you need to test the built production image.
+
+```bash
+docker build -f Dockerfile -t contigo-web-local:latest .   # only when code changed
+docker run -d --rm --name contigo-web-local-run --network app_default \
+  -p 3005:3000 --env-file /tmp/container_env.txt contigo-web-local:latest
+```
 
 ---
 
@@ -12,12 +49,14 @@
 
 | Scenario | What to do |
 |---|---|
-| **E2E test, no code changes** | Nothing — use running container as-is |
-| **Code changed in `apps/web/`** | `docker build -f Dockerfile -t contigo-web-local:latest .` **locally**, then restart container |
-| **Schema change in Prisma** | Run migration, then rebuild locally |
-| **Production deploy** | That's the only time Azure ACR / GitHub Actions are used |
+| **Developing / iterating on code** | Use Mode 1 (dev server) — zero rebuild |
+| **E2E test, no code changes** | Use whichever mode is already running |
+| **Testing production build** | Use Mode 2 (Docker) — rebuild once |
+| **Schema change in Prisma** | Run migration, then `prisma generate` |
+| **Production deploy** | Manual workflow_dispatch in GitHub Actions only |
 
 > ⚠️ **Never** `docker push` to Azure just to test. Build and run locally on Hetzner (8 CPUs, 30GB RAM).
+> ⚠️ All 4 deploy workflows are **manual-only** with typed confirmation. See `.github/workflows/`.
 
 ---
 
