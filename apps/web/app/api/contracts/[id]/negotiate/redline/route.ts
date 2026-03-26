@@ -10,6 +10,8 @@ import {
 } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
 import { generateRedlineSuggestion } from '@/lib/ai/negotiation-copilot.service';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 const redlineRequestSchema = z.object({
   clauseText: z.string().min(10, 'Clause text must be at least 10 characters'),
@@ -30,6 +32,9 @@ export async function POST(
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
+
+  const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/contracts/negotiate/redline', AI_RATE_LIMITS.standard);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
   try {
     const { id: contractId } = await params;
@@ -55,6 +60,15 @@ export async function POST(
       tenantId: ctx.tenantId,
       objective: validated.objective,
     });
+
+    await auditLog({
+      action: AuditAction.CONTRACT_UPDATED,
+      resourceType: 'negotiation_redline',
+      resourceId: contractId,
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      metadata: { clauseType: validated.clauseType },
+    }).catch(err => logger.error('[Negotiate] Audit log failed:', err));
 
     return createSuccessResponse(ctx, { redline });
   } catch (error) {

@@ -11,6 +11,8 @@ import {
   streamNegotiationAdvice,
   type NegotiationPlaybook,
 } from '@/lib/ai/negotiation-copilot.service';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 const adviceRequestSchema = z.object({
   question: z.string().min(5, 'Question must be at least 5 characters'),
@@ -30,6 +32,9 @@ export async function POST(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
 
+  const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/contracts/negotiate/advice', AI_RATE_LIMITS.streaming);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
+
   try {
     const { id: contractId } = await params;
 
@@ -41,6 +46,14 @@ export async function POST(
     if (!contract) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
+
+    await auditLog({
+      action: AuditAction.CONTRACT_VIEWED,
+      resourceType: 'negotiation_advice',
+      resourceId: contractId,
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+    }).catch(err => logger.error('[Negotiate] Audit log failed:', err));
 
     const body = await request.json();
     const validated = adviceRequestSchema.parse(body);

@@ -27,6 +27,7 @@ import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { getCircuitBreaker } from '@/lib/ai/circuit-breaker';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -275,7 +276,13 @@ async function analyzeRisks(
   model: string,
   content: string,
   contractType: string
-): Promise<Array<{ category: string; severity: string; description: string; clause: string; suggestion: string }>> {
+): Promise<Array<{ category: string; severity: string; description: string; clause: string; suggestion: string; remediation?: string }>> {
+  // Analyze full contract — split into chunks if needed
+  const maxChunkSize = 12000;
+  const textToAnalyze = content.length > maxChunkSize
+    ? content.slice(0, maxChunkSize) + '\n\n[Document continues — ' + Math.round((content.length - maxChunkSize) / 1000) + 'K chars truncated]\n\n' + content.slice(-3000)
+    : content;
+
   const response = await openai.chat.completions.create({
     model,
     temperature: 0.2,
@@ -289,20 +296,27 @@ Return JSON with:
 {
   "risks": [
     {
-      "category": "LIABILITY|COMPLIANCE|FINANCIAL|OPERATIONAL|IP|DATA_PRIVACY|TERMINATION",
+      "category": "LIABILITY|COMPLIANCE|FINANCIAL|OPERATIONAL|IP|DATA_PRIVACY|TERMINATION|INDEMNIFICATION|FORCE_MAJEURE",
       "severity": "LOW|MEDIUM|HIGH|CRITICAL",
       "description": "Brief description of the risk",
-      "clause": "The specific clause or section with the issue",
-      "suggestion": "Recommended improvement"
+      "clause": "The specific clause or section with the issue (quote exact text if possible)",
+      "suggestion": "Recommended improvement",
+      "remediation": "Specific replacement clause text or action to take to resolve this risk"
     }
   ]
 }
 
-Be practical — focus on genuinely risky items, not minor style issues. Limit to the top 5-8 most important risks.`,
+Severity guidelines:
+- CRITICAL: Could result in unlimited liability, regulatory violation, or unenforceable contract
+- HIGH: Significant financial exposure, missing essential protections, or one-sided terms
+- MEDIUM: Non-standard terms, vague language, or gaps that should be addressed
+- LOW: Minor improvements, style issues, or nice-to-have clarifications
+
+Be practical — focus on genuinely risky items, not minor style issues. Limit to the top 5-10 most important risks. Always include specific remediation text when possible.`,
       },
       {
         role: 'user',
-        content: `Analyze this ${contractType} contract for risks:\n\n${content.slice(0, 8000)}`,
+        content: `Analyze this ${contractType} contract for risks:\n\n${textToAnalyze}`,
       },
     ],
   });
@@ -424,6 +438,17 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           totalSteps: 6,
           startedAt: new Date().toISOString(),
         });
+
+        // ---------------------------------------------------------------
+        // Circuit breaker check — reject if AI service is overwhelmed
+        // ---------------------------------------------------------------
+        const draftBreaker = getCircuitBreaker('ai-draft', { failureThreshold: 3, resetTimeoutMs: 90_000 });
+        const breakerCheck = draftBreaker.canExecute();
+        if (!breakerCheck.allowed) {
+          emit('error', { message: 'AI service is temporarily unavailable due to high error rate. Please try again in a few minutes.' });
+          controller.close();
+          return;
+        }
 
         // ---------------------------------------------------------------
         // Step 1: Intent Detection
@@ -667,6 +692,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         addStep({ step: 6, name: 'Save Draft', status: 'completed', durationMs: Date.now() - step6Start, result: { draftId: draft.id, title: draft.title, status: draft.status } });
 
         // ---------------------------------------------------------------
+        // Record success in circuit breaker
+        draftBreaker.recordSuccess();
+
         // Final summary
         // ---------------------------------------------------------------
         emit('done', {
@@ -691,6 +719,12 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
       } catch (error: any) {
         logger.error('Agentic draft generation failed:', error);
         const rawMsg = error?.message || '';
+        
+        // Record transient failures in circuit breaker
+        if (draftBreaker.isTransientError(error)) {
+          draftBreaker.recordFailure(rawMsg);
+        }
+        
         let safeMessage = 'Draft generation failed. Please try again.';
         if (rawMsg.includes('DeploymentNotFound') || rawMsg.includes('does not exist') || rawMsg.includes('model_not_found')) {
           safeMessage = 'AI model not configured. Please contact your administrator.';
