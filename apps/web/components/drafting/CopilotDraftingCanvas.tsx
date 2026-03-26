@@ -193,7 +193,11 @@ export function CopilotDraftingCanvas({
   const [completionPopupPos, setCompletionPopupPos] = useState<{ top: number; left: number }>({ top: 80, left: 32 });
 
   // UI state
-  const [activeTab, setActiveTab] = useState<'copilot' | 'comments' | 'versions' | 'clauses'>('copilot');
+  const [activeTab, setActiveTab] = useState<'copilot' | 'comments' | 'versions' | 'clauses' | 'ai-chat'>('copilot');
+  const [aiChatMessages, setAiChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [aiChatInput, setAiChatInput] = useState('');
+  const [isAiChatStreaming, setIsAiChatStreaming] = useState(false);
+  const aiChatAbortRef = useRef<AbortController | null>(null);
   const [isEditing, setIsEditing] = useState(true);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
@@ -1120,6 +1124,102 @@ export function CopilotDraftingCanvas({
   };
 
   // ============================================================================
+  // AI CHAT IN SIDEBAR
+  // ============================================================================
+
+  const sendAiChatMessage = useCallback(async (message: string) => {
+    if (!message.trim() || isAiChatStreaming) return;
+
+    const userMsg = { role: 'user' as const, content: message.trim() };
+    setAiChatMessages(prev => [...prev, userMsg]);
+    setAiChatInput('');
+    setIsAiChatStreaming(true);
+
+    const assistantMsg = { role: 'assistant' as const, content: '' };
+    setAiChatMessages(prev => [...prev, assistantMsg]);
+
+    try {
+      const controller = new AbortController();
+      aiChatAbortRef.current = controller;
+
+      const csrfCookie = document.cookie.split('; ').find(c => c.startsWith('csrf_token='));
+      const csrfToken = csrfCookie?.split('=').slice(1).join('=') || '';
+
+      const selectedText = editor?.state?.selection ? 
+        editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to, ' ') : '';
+
+      const response = await fetch('/api/ai/agents/draft-assistant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+        },
+        body: JSON.stringify({
+          message: message.trim(),
+          conversationHistory: aiChatMessages.map(m => ({ role: m.role, content: m.content })),
+          context: {
+            contractType,
+            currentContent: editor?.getText()?.slice(0, 4000) || '',
+            selectedText: selectedText || undefined,
+          },
+          action: 'chat',
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim() || line.startsWith('event: ')) continue;
+          if (line.startsWith('data: ')) {
+            try {
+              const parsed = JSON.parse(line.slice(6));
+              if ('content' in parsed && 'role' in parsed) {
+                setAiChatMessages(prev => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  if (last?.role === 'assistant') {
+                    updated[updated.length - 1] = { ...last, content: last.content + parsed.content };
+                  }
+                  return updated;
+                });
+              }
+            } catch { /* skip malformed */ }
+          }
+        }
+      }
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return;
+      toast.error('AI chat error. Please try again.');
+      setAiChatMessages(prev => {
+        const updated = [...prev];
+        if (updated[updated.length - 1]?.role === 'assistant' && !updated[updated.length - 1].content) {
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: 'Sorry, I encountered an error. Please try again.' };
+        }
+        return updated;
+      });
+    } finally {
+      setIsAiChatStreaming(false);
+      aiChatAbortRef.current = null;
+    }
+  }, [aiChatMessages, isAiChatStreaming, editor, contractType]);
+
+  // ============================================================================
   // SIDEBAR CONTENT (shared between desktop and mobile)
   // ============================================================================
 
@@ -1129,6 +1229,7 @@ export function CopilotDraftingCanvas({
       <div className="flex border-b border-gray-200 dark:border-slate-700" role="tablist" aria-label="Sidebar panels">
         {[
           { id: 'copilot', icon: Brain, label: 'Copilot', count: suggestions.length },
+          { id: 'ai-chat', icon: MessageSquare, label: 'AI Chat', count: null },
           { id: 'comments', icon: MessageSquare, label: 'Comments', count: comments.length },
           { id: 'versions', icon: History, label: 'History', count: versions.length },
           { id: 'clauses', icon: BookOpen, label: 'Clauses', count: clauses.length },
@@ -1322,6 +1423,125 @@ export function CopilotDraftingCanvas({
                 </div>
               </div>
             )}
+
+            {/* Negotiation Alternatives */}
+            {suggestions.filter(s => s.type === 'negotiation').length > 0 && (
+              <div className="mt-6">
+                <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+                  <Scale className="h-4 w-4 text-green-500" />
+                  Negotiation Alternatives
+                </h4>
+                <p className="text-xs text-gray-500 dark:text-slate-400 mb-3">
+                  Alternative clause wordings for different negotiation positions
+                </p>
+                <div className="space-y-2">
+                  {suggestions.filter(s => s.type === 'negotiation').map((suggestion) => (
+                    <div
+                      key={suggestion.id}
+                      className="p-3 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20"
+                    >
+                      <p className="text-xs font-medium text-green-800 dark:text-green-300 mb-1">{suggestion.explanation}</p>
+                      <div className="p-2 bg-green-100/50 dark:bg-green-900/30 rounded text-xs text-green-700 dark:text-green-300 mb-2">
+                        {suggestion.suggestedText.length > 150 ? suggestion.suggestedText.slice(0, 150) + '...' : suggestion.suggestedText}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => applySuggestion(suggestion)}
+                          className="flex-1 px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          Apply Alternative
+                        </button>
+                        <button
+                          onClick={() => setSuggestions(prev => prev.filter(s => s.id !== suggestion.id))}
+                          className="px-3 py-1.5 border border-green-200 dark:border-green-700 text-green-600 dark:text-green-400 text-xs rounded-lg hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+          <div id="panel-ai-chat" role="tabpanel" aria-labelledby="tab-ai-chat" className="flex flex-col h-[calc(100vh-200px)]">
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto space-y-3 pb-3">
+              {aiChatMessages.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-slate-400">
+                  <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm font-medium">AI Assistant</p>
+                  <p className="text-xs mt-1 max-w-[200px] mx-auto">Ask me to rewrite sections, add clauses, or improve your contract</p>
+                  <div className="flex flex-wrap gap-2 mt-4 justify-center">
+                    {['Make this more protective', 'Add a termination clause', 'Simplify the language'].map((prompt) => (
+                      <button
+                        key={prompt}
+                        onClick={() => sendAiChatMessage(prompt)}
+                        className="text-xs px-3 py-1.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-900/70 transition-colors"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                aiChatMessages.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${
+                        msg.role === 'user'
+                          ? 'bg-violet-600 text-white rounded-br-none'
+                          : 'bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-slate-100 rounded-bl-none'
+                      }`}
+                    >
+                      {msg.content || (isAiChatStreaming && i === aiChatMessages.length - 1 ? (
+                        <span className="flex items-center gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <span className="text-xs opacity-70">Thinking...</span>
+                        </span>
+                      ) : null)}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Chat Input */}
+            <div className="border-t border-gray-200 dark:border-slate-700 pt-3 mt-auto">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={aiChatInput}
+                  onChange={(e) => setAiChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendAiChatMessage(aiChatInput)}
+                  placeholder="Ask AI to edit your contract..."
+                  disabled={isAiChatStreaming}
+                  className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50"
+                />
+                {isAiChatStreaming ? (
+                  <button
+                    onClick={() => aiChatAbortRef.current?.abort()}
+                    className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                    aria-label="Stop AI response"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => sendAiChatMessage(aiChatInput)}
+                    disabled={!aiChatInput.trim()}
+                    className="p-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50"
+                    aria-label="Send message"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

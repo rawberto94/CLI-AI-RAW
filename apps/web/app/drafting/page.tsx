@@ -48,6 +48,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { AgenticDraftDialog } from '@/components/drafting/AgenticDraftDialog'
+import { InteractiveDraftChat } from '@/components/drafting/InteractiveDraftChat'
 import {
   Dialog,
   DialogContent,
@@ -417,6 +418,7 @@ export default function DraftingPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [showAgenticDialog, setShowAgenticDialog] = useState(false)
+  const [showGuidedDrafting, setShowGuidedDrafting] = useState(false)
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null)
   const [previewContent, setPreviewContent] = useState<string>('')
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -639,6 +641,17 @@ export default function DraftingPage() {
                 <div className="text-left">
                   <div>Generate with AI</div>
                   <div className="text-[10px] font-normal opacity-70">6-step agentic pipeline</div>
+                </div>
+              </Button>
+              <Button
+                size="lg"
+                className="bg-white/20 text-white hover:bg-white/30 font-semibold shadow-lg shadow-black/10 rounded-xl px-6 backdrop-blur-sm border border-white/30"
+                onClick={() => setShowGuidedDrafting(true)}
+              >
+                <MessageSquare className="h-5 w-5 mr-2" />
+                <div className="text-left">
+                  <div>Guided Drafting</div>
+                  <div className="text-[10px] font-normal opacity-70">Interactive AI assistant</div>
                 </div>
               </Button>
               <Button
@@ -1203,6 +1216,24 @@ export default function DraftingPage() {
         }}
         initialPrompt={aiPrompt}
       />
+
+      {/* Interactive Guided Drafting */}
+      {showGuidedDrafting && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-5xl h-[85vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden">
+            <InteractiveDraftChat
+              onDraftCreated={(draftId, editUrl) => {
+                setShowGuidedDrafting(false)
+                router.push(editUrl)
+              }}
+              onClose={() => {
+                setShowGuidedDrafting(false)
+                fetchDrafts()
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
