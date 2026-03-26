@@ -740,6 +740,15 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           return;
         }
 
+        // ── Warn if content was partially streamed but model chain exhausted ──
+        if (fullContent.length > 0 && fullContent.length < 50 && toolsUsed.length === 0) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'content',
+            content: '\n\n⚠️ *Response may be incomplete due to a temporary AI service issue. Please try again.*',
+          })}\n\n`));
+          fullContent += '\n\n⚠️ *Response may be incomplete due to a temporary AI service issue. Please try again.*';
+        }
+
         // ═══════════════════════════════════════════════════════════════
         // STEP 5 — POST-PROCESSING (Self-Critique, Cache, Memory, Done)
         // ═══════════════════════════════════════════════════════════════

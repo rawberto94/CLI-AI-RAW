@@ -391,7 +391,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
 
   // Streaming mode — SSE response
   const encoder = new TextEncoder();
+  let cancelled = false;
   const stream = new ReadableStream({
+    cancel() {
+      cancelled = true;
+    },
     async start(controller) {
       const steps: AgentStep[] = [];
       let contractType = body.contractType || '';
@@ -401,10 +405,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
       let templateId = body.templateId || null;
 
       const emit = (event: string, data: unknown) => {
+        if (cancelled) return;
         try {
           controller.enqueue(encoder.encode(sseEvent(event, data)));
         } catch {
-          // Stream may be closed
+          cancelled = true;
         }
       };
 
@@ -660,8 +665,17 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         });
       } catch (error: any) {
         logger.error('Agentic draft generation failed:', error);
+        const rawMsg = error?.message || '';
+        let safeMessage = 'Draft generation failed. Please try again.';
+        if (rawMsg.includes('DeploymentNotFound') || rawMsg.includes('does not exist') || rawMsg.includes('model_not_found')) {
+          safeMessage = 'AI model not configured. Please contact your administrator.';
+        } else if (rawMsg.includes('429') || rawMsg.includes('rate limit') || rawMsg.includes('quota')) {
+          safeMessage = 'AI service rate limited. Please try again later.';
+        } else if (rawMsg.includes('timeout') || rawMsg.includes('AbortError')) {
+          safeMessage = 'Request timed out. Please try again.';
+        }
         emit('error', {
-          message: error?.message || 'Draft generation failed',
+          message: safeMessage,
           steps: steps.map(s => ({ step: s.step, name: s.name, status: s.status })),
         });
       } finally {

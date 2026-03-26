@@ -233,11 +233,13 @@ export default function ContractDetailPage() {
 
     let emptyCompletedPolls = 0
     const MAX_EMPTY_COMPLETED_POLLS = 12
+    const abortController = new AbortController()
 
     const pollInterval = setInterval(async () => {
       try {
         const response = await fetch(`/api/contracts/${contractId}`, {
           headers: { 'x-data-mode': dataMode },
+          signal: abortController.signal,
         })
         if (!response.ok) return
         const raw = await response.json()
@@ -254,10 +256,16 @@ export default function ContractDetailPage() {
           clearInterval(pollInterval)
           queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) })
         }
-      } catch { /* retry on next interval */ }
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return
+        // retry on next interval
+      }
     }, 5000)
 
-    return () => clearInterval(pollInterval)
+    return () => {
+      clearInterval(pollInterval)
+      abortController.abort()
+    }
   }, [isProcessing, contract, contractId, dataMode, queryClient])
 
 

@@ -1109,7 +1109,10 @@ export function FloatingAIBubble() {
           try {
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              clearTimeout(timeoutId);
+              break;
+            }
 
             // Append new data to any leftover from previous chunk
             const chunk = lineBuffer + decoder.decode(value, { stream: true });
@@ -1124,14 +1127,15 @@ export function FloatingAIBubble() {
                 try {
                   data = JSON.parse(line.slice(6));
                 } catch {
-                  // Incomplete or malformed JSON — skip
+                  if (process.env.NODE_ENV === 'development') {
+                    console.warn('[FloatingAIBubble] Malformed SSE:', line.slice(0, 100));
+                  }
                   continue;
                 }
 
                 try {
                   if (data.type === 'content') {
                     accumulatedContent += (data.content as string);
-                    setStreamingContent(accumulatedContent);
                     setMessages((prev) =>
                       prev.map((m) =>
                         m.id === assistantMessageId
