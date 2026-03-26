@@ -57,6 +57,9 @@ interface AgentMetrics {
   topTools: Array<{ toolId: string; name: string; usageCount: number }>;
   costToday: number;
   costTrend: number;
+  latencyPercentiles?: { p50: number; p95: number; p99: number };
+  failureCategories?: Array<{ category: string; count: number }>;
+  circuitBreakerStatus?: Record<string, { state: string; failures: number }>;
 }
 
 // =============================================================================
@@ -192,6 +195,59 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
           ? durations.reduce((a: number, b: number) => a + b, 0) / durations.length
           : 0;
 
+        // Percentile latency metrics
+        const sortedDurations = [...durations].sort((a, b) => a - b);
+        const percentile = (arr: number[], p: number) => {
+          if (arr.length === 0) return 0;
+          const idx = Math.ceil((p / 100) * arr.length) - 1;
+          return arr[Math.max(0, idx)];
+        };
+        const latencyPercentiles = {
+          p50: Math.round(percentile(sortedDurations, 50)),
+          p95: Math.round(percentile(sortedDurations, 95)),
+          p99: Math.round(percentile(sortedDurations, 99)),
+        };
+
+        // Failure categorization
+        let failureCategories: Array<{ category: string; count: number }> = [];
+        try {
+          const failedGoals = await prisma.agentGoal.findMany({
+            where: { tenantId, status: 'FAILED', completedAt: { gte: yesterday } },
+            select: { result: true },
+            take: 100,
+          });
+          const categoryMap: Record<string, number> = {};
+          for (const g of failedGoals) {
+            const err = (g.result as any)?.error || (g.result as any)?.message || '';
+            let category = 'unknown';
+            if (err.includes('timeout') || err.includes('AbortError') || err.includes('ETIMEDOUT')) category = 'timeout';
+            else if (err.includes('429') || err.includes('rate limit') || err.includes('quota')) category = 'rate_limit';
+            else if (err.includes('DeploymentNotFound') || err.includes('does not exist')) category = 'model_config';
+            else if (err.includes('401') || err.includes('403') || err.includes('authentication')) category = 'permission';
+            else if (err.includes('500') || err.includes('502') || err.includes('503')) category = 'server_error';
+            else if (err.includes('missing') || err.includes('required')) category = 'missing_data';
+            else category = 'other';
+            categoryMap[category] = (categoryMap[category] || 0) + 1;
+          }
+          failureCategories = Object.entries(categoryMap)
+            .map(([category, count]) => ({ category, count }))
+            .sort((a, b) => b.count - a.count);
+        } catch {
+          // Non-critical
+        }
+
+        // Circuit breaker status
+        let circuitBreakerStatus: Record<string, { state: string; failures: number }> = {};
+        try {
+          const { getCircuitBreaker } = await import('@/lib/ai/circuit-breaker');
+          for (const name of ['ai-chat', 'ai-draft']) {
+            const stats = getCircuitBreaker(name).getStats();
+            circuitBreakerStatus[name] = { state: stats.state, failures: stats.failures };
+          }
+        } catch {
+          // Circuit breaker not available
+        }
+
         // Top goal types
         const typeCounts = recentGoals.reduce((m: Record<string, number>, g: any) => {
           m[g.type] = (m[g.type] || 0) + 1; return m;
@@ -241,6 +297,9 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
           topTools: [],
           costToday,
           costTrend: Math.round(costTrend * 100) / 100,
+          latencyPercentiles,
+          failureCategories,
+          circuitBreakerStatus,
         };
       } catch {
         // DB query failed — return defaults (already set above)
