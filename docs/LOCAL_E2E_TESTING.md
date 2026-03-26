@@ -33,6 +33,13 @@ docker compose -f docker-compose.dev.yml up -d postgres redis
 
 > Edit any file in `apps/web/` → save → browser auto-refreshes. No rebuild needed.
 
+**BullMQ Worker in dev mode**: The separate `@repo/workers` process is NOT needed.
+When a contract is uploaded, the web app's inline fallback processes it automatically
+after ~120s. If you need faster processing, use the reprocess API endpoint:
+```bash
+curl -s -b /tmp/cookies.txt -X POST http://localhost:3005/api/contracts/<ID>/reprocess
+```
+
 ### 📦 Mode 2: Docker Container (for production-like testing)
 
 Only use when you need to test the built production image.
