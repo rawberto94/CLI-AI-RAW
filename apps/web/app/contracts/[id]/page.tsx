@@ -1032,7 +1032,7 @@ export default function ContractDetailPage() {
             headers: { 'x-tenant-id': getTenantId() }
           })
           if (!response.ok) throw new Error('Failed to delete contract')
-          try { await crossModule.onContractChange(contractId) } catch {}
+          try { await crossModule.onContractChange(contractId) } catch { /* non-critical notification */ }
           router.push('/contracts')
         }}
         onArchive={async () => {

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getErrorMessage, isUploadedFile } from "@/lib/types/common"
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware'
+import { logger } from '@/lib/logger'
 import { uploadRequestSchema } from 'schemas'
 import { UPLOAD } from '@/lib/constants'
 
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
         const cookie = req.headers.get('cookie') || ''
         const m = /(?:^|;\s*)x-tenant-id=([^;]+)/i.exec(cookie)
         if (m && m[1]) tenant = decodeURIComponent(m[1])
-      } catch {}
+      } catch { logger.warn('Failed to parse tenant from cookie'); }
     }
     
     // Require tenant ID - no fallback to demo

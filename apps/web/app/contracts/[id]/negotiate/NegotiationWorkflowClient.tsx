@@ -64,33 +64,8 @@ export default function NegotiationWorkflowClient({ contractId }: NegotiationWor
     },
   });
 
-  // Negotiation rounds (mock initial data — in production these come from a dedicated API)
-  const [rounds, setRounds] = useState<NegotiationRound[]>([
-    {
-      id: '1',
-      round: 1,
-      initiatedBy: 'Internal',
-      status: 'countered',
-      changes: [
-        { clause: 'Payment Terms', original: 'Net 60', proposed: 'Net 30' },
-        { clause: 'Liability Cap', original: '1x annual value', proposed: '2x annual value' },
-      ],
-      message: 'Proposing updated payment terms and liability cap based on our standard terms.',
-      createdAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-    },
-    {
-      id: '2',
-      round: 2,
-      initiatedBy: 'Counterparty',
-      status: 'pending',
-      changes: [
-        { clause: 'Payment Terms', original: 'Net 30', proposed: 'Net 45' },
-        { clause: 'Liability Cap', original: '2x annual value', proposed: '1.5x annual value' },
-      ],
-      message: 'We can meet halfway on payment terms. Proposing Net 45 as a compromise.',
-      createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-    },
-  ]);
+  // Negotiation rounds — loaded from API when available
+  const [rounds, setRounds] = useState<NegotiationRound[]>([]);
 
   const handleSubmitProposal = () => {
     const validChanges = proposalChanges.filter(c => c.clause && c.proposed);

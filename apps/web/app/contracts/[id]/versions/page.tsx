@@ -2,6 +2,7 @@
 
 import React, { use, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { logger } from '@/lib/logger';
 import { VersionCompare, DocumentVersion } from '@/components/contracts/VersionCompare';
 import { VersionTimeline, ContractVersion } from '@/components/contracts/VersionTimeline';
 import { Button } from '@/components/ui/button';
@@ -65,7 +66,7 @@ function useVersions(contractId: string) {
         setError(json.error || 'Failed to fetch versions');
       }
     } catch (err) {
-      console.error('Error fetching versions:', err);
+      logger.error('Error fetching versions:', err instanceof Error ? err : undefined);
       setVersions([]);
       setTimelineVersions([]);
       setError('Failed to fetch versions');

@@ -62,8 +62,8 @@ function SignInForm() {
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
   const registered = searchParams.get("registered") === "true";
 
-  const [email, setEmail] = useState("admin@acme.com");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -470,20 +470,14 @@ function SignInForm() {
             </Link>
           </div>
 
-          {/* Dev-only demo credentials */}
+          {/* Dev-only hint */}
           {process.env.NODE_ENV === "development" && (
             <div className="mt-8 rounded-lg border border-dashed border-slate-200 dark:border-slate-700 p-4 text-center text-xs text-slate-400">
               <p className="font-medium text-slate-500 dark:text-slate-400">
-                Demo accounts (dev only)
+                Demo mode
               </p>
-              <p className="mt-1.5 font-mono text-slate-600 dark:text-slate-300">
-                admin@acme.com &middot; roberto@acme.com
-              </p>
-              <p className="mt-1">
-                Password:{" "}
-                <span className="font-mono text-slate-600 dark:text-slate-300">
-                  password123
-                </span>
+              <p className="mt-1 text-slate-400">
+                See <code className="font-mono text-slate-500">docs/LOCAL_E2E_TESTING.md</code> for test credentials
               </p>
             </div>
           )}

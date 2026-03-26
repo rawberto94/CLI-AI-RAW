@@ -67,12 +67,8 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
           }
         }
       } catch {
-        // Error handled silently
+        toast.error('Failed to load contract content');
       } finally {
-        setLoading(false);
-      }
-    }
-    fetchContractContent();
   }, [id]);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -99,8 +95,8 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
   }, [id, documentStatus]);
 
   const handleExport = useCallback((type: 'redline' | 'clean' | 'pdf') => {
-    toast.success(`Exporting ${type === 'redline' ? 'with redlines' : type === 'clean' ? 'clean copy' : 'as PDF'}`, {
-      description: 'Download will start shortly...'
+    toast.info(`Export as ${type.toUpperCase()} coming soon`, {
+      description: 'This feature is under development.',
     });
   }, []);
 

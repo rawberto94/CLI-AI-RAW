@@ -44,6 +44,7 @@ import {
   ArchiveRestore,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface ContractFloatingActionsProps {
   contractId: string
@@ -134,7 +135,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
       toast.success('Contract deleted')
       setShowDeleteDialog(false)
     } catch (error) {
-      console.error('Delete failed:', error)
+      logger.error('Delete failed', error instanceof Error ? error : undefined);
       toast.error('Failed to delete contract')
       setIsDeleting(false)
     }

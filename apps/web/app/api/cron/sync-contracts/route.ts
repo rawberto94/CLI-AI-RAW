@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { withCronHandler, createSuccessResponse, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 import { contractService } from 'data-orchestration/services';
 
 export const runtime = 'nodejs';
@@ -154,21 +155,21 @@ export const POST = withCronHandler(async (request, ctx) => {
           try {
             const riskData = typeof riskArtifact.data === 'string' ? JSON.parse(riskArtifact.data) : riskArtifact.data;
             riskScore = 100 - ((riskData as any).overallRisk || 50);
-          } catch {}
+          } catch { logger.warn('Malformed risk artifact data', { contractId: contract.id }); }
         }
 
         if (complianceArtifact?.data) {
           try {
             const complianceData = typeof complianceArtifact.data === 'string' ? JSON.parse(complianceArtifact.data) : complianceArtifact.data;
             complianceScore = (complianceData as any).complianceScore || (complianceData as any).score || 70;
-          } catch {}
+          } catch { logger.warn('Malformed compliance artifact data', { contractId: contract.id }); }
         }
 
         if (financialArtifact?.data) {
           try {
             const financialData = typeof financialArtifact.data === 'string' ? JSON.parse(financialArtifact.data) : financialArtifact.data;
             financialScore = (financialData as any).healthScore || 60;
-          } catch {}
+          } catch { logger.warn('Malformed financial artifact data', { contractId: contract.id }); }
         }
 
         // Calculate weighted overall score

@@ -117,7 +117,7 @@ export default function GenerateContractPage() {
         tryAdd(json?.clauses)
       }
     } catch {
-      // ignore
+      // Clause library unavailable — templates still work without pre-built clauses
     }
 
     return index

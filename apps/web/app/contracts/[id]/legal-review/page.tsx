@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, use } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -151,7 +152,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
           }
         }
       } catch (error) {
-        console.error('Failed to fetch contract:', error);
+        logger.error('Failed to fetch contract:', error instanceof Error ? error : undefined);
         toast.error('Failed to load contract');
       }
     }
@@ -175,7 +176,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
           }
         }
       } catch (error) {
-        console.error('Failed to fetch playbooks:', error);
+        logger.error('Failed to fetch playbooks:', error instanceof Error ? error : undefined);
       }
     }
     fetchPlaybooks();
@@ -202,7 +203,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
           }
         }
       } catch (error) {
-        console.error('Failed to fetch review:', error);
+        logger.error('Failed to fetch review:', error instanceof Error ? error : undefined);
       } finally {
         setLoading(false);
       }
@@ -248,7 +249,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
         toast.error(errorData.error || 'Analysis failed');
       }
     } catch (error) {
-      console.error('Analysis failed:', error);
+      logger.error('Analysis failed:', error instanceof Error ? error : undefined);
       toast.error('Failed to run analysis');
     } finally {
       setAnalyzing(false);

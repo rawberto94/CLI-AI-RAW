@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -64,13 +65,8 @@ export default function StateOfTheArtContractPage() {
         setContract(result.data);
       }
     } catch {
-      // Error handled silently
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const _handleArtifactSave = async (artifactId: string, updates: any) => {
+      toast.error('Failed to load contract data');
+    } finally { = async (artifactId: string, updates: any) => {
     try {
       const response = await fetch(`/api/contracts/${contractId}/artifacts/${artifactId}`, {
         method: 'PUT',
@@ -83,7 +79,7 @@ export default function StateOfTheArtContractPage() {
         setEditingArtifactId(null);
       }
     } catch {
-      // Error handled silently
+      toast.error('Failed to save artifact changes');
     }
   };
 
