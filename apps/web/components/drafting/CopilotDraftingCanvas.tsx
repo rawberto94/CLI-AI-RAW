@@ -284,6 +284,18 @@ export function CopilotDraftingCanvas({
   // Keyboard shortcut help
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
 
+  // Cleanup pending requests on unmount or page navigation
+  useEffect(() => {
+    const cleanup = () => {
+      aiChatAbortRef.current?.abort();
+    };
+    window.addEventListener('beforeunload', cleanup);
+    return () => {
+      window.removeEventListener('beforeunload', cleanup);
+      cleanup();
+    };
+  }, []);
+
   // ============================================================================
   // TIPTAP EDITOR
   // ============================================================================
@@ -1244,7 +1256,7 @@ export function CopilotDraftingCanvas({
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done || controller.signal.aborted) break;
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');

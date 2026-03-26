@@ -61,6 +61,18 @@ export async function POST(
       );
     }
 
+    // Enforce status transition: only APPROVED or IN_REVIEW drafts can be finalized
+    const FINALIZABLE_STATUSES = ['APPROVED', 'IN_REVIEW', 'DRAFT'];
+    if (!FINALIZABLE_STATUSES.includes(draft.status)) {
+      return createErrorResponse(
+        ctx,
+        'VALIDATION_ERROR',
+        `Cannot finalize a draft with status "${draft.status}". Draft must be in APPROVED, IN_REVIEW, or DRAFT status.`,
+        422,
+        { retryable: false }
+      );
+    }
+
     // Validate completeness — must have content
     if (!draft.content || (typeof draft.content === 'string' && draft.content.trim().length < 50)) {
       return createErrorResponse(

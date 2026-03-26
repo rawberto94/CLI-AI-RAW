@@ -537,6 +537,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         // ---------------------------------------------------------------
         // Step 4: AI Content Generation
         // ---------------------------------------------------------------
+        if (cancelled) { controller.close(); return; }
         const step4Start = Date.now();
         addStep({ step: 4, name: 'Content Generation', status: 'running' });
 
@@ -608,6 +609,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         // ---------------------------------------------------------------
         // Step 5: Risk Analysis
         // ---------------------------------------------------------------
+        if (cancelled) { controller.close(); return; }
         const step5Start = Date.now();
         addStep({ step: 5, name: 'Risk Analysis', status: 'running' });
 
@@ -623,7 +625,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
               addStep({ step: 5, name: 'Risk Analysis', status: 'skipped', durationMs: Date.now() - step5Start, result: { reason: 'AI deployment not available' } });
             } else {
               logger.warn('Risk analysis failed', error);
-              addStep({ step: 5, name: 'Risk Analysis', status: 'failed', durationMs: Date.now() - step5Start, error: 'Risk analysis failed' });
+              addStep({ step: 5, name: 'Risk Analysis', status: 'failed', durationMs: Date.now() - step5Start, error: `Risk analysis failed: ${msg.slice(0, 100)}. Draft saved but not analyzed for risks.` });
             }
           }
         } else {
@@ -633,6 +635,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         // ---------------------------------------------------------------
         // Step 6: Save Draft
         // ---------------------------------------------------------------
+        if (cancelled) { controller.close(); return; }
         const step6Start = Date.now();
         addStep({ step: 6, name: 'Save Draft', status: 'running' });
 

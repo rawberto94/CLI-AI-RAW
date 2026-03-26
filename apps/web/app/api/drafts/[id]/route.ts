@@ -127,7 +127,18 @@ export async function PATCH(
     if (clauses !== undefined) updateData.clauses = clauses;
     if (variables !== undefined) updateData.variables = variables;
     if (structure !== undefined) updateData.structure = structure;
-    if (status !== undefined) updateData.status = status;
+    if (status !== undefined) {
+      // Validate status transitions
+      const VALID_STATUSES = ['DRAFT', 'IN_REVIEW', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'FINALIZED'];
+      if (!VALID_STATUSES.includes(status)) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', `Invalid status: ${status}`, 400);
+      }
+      // Prevent reverting from FINALIZED
+      if (existing.status === 'FINALIZED' && status !== 'FINALIZED') {
+        return createErrorResponse(ctx, 'CONFLICT', 'Cannot change status of a finalized draft', 409);
+      }
+      updateData.status = status;
+    }
     if (estimatedValue !== undefined) {
       updateData.estimatedValue = estimatedValue ? parseFloat(estimatedValue) : null;
     }
