@@ -17,8 +17,8 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200);
     const baselineType = searchParams.get('baselineType');
     const isActive = searchParams.get('isActive');
     const approvalStatus = searchParams.get('approvalStatus');

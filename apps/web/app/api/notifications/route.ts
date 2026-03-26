@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     
     const unreadOnly = searchParams.get('unread') === 'true';
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200);
     const type = searchParams.get('type');
 
     // Try database first

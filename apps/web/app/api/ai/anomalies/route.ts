@@ -21,7 +21,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     const { searchParams } = new URL(request.url);
     const severity = searchParams.get('severity');
     const type = searchParams.get('type');
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50', 10) || 50), 200);
     const includeResolved = searchParams.get('includeResolved') === 'true';
 
     const anomalyService = await getAnomalyDetectionService();

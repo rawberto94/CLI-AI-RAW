@@ -22,8 +22,8 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     const userId = ctx.userId || 'system';
     
     const includeShared = searchParams.get('includeShared') === 'true';
-    const skip = searchParams.get('skip') ? parseInt(searchParams.get('skip')!) : undefined;
-    const take = searchParams.get('take') ? parseInt(searchParams.get('take')!) : undefined;
+    const skip = searchParams.get('skip') ? Math.max(0, parseInt(searchParams.get('skip')!) || 0) : undefined;
+    const take = searchParams.get('take') ? Math.min(Math.max(1, parseInt(searchParams.get('take')!) || 1), 200) : undefined;
 
     const result = await segmentService.listSegments(tenantId, userId, {
       includeShared,

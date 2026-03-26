@@ -19,7 +19,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const userId = ctx.userId;
   const { searchParams } = new URL(request.url);
   const role = searchParams.get('role');
-  const limit = parseInt(searchParams.get('limit') || '50');
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200);
 
   const workflowService = getWorkflowManagementService();
 

@@ -31,7 +31,7 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const clientName = searchParams.get('clientName');
     const categoryId = searchParams.get('categoryId');
-    const limit = parseInt(searchParams.get('limit') || '5');
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '5') || 5), 200);
     
     // Get the current contract
     const currentContract = await prisma.contract.findFirst({

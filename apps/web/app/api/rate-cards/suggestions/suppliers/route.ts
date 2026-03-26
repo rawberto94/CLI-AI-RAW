@@ -17,7 +17,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
 
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q') || '';
-    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10;
+    const limit = Math.min(Math.max(1, searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10), 200);
 
     if (!query || query.length < 2) {
       return createSuccessResponse(ctx, [])

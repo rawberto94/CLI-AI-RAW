@@ -14,7 +14,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 export const GET = withAuthApiHandler(async (request, ctx) => {
     const searchParams = request.nextUrl.searchParams;
     const tenantId = await getApiTenantId(request);
-    const limit = parseInt(searchParams.get('limit') || '100');
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '100') || 100), 200);
     const unreadOnly = searchParams.get('unreadOnly') === 'true';
     const type = searchParams.get('type') as any;
 

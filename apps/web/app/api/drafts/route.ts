@@ -9,6 +9,8 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 export const dynamic = 'force-dynamic';
 
 // GET /api/drafts - List all drafts
@@ -22,8 +24,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const search = searchParams.get('search');
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
-  const limit = parseInt(searchParams.get('limit') || '50');
-  const offset = parseInt(searchParams.get('offset') || '0');
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200);
+  const offset = Math.max(0, parseInt(searchParams.get('offset') || '0') || 0);
   const sortBy = searchParams.get('sortBy') || 'updatedAt';
   const sortOrder = searchParams.get('sortOrder') || 'desc';
 
@@ -117,6 +119,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 // POST /api/drafts - Create a new draft
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const tenantId = await ctx.tenantId;
+
+  const rl = checkRateLimit(tenantId, ctx.userId, '/api/drafts', AI_RATE_LIMITS.standard);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
+
   const body = await request.json();
 
   const {
@@ -185,6 +191,15 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       },
     },
   });
+
+  await auditLog({
+    action: AuditAction.CONTRACT_CREATED,
+    resourceType: 'draft',
+    resourceId: draft.id,
+    userId: ctx.userId,
+    tenantId,
+    metadata: { operation: 'create', title: draft.title },
+  }).catch(err => console.error('[Draft] Audit log failed:', err));
 
   return createSuccessResponse(ctx, { draft });
 });

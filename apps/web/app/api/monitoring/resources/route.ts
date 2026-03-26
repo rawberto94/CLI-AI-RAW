@@ -56,7 +56,7 @@ async function getCurrentMetrics(ctx: ApiContext) {
  */
 function getMetricsHistory(ctx: ApiContext, searchParams: URLSearchParams) {
   const limitParam = searchParams.get('limit');
-  const limit = limitParam ? parseInt(limitParam, 10) : undefined;
+  const limit = limitParam ? Math.min(Math.max(1, parseInt(limitParam, 10) || 50), 200) : undefined;
 
   const history = resourceMonitor.getMetricsHistory(limit);
   

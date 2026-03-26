@@ -96,8 +96,8 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     const { searchParams } = new URL(request.url);
     
     const queryType = searchParams.get('queryType') as AIQueryType | null;
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200);
     const days = parseInt(searchParams.get('days') || '30');
 
     const startDate = new Date();

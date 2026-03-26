@@ -20,8 +20,8 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     const contextType = searchParams.get('contextType');
     const context = searchParams.get('context');
     const archived = searchParams.get('archived') === 'true';
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '20') || 20), 200);
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0') || 0);
 
     const where: Record<string, unknown> = {
       tenantId,

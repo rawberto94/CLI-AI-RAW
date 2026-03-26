@@ -32,8 +32,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const { searchParams } = new URL(request.url);
   const contractId = searchParams.get('contractId');
   const status = searchParams.get('status');
-  const page = parseInt(searchParams.get('page') || '1');
-  const limit = parseInt(searchParams.get('limit') || '10');
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '10') || 10), 200);
 
   // Build filter
   const where: Record<string, unknown> = { tenantId };

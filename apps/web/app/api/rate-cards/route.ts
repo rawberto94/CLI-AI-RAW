@@ -62,8 +62,8 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     if (searchParams.get('isNegotiated') === 'false') where.isNegotiated = false;
 
     // Pagination
-    const page = parseInt(searchParams.get('page') || '1');
-    const pageSize = parseInt(searchParams.get('pageSize') || '50');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
+    const pageSize = Math.min(Math.max(1, parseInt(searchParams.get('pageSize') || '50') || 50), 200);
     const skip = (page - 1) * pageSize;
     
     // Sorting

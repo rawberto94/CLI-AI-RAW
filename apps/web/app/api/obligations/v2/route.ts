@@ -85,8 +85,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const dueBefore = searchParams.get('dueBefore');
   const dueAfter = searchParams.get('dueAfter');
   const assignedTo = searchParams.get('assignedTo');
-  const page = parseInt(searchParams.get('page') || '1');
-  const limit = parseInt(searchParams.get('limit') || '50');
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200);
   const sortBy = searchParams.get('sortBy') || 'dueDate';
   const sortOrder = searchParams.get('sortOrder') || 'asc';
 

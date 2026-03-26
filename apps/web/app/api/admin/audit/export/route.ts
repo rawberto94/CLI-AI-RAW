@@ -38,7 +38,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     endDate: searchParams.get('endDate') || undefined,
     actions: searchParams.get('actions')?.split(',') || undefined,
     userId: searchParams.get('userId') || undefined,
-    limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10000,
+    limit: Math.min(Math.max(1, searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10000), 10000),
   };
 
   // Build query filters

@@ -26,8 +26,8 @@ export async function GET(
     const { id: conversationId } = await params;
     const { searchParams } = new URL(request.url);
     
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200);
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0') || 0);
     const order = searchParams.get('order') === 'desc' ? 'desc' : 'asc';
     const before = searchParams.get('before'); // Get messages before this timestamp
     const after = searchParams.get('after'); // Get messages after this timestamp

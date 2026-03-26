@@ -69,7 +69,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     const type = searchParams.get('type') || 'all'; // 'traces', 'metrics', 'all'
     const status = searchParams.get('status'); // Filter by status
     const agentType = searchParams.get('agentType'); // Filter by agent type
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200);
 
     // Fetch traces from Redis cache or database
     let traces: AgentTrace[] = [];

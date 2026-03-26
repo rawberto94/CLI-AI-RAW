@@ -11,8 +11,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const category = searchParams.get('category');
     const success = searchParams.get('success');
     const search = searchParams.get('search');
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const pageSize = parseInt(searchParams.get('pageSize') || '100', 10);
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
+    const pageSize = Math.min(Math.max(1, parseInt(searchParams.get('pageSize') || '100', 10) || 100), 200);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const userId = searchParams.get('userId');

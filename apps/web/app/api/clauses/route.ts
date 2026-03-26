@@ -12,7 +12,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const riskLevel = searchParams.get('riskLevel');
   const _favorite = searchParams.get('favorite');
   const search = searchParams.get('search');
-  const limit = parseInt(searchParams.get('limit') || '50');
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200);
 
     // Build where clause
     const where: Record<string, unknown> = { tenantId };

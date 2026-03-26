@@ -13,7 +13,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get('search') || '';
   const role = searchParams.get('role');
-  const limit = parseInt(searchParams.get('limit') || '20');
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '20') || 20), 200);
   const excludeUserId = searchParams.get('exclude');
 
   // Try database first

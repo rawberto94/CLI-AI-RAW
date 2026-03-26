@@ -13,8 +13,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   try {
     const { tenantId } = ctx;
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
-    const offset = parseInt(searchParams.get('offset') || '0', 10);
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50', 10) || 50), 200);
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10) || 0);
     const field = searchParams.get('field') || undefined;
     const correctionType = searchParams.get('correctionType') || undefined;
 

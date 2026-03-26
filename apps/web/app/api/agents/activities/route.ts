@@ -53,7 +53,7 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
   const { tenantId } = ctx;
   const searchParams = req.nextUrl.searchParams;
   
-  const limit = parseInt(searchParams.get('limit') || '50', 10);
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50', 10) || 50), 200);
   const cursor = searchParams.get('cursor');
   const agentId = searchParams.get('agent');
   const type = searchParams.get('type');

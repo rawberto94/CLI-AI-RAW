@@ -32,7 +32,7 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
   const searchParams = req.nextUrl.searchParams;
   const type = searchParams.get('type');
   const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200);
-  const offset = parseInt(searchParams.get('offset') || '0');
+  const offset = Math.max(0, parseInt(searchParams.get('offset') || '0') || 0);
 
   try {
     // Fetch all approval-requiring items in parallel

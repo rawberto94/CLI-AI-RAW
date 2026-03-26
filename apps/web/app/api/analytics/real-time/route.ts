@@ -54,7 +54,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     }
 
     case 'alerts': {
-      const limit = parseInt(searchParams.get('limit') || '20', 10);
+      const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '20', 10) || 20), 200);
       const alerts = await analytics.getAnomalyAlerts(limit);
       return createSuccessResponse(ctx, alerts);
     }

@@ -42,7 +42,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get('search') || '';
   const sortBy = searchParams.get('sortBy') || 'name'; // 'name', 'usage', 'recent'
-  const limit = parseInt(searchParams.get('limit') || '100');
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '100') || 100), 200);
 
   // Get all contracts with their tags
   const contracts = await prisma.contract.findMany({

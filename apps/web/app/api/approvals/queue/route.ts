@@ -35,8 +35,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const status = searchParams.get('status') || 'pending';
   const category = searchParams.get('category');
   const priority = searchParams.get('priority');
-  const page = parseInt(searchParams.get('page') || '1');
-  const limit = parseInt(searchParams.get('limit') || '20');
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '20') || 20), 200);
 
   // Get tenant ID from session
   const tenantId = ctx.tenantId;

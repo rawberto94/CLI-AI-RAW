@@ -74,8 +74,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const userId = searchParams.get('userId');
   const type = searchParams.get('type');
   const category = searchParams.get('category');
-  const limit = parseInt(searchParams.get('limit') || '50');
-  const offset = parseInt(searchParams.get('offset') || '0');
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200);
+  const offset = Math.max(0, parseInt(searchParams.get('offset') || '0') || 0);
   const tenantId = ctx.tenantId;
 
   // Build where clause

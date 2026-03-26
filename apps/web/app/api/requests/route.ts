@@ -11,8 +11,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const status = searchParams.get('status') || undefined;
     const assignedTo = searchParams.get('assignedTo') || undefined;
     const view = searchParams.get('view'); // 'my-requests' for requester view
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '20') || 20), 200);
     const offset = (page - 1) * limit;
 
     const { prisma } = await import('@/lib/prisma');

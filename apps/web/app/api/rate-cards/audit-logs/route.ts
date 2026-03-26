@@ -14,8 +14,8 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     const userId = searchParams.get('userId') || undefined;
     const action = searchParams.get('action') || undefined;
     const entityType = searchParams.get('entityType') || undefined;
-    const limit = parseInt(searchParams.get('limit') || '100');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '100') || 100), 200);
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0') || 0);
 
     const result = await complianceReportingService.getAuditLogs({
       tenantId,

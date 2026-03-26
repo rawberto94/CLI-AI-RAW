@@ -15,8 +15,8 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
   const seniority = searchParams.get('seniority');
   const minRate = searchParams.get('minRate');
   const maxRate = searchParams.get('maxRate');
-  const limit = parseInt(searchParams.get('limit') || '100');
-  const offset = parseInt(searchParams.get('offset') || '0');
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '100') || 100), 200);
+  const offset = Math.max(0, parseInt(searchParams.get('offset') || '0') || 0);
 
   try {
     // Build where clause

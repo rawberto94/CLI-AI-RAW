@@ -20,7 +20,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
   }
 
   const { searchParams } = new URL(request.url)
-  const limit = parseInt(searchParams.get('limit') || '50')
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200)
   const includeExpired = searchParams.get('includeExpired') === 'true'
 
   // Categories that typically should have parent contracts

@@ -52,8 +52,8 @@ export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
     urgency: searchParams.get('urgency') || 'all',
     category: searchParams.get('category') || undefined,
     minSavings: searchParams.get('minSavings') ? parseFloat(searchParams.get('minSavings')!) : undefined,
-    limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50,
-    offset: searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : 0,
+    limit: Math.min(Math.max(1, searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50), 200),
+    offset: Math.max(0, searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : 0),
   });
 
   try {

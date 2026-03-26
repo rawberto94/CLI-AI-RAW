@@ -102,8 +102,8 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const tenantId = await getApiTenantId(request);
     
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200);
     const category = searchParams.get('category');
     const action = searchParams.get('action');
     const startDate = searchParams.get('startDate');

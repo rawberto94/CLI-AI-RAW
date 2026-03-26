@@ -16,8 +16,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const tenantId = await ctx.tenantId;
   const { searchParams } = new URL(request.url);
 
-  const limit = parseInt(searchParams.get('limit') || '20');
-  const offset = parseInt(searchParams.get('offset') || '0');
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '20') || 20), 200);
+  const offset = Math.max(0, parseInt(searchParams.get('offset') || '0') || 0);
   const status = searchParams.get('status'); // pending, sent, read, dismissed
   const contractId = searchParams.get('contractId');
   const obligationId = searchParams.get('obligationId');

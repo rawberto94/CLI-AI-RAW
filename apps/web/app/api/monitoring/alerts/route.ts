@@ -9,7 +9,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const searchParams = request.nextUrl.searchParams;
   const includeHistory = searchParams.get('history') === 'true';
-  const limit = parseInt(searchParams.get('limit') || '50');
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200);
 
   const activeAlerts = alertingService.getActiveAlerts();
   const history = includeHistory ? alertingService.getAlertHistory(limit) : [];

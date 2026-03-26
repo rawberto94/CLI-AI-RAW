@@ -52,7 +52,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         return createErrorResponse(ctx, 'BAD_REQUEST', 'Schedule ID is required', 400);
       }
 
-      const limit = parseInt(searchParams.get('limit') || '10', 10);
+      const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '10', 10) || 10), 200);
       const history = await service.getExecutionHistory(id, limit);
 
       return createSuccessResponse(ctx, history);

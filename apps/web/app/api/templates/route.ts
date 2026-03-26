@@ -3,6 +3,8 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getApiTenantId } from '@/lib/tenant-server'
 import { contractService } from 'data-orchestration/services';
+import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 // Helper to transform Prisma template to UI-expected format
 function transformTemplate(template: Record<string, unknown>) {
@@ -41,8 +43,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const category = searchParams.get('category')
   const search = searchParams.get('search')
   const isActive = searchParams.get('isActive')
-  const limit = parseInt(searchParams.get('limit') || '50')
-  const offset = parseInt(searchParams.get('offset') || '0')
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200)
+  const offset = Math.max(0, parseInt(searchParams.get('offset') || '0') || 0)
 
   const where: Record<string, unknown> = {
     tenantId,
@@ -90,6 +92,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 // POST /api/templates - Create a new template
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/templates', AI_RATE_LIMITS.standard);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
+
   const tenantId = await ctx.tenantId
   const body = await request.json()
 
@@ -128,6 +133,15 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       createdBy: ctx.userId,
     },
   })
+
+  await auditLog({
+    action: AuditAction.CONTRACT_CREATED,
+    resourceType: 'template',
+    resourceId: template.id,
+    userId: ctx.userId,
+    tenantId: ctx.tenantId,
+    metadata: { operation: 'create', title: template.name },
+  }).catch(err => console.error('[Template] Audit log failed:', err));
 
   return createSuccessResponse(ctx, {
     success: true,
