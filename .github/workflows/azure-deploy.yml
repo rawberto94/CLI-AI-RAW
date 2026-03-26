@@ -1,8 +1,10 @@
 name: Azure Deploy
 
+# ⚠️  PRODUCTION DEPLOYMENT — manual trigger only.
+# Push-based auto-deploy is intentionally disabled to prevent Copilot-generated
+# commits from deploying directly to the Azure production environment.
+# To deploy: GitHub → Actions → "Azure Deploy" → Run workflow.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       environment:

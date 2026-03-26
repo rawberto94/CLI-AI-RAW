@@ -1,8 +1,10 @@
 name: Deploy to Azure Container Apps
 
+# ⚠️  PRODUCTION DEPLOYMENT — manual trigger only.
+# Push-based auto-deploy is intentionally disabled to prevent Copilot-generated
+# commits from deploying directly to the Azure production environment.
+# To deploy: GitHub → Actions → "Deploy to Azure Container Apps" → Run workflow.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       version:
