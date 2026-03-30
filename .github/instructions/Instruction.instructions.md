@@ -113,11 +113,11 @@ token = base64.b64encode((payload + '.' + sig).encode()).decode()
 6. Without Azure OpenAI deployment → all 14 artifacts saved as `_mode: basic` (regex-based)
 
 ### Azure AI Configuration
-- **Azure OpenAI**: `https://contigoazureopenai.openai.azure.com/`
+- **Azure OpenAI**: `https://switzerlandnorth.api.cognitive.microsoft.com/`
   - Env: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`
-  - Expected deployment name: `gpt-4o` (`AZURE_OPENAI_DEPLOYMENT`)
+  - Active deployment: `gpt-4o` (model `gpt-4o-2024-11-20`) — working ✅
   - API version: `2024-02-01` (`AZURE_OPENAI_API_VERSION`)
-  - **Currently 0 deployments** → all AI calls return `DeploymentNotFound` (404)
+  - **Embedding model not yet deployed** — RAG hybrid search falls back to keyword-only
 - **Azure Document Intelligence**: `https://contigodocumentintelligence.cognitiveservices.azure.com/`
   - Env: `AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT`, `AZURE_DOCUMENT_INTELLIGENCE_KEY`
   - Status: working ✅
