@@ -98,7 +98,7 @@ export async function GET(
       userId: ctx.userId,
       tenantId: ctx.tenantId,
       metadata: { operation: 'export', format },
-    }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
+    }).catch(err => logger.error('[Template] Audit log failed', err));
 
     if (format === 'pdf') {
       const pdfBuffer = await generatePDFDocument(templateData);

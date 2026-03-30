@@ -147,7 +147,7 @@ export async function POST(
       userId: ctx.userId,
       tenantId,
       metadata: { operation: 'create', draftId },
-    }).catch(err => logger.error({ err }, '[Draft] Audit log failed'));
+    }).catch(err => logger.error('[Draft] Audit log failed', err));
 
     return createSuccessResponse(ctx, { comment });
   } catch (error) {

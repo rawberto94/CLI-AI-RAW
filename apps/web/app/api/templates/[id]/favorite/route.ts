@@ -70,7 +70,7 @@ export async function POST(
       userId: ctx.userId,
       tenantId: ctx.tenantId,
       metadata: { operation: isFavorite ? 'favorite' : 'unfavorite' },
-    }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
+    }).catch(err => logger.error('[Template] Audit log failed', err));
 
     return createSuccessResponse(ctx, {
       success: true,

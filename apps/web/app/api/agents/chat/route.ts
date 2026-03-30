@@ -1451,14 +1451,14 @@ async function handleStewardQuery(
     where: { tenantId },
     select: {
       id: true, contractTitle: true, status: true, expirationDate: true,
-      extractedData: true,
+      metadata: true,
     },
     take: 20,
     orderBy: { expirationDate: 'asc' },
   });
 
   const obligations = contracts
-    .filter(c => c.extractedData && typeof c.extractedData === 'object')
+    .filter(c => c.metadata && typeof c.metadata === 'object')
     .slice(0, 10);
 
   const templateResponse = `📋 **Steward — Obligation Tracker**\n\nI'm tracking **${obligations.length}** contracts with extractable obligations across your portfolio.\n\n${

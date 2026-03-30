@@ -159,7 +159,7 @@ export async function PUT(
       userId: ctx.userId,
       tenantId: ctx.tenantId,
       metadata: { operation: 'update', title: template.name },
-    }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
+    }).catch(err => logger.error('[Template] Audit log failed', err));
 
     return createSuccessResponse(ctx, {
       success: true,
@@ -211,7 +211,7 @@ export async function DELETE(
       userId: ctx.userId,
       tenantId: ctx.tenantId,
       metadata: { operation: 'delete', title: existingTemplate.name },
-    }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
+    }).catch(err => logger.error('[Template] Audit log failed', err));
 
     return createSuccessResponse(ctx, {
       success: true,

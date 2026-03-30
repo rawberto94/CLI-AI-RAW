@@ -90,7 +90,7 @@ export async function POST(
         userId: ctx.userId,
         tenantId,
         metadata: { operation: 'lock' },
-      }).catch(err => logger.error({ err }, '[Draft] Audit log failed'));
+      }).catch(err => logger.error('[Draft] Audit log failed', err));
 
       return createSuccessResponse(ctx, { draft: updated });
     }
@@ -122,7 +122,7 @@ export async function POST(
       userId: ctx.userId,
       tenantId,
       metadata: { operation: 'unlock' },
-    }).catch(err => logger.error({ err }, '[Draft] Audit log failed'));
+    }).catch(err => logger.error('[Draft] Audit log failed', err));
 
     return createSuccessResponse(ctx, { draft: updated });
   } catch (error) {

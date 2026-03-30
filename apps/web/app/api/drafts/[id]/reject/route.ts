@@ -127,7 +127,7 @@ export async function POST(
       userId: ctx.userId,
       tenantId,
       metadata: { operation: 'reject', title: updated.title, reason },
-    }).catch(err => logger.error({ err }, '[Draft] Audit log failed'));
+    }).catch(err => logger.error('[Draft] Audit log failed', err));
 
     return createSuccessResponse(ctx, {
       draft: updated,

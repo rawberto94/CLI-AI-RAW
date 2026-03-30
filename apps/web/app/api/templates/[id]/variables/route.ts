@@ -100,7 +100,7 @@ export async function PUT(
           userId: ctx.userId,
           tenantId: ctx.tenantId,
           metadata: { operation: 'update_variables' },
-        }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
+        }).catch(err => logger.error('[Template] Audit log failed', err));
 
         return createSuccessResponse(ctx, { 
           variables,
@@ -175,7 +175,7 @@ export async function POST(
           userId: ctx.userId,
           tenantId: ctx.tenantId,
           metadata: { operation: 'add_variable' },
-        }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
+        }).catch(err => logger.error('[Template] Audit log failed', err));
 
         return createSuccessResponse(ctx, { 
           variable: newVariable,

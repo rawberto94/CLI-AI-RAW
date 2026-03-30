@@ -280,7 +280,7 @@ export async function checkRenewalsJob(
         const existingAlerts = await prisma.expirationAlert.findMany({
           where: {
             contractId: { in: contractIds },
-            tenantId: { in: [tenantId] },
+            ...(tenantId ? { tenantId: { in: [tenantId] } } : {}),
             acknowledgedAt: null,
           },
           select: { contractId: true, alertType: true },

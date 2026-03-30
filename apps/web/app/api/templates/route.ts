@@ -142,7 +142,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     userId: ctx.userId,
     tenantId: ctx.tenantId,
     metadata: { operation: 'create', title: template.name },
-  }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
+  }).catch(err => logger.error('[Template] Audit log failed', err));
 
   return createSuccessResponse(ctx, {
     success: true,

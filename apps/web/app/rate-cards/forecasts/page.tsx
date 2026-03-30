@@ -187,7 +187,6 @@ export default function RateCardForecastsPage() {
 
         {/* High-Risk Rates Alert */}
         <HighRiskRatesAlert
-          tenantId={tenantId}
           minRiskScore={60}
           limit={5}
           autoRefresh={true}

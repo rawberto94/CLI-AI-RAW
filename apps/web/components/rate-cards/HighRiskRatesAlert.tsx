@@ -32,7 +32,7 @@ interface HighRiskRate {
 }
 
 interface HighRiskRatesAlertProps {
-  tenantId: string;
+  tenantId?: string;
   minRiskScore?: number;
   limit?: number;
   autoRefresh?: boolean;
@@ -81,10 +81,10 @@ export function HighRiskRatesAlert({
       setError(null);
 
       const params = new URLSearchParams({
-        tenantId,
         minRiskScore: minRiskScore.toString(),
         limit: limit.toString(),
       });
+      if (tenantId) params.set('tenantId', tenantId);
 
       const response = await fetch(`/api/rate-cards/forecasts/high-risk?${params}`);
       
