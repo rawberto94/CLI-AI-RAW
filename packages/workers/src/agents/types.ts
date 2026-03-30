@@ -72,10 +72,11 @@ export interface AgentMetadata {
 }
 
 export interface AgentOutputMetadata {
-  processingTime: number;
+  processingTime?: number;
   modelUsed?: string;
   tokensUsed?: number;
   costEstimate?: number;
+  [key: string]: unknown;
 }
 
 // ============================================================================
