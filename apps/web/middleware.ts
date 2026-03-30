@@ -79,10 +79,11 @@ const CSRF_EXEMPT_PATHS = [
   '/api/cron',               // Scheduled jobs — server-to-server
   // Special upload handling
   '/api/contracts/upload',   // Multipart file uploads; XHR interceptor covers this
-  // Chat & agent endpoints (session-authenticated, same-origin JSON/SSE)
-  '/api/agents/sse',         // SSE stream endpoint (auth-protected, no browser form)
-  '/api/agents/chat',        // Agent chat JSON endpoint (session-protected)
-  '/api/ai/chat/stream',     // AI chatbot SSE stream (session-protected)
+  // Agent & AI endpoints (all session-authenticated, same-origin fetch calls)
+  // Uses startsWith matching, so these cover all sub-paths
+  '/api/agents/',            // All agent endpoints: chat, SSE, execute, orchestrator, etc.
+  '/api/ai/',                // All AI endpoints: chat/stream, summarize, extract, compare
+  '/api/rfx',                // RFx creation/management (session-protected)
 ];
 
 /**
