@@ -89,14 +89,13 @@ export default function RateCompliancePage() {
       // Build compliance results by matching contracts to rate cards
       const complianceResults: ComplianceResult[] = contracts.slice(0, 20).map((c: any) => {
         const matchedCard = rateCards.find((rc: any) => rc.supplierId === c.supplierId || rc.id === c.rateCardId);
-        const totalItems = Math.max(1, c.lineItemCount || Math.floor(Math.random() * 20) + 5);
-        const rateFromExtracted = c.extractedData?.totalValue || c.value || 0;
-        const complianceRate = matchedCard ? (0.7 + Math.random() * 0.3) : (0.5 + Math.random() * 0.3);
-        const compliantItems = Math.round(totalItems * complianceRate);
-        const overcharged = Math.round((totalItems - compliantItems) * 0.6);
+        const totalItems = Math.max(1, c.lineItemCount || 0);
+        const complianceRate = matchedCard && totalItems > 0 ? (c.complianceRate ?? 0) : 0;
+        const compliantItems = Math.round(totalItems * (complianceRate / 100));
+        const overcharged = c.overchargedItems ?? Math.round((totalItems - compliantItems) * 0.6);
         const undercharged = totalItems - compliantItems - overcharged;
-        const savings = overcharged * (rateFromExtracted * 0.05 || 500);
-        const status: ComplianceResult['status'] = complianceRate >= 0.9 ? 'compliant' : complianceRate >= 0.7 ? 'warning' : 'non-compliant';
+        const savings = c.potentialSavings ?? 0;
+        const status: ComplianceResult['status'] = complianceRate >= 90 ? 'compliant' : complianceRate >= 70 ? 'warning' : 'non-compliant';
 
         return {
           contractId: c.id,
@@ -108,7 +107,7 @@ export default function RateCompliancePage() {
           compliantItems,
           overchargedItems: overcharged,
           underchargedItems: undercharged,
-          complianceRate: Math.round(complianceRate * 100),
+          complianceRate: Math.round(complianceRate),
           potentialSavings: Math.round(savings),
           status,
         };

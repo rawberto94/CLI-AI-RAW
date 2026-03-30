@@ -30,6 +30,7 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 interface Template {
   id: string
@@ -275,10 +276,7 @@ export default function GenerateContractPage() {
     setGenerating(true)
     setGenerationError(null)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Generate contract content
+      // Generate contract content from template
       let content = `# ${formData.contractTitle || selectedTemplate.name}\n\n`
       content += `## Agreement Details\n\n`
       content += `**Effective Date:** ${formData.effectiveDate}\n\n`
@@ -510,6 +508,54 @@ export default function GenerateContractPage() {
       setGenerating(false)
     }
   }
+
+  const handleDownloadMarkdown = () => {
+    if (!generatedContract) return;
+    const blob = new Blob([generatedContract], { type: 'text/markdown;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${formData.contractTitle || 'contract'}.md`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  const handleDownloadText = () => {
+    if (!generatedContract) return;
+    const blob = new Blob([generatedContract], { type: 'text/plain;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${formData.contractTitle || 'contract'}.txt`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  const [saving, setSaving] = useState(false);
+
+  const handleSaveToDrafts = async () => {
+    if (!generatedContract || !selectedTemplate) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/drafts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: formData.contractTitle || selectedTemplate.name,
+          type: selectedTemplate.id === '3' ? 'NDA' : 'MSA',
+          sourceType: 'TEMPLATE',
+          templateId: selectedTemplate.id,
+          content: generatedContract,
+          variables: formData,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to save draft');
+      toast.success('Contract saved as draft');
+      router.push('/drafting');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save draft');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const canProceed = () => {
     if (step === 2 && selectedTemplate) {
@@ -768,19 +814,20 @@ export default function GenerateContractPage() {
                   Generate Another
                 </Button>
                 <div className="flex gap-2">
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={handleDownloadMarkdown}>
                     <Download className="h-4 w-4 mr-2" />
-                    Download PDF
+                    Download Markdown
                   </Button>
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={handleDownloadText}>
                     <Download className="h-4 w-4 mr-2" />
-                    Download Word
+                    Download Text
                   </Button>
                   <Button
-                    onClick={() => router.push('/contracts')}
+                    onClick={handleSaveToDrafts}
+                    disabled={saving}
                     className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white"
                   >
-                    Save to Contracts
+                    {saving ? 'Saving...' : 'Save to Drafts'}
                   </Button>
                 </div>
               </div>

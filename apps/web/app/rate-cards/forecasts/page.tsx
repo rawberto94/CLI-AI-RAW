@@ -71,9 +71,6 @@ export default function RateCardForecastsPage() {
   const [trendDirection, setTrendDirection] = useState<string>('');
   const [minConfidence, setMinConfidence] = useState<number>(0);
 
-  // Get tenant ID from user context (you may need to adjust this based on your auth setup)
-  const tenantId = 'default-tenant'; // Replace with actual tenant ID from context
-
   const fetchForecasts = async (page: number = 1) => {
     try {
       setLoading(true);

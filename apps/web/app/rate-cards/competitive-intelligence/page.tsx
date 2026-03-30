@@ -10,7 +10,7 @@ import { Loader2, TrendingUp, TrendingDown, Minus, Target } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 const fetchCompetitiveMetrics = async () => {
-  const response = await fetch('/api/rate-cards/competitive-intelligence?tenantId=default-tenant');
+  const response = await fetch('/api/rate-cards/competitive-intelligence');
   if (!response.ok) throw new Error('Failed to load competitive intelligence');
   return response.json();
 };

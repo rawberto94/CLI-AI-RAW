@@ -6,7 +6,7 @@
 'use client';
 
 import { WorkflowAutomation } from '@/components/automation';
-import { Settings as _Settings, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
 
 

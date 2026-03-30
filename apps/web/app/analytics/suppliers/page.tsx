@@ -16,7 +16,6 @@ import { motion } from 'framer-motion';
 import {
   Users,
   TrendingUp,
-  TrendingDown as _TrendingDown,
   DollarSign,
   AlertCircle,
   Clock,
@@ -159,13 +158,13 @@ export default function SupplierAnalyticsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__all__">All Suppliers</SelectItem>
-                    <SelectItem value="SUP001">TechCorp Solutions</SelectItem>
-                    <SelectItem value="SUP002">Global IT Services</SelectItem>
-                    <SelectItem value="SUP003">Innovation Partners</SelectItem>
-                  <SelectItem value="SUP004">Digital Dynamics</SelectItem>
-                  <SelectItem value="SUP005">NextGen Technologies</SelectItem>
-                </SelectContent>
-              </Select>
+                    {(data?.suppliers || []).map((s: any) => (
+                      <SelectItem key={s.id || s.name} value={s.id || s.name}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
             </div>
             <div>
               <label className="text-sm font-medium mb-2 block">Timeframe</label>

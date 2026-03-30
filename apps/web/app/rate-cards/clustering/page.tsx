@@ -16,18 +16,16 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const fetchClusters = async () => {
-  const tenantId = 'default-tenant';
-  const response = await fetch(`/api/rate-cards/clusters?tenantId=${tenantId}`);
+  const response = await fetch('/api/rate-cards/clusters');
   if (!response.ok) throw new Error('Failed to load clusters');
   return response.json();
 };
 
 const runClusteringAnalysis = async () => {
-  const tenantId = 'default-tenant';
   const response = await fetch('/api/rate-cards/clusters', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tenantId }),
+    body: JSON.stringify({}),
   });
   if (!response.ok) {
     const errorData = await response.json();

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, Globe, Users, BarChart3 } from 'lucide-react';
 
 interface MarketIntelligenceProps {
-  tenantId: string;
+  tenantId?: string;
 }
 
 export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProps) {

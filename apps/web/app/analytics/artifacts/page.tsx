@@ -13,7 +13,6 @@ import { toast } from 'sonner';
 import { 
   FileText, 
   DollarSign, 
-  TrendingUp as _TrendingUp, 
   CheckCircle2,
   AlertTriangle,
   BarChart3,

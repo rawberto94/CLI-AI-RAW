@@ -35,7 +35,6 @@ export default function RateCardImportPage() {
             onUploadComplete={handleUploadComplete}
             onUploadError={handleUploadError}
             maxFiles={10}
-            tenantId="default-tenant"
           />
         </div>
 

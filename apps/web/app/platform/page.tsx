@@ -63,6 +63,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Tenant {
   id: string;
@@ -194,6 +195,9 @@ export default function PlatformAdminPage() {
     setAccessDialogOpen(true);
   };
 
+  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
+  const [tenantToSuspend, setTenantToSuspend] = useState<Tenant | null>(null);
+
   const confirmAccessTenant = () => {
     if (!selectedTenant) return;
     
@@ -208,9 +212,15 @@ export default function PlatformAdminPage() {
   };
 
   const handleSuspendTenant = async (tenant: Tenant) => {
-    if (!confirm(`Are you sure you want to suspend ${tenant.name}? Their users will not be able to access the platform.`)) {
-      return;
-    }
+    setTenantToSuspend(tenant);
+    setSuspendDialogOpen(true);
+  };
+
+  const executeSuspendTenant = async () => {
+    if (!tenantToSuspend) return;
+    const tenant = tenantToSuspend;
+    setSuspendDialogOpen(false);
+    setTenantToSuspend(null);
 
     try {
       const res = await fetch(`/api/platform/tenants/${tenant.id}`, {
@@ -577,6 +587,16 @@ export default function PlatformAdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={suspendDialogOpen}
+        onOpenChange={setSuspendDialogOpen}
+        title="Suspend Tenant"
+        description={`Are you sure you want to suspend ${tenantToSuspend?.name}? Their users will not be able to access the platform.`}
+        confirmLabel="Suspend"
+        variant="destructive"
+        onConfirm={executeSuspendTenant}
+      />
     </div>
   );
 }

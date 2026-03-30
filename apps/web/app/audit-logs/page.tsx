@@ -19,7 +19,7 @@ import { Suspense } from 'react';
 import { AuditLogViewer } from '@/components/audit/AuditLogViewer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Shield, ClipboardList as _ClipboardList } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 
 

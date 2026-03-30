@@ -7,8 +7,7 @@ import { RateCardUploadZone } from '@/components/import/RateCardUploadZone';
 import { ColumnMappingInterface } from '@/components/import/ColumnMappingInterface';
 import { ValidationReview } from '@/components/import/ValidationReview';
 import { ImportServiceClient as ImportService } from '@/lib/import/import-service.client';
-import type { ImportResult, ImportProgress } from '@/lib/import/import-service.client';
-import type { MatchResult as _MatchResult } from '@/lib/import/fuzzy-matcher';
+import type { ImportResult } from '@/lib/import/import-service.client';
 
 type WizardStep = 'upload' | 'mapping' | 'validation' | 'complete';
 
@@ -16,7 +15,6 @@ export default function ImportWizardPage() {
   const [currentStep, setCurrentStep] = useState<WizardStep>('upload');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
-  const [_progress, setProgress] = useState<ImportProgress | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleFileUpload = async (files: File[]) => {
@@ -95,8 +93,7 @@ export default function ImportWizardPage() {
         throw new Error(error.message || 'Failed to save rate card entries');
       }
 
-      const _result = await response.json();
-      // Import saved successfully
+      await response.json();
       
       setCurrentStep('complete');
     } catch (error) {
@@ -117,7 +114,6 @@ export default function ImportWizardPage() {
     setCurrentStep('upload');
     setUploadedFile(null);
     setImportResult(null);
-    setProgress(null);
   };
 
   const steps = [

@@ -44,7 +44,7 @@ export function MarketIntelligenceClientPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <MarketIntelligenceDashboard tenantId="default-tenant" />
+          <MarketIntelligenceDashboard />
         </motion.div>
         
         <motion.div
@@ -52,7 +52,7 @@ export function MarketIntelligenceClientPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <EmergingTrendsPanel tenantId="default-tenant" />
+          <EmergingTrendsPanel />
         </motion.div>
       </div>
     </div>

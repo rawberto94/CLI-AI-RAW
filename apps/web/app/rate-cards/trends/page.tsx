@@ -27,7 +27,6 @@ export default async function EmergingTrendsPage() {
           </div>
         }>
           <EmergingTrendsPanel 
-            tenantId={(session.user as any).tenantId || 'default'} 
             autoRefresh={true}
             refreshInterval={300000}
           />

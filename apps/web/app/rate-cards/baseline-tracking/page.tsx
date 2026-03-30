@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Activity, Loader2 } from 'lucide-react';
+import { Activity } from 'lucide-react';
 import { BaselineTrackingDashboard } from '@/components/rate-cards/BaselineTrackingDashboard';
 
 export default function BaselineTrackingPage() {

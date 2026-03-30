@@ -232,67 +232,6 @@ const RECOMMENDATION_TYPE_ICONS: Record<string, typeof Target> = {
   strategic: Target,
 };
 
-// Score gauge component - reserved for future dashboard enhancement
-function _ScoreGauge({ 
-  score, 
-  label, 
-  color = 'blue',
-  size = 'md',
-}: { 
-  score: number; 
-  label: string; 
-  color?: 'blue' | 'green' | 'red' | 'yellow';
-  size?: 'sm' | 'md' | 'lg';
-}) {
-  const colorMap = {
-    blue: { bg: 'from-violet-500 to-purple-600', text: 'text-violet-600', track: 'bg-violet-100' },
-    green: { bg: 'from-violet-500 to-violet-600', text: 'text-green-600', track: 'bg-green-100' },
-    red: { bg: 'from-red-500 to-rose-600', text: 'text-red-600', track: 'bg-red-100' },
-    yellow: { bg: 'from-yellow-500 to-amber-600', text: 'text-yellow-600', track: 'bg-yellow-100' },
-  };
-  const sizes = { sm: 'w-16 h-16', md: 'w-24 h-24', lg: 'w-32 h-32' };
-  const textSizes = { sm: 'text-lg', md: 'text-2xl', lg: 'text-3xl' };
-  
-  return (
-    <div className="flex flex-col items-center">
-      <div className={cn('relative', sizes[size])}>
-        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-          <circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="10"
-            className={colorMap[color].track}
-          />
-          <circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="none"
-            stroke="url(#gradient)"
-            strokeWidth="10"
-            strokeLinecap="round"
-            strokeDasharray={`${score * 2.83} 283`}
-            className="transition-all duration-1000 ease-out"
-          />
-          <defs>
-            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" className={`stop-color: ${color === 'blue' ? '#3b82f6' : color === 'green' ? '#22c55e' : color === 'red' ? '#ef4444' : '#eab308'}`} />
-              <stop offset="100%" className={`stop-color: ${color === 'blue' ? '#6366f1' : color === 'green' ? '#10b981' : color === 'red' ? '#f43f5e' : '#f59e0b'}`} />
-            </linearGradient>
-          </defs>
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className={cn('font-bold', textSizes[size], colorMap[color].text)}>{score}</span>
-        </div>
-      </div>
-      <span className="text-xs font-medium text-gray-600 mt-2">{label}</span>
-    </div>
-  );
-}
-
 export default function AIReportBuilderPage() {
   const [filters, setFilters] = useState<FilterState>({
     suppliers: [],

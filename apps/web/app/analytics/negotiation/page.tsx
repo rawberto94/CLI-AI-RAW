@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DataModeToggle } from '@/components/analytics/DataModeToggle';
 import { useNegotiationPrep, type DataMode } from '@/hooks/useProcurementIntelligence';
 import { Skeleton } from '@/components/ui/skeleton-loader';
@@ -176,35 +175,21 @@ export default function NegotiationPrepPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-2 block text-slate-700">Supplier</label>
-                  <Select value={supplierId} onValueChange={setSupplierId}>
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="Select supplier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">All Suppliers</SelectItem>
-                      <SelectItem value="SUP001">TechCorp Solutions</SelectItem>
-                      <SelectItem value="SUP002">Global IT Services</SelectItem>
-                      <SelectItem value="SUP003">Innovation Partners</SelectItem>
-                      <SelectItem value="SUP004">Digital Dynamics</SelectItem>
-                      <SelectItem value="SUP005">NextGen Technologies</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    placeholder="Enter supplier ID..."
+                    value={supplierId}
+                    onChange={(e) => setSupplierId(e.target.value)}
+                    className="bg-white"
+                  />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-2 block text-slate-700">Category</label>
-                  <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">All Categories</SelectItem>
-                  <SelectItem value="Software Development">Software Development</SelectItem>
-                  <SelectItem value="IT Services">IT Services</SelectItem>
-                  <SelectItem value="Consulting">Consulting</SelectItem>
-                  <SelectItem value="Cloud Services">Cloud Services</SelectItem>
-                  <SelectItem value="Professional Services">Professional Services</SelectItem>
-                </SelectContent>
-              </Select>
+                  <Input
+                    placeholder="Enter category..."
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="bg-white"
+                  />
             </div>
             <div className="flex items-end">
               <Button className="w-full">

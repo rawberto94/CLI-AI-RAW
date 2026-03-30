@@ -16,7 +16,6 @@ import {
   Handshake,
   DollarSign,
   Calendar,
-  TrendingUp as _TrendingUp,
   ArrowRight,
   BarChart3,
   Target,

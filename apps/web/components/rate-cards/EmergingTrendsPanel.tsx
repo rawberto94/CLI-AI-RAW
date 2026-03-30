@@ -18,7 +18,7 @@ import { useEmergingTrends, type EmergingTrend } from '@/hooks/use-rate-card-que
 import { DataFreshnessIndicator } from '@/components/shared/DataFreshnessIndicator';
 
 interface EmergingTrendsPanelProps {
-  tenantId: string;
+  tenantId?: string;
   autoRefresh?: boolean;
   refreshInterval?: number;
 }
