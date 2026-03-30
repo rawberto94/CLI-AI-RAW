@@ -18,19 +18,19 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   let data: any[] = [];
   switch (type) {
     case "supplier":
-      data = await generateSupplierData(fields, filters);
+      data = await generateSupplierData(fields, filters, ctx.tenantId);
       break;
     case "rate-card":
-      data = await generateRateCardData(fields, filters);
+      data = await generateRateCardData(fields, filters, ctx.tenantId);
       break;
     case "contract":
-      data = await generateContractData(fields, filters);
+      data = await generateContractData(fields, filters, ctx.tenantId);
       break;
     case "performance":
-      data = await generatePerformanceData(fields, filters);
+      data = await generatePerformanceData(fields, filters, ctx.tenantId);
       break;
     case "financial":
-      data = await generateFinancialData(fields, filters);
+      data = await generateFinancialData(fields, filters, ctx.tenantId);
       break;
     default:
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid export type', 400);
@@ -43,8 +43,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   }
 });
 
-async function generateSupplierData(_fields: string[], _filters: any) {
+async function generateSupplierData(_fields: string[], _filters: any, tenantId: string) {
   const suppliers = await db.rateCardSupplier.findMany({
+    where: { tenantId },
     select: {
       name: true,
       totalRateCards: true,
@@ -69,8 +70,9 @@ async function generateSupplierData(_fields: string[], _filters: any) {
   }));
 }
 
-async function generateRateCardData(_fields: string[], _filters: any) {
+async function generateRateCardData(_fields: string[], _filters: any, tenantId: string) {
   const rateCards = await db.rateCardEntry.findMany({
+    where: { tenantId },
     select: {
       roleOriginal: true,
       seniority: true,
@@ -88,8 +90,9 @@ async function generateRateCardData(_fields: string[], _filters: any) {
   }));
 }
 
-async function generateContractData(_fields: string[], _filters: any) {
+async function generateContractData(_fields: string[], _filters: any, tenantId: string) {
   const contracts = await db.contract.findMany({
+    where: { tenantId },
     select: {
       contractTitle: true,
       fileName: true,
@@ -115,23 +118,25 @@ async function generateContractData(_fields: string[], _filters: any) {
   }));
 }
 
-async function generatePerformanceData(_fields: string[], _filters: any) {
+async function generatePerformanceData(_fields: string[], _filters: any, tenantId: string) {
   const suppliers = await db.rateCardSupplier.findMany({
+    where: { tenantId },
     select: { name: true },
     take: 500,
   });
 
   return suppliers.map((s) => ({
     supplierName: s.name,
-    onTimeDelivery: Math.floor(Math.random() * 20) + 80,
-    qualityScore: Math.floor(Math.random() * 20) + 75,
-    costEfficiency: Math.floor(Math.random() * 25) + 70,
-    responsiveness: Math.floor(Math.random() * 20) + 80,
+    onTimeDelivery: null,
+    qualityScore: null,
+    costEfficiency: null,
+    responsiveness: null,
   }));
 }
 
-async function generateFinancialData(_fields: string[], _filters: any) {
+async function generateFinancialData(_fields: string[], _filters: any, tenantId: string) {
   const contracts = await db.contract.findMany({
+    where: { tenantId },
     select: {
       startDate: true,
       totalValue: true,
@@ -156,21 +161,21 @@ async function generateFinancialData(_fields: string[], _filters: any) {
 }
 
 function exportToExcel(data: any[], _fields: string[]) {
-  // Mock CSV export (use xlsx library in production)
+  // CSV export (install exceljs for native xlsx support)
   const headers = Object.keys(data[0] || {}).join(",");
   const rows = data.map((row) => Object.values(row).join(",")).join("\n");
   const csv = `${headers}\n${rows}`;
 
   return new NextResponse(csv, {
     headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename=report-${Date.now()}.xlsx`,
+      "Content-Type": "text/csv",
+      "Content-Disposition": `attachment; filename=report-${Date.now()}.csv`,
     },
   });
 }
 
 function exportToPDF(data: any[], _fields: string[]) {
-  // Mock PDF export (use jsPDF or react-pdf in production)
+  // Text-based report export (install jsPDF for native PDF support)
   const pdfContent = `
     REPORT EXPORT
     Generated: ${new Date().toISOString()}
@@ -182,8 +187,8 @@ function exportToPDF(data: any[], _fields: string[]) {
 
   return new NextResponse(pdfContent, {
     headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename=report-${Date.now()}.pdf`,
+      "Content-Type": "text/plain",
+      "Content-Disposition": `attachment; filename=report-${Date.now()}.txt`,
     },
   });
 }

@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   // Fetch all suppliers from rate card suppliers with their rate cards
   const suppliers = await db.rateCardSupplier.findMany({
+    where: { tenantId: ctx.tenantId },
     include: {
       rateCards: {
         select: {
@@ -35,27 +36,24 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
           )
         : 0;
 
-    // Simulate performance metrics (in production, these would come from actual data)
-    const baseScore = 70 + Math.random() * 25; // 70-95
-    const onTimeDelivery = Math.round(baseScore + Math.random() * 5);
-    const qualityScore = Math.round(baseScore + Math.random() * 5);
-    const costEfficiency = Math.round(baseScore - 5 + Math.random() * 10);
-    const responsiveness = Math.round(baseScore + Math.random() * 5);
-    const overallScore = Math.round((onTimeDelivery + qualityScore + costEfficiency + responsiveness) / 4);
+    // Performance metrics derived from available data
+    const onTimeDelivery = null; // Requires delivery tracking integration
+    const qualityScore = null; // Requires quality tracking integration
+    const costEfficiency = avgRate > 0 ? Math.round(Math.min(100, (1000 / avgRate) * 100)) : null;
+    const responsiveness = null; // Requires response tracking integration
+    const overallScore = costEfficiency; // Only cost data currently available
 
-    // Determine risk level based on score
+    // Risk level based on contract volume (proxy metric)
     let riskLevel: 'low' | 'medium' | 'high';
-    if (overallScore >= 85) {
+    if (totalRateCards >= 3) {
       riskLevel = 'low';
-    } else if (overallScore >= 70) {
+    } else if (totalRateCards >= 1) {
       riskLevel = 'medium';
     } else {
       riskLevel = 'high';
     }
 
-    // Determine trend
-    const trendRand = Math.random();
-    const trend = trendRand > 0.6 ? 'up' : trendRand > 0.3 ? 'stable' : 'down';
+    const trend = 'stable' as const; // Requires historical data to compute
 
     return {
       id: supplier.id,
@@ -74,19 +72,10 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   });
 
   // Sort by overall score (descending)
-  supplierMetrics.sort((a, b) => b.overallScore - a.overallScore);
+  supplierMetrics.sort((a, b) => (b.overallScore ?? 0) - (a.overallScore ?? 0));
 
-  // Generate 6-month performance trends
-  const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const trends = months.map((month, index) => {
-    const baseProgress = 80 + (index * 2); // Gradual improvement
-    return {
-      month,
-      onTime: Math.round(baseProgress + Math.random() * 5),
-      quality: Math.round(baseProgress + Math.random() * 5),
-      cost: Math.round(baseProgress - 2 + Math.random() * 4),
-    };
-  });
+  // Trends require historical data tracking to compute
+  const trends: { month: string; onTime: number | null; quality: number | null; cost: number | null }[] = [];
 
   return createSuccessResponse(ctx, {
     success: true,

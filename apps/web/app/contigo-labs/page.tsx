@@ -2,7 +2,7 @@
  * Contigo Labs - Unified AI Agent Experience
  * 
  * The central hub for all AI-powered capabilities in Contigo:
- * - Agent Command Center (19 AI agents with HITL workflows)
+ * - Agent Command Center (22 AI agents with HITL workflows)
  * - AI Chat Assistant (@mention support)
  * - RFx Opportunity Detection (Scout)
  * - Approval Queue
@@ -141,6 +141,7 @@ const AGENT_CLUSTERS = {
       { id: 'proactive-validation-agent', codename: 'Sentinel', avatar: '🛡️', icon: Shield, description: 'First line of defense — catches errors before they propagate', status: 'active' },
       { id: 'compliance-monitoring-agent', codename: 'Vigil', avatar: '⚖️', icon: Scale, description: 'Regulatory watchdog — ensures contracts meet all requirements', status: 'active' },
       { id: 'proactive-risk-detector', codename: 'Warden', avatar: '🔥', icon: AlertTriangle, description: 'Early warning system — detects risks before they materialize', status: 'active' },
+      { id: 'conflict-resolution-agent', codename: 'Mediator', avatar: '⚖️', icon: GitCompare, description: 'Contradiction hunter — finds clauses at war with each other', status: 'active' },
     ],
   },
   oracles: {
@@ -154,6 +155,8 @@ const AGENT_CLUSTERS = {
       { id: 'intelligent-search-agent', codename: 'Sage', avatar: '🔮', icon: Search, description: 'Seer of contracts — finds anything with intent-aware search', status: 'active' },
       { id: 'opportunity-discovery-engine', codename: 'Prospector', avatar: '💎', icon: TrendingUp, description: 'Fortune finder — discovers savings and optimization gold', status: 'active' },
       { id: 'rfx-detection-agent', codename: 'Scout', avatar: '🎯', icon: Target, description: 'Sniper — spots RFx opportunities before they expire', status: 'active' },
+      { id: 'contract-transformation-agent', codename: 'MemoryKeeper', avatar: '🧬', icon: Network, description: 'Pattern decoder — transforms contracts into structured knowledge', status: 'active' },
+      { id: 'data-synthesizer-agent', codename: 'Synthesizer', avatar: '🔮', icon: BarChart3, description: 'Portfolio oracle — synthesises insights across your contract base', status: 'active' },
     ],
   },
   operators: {
@@ -167,6 +170,7 @@ const AGENT_CLUSTERS = {
       { id: 'autonomous-deadline-manager', codename: 'Clockwork', avatar: '⏰', icon: Clock, description: 'Precision timekeeper — never misses a deadline', status: 'active' },
       { id: 'obligation-tracking-agent', codename: 'Steward', avatar: '📋', icon: CheckCircle, description: 'Dedicated steward — tracks every commitment', status: 'active' },
       { id: 'smart-gap-filling-agent', codename: 'Artificer', avatar: '🔧', icon: Wrench, description: 'Master craftsperson — fills missing data with precision', status: 'active' },
+      { id: 'template-generation-agent', codename: 'Builder', avatar: '🏗️', icon: LayoutTemplate, description: 'Template architect — structures contracts from learned patterns', status: 'active' },
     ],
   },
   strategists: {
@@ -177,9 +181,10 @@ const AGENT_CLUSTERS = {
     gradient: 'from-amber-500 to-orange-500',
     description: 'Workflow & Planning',
     agents: [
-      { id: 'workflow-authoring-agent', codename: 'Architect', avatar: '🏛️', icon: LayoutGrid, description: 'Master builder — designs optimal workflows', status: 'active' },
+      { id: 'workflow-authoring-agent', codename: 'Blueprinter', avatar: '📐', icon: Workflow, description: 'Flow designer — creates tailored approval workflows', status: 'active' },
       { id: 'rfx-procurement-agent', codename: 'Merchant', avatar: '🤝', icon: Gavel, description: 'Master negotiator — manages RFx lifecycles', status: 'active' },
       { id: 'multi-agent-coordinator', codename: 'Conductor', avatar: '🎼', icon: Users, description: 'Orchestra leader — coordinates agent symphonies', status: 'active' },
+      { id: 'onboarding-coach-agent', codename: 'Navigator', avatar: '🧭', icon: HelpCircle, description: 'Setup guide — helps teams get the most from the platform', status: 'active' },
     ],
   },
   evolution: {
@@ -193,6 +198,7 @@ const AGENT_CLUSTERS = {
       { id: 'user-feedback-learner', codename: 'Mnemosyne', avatar: '🧠', icon: Brain, description: 'Memory incarnate — learns from every interaction', status: 'active' },
       { id: 'ab-testing-engine', codename: 'A/B', avatar: '🧪', icon: Beaker, description: 'Scientist — tests and validates agent performance', status: 'active' },
       { id: 'agent-swarm', codename: 'Swarm', avatar: '🐝', icon: GitMerge, description: 'Collective intelligence — many minds, one purpose', status: 'active' },
+      { id: 'workflow-orchestrator-agent', codename: 'Orchestrator', avatar: '🎼', icon: Layers, description: 'Meta-conductor — coordinates multi-agent analysis plans', status: 'active' },
     ],
   },
 };
@@ -354,7 +360,7 @@ export default function ContigoLabsPage() {
               >
                 <Bot className="w-4 h-4 mr-2" />
                 Agents
-                <Badge variant="secondary" className="ml-2 text-xs bg-white/50">19</Badge>
+                <Badge variant="secondary" className="ml-2 text-xs bg-white/50">22</Badge>
               </TabsTrigger>
               <TabsTrigger 
                 value="approvals" 
@@ -486,7 +492,7 @@ function DashboardOverview({ status, loading }: { status: any; loading: boolean 
         <StatCard
           title="Active Agents"
           value={status?.overview?.activeAgents || 0}
-          total={19}
+          total={22}
           icon={Bot}
           color="violet"
           description="Currently operational"
@@ -2369,7 +2375,33 @@ function RFxStudioView() {
         </div>
         
         {/* Quick Export */}
-        <Button variant="outline" size="sm" onClick={() => toast.success('Export started')} className="hidden md:flex bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm transition-all duration-200">
+        <Button variant="outline" size="sm" onClick={() => {
+          const rows = [
+            ['Type', 'Title', 'Status', 'Category', 'Deadline'].join(','),
+            ...opportunities.map((o: any) => [
+              'Opportunity',
+              `"${(o.title || '').replace(/"/g, '""')}"`,
+              o.urgency || 'normal',
+              o.category || '',
+              o.deadline || '',
+            ].join(',')),
+            ...rfxEvents.map((e: any) => [
+              e.type || 'RFx',
+              `"${(e.title || '').replace(/"/g, '""')}"`,
+              e.status || 'draft',
+              e.category || '',
+              e.dueDate || '',
+            ].join(',')),
+          ].join('\n');
+          const blob = new Blob([rows], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `rfx-report-${new Date().toISOString().slice(0, 10)}.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+          toast.success('Report exported');
+        }} className="hidden md:flex bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm transition-all duration-200">
           <ExternalLink className="w-4 h-4 mr-2" />
           Export Report
         </Button>
@@ -3599,36 +3631,53 @@ const ALL_AGENTS = Object.values(AGENT_CLUSTERS).flatMap(cluster =>
       : agent.codename === 'Clockwork' ? 'What deadlines are coming up?'
       : agent.codename === 'Steward' ? 'Track all outstanding obligations'
       : agent.codename === 'Artificer' ? 'Fill missing metadata across contracts'
-      : agent.codename === 'Architect' ? 'Design an approval workflow'
+      : agent.codename === 'Blueprinter' ? 'Design an approval workflow for NDAs'
       : agent.codename === 'Merchant' ? 'Start an RFx procurement process'
       : agent.codename === 'Conductor' ? 'Coordinate a multi-agent analysis'
       : agent.codename === 'Mnemosyne' ? 'What have I asked about recently?'
       : agent.codename === 'Swarm' ? 'Run a full portfolio deep-dive'
+      : agent.codename === 'Mediator' ? 'Find clause conflicts in contract #123'
+      : agent.codename === 'Navigator' ? 'Help me get started with Contigo'
+      : agent.codename === 'Builder' ? 'Generate a standard NDA template'
+      : agent.codename === 'MemoryKeeper' ? 'Transform contracts into structured data'
+      : agent.codename === 'Orchestrator' ? 'Plan multi-agent analysis of my portfolio'
+      : agent.codename === 'Synthesizer' ? 'Give me a portfolio risk overview'
+      : agent.codename === 'A/B' ? 'Run performance tests on agent responses'
       : 'Help me with contract management',
   }))
+);
+
+// Lookup: codename → emoji avatar for chat message rendering
+const AGENT_AVATAR_MAP: Record<string, string> = Object.fromEntries(
+  ALL_AGENTS.map(a => [a.codename, a.avatar])
 );
 
 function EmbeddedChatInterface() {
   const [messages, setMessages] = useState<Message[]>([{
     id: 'welcome',
     role: 'assistant',
-    content: `👋 Hey! I'm **ConTigo AI**, your intelligent contract assistant powered by RAG technology.
+    content: `👋 Hey! I'm **ConTigo AI** — your intelligent contract command centre with **22 specialised agents**.
 
-**What I can do:**
-• 🔍 **Smart Search** — Find contracts by supplier, type, value, or any criteria
-• 📊 **Deep Analysis** — Get summaries, spending insights, and duration patterns  
-• 🔄 **Compare Contracts** — Side-by-side supplier comparison with rates and clauses
-• ⚠️ **Risk Alerts** — Track expirations, auto-renewals, and compliance
+**🛡️ Guardians** — Compliance & Risk
+• \`@sentinel\` catches errors • \`@vigil\` monitors compliance • \`@warden\` detects risks • \`@mediator\` finds clause conflicts
 
-**Pro Tips:**
-• Type **@** to see all available AI agents with specialties
-• Try: "@sage Find all NDAs expiring this quarter"
-• Ask follow-ups: I remember your conversation context
-• Click suggestions below or type anything!
+**🔮 Oracles** — Intelligence & Discovery
+• \`@sage\` smart search • \`@prospector\` finds savings • \`@scout\` spots RFx • \`@memorykeeper\` transforms data • \`@synthesizer\` portfolio insights
+
+**⚡ Operators** — Execution & Monitoring
+• \`@clockwork\` deadlines • \`@steward\` obligations • \`@artificer\` fills gaps • \`@builder\` generates templates
+
+**🎯 Strategists** — Workflow & Planning
+• \`@blueprinter\` approval flows • \`@merchant\` RFx lifecycle • \`@conductor\` multi-agent • \`@navigator\` onboarding
+
+**🧬 Evolution** — Learning & Improvement
+• \`@orchestrator\` analysis plans • plus Mnemosyne, A/B, Swarm
+
+**Pro Tips:** Type **@** to browse all agents • Ask anything in natural language • I remember your context
 
 What would you like to explore?`,
     timestamp: new Date(),
-    suggestions: ['📊 Contract summary', '🔄 Compare suppliers', '⏰ Expiring soon', '💰 Top suppliers'],
+    suggestions: ['🔮 @sage Find all NDAs', '⚖️ @mediator Check conflicts', '📐 @blueprinter Design workflow', '🔮 @synthesizer Portfolio report'],
   }]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -3785,8 +3834,12 @@ What would you like to explore?`,
               )}
             >
               {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="w-4 h-4 text-white" />
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 text-sm">
+                  {msg.agent && AGENT_AVATAR_MAP[msg.agent] ? (
+                    <span>{AGENT_AVATAR_MAP[msg.agent]}</span>
+                  ) : (
+                    <Sparkles className="w-4 h-4 text-white" />
+                  )}
                 </div>
               )}
               <div
@@ -3798,7 +3851,8 @@ What would you like to explore?`,
                 )}
               >
                 {msg.agent && (
-                  <p className="text-xs font-semibold text-violet-600 mb-1">
+                  <p className="text-xs font-bold text-violet-600 dark:text-violet-400 mb-1.5 flex items-center gap-1.5">
+                    {AGENT_AVATAR_MAP[msg.agent] && <span>{AGENT_AVATAR_MAP[msg.agent]}</span>}
                     {msg.agent}
                   </p>
                 )}
@@ -3827,13 +3881,16 @@ What would you like to explore?`,
           {isLoading && (
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white" />
+                <Sparkles className="w-4 h-4 text-white animate-pulse" />
               </div>
-              <div className="bg-slate-100 rounded-2xl rounded-bl-md px-4 py-3">
-                <div className="flex gap-1.5">
-                  <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" />
-                  <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce delay-100" />
-                  <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce delay-200" />
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-bl-md px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1.5">
+                    <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" />
+                    <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                    <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                  </div>
+                  <span className="text-xs text-slate-400 font-medium ml-1">Thinking...</span>
                 </div>
               </div>
             </div>
@@ -3847,10 +3904,14 @@ What would you like to explore?`,
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 font-bold uppercase tracking-wider">Quick Actions</p>
           <div className="flex flex-wrap gap-2">
             {[
-              { icon: FileText, label: 'Contract Summary', query: 'Give me a summary of my contracts', color: 'from-violet-500 to-purple-500' },
-              { icon: Calendar, label: 'Renewals', query: 'What contracts are expiring soon?', color: 'from-orange-500 to-amber-500' },
-              { icon: TrendingUp, label: 'Insights', query: 'Show me portfolio insights', color: 'from-violet-500 to-pink-500' },
-              { icon: Search, label: 'Search', query: 'Help me find a specific contract', color: 'from-violet-500 to-violet-500' },
+              { icon: Search, label: '@sage Search', query: '@sage Find all contracts expiring this quarter', color: 'from-violet-500 to-purple-500' },
+              { icon: Calendar, label: '@clockwork Deadlines', query: '@clockwork Show upcoming deadlines', color: 'from-cyan-500 to-blue-500' },
+              { icon: Shield, label: '@warden Risks', query: '@warden What are the top risks?', color: 'from-orange-500 to-red-500' },
+              { icon: GitCompare, label: '@mediator Conflicts', query: '@mediator Scan for clause conflicts', color: 'from-indigo-500 to-purple-500' },
+              { icon: BarChart3, label: '@synthesizer Insights', query: '@synthesizer Portfolio overview', color: 'from-pink-500 to-rose-500' },
+              { icon: LayoutTemplate, label: '@builder Template', query: '@builder Generate an NDA template', color: 'from-lime-500 to-emerald-500' },
+              { icon: Workflow, label: '@blueprinter Flow', query: '@blueprinter Design approval workflow', color: 'from-slate-500 to-gray-600' },
+              { icon: HelpCircle, label: '@navigator Help', query: '@navigator How do I get started?', color: 'from-teal-500 to-cyan-500' },
             ].map((action) => (
               <button
                 key={action.label}
@@ -3952,26 +4013,35 @@ What would you like to explore?`,
             >
               <div className="bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Available Agents — type @ in chat to mention</h4>
+                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">22 AI Agents — type @ in chat to mention</h4>
                   <button onClick={() => setShowAgentSidebar(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {ALL_AGENTS.map((agent) => (
-                    <button
-                      key={agent.id}
-                      onClick={() => { setInput(`@${agent.codename.toLowerCase()} `); setShowAgentSidebar(false); inputRef.current?.focus(); }}
-                      className="flex items-start gap-2.5 p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 hover:border-violet-200 dark:hover:border-violet-500 hover:shadow-sm transition-all text-left group"
-                    >
-                      <span className="text-base mt-0.5">{agent.avatar}</span>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-violet-700 group-hover:text-violet-800">{agent.mention}</p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{agent.description}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 italic truncate">e.g. "{agent.example}"</p>
-                      </div>
-                    </button>
-                  ))}
+                {Object.values(AGENT_CLUSTERS).map((cluster) => (
+                  <div key={cluster.id} className="mb-3 last:mb-0">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-sm">{cluster.emoji}</span>
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">{cluster.name}</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500">— {cluster.description}</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 ml-5">
+                      {cluster.agents.map((agent) => (
+                        <button
+                          key={agent.id}
+                          onClick={() => { setInput(`@${agent.codename.toLowerCase()} `); setShowAgentSidebar(false); inputRef.current?.focus(); }}
+                          className="flex items-start gap-2 p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 hover:border-violet-200 dark:hover:border-violet-500 hover:shadow-sm transition-all text-left group"
+                        >
+                          <span className="text-sm mt-0.5">{agent.avatar}</span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-violet-700 group-hover:text-violet-800 dark:text-violet-400">@{agent.codename.toLowerCase()}</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5 line-clamp-1">{agent.description}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
                 </div>
               </div>
             </motion.div>

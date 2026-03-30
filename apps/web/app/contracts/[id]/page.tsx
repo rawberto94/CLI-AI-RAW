@@ -61,6 +61,7 @@ import {
   RelatedContracts,
   SkipToContent,
   SectionErrorBoundary,
+  AIInsightsSummaryCard,
 } from './components'
 import { useContractMetadata, useContractUIStore } from './hooks'
 import {
@@ -94,6 +95,9 @@ const EnhancedNegotiationPanel = lazy(() =>
 )
 const PredictiveInsightsWidget = lazy(() =>
   import('@/components/ai/PredictiveInsightsWidget').then((m) => ({ default: m.PredictiveInsightsWidget }))
+)
+const AgentStatusWidget = lazy(() =>
+  import('@/components/agents/AgentStatus').then((m) => ({ default: m.AgentStatus }))
 )
 const ActivityTab = lazy(() =>
   import('@/components/contracts/detail/ActivityTab').then((m) => ({ default: m.ActivityTab }))
@@ -271,6 +275,63 @@ export default function ContractDetailPage() {
     }
   }, [isProcessing, contract, contractId, dataMode, queryClient])
 
+  // ── AI Insights for overview tab ──────────────────────────────────────────
+  const aiInsights = React.useMemo(() => {
+    const insights: Array<{
+      id: string
+      type: 'summary' | 'risk' | 'opportunity' | 'obligation' | 'recommendation' | 'key_term' | 'anomaly'
+      title: string
+      content: string
+      confidence: number
+      importance: 'high' | 'medium' | 'low'
+      actionable?: boolean
+    }> = []
+
+    // Build from risk data
+    if (riskInfo.risks?.length > 0) {
+      riskInfo.risks.slice(0, 3).forEach((risk: { title?: string; description?: string }, i: number) => {
+        insights.push({
+          id: `risk-${i}`,
+          type: 'risk',
+          title: risk.title || 'Risk Identified',
+          content: risk.description || risk.title || '',
+          confidence: 0.85,
+          importance: riskInfo.riskLevel === 'high' ? 'high' : 'medium',
+        })
+      })
+    }
+
+    // Build from compliance data
+    if (complianceInfo.violations?.length > 0) {
+      complianceInfo.violations.slice(0, 2).forEach((v: string, i: number) => {
+        insights.push({
+          id: `compliance-${i}`,
+          type: 'obligation',
+          title: 'Compliance Issue',
+          content: v,
+          confidence: 0.9,
+          importance: 'high',
+          actionable: true,
+        })
+      })
+    }
+
+    // Build from overview key terms
+    if (overviewData?.keyTerms?.length > 0) {
+      overviewData.keyTerms.slice(0, 3).forEach((kt: { term: string; value: string }, i: number) => {
+        insights.push({
+          id: `term-${i}`,
+          type: 'key_term',
+          title: kt.term,
+          content: kt.value,
+          confidence: 0.95,
+          importance: 'medium',
+        })
+      })
+    }
+
+    return insights
+  }, [riskInfo, complianceInfo, overviewData])
 
   // ── Action handlers ───────────────────────────────────────────────────────
   const handleRefresh = useCallback(() => {
@@ -964,6 +1025,17 @@ export default function ContractDetailPage() {
                     risks={riskInfo.risks}
                     riskLevel={riskInfo.riskLevel}
                   />
+                {aiInsights.length > 0 && (
+                  <SectionErrorBoundary sectionName="AI Insights">
+                    <AIInsightsSummaryCard
+                      insights={aiInsights}
+                      contractSummary={metadata.contract_short_description || overviewData?.summary}
+                      keyTerms={overviewData?.keyTerms}
+                      onRefresh={handleRefresh}
+                      onViewAll={() => setTab('ai')}
+                    />
+                  </SectionErrorBoundary>
+                )}
                 <SectionErrorBoundary sectionName="Timeline">
                   <ContractTimeline
                         signatureDate={metadata.signature_date}
@@ -1091,6 +1163,9 @@ export default function ContractDetailPage() {
                           contractId={contractId}
                           contractName={contract?.filename || contract?.document_title || 'Contract'}
                         />
+                      </SectionErrorBoundary>
+                      <SectionErrorBoundary sectionName="Agent Activity">
+                        <AgentStatusWidget contractId={contractId} />
                       </SectionErrorBoundary>
                     </>
                   ) : (

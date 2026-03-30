@@ -1,44 +1,41 @@
 import { NextRequest } from "next/server";
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
-export async function PATCH(
-  request: NextRequest,
-  { params: _params }: { params: { id: string } }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params;
+  const body = await request.json();
+  const { prisma } = await import('@/lib/prisma');
+
+  const existing = await prisma.scheduledReport.findFirst({
+    where: { id, tenantId: ctx.tenantId },
+  });
+  if (!existing) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Schedule not found', 404);
   }
-  try {
-    const body = await request.json();
-    const { enabled } = body;
 
-    // In production, update database record
-    // For now, just return success
+  const schedule = await prisma.scheduledReport.update({
+    where: { id },
+    data: { enabled: body.enabled ?? existing.enabled },
+  });
 
-    return createSuccessResponse(ctx, {
-      message: `Schedule ${enabled ? "enabled" : "disabled"}`,
-    });
-  } catch (error) {
-    return handleApiError(ctx, error);
+  return createSuccessResponse(ctx, {
+    message: `Schedule ${schedule.enabled ? 'enabled' : 'disabled'}`,
+    schedule,
+  });
+});
+
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params;
+  const { prisma } = await import('@/lib/prisma');
+
+  const existing = await prisma.scheduledReport.findFirst({
+    where: { id, tenantId: ctx.tenantId },
+  });
+  if (!existing) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Schedule not found', 404);
   }
-}
 
-export async function DELETE(
-  request: NextRequest,
-  { params: _params }: { params: { id: string } }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-  try {
-    // In production, delete from database and cancel cron job
+  await prisma.scheduledReport.delete({ where: { id } });
 
-    return createSuccessResponse(ctx, {
-      message: "Schedule deleted",
-    });
-  } catch (error) {
-    return handleApiError(ctx, error);
-  }
-}
+  return createSuccessResponse(ctx, { message: 'Schedule deleted', id });
+});

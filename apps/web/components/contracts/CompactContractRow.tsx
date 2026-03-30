@@ -28,6 +28,8 @@ import {
   AlertCircle,
   CalendarOff,
   User,
+  PenTool,
+  Link2,
 } from "lucide-react";
 import { ContractStatusBadge } from "@/components/contracts/ContractStatusBadge";
 import { CategoryBadge } from "@/components/contracts/CategoryComponents";
@@ -65,7 +67,7 @@ export const CompactContractRow = memo(function CompactContractRow({
   onShare,
   onDelete,
   onDownload,
-  onApproval: _onApproval,
+  onApproval,
   formatCurrency,
   formatDate,
 }: CompactContractRowProps) {
@@ -177,6 +179,12 @@ export const CompactContractRow = memo(function CompactContractRow({
                 classification={contract.documentClassification as DocumentClassification} 
                 showWarning={!!contract.documentClassificationWarning}
               />
+              {contract.hasHierarchy && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-50 text-violet-600 flex-shrink-0" title={contract.parentContractId ? 'Linked to parent contract' : `${contract.childContracts?.length || 0} linked contract(s)`}>
+                  <Link2 className="h-3 w-3" />
+                  {contract.parentContractId ? 'Linked' : contract.childContracts?.length || 0}
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
               <Clock className="h-3 w-3" />
@@ -327,6 +335,9 @@ export const CompactContractRow = memo(function CompactContractRow({
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => router.push(`/generate?create=amendment&from=${contract.id}`)} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
               <GitBranch className="h-4 w-4 mr-2.5 text-slate-500" /> Create Amendment
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={onApproval} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
+              <PenTool className="h-4 w-4 mr-2.5 text-slate-500" /> Request Signature
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem onSelect={onDownload} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">

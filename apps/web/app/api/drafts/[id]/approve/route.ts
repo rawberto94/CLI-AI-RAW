@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Draft Approval API
  * 
@@ -124,7 +125,7 @@ export async function POST(
       userId: ctx.userId,
       tenantId,
       metadata: { operation: 'approve', title: updated.title },
-    }).catch(err => console.error('[Draft] Audit log failed:', err));
+    }).catch(err => logger.error({ err }, '[Draft] Audit log failed'));
 
     return createSuccessResponse(ctx, {
       draft: updated,

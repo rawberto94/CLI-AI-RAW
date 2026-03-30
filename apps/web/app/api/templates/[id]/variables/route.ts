@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
@@ -99,21 +100,18 @@ export async function PUT(
           userId: ctx.userId,
           tenantId: ctx.tenantId,
           metadata: { operation: 'update_variables' },
-        }).catch(err => console.error('[Template] Audit log failed:', err));
+        }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
 
         return createSuccessResponse(ctx, { 
           variables,
           source: 'database'
         });
       }
-    } catch {
-      // Database update failed, fallback to mock
-    }
 
-    return createSuccessResponse(ctx, { 
-      variables,
-      source: 'mock'
-    });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Template not found', 404);
+    } catch (dbError) {
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update template variables', 500);
+    }
   } catch (error) {
     return handleApiError(ctx, error);
   }
@@ -177,21 +175,18 @@ export async function POST(
           userId: ctx.userId,
           tenantId: ctx.tenantId,
           metadata: { operation: 'add_variable' },
-        }).catch(err => console.error('[Template] Audit log failed:', err));
+        }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
 
         return createSuccessResponse(ctx, { 
           variable: newVariable,
           source: 'database'
         });
       }
-    } catch {
-      // Database update failed, fallback to mock
-    }
 
-    return createSuccessResponse(ctx, { 
-      variable: newVariable,
-      source: 'mock'
-    });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Template not found', 404);
+    } catch (dbError) {
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to add template variable', 500);
+    }
   } catch (error) {
     return handleApiError(ctx, error);
   }

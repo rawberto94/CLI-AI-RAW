@@ -18,6 +18,12 @@ import {
   DollarSign,
   Shield,
   Sparkles,
+  GitCompare,
+  LayoutTemplate,
+  Network,
+  BarChart3,
+  HelpCircle,
+  Layers,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -91,6 +97,12 @@ export function AgentStatus({ contractId }: AgentStatusProps) {
     if (agentName.includes('health')) return <Activity className="h-3.5 w-3.5" />;
     if (agentName.includes('deadline')) return <Clock className="h-3.5 w-3.5" />;
     if (agentName.includes('opportunity')) return <DollarSign className="h-3.5 w-3.5" />;
+    if (agentName.includes('conflict')) return <GitCompare className="h-3.5 w-3.5" />;
+    if (agentName.includes('template')) return <LayoutTemplate className="h-3.5 w-3.5" />;
+    if (agentName.includes('transformation')) return <Network className="h-3.5 w-3.5" />;
+    if (agentName.includes('synthesizer')) return <BarChart3 className="h-3.5 w-3.5" />;
+    if (agentName.includes('onboarding')) return <HelpCircle className="h-3.5 w-3.5" />;
+    if (agentName.includes('orchestrator')) return <Layers className="h-3.5 w-3.5" />;
     if (agentName.includes('workflow')) return <TrendingUp className="h-3.5 w-3.5" />;
     return <Brain className="h-3.5 w-3.5" />;
   };

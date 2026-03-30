@@ -29,7 +29,14 @@ export type AgentCapability =
   | 'deadline-management'
   | 'opportunity-discovery'
   | 'learning'
-  | 'search-intent';
+  | 'search-intent'
+  | 'conflict-resolution'
+  | 'template-generation'
+  | 'contract-transformation'
+  | 'data-synthesis'
+  | 'workflow-authoring'
+  | 'onboarding-coaching'
+  | 'workflow-orchestration';
 
 export interface AgentInput {
   contractId: string;
@@ -555,7 +562,14 @@ export type AgentEventType =
   | 'search_executed'
   | 'compliance_checked'
   | 'obligation_tracked'
-  | 'contract_summarized';
+  | 'contract_summarized'
+  | 'conflict_resolved'
+  | 'template_generated'
+  | 'contract_transformed'
+  | 'data_synthesized'
+  | 'workflow_authored'
+  | 'onboarding_coached'
+  | 'workflow_orchestrated';
 
 // ============================================================================
 // Configuration Types

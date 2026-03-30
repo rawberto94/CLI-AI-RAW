@@ -36,8 +36,8 @@ const getS3Client = () => {
     endpoint: `http://${process.env.MINIO_ENDPOINT || 'localhost'}:${process.env.MINIO_PORT || '9000'}`,
     region: 'us-east-1',
     credentials: {
-      accessKeyId: process.env.MINIO_ACCESS_KEY || (isProduction ? '' : 'minioadmin'),
-      secretAccessKey: process.env.MINIO_SECRET_KEY || (isProduction ? '' : 'minioadmin'),
+      accessKeyId: process.env.MINIO_ACCESS_KEY || '',
+      secretAccessKey: process.env.MINIO_SECRET_KEY || '',
     },
     forcePathStyle: true,
   });

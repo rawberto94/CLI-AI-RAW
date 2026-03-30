@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Draft Finalization API
  *
@@ -165,7 +166,7 @@ export async function POST(
       userId: ctx.userId,
       tenantId,
       metadata: { operation: 'finalize', title: draft.title, contractId: result.contract.id },
-    }).catch(err => console.error('[Draft] Audit log failed:', err));
+    }).catch(err => logger.error({ err }, '[Draft] Audit log failed'));
 
     return createSuccessResponse(ctx, {
       message: 'Draft finalized successfully',

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
@@ -158,7 +159,7 @@ export async function PUT(
       userId: ctx.userId,
       tenantId: ctx.tenantId,
       metadata: { operation: 'update', title: template.name },
-    }).catch(err => console.error('[Template] Audit log failed:', err));
+    }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
 
     return createSuccessResponse(ctx, {
       success: true,
@@ -210,7 +211,7 @@ export async function DELETE(
       userId: ctx.userId,
       tenantId: ctx.tenantId,
       metadata: { operation: 'delete', title: existingTemplate.name },
-    }).catch(err => console.error('[Template] Audit log failed:', err));
+    }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
 
     return createSuccessResponse(ctx, {
       success: true,

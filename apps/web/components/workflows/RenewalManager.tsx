@@ -331,7 +331,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
             {/* Draft Renewal in AI Copilot */}
             {(renewal.status === 'upcoming' || renewal.status === 'urgent' || renewal.status === 'pending-review' || renewal.status === 'in-negotiation') && (
               <Link
-                href={`/generate?create=renewal&from=${renewal.contractId}`}
+                href={`/drafting/copilot?mode=renewal&contractId=${renewal.contractId}`}
                 onClick={(e) => e.stopPropagation()}
                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 title="Draft renewal with AI Copilot"
@@ -641,7 +641,7 @@ export const RenewalManager: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl font-semibold text-slate-900 flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-violet-400 to-violet-600 text-white shadow-lg shadow-green-500/30">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-violet-400 to-violet-600 text-white shadow-lg shadow-violet-500/30">
                 <RefreshCw className="w-5 h-5" />
               </div>
               Renewal Manager
@@ -668,7 +668,7 @@ export const RenewalManager: React.FC = () => {
             </button>
             <button 
               onClick={handleInitiateRenewal}
-              className="px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white rounded-xl hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all duration-200 font-medium flex items-center gap-2"
+              className="px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white rounded-xl hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 transition-all duration-200 font-medium flex items-center gap-2"
             >
               <Play className="w-4 h-4" />
               Initiate Renewal
@@ -700,7 +700,7 @@ export const RenewalManager: React.FC = () => {
           </div>
           <div className="group p-3 bg-gradient-to-br from-violet-50 to-violet-100/70 rounded-xl text-center border border-green-200/50 shadow-md hover:shadow-lg hover:shadow-green-200/50 transition-all duration-300">
             <div className="text-xl font-bold text-green-600">${(stats.potentialSavings / 1000).toFixed(0)}K</div>
-            <div className="text-xs text-green-600 font-medium">Potential Savings</div>
+            <div className="text-xs text-green-600 font-medium">Savings Identified</div>
           </div>
         </div>
       </div>
@@ -725,7 +725,7 @@ export const RenewalManager: React.FC = () => {
                 onClick={() => setFilter(f)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 capitalize ${
                   filter === f
-                    ? 'bg-gradient-to-r from-violet-500 to-violet-600 text-white shadow-md shadow-green-500/30'
+                    ? 'bg-gradient-to-r from-violet-500 to-violet-600 text-white shadow-md shadow-violet-500/30'
                     : 'text-slate-600 hover:bg-white hover:shadow-sm'
                 }`}
               >

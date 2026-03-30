@@ -16,6 +16,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     // Get all rate card entries with recent updates
     const recentRateCardEntries = await db.rateCardEntry.findMany({
       where: {
+        tenantId: ctx.tenantId,
         updatedAt: {
           gte: oneDayAgo,
         },
@@ -35,6 +36,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
 
     // Calculate summary statistics
     const allRateCardEntries = await db.rateCardEntry.findMany({
+      where: { tenantId: ctx.tenantId },
       select: {
         id: true,
         dailyRate: true,
@@ -44,51 +46,30 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     });
 
     const totalRates = allRateCardEntries.length;
-    const increasedToday = recentRateCardEntries.filter((_rc) => {
-      // This would need historical data tracking
-      // For now, approximate based on market trends
-      return Math.random() > 0.6;
-    }).length;
-    const decreasedToday = recentRateCardEntries.length - increasedToday;
+    const increasedToday = 0; // Requires rate change history tracking
+    const decreasedToday = 0; // Requires rate change history tracking
 
-    // Calculate average change (approximation)
-    const avgChangePercent = recentRateCardEntries.length > 0 ? 3.2 : 0;
+    // Average change requires historical rate tracking
+    const avgChangePercent = 0;
 
-    // Transform rate card entries into change events
+    // Transform rate card entries into recent updates (without fake old rates)
     const recentChanges = recentRateCardEntries.map((rc) => {
-      // Simulate old rate (in production, this would come from audit log)
-      const changePercent = (Math.random() * 20) - 10; // -10% to +10%
       const dailyRateNum = Number(rc.dailyRate);
-      const oldRate = dailyRateNum / (1 + changePercent / 100);
 
       return {
         id: rc.id,
         supplierName: rc.supplier?.name || rc.supplierName || 'Unknown Supplier',
         roleName: rc.roleStandardized || rc.roleOriginal,
-        oldRate: Math.round(oldRate * 100) / 100,
-        newRate: dailyRateNum,
+        currentRate: dailyRateNum,
         currency: rc.currency,
-        changePercent: Math.round(changePercent * 100) / 100,
+        changePercent: null, // Requires historical rate tracking
         timestamp: rc.updatedAt.toISOString(),
         seniority: rc.seniority,
       };
     });
 
-    // Get active alerts (simplified - would integrate with alert system)
-    const alerts = [
-      {
-        id: '1',
-        message: 'Senior Developer rates increased by 8% across 5 suppliers',
-        severity: 'high' as const,
-        timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: '2',
-        message: 'Offshore rates showing unusual volatility',
-        severity: 'medium' as const,
-        timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-      },
-    ];
+    // Alerts require an actual alert/threshold system
+    const alerts: { id: string; message: string; severity: 'high' | 'medium' | 'low'; timestamp: string }[] = [];
 
     return createSuccessResponse(ctx, {
       success: true,

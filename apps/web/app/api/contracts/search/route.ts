@@ -109,6 +109,7 @@ async function performRealSearch(
   filters?: SearchFilters,
   pagination?: { limit?: number; offset?: number }
 ): Promise<HybridSearchResponse> {
+  const startTime = Date.now();
   const limit = pagination?.limit ?? 20;
   const offset = pagination?.offset ?? 0;
   const page = Math.floor(offset / limit) + 1;
@@ -226,7 +227,7 @@ async function performRealSearch(
     results: results as HybridSearchResult[],
     total: totalCount,
     query,
-    executionTime: Math.round(80 + Math.random() * 120),
+    executionTime: Date.now() - startTime,
     searchStrategy: {
       mode,
       keywordResults: totalCount,

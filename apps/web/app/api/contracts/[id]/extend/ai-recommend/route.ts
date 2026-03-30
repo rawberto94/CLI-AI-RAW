@@ -10,7 +10,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { openai } from '@ai-sdk/openai';
+import { getAIModel } from '@/lib/ai/ai-sdk-provider';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
@@ -92,7 +92,7 @@ export async function POST(
       : null;
 
     const { object: recommendation } = await generateObject({
-      model: openai('gpt-4o-mini') as any,
+      model: getAIModel(),
       schema: RecommendationSchema,
       prompt: `You are an expert contract manager. Recommend whether to extend, renew, or renegotiate this contract.
 

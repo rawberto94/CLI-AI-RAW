@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Template Export API
  * 
@@ -97,7 +98,7 @@ export async function GET(
       userId: ctx.userId,
       tenantId: ctx.tenantId,
       metadata: { operation: 'export', format },
-    }).catch(err => console.error('[Template] Audit log failed:', err));
+    }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
 
     if (format === 'pdf') {
       const pdfBuffer = await generatePDFDocument(templateData);

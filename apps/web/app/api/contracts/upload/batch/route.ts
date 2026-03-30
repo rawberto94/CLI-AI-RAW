@@ -102,9 +102,11 @@ async function storeFile(
   const timestamp = Date.now();
   const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
 
-  if (storage && typeof storage.uploadFile === 'function') {
+  if (storage && typeof storage.upload === 'function') {
     const key = `contracts/${tenantId}/${timestamp}-${safeName}`;
-    await storage.uploadFile(key, buffer, {
+    await storage.upload({
+      fileName: key,
+      buffer,
       contentType: 'application/octet-stream',
     });
     return { storagePath: key, storageProvider: 's3' };
@@ -350,7 +352,7 @@ export const POST = withAuthApiHandler(async (
               contractId: contract.id,
               tenantId,
               fileName,
-              status: contract.status,
+              status: contract.status?.toLowerCase(),
               batchUpload: true,
             },
             status: 'PENDING',

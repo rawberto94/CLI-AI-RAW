@@ -326,17 +326,15 @@ function exportToCSV(rateCards: RateCardExportEntry[], filterMetadata: FilterMet
 }
 
 /**
- * Export to Excel format (simplified - returns CSV with .xlsx extension)
- * For full Excel support, would need a library like exceljs
+ * Export to Excel format (returns CSV — install exceljs for native xlsx)
  */
 function exportToExcel(rateCards: RateCardExportEntry[], filterMetadata: FilterMetadata | null = null): NextResponse {
-  // For now, return CSV with Excel-friendly formatting
   const csvResponse = exportToCSV(rateCards, filterMetadata);
   
   return new NextResponse(csvResponse.body, {
     headers: {
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="rate-cards-${new Date().toISOString().split('T')[0]}.xlsx"`,
+      'Content-Type': 'text/csv',
+      'Content-Disposition': `attachment; filename="rate-cards-${new Date().toISOString().split('T')[0]}.csv"`,
     },
   });
 }
@@ -369,8 +367,8 @@ ${index + 1}. ${rc.roleStandardized} - ${rc.supplierName}
 
   return new NextResponse(content, {
     headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="rate-cards-${new Date().toISOString().split('T')[0]}.pdf"`,
+      'Content-Type': 'text/plain',
+      'Content-Disposition': `attachment; filename="rate-cards-${new Date().toISOString().split('T')[0]}.txt"`,
     },
   });
 }

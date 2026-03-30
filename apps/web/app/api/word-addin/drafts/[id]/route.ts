@@ -18,7 +18,7 @@ const updateDraftSchema = z.object({
   title: z.string().min(1).max(300).optional(),
   content: z.string().max(500000).optional(),
   variables: z.record(z.string()).optional(),
-  status: z.enum(['draft', 'review', 'completed', 'approved']).optional(),
+  status: z.enum(['DRAFT', 'IN_REVIEW', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'FINALIZED']).optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };

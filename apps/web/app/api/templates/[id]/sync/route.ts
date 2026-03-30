@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Template Cloud Sync API
  * 
@@ -144,7 +145,7 @@ export async function POST(
       userId: ctx.userId,
       tenantId: ctx.tenantId,
       metadata: { operation: 'sync', provider },
-    }).catch(err => console.error('[Template] Audit log failed:', err));
+    }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
 
     return createSuccessResponse(ctx, {
       success: true,

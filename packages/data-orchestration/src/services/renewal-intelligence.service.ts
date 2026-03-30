@@ -248,8 +248,8 @@ class RenewalIntelligenceService {
     const radarItems: RenewalRadarItem[] = [];
 
     for (const contract of contracts) {
-      const renewalArtifact = (contract as any).contractArtifacts?.[0];
-      const renewalData = renewalArtifact?.value as any;
+      const renewalArtifact = contract.artifacts?.[0];
+      const renewalData = renewalArtifact?.data as any;
       const expiration = contract.expirationDate;
 
       // Determine renewal date
@@ -366,7 +366,7 @@ class RenewalIntelligenceService {
       });
 
       const renewals: RenewalCalendarItem[] = monthContracts.map(c => {
-        const renewalArtifact = (c as any).contractArtifacts?.[0];
+        const renewalArtifact = c.artifacts?.[0];
         const renewalData = renewalArtifact?.data as any;
         const daysUntilRenewal = c.endDate
           ? Math.ceil((c.endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
@@ -504,12 +504,25 @@ class RenewalIntelligenceService {
       return r.daysUntilRenewal < 30 && r.riskLevel === 'critical';
     }).length;
 
+    // Calculate renewal success rate from historical records
+    const renewalHistoryCount = await prisma.renewalHistory.count({
+      where: { tenantId },
+    });
+    const completedRenewals = await prisma.renewalHistory.count({
+      where: { tenantId, status: 'COMPLETED' },
+    });
+    const renewalSuccessRate = renewalHistoryCount > 0
+      ? Math.round((completedRenewals / renewalHistoryCount) * 100)
+      : 0; // No history yet
+
     return {
       totalContractsUpForRenewal: upcomingRenewals.length,
       totalValueAtRisk,
       averageRenewalLeadTime: Math.round(avgLeadTime),
-      renewalSuccessRate: 85, // Would be calculated from historical data
-      autoRenewalRate: upcomingRenewals.filter(r => r.autoRenewal).length / upcomingRenewals.length * 100,
+      renewalSuccessRate,
+      autoRenewalRate: upcomingRenewals.length > 0
+        ? upcomingRenewals.filter(r => r.autoRenewal).length / upcomingRenewals.length * 100
+        : 0,
       negotiatedSavings: 0, // Would come from actual tracking
       expiringWithoutRenewalPlan: expiringWithoutPlan,
       byCategory,
@@ -716,7 +729,7 @@ class RenewalIntelligenceService {
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
       include: {
-        contractArtifacts: {
+        artifacts: {
           where: { type: 'RENEWAL' },
           take: 1,
         },
@@ -745,7 +758,7 @@ class RenewalIntelligenceService {
     }
 
     // Factor 2: Renewal history
-    const renewalData = contract.contractArtifacts?.[0]?.value as any;
+    const renewalData = contract.artifacts?.[0]?.data as any;
     if (renewalData?.renewalCount > 0) {
       renewalProbability += 10;
       factors.push({

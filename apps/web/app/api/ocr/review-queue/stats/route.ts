@@ -2,40 +2,53 @@
  * Review Queue Statistics API
  * 
  * Get aggregated stats for the review queue
- * Note: Stubbed until OcrReviewItem model is migrated to database
  */
 
 import { NextRequest } from 'next/server';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse } from '@/lib/api-middleware';
+
 /**
  * GET /api/ocr/review-queue/stats
  * Get queue statistics
  */
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  // Stubbed statistics - in production, aggregate from Prisma
-  return createSuccessResponse(ctx, {
-    summary: {
-      total: 0,
-      pending: 0,
-      inProgress: 0,
-      completed: 0,
-      escalated: 0,
-      completionRate: 0,
-    },
-    byPriority: {
-      critical: 0,
-      high: 0,
-      medium: 0,
-      low: 0,
-    },
-    byType: {
-      ocr_quality: 0,
-      handwriting: 0,
-      mixed_language: 0,
-      legal_entity: 0,
-      sensitive_content: 0,
-    },
-    recentActivity: [],
-    message: 'Note: Using stubbed data until database migration is run. Run `prisma migrate dev` to enable full functionality.',
+  const { prisma } = await import('@/lib/prisma');
+  const where = { tenantId: ctx.tenantId };
+
+  const all = await prisma.ocrReviewItem.findMany({
+    where,
+    select: { status: true, priority: true, type: true, updatedAt: true },
   });
+
+  const summary = {
+    total: all.length,
+    pending: all.filter(i => i.status === 'pending').length,
+    inProgress: all.filter(i => i.status === 'in_progress').length,
+    completed: all.filter(i => i.status === 'completed').length,
+    escalated: all.filter(i => i.status === 'escalated').length,
+    completionRate: all.length > 0
+      ? Math.round((all.filter(i => i.status === 'completed').length / all.length) * 100)
+      : 0,
+  };
+
+  const byPriority = {
+    critical: all.filter(i => i.priority === 'critical').length,
+    high: all.filter(i => i.priority === 'high').length,
+    medium: all.filter(i => i.priority === 'medium').length,
+    low: all.filter(i => i.priority === 'low').length,
+  };
+
+  const byType = {
+    ocr_quality: all.filter(i => i.type === 'ocr_quality').length,
+    handwriting: all.filter(i => i.type === 'handwriting').length,
+    mixed_language: all.filter(i => i.type === 'mixed_language').length,
+    legal_entity: all.filter(i => i.type === 'legal_entity').length,
+    sensitive_content: all.filter(i => i.type === 'sensitive_content').length,
+  };
+
+  const recentActivity = all
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+    .slice(0, 10);
+
+  return createSuccessResponse(ctx, { summary, byPriority, byType, recentActivity });
 });

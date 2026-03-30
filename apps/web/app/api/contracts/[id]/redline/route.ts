@@ -62,7 +62,7 @@ export async function GET(
     return createSuccessResponse(authCtx, {
       contractId: contract.id,
       contractTitle: contract.contractTitle,
-      status: contract.status,
+      status: contract.status.toLowerCase(),
       content: redline?.content ?? fallbackContent,
       changes: redline?.changes ?? [],
       comments: redline?.comments ?? [],

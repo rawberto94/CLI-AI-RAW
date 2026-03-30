@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Draft Comments API
  * 
@@ -146,7 +147,7 @@ export async function POST(
       userId: ctx.userId,
       tenantId,
       metadata: { operation: 'create', draftId },
-    }).catch(err => console.error('[Draft] Audit log failed:', err));
+    }).catch(err => logger.error({ err }, '[Draft] Audit log failed'));
 
     return createSuccessResponse(ctx, { comment });
   } catch (error) {

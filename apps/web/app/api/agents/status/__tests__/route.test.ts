@@ -138,7 +138,7 @@ describe('GET /api/agents/status', () => {
     const json = await res.json();
 
     expect(json.data.overview).toBeDefined();
-    expect(json.data.overview.totalAgents).toBe(15);
+    expect(json.data.overview.totalAgents).toBe(21);
     expect(json.data.clusters).toBeInstanceOf(Array);
     expect(json.data.clusters).toHaveLength(5);
     expect(json.data.metrics).toBeDefined();

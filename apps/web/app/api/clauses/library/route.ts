@@ -170,37 +170,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       source: 'database',
       total: clauses.length,
     });
-  } catch {
-    // Fallback to default clauses
-    let filteredClauses = defaultLibraryClauses.map((c, i) => ({
-      ...c,
-      id: `lib${i + 1}`,
-      tenantId,
-      usageCount: Math.floor(Math.random() * 100),
-      createdBy: 'system',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }));
-
-    if (category) {
-      filteredClauses = filteredClauses.filter(c => c.category === category);
-    }
-    if (riskLevel) {
-      filteredClauses = filteredClauses.filter(c => c.riskLevel === riskLevel);
-    }
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filteredClauses = filteredClauses.filter(c => 
-        c.title.toLowerCase().includes(searchLower) ||
-        c.content.toLowerCase().includes(searchLower)
-      );
-    }
-
-    return createSuccessResponse(ctx, { 
-      clauses: filteredClauses,
-      source: 'default',
-      total: filteredClauses.length,
-    });
+  } catch (dbError) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to query clause library', 500);
   }
 });
 
@@ -262,30 +233,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       },
       source: 'database',
     });
-  } catch {
-    // Return mock response for development
-    const newClause = {
-      id: `lib-${Date.now()}`,
-      tenantId,
-      name,
-      title,
-      category,
-      content,
-      riskLevel,
-      isStandard,
-      isMandatory,
-      isNegotiable,
-      tags,
-      usageCount: 0,
-      createdBy: 'user',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    return createSuccessResponse(ctx, { 
-      clause: newClause,
-      source: 'memory',
-      warning: 'Database unavailable, clause not persisted',
-    });
+  } catch (dbError) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to save clause to library', 500);
   }
 });

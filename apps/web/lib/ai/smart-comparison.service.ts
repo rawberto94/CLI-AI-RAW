@@ -12,7 +12,7 @@
  * then uses LLM to analyze practical differences.
  */
 
-import { openai } from '@ai-sdk/openai';
+import { getAIModel } from '@/lib/ai/ai-sdk-provider';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
@@ -209,7 +209,7 @@ export async function generateSmartComparison(params: {
   const text2 = contract2.rawText.slice(0, maxChars);
 
   const { object: report } = await generateObject({
-    model: openai('gpt-4o-mini') as any,
+    model: getAIModel(),
     schema: ComparisonReportSchema,
     system: COMPARISON_SYSTEM_PROMPT,
     prompt: `Compare these two contracts:

@@ -174,7 +174,7 @@ export async function GET(
       success: true,
       contract: {
         id: contract.id,
-        status: contract.status,
+        status: contract.status.toLowerCase(),
         documentRole: contract.documentRole,
         lifecycle,
         requiresApproval,

@@ -14,7 +14,7 @@
  * results for dashboard visualization and model improvement.
  */
 
-import { openai } from '@ai-sdk/openai';
+import { getAIModel } from '@/lib/ai/ai-sdk-provider';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
@@ -69,7 +69,7 @@ export async function evaluateRAGResponse(params: {
     .join('\n\n');
 
   const { object: evalResult } = await generateObject({
-    model: openai('gpt-4o-mini') as any,
+    model: getAIModel(),
     schema: EvalResultSchema,
     system: `You are a RAG system quality evaluator. Assess retrieval and answer quality objectively.
 

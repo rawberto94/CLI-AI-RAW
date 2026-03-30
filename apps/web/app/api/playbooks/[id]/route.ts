@@ -77,11 +77,17 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
+    const { id } = await params;
+    const { prisma } = await import('@/lib/prisma');
 
-    const { id: _id } = await params;
+    const existing = await prisma.playbook.findFirst({
+      where: { id, tenantId: ctx.tenantId },
+    });
+    if (!existing) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Playbook not found', 404);
+    }
 
-    // In a full implementation, delete from database
-    // For now, return success
+    await prisma.playbook.delete({ where: { id } });
 
     return createSuccessResponse(ctx, {
       success: true,

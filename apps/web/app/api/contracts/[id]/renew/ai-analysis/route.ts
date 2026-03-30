@@ -12,7 +12,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { openai } from '@ai-sdk/openai';
+import { getAIModel } from '@/lib/ai/ai-sdk-provider';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
@@ -169,7 +169,7 @@ Notice period: ${contract.noticePeriodDays ?? 'N/A'} days
 
     // Generate AI analysis
     const { object: analysis } = await generateObject({
-      model: openai('gpt-4o-mini') as any,
+      model: getAIModel(),
       schema: RenewalAnalysisSchema,
       prompt: `You are an expert contract analyst specializing in enterprise procurement and contract renewals.
 

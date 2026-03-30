@@ -364,7 +364,7 @@ export async function GET(
       mimeType: contract.mimeType || "application/pdf",
       processing: {
         jobId: contract.id,
-        status: contract.status || "PROCESSING",
+        status: (contract.status || 'PROCESSING').toLowerCase(),
         currentStage: deriveStage(),
         progress: deriveProgress(),
         startTime:

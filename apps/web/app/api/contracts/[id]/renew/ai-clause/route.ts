@@ -8,7 +8,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { openai } from '@ai-sdk/openai';
+import { getAIModel } from '@/lib/ai/ai-sdk-provider';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
@@ -76,7 +76,7 @@ export async function POST(
     };
 
     const { object: result } = await generateObject({
-      model: openai('gpt-4o-mini') as any,
+      model: getAIModel(),
       schema: GeneratedClauseSchema,
       prompt: `You are an expert contract attorney specializing in enterprise procurement.
 

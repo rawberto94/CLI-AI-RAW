@@ -1119,6 +1119,20 @@ function validateArtifactData(type: ArtifactType, data: Record<string, unknown>)
       issues.push(`Invalid complianceStatus: ${data.complianceStatus}`);
     }
   }
+  if (type === 'FINANCIAL' && data.amounts && Array.isArray(data.amounts)) {
+    for (const amt of data.amounts) {
+      if (amt && typeof amt === 'object' && amt.value !== undefined && typeof amt.value !== 'number') {
+        issues.push(`Financial amount value must be a number, got ${typeof amt.value}`);
+      }
+    }
+  }
+  if (type === 'TIMELINE' && data.keyDates && Array.isArray(data.keyDates)) {
+    for (const d of data.keyDates) {
+      if (d && typeof d === 'object' && d.date && isNaN(Date.parse(String(d.date)))) {
+        issues.push(`Invalid date format in keyDates: ${d.date}`);
+      }
+    }
+  }
 
   return issues;
 }
@@ -1285,8 +1299,8 @@ export async function generateRealArtifacts(
             endpoint,
             region: process.env.S3_REGION || process.env.AWS_REGION || 'us-east-1',
             credentials: {
-              accessKeyId: accessKeyId || (isProduction ? '' : (process.env.MINIO_ACCESS_KEY || 'minioadmin')),
-              secretAccessKey: secretAccessKey || (isProduction ? '' : (process.env.MINIO_SECRET_KEY || 'minioadmin')),
+              accessKeyId: accessKeyId || process.env.MINIO_ACCESS_KEY || '',
+              secretAccessKey: secretAccessKey || process.env.MINIO_SECRET_KEY || '',
             },
             forcePathStyle: true, // Required for MinIO
           });

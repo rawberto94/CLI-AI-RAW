@@ -257,6 +257,70 @@ export async function checkRenewalsJob(
     // Sort alerts by days remaining (most urgent first)
     alerts.sort((a, b) => a.daysRemaining - b.daysRemaining);
 
+    // Persist alerts to ExpirationAlert table (batch to avoid N+1)
+    if (alerts.length > 0) {
+      try {
+        const severityMap: Record<string, string> = {
+          critical: 'CRITICAL',
+          warning: 'HIGH',
+          info: 'MEDIUM',
+        };
+
+        // Compute the per-alert type keys up-front
+        const alertsWithKeys = alerts.map(alert => ({
+          alert,
+          daysKey: alert.daysRemaining <= 14 ? 'EXPIRATION_14_DAYS'
+            : alert.daysRemaining <= 30 ? 'EXPIRATION_30_DAYS'
+            : alert.daysRemaining <= 60 ? 'EXPIRATION_60_DAYS'
+            : 'EXPIRATION_90_DAYS',
+        }));
+
+        // Batch-fetch all existing un-acknowledged alerts for the affected contracts in one query
+        const contractIds = [...new Set(alerts.map(a => a.contractId))];
+        const existingAlerts = await prisma.expirationAlert.findMany({
+          where: {
+            contractId: { in: contractIds },
+            tenantId: { in: [tenantId] },
+            acknowledgedAt: null,
+          },
+          select: { contractId: true, alertType: true },
+        });
+        const existingSet = new Set(existingAlerts.map(e => `${e.contractId}:${e.alertType}`));
+
+        // Create only new (non-duplicate) alerts
+        const toCreate = alertsWithKeys.filter(
+          ({ alert, daysKey }) => !existingSet.has(`${alert.contractId}:${daysKey}`)
+        );
+
+        if (toCreate.length > 0) {
+          await prisma.expirationAlert.createMany({
+            data: toCreate.map(({ alert, daysKey }) => ({
+              contractId: alert.contractId,
+              tenantId: alert.tenantId,
+              alertType: daysKey,
+              severity: severityMap[alert.alertType] || 'MEDIUM',
+              title: `Renewal Alert: ${alert.contractName}`,
+              message: alert.message,
+              status: 'PENDING',
+              scheduledFor: new Date(alert.dueDate),
+              daysBeforeExpiry: alert.daysRemaining,
+              metadata: {
+                autoRenewal: alert.autoRenewal,
+                sourceClause: alert.sourceClause,
+                source,
+              },
+            })),
+            skipDuplicates: true,
+          });
+        }
+
+        logger.info({ totalAlerts: alerts.length, newAlerts: toCreate.length }, 'Alerts persisted to ExpirationAlert table');
+      } catch (persistError) {
+        logger.error({ error: persistError }, 'Failed to persist alerts to database');
+        errors.push('Alert persistence failed');
+      }
+    }
+
     await job.updateProgress(100);
 
     const processingTimeMs = Date.now() - startTime;

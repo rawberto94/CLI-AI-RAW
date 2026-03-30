@@ -127,7 +127,31 @@ export type ConnectorCredentials =
   | GoogleDriveCredentials
   | DropboxCredentials
   | BoxCredentials
+  | SalesforceCredentials
+  | SlackCredentials
   | CustomAPICredentials;
+
+export interface SalesforceCredentials {
+  type: 'salesforce';
+  accessToken?: string;
+  refreshToken?: string;
+  instanceUrl?: string;
+  tokenExpiresAt?: string | Date;
+  clientId?: string;
+  clientSecret?: string;
+}
+
+export interface SlackCredentials {
+  type: 'slack';
+  botToken?: string;
+  refreshToken?: string;
+  teamId?: string;
+  teamName?: string;
+  tokenExpiresAt?: string | Date;
+  clientId?: string;
+  clientSecret?: string;
+  defaultChannelId?: string;
+}
 
 export interface SharePointCredentials {
   type: 'sharepoint' | 'onedrive';

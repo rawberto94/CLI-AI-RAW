@@ -19,6 +19,7 @@ import {
   ArrowRight,
   BarChart3,
   FileText,
+  Grid3X3,
 } from 'lucide-react'
 import { useRealTimeEvents } from '@/contexts/RealTimeContext'
 
@@ -72,6 +73,7 @@ export default function ImprovedAnalyticsPage() {
       'Negotiation': TrendingUp,
       'Procurement': Briefcase,
       'Documents': FileText,
+      'Portfolio': Grid3X3,
     };
     return icons[title] || FileBarChart;
   };
@@ -125,6 +127,13 @@ export default function ImprovedAnalyticsPage() {
       href: '/analytics/procurement',
       gradient: 'from-violet-500 to-purple-500',
       shadowColor: 'shadow-violet-500/20'
+    },
+    {
+      title: 'Portfolio',
+      description: 'Portfolio risk heatmap & exposure',
+      href: '/analytics/portfolio',
+      gradient: 'from-teal-500 to-emerald-500',
+      shadowColor: 'shadow-teal-500/20'
     }
   ]
 

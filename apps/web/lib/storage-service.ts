@@ -349,8 +349,8 @@ export function initializeStorage(): StorageService | null {
       endPoint: process.env.S3_ENDPOINT || process.env.MINIO_ENDPOINT || 'localhost',
       port: parseInt(process.env.S3_PORT || process.env.MINIO_PORT || '9000'),
       useSSL: (process.env.S3_USE_SSL || process.env.MINIO_USE_SSL) === 'true',
-      accessKey: accessKey || (isProduction ? '' : 'minioadmin'),
-      secretKey: secretKey || (isProduction ? '' : 'minioadmin'),
+      accessKey: accessKey || process.env.MINIO_ACCESS_KEY || '',
+      secretKey: secretKey || process.env.MINIO_SECRET_KEY || '',
       region: process.env.S3_REGION || 'us-east-1',
       bucket: process.env.S3_BUCKET || process.env.MINIO_BUCKET || 'contracts',
     };

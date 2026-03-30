@@ -13,6 +13,8 @@ import {
   S3Credentials,
   SFTPCredentials,
   GoogleDriveCredentials,
+  SalesforceCredentials,
+  SlackCredentials,
 } from './types';
 import { SharePointConnector, OneDriveConnector } from './sharepoint.connector';
 import { AzureBlobConnector } from './azure-blob.connector';
@@ -21,6 +23,8 @@ import { SFTPConnector } from './sftp.connector';
 import { GoogleDriveConnector } from './google-drive.connector';
 import { DropboxConnector, DropboxCredentials } from './dropbox.connector';
 import { BoxConnector, BoxCredentials } from './box.connector';
+import { SalesforceConnector } from './salesforce.connector';
+import { SlackConnector } from './slack.connector';
 
 /**
  * Create a connector instance for the given provider
@@ -55,6 +59,12 @@ export function createConnector(
     case ContractSourceProvider.BOX:
       return new BoxConnector(credentials as BoxCredentials);
     
+    case ContractSourceProvider.SALESFORCE:
+      return new SalesforceConnector(credentials as SalesforceCredentials);
+    
+    case ContractSourceProvider.SLACK:
+      return new SlackConnector(credentials as SlackCredentials);
+    
     case ContractSourceProvider.CUSTOM_API:
       throw new Error(`Provider ${provider} is not yet implemented`);
     
@@ -83,6 +93,12 @@ export function getOAuthCallbackUrl(provider: ContractSourceProvider): string {
     case ContractSourceProvider.BOX:
       return `${baseUrl}/api/auth/callback/box`;
     
+    case ContractSourceProvider.SALESFORCE:
+      return `${baseUrl}/api/auth/callback/salesforce`;
+    
+    case ContractSourceProvider.SLACK:
+      return `${baseUrl}/api/auth/callback/slack`;
+    
     default:
       return '';
   }
@@ -98,6 +114,8 @@ export function requiresOAuth(provider: ContractSourceProvider): boolean {
     ContractSourceProvider.GOOGLE_DRIVE,
     ContractSourceProvider.DROPBOX,
     ContractSourceProvider.BOX,
+    ContractSourceProvider.SALESFORCE,
+    ContractSourceProvider.SLACK,
   ];
   return oauthProviders.includes(provider);
 }
@@ -124,6 +142,12 @@ export function getRequiredCredentialFields(
       return ['host', 'username'];
     
     case ContractSourceProvider.GOOGLE_DRIVE:
+      return ['clientId', 'clientSecret'];
+    
+    case ContractSourceProvider.SALESFORCE:
+      return ['clientId', 'clientSecret'];
+    
+    case ContractSourceProvider.SLACK:
       return ['clientId', 'clientSecret'];
     
     default:
@@ -163,6 +187,8 @@ export function getProviderDisplayName(provider: ContractSourceProvider): string
     [ContractSourceProvider.FTP]: 'FTP',
     [ContractSourceProvider.DROPBOX]: 'Dropbox',
     [ContractSourceProvider.BOX]: 'Box',
+    [ContractSourceProvider.SALESFORCE]: 'Salesforce',
+    [ContractSourceProvider.SLACK]: 'Slack',
     [ContractSourceProvider.CUSTOM_API]: 'Custom API',
   };
   
@@ -183,6 +209,8 @@ export function getProviderIcon(provider: ContractSourceProvider): string {
     [ContractSourceProvider.FTP]: 'server',
     [ContractSourceProvider.DROPBOX]: 'dropbox',
     [ContractSourceProvider.BOX]: 'box',
+    [ContractSourceProvider.SALESFORCE]: 'salesforce',
+    [ContractSourceProvider.SLACK]: 'slack',
     [ContractSourceProvider.CUSTOM_API]: 'code',
   };
   

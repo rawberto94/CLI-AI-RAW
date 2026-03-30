@@ -15,11 +15,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   const timeframe = searchParams.get('timeframe') || '12months';
   const metrics = searchParams.get('metrics')?.split(',');
   
-  // Check for data mode parameter
-  const dataMode = searchParams.get('mode') as 'real' | 'mock' | null;
-  const mode = dataMode === 'mock' ? DataMode.MOCK : 
-               dataMode === 'real' ? DataMode.REAL : 
-               DataMode.REAL;
+  // Always use real data
+  const mode = DataMode.REAL;
 
   // Use data provider system
   const factory = getDataProviderFactory();

@@ -16,7 +16,7 @@
  * The brief is stored as a JSON artifact on the contract and surfaced in the UI.
  */
 
-import { openai } from '@ai-sdk/openai';
+import { getAIModel } from '@/lib/ai/ai-sdk-provider';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
@@ -173,7 +173,7 @@ Generate the Intelligence Brief with all required fields. Be specific to THIS co
   }, 'Generating intelligence brief');
 
   const { object: brief } = await generateObject({
-    model: openai(modelId) as any,
+    model: getAIModel(),
     schema: IntelligenceBriefSchema,
     system: BRIEF_SYSTEM_PROMPT,
     prompt: userPrompt,

@@ -47,6 +47,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ArrowLeftRight,
+  Sparkles,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -148,6 +149,13 @@ export default function ContractsPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
+  // AI Search state
+  const [aiSearchResults, setAiSearchResults] = useState<Array<{ contractId: string; contractName: string; text: string; score: number; relevance: string; highlights?: string[] }> | null>(null);
+  const [isAISearching, setIsAISearching] = useState(false);
+
+  // Favorites state — fetched from /api/user/favorites on mount
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+
   // Track whether any contracts are processing (for auto-polling)
   const [hasProcessingContracts, setHasProcessingContracts] = useState(false);
   const processingStartTimeRef = useRef<number | null>(null);
@@ -212,7 +220,45 @@ export default function ContractsPage() {
   const handleRowDelete = useCallback((id: string, title: string) => handleDeleteClick(id, title), [handleDeleteClick]);
   const handleRowDownload = useCallback((id: string) => handleDownload(id), [handleDownload]);
   const handleRowApproval = useCallback((id: string, title: string) => handleRequestApproval(id, title), [handleRequestApproval]);
+
+  // AI semantic search handler
+  const handleAISearchClick = useCallback(async (query: string) => {
+    if (!query.trim()) return;
+    setIsAISearching(true);
+    setAiSearchResults(null);
+    try {
+      const res = await fetch('/api/search/semantic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, mode: 'hybrid', k: 10 }),
+      });
+      if (!res.ok) throw new Error('Search failed');
+      const data = await res.json();
+      const results = data.data?.results || data.results || [];
+      setAiSearchResults(results);
+      if (results.length === 0) {
+        toast.info('No AI search results found', { description: 'Try a different query or use keyword search.' });
+      } else {
+        toast.success(`Found ${results.length} AI result(s)`);
+      }
+    } catch {
+      toast.error('AI search failed', { description: 'Could not reach the semantic search service.' });
+    } finally {
+      setIsAISearching(false);
+    }
+  }, []);
   
+  // Fetch user's favorite contract IDs on mount
+  useEffect(() => {
+    fetch('/api/user/favorites')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        const favs = data?.data?.data?.favorites || data?.data?.favorites || [];
+        setFavoriteIds(new Set(favs.map((f: { id: string }) => f.id)));
+      })
+      .catch(() => { /* ignore — favorites are non-critical */ });
+  }, []);
+
   // Update polling state when contract data changes
   useEffect(() => {
     const anyProcessing = contractsData?.contracts?.some((c: Contract) => c.status === 'processing') ?? false;
@@ -471,7 +517,7 @@ export default function ContractsPage() {
             ...(contract.parties.client ? [{ name: contract.parties.client, role: 'client' as const }] : []),
             ...(contract.parties.supplier ? [{ name: contract.parties.supplier, role: 'vendor' as const }] : []),
           ] : [],
-      isFavorite: false,
+      isFavorite: favoriteIds.has(contract.id),
       isPinned: false,
       completeness: contract.status === 'completed' ? 100 : contract.status === 'processing' ? (contract.processing?.progress || 50) : 0,
       keyTerms: [],
@@ -485,7 +531,7 @@ export default function ContractsPage() {
       signatureStatus: contract.signatureStatus,
       signatureRequiredFlag: contract.signatureRequiredFlag,
     } satisfies EnhancedContract));
-  }, [paginatedContracts]);
+  }, [paginatedContracts, favoriteIds]);
 
   // Convert to ExtendedContract for preview panel
   const convertToExtendedContract = useCallback((contract: Contract): ExtendedContract => ({
@@ -725,8 +771,56 @@ export default function ContractsPage() {
             activeFilterCount={activeFilterCount}
             totalResults={contractsData?.total ?? 0}
             isLoading={isRefetching}
+            onAISearchClick={handleAISearchClick}
           />
         </div>
+
+        {/* AI Search Results */}
+        {(isAISearching || aiSearchResults) && (
+          <Card className="border-violet-200 bg-gradient-to-r from-violet-50/50 to-purple-50/50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-sm text-violet-700 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  AI Search Results
+                  {aiSearchResults && <Badge variant="secondary" className="text-[10px]">{aiSearchResults.length}</Badge>}
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-slate-400 hover:text-slate-600"
+                  onClick={() => { setAiSearchResults(null); setIsAISearching(false); }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              {isAISearching ? (
+                <div className="flex items-center gap-2 text-sm text-violet-600 py-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Searching with AI...
+                </div>
+              ) : aiSearchResults && aiSearchResults.length > 0 ? (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {aiSearchResults.map((result, i) => (
+                    <div
+                      key={`${result.contractId}-${i}`}
+                      className="p-3 bg-white rounded-lg border border-violet-100 hover:border-violet-300 cursor-pointer transition-colors"
+                      onClick={() => pushToContract(result.contractId)}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-sm text-slate-800 truncate">{result.contractName}</span>
+                        <Badge variant="outline" className="text-[10px] text-violet-600 border-violet-200">{result.relevance}</Badge>
+                      </div>
+                      <p className="text-xs text-slate-500 line-clamp-2">{result.text}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 py-2">No results found. Try rephrasing your query.</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Processing Contracts Live Tracker */}
         <ProcessingContractTracker 
@@ -1072,15 +1166,43 @@ export default function ContractsPage() {
                           handleShare(contract.id, contract.title || 'Contract');
                           break;
                         case 'favorite':
-                          fetch(`/api/contracts/${contract.id}/favorite`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                          })
-                            .then(res => {
-                              if (res.ok) toast.success('Favorite toggled');
-                              else toast.error('Failed to update favorite');
+                          {
+                            const newState = !favoriteIds.has(contract.id);
+                            // Optimistic toggle
+                            setFavoriteIds(prev => {
+                              const next = new Set(prev);
+                              if (newState) next.add(contract.id);
+                              else next.delete(contract.id);
+                              return next;
+                            });
+                            fetch(`/api/contracts/${contract.id}/favorite`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ favorite: newState }),
                             })
-                            .catch(() => toast.error('Failed to update favorite'));
+                              .then(res => {
+                                if (res.ok) toast.success(newState ? 'Added to favorites' : 'Removed from favorites');
+                                else {
+                                  // Revert on failure
+                                  setFavoriteIds(prev => {
+                                    const next = new Set(prev);
+                                    if (newState) next.delete(contract.id);
+                                    else next.add(contract.id);
+                                    return next;
+                                  });
+                                  toast.error('Failed to update favorite');
+                                }
+                              })
+                              .catch(() => {
+                                setFavoriteIds(prev => {
+                                  const next = new Set(prev);
+                                  if (newState) next.delete(contract.id);
+                                  else next.add(contract.id);
+                                  return next;
+                                });
+                                toast.error('Failed to update favorite');
+                              });
+                          }
                           break;
                       }
                     }}

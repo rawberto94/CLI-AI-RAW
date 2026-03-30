@@ -81,7 +81,7 @@ const defaultPreferences: UserPreferences = {
   timezone: 'UTC',
   dateFormat: 'MM/dd/yyyy',
   currency: 'USD',
-  dataMode: 'mock',
+  dataMode: 'live',
   dashboard: {
     layout: 'grid',
     widgets: [

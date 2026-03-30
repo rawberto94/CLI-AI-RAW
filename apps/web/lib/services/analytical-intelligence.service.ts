@@ -108,7 +108,7 @@ export class AnalyticalIntelligenceService {
         success: true,
       }),
       triggerRfxGeneration: async (renewalId: string) => ({
-        rfxId: '',
+        rfxId: `rfx-${renewalId}-${Date.now().toString(36)}`,
       }),
     };
   }

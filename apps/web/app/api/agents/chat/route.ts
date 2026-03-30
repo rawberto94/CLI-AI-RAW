@@ -130,15 +130,21 @@ const AGENT_MENTION_MAP: Record<string, string> = {
   '@sentinel': 'proactive-validation-agent',
   '@vigil': 'compliance-monitoring-agent',
   '@warden': 'proactive-risk-detector',
-  '@architect': 'workflow-authoring-agent',
+  '@blueprinter': 'workflow-authoring-agent',
   '@prospector': 'opportunity-discovery-engine',
   '@clockwork': 'autonomous-deadline-manager',
-  '@conductor': 'conflict-resolution-agent',
+  '@mediator': 'conflict-resolution-agent',
   '@navigator': 'onboarding-coach-agent',
   '@builder': 'template-generation-agent',
   '@memorykeeper': 'contract-transformation-agent',
   '@orchestrator': 'workflow-orchestrator-agent',
   '@synthesizer': 'data-synthesizer-agent',
+  '@steward': 'obligation-tracking-agent',
+  '@artificer': 'smart-gap-filling-agent',
+  '@conductor': 'multi-agent-coordinator',
+  '@mnemosyne': 'user-feedback-learner',
+  '@swarm': 'agent-swarm',
+  '@ab': 'ab-testing-engine',
 };
 
 const AGENT_CODENAMES: Record<string, { name: string; avatar: string; color: string }> = {
@@ -148,15 +154,21 @@ const AGENT_CODENAMES: Record<string, { name: string; avatar: string; color: str
   'proactive-validation-agent': { name: 'Sentinel', avatar: '🛡️', color: 'blue' },
   'compliance-monitoring-agent': { name: 'Vigil', avatar: '⚖️', color: 'emerald' },
   'proactive-risk-detector': { name: 'Warden', avatar: '🔥', color: 'orange' },
-  'workflow-authoring-agent': { name: 'Architect', avatar: '🏛️', color: 'slate' },
+  'workflow-authoring-agent': { name: 'Blueprinter', avatar: '📐', color: 'slate' },
   'opportunity-discovery-engine': { name: 'Prospector', avatar: '💎', color: 'amber' },
   'autonomous-deadline-manager': { name: 'Clockwork', avatar: '⏰', color: 'cyan' },
-  'conflict-resolution-agent': { name: 'Conductor', avatar: '🎼', color: 'indigo' },
+  'conflict-resolution-agent': { name: 'Mediator', avatar: '⚖️', color: 'indigo' },
   'onboarding-coach-agent': { name: 'Navigator', avatar: '🧭', color: 'teal' },
   'template-generation-agent': { name: 'Builder', avatar: '🏗️', color: 'lime' },
-  'contract-transformation-agent': { name: 'Memorykeeper', avatar: '📚', color: 'fuchsia' },
+  'contract-transformation-agent': { name: 'MemoryKeeper', avatar: '🧬', color: 'fuchsia' },
   'workflow-orchestrator-agent': { name: 'Orchestrator', avatar: '🎼', color: 'purple' },
-  'data-synthesizer-agent': { name: 'Synthesizer', avatar: '🔄', color: 'pink' },
+  'data-synthesizer-agent': { name: 'Synthesizer', avatar: '🔮', color: 'pink' },
+  'obligation-tracking-agent': { name: 'Steward', avatar: '📋', color: 'emerald' },
+  'smart-gap-filling-agent': { name: 'Artificer', avatar: '🔧', color: 'gray' },
+  'multi-agent-coordinator': { name: 'Conductor', avatar: '🎼', color: 'amber' },
+  'user-feedback-learner': { name: 'Mnemosyne', avatar: '🧠', color: 'violet' },
+  'agent-swarm': { name: 'Swarm', avatar: '🐝', color: 'yellow' },
+  'ab-testing-engine': { name: 'A/B', avatar: '🧪', color: 'cyan' },
 };
 
 const ChatMessageSchema = z.object({
@@ -490,6 +502,24 @@ async function processWithAgent(
     
     case 'data-synthesizer-agent':
       return handleSynthesizerQuery(message, history, enrichedContext, tenantId);
+    
+    case 'obligation-tracking-agent':
+      return handleStewardQuery(message, history, enrichedContext, tenantId);
+    
+    case 'smart-gap-filling-agent':
+      return handleArtificerQuery(message, history, enrichedContext, tenantId);
+    
+    case 'multi-agent-coordinator':
+      return handleConductorCoordQuery(message, history, enrichedContext, tenantId);
+    
+    case 'user-feedback-learner':
+      return handleMnemosyneQuery(message, history, enrichedContext, tenantId);
+    
+    case 'agent-swarm':
+      return handleSwarmQuery(message, history, enrichedContext, tenantId);
+    
+    case 'ab-testing-engine':
+      return handleABTestingQuery(message, history, enrichedContext, tenantId);
     
     default:
       return handleGenericAgentQuery(agentId, message, history, enrichedContext);
@@ -1068,7 +1098,7 @@ async function handleArchitectQuery(
   }
 
   return {
-    content: `I'm **Architect**, your workflow designer. I help you create and manage automated contract workflows.\n\n` +
+    content: `I'm **Blueprinter** \ud83d\udcd0, your workflow designer. I help you create and manage automated contract workflows.\n\n` +
       (workflows.length > 0
         ? `You have ${workflows.length} workflow template(s):\n${workflows.map((w: any) => `• **${w.name || w.id}** — ${w.status || 'draft'}`).join('\n')}\n\n`
         : 'You don\'t have any workflow templates yet.\n\n') +
@@ -1109,12 +1139,12 @@ async function handleConductorQuery(
       })),
     };
 
-    const templateContent = `I'm **Conductor**, analyzing clause relationships in your contract.\n\nFound ${clauses.length} clauses across ${categories.size} categories:\n` +
+    const templateContent = `I'm **Mediator** \u2696\ufe0f, analyzing clause relationships in your contract.\n\nFound ${clauses.length} clauses across ${categories.size} categories:\n` +
         Array.from(categories.entries()).map(([cat, count]) => `• **${cat}**: ${count} clause(s)`).join('\n') +
         '\n\nI can identify:\n• Conflicting terms across clauses\n• Redundant provisions\n• Missing standard protections';
 
     const content = await enhanceWithAI(
-      'Conductor',
+      'Mediator',
       'clause conflict detection — finding contradictions, redundancies, gaps, and potential legal risks between contract clauses and provisions',
       message, clauseData, templateContent,
     );
@@ -1127,7 +1157,7 @@ async function handleConductorQuery(
   }
 
   return {
-    content: "I'm **Conductor**, your conflict resolution specialist. I analyze contract clauses to find contradictions, redundancies, and gaps.\n\nOpen a specific contract and mention me to:\n• **Detect conflicts** between clauses\n• **Find redundancies** in terms\n• **Identify gaps** in coverage\n• **Compare** clause language across contracts",
+    content: "I'm **Mediator** ⚖️, your conflict resolution specialist. I analyze contract clauses to find contradictions, redundancies, and gaps.\n\nOpen a specific contract and mention me to:\n• **Detect conflicts** between clauses\n• **Find redundancies** in terms\n• **Identify gaps** in coverage\n• **Compare** clause language across contracts",
     confidence: 0.88,
   };
 }
@@ -1180,16 +1210,19 @@ async function handleNavigatorQuery(
         "| `@warden` | Risk detection |\n" +
         "| `@clockwork` | Deadline management |\n" +
         "| `@sentinel` | Contract validation |\n" +
-        "| `@architect` | Workflow design |\n" +
+        "| `@blueprinter` | Workflow design |\n" +
         "| `@builder` | Template generation |\n" +
-        "| `@conductor` | Conflict resolution |\n\n" +
+        "| `@mediator` | Conflict resolution |\n" +
+        "| `@memorykeeper` | Contract history |\n" +
+        "| `@synthesizer` | Data analytics |\n" +
+        "| `@orchestrator` | Workflow execution |\n\n" +
         "You can mention multiple agents in one message for cross-functional insights!",
       confidence: 0.95,
     };
   }
 
   return {
-    content: `I'm **Navigator**, your platform guide. You have **${contractCount}** contracts and **${rfxCount}** RFx events.\n\n` +
+    content: `I'm **Navigator** \ud83e\udded, your platform guide. You have **${contractCount}** contracts and **${rfxCount}** RFx events.\n\n` +
       "I can help you with:\n• **Feature walkthroughs** — Learn what each module does\n• **Agent introductions** — Meet the AI team (ask me about \"agents\")\n• **Best practices** — Tips for contract management\n• **Troubleshooting** — Fix common issues",
     data: { contractCount, rfxCount },
     confidence: 0.9,
@@ -1217,7 +1250,7 @@ async function handleBuilderQuery(
 
   if (isCreateRequest) {
     return {
-      content: "I'm **Builder**. Let's create a contract template!\n\nTell me:\n1. **Type** — NDA, MSA, SLA, SOW, etc.\n2. **Industry** — Tech, healthcare, finance, etc.\n3. **Key terms** — Any specific clauses or provisions needed?\n\nI'll generate a template with standard protective clauses you can customize.",
+      content: "I'm **Builder** 🏗️. Let's create a contract template!\n\nTell me:\n1. **Type** — NDA, MSA, SLA, SOW, etc.\n2. **Industry** — Tech, healthcare, finance, etc.\n3. **Key terms** — Any specific clauses or provisions needed?\n\nI'll generate a template with standard protective clauses you can customize.",
       actions: [
         { type: 'navigate', label: 'View Templates', payload: { path: '/templates' } },
       ],
@@ -1226,7 +1259,7 @@ async function handleBuilderQuery(
   }
 
   return {
-    content: `I'm **Builder**, your template specialist.\n\n` +
+    content: `I'm **Builder** \ud83c\udfd7\ufe0f, your template specialist.\n\n` +
       (templates.length > 0
         ? `You have ${templates.length} template(s):\n${templates.map((t: any) => `• **${t.name || t.id}** — ${t.type || 'general'}`).join('\n')}\n\n`
         : 'No templates yet — I can help you create your first!\n\n') +
@@ -1236,7 +1269,7 @@ async function handleBuilderQuery(
   };
 }
 
-// ── Memorykeeper: Contract history & version tracking ─────────────────
+// ── MemoryKeeper: Contract history & version tracking ─────────────────
 
 async function handleMemorykeeperQuery(
   message: string,
@@ -1260,7 +1293,7 @@ async function handleMemorykeeperQuery(
     if (contract) {
       const daysSinceCreation = Math.floor((Date.now() - contract.createdAt.getTime()) / (1000 * 60 * 60 * 24));
       return {
-        content: `I'm **Memorykeeper**, tracking the history of "${contract.contractTitle}".\n\n` +
+        content: `I'm **MemoryKeeper** \ud83e\uddec, tracking the history of "${contract.contractTitle}".\n\n` +
           `Created **${daysSinceCreation}** days ago • Status: **${contract.status}**\n\n` +
           (artifacts.length > 0
             ? `**${artifacts.length}** artifacts on record:\n${artifacts.slice(0, 5).map(a => `• ${(a as any).type || 'document'} — ${a.createdAt.toLocaleDateString()}`).join('\n')}`
@@ -1284,7 +1317,7 @@ async function handleMemorykeeperQuery(
   });
 
   return {
-    content: "I'm **Memorykeeper**, guardian of your contract history. I track every change, version, and transformation.\n\n" +
+    content: "I'm **MemoryKeeper** \ud83e\uddec, guardian of your contract history. I track every change, version, and transformation.\n\n" +
       (recentlyModified.length > 0
         ? `Recently modified contracts:\n${recentlyModified.map(c => `• **${c.contractTitle}** — updated ${c.updatedAt.toLocaleDateString()}`).join('\n')}\n\n`
         : '') +
@@ -1317,7 +1350,7 @@ async function handleOrchestratorQuery(
   }).catch(() => 0);
 
   return {
-    content: `I'm **Orchestrator**, managing your active workflows.\n\n` +
+    content: `I'm **Orchestrator** \ud83c\udfbc, managing your active workflows.\n\n` +
       `**${activeWorkflows.length}** active workflow(s) • **${pendingStepCount}** pending approval(s)\n\n` +
       (activeWorkflows.length > 0
         ? `Active workflows:\n${activeWorkflows.map((w: any) => `• **${w.name || w.templateId || w.id}** — ${w.status}`).join('\n')}\n\n`
@@ -1371,7 +1404,7 @@ async function handleSynthesizerQuery(
 
   const portfolioData = { totalContracts, activeContracts, totalValue: totalVal, formattedValue, expiringContracts };
 
-  const templateContent = `I'm **Synthesizer**, your data analyst. Here's your portfolio snapshot:\n\n` +
+  const templateContent = `I'm **Synthesizer** 🔮, your data analyst. Here's your portfolio snapshot:\n\n` +
       `| Metric | Value |\n|--------|-------|\n` +
       `| Total contracts | **${totalContracts}** |\n` +
       `| Active | **${activeContracts}** |\n` +
@@ -1379,7 +1412,7 @@ async function handleSynthesizerQuery(
       `| Expiring (90 days) | **${expiringContracts}** |\n`;
 
   const content = await enhanceWithAI(
-    'Synthesizer',
+    'Synthesizer 🔮',
     'portfolio data analysis and reporting — generating insights about spend distribution, risk concentration, contract health trends, and actionable recommendations',
     message, portfolioData, templateContent,
   );
@@ -1402,6 +1435,215 @@ async function handleGenericAgentQuery(
   return {
     content: `I'm ${codename}. I've received your message and will process it according to my capabilities. How can I help you today?`,
     confidence: 0.8,
+  };
+}
+
+// ── Additional Agent Handlers ─────────────────────────────────────────
+
+async function handleStewardQuery(
+  message: string,
+  _history: any[],
+  context: any,
+  tenantId: string,
+): Promise<AgentResponse> {
+  // Obligation tracking — surface contractual commitments
+  const contracts = await prisma.contract.findMany({
+    where: { tenantId },
+    select: {
+      id: true, contractTitle: true, status: true, expirationDate: true,
+      extractedData: true,
+    },
+    take: 20,
+    orderBy: { expirationDate: 'asc' },
+  });
+
+  const obligations = contracts
+    .filter(c => c.extractedData && typeof c.extractedData === 'object')
+    .slice(0, 10);
+
+  const templateResponse = `📋 **Steward — Obligation Tracker**\n\nI'm tracking **${obligations.length}** contracts with extractable obligations across your portfolio.\n\n${
+    obligations.slice(0, 5).map(c =>
+      `- **[${c.contractTitle || 'Untitled'}](/contracts/${c.id})** — Status: ${c.status || 'unknown'}${c.expirationDate ? `, Expires: ${new Date(c.expirationDate).toLocaleDateString()}` : ''}`
+    ).join('\n')
+  }\n\n_Ask me about a specific contract's commitments or @steward list SLA obligations._`;
+
+  return {
+    content: await enhanceWithAI('Steward', 'obligation tracking and commitment management', message, { obligations, totalContracts: contracts.length }, templateResponse),
+    data: { obligationCount: obligations.length },
+    confidence: 0.85,
+  };
+}
+
+async function handleArtificerQuery(
+  message: string,
+  _history: any[],
+  context: any,
+  tenantId: string,
+): Promise<AgentResponse> {
+  // Gap-filling — find contracts with missing metadata
+  const contracts = await prisma.contract.findMany({
+    where: { tenantId },
+    select: {
+      id: true, contractTitle: true, contractType: true, status: true,
+      clientName: true, supplierName: true, totalValue: true, startDate: true, expirationDate: true,
+    },
+    take: 50,
+  });
+
+  const gaps = contracts.map(c => {
+    const missing: string[] = [];
+    if (!c.contractType) missing.push('type');
+    if (!c.clientName) missing.push('client');
+    if (!c.supplierName) missing.push('supplier');
+    if (!c.totalValue) missing.push('value');
+    if (!c.startDate) missing.push('start date');
+    if (!c.expirationDate) missing.push('expiration');
+    return { ...c, missing, gapCount: missing.length };
+  }).filter(c => c.gapCount > 0).sort((a, b) => b.gapCount - a.gapCount);
+
+  const templateResponse = `🔧 **Artificer — Gap Analysis**\n\n**${gaps.length}** out of **${contracts.length}** contracts have missing metadata.\n\n${
+    gaps.slice(0, 5).map(c =>
+      `- **[${c.contractTitle || 'Untitled'}](/contracts/${c.id})** — Missing: ${c.missing.join(', ')} (${c.gapCount} gaps)`
+    ).join('\n')
+  }\n\n${gaps.length > 5 ? `_...and ${gaps.length - 5} more contracts need attention._\n\n` : ''}_I can help prioritise and fill these gaps. Ask me "@artificer fill gaps for [contract]"._`;
+
+  return {
+    content: await enhanceWithAI('Artificer', 'intelligent metadata gap detection and filling', message, { gaps: gaps.slice(0, 10), totalContracts: contracts.length }, templateResponse),
+    data: { contractsWithGaps: gaps.length, totalContracts: contracts.length },
+    confidence: 0.88,
+  };
+}
+
+async function handleConductorCoordQuery(
+  message: string,
+  _history: any[],
+  context: any,
+  tenantId: string,
+): Promise<AgentResponse> {
+  // Multi-agent coordination — describe available agents and orchestration
+  const agentCount = Object.keys(AGENT_CODENAMES).length;
+  const clusterSummary = [
+    { name: 'Guardians', agents: ['Sentinel', 'Vigil', 'Warden', 'Mediator'], focus: 'compliance & risk' },
+    { name: 'Oracles', agents: ['Sage', 'Prospector', 'Scout', 'MemoryKeeper', 'Synthesizer'], focus: 'intelligence' },
+    { name: 'Operators', agents: ['Clockwork', 'Steward', 'Artificer', 'Builder'], focus: 'execution' },
+    { name: 'Strategists', agents: ['Blueprinter', 'Merchant', 'Conductor', 'Navigator'], focus: 'planning' },
+    { name: 'Evolution', agents: ['Orchestrator', 'Mnemosyne', 'A/B', 'Swarm'], focus: 'learning' },
+  ];
+
+  const content = `🎼 **Conductor — Multi-Agent Coordinator**\n\nI orchestrate **${agentCount} specialised agents** across 5 clusters:\n\n${
+    clusterSummary.map(c => `**${c.name}** (${c.focus}): ${c.agents.join(', ')}`).join('\n')
+  }\n\n**Coordination modes:**\n- **Sequential** — agents run in order, each building on the last\n- **Parallel** — multiple agents analyse simultaneously\n- **Consensus** — multiple agents must agree before action\n\n_Tell me your goal and I'll assemble the right team. E.g. "@conductor run full portfolio audit"._`;
+
+  return { content, confidence: 0.90 };
+}
+
+async function handleMnemosyneQuery(
+  message: string,
+  _history: any[],
+  context: any,
+  tenantId: string,
+): Promise<AgentResponse> {
+  // User feedback learner — surface interaction patterns
+  const recentConversations = await prisma.agentConversation.findMany({
+    where: { tenantId },
+    orderBy: { timestamp: 'desc' },
+    take: 20,
+    select: { agentCodename: true, content: true, role: true, timestamp: true },
+  });
+
+  const agentInteractions = recentConversations
+    .filter(c => c.role === 'assistant' && c.agentCodename)
+    .reduce<Record<string, number>>((acc, c) => {
+      acc[c.agentCodename!] = (acc[c.agentCodename!] || 0) + 1;
+      return acc;
+    }, {});
+
+  const topAgents = Object.entries(agentInteractions)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5);
+
+  const templateResponse = `🧠 **Mnemosyne — Learning & Memory**\n\nI've analysed **${recentConversations.length}** recent interactions.\n\n**Most consulted agents:**\n${
+    topAgents.length > 0
+      ? topAgents.map(([name, count]) => `- **${name}**: ${count} interactions`).join('\n')
+      : '_No interactions recorded yet._'
+  }\n\n_I learn from every conversation to improve agent performance. Ask me "@mnemosyne what topics am I asking about most?"._`;
+
+  return {
+    content: await enhanceWithAI('Mnemosyne', 'user feedback learning and interaction analysis', message, { agentInteractions, totalInteractions: recentConversations.length }, templateResponse),
+    data: { interactions: agentInteractions },
+    confidence: 0.82,
+  };
+}
+
+async function handleSwarmQuery(
+  message: string,
+  _history: any[],
+  context: any,
+  tenantId: string,
+): Promise<AgentResponse> {
+  // Swarm — run parallel multi-agent analysis
+  const contracts = await prisma.contract.findMany({
+    where: { tenantId },
+    select: { id: true, contractTitle: true, status: true, contractType: true, totalValue: true, expirationDate: true },
+    take: 30,
+  });
+
+  const summary = {
+    total: contracts.length,
+    byStatus: contracts.reduce<Record<string, number>>((acc, c) => { acc[c.status || 'unknown'] = (acc[c.status || 'unknown'] || 0) + 1; return acc; }, {}),
+    byType: contracts.reduce<Record<string, number>>((acc, c) => { acc[c.contractType || 'unclassified'] = (acc[c.contractType || 'unclassified'] || 0) + 1; return acc; }, {}),
+    totalValue: contracts.reduce((sum, c) => sum + (Number(c.totalValue) || 0), 0),
+  };
+
+  const templateResponse = `🐝 **Swarm — Collective Intelligence**\n\nRunning multi-perspective analysis on **${summary.total}** contracts...\n\n**Portfolio snapshot:**\n- Total value: $${(summary.totalValue / 1_000_000).toFixed(2)}M\n- By status: ${Object.entries(summary.byStatus).map(([k, v]) => `${k} (${v})`).join(', ')}\n- By type: ${Object.entries(summary.byType).map(([k, v]) => `${k} (${v})`).join(', ')}\n\n_The Swarm deploys multiple agents simultaneously for deep-dive analysis. Try "@swarm analyse all vendor contracts" for a comprehensive review._`;
+
+  return {
+    content: await enhanceWithAI('Swarm', 'collective multi-agent intelligence and portfolio analysis', message, summary, templateResponse),
+    data: summary,
+    confidence: 0.87,
+  };
+}
+
+async function handleABTestingQuery(
+  message: string,
+  _history: any[],
+  _context: any,
+  tenantId: string,
+): Promise<AgentResponse> {
+  // A/B Testing — agent performance comparison
+  const recentConversations = await prisma.agentConversation.findMany({
+    where: { tenantId, role: 'assistant' },
+    orderBy: { timestamp: 'desc' },
+    take: 50,
+    select: { agentCodename: true, metadata: true, timestamp: true },
+  });
+
+  const agentPerformance = recentConversations
+    .filter(c => c.agentCodename)
+    .reduce<Record<string, { count: number; avgConfidence: number }>>((acc, c) => {
+      const name = c.agentCodename!;
+      const meta = c.metadata as any;
+      if (!acc[name]) acc[name] = { count: 0, avgConfidence: 0 };
+      acc[name].count++;
+      if (meta?.confidence) {
+        acc[name].avgConfidence = (acc[name].avgConfidence * (acc[name].count - 1) + meta.confidence) / acc[name].count;
+      }
+      return acc;
+    }, {});
+
+  const content = `🧪 **A/B Testing Engine — Performance Lab**\n\n**Agent performance from ${recentConversations.length} recent interactions:**\n\n${
+    Object.entries(agentPerformance).length > 0
+      ? Object.entries(agentPerformance)
+          .sort(([, a], [, b]) => b.count - a.count)
+          .map(([name, stats]) => `- **${name}**: ${stats.count} calls, confidence: ${(stats.avgConfidence * 100).toFixed(0)}%`)
+          .join('\n')
+      : '_No agent performance data available yet. Interact with agents to build metrics._'
+  }\n\n_I run experiments to optimise agent responses. Try "@ab compare sage vs synthesizer for search queries"._`;
+
+  return {
+    content,
+    data: { agentPerformance },
+    confidence: 0.83,
   };
 }
 

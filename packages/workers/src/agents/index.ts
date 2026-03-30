@@ -18,6 +18,13 @@ import { obligationTrackingAgent } from './obligation-tracking-agent';
 import { contractSummarizationAgent } from './contract-summarization-agent';
 import { RFxProcurementAgent } from './rfx-procurement-agent';
 import { rfxDetectionAgent } from './rfx-detection-agent';
+import { conflictResolutionAgent } from './conflict-resolution-agent';
+import { templateGenerationAgent } from './template-generation-agent';
+import { contractTransformationAgent } from './contract-transformation-agent';
+import { dataSynthesizerAgent } from './data-synthesizer-agent';
+import { workflowAuthoringAgent } from './workflow-authoring-agent';
+import { onboardingCoachAgent } from './onboarding-coach-agent';
+import { workflowOrchestratorAgent } from './workflow-orchestrator-agent';
 
 export class AgentRegistry {
   private agents: Map<string, BaseAgent>;
@@ -54,6 +61,15 @@ export class AgentRegistry {
     // Phase 5: RFx Procurement & Detection
     this.register(new RFxProcurementAgent());
     this.register(rfxDetectionAgent);
+
+    // Phase 6: Innovation & Synthesis
+    this.register(conflictResolutionAgent);
+    this.register(templateGenerationAgent);
+    this.register(contractTransformationAgent);
+    this.register(dataSynthesizerAgent);
+    this.register(workflowAuthoringAgent);
+    this.register(onboardingCoachAgent);
+    this.register(workflowOrchestratorAgent);
   }
 
   /**
@@ -121,6 +137,13 @@ export {
   contractSummarizationAgent,
   RFxProcurementAgent,
   rfxDetectionAgent,
+  conflictResolutionAgent,
+  templateGenerationAgent,
+  contractTransformationAgent,
+  dataSynthesizerAgent,
+  workflowAuthoringAgent,
+  onboardingCoachAgent,
+  workflowOrchestratorAgent,
 };
 
 // Export AgentSwarm separately (not a BaseAgent, manages multiple agents)

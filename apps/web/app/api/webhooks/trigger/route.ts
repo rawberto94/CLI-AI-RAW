@@ -36,8 +36,8 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     if (internalSecret !== expectedSecret) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
-  } else if (internalSecret !== (expectedSecret || 'dev-internal-secret')) {
-    // In development, allow fallback but still validate
+  } else if (!expectedSecret || internalSecret !== expectedSecret) {
+    // In development, INTERNAL_API_SECRET must still be set
     return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
   }
 

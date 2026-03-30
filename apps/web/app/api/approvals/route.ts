@@ -4,112 +4,6 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 import { workflowService } from 'data-orchestration/services';
 export const dynamic = 'force-dynamic';
 
-// Mock approval queue data (fallback)
-const _mockApprovals = [
-  {
-    id: 'appr1',
-    type: 'contract',
-    title: 'Master Agreement - Acme Corp',
-    description: 'Annual master services agreement renewal with updated terms',
-    requestedBy: {
-      id: 'user1',
-      name: 'Sarah Chen',
-      email: 'sarah.chen@company.com',
-      avatar: '/avatars/sarah.jpg',
-    },
-    requestedAt: '2024-03-10T09:30:00Z',
-    dueDate: '2024-03-15T17:00:00Z',
-    priority: 'high',
-    status: 'pending',
-    value: 1200000,
-    riskLevel: 'medium',
-    stage: 'legal-review',
-    assignedTo: {
-      id: 'user2',
-      name: 'Mike Johnson',
-      email: 'mike.johnson@company.com',
-    },
-    approvalChain: [
-      { step: 1, role: 'Legal Review', status: 'completed', approver: 'Jane Smith', completedAt: '2024-03-11T14:00:00Z' },
-      { step: 2, role: 'Finance Review', status: 'pending', approver: 'Mike Johnson', completedAt: null },
-      { step: 3, role: 'VP Approval', status: 'waiting', approver: 'Alex Williams', completedAt: null },
-    ],
-    documents: [
-      { name: 'Master Agreement v3.pdf', size: '2.4 MB' },
-      { name: 'Pricing Schedule.xlsx', size: '156 KB' },
-    ],
-    healthScore: 78,
-    deviations: 3,
-  },
-  {
-    id: 'appr2',
-    type: 'amendment',
-    title: 'Cloud Services SLA Amendment',
-    description: 'Adding new service tiers and updated SLA metrics',
-    requestedBy: {
-      id: 'user3',
-      name: 'Tom Wilson',
-      email: 'tom.wilson@company.com',
-    },
-    requestedAt: '2024-03-12T11:00:00Z',
-    dueDate: '2024-03-14T17:00:00Z',
-    priority: 'critical',
-    status: 'pending',
-    value: 450000,
-    riskLevel: 'low',
-    stage: 'finance-review',
-    assignedTo: {
-      id: 'user2',
-      name: 'Mike Johnson',
-      email: 'mike.johnson@company.com',
-    },
-    approvalChain: [
-      { step: 1, role: 'Legal Review', status: 'completed', approver: 'Jane Smith', completedAt: '2024-03-12T16:00:00Z' },
-      { step: 2, role: 'Finance Review', status: 'in-progress', approver: 'Mike Johnson', completedAt: null },
-    ],
-    documents: [
-      { name: 'SLA Amendment.pdf', size: '890 KB' },
-    ],
-    healthScore: 92,
-    deviations: 0,
-  },
-  {
-    id: 'appr3',
-    type: 'contract',
-    title: 'New Vendor Agreement - DataTech Inc',
-    description: 'New data analytics services contract',
-    requestedBy: {
-      id: 'user4',
-      name: 'Lisa Park',
-      email: 'lisa.park@company.com',
-    },
-    requestedAt: '2024-03-08T10:00:00Z',
-    dueDate: '2024-03-20T17:00:00Z',
-    priority: 'medium',
-    status: 'pending',
-    value: 320000,
-    riskLevel: 'high',
-    stage: 'initial-review',
-    assignedTo: {
-      id: 'user5',
-      name: 'Jane Smith',
-      email: 'jane.smith@company.com',
-    },
-    approvalChain: [
-      { step: 1, role: 'Initial Review', status: 'in-progress', approver: 'Jane Smith', completedAt: null },
-      { step: 2, role: 'Security Review', status: 'waiting', approver: 'Security Team', completedAt: null },
-      { step: 3, role: 'Legal Review', status: 'waiting', approver: 'Legal Team', completedAt: null },
-      { step: 4, role: 'VP Approval', status: 'waiting', approver: 'Alex Williams', completedAt: null },
-    ],
-    documents: [
-      { name: 'DataTech Proposal.pdf', size: '1.8 MB' },
-      { name: 'Security Questionnaire.pdf', size: '450 KB' },
-    ],
-    healthScore: 65,
-    deviations: 5,
-  },
-];
-
 // Helper to calculate SLA metrics
 function calculateSLAMetrics(createdAt: Date, dueDate: Date | null) {
   const now = new Date();
@@ -345,6 +239,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
           rejected: 0,
           critical: 0,
           overdue: 0,
+          atRisk: 0,
           avgProcessingTime: '0 days',
           totalValue: 0,
         },

@@ -49,7 +49,7 @@ interface ReportFilters {
 
 interface TrendData {
   period: string;
-  value: number;
+  value: number | null;
   count: number;
 }
 
@@ -607,9 +607,9 @@ function calculateTrends(contracts: EnrichedContract[]): DeepAnalysisResult['tre
     valueByQuarter: quarters,
     contractsByQuarter: quarters.map(q => ({ ...q })),
     renewalRate,
-    avgDurationTrend: quarters.map((q, i) => ({
+    avgDurationTrend: quarters.map((q) => ({
       ...q,
-      value: 12 + Math.sin(i) * 3, // Placeholder - would calculate from actual data
+      value: null, // Requires historical duration tracking per quarter
     })),
   };
 }

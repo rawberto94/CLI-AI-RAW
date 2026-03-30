@@ -97,8 +97,8 @@ interface NavigationGroup {
   requiresAdmin?: boolean; // Only show entire group for admin/owner users
 }
 
-// Full navigation — Consolidated (removed duplicates)
-// 6 groups: Core, Contigo Labs (AI), Lifecycle, Intelligence, Procurement & Risk, Admin
+// Full navigation — streamlined for enterprise clarity
+// 5 groups: Core, AI Platform, Contract Lifecycle, Analytics & Risk, Admin
 const navigationGroups: NavigationGroup[] = [
   {
     id: 'core',
@@ -118,12 +118,11 @@ const navigationGroups: NavigationGroup[] = [
         name: 'AI Agents', 
         href: '/contigo-labs?tab=agents', 
         icon: Bot, 
-        description: '19 AI agents with HITL workflows',
+        description: 'AI agents & approvals',
         isNew: true,
         children: [
           { name: 'Agent Center', href: '/contigo-labs?tab=agents', icon: Bot, description: 'Monitor all agents' },
           { name: 'Approvals', href: '/contigo-labs?tab=approvals', icon: ListChecks, description: 'Review recommendations', badge: 'pending' },
-          { name: 'RFx Studio', href: '/contigo-labs?tab=rfx-studio', icon: Gavel, description: 'AI-powered sourcing' },
         ]
       },
       { name: 'AI Assistant', href: '/contigo-labs?tab=chat', icon: MessageSquare, description: 'Chat with @mentions', isNew: true },
@@ -144,6 +143,7 @@ const navigationGroups: NavigationGroup[] = [
           { name: 'Document Studio', href: '/drafting', icon: PenTool, description: 'AI-assisted drafting' },
           { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Contract templates' },
           { name: 'Clauses', href: '/clauses', icon: BookOpen, description: 'Clause library' },
+          { name: 'Playbooks', href: '/playbooks', icon: Gavel, description: 'Legal playbooks' },
         ]
       },
       {
@@ -171,12 +171,10 @@ const navigationGroups: NavigationGroup[] = [
     ]
   },
   {
-    id: 'intelligence',
-    label: 'Intelligence',
+    id: 'analytics-risk',
+    label: 'Analytics & Risk',
     items: [
       { name: 'Intelligence Hub', href: '/intelligence', icon: Lightbulb, description: 'AI insights & negotiation' },
-      { name: 'Contract Health', href: '/intelligence/health', icon: ShieldCheck, description: 'Portfolio health scores' },
-      { name: 'RAG Search', href: '/intelligence/search', icon: Search, description: 'Semantic vector search' },
       {
         name: 'Analytics',
         href: '/analytics',
@@ -185,25 +183,7 @@ const navigationGroups: NavigationGroup[] = [
         children: [
           { name: 'Dashboards', href: '/analytics', icon: BarChart3, description: 'Analytics dashboards' },
           { name: 'Reports', href: '/reports', icon: FileBarChart, description: 'Custom reports' },
-          { name: 'Ecosystem', href: '/ecosystem', icon: Network, description: 'ERP & Spend integration' },
-        ]
-      },
-    ]
-  },
-  {
-    id: 'procurement',
-    label: 'Procurement & Risk',
-    items: [
-      {
-        name: 'RFx Studio',
-        href: '/contigo-labs?tab=rfx-studio',
-        icon: Gavel,
-        description: 'AI-powered sourcing',
-        isNew: true,
-        children: [
-          { name: 'Scout Opportunities', href: '/contigo-labs?tab=rfx-studio', icon: Target, description: 'AI-detected opportunities' },
-          { name: 'My RFx Events', href: '/requests', icon: ListChecks, description: 'Manage sourcing events' },
-          { name: 'Create RFx', href: '/requests/new', icon: Rocket, description: 'Start new RFx' },
+          { name: 'Contract Health', href: '/intelligence/health', icon: ShieldCheck, description: 'Portfolio health scores' },
         ]
       },
       {

@@ -3452,6 +3452,22 @@ model RateCardAlert {
   @@map("rate_card_alerts")
 }
 
+model ReportTemplate {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  type      String   // supplier, rate-card, financial, performance, compliance
+  fields    Json     @default("[]") // Array of field keys
+  filters   Json     @default("{}")
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([tenantId, type])
+  @@map("report_templates")
+}
+
 model ScheduledReport {
   id       String @id @default(cuid())
   tenantId String @map("tenant_id")
@@ -4061,6 +4077,8 @@ enum ContractSourceProvider {
   FTP
   DROPBOX
   BOX
+  SALESFORCE
+  SLACK
   CUSTOM_API
 }
 
@@ -6039,4 +6057,150 @@ enum OpportunityUrgency {
   HIGH
   MEDIUM
   LOW
+}
+
+// ============================================
+// Pre-Approval Gates
+// ============================================
+
+model PreApprovalGate {
+  id                   String    @id @default(uuid())
+  tenantId             String    @map("tenant_id")
+  name                 String
+  description          String?
+  gateType             String    @default("APPROVAL") @map("gate_type")
+  gateOrder            Int       @default(0) @map("gate_order")
+  conditions           Json      @default("{}")
+  requiredApprovers    Json      @default("[]") @map("required_approvers")
+  approvalMode         String    @default("ALL") @map("approval_mode")
+  autoCheck            String?   @map("auto_check")
+  slaHours             Int?      @map("sla_hours")
+  isActive             Boolean   @default(true) @map("is_active")
+  appliesToTypes       Json      @default("[]") @map("applies_to_types")
+  appliesToValuesAbove Decimal?  @map("applies_to_values_above") @db.Decimal(15, 2)
+  currency             String    @default("USD")
+  createdBy            String?   @map("created_by")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("pre_approval_gates")
+}
+
+// ============================================
+// Signature Policies
+// ============================================
+
+model SignaturePolicy {
+  id                    String    @id @default(uuid())
+  tenantId              String    @map("tenant_id")
+  name                  String
+  description           String?
+  contractTypes         Json      @default("[]") @map("contract_types")
+  minValue              Decimal?  @map("min_value") @db.Decimal(15, 2)
+  maxValue              Decimal?  @map("max_value") @db.Decimal(15, 2)
+  currency              String    @default("USD")
+  requiredSignatories   Json      @default("[]") @map("required_signatories")
+  signingOrder          String    @default("SEQUENTIAL") @map("signing_order")
+  requiresWetSignature  Boolean   @default(false) @map("requires_wet_signature")
+  requiresNotarization  Boolean   @default(false) @map("requires_notarization")
+  provider              String    @default("DOCUSIGN")
+  isActive              Boolean   @default(true) @map("is_active")
+  createdBy             String?   @map("created_by")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("signature_policies")
+}
+
+// ============================================
+// Vendor Risk Profiles
+// ============================================
+
+model VendorRiskProfile {
+  id                     String    @id @default(uuid())
+  tenantId               String    @map("tenant_id")
+  vendorName             String    @map("vendor_name")
+  vendorId               String?   @map("vendor_id")
+  riskTier               String    @default("MEDIUM") @map("risk_tier")
+  overallScore           Int       @default(50) @map("overall_score")
+  financialRisk          Int       @default(50) @map("financial_risk")
+  operationalRisk        Int       @default(50) @map("operational_risk")
+  complianceRisk         Int       @default(50) @map("compliance_risk")
+  cyberRisk              Int       @default(50) @map("cyber_risk")
+  geopoliticalRisk       Int       @default(50) @map("geopolitical_risk")
+  questionnaireResponses Json      @default("{}") @map("questionnaire_responses")
+  certifications         Json      @default("[]")
+  insuranceDetails       Json      @default("{}") @map("insurance_details")
+  notes                  String?
+  assessedBy             String?   @map("assessed_by")
+  lastAssessmentDate     DateTime? @map("last_assessment_date")
+  nextAssessmentDue      DateTime? @map("next_assessment_due")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([tenantId, riskTier])
+  @@map("vendor_risk_profiles")
+}
+
+// ============================================
+// Legal Holds
+// ============================================
+
+model LegalHold {
+  id             String    @id @default(uuid())
+  tenantId       String    @map("tenant_id")
+  name           String
+  description    String?
+  matterId       String?   @map("matter_id")
+  holdType       String    @default("LITIGATION") @map("hold_type")
+  status         String    @default("ACTIVE")
+  contractIds    Json      @default("[]") @map("contract_ids")
+  obligationIds  Json      @default("[]") @map("obligation_ids")
+  custodians     Json      @default("[]")
+  issuedBy       String?   @map("issued_by")
+  issuedAt       DateTime  @default(now()) @map("issued_at")
+  releasedBy     String?   @map("released_by")
+  releasedAt     DateTime? @map("released_at")
+  releaseReason  String?   @map("release_reason")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("legal_holds")
+}
+
+// ============================================
+// Delegation of Authority Matrix
+// ============================================
+
+model DelegationOfAuthority {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  name              String
+  role              String
+  department        String?
+  contractTypes     Json      @default("[]") @map("contract_types")
+  maxValue          Decimal?  @map("max_value") @db.Decimal(15, 2)
+  currency          String    @default("USD")
+  requiresCounterSign Boolean @default(false) @map("requires_counter_sign")
+  counterSignRole   String?   @map("counter_sign_role")
+  canDelegate       Boolean   @default(true) @map("can_delegate")
+  delegationDepth   Int       @default(1) @map("delegation_depth")
+  conditions        Json      @default("{}")
+  isActive          Boolean   @default(true) @map("is_active")
+  effectiveFrom     DateTime? @map("effective_from")
+  effectiveUntil    DateTime? @map("effective_until")
+  createdBy         String?   @map("created_by")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("delegation_of_authority")
 }

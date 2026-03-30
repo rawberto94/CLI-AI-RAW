@@ -84,6 +84,7 @@ describe('POST /api/integrations', () => {
   });
 
   it('should connect integration', async () => {
+    mocks.mockPrisma.integration.findFirst.mockResolvedValue({ id: 'i1', status: 'DISCONNECTED', tenantId: 'test-tenant' });
     mocks.mockPrisma.integration.update.mockResolvedValue({ id: 'i1', status: 'CONNECTED' });
     const res = await POST(req('POST', 'http://localhost:3000/api/integrations', { action: 'connect', integrationId: 'i1' }));
     const d = await res.json();

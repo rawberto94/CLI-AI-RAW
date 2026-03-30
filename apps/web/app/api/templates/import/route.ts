@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Template Import API
  * 
@@ -102,7 +103,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       userId: ctx.userId,
       tenantId: ctx.tenantId,
       metadata: { operation: 'import', title: template.name },
-    }).catch(err => console.error('[Template] Audit log failed:', err));
+    }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
 
     return createSuccessResponse(ctx, {
       success: true,

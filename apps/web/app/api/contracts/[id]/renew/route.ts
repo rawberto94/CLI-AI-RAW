@@ -129,150 +129,198 @@ export async function POST(
     const baseTitle = originalContract.contractTitle || originalContract.fileName || 'Contract';
     const renewalTitle = validatedData.title || `${baseTitle} - Renewal ${renewalNumber}`;
 
-    // Create the renewal contract
-    const renewalContract = await prisma.contract.create({
-      data: {
-        // Link to tenant
-        tenantId,
-        
-        // Required fields
-        mimeType: originalContract.mimeType || 'application/pdf',
-        fileSize: originalContract.fileSize || BigInt(0),
-        
-        // Basic identification
-        contractTitle: renewalTitle,
-        fileName: `${baseTitle.replace(/[^a-zA-Z0-9]/g, '_')}_renewal_${renewalNumber}`,
-        
-        // Copy parties if requested
-        ...(validatedData.copyParties && {
-          clientId: originalContract.clientId,
-          clientName: originalContract.clientName,
-          supplierId: originalContract.supplierId,
-          supplierName: originalContract.supplierName,
-        }),
-        
-        // Copy terms if requested
-        ...(validatedData.copyTerms && {
-          contractType: originalContract.contractType,
-          contractCategoryId: originalContract.contractCategoryId,
-          documentRole: originalContract.documentRole,
-          categoryL1: originalContract.categoryL1,
-          categoryL2: originalContract.categoryL2,
-          currency: originalContract.currency,
-          autoRenewalEnabled: originalContract.autoRenewalEnabled,
-          renewalTerms: originalContract.renewalTerms as object,
-        }),
-        
-        // New dates
-        effectiveDate: newEffectiveDate,
-        expirationDate: newExpirationDate,
-        startDate: newEffectiveDate,
-        endDate: newExpirationDate,
-        
-        // Value (use override or copy from original)
-        totalValue: validatedData.totalValue ?? originalContract.totalValue,
-        annualValue: validatedData.totalValue 
-          ? validatedData.totalValue / Math.max(1, Math.ceil(originalDuration / 365))
-          : originalContract.annualValue,
-        
-        // Status
-        status: 'PENDING',
-        renewalStatus: 'PENDING',
-        
-        // Linking to original contract
-        parentContractId: originalContractId,
-        relationshipType: 'RENEWAL',
-        relationshipNote: validatedData.renewalNote || `Renewal of contract from ${originalContract.effectiveDate?.toISOString().split('T')[0] || 'N/A'} to ${originalContract.expirationDate?.toISOString().split('T')[0] || 'N/A'}`,
-        linkedAt: new Date(),
-        
-        // Copy metadata if requested
-        ...(validatedData.copyMetadata && {
-          category: originalContract.category,
-          tags: originalContract.tags,
-          jurisdiction: originalContract.jurisdiction,
-        }),
-      } as any,
-      include: {
-        client: { select: { id: true, name: true } },
-        supplier: { select: { id: true, name: true } },
-      },
-    });
+    // Pre-compute values before transaction (no DB calls inside these)
+    const previousValue = originalContract.totalValue ? Number(originalContract.totalValue) : null;
+    const prospectiveNewValue = validatedData.totalValue != null
+      ? validatedData.totalValue
+      : originalContract.totalValue ? Number(originalContract.totalValue) : null;
+    const valueChange = previousValue != null && prospectiveNewValue != null ? prospectiveNewValue - previousValue : null;
+    const valueChangePercent = previousValue && valueChange != null
+      ? (valueChange / previousValue) * 100
+      : null;
+    const termExtension = originalContract.expirationDate && originalContract.effectiveDate
+      ? Math.ceil(
+          (newExpirationDate.getTime() - newEffectiveDate.getTime()) / (1000 * 60 * 60 * 24) -
+          (new Date(originalContract.expirationDate).getTime() - new Date(originalContract.effectiveDate).getTime()) / (1000 * 60 * 60 * 24)
+        )
+      : null;
 
-    // Update the original contract's renewal status
-    await prisma.contract.update({
-      where: { id: originalContractId },
-      data: {
-        renewalStatus: 'COMPLETED',
-        renewalCompletedAt: new Date(),
-        renewalNotes: `Renewed with contract ${renewalContract.id}`,
-      },
-    });
-
-    // Copy contract metadata if exists and requested
-    if (validatedData.copyMetadata && originalContract.contractMetadata) {
-      await prisma.contractMetadata.create({
+    // Wrap all DB writes in a transaction — partial failure rolls back completely
+    const renewalContract = await prisma.$transaction(async (tx) => {
+      // 1. Create the renewal contract
+      const created = await tx.contract.create({
         data: {
-          contractId: renewalContract.id,
+          // Link to tenant
           tenantId,
-          updatedBy: ctx.userId,
-          // Copy relevant metadata fields
-          customFields: originalContract.contractMetadata.customFields as object,
-          aiSummary: `Renewal of contract ${originalContractId}`,
+          
+          // Required fields
+          mimeType: originalContract.mimeType || 'application/pdf',
+          fileSize: originalContract.fileSize || BigInt(0),
+          
+          // Basic identification
+          contractTitle: renewalTitle,
+          fileName: `${baseTitle.replace(/[^a-zA-Z0-9]/g, '_')}_renewal_${renewalNumber}`,
+          
+          // Copy parties if requested
+          ...(validatedData.copyParties && {
+            clientId: originalContract.clientId,
+            clientName: originalContract.clientName,
+            supplierId: originalContract.supplierId,
+            supplierName: originalContract.supplierName,
+          }),
+          
+          // Copy terms if requested
+          ...(validatedData.copyTerms && {
+            contractType: originalContract.contractType,
+            contractCategoryId: originalContract.contractCategoryId,
+            documentRole: originalContract.documentRole,
+            categoryL1: originalContract.categoryL1,
+            categoryL2: originalContract.categoryL2,
+            currency: originalContract.currency,
+            autoRenewalEnabled: originalContract.autoRenewalEnabled,
+            renewalTerms: originalContract.renewalTerms as object,
+          }),
+          
+          // New dates
+          effectiveDate: newEffectiveDate,
+          expirationDate: newExpirationDate,
+          startDate: newEffectiveDate,
+          endDate: newExpirationDate,
+          
+          // Value (use override or copy from original)
+          totalValue: validatedData.totalValue ?? originalContract.totalValue,
+          annualValue: validatedData.totalValue 
+            ? validatedData.totalValue / Math.max(1, Math.ceil(originalDuration / 365))
+            : originalContract.annualValue,
+          
+          // Status
+          status: 'PENDING',
+          renewalStatus: 'PENDING',
+          
+          // Linking to original contract
+          parentContractId: originalContractId,
+          relationshipType: 'RENEWAL',
+          relationshipNote: validatedData.renewalNote || `Renewal of contract from ${originalContract.effectiveDate?.toISOString().split('T')[0] || 'N/A'} to ${originalContract.expirationDate?.toISOString().split('T')[0] || 'N/A'}`,
+          linkedAt: new Date(),
+          
+          // Copy metadata if requested
+          ...(validatedData.copyMetadata && {
+            category: originalContract.category,
+            tags: originalContract.tags,
+            jurisdiction: originalContract.jurisdiction,
+          }),
+        } as any,
+        include: {
+          client: { select: { id: true, name: true } },
+          supplier: { select: { id: true, name: true } },
         },
       });
-    }
 
-    // Create audit log entries for compliance and traceability
-    await prisma.auditLog.createMany({
-      data: [
-        {
-          tenantId,
-          userId: ctx.userId,
-          action: 'CONTRACT_RENEWAL_CREATED',
-          resourceType: 'Contract',
-          entityType: 'Contract',
-          entityId: renewalContract.id,
-          resource: renewalContract.id,
-          details: {
-            description: `Created renewal contract "${renewalTitle}" from original contract "${originalContract.contractTitle || originalContractId}"`,
+      // 2. Mark the original contract as renewed
+      await tx.contract.update({
+        where: { id: originalContractId },
+        data: {
+          renewalStatus: 'COMPLETED',
+          renewalCompletedAt: new Date(),
+          renewalNotes: `Renewed with contract ${created.id}`,
+        },
+      });
+
+      // 3. Copy contract metadata if exists and requested
+      if (validatedData.copyMetadata && originalContract.contractMetadata) {
+        await tx.contractMetadata.create({
+          data: {
+            contractId: created.id,
+            tenantId,
+            updatedBy: ctx.userId,
+            customFields: originalContract.contractMetadata.customFields as object,
+            aiSummary: `Renewal of contract ${originalContractId}`,
           },
-          metadata: {
-            originalContractId,
-            renewalContractId: renewalContract.id,
-            originalTitle: originalContract.contractTitle,
-            renewalTitle,
-            effectiveDate: newEffectiveDate.toISOString(),
-            expirationDate: newExpirationDate.toISOString(),
-            totalValue: renewalContract.totalValue ? Number(renewalContract.totalValue) : null,
-            copyOptions: {
-              parties: validatedData.copyParties,
-              terms: validatedData.copyTerms,
-              metadata: validatedData.copyMetadata,
+        });
+      }
+
+      // 4. Create RenewalHistory record
+      await tx.renewalHistory.create({
+        data: {
+          contractId: originalContractId,
+          tenantId,
+          renewalNumber: renewalNumber,
+          renewalType: 'STANDARD',
+          previousStartDate: originalContract.effectiveDate,
+          previousEndDate: originalContract.expirationDate,
+          previousValue: previousValue,
+          newStartDate: newEffectiveDate,
+          newEndDate: newExpirationDate,
+          newValue: prospectiveNewValue,
+          valueChange: valueChange,
+          valueChangePercent: valueChangePercent,
+          termExtension: termExtension,
+          initiatedBy: ctx.userId,
+          initiatedAt: new Date(),
+          completedBy: ctx.userId,
+          completedAt: new Date(),
+          status: 'COMPLETED',
+          notes: validatedData.renewalNote || null,
+          keyChanges: validatedData.totalValue && previousValue && validatedData.totalValue !== previousValue
+            ? [{ field: 'totalValue', from: previousValue, to: validatedData.totalValue }]
+            : [],
+        },
+      });
+
+      // 5. Audit log entries (inside transaction for atomicity)
+      await tx.auditLog.createMany({
+        data: [
+          {
+            tenantId,
+            userId: ctx.userId,
+            action: 'CONTRACT_RENEWAL_CREATED',
+            resourceType: 'Contract',
+            entityType: 'Contract',
+            entityId: created.id,
+            resource: created.id,
+            details: {
+              description: `Created renewal contract "${renewalTitle}" from original contract "${originalContract.contractTitle || originalContractId}"`,
             },
+            metadata: {
+              originalContractId,
+              renewalContractId: created.id,
+              originalTitle: originalContract.contractTitle,
+              renewalTitle,
+              effectiveDate: newEffectiveDate.toISOString(),
+              expirationDate: newExpirationDate.toISOString(),
+              totalValue: created.totalValue ? Number(created.totalValue) : null,
+              copyOptions: {
+                parties: validatedData.copyParties,
+                terms: validatedData.copyTerms,
+                metadata: validatedData.copyMetadata,
+              },
+            },
+            ipAddress: request.headers.get('x-forwarded-for') || null,
+            userAgent: request.headers.get('user-agent') || null,
           },
-          ipAddress: request.headers.get('x-forwarded-for') || null,
-          userAgent: request.headers.get('user-agent') || null,
-        },
-        {
-          tenantId,
-          userId: ctx.userId,
-          action: 'CONTRACT_RENEWAL_STATUS_UPDATED',
-          resourceType: 'Contract',
-          entityType: 'Contract',
-          entityId: originalContractId,
-          resource: originalContractId,
-          details: {
-            description: `Original contract marked as renewed. New contract: ${renewalContract.id}`,
+          {
+            tenantId,
+            userId: ctx.userId,
+            action: 'CONTRACT_RENEWAL_STATUS_UPDATED',
+            resourceType: 'Contract',
+            entityType: 'Contract',
+            entityId: originalContractId,
+            resource: originalContractId,
+            details: {
+              description: `Original contract marked as renewed. New contract: ${created.id}`,
+            },
+            metadata: {
+              previousStatus: originalContract.renewalStatus,
+              newStatus: 'COMPLETED',
+              renewalContractId: created.id,
+            },
+            ipAddress: request.headers.get('x-forwarded-for') || null,
+            userAgent: request.headers.get('user-agent') || null,
           },
-          metadata: {
-            previousStatus: originalContract.renewalStatus,
-            newStatus: 'COMPLETED',
-            renewalContractId: renewalContract.id,
-          },
-          ipAddress: request.headers.get('x-forwarded-for') || null,
-          userAgent: request.headers.get('user-agent') || null,
-        },
-      ],
+        ],
+      });
+
+      return created;
     });
 
     // Send email notification for the renewal (non-blocking)
@@ -288,7 +336,7 @@ export async function POST(
         renewalDate: new Date(),
         expiryDate: newExpirationDate,
         value: renewalContract.totalValue ? Number(renewalContract.totalValue) : undefined,
-        submittedForApproval: body.submitForApproval || false,
+        submittedForApproval: validatedData.renewalNote ? Boolean(body?.submitForApproval) : false,
       }).catch((err) => {
         logger.error('[ContractRenew] Email notification error:', err);
       });
@@ -426,7 +474,7 @@ export async function GET(
         title: contract.contractTitle,
         effectiveDate: contract.effectiveDate,
         expirationDate: contract.expirationDate,
-        status: contract.status,
+        status: contract.status?.toLowerCase(),
         renewalStatus: contract.renewalStatus,
         isCurrent: contract.id === contractId,
         order,

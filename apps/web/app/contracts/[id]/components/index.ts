@@ -5,6 +5,7 @@ export { ContractHeader } from './ContractHeader'
 export { ContractQuickOverview } from './ContractQuickOverview'
 export { ContractStatusBanner } from './ContractStatusBanner'
 export { ContractSummaryTab } from './ContractSummaryTab'
+export { AIInsightsSummaryCard } from './AIInsightsSummaryCard'
 
 // Actions & dialogs
 export { ContractFloatingActions } from './ContractFloatingActions'

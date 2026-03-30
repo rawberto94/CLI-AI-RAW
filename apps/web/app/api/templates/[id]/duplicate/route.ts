@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
@@ -103,7 +104,7 @@ export async function POST(
       userId: ctx.userId,
       tenantId: ctx.tenantId,
       metadata: { operation: 'duplicate', sourceId: id },
-    }).catch(err => console.error('[Template] Audit log failed:', err));
+    }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
 
     return createSuccessResponse(ctx, {
       success: true,

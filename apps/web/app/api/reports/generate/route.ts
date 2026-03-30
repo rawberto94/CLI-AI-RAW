@@ -18,19 +18,19 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   switch (type) {
     case "supplier":
-      data = await generateSupplierReport(fields, filters);
+      data = await generateSupplierReport(fields, filters, ctx.tenantId);
       break;
     case "rate-card":
-      data = await generateRateCardReport(fields, filters);
+      data = await generateRateCardReport(fields, filters, ctx.tenantId);
       break;
     case "contract":
-      data = await generateContractReport(fields, filters);
+      data = await generateContractReport(fields, filters, ctx.tenantId);
       break;
     case "performance":
-      data = await generatePerformanceReport(fields, filters);
+      data = await generatePerformanceReport(fields, filters, ctx.tenantId);
       break;
     case "financial":
-      data = await generateFinancialReport(fields, filters);
+      data = await generateFinancialReport(fields, filters, ctx.tenantId);
       break;
     default:
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid report type', 400);
@@ -43,9 +43,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 async function generateSupplierReport(
   fields: string[],
-  _filters: Record<string, any>
+  _filters: Record<string, any>,
+  tenantId: string,
 ): Promise<any[]> {
   const suppliers = await db.rateCardSupplier.findMany({
+    where: { tenantId },
     select: {
       name: true,
       totalContracts: true,
@@ -71,7 +73,7 @@ async function generateSupplierReport(
         0
       );
     if (fields.includes("avg_performance"))
-      result.avgPerformance = Math.floor(Math.random() * 30) + 70; // Mock data
+      result.avgPerformance = null; // Requires performance tracking integration
 
     return result;
   });
@@ -79,9 +81,11 @@ async function generateSupplierReport(
 
 async function generateRateCardReport(
   fields: string[],
-  _filters: Record<string, any>
+  _filters: Record<string, any>,
+  tenantId: string,
 ): Promise<any[]> {
   const rateCards = await db.rateCardEntry.findMany({
+    where: { tenantId },
     select: {
       roleOriginal: true,
       seniority: true,
@@ -107,9 +111,11 @@ async function generateRateCardReport(
 
 async function generateContractReport(
   fields: string[],
-  _filters: Record<string, any>
+  _filters: Record<string, any>,
+  tenantId: string,
 ): Promise<any[]> {
   const contracts = await db.contract.findMany({
+    where: { tenantId },
     select: {
       contractTitle: true,
       fileName: true,
@@ -145,9 +151,11 @@ async function generateContractReport(
 
 async function generatePerformanceReport(
   fields: string[],
-  _filters: Record<string, any>
+  _filters: Record<string, any>,
+  tenantId: string,
 ): Promise<any[]> {
   const suppliers = await db.rateCardSupplier.findMany({
+    where: { tenantId },
     select: { name: true },
     take: 500,
   });
@@ -155,15 +163,15 @@ async function generatePerformanceReport(
   return suppliers.map((supplier) => {
     const result: any = {};
 
-    // Mock performance data - in production, this would come from a performance tracking system
+    // Performance metrics not yet available - requires tracking integration
     if (fields.includes("on_time_delivery"))
-      result.onTimeDelivery = Math.floor(Math.random() * 20) + 80;
+      result.onTimeDelivery = null;
     if (fields.includes("quality_score"))
-      result.qualityScore = Math.floor(Math.random() * 20) + 75;
+      result.qualityScore = null;
     if (fields.includes("cost_efficiency"))
-      result.costEfficiency = Math.floor(Math.random() * 25) + 70;
+      result.costEfficiency = null;
     if (fields.includes("responsiveness"))
-      result.responsiveness = Math.floor(Math.random() * 20) + 80;
+      result.responsiveness = null;
 
     result.supplierName = supplier.name;
 
@@ -173,9 +181,11 @@ async function generatePerformanceReport(
 
 async function generateFinancialReport(
   fields: string[],
-  _filters: Record<string, any>
+  _filters: Record<string, any>,
+  tenantId: string,
 ): Promise<any[]> {
   const contracts = await db.contract.findMany({
+    where: { tenantId },
     select: {
       startDate: true,
       totalValue: true,

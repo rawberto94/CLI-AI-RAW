@@ -72,8 +72,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     syncFrequency: syncFrequency || 'daily',
     contractTableName: config.contractTableName,
     createdAt: new Date().toISOString(),
-    // Store the full config (base64 encoded) — credentials are preserved for sync
-    // In production, use AES-256 encryption with a KMS-managed key
+    // WARNING: Base64 is encoding, NOT encryption. In production, use AES-256 with a KMS-managed key.
     encryptedConfig: Buffer.from(JSON.stringify(config)).toString('base64'),
   };
 

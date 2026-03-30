@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Contract Drafts API - CRUD operations for contract generation drafts
  * 
@@ -199,7 +200,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     userId: ctx.userId,
     tenantId,
     metadata: { operation: 'create', title: draft.title },
-  }).catch(err => console.error('[Draft] Audit log failed:', err));
+  }).catch(err => logger.error({ err }, '[Draft] Audit log failed'));
 
   return createSuccessResponse(ctx, { draft });
 });

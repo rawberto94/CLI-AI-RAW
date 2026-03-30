@@ -1,40 +1,35 @@
 import { NextRequest } from "next/server";
-import { db as _db } from "@/lib/db";
-import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
-export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
-  // Get all saved report templates
-  // In production, store these in a database table
-  const templates = [
-    {
-      id: "1",
-      name: "Monthly Supplier Performance",
-      type: "supplier",
-      fields: ["supplier_name", "active_contracts", "total_spend", "avg_performance"],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "2",
-      name: "Rate Card Analysis",
-      type: "rate-card",
-      fields: ["role_name", "seniority", "avg_rate", "rate_count"],
-      createdAt: new Date().toISOString(),
-    },
-  ];
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { prisma } = await import('@/lib/prisma');
+
+  const templates = await prisma.reportTemplate.findMany({
+    where: { tenantId: ctx.tenantId },
+    orderBy: { createdAt: 'desc' },
+  });
 
   return createSuccessResponse(ctx, { templates });
 });
 
-export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
-  const template = await request.json();
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { prisma } = await import('@/lib/prisma');
 
-  // In production, save to database
-  // For now, just return success
-  return createSuccessResponse(ctx, {
-    template: {
-      id: Date.now().toString(),
-      ...template,
-      createdAt: new Date().toISOString(),
+  if (!body.name || !body.type) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'name and type are required', 400);
+  }
+
+  const template = await prisma.reportTemplate.create({
+    data: {
+      tenantId: ctx.tenantId!,
+      name: body.name,
+      type: body.type,
+      fields: body.fields || [],
+      filters: body.filters || {},
+      createdBy: ctx.userId,
     },
   });
+
+  return createSuccessResponse(ctx, { template }, { status: 201 });
 });

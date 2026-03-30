@@ -186,7 +186,7 @@ export async function GET(
           relatedContracts.push({
             id: contract.id,
             filename: contract.contractTitle || contract.fileName || 'Untitled',
-            status: contract.status || 'unknown',
+            status: (contract.status || 'unknown').toLowerCase(),
             contractType: contract.contractType || undefined,
             clientName: contract.clientName || undefined,
             totalValue: contract.totalValue ? Number(contract.totalValue) : undefined,
@@ -229,7 +229,7 @@ export async function GET(
           relatedContracts.push({
             id: contract.id,
             filename: contract.contractTitle || contract.fileName || 'Untitled',
-            status: contract.status || 'unknown',
+            status: (contract.status || 'unknown').toLowerCase(),
             contractType: contract.contractType || undefined,
             clientName: contract.clientName || undefined,
             totalValue: contract.totalValue ? Number(contract.totalValue) : undefined,
@@ -271,7 +271,7 @@ export async function GET(
           relatedContracts.push({
             id: contract.id,
             filename: contract.contractTitle || contract.fileName || 'Untitled',
-            status: contract.status || 'unknown',
+            status: (contract.status || 'unknown').toLowerCase(),
             contractType: contract.contractType || undefined,
             clientName: contract.clientName || undefined,
             totalValue: contract.totalValue ? Number(contract.totalValue) : undefined,

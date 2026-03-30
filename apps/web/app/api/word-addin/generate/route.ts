@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
         title: variables.contractTitle || `${template.name} - Draft`,
         content: content.raw,
         variables,
-        status: 'draft',
+        status: 'DRAFT',
         createdBy: ctx.userId || 'word-addin',
       },
     });

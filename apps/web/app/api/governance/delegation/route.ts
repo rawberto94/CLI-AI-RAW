@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,10 +7,13 @@ export const dynamic = 'force-dynamic';
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const { prisma } = await import('@/lib/prisma');
-    const items = await prisma.$queryRaw`SELECT * FROM delegation_of_authority WHERE tenant_id = ${ctx.tenantId} ORDER BY max_value ASC NULLS LAST`;
-    return createSuccessResponse(ctx, { entries: items });
+    const entries = await prisma.delegationOfAuthority.findMany({
+      where: { tenantId: ctx.tenantId },
+      orderBy: { maxValue: { sort: 'asc', nulls: 'last' } },
+    });
+    return createSuccessResponse(ctx, { entries });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch DoA matrix. Please try again.', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch DoA matrix', 500);
   }
 });
 
@@ -18,25 +21,57 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();
     const { prisma } = await import('@/lib/prisma');
-    const result = await prisma.$queryRaw`INSERT INTO delegation_of_authority (id, tenant_id, name, role, department, contract_types, max_value, currency, requires_counter_sign, counter_sign_role, can_delegate, delegation_depth, conditions, is_active, effective_from, effective_until, created_by)
-       VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${body.name}, ${body.role}, ${body.department || null}, ${JSON.stringify(body.contractTypes || [])}, ${body.maxValue || null}, ${body.currency || 'USD'}, ${body.requiresCounterSign ?? false}, ${body.counterSignRole || null}, ${body.canDelegate ?? true}, ${body.delegationDepth || 1}, ${JSON.stringify(body.conditions || {})}, ${body.isActive ?? true}, ${body.effectiveFrom || null}, ${body.effectiveUntil || null}, ${ctx.userId}) RETURNING *`;
-    return createSuccessResponse(ctx, { entry: (result as any[])[0] });
+    const entry = await prisma.delegationOfAuthority.create({
+      data: {
+        tenantId: ctx.tenantId,
+        name: body.name,
+        role: body.role,
+        department: body.department || null,
+        contractTypes: body.contractTypes || [],
+        maxValue: body.maxValue || null,
+        currency: body.currency || 'USD',
+        requiresCounterSign: body.requiresCounterSign ?? false,
+        counterSignRole: body.counterSignRole || null,
+        canDelegate: body.canDelegate ?? true,
+        delegationDepth: body.delegationDepth || 1,
+        conditions: body.conditions || {},
+        isActive: body.isActive ?? true,
+        effectiveFrom: body.effectiveFrom ? new Date(body.effectiveFrom) : null,
+        effectiveUntil: body.effectiveUntil ? new Date(body.effectiveUntil) : null,
+        createdBy: ctx.userId,
+      },
+    });
+    return createSuccessResponse(ctx, { entry }, { status: 201 });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create DoA entry. Please try again.', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create DoA entry', 500);
   }
 });
 
 export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();
-    const { prisma } = await import('@/lib/prisma');
     const { id, ...data } = body;
     if (!id) return createErrorResponse(ctx, 'BAD_REQUEST', 'ID is required', 400);
+    const { prisma } = await import('@/lib/prisma');
 
-    const result = await prisma.$queryRaw`UPDATE delegation_of_authority SET name = COALESCE(${data.name || null}, name), role = COALESCE(${data.role || null}, role), department = COALESCE(${data.department || null}, department), max_value = COALESCE(${data.maxValue || null}, max_value), is_active = COALESCE(${data.isActive ?? null}, is_active), updated_at = NOW() WHERE id = ${id} AND tenant_id = ${ctx.tenantId} RETURNING *`;
-    return createSuccessResponse(ctx, { entry: (result as any[])[0] });
+    const existing = await prisma.delegationOfAuthority.findFirst({
+      where: { id, tenantId: ctx.tenantId },
+    });
+    if (!existing) return createErrorResponse(ctx, 'NOT_FOUND', 'Entry not found', 404);
+
+    const entry = await prisma.delegationOfAuthority.update({
+      where: { id },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.role !== undefined && { role: data.role }),
+        ...(data.department !== undefined && { department: data.department }),
+        ...(data.maxValue !== undefined && { maxValue: data.maxValue }),
+        ...(data.isActive !== undefined && { isActive: data.isActive }),
+      },
+    });
+    return createSuccessResponse(ctx, { entry });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update DoA entry. Please try again.', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update DoA entry', 500);
   }
 });
 
@@ -46,9 +81,15 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const id = searchParams.get('id');
     if (!id) return createErrorResponse(ctx, 'BAD_REQUEST', 'ID is required', 400);
     const { prisma } = await import('@/lib/prisma');
-    await prisma.$queryRaw`DELETE FROM delegation_of_authority WHERE id = ${id} AND tenant_id = ${ctx.tenantId}`;
+
+    const existing = await prisma.delegationOfAuthority.findFirst({
+      where: { id, tenantId: ctx.tenantId },
+    });
+    if (!existing) return createErrorResponse(ctx, 'NOT_FOUND', 'Entry not found', 404);
+
+    await prisma.delegationOfAuthority.delete({ where: { id } });
     return createSuccessResponse(ctx, { deleted: true });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to delete DoA entry. Please try again.', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to delete DoA entry', 500);
   }
 });

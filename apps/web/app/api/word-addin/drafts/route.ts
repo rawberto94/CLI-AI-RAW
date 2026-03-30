@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
         title,
         content: content || '',
         variables: variables || {},
-        status: 'draft',
+        status: 'DRAFT',
         createdBy: ctx.userId || 'word-addin',
       },
     });

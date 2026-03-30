@@ -640,7 +640,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       data: {
         tenantId: contract.tenantId,
         contractId: contract.id,
-        status: contract.status,
+        status: contract.status?.toLowerCase(),
       },
       source: "api:contracts/upload",
     });

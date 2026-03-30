@@ -386,17 +386,30 @@ async function testProviderConnection(provider: string): Promise<{
           };
         }
 
-        // Test with a simple models list request
-        const response = await fetch('https://api.openai.com/v1/models', {
-          headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-        });
-
-        return {
-          success: response.ok,
-          provider,
-          responseTimeMs: Date.now() - startTime,
-          message: response.ok ? 'Connection successful' : `Connection failed: ${response.status}`,
-        };
+        // Test via shared AI client
+        try {
+          const { getAIClient } = await import('@/lib/ai/ai-client');
+          const client = await getAIClient();
+          // A lightweight chat completion test
+          await client.chat.completions.create({
+            model: process.env.AZURE_OPENAI_DEPLOYMENT || process.env.OPENAI_MODEL || 'gpt-4o',
+            messages: [{ role: 'user', content: 'ping' }],
+            max_tokens: 1,
+          });
+          return {
+            success: true,
+            provider,
+            responseTimeMs: Date.now() - startTime,
+            message: 'Connection successful',
+          };
+        } catch (aiError: any) {
+          return {
+            success: false,
+            provider,
+            responseTimeMs: Date.now() - startTime,
+            message: `Connection failed: ${aiError?.message || 'Unknown error'}`,
+          };
+        }
       }
 
       case 'mistral': {

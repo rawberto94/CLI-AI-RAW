@@ -4,6 +4,7 @@
  */
 
 import { FuzzyMatcher, type MatchResult } from './fuzzy-matcher';
+import { getAIClient } from '@/lib/ai/ai-client';
 
 export interface AIMapperOptions {
   useAI?: boolean;
@@ -20,8 +21,8 @@ export class AIMapper {
     sampleRows: Record<string, any>[],
     options: AIMapperOptions = {}
   ): Promise<MatchResult[]> {
-    // Try AI mapping if enabled and API key available
-    if (options.useAI && options.apiKey) {
+    // Try AI mapping if enabled
+    if (options.useAI) {
       try {
         return await this.aiSuggestMappings(headers, sampleRows, options);
       } catch {
@@ -34,7 +35,7 @@ export class AIMapper {
   }
 
   /**
-   * Use AI to suggest mappings
+   * Use AI to suggest mappings via shared AI client
    */
   private static async aiSuggestMappings(
     headers: string[],
@@ -42,36 +43,24 @@ export class AIMapper {
     options: AIMapperOptions
   ): Promise<MatchResult[]> {
     const prompt = this.buildPrompt(headers, sampleRows);
+    const client = await getAIClient();
 
-    // Call OpenAI API (or similar)
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${options.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: options.model || 'gpt-4',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert at analyzing spreadsheet data and mapping columns to standard fields for rate card imports.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.3,
-      }),
+    const response = await client.chat.completions.create({
+      model: options.model || client.model,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert at analyzing spreadsheet data and mapping columns to standard fields for rate card imports.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.3,
     });
 
-    if (!response.ok) {
-      throw new Error(`AI API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
+    const content = response.choices[0]?.message?.content;
 
     if (!content) {
       throw new Error('No response from AI');

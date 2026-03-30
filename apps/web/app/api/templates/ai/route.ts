@@ -11,7 +11,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { openai } from '@ai-sdk/openai';
+import { getAIModel } from '@/lib/ai/ai-sdk-provider';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import {
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     switch (input.action) {
       case 'generate-clauses': {
         const { object } = await generateObject({
-          model: openai('gpt-4o-mini') as any,
+          model: getAIModel(),
           schema: GenerateClausesResponseSchema,
           prompt: `You are an expert contract attorney. Generate a comprehensive set of standard clauses for a contract template.
 
@@ -148,7 +148,7 @@ Use camelCase for variable names. Return complete, production-ready clause text 
         };
 
         const { object } = await generateObject({
-          model: openai('gpt-4o-mini') as any,
+          model: getAIModel(),
           schema: ImproveClauseResponseSchema,
           prompt: `You are an expert contract attorney.
 
@@ -177,7 +177,7 @@ Return the improved clause with {{variableName}} placeholders preserved. Do not 
 
       case 'generate-template': {
         const { object } = await generateObject({
-          model: openai('gpt-4o-mini') as any,
+          model: getAIModel(),
           schema: GenerateTemplateResponseSchema,
           prompt: `You are an expert contract attorney. Generate a complete, professional contract template.
 
@@ -210,7 +210,7 @@ Use proper formatting with section headers. Use camelCase for variable names.`,
 
       case 'extract-variables': {
         const { object } = await generateObject({
-          model: openai('gpt-4o-mini') as any,
+          model: getAIModel(),
           schema: ExtractVariablesResponseSchema,
           prompt: `You are a contract template expert. Analyze this template content and identify all values that should be converted to {{variableName}} template variables.
 

@@ -180,6 +180,7 @@ export async function runPostArtifactIntelligence(
     'proactive-validation-agent',
     'contract-health-monitor',
     'smart-gap-filling-agent',
+    'conflict-resolution-agent',
   ], input);
 }
 
@@ -207,6 +208,8 @@ export async function runPostPipelineIntelligence(
     'compliance-monitoring-agent',
     'obligation-tracking-agent',
     'contract-summarization-agent',
+    'template-generation-agent',
+    'contract-transformation-agent',
   ], input);
 }
 

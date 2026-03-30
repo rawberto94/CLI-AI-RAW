@@ -2,13 +2,11 @@
  * Human Review Queue Item API
  * 
  * Individual review item operations
- * Note: Stubbed until OcrReviewItem model is migrated to database
  */
 
 import { NextRequest } from 'next/server';
-import { auth } from '@/lib/auth';
 import { z } from 'zod';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 // Update schema
 const updateSchema = z.object({
@@ -25,115 +23,88 @@ const updateSchema = z.object({
   escalationReason: z.string().optional(),
 });
 
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
-
 /**
  * GET /api/ocr/review-queue/[id]
  * Get a single review item
  */
-export async function GET(
+export const GET = withAuthApiHandler(async (
   request: NextRequest,
-  { params }: RouteParams
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
+  ctx,
+) => {
+  const { id } = await (ctx as any).params;
+  const { prisma } = await import('@/lib/prisma');
 
-    const { id } = await params;
+  const item = await prisma.ocrReviewItem.findFirst({
+    where: { id, tenantId: ctx.tenantId },
+  });
 
-    // Stubbed response - in production, fetch from Prisma
-    return createSuccessResponse(ctx, {
-      id,
-      tenantId: session.user.tenantId,
-      contractId: 'contract_stub',
-      type: 'ocr_quality',
-      status: 'pending',
-      priority: 'medium',
-      ocrConfidence: 0.75,
-      documentName: 'document.pdf',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      message: 'Note: Using stubbed data until database migration is run',
-    });
-  } catch (error) {
-    return handleApiError(ctx, error);
+  if (!item) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Review item not found', 404);
   }
-}
+
+  return createSuccessResponse(ctx, item);
+});
 
 /**
  * PATCH /api/ocr/review-queue/[id]
  * Update a review item (assign, complete, escalate)
  */
-export async function PATCH(
+export const PATCH = withAuthApiHandler(async (
   request: NextRequest,
-  { params }: RouteParams
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
+  ctx,
+) => {
+  const { id } = await (ctx as any).params;
+  const body = await request.json();
+  const data = updateSchema.parse(body);
+  const { prisma } = await import('@/lib/prisma');
 
-    const { id } = await params;
-    const body = await request.json();
-    const data = updateSchema.parse(body);
-
-    // Stubbed response
-    return createSuccessResponse(ctx, {
-      id,
-      ...data,
-      updatedAt: new Date().toISOString(),
-      message: 'Note: Using stubbed data until database migration is run',
-    });
-  } catch (error) {
-    return handleApiError(ctx, error);
+  const existing = await prisma.ocrReviewItem.findFirst({
+    where: { id, tenantId: ctx.tenantId },
+  });
+  if (!existing) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Review item not found', 404);
   }
-}
+
+  const updateData: any = { ...data };
+  if (data.status === 'completed') {
+    updateData.completedAt = new Date();
+    updateData.completedBy = ctx.userId;
+  }
+  if (data.status === 'escalated' && data.escalationReason) {
+    updateData.escalatedAt = new Date();
+    updateData.escalatedBy = ctx.userId;
+  }
+  if (data.assignedTo !== undefined) {
+    updateData.assignedAt = data.assignedTo ? new Date() : null;
+  }
+
+  const item = await prisma.ocrReviewItem.update({
+    where: { id },
+    data: updateData,
+  });
+
+  return createSuccessResponse(ctx, item);
+});
 
 /**
  * DELETE /api/ocr/review-queue/[id]
  * Delete a review item (admin only)
  */
-export async function DELETE(
+export const DELETE = withAuthApiHandler(async (
   request: NextRequest,
-  { params }: RouteParams
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
+  ctx,
+) => {
+  const { id } = await (ctx as any).params;
+  const { prisma } = await import('@/lib/prisma');
 
-    // Check admin permission
-    if (session.user.role !== 'admin' && session.user.role !== 'owner') {
-      return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
-    }
-
-    const { id } = await params;
-    
-    // Stubbed response
-    return createSuccessResponse(ctx, { 
-      success: true, 
-      id,
-      message: 'Note: Using stubbed data until database migration is run',
-    });
-  } catch (error) {
-    return handleApiError(ctx, error);
+  const existing = await prisma.ocrReviewItem.findFirst({
+    where: { id, tenantId: ctx.tenantId },
+  });
+  if (!existing) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Review item not found', 404);
   }
-}
+
+  await prisma.ocrReviewItem.delete({ where: { id } });
+
+  return createSuccessResponse(ctx, { success: true, id });
+});

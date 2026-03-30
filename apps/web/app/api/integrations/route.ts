@@ -96,23 +96,18 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           data: integration,
         });
       } catch (_dbError) {
-        return createSuccessResponse(ctx, {
-          success: true,
-          message: 'Integration created (mock)',
-          data: {
-            id: `int-${Date.now()}`,
-            name,
-            type,
-            provider,
-            status: 'DISCONNECTED',
-            createdAt: new Date().toISOString(),
-          },
-        });
+        return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create integration', 500);
       }
     }
 
     if (action === 'connect') {
       try {
+        const existing = await prisma.integration.findFirst({
+          where: { id: integrationId, tenantId },
+        });
+        if (!existing) {
+          return createErrorResponse(ctx, 'NOT_FOUND', 'Integration not found', 404);
+        }
         const integration = await prisma.integration.update({
           where: { id: integrationId },
           data: {
@@ -128,20 +123,18 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           data: integration,
         });
       } catch (_dbError) {
-        return createSuccessResponse(ctx, {
-          success: true,
-          message: 'Integration connected',
-          data: {
-            integrationId: integrationId || `int-${Date.now()}`,
-            connectedAt: new Date().toISOString(),
-            status: 'CONNECTED',
-          },
-        });
+        return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to connect integration', 500);
       }
     }
 
     if (action === 'disconnect') {
       try {
+        const existing = await prisma.integration.findFirst({
+          where: { id: integrationId, tenantId },
+        });
+        if (!existing) {
+          return createErrorResponse(ctx, 'NOT_FOUND', 'Integration not found', 404);
+        }
         const integration = await prisma.integration.update({
           where: { id: integrationId },
           data: {
@@ -155,19 +148,18 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           data: integration,
         });
       } catch (_dbError) {
-        return createSuccessResponse(ctx, {
-          success: true,
-          message: 'Integration disconnected',
-          data: {
-            integrationId,
-            disconnectedAt: new Date().toISOString(),
-          },
-        });
+        return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to disconnect integration', 500);
       }
     }
 
     if (action === 'sync') {
       try {
+        const existing = await prisma.integration.findFirst({
+          where: { id: integrationId, tenantId },
+        });
+        if (!existing) {
+          return createErrorResponse(ctx, 'NOT_FOUND', 'Integration not found', 404);
+        }
         // Create sync log
         const syncLog = await prisma.syncLog.create({
           data: {
@@ -198,31 +190,50 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           },
         });
       } catch (_dbError) {
-        return createSuccessResponse(ctx, {
-          success: true,
-          message: 'Sync initiated',
-          data: {
-            integrationId,
-            syncId: `sync-${Date.now()}`,
-            startedAt: new Date().toISOString(),
-          },
-        });
+        return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to initiate sync', 500);
       }
     }
 
     if (action === 'test') {
-      // Simulate connection test
-      const latency = Math.floor(Math.random() * 300) + 100;
-      
-      return createSuccessResponse(ctx, {
-        success: true,
-        data: {
-          integrationId,
-          testResult: 'success',
-          latency,
-          testedAt: new Date().toISOString(),
-        },
-      });
+      // Test integration connectivity by verifying the record exists and is connected
+      try {
+        const integration = await prisma.integration.findFirst({
+          where: { id: integrationId, tenantId },
+          select: { id: true, status: true, type: true, config: true },
+        });
+
+        if (!integration) {
+          return createSuccessResponse(ctx, {
+            success: true,
+            data: {
+              integrationId,
+              testResult: 'failed',
+              error: 'Integration not found',
+              testedAt: new Date().toISOString(),
+            },
+          });
+        }
+
+        return createSuccessResponse(ctx, {
+          success: true,
+          data: {
+            integrationId,
+            testResult: integration.status === 'CONNECTED' ? 'success' : 'disconnected',
+            status: integration.status,
+            testedAt: new Date().toISOString(),
+          },
+        });
+      } catch (_dbError) {
+        return createSuccessResponse(ctx, {
+          success: true,
+          data: {
+            integrationId,
+            testResult: 'failed',
+            error: 'Database error during test',
+            testedAt: new Date().toISOString(),
+          },
+        });
+      }
     }
 
     if (action === 'configure') {
@@ -240,15 +251,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           data: integration,
         });
       } catch (_dbError) {
-        return createSuccessResponse(ctx, {
-          success: true,
-          message: 'Configuration updated',
-          data: {
-            integrationId,
-            config,
-            updatedAt: new Date().toISOString(),
-          },
-        });
+        return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update configuration', 500);
       }
     }
 
@@ -291,9 +294,6 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
       message: 'Integration deleted',
     });
   } catch (_error) {
-    return createSuccessResponse(ctx, {
-      success: true,
-      message: 'Integration deleted (mock)',
-    });
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to delete integration', 500);
   }
 });

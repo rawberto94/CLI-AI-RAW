@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
@@ -141,7 +142,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     userId: ctx.userId,
     tenantId: ctx.tenantId,
     metadata: { operation: 'create', title: template.name },
-  }).catch(err => console.error('[Template] Audit log failed:', err));
+  }).catch(err => logger.error({ err }, '[Template] Audit log failed'));
 
   return createSuccessResponse(ctx, {
     success: true,

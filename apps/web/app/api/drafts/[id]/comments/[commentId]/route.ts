@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Single Draft Comment API
  * 
@@ -74,7 +75,7 @@ export async function PATCH(
       userId: ctx.userId,
       tenantId,
       metadata: { operation: 'update', draftId },
-    }).catch(err => console.error('[Draft] Audit log failed:', err));
+    }).catch(err => logger.error({ err }, '[Draft] Audit log failed'));
 
     return createSuccessResponse(ctx, { comment });
   } catch (error) {
@@ -117,7 +118,7 @@ export async function DELETE(
       userId: ctx.userId,
       tenantId,
       metadata: { operation: 'delete', draftId },
-    }).catch(err => console.error('[Draft] Audit log failed:', err));
+    }).catch(err => logger.error({ err }, '[Draft] Audit log failed'));
 
     return createSuccessResponse(ctx, { message: 'Comment deleted' });
   } catch (error) {

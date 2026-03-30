@@ -451,7 +451,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             id: contract.id,
             contractTitle: contract.contractTitle,
             fileName: contract.fileName,
-            status: contract.status,
+            status: contract.status?.toLowerCase(),
             contractType: contract.contractType,
             clientName: contract.clientName,
             supplierName: contract.supplierName,

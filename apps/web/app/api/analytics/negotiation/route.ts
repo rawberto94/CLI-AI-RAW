@@ -15,11 +15,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   const supplierId = searchParams.get('supplierId');
   const category = searchParams.get('category');
   
-  // Check for data mode parameter
-  const dataMode = searchParams.get('mode') as 'real' | 'mock' | null;
-  const mode = dataMode === 'mock' ? DataMode.MOCK : 
-               dataMode === 'real' ? DataMode.REAL : 
-               DataMode.REAL;
+  // Always use real data
+  const mode = DataMode.REAL;
 
   // Use data provider system
   const factory = getDataProviderFactory();
@@ -44,11 +41,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
 // POST /api/analytics/negotiation/generate-pack - Generate negotiation pack
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const body = await request.json();
-  const { contractId, supplierId, category, mode: dataMode } = body;
+  const { contractId, supplierId, category } = body;
   
-  const mode = dataMode === 'mock' ? DataMode.MOCK : 
-               dataMode === 'real' ? DataMode.REAL : 
-               DataMode.REAL;
+  const mode = DataMode.REAL;
 
   const factory = getDataProviderFactory();
   const response = await factory.getData('negotiation-prep', {
