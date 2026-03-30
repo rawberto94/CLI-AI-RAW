@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import { RateCardUploadZone } from '@/components/import/RateCardUploadZone';
 import { ColumnMappingInterface } from '@/components/import/ColumnMappingInterface';
@@ -39,7 +40,7 @@ export default function ImportWizardPage() {
         setCurrentStep('mapping');
       }
     } catch (error: unknown) {
-      alert('Failed to process file: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      toast.error('Failed to process file: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsProcessing(false);
     }
@@ -100,7 +101,7 @@ export default function ImportWizardPage() {
       setCurrentStep('complete');
     } catch (error) {
       console.error('[RateCardWizard] Save error:', error);
-      alert('Failed to save import: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      toast.error('Failed to save import: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsProcessing(false);
     }

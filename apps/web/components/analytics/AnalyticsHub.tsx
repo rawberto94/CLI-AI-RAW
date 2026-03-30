@@ -100,7 +100,15 @@ export function AnalyticsHub() {
         })
       }
     } catch {
-      // Failed to load metrics
+      // Show error state with toast if available
+      setMetrics({
+        totalContracts: 0,
+        totalValue: 0,
+        potentialSavings: 0,
+        activeSuppliers: 0,
+        upcomingRenewals: 0,
+        artifactsProcessed: 0,
+      })
     } finally {
       setLoading(false)
     }

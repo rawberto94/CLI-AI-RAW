@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { 
   FileText, 
   Shield, 
@@ -1782,7 +1783,7 @@ export default function LandingPageClient() {
                         });
                         if (res.ok) {
                           form.reset();
-                          alert('Thanks! We\u2019ll be in touch shortly.');
+                          toast.success('Thanks! We\u2019ll be in touch shortly.');
                         }
                       } catch { /* silently fail */ }
                     }}

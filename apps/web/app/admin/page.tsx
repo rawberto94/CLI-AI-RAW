@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback as _useCallback } from "react";
+import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -332,6 +334,8 @@ export default function TenantAdminPage() {
 
   // Invite dialog state
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [showDeleteOrgConfirm, setShowDeleteOrgConfirm] = useState(false);
+  const [isDeletingOrg, setIsDeletingOrg] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
   const [inviting, setInviting] = useState(false);
@@ -944,13 +948,7 @@ export default function TenantAdminPage() {
                 <Button
                   variant="destructive"
                   className="shadow-lg shadow-red-500/20"
-                  onClick={() => {
-                    if (window.confirm('Are you sure you want to delete this organization? This action is irreversible.')) {
-                      fetch('/api/admin/organization', { method: 'DELETE' })
-                        .then(() => window.location.href = '/')
-                        .catch(() => alert('Failed to delete organization'));
-                    }
-                  }}
+                  onClick={() => setShowDeleteOrgConfirm(true)}
                 >
                   Delete Organization
                 </Button>
@@ -964,6 +962,30 @@ export default function TenantAdminPage() {
           <AIAccuracyDashboard />
         </TabsContent>
       </Tabs>
+
+      {/* Delete Organization Confirmation */}
+      <ConfirmDialog
+        open={showDeleteOrgConfirm}
+        onOpenChange={setShowDeleteOrgConfirm}
+        title="Delete Organization"
+        description="Are you sure you want to permanently delete this organization? This will remove all contracts, users, and data. This action is irreversible."
+        confirmLabel="Delete Organization"
+        variant="destructive"
+        isLoading={isDeletingOrg}
+        onConfirm={async () => {
+          try {
+            setIsDeletingOrg(true);
+            const res = await fetch('/api/admin/organization', { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete');
+            window.location.href = '/';
+          } catch {
+            toast.error('Failed to delete organization');
+          } finally {
+            setIsDeletingOrg(false);
+            setShowDeleteOrgConfirm(false);
+          }
+        }}
+      />
     </motion.div>
     </div>
     </div>

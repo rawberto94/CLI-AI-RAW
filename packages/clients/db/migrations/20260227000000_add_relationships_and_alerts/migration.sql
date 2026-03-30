@@ -57,11 +57,11 @@ CREATE INDEX "contract_relationships_tenant_status_idx"
 -- Add foreign key constraints
 ALTER TABLE "contract_relationships" 
     ADD CONSTRAINT "contract_relationships_source_fkey" 
-    FOREIGN KEY ("source_contract_id") REFERENCES "contracts"("id") ON DELETE CASCADE;
+    FOREIGN KEY ("source_contract_id") REFERENCES "Contract"("id") ON DELETE CASCADE;
 
 ALTER TABLE "contract_relationships" 
     ADD CONSTRAINT "contract_relationships_target_fkey" 
-    FOREIGN KEY ("target_contract_id") REFERENCES "contracts"("id") ON DELETE CASCADE;
+    FOREIGN KEY ("target_contract_id") REFERENCES "Contract"("id") ON DELETE CASCADE;
 
 -- =====================================================
 -- CONTRACT ALERTS TABLE
@@ -119,7 +119,7 @@ CREATE INDEX "contract_alerts_upcoming_idx"
 -- Add foreign key constraint
 ALTER TABLE "contract_alerts" 
     ADD CONSTRAINT "contract_alerts_contract_fkey" 
-    FOREIGN KEY ("contract_id") REFERENCES "contracts"("id") ON DELETE CASCADE;
+    FOREIGN KEY ("contract_id") REFERENCES "Contract"("id") ON DELETE CASCADE;
 
 -- =====================================================
 -- RLS POLICIES (if using Row Level Security)

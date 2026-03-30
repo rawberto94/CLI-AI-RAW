@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { toast } from 'sonner';
 import {
   Download,
   FileText,
@@ -145,7 +146,7 @@ export function ExportChatDialog({
       }, 1500);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      toast.error('Export failed. Please try again.');
     } finally {
       setIsExporting(false);
     }

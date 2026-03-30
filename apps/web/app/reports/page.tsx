@@ -12,7 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { FileText, Download, TrendingUp, AlertTriangle, DollarSign, Shield, Building2, BarChart3, Settings, Sparkles } from 'lucide-react';
+import { FileText, Download, TrendingUp, AlertTriangle, DollarSign, Shield, Building2, BarChart3, Settings, Sparkles, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { PageBreadcrumb } from '@/components/navigation';
 
 
 
@@ -91,7 +93,7 @@ export default function ReportDashboard() {
       if (reportMode === 'custom') {
         // Custom report with field selection
         if (selectedFields.length === 0) {
-          alert('Please select at least one field');
+          toast.error('Please select at least one field to generate a custom report.');
           setLoading(false);
           return;
         }
@@ -109,7 +111,7 @@ export default function ReportDashboard() {
         if (!response.ok) throw new Error('Failed to generate custom report');
 
         const data = await response.json();
-        alert(`Custom report generated with ${data.rows} rows!`);
+        toast.success(`Custom report generated with ${data.rows} rows.`);
       } else {
         // Template report
         const params = new URLSearchParams({
@@ -129,7 +131,7 @@ export default function ReportDashboard() {
 
         if (exportFormat === 'json') {
           const data = await response.json();
-          alert('Report generated successfully!');
+          toast.success('Report generated successfully!');
         } else {
           // Download file
           const blob = await response.blob();
@@ -143,8 +145,8 @@ export default function ReportDashboard() {
           document.body.removeChild(a);
         }
       }
-    } catch {
-      alert('Failed to generate report');
+    } catch (error) {
+      toast.error('Failed to generate report. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -161,6 +163,7 @@ export default function ReportDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 dark:from-slate-900 dark:via-purple-950/30 dark:to-purple-950/20">
       <div className="container mx-auto py-8 space-y-8">
+        <PageBreadcrumb />
         {/* Header */}
         <div className="flex items-center gap-4">
           <div className="p-4 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-purple-600 text-white shadow-xl shadow-violet-500/30">
@@ -245,7 +248,7 @@ export default function ReportDashboard() {
                     <SelectContent>
                       <SelectItem value="json">JSON (View in Browser)</SelectItem>
                       <SelectItem value="csv">CSV (Excel Compatible)</SelectItem>
-                      <SelectItem value="pdf">PDF (Download HTML)</SelectItem>
+                      <SelectItem value="pdf">HTML Report (Download)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -319,7 +322,7 @@ export default function ReportDashboard() {
 
           {/* Generate Button */}
           <Button onClick={handleGenerateReport} disabled={loading} className="w-full bg-gradient-to-r from-violet-500 via-purple-500 to-purple-600 hover:from-violet-600 hover:via-purple-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 transition-all duration-300" size="lg">
-            <Download className="mr-2 h-4 w-4" />
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
             {loading ? 'Generating Report...' : 'Generate Report'}
           </Button>
 

@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
+
 interface VendorProfile {
   id: string;
   vendorName: string;

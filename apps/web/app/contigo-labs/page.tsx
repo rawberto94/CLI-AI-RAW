@@ -4042,7 +4042,6 @@ What would you like to explore?`,
                     </div>
                   </div>
                 ))}
-                </div>
               </div>
             </motion.div>
           )}

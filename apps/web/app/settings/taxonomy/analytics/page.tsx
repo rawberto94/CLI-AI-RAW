@@ -30,6 +30,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from 'sonner';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -286,7 +287,7 @@ export default function CategoryAnalyticsPage() {
       const contractIds = contractsData.data?.map((c: any) => c.id) || [];
 
       if (contractIds.length === 0) {
-        alert("No uncategorized contracts found!");
+        toast.info("No uncategorized contracts found.");
         return;
       }
 
@@ -307,15 +308,15 @@ export default function CategoryAnalyticsPage() {
       const result = await categorizeResponse.json();
 
       if (result.success) {
-        alert(
-          `Categorized ${result.data.categorized}/${result.data.total} contracts!`
+        toast.success(
+          `Categorized ${result.data.categorized}/${result.data.total} contracts`
         );
         fetchAnalytics();
       } else {
         throw new Error(result.error || "Categorization failed");
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Bulk categorization failed");
+      toast.error(err instanceof Error ? err.message : "Bulk categorization failed");
     } finally {
       setIsBulkCategorizing(false);
     }

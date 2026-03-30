@@ -34,6 +34,7 @@ import {
 import { useWorkflows, useUpdateWorkflow, useDeleteWorkflow, useCreateWorkflow, useCrossModuleInvalidation, type Workflow as WorkflowType } from '@/hooks/use-queries'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
+import { PageBreadcrumb } from '@/components/navigation'
 import {
   Dialog,
   DialogContent,
@@ -291,13 +292,18 @@ function WorkflowsPageContent() {
             workflowId={selectedWorkflow?.id}
             initialData={selectedWorkflow}
             onSave={async (data) => {
-              const method = selectedWorkflow ? 'PUT' : 'POST'
-              const url = selectedWorkflow ? `/api/workflows/${selectedWorkflow.id}` : '/api/workflows'
-              await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
-              setShowBuilder(false)
-              crossModule.onWorkflowChange()
-              await refetch()
-              toast.success(selectedWorkflow ? 'Workflow updated' : 'Workflow created')
+              try {
+                const method = selectedWorkflow ? 'PUT' : 'POST'
+                const url = selectedWorkflow ? `/api/workflows/${selectedWorkflow.id}` : '/api/workflows'
+                const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+                if (!res.ok) throw new Error('Failed to save workflow')
+                setShowBuilder(false)
+                crossModule.onWorkflowChange()
+                await refetch()
+                toast.success(selectedWorkflow ? 'Workflow updated' : 'Workflow created')
+              } catch {
+                toast.error('Failed to save workflow. Please try again.')
+              }
             }}
             onTest={async (data) => {
               toast.info('Workflow test completed', { description: 'Workflow validated successfully.' })
@@ -311,6 +317,10 @@ function WorkflowsPageContent() {
   return (
     <div className="h-full overflow-auto bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/20 dark:from-slate-900 dark:via-purple-950/20 dark:to-purple-950/20">
       <div className="max-w-7xl mx-auto">
+        {/* Breadcrumbs */}
+        <div className="px-6 pt-4">
+          <PageBreadcrumb />
+        </div>
         {/* Unified Header */}
         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-700/50 px-6 py-5 sticky top-0 z-20">
           <motion.div 

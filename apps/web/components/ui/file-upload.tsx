@@ -28,6 +28,7 @@ import {
   Paperclip,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 // ============================================
 // File Type Icons
@@ -615,7 +616,7 @@ export function ImageUpload({
 
   const handleFileSelect = (file: File) => {
     if (file.size > maxSize) {
-      alert(`File size exceeds ${formatFileSize(maxSize)} limit`);
+      toast.error(`File size exceeds ${formatFileSize(maxSize)} limit`);
       return;
     }
 

@@ -42,6 +42,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 
 
@@ -122,6 +123,8 @@ export default function ProfileSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' });
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const handleSave = async () => {
     if (!user) return;
@@ -442,19 +445,76 @@ export default function ProfileSettingsPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="current-password">Current Password</Label>
-                  <Input id="current-password" type="password" />
+                  <Input
+                    id="current-password"
+                    type="password"
+                    value={passwordForm.current}
+                    onChange={(e) => setPasswordForm(prev => ({ ...prev, current: e.target.value }))}
+                  />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="new-password">New Password</Label>
-                    <Input id="new-password" type="password" />
+                    <Input
+                      id="new-password"
+                      type="password"
+                      value={passwordForm.new}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, new: e.target.value }))}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirm-password">Confirm Password</Label>
-                    <Input id="confirm-password" type="password" />
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      value={passwordForm.confirm}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm: e.target.value }))}
+                    />
                   </div>
                 </div>
-                <Button variant="outline" className="bg-gradient-to-r from-amber-500 to-orange-600 text-white border-none hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-amber-500/30">Update Password</Button>
+                <Button
+                  variant="outline"
+                  className="bg-gradient-to-r from-amber-500 to-orange-600 text-white border-none hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-amber-500/30"
+                  disabled={isUpdatingPassword}
+                  onClick={async () => {
+                    if (!passwordForm.current || !passwordForm.new || !passwordForm.confirm) {
+                      toast.error('Please fill in all password fields');
+                      return;
+                    }
+                    if (passwordForm.new.length < 8) {
+                      toast.error('New password must be at least 8 characters');
+                      return;
+                    }
+                    if (passwordForm.new !== passwordForm.confirm) {
+                      toast.error('New passwords do not match');
+                      return;
+                    }
+                    setIsUpdatingPassword(true);
+                    try {
+                      const res = await fetch('/api/user/password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          currentPassword: passwordForm.current,
+                          newPassword: passwordForm.new,
+                        }),
+                      });
+                      if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        throw new Error(data.error || 'Failed to update password');
+                      }
+                      toast.success('Password updated successfully');
+                      setPasswordForm({ current: '', new: '', confirm: '' });
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : 'Failed to update password');
+                    } finally {
+                      setIsUpdatingPassword(false);
+                    }
+                  }}
+                >
+                  {isUpdatingPassword && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Update Password
+                </Button>
               </CardContent>
             </Card>
 
@@ -497,9 +557,10 @@ export default function ProfileSettingsPage() {
                   </div>
                   <Switch
                     checked={user.twoFactorEnabled}
-                    onCheckedChange={(checked) =>
-                      setUser((prev) => ({ ...prev, twoFactorEnabled: checked }) as any)
-                    }
+                    onCheckedChange={(checked) => {
+                      setUser((prev) => prev ? { ...prev, twoFactorEnabled: checked } : prev);
+                      toast.info(checked ? '2FA enabled — save changes to apply' : '2FA disabled — save changes to apply');
+                    }}
                   />
                 </div>
               </CardContent>

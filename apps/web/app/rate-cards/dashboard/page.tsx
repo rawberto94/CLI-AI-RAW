@@ -114,19 +114,34 @@ export default function RateCardDashboardPage() {
           Client & Negotiation Overview
         </h2>
         <div className="grid gap-6 lg:grid-cols-3">
-          {clientMetrics && (
+          {clientMetrics ? (
             <ClientOverviewWidget metrics={clientMetrics} loading={loading} />
-          )}
-          {baselineMetrics && (
+          ) : !loading ? (
+            <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 flex flex-col items-center justify-center text-center">
+              <p className="text-sm text-muted-foreground">No client data yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Import rate cards to see client overview</p>
+            </div>
+          ) : null}
+          {baselineMetrics ? (
             <BaselineTrackingWidget metrics={baselineMetrics} loading={loading} />
-          )}
-          {negotiationMetrics && (
+          ) : !loading ? (
+            <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 flex flex-col items-center justify-center text-center">
+              <p className="text-sm text-muted-foreground">No baseline data yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Set baselines to track changes</p>
+            </div>
+          ) : null}
+          {negotiationMetrics ? (
             <NegotiationStatusWidget 
               metrics={negotiationMetrics} 
               loading={loading}
               onViewOpportunities={() => router.push('/rate-cards/opportunities')}
             />
-          )}
+          ) : !loading ? (
+            <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-6 flex flex-col items-center justify-center text-center">
+              <p className="text-sm text-muted-foreground">No negotiation data yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Start a benchmark to see status</p>
+            </div>
+          ) : null}
         </div>
       </motion.section>
 

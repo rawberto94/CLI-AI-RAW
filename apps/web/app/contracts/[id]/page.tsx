@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils'
 import { getTenantId } from '@/lib/tenant'
 import { toast } from 'sonner'
 import { ShareDialog } from '@/components/collaboration/ShareDialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useWebSocket } from '@/contexts/websocket-context'
 import { useCrossModuleInvalidation } from '@/hooks/use-queries'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -178,6 +179,8 @@ export default function ContractDetailPage() {
   const [extensionDate, setExtensionDate] = React.useState('')
   const [extensionNote, setExtensionNote] = React.useState('')
   const [extensionValue, setExtensionValue] = React.useState('')
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
+  const [isDeleting, setIsDeleting] = React.useState(false)
   const [aiExtensionRec, setAiExtensionRec] = React.useState<AIExtensionRecommendation | null>(null)
   const [aiExtensionLoading, setAiExtensionLoading] = React.useState(false)
   const signedFileRef = React.useRef<HTMLInputElement>(null)
@@ -1206,56 +1209,65 @@ export default function ContractDetailPage() {
         hasReminder={metadata.reminder_enabled ?? contract?.reminder_enabled ?? false}
         isArchived={contract?.status === 'archived'}
         onToggleFavorite={async () => {
-          const response = await fetch(`/api/contracts/${contractId}/favorite`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
-            body: JSON.stringify({ favorite: !isFavorite })
-          })
-          if (!response.ok) throw new Error('Failed to toggle favorite')
-          setIsFavorite(!isFavorite)
+          try {
+            const response = await fetch(`/api/contracts/${contractId}/favorite`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
+              body: JSON.stringify({ favorite: !isFavorite })
+            })
+            if (!response.ok) throw new Error('Failed to toggle favorite')
+            setIsFavorite(!isFavorite)
+            toast.success(isFavorite ? 'Removed from favorites' : 'Added to favorites')
+          } catch {
+            toast.error('Failed to update favorite status')
+          }
         }}
         onToggleReminder={async () => {
           openDialog('reminder')
         }}
         onDelete={async () => {
-          const response = await fetch(`/api/contracts/${contractId}`, {
-            method: 'DELETE',
-            headers: { 'x-tenant-id': getTenantId() }
-          })
-          if (!response.ok) throw new Error('Failed to delete contract')
-          try { await crossModule.onContractChange(contractId) } catch { /* non-critical notification */ }
-          router.replace('/contracts')
+          setShowDeleteConfirm(true)
         }}
         onArchive={async () => {
-          const newStatus = contract?.status === 'archived' ? 'active' : 'archived'
-          const response = await fetch(`/api/contracts/${contractId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
-            body: JSON.stringify({ status: newStatus })
-          })
-          if (!response.ok) throw new Error('Failed to archive contract')
-          queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) })
+          try {
+            const newStatus = contract?.status === 'archived' ? 'active' : 'archived'
+            const response = await fetch(`/api/contracts/${contractId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
+              body: JSON.stringify({ status: newStatus })
+            })
+            if (!response.ok) throw new Error('Failed to archive contract')
+            queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) })
+            toast.success(newStatus === 'archived' ? 'Contract archived' : 'Contract restored')
+          } catch {
+            toast.error('Failed to update contract status')
+          }
         }}
         onExport={async (format) => {
-          const response = await fetch(`/api/contracts/${contractId}/export?format=${encodeURIComponent(format)}`, {
-            headers: { 'x-tenant-id': getTenantId() },
-          })
-          if (!response.ok) throw new Error('Export failed')
-          const blob = await response.blob()
-          if (!blob.size) throw new Error('Server returned empty file')
-          const disposition = response.headers.get('Content-Disposition')
-          const match = disposition?.match(/filename="?([^"]+)"?/)
-          const filename = match?.[1] || `contract-${contractId}.${format}`
-          const url = window.URL.createObjectURL(blob)
           try {
-            const a = document.createElement('a')
-            a.href = url
-            a.download = filename
-            document.body.appendChild(a)
-            a.click()
-            a.remove()
-          } finally {
-            window.URL.revokeObjectURL(url)
+            const response = await fetch(`/api/contracts/${contractId}/export?format=${encodeURIComponent(format)}`, {
+              headers: { 'x-tenant-id': getTenantId() },
+            })
+            if (!response.ok) throw new Error('Export failed')
+            const blob = await response.blob()
+            if (!blob.size) throw new Error('Server returned empty file')
+            const disposition = response.headers.get('Content-Disposition')
+            const match = disposition?.match(/filename="?([^"]+)"?/)
+            const filename = match?.[1] || `contract-${contractId}.${format}`
+            const url = window.URL.createObjectURL(blob)
+            try {
+              const a = document.createElement('a')
+              a.href = url
+              a.download = filename
+              document.body.appendChild(a)
+              a.click()
+              a.remove()
+            } finally {
+              window.URL.revokeObjectURL(url)
+            }
+            toast.success(`Contract exported as ${format.toUpperCase()}`)
+          } catch {
+            toast.error('Failed to export contract')
           }
         }}
         onPrint={() => window.print()}
@@ -1447,6 +1459,35 @@ export default function ContractDetailPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Delete Contract"
+        description={`Are you sure you want to permanently delete "${contract?.filename || 'this contract'}"? This action cannot be undone and all associated artifacts, notes, and history will be removed.`}
+        confirmLabel="Delete Contract"
+        variant="destructive"
+        isLoading={isDeleting}
+        onConfirm={async () => {
+          try {
+            setIsDeleting(true)
+            const response = await fetch(`/api/contracts/${contractId}`, {
+              method: 'DELETE',
+              headers: { 'x-tenant-id': getTenantId() }
+            })
+            if (!response.ok) throw new Error('Failed to delete contract')
+            try { await crossModule.onContractChange(contractId) } catch { /* non-critical */ }
+            toast.success('Contract deleted successfully')
+            router.replace('/contracts')
+          } catch {
+            toast.error('Failed to delete contract')
+          } finally {
+            setIsDeleting(false)
+            setShowDeleteConfirm(false)
+          }
+        }}
+      />
     </div>
   )
 }

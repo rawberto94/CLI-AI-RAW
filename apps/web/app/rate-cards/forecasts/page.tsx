@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ForecastsList } from '@/components/rate-cards/ForecastsList';
@@ -140,7 +141,7 @@ export default function RateCardForecastsPage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch {
-      alert('Failed to export forecasts');
+      toast.error('Failed to export forecasts');
     }
   };
 
