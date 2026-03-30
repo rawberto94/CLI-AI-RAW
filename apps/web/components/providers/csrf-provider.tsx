@@ -143,13 +143,15 @@ function installFetchInterceptor(): () => void {
   XMLHttpRequest.prototype.open = function patchedOpen(
     method: string,
     url: string | URL,
-    ...rest: Parameters<typeof originalOpen>[2][]
+    async_?: boolean,
+    username?: string | null,
+    password?: string | null
   ) {
     // Store method + url on the instance for use in send()
     (this as XMLHttpRequest & { _csrfMethod?: string; _csrfUrl?: string })._csrfMethod = method.toUpperCase();
     (this as XMLHttpRequest & { _csrfMethod?: string; _csrfUrl?: string })._csrfUrl =
       typeof url === 'string' ? url : url.href;
-    return originalOpen.apply(this, [method, url, ...rest] as Parameters<typeof originalOpen>);
+    return originalOpen.call(this, method, url, async_ ?? true, username, password);
   };
 
   XMLHttpRequest.prototype.send = function patchedSend(body?: Document | XMLHttpRequestBodyInit | null) {

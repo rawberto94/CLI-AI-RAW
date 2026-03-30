@@ -43,6 +43,7 @@ import { aiTracer } from '@/lib/ai/ai-tracing';
 import { countTokens } from '@/lib/ai/token-counter';
 import { logger } from '@/lib/logger';
 import { getCircuitBreaker } from '@/lib/ai/circuit-breaker';
+import { auditLog, AuditAction } from '@/lib/security/audit';
 
 // ─── Decomposed modules ─────────────────────────────────────────────────
 import {
@@ -85,17 +86,28 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
     conversationHistory.length = MAX_HISTORY_ITEMS;
   }
 
-  // Validate conversation history items — reject malformed entries
+  // Validate conversation history items — reject malformed entries and system messages
   if (Array.isArray(conversationHistory)) {
     for (let i = conversationHistory.length - 1; i >= 0; i--) {
       const item = conversationHistory[i];
       if (
         !item ||
         typeof item.role !== 'string' ||
-        !['user', 'assistant', 'system'].includes(item.role) ||
+        item.role === 'system' ||
+        !['user', 'assistant'].includes(item.role) ||
         typeof item.content !== 'string'
       ) {
         conversationHistory.splice(i, 1);
+      }
+    }
+    // Cap total history content length to prevent cost DoS via oversized payloads
+    const MAX_HISTORY_CHARS = 500_000;
+    let totalChars = 0;
+    for (let i = 0; i < conversationHistory.length; i++) {
+      totalChars += conversationHistory[i].content.length;
+      if (totalChars > MAX_HISTORY_CHARS) {
+        conversationHistory.length = i;
+        break;
       }
     }
   }
@@ -190,6 +202,20 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   // ═══════════════════════════════════════════════════════════════════════
 
   const contextContractId = context?.contractId as string | undefined;
+
+  // Explicit tenant-scoped authorization check on contractId before any data fetching
+  if (contextContractId) {
+    const contractExists = await prisma.contract.findFirst({
+      where: { id: contextContractId, tenantId },
+      select: { id: true },
+    });
+    if (!contractExists) {
+      return new NextResponse(JSON.stringify({ error: 'Contract not found or access denied' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+  }
 
   const {
     searchResults, ragSources, ragContext, memoryContext,
@@ -603,10 +629,15 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
                 (errMsg.includes('404') && errMsg.includes('deployment'));
               if (isQuotaOrAuthError || isDeploymentError) {
                 // Skip remaining models from the same provider
-                const failedProvider = config.provider;
+                logger.error('[Stream v2] Provider fatal error', {
+                  action: 'provider-fatal',
+                  provider: config.provider,
+                  model: config.model,
+                  errorType: isDeploymentError ? 'deployment-missing' : 'quota-auth',
+                });
                 const userMessage = isDeploymentError
-                  ? `AI model deployment not found. Please contact your administrator to configure an Azure OpenAI deployment.`
-                  : `AI service temporarily unavailable (${failedProvider} rate limit). Please try again later.`;
+                  ? `AI service configuration error. Please contact your administrator.`
+                  : `AI service temporarily unavailable. Please try again later.`;
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                   type: 'error',
                   error: userMessage,
@@ -949,6 +980,23 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
               },
             });
             persistedConversationId = conversationId;
+
+            // Audit log for GDPR compliance — track who created chat messages
+            auditLog({
+              action: AuditAction.DATA_EXPORTED,
+              tenantId,
+              userId,
+              resourceType: 'ChatConversation',
+              resourceId: conversationId,
+              metadata: {
+                event: 'CHAT_MESSAGE_CREATED',
+                messageCount: 2,
+                model: usedModel,
+                toolsUsed: allToolResults.length,
+                responseLength: fullContent.length,
+                contractId: contextContractId || null,
+              },
+            }).catch(() => { /* non-critical */ });
           } catch {
             // Non-critical — don't break streaming
           }

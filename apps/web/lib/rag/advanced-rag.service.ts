@@ -1035,7 +1035,7 @@ export async function hybridSearch(
     // Step 6: Fetch contract metadata and format results
     const contractIds = [...new Set(finalResults.map(r => r.contractId))];
     const contracts = await prisma.contract.findMany({
-      where: { id: { in: contractIds } },
+      where: { id: { in: contractIds }, ...(filters.tenantId ? { tenantId: filters.tenantId } : {}) },
       select: { 
         id: true, 
         fileName: true,
@@ -1171,7 +1171,7 @@ async function keywordOnlySearch(
   
   const contractIds = [...new Set(results.map(r => r.contractId))];
   const contracts = await prisma.contract.findMany({
-    where: { id: { in: contractIds } },
+    where: { id: { in: contractIds }, ...(filters.tenantId ? { tenantId: filters.tenantId } : {}) },
     select: { id: true, fileName: true },
   });
   
@@ -1222,7 +1222,7 @@ async function rawTextFallbackSearch(
       rank: number;
     }>>`
       SELECT c.id, c.filename as "fileName", 
-             substring(c."rawText" from 1 for 2000) as "rawText",
+             substring(c."rawText" from 1 for 16000) as "rawText",
              ts_rank_cd(to_tsvector('english', c."rawText"), plainto_tsquery('english', ${query})) as rank
       FROM "Contract" c
       WHERE c."rawText" IS NOT NULL 

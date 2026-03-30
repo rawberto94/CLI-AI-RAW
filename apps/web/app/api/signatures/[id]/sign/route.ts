@@ -96,7 +96,7 @@ export async function GET(
 
     await prisma.signatureRequest.update({
       where: { id: requestId },
-      data: { signers: updatedSigners, updatedAt: new Date() },
+      data: { signers: updatedSigners as any, updatedAt: new Date() },
     });
 
     return NextResponse.json({
@@ -199,14 +199,14 @@ export async function POST(
       await prisma.signatureRequest.update({
         where: { id: requestId },
         data: {
-          signers: updatedSigners,
+          signers: updatedSigners as any,
           status: 'declined',
           updatedAt: new Date(),
           metadata: {
             ...((sigRequest.metadata as Record<string, unknown>) || {}),
             declinedBy: tokenData.email,
             declinedAt: now,
-          },
+          } as any,
         },
       });
 
@@ -259,7 +259,7 @@ export async function POST(
     await prisma.signatureRequest.update({
       where: { id: requestId },
       data: {
-        signers: updatedSigners,
+        signers: updatedSigners as any,
         status: newRequestStatus,
         ...(allSigned ? { completedAt: new Date() } : {}),
         updatedAt: new Date(),
@@ -269,7 +269,7 @@ export async function POST(
             method: signatureMethod,
             timestamp: now,
           },
-        },
+        } as any,
       },
     });
 

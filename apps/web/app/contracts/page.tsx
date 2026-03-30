@@ -339,8 +339,10 @@ export default function ContractsPage() {
   );
 
   // Server already sorts — skip redundant client-side sort.
-  // Pagination uses server-side total.
-  const totalPages = Math.ceil((contractsData?.total ?? 0) / pageSize);
+  // When client-side supplementary filters are active, use filtered count for accurate pagination.
+  const hasClientFilters = expirationFilters.length > 0 || signatureFilters.length > 0 || documentTypeFilters.length > 0;
+  const effectiveTotal = hasClientFilters ? filteredContracts.length : (contractsData?.total ?? 0);
+  const totalPages = Math.ceil(effectiveTotal / pageSize);
   const paginatedContracts = filteredContracts;
 
   // Sparkline trend data — computed once, shared by both heroStats branches
@@ -1125,9 +1127,9 @@ export default function ContractsPage() {
                   
                   {/* Page Info */}
                   <div className="text-sm text-slate-600 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200">
-                    <span className="font-semibold text-slate-800 tabular-nums">{((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, contractsData?.total ?? 0)}</span>
+                    <span className="font-semibold text-slate-800 tabular-nums">{((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, effectiveTotal)}</span>
                     <span className="text-slate-400 mx-1.5"> of </span>
-                    <span className="font-semibold text-slate-800 tabular-nums">{contractsData?.total ?? 0}</span>
+                    <span className="font-semibold text-slate-800 tabular-nums">{effectiveTotal}</span>
                     <span className="text-slate-500 ml-1"> contracts</span>
                   </div>
                   

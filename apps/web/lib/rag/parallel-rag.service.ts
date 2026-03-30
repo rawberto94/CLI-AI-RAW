@@ -178,7 +178,7 @@ export async function parallelMultiQueryRAG(
     const contractIds = [...new Set(topResults.map(r => r.contractId))];
 
     const contracts = await prisma.contract.findMany({
-      where: { id: { in: contractIds } },
+      where: { id: { in: contractIds }, ...(tenantId ? { tenantId } : {}) },
       select: {
         id: true,
         contractTitle: true,
@@ -220,7 +220,7 @@ export async function parallelMultiQueryRAG(
       if (keywordResults.length > 0) {
         const contractIds = [...new Set(keywordResults.map(r => r.contractId))];
         const contracts = await prisma.contract.findMany({
-          where: { id: { in: contractIds } },
+          where: { id: { in: contractIds }, ...(tenantId ? { tenantId } : {}) },
           select: { id: true, contractTitle: true, fileName: true, supplierName: true, status: true },
         });
         const contractMap = new Map(contracts.map(c => [c.id, c]));
@@ -245,11 +245,12 @@ export async function parallelMultiQueryRAG(
       console.error('[ParallelRAG] Keyword fallback also failed:', fallbackError);
     }
     
-    // Last resort: rawText search
+    // Last resort: rawText search — use full-text search on the tsvector column
+    // and return enough text for meaningful context (16KB instead of 2KB)
     try {
       const tenantFilter = tenantId ? Prisma.sql`AND "tenantId" = ${tenantId}` : Prisma.empty;
       const rawResults = await prisma.$queryRaw<Array<{ id: string; contractTitle: string | null; fileName: string; supplierName: string | null; rawText: string }>>`
-        SELECT id, "contractTitle", filename as "fileName", "supplierName", LEFT("rawText", 2000) as "rawText"
+        SELECT id, "contractTitle", filename as "fileName", "supplierName", LEFT("rawText", 16000) as "rawText"
         FROM "Contract"
         WHERE "rawText" IS NOT NULL
           AND to_tsvector('english', "rawText") @@ plainto_tsquery('english', ${query})

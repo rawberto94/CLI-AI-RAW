@@ -36,12 +36,12 @@ export async function POST(req: NextRequest) {
     const items: Array<{ name: string; blob: Blob; filename: string }> = []
 
     // Allowed MIME types and max file size from constants
-    const allowedMimes = [
+    const allowedMimes: string[] = [
       ...UPLOAD.ALLOWED_TYPES.CONTRACTS,
       ...UPLOAD.ALLOWED_TYPES.RATE_CARDS,
       ...UPLOAD.ALLOWED_TYPES.IMAGES,
     ];
-    const allowedExts = [
+    const allowedExts: string[] = [
       ...UPLOAD.EXTENSIONS.CONTRACTS,
       ...UPLOAD.EXTENSIONS.RATE_CARDS,
       ...UPLOAD.EXTENSIONS.IMAGES,

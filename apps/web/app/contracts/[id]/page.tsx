@@ -742,7 +742,7 @@ export default function ContractDetailPage() {
       <ContractHeader
         contractId={contractId}
         filename={contract?.filename || ''}
-        originalName={contract?.originalName || ''}
+        originalName={(contract as any)?.originalName || ''}
         status={contract?.status || 'unknown'}
         currentVersion={currentVersionNumber}
         showPdfViewer={showPdfViewer}

@@ -169,7 +169,7 @@ export default function NotificationsSettingsPage() {
         <PageBreadcrumb
           items={[
             { label: "Settings", href: "/settings" },
-            { label: "Notifications" },
+            { label: "Notifications", href: "/settings/notifications" },
           ]}
         />
 

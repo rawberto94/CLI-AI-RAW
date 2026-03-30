@@ -199,7 +199,7 @@ export default function UploadPage() {
       const uploadResponse = { ok: httpStatus >= 200 && httpStatus < 300, status: httpStatus }
       
       if (!uploadResponse.ok) {
-        const err = responseData.error || {};
+        const err = (responseData.error || {}) as Record<string, string>;
         const errorMessage = typeof err === 'string' ? err
           : err.details ? `${err.message}: ${err.details}`
           : (err.message || 'Upload failed');
@@ -207,7 +207,7 @@ export default function UploadPage() {
       }
 
       // API wraps response in { success, data, meta } envelope
-      const result = responseData.data ?? responseData;
+      const result = (responseData.data ?? responseData) as Record<string, unknown>;
 
       // Check for duplicate — let user choose to reprocess
       if (result.isDuplicate && !skipDuplicateCheck) {
@@ -217,9 +217,9 @@ export default function UploadPage() {
                 ...f, 
                 status: 'completed', 
                 progress: 100, 
-                contractId: result.contractId,
+                contractId: result.contractId as string | undefined,
                 isDuplicate: true,
-                existingContractId: result.contractId,
+                existingContractId: result.contractId as string | undefined,
                 endTime: Date.now(),
               }
             : f
@@ -242,7 +242,7 @@ export default function UploadPage() {
         return
       }
 
-      const { contractId } = result
+      const contractId = result.contractId as string | undefined
       
       logger.info('upload_contract_assigned', { contractId, fileName: uploadFile.file.name });
 

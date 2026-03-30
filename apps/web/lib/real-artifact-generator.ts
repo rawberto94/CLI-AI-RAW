@@ -16,6 +16,70 @@ import { categorizeContract } from '@/lib/categorization-service';
 
 const logger = pino({ name: 'real-artifact-generator' });
 
+// ── Text Preprocessing ──
+// Clean OCR output before feeding to AI: normalize whitespace, remove page numbers,
+// detect/preserve tables, and limit consecutive newlines for better extraction accuracy.
+function preprocessText(rawText: string): { cleanedText: string; tables: string[] } {
+  let text = rawText;
+
+  // 1. Normalize line breaks
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // 2. Detect and preserve tables (markdown, tab-separated, pipe-separated)
+  const tables: string[] = [];
+  const tablePatterns = [
+    /\|[^\n]+\|[\s\S]*?(?=\n\n|\n[^|]|$)/g,
+    /(?:^|\n)(?:[^\t\n]+\t){2,}[^\t\n]+(?:\n(?:[^\t\n]+\t){2,}[^\t\n]+)+/g,
+    /(?:^|\n)(?:[^|\n]+\|){2,}[^|\n]+(?:\n(?:[^|\n]+\|){2,}[^|\n]+)+/g,
+  ];
+  for (const pattern of tablePatterns) {
+    const matches = text.match(pattern);
+    if (matches) tables.push(...matches);
+  }
+
+  // 3. Remove page numbers ("Page 1 of 10", "- 1 -", etc.)
+  text = text.replace(/(?:^|\n)\s*(?:Page\s+)?(\d+)\s*(?:of\s+\d+|\/\s*\d+)?\s*(?:\n|$)/gi, '\n');
+  text = text.replace(/(?:^|\n)\s*-\s*\d+\s*-\s*(?:\n|$)/g, '\n');
+
+  // 4. Collapse excessive inline whitespace (preserve indentation)
+  text = text.replace(/[^\S\n]{3,}/g, '  ');
+
+  // 5. Limit consecutive newlines to 3
+  text = text.replace(/\n{4,}/g, '\n\n\n');
+
+  return { cleanedText: text.trim(), tables };
+}
+
+/**
+ * Estimate text quality/confidence from heuristic signals.
+ * Used when actual DI per-word confidence is unavailable (inline processing path).
+ * Returns 0-1 where 1 = high confidence in text accuracy.
+ */
+function estimateTextConfidence(text: string): number {
+  if (!text || text.length < 50) return 0.3;
+
+  let score = 0.85; // baseline for machine-readable PDFs
+
+  // Penalty: high ratio of non-ASCII or garbled characters
+  const nonAsciiRatio = (text.match(/[^\x20-\x7E\n\t]/g)?.length || 0) / text.length;
+  if (nonAsciiRatio > 0.15) score -= 0.25;
+  else if (nonAsciiRatio > 0.05) score -= 0.1;
+
+  // Penalty: lots of isolated single characters (OCR noise: "a b c d e")
+  const words = text.split(/\s+/);
+  const singleCharRatio = words.filter(w => w.length === 1 && !/^[aAiI0-9]$/.test(w)).length / Math.max(words.length, 1);
+  if (singleCharRatio > 0.2) score -= 0.2;
+  else if (singleCharRatio > 0.1) score -= 0.1;
+
+  // Penalty: very short text for a supposed contract
+  if (text.length < 500) score -= 0.15;
+
+  // Bonus: contains structured legal patterns (good OCR)
+  if (/(?:AGREEMENT|CONTRACT|WHEREAS|hereinafter|pursuant)/i.test(text)) score += 0.05;
+
+  return Math.max(0.1, Math.min(1.0, score));
+}
+
 // Artifact types to generate - matching the workers package configuration
 // These are organized by priority: core > analysis > advanced
 const ARTIFACT_TYPES: ArtifactType[] = [
@@ -439,6 +503,28 @@ ${truncatedText}`,
       const content = response.choices[0]?.message?.content;
       if (content) {
         const parsed = JSON.parse(content);
+
+        // Log conflicts between regex and AI extraction for auditability
+        const conflicts: string[] = [];
+        if (basicMetadata.contractType && parsed.contractType && basicMetadata.contractType !== parsed.contractType) {
+          conflicts.push(`contractType: regex="${basicMetadata.contractType}" vs AI="${parsed.contractType}"`);
+        }
+        if (basicMetadata.startDate && parsed.startDate && basicMetadata.startDate !== parsed.startDate) {
+          conflicts.push(`startDate: regex="${basicMetadata.startDate}" vs AI="${parsed.startDate}"`);
+        }
+        if (basicMetadata.endDate && parsed.endDate && basicMetadata.endDate !== parsed.endDate) {
+          conflicts.push(`endDate: regex="${basicMetadata.endDate}" vs AI="${parsed.endDate}"`);
+        }
+        if (basicMetadata.totalValue && parsed.totalValue && basicMetadata.totalValue !== parsed.totalValue) {
+          conflicts.push(`totalValue: regex=${basicMetadata.totalValue} vs AI=${parsed.totalValue}`);
+        }
+        if (basicMetadata.signatureStatus && parsed.signatureStatus && basicMetadata.signatureStatus !== parsed.signatureStatus) {
+          conflicts.push(`signatureStatus: regex="${basicMetadata.signatureStatus}" vs AI="${parsed.signatureStatus}"`);
+        }
+        if (conflicts.length > 0) {
+          logger.warn({ contractId, conflicts }, 'Metadata extraction conflicts (AI values used)');
+        }
+
         return {
           title: parsed.title || basicMetadata.title,
           contractType: parsed.contractType || basicMetadata.contractType,
@@ -821,7 +907,9 @@ async function generateAIArtifact(
   type: ArtifactType,
   contractText: string,
   contractId: string,
-  contractType?: string
+  contractType?: string,
+  ocrConfidence?: number,
+  detectedTables?: string[]
 ): Promise<Record<string, any> | null> {
   const apiKey = getOpenAIApiKey();
   
@@ -932,16 +1020,26 @@ async function generateAIArtifact(
 
     const prompt = prompts[type] || `Analyze the ${type} aspects of this contract and return relevant information as JSON.`;
 
+    // Append detected table content for artifact types that benefit from structured data
+    let tableContext = '';
+    if (detectedTables && detectedTables.length > 0) {
+      const tableTypes: ArtifactType[] = ['FINANCIAL', 'DELIVERABLES', 'TIMELINE', 'OBLIGATIONS', 'CONTACTS', 'PARTIES'];
+      if (tableTypes.includes(type)) {
+        const tablesStr = detectedTables.slice(0, 5).join('\n\n');
+        tableContext = `\n\nThe following tables were detected in the document (preserve their structure in your analysis):\n${tablesStr}`;
+      }
+    }
+
     const response = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
-          content: `You are a contract analysis expert. Always respond with valid JSON only, no markdown or explanation.${contractType && contractType !== 'OTHER' ? `\nThis document is a ${contractType.replace(/_/g, ' ')}. Focus your analysis on elements typical of this contract type.` : ''}`,
+          content: `You are a contract analysis expert. Always respond with valid JSON only, no markdown or explanation.${contractType && contractType !== 'OTHER' ? `\nThis document is a ${contractType.replace(/_/g, ' ')}. Focus your analysis on elements typical of this contract type.` : ''}${ocrConfidence !== undefined && ocrConfidence < 0.7 ? `\nWARNING: OCR text quality is low (${Math.round(ocrConfidence * 100)}% confidence). Be cautious with numbers, dates, and proper nouns. Flag any values you are uncertain about.` : ''}`,
         },
         {
           role: 'user',
-          content: `${prompt}\n\nContract text:\n${truncatedText}`,
+          content: `${prompt}\n\nContract text:\n${truncatedText}${tableContext}`,
         },
       ],
       temperature: 0.3,
@@ -961,11 +1059,68 @@ async function generateAIArtifact(
       _mode: 'ai',
       _model: 'gpt-4o-mini',
       _contractId: contractId,
+      _ocrConfidence: ocrConfidence,
     };
   } catch (error) {
     logger.error({ error, type, contractId }, 'AI artifact generation failed');
     return null;
   }
+}
+
+// ── Artifact Validation ──
+// Required fields per artifact type — if missing, artifact is flagged for review.
+const ARTIFACT_REQUIRED_FIELDS: Partial<Record<ArtifactType, string[]>> = {
+  OVERVIEW: ['summary'],
+  CLAUSES: ['clauses'],
+  FINANCIAL: ['amounts'],
+  RISK: ['riskLevel', 'risks'],
+  COMPLIANCE: ['complianceStatus'],
+  OBLIGATIONS: ['obligations'],
+  RENEWAL: ['renewalTerms'],
+  NEGOTIATION_POINTS: ['negotiationPoints'],
+  AMENDMENTS: ['hasAmendments'],
+  CONTACTS: ['contacts'],
+  PARTIES: ['parties'],
+  TIMELINE: ['keyDates'],
+  DELIVERABLES: ['deliverables'],
+  EXECUTIVE_SUMMARY: ['executiveSummary'],
+};
+
+/**
+ * Validate artifact data has required fields for its type.
+ * Returns list of issues (empty = valid).
+ */
+function validateArtifactData(type: ArtifactType, data: Record<string, unknown>): string[] {
+  const issues: string[] = [];
+  const requiredFields = ARTIFACT_REQUIRED_FIELDS[type];
+  if (!requiredFields) return issues;
+
+  for (const field of requiredFields) {
+    const value = data[field];
+    if (value === undefined || value === null) {
+      issues.push(`Missing required field: ${field}`);
+    } else if (Array.isArray(value) && value.length === 0) {
+      issues.push(`Empty array for required field: ${field}`);
+    } else if (typeof value === 'string' && value.trim() === '') {
+      issues.push(`Empty string for required field: ${field}`);
+    }
+  }
+
+  // Type-specific checks
+  if (type === 'RISK' && data.riskLevel) {
+    const validLevels = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+    if (!validLevels.includes(String(data.riskLevel).toUpperCase())) {
+      issues.push(`Invalid riskLevel: ${data.riskLevel} (expected ${validLevels.join('|')})`);
+    }
+  }
+  if (type === 'COMPLIANCE' && data.complianceStatus) {
+    const validStatuses = ['COMPLIANT', 'NEEDS_REVIEW', 'NON_COMPLIANT'];
+    if (!validStatuses.includes(String(data.complianceStatus).toUpperCase())) {
+      issues.push(`Invalid complianceStatus: ${data.complianceStatus}`);
+    }
+  }
+
+  return issues;
 }
 
 /**
@@ -980,6 +1135,19 @@ async function saveArtifact(
 ): Promise<string> {
   const now = new Date();
   
+  // Validate artifact data has required fields for this type
+  const issues = validateArtifactData(type, data);
+  if (issues.length > 0) {
+    logger.warn({ contractId, type, issues }, 'Artifact validation issues detected');
+  }
+
+  // Determine validation status: AI-generated artifacts with good OCR and no issues are 'valid'
+  const ocrConf = typeof data._ocrConfidence === 'number' ? data._ocrConfidence : undefined;
+  const isLowConfidence = ocrConf !== undefined && ocrConf < 0.7;
+  const hasValidationIssues = issues.length > 0;
+  const validationStatus = data._mode === 'ai' && !isLowConfidence && !hasValidationIssues ? 'valid' : 'needs_review';
+  const confidenceValue = ocrConf !== undefined ? ocrConf : (data._mode === 'ai' ? 0.85 : 0.5);
+
   // Try to upsert the artifact
   const artifact = await prisma.artifact.upsert({
     where: {
@@ -993,13 +1161,19 @@ async function saveArtifact(
       tenantId,
       type,
       data,
-      validationStatus: data._mode === 'ai' ? 'valid' : 'needs_review',
+      confidence: confidenceValue,
+      validationStatus,
+      validationIssues: issues.length > 0 ? issues : [],
+      modelUsed: data._model || null,
       createdAt: now,
       updatedAt: now,
     },
     update: {
       data,
-      validationStatus: data._mode === 'ai' ? 'valid' : 'needs_review',
+      confidence: confidenceValue,
+      validationStatus,
+      validationIssues: issues.length > 0 ? issues : [],
+      modelUsed: data._model || null,
       updatedAt: now,
     },
   });
@@ -1158,15 +1332,17 @@ export async function generateRealArtifacts(
 
     // Extract text from the file
     logger.info({ actualPath, mimeType, hasBuffer: !!fileContent }, 'Extracting text from file');
-    const contractText = fileContent 
+    const rawExtractedText = fileContent 
       ? await extractTextFromBuffer(fileContent, filePath, mimeType)
       : await extractTextFromFile(actualPath, mimeType);
     
-    if (!contractText || contractText.length < 10) {
+    if (!rawExtractedText || rawExtractedText.length < 10) {
       throw new Error('Failed to extract meaningful text from file');
     }
 
-    logger.info({ textLength: contractText.length }, 'Text extracted successfully');
+    // Preprocess: normalize whitespace, remove page numbers, preserve tables
+    const { cleanedText: contractText, tables: detectedTables } = preprocessText(rawExtractedText);
+    logger.info({ rawLength: rawExtractedText.length, cleanedLength: contractText.length, tablesDetected: detectedTables.length }, 'Text extracted and preprocessed');
 
     // For DOCX files, also convert to formatted HTML for the redline editor
     let docxHtml: string | null = null;
@@ -1220,19 +1396,42 @@ export async function generateRealArtifacts(
       const preUpdateData: Record<string, any> = {};
       if (preMetadata.title) preUpdateData.contractTitle = preMetadata.title;
       if (preMetadata.contractType) preUpdateData.contractType = preMetadata.contractType;
-      if (preMetadata.startDate) preUpdateData.startDate = new Date(preMetadata.startDate);
-      if (preMetadata.endDate) preUpdateData.endDate = new Date(preMetadata.endDate);
-      if (preMetadata.totalValue) preUpdateData.totalValue = preMetadata.totalValue;
+      if (preMetadata.startDate) {
+        const sd = new Date(preMetadata.startDate);
+        if (!isNaN(sd.getTime())) preUpdateData.startDate = sd;
+        else logger.warn({ contractId, value: preMetadata.startDate }, 'Invalid startDate from metadata extraction, skipped');
+      }
+      if (preMetadata.endDate) {
+        const ed = new Date(preMetadata.endDate);
+        if (!isNaN(ed.getTime())) preUpdateData.endDate = ed;
+        else logger.warn({ contractId, value: preMetadata.endDate }, 'Invalid endDate from metadata extraction, skipped');
+      }
+      // Sanity: startDate should be before endDate
+      if (preUpdateData.startDate && preUpdateData.endDate && preUpdateData.startDate > preUpdateData.endDate) {
+        logger.warn({ contractId, startDate: preMetadata.startDate, endDate: preMetadata.endDate }, 'startDate is after endDate — both dates kept but flagged');
+      }
+      if (preMetadata.totalValue != null) {
+        const tv = Number(preMetadata.totalValue);
+        if (!isNaN(tv) && tv >= 0) {
+          preUpdateData.totalValue = tv;
+        } else {
+          logger.warn({ contractId, value: preMetadata.totalValue }, 'Invalid totalValue from metadata extraction, skipped');
+        }
+      }
       if (preMetadata.currency) preUpdateData.currency = preMetadata.currency;
       if (preMetadata.parties && preMetadata.parties.length > 0) {
-        if (preMetadata.parties[0]) preUpdateData.clientName = preMetadata.parties[0];
-        if (preMetadata.parties[1]) preUpdateData.supplierName = preMetadata.parties[1];
+        const validParties = preMetadata.parties.filter(p => p && p.trim().length > 1);
+        if (validParties[0]) preUpdateData.clientName = validParties[0];
+        if (validParties[1] && validParties[1] !== validParties[0]) preUpdateData.supplierName = validParties[1];
       }
       if (preMetadata.signatureStatus) {
         preUpdateData.signatureStatus = preMetadata.signatureStatus;
         preUpdateData.signatureRequiredFlag = preMetadata.signatureStatus === 'unsigned' || preMetadata.signatureStatus === 'partially_signed';
       }
-      if (preMetadata.signatureDate) preUpdateData.signatureDate = new Date(preMetadata.signatureDate);
+      if (preMetadata.signatureDate) {
+        const sigDate = new Date(preMetadata.signatureDate);
+        if (!isNaN(sigDate.getTime())) preUpdateData.signatureDate = sigDate;
+      }
       if (Object.keys(preUpdateData).length > 0) {
         await prisma.contract.update({ where: { id: contractId }, data: preUpdateData });
         logger.info({ contractId, fields: Object.keys(preUpdateData) }, 'Pre-artifact metadata written');
@@ -1244,6 +1443,13 @@ export async function generateRealArtifacts(
     // Generate each artifact type
     const totalTypes = ARTIFACT_TYPES.length;
     let completed = 0;
+
+    // Estimate OCR confidence from text quality heuristics
+    // (When called from the worker pipeline, actual DI per-word confidence would be used instead)
+    const estimatedOcrConfidence = estimateTextConfidence(contractText);
+    if (estimatedOcrConfidence < 0.7) {
+      logger.warn({ contractId, confidence: estimatedOcrConfidence }, 'Low OCR confidence detected — artifacts will be flagged for review');
+    }
 
     // Query contract record (contractTitle now populated from pre-artifact metadata)
     const contractRecord = await prisma.contract.findUnique({
@@ -1263,7 +1469,7 @@ export async function generateRealArtifacts(
           logger.info({ contractId, type }, `Generating ${type} artifact`);
           
           // Try AI generation first, fall back to basic
-          let artifactData = await generateAIArtifact(type, contractText, contractId, contractType);
+          let artifactData = await generateAIArtifact(type, contractText, contractId, contractType, estimatedOcrConfidence, detectedTables);
           
           if (!artifactData) {
             logger.info({ type }, 'Using basic artifact generation (no AI)');

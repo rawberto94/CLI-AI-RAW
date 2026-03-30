@@ -1974,7 +1974,7 @@ export async function processOCRArtifactJob(
   const jobLogger = logger.child({ jobId: job.id, contractId, tenantId });
 
   let qualityMetrics: ExtractionQualityMetrics | undefined;
-  let localFilePath: string | undefined;
+  let localFilePath!: string;
   let isTempFile = false;
 
   jobLogger.info({ filePath }, 'Starting OCR + artifact processing');
@@ -3361,7 +3361,7 @@ export async function processOCRArtifactJob(
         const aiStatus = unwrapVal(contactsData.signatureStatus);
         const handwrittenSpans = ocrResult.handwrittenText || [];
         const hasHandwriting = handwrittenSpans.length > 0;
-        const fullText = ocrResult.fullText || '';
+        const fullText = ocrResult.text || '';
         const sigPatterns = /\b(signature|signed|sign here|executed|witness|authorized|acknowledged)\b|\/s\//i;
         const hasSignatureContext = sigPatterns.test(fullText);
         const signatoryCount = (contactsData.signatories || []).length;

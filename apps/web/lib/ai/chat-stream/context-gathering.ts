@@ -129,7 +129,7 @@ export async function gatherContext(
 async function buildContractProfile(contractId: string, tenantId: string): Promise<string> {
   let context = '';
   try {
-    const [contractProfile, contractArtifacts, contractClauses, contractObligations] = await Promise.all([
+    const [contractProfile, artifacts, contractClauses, contractObligations] = await Promise.all([
       prisma.contract.findFirst({
         where: { id: contractId, tenantId },
         select: {
@@ -144,14 +144,13 @@ async function buildContractProfile(contractId: string, tenantId: string): Promi
           rawText: true,
         },
       }),
-      prisma.contractArtifact.findMany({
-        where: { contractId },
-        select: { type: true, key: true, value: true, confidence: true },
-        orderBy: { confidence: 'desc' },
-        take: 30,
+      prisma.artifact.findMany({
+        where: { contractId, tenantId },
+        select: { type: true, data: true, confidence: true, validationStatus: true },
+        orderBy: { createdAt: 'desc' },
       }),
       prisma.clause.findMany({
-        where: { contractId },
+        where: { contractId, contract: { tenantId } },
         select: { category: true, text: true, riskLevel: true },
         orderBy: { position: 'asc' },
         take: 20,
@@ -190,25 +189,23 @@ async function buildContractProfile(contractId: string, tenantId: string): Promi
       if (cp.categoryL1) context += `| Category | ${cp.categoryL1}${cp.categoryL2 ? ' > ' + cp.categoryL2 : ''} |\n`;
 
       // Include raw document text for direct AI analysis when artifacts are stubs
-      if (cp.rawText && contractArtifacts.length === 0) {
+      if (cp.rawText && artifacts.length === 0) {
         context += `\n**📄 Full Document Text:**\n\`\`\`\n${cp.rawText.substring(0, 8000)}${cp.rawText.length > 8000 ? '\n...[truncated]' : ''}\n\`\`\`\n`;
       } else if (cp.rawText) {
         context += `\n**📄 Document Text Preview (first 3000 chars):**\n\`\`\`\n${cp.rawText.substring(0, 3000)}${cp.rawText.length > 3000 ? '\n...[see full text via tools]' : ''}\n\`\`\`\n`;
       }
     }
 
-    if (contractArtifacts.length > 0) {
-      const byType = new Map<string, Array<{ key: string; value: unknown; confidence: number }>>();
-      for (const a of contractArtifacts) {
-        if (!byType.has(a.type)) byType.set(a.type, []);
-        byType.get(a.type)!.push({ key: a.key, value: a.value, confidence: a.confidence });
-      }
-      context += `\n**🔍 Extracted Artifacts (${contractArtifacts.length} items):**\n`;
-      for (const [type, items] of byType) {
-        context += `- **${type}** (${items.length}): ${items.slice(0, 3).map(i => {
-          const val = typeof i.value === 'string' ? i.value.slice(0, 100) : JSON.stringify(i.value).slice(0, 100);
-          return `${i.key}: ${val} (${Math.round(i.confidence * 100)}%)`;
-        }).join('; ')}${items.length > 3 ? ` + ${items.length - 3} more` : ''}\n`;
+    if (artifacts.length > 0) {
+      context += `\n**🔍 AI-Generated Artifacts (${artifacts.length} types):**\n`;
+      for (const a of artifacts) {
+        const dataObj = a.data as Record<string, unknown>;
+        const confidenceStr = a.confidence ? ` (${Math.round(Number(a.confidence) * 100)}% confidence)` : '';
+        const statusStr = a.validationStatus === 'needs_review' ? ' ⚠️ needs review' : '';
+        // Serialize artifact data, capping per-artifact context at 1500 chars to stay within token budget
+        const dataStr = JSON.stringify(dataObj, null, 1);
+        const truncatedData = dataStr.length > 1500 ? dataStr.substring(0, 1500) + '...' : dataStr;
+        context += `\n### ${a.type}${confidenceStr}${statusStr}\n\`\`\`json\n${truncatedData}\n\`\`\`\n`;
       }
     }
 

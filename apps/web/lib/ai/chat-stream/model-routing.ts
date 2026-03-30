@@ -74,9 +74,17 @@ const ADMIN_TOOLS = new Set<string>([
   // Future: tools that require admin role
 ]);
 
+// Analytics/insights tools restricted from VIEWER role
+const ANALYTICS_TOOLS = new Set([
+  'get_agent_insights',
+  'get_agent_debate',
+  'get_intelligence_insights',
+]);
+
 export function canUseTool(toolName: string, userRole: string): boolean {
   if (ADMIN_TOOLS.has(toolName) && userRole !== 'ADMIN') return false;
   if (WRITE_TOOLS.has(toolName) && userRole === 'VIEWER') return false;
+  if (ANALYTICS_TOOLS.has(toolName) && userRole === 'VIEWER') return false;
   return true;
 }
 

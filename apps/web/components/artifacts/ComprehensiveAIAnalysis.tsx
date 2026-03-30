@@ -66,6 +66,7 @@ import { toast } from 'sonner'
 // ============ TYPES ============
 
 interface ArtifactData {
+  [key: string]: any
   overview?: any
   clauses?: any
   financial?: any
@@ -77,6 +78,10 @@ interface ArtifactData {
   negotiationPoints?: any
   amendments?: any
   contacts?: any
+  deliverables?: any
+  executive_summary?: any
+  timeline?: any
+  parties?: any
   keyClauses?: any
   financialAnalysis?: any
   riskAssessment?: any
@@ -231,7 +236,7 @@ interface IntelligentAnalysisResult {
 }
 
 interface ComprehensiveAIAnalysisProps {
-  artifacts: ArtifactData
+  artifacts?: ArtifactData
   contractId: string
   contractType?: string
   className?: string
@@ -499,7 +504,7 @@ function EmptyAnalysisState({ section, icon: Icon, onRequestAnalysis }: EmptyAna
 // ============ MAIN COMPONENT ============
 
 export function ComprehensiveAIAnalysis({
-  artifacts,
+  artifacts = {} as ArtifactData,
   contractId,
   contractType = 'General',
   className,
@@ -557,7 +562,11 @@ export function ComprehensiveAIAnalysis({
     renewal: artifacts.renewal || null,
     negotiationPoints: artifacts.negotiationPoints || null,
     amendments: artifacts.amendments || null,
-    contacts: artifacts.contacts || null
+    contacts: artifacts.contacts || null,
+    deliverables: artifacts.deliverables || null,
+    executive_summary: artifacts.executive_summary || null,
+    timeline: artifacts.timeline || null,
+    parties: artifacts.parties || null,
   }), [artifacts])
 
   // Calculate overall health score
@@ -1801,6 +1810,208 @@ export function ComprehensiveAIAnalysis({
               section="Obligations" 
               icon={ListChecks}
               onRequestAnalysis={() => handleRequestAnalysis('obligations')}
+            />
+          )}
+        </AnalysisSection>
+
+        {/* Executive Summary */}
+        {data.executive_summary && (
+          <AnalysisSection
+            title="Executive Summary"
+            description="AI-generated executive briefing"
+            icon={FileText}
+            iconColor="bg-gradient-to-br from-indigo-500 to-blue-500"
+            bgGradient="bg-gradient-to-r from-indigo-500 to-blue-500"
+            status="complete"
+            defaultExpanded={activeView === 'overview'}
+          >
+            <div className="space-y-4">
+              {data.executive_summary.summary && (
+                <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                  <p className="text-sm text-slate-700 leading-relaxed">{data.executive_summary.summary}</p>
+                </div>
+              )}
+              {data.executive_summary.keyPoints && Array.isArray(data.executive_summary.keyPoints) && data.executive_summary.keyPoints.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-slate-700">Key Points</h4>
+                  {data.executive_summary.keyPoints.map((point: string, i: number) => (
+                    <div key={i} className="flex items-start gap-2 p-3 bg-white rounded-lg border border-slate-200">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
+                      <p className="text-sm text-slate-700">{typeof point === 'string' ? point : JSON.stringify(point)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {data.executive_summary.recommendations && Array.isArray(data.executive_summary.recommendations) && data.executive_summary.recommendations.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-slate-700">Recommendations</h4>
+                  {data.executive_summary.recommendations.map((rec: string, i: number) => (
+                    <div key={i} className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                      <p className="text-sm text-slate-700">{typeof rec === 'string' ? rec : JSON.stringify(rec)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </AnalysisSection>
+        )}
+
+        {/* Deliverables */}
+        <AnalysisSection
+          title="Deliverables"
+          description="Expected deliverables, milestones, and outputs"
+          icon={ListChecks}
+          iconColor="bg-gradient-to-br from-teal-500 to-emerald-500"
+          bgGradient="bg-gradient-to-r from-teal-500 to-emerald-500"
+          status={data.deliverables ? 'complete' : 'missing'}
+          defaultExpanded={activeView === 'detailed'}
+        >
+          {data.deliverables ? (
+            <div className="space-y-3">
+              {(data.deliverables.deliverables || data.deliverables.items || []).map((item: any, i: number) => (
+                <div key={i} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200 hover:border-teal-300 transition-colors">
+                  <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-teal-600">{i + 1}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-800">{item.name || item.title || item.description || `Deliverable ${i + 1}`}</p>
+                    {item.description && item.name && <p className="text-xs text-slate-500 mt-1">{item.description}</p>}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {item.dueDate && (
+                        <Badge variant="outline" className="text-xs gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(item.dueDate).toLocaleDateString()}
+                        </Badge>
+                      )}
+                      {item.responsible && (
+                        <Badge variant="outline" className="text-xs gap-1">
+                          <Users className="h-3 w-3" />
+                          {item.responsible}
+                        </Badge>
+                      )}
+                      {item.status && (
+                        <Badge className={cn("text-xs",
+                          item.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                          item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                          'bg-slate-100 text-slate-600'
+                        )}>{item.status}</Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {(data.deliverables.deliverables || data.deliverables.items || []).length === 0 && (
+                <p className="text-sm text-slate-500 italic">No specific deliverables extracted from this contract.</p>
+              )}
+            </div>
+          ) : (
+            <EmptyAnalysisState
+              section="Deliverables"
+              icon={ListChecks}
+              onRequestAnalysis={() => handleRequestAnalysis('deliverables')}
+            />
+          )}
+        </AnalysisSection>
+
+        {/* Amendments */}
+        <AnalysisSection
+          title="Amendments & Modifications"
+          description="Contract changes, addendums, and modifications"
+          icon={History}
+          iconColor="bg-gradient-to-br from-orange-500 to-amber-500"
+          bgGradient="bg-gradient-to-r from-orange-500 to-amber-500"
+          status={data.amendments ? 'complete' : 'missing'}
+          defaultExpanded={activeView === 'detailed'}
+        >
+          {data.amendments ? (
+            <div className="space-y-3">
+              {(data.amendments.amendments || []).map((amendment: any, i: number) => (
+                <div key={i} className="p-4 bg-white rounded-lg border border-slate-200 hover:border-orange-300 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">{amendment.title || amendment.description || `Amendment ${i + 1}`}</p>
+                      {amendment.date && (
+                        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(amendment.date).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    {amendment.type && (
+                      <Badge variant="outline" className="text-xs shrink-0">{amendment.type}</Badge>
+                    )}
+                  </div>
+                  {amendment.details && (
+                    <p className="text-sm text-slate-600 mt-2">{amendment.details}</p>
+                  )}
+                  {amendment.impact && (
+                    <div className="mt-2 p-2 bg-amber-50 rounded text-xs text-amber-700">
+                      <span className="font-medium">Impact:</span> {amendment.impact}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {(data.amendments.amendments || []).length === 0 && (
+                <p className="text-sm text-slate-500 italic">No amendments found in this contract.</p>
+              )}
+            </div>
+          ) : (
+            <EmptyAnalysisState
+              section="Amendments"
+              icon={History}
+              onRequestAnalysis={() => handleRequestAnalysis('amendments')}
+            />
+          )}
+        </AnalysisSection>
+
+        {/* Contacts */}
+        <AnalysisSection
+          title="Contacts & Parties"
+          description="Key contacts, signatories, and representatives"
+          icon={Users}
+          iconColor="bg-gradient-to-br from-sky-500 to-cyan-500"
+          bgGradient="bg-gradient-to-r from-sky-500 to-cyan-500"
+          status={data.contacts ? 'complete' : 'missing'}
+          defaultExpanded={activeView === 'detailed'}
+        >
+          {data.contacts ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {(data.contacts.contacts || data.contacts.parties || []).map((contact: any, i: number) => (
+                <div key={i} className="p-4 bg-white rounded-lg border border-slate-200 hover:border-sky-300 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center">
+                      <Users className="h-5 w-5 text-sky-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-800 truncate">{contact.name || 'Unknown'}</p>
+                      {contact.role && <p className="text-xs text-slate-500">{contact.role}</p>}
+                      {contact.organization && <p className="text-xs text-sky-600">{contact.organization}</p>}
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-1">
+                    {contact.email && (
+                      <p className="text-xs text-slate-500 flex items-center gap-1">
+                        <ExternalLink className="h-3 w-3" /> {contact.email}
+                      </p>
+                    )}
+                    {contact.phone && (
+                      <p className="text-xs text-slate-500 flex items-center gap-1">
+                        <Info className="h-3 w-3" /> {contact.phone}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {(data.contacts.contacts || data.contacts.parties || []).length === 0 && (
+                <p className="col-span-2 text-sm text-slate-500 italic">No contact information extracted from this contract.</p>
+              )}
+            </div>
+          ) : (
+            <EmptyAnalysisState
+              section="Contacts"
+              icon={Users}
+              onRequestAnalysis={() => handleRequestAnalysis('contacts')}
             />
           )}
         </AnalysisSection>

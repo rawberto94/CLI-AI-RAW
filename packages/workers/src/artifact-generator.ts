@@ -796,7 +796,7 @@ async function generateArtifactData(
         temperature: 0.1,
         response_format: { type: 'json_object' },
       })
-    );
+    ) as { choices: Array<{ message: { content: string | null } }>; usage?: { prompt_tokens?: number; completion_tokens?: number } };
 
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('Empty response');

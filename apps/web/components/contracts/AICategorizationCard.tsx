@@ -70,6 +70,33 @@ const CONTRACT_TYPE_LABELS: Record<ContractTypeCategory, { label: string; color:
   RENEWAL: { label: 'Renewal Agreement', color: 'bg-green-100 text-green-700' },
   SUBCONTRACT: { label: 'Subcontract', color: 'bg-fuchsia-100 text-fuchsia-700' },
   SUBSCRIPTION: { label: 'Subscription Agreement', color: 'bg-sky-100 text-sky-700' },
+  // Financial & Corporate
+  LOAN: { label: 'Loan Agreement', color: 'bg-emerald-100 text-emerald-700' },
+  INVESTMENT: { label: 'Investment Agreement', color: 'bg-teal-100 text-teal-700' },
+  MERGER_ACQUISITION: { label: 'Merger & Acquisition', color: 'bg-indigo-100 text-indigo-700' },
+  INSURANCE: { label: 'Insurance Policy', color: 'bg-cyan-100 text-cyan-700' },
+  FRANCHISE: { label: 'Franchise Agreement', color: 'bg-yellow-100 text-yellow-700' },
+  // Operational
+  DISTRIBUTION: { label: 'Distribution Agreement', color: 'bg-blue-100 text-blue-700' },
+  SUPPLY: { label: 'Supply Agreement', color: 'bg-emerald-100 text-emerald-700' },
+  MANUFACTURING: { label: 'Manufacturing Agreement', color: 'bg-orange-100 text-orange-700' },
+  MAINTENANCE: { label: 'Maintenance Agreement', color: 'bg-teal-100 text-teal-700' },
+  CONSTRUCTION: { label: 'Construction Contract', color: 'bg-amber-100 text-amber-700' },
+  // HR & Personnel
+  OFFER_LETTER: { label: 'Offer Letter', color: 'bg-green-100 text-green-700' },
+  INDEPENDENT_CONTRACTOR: { label: 'Independent Contractor', color: 'bg-purple-100 text-purple-700' },
+  NON_COMPETE: { label: 'Non-Compete Agreement', color: 'bg-red-100 text-red-700' },
+  SEPARATION_AGREEMENT: { label: 'Separation Agreement', color: 'bg-rose-100 text-rose-700' },
+  // Pre-contractual & Transactional
+  LETTER_OF_INTENT: { label: 'Letter of Intent', color: 'bg-sky-100 text-sky-700' },
+  MEMORANDUM_OF_UNDERSTANDING: { label: 'Memorandum of Understanding', color: 'bg-indigo-100 text-indigo-700' },
+  ENGAGEMENT_LETTER: { label: 'Engagement Letter', color: 'bg-violet-100 text-violet-700' },
+  WORK_ORDER: { label: 'Work Order', color: 'bg-blue-100 text-blue-700' },
+  CHANGE_ORDER: { label: 'Change Order', color: 'bg-amber-100 text-amber-700' },
+  PURCHASE_ORDER: { label: 'Purchase Order', color: 'bg-orange-100 text-orange-700' },
+  // Compliance & Regulatory
+  TERMS_OF_SERVICE: { label: 'Terms of Service', color: 'bg-slate-100 text-slate-700' },
+  PRIVACY_POLICY: { label: 'Privacy Policy', color: 'bg-pink-100 text-pink-700' },
   OTHER: { label: 'Other', color: 'bg-gray-100 text-gray-700' },
 };
 

@@ -39,7 +39,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     // Create or find user in system (upsert to prevent race conditions)
     const user = await prisma.user.upsert({
       where: { email },
-      update: { name: displayName },
+      update: { firstName: displayName },
       create: {
         email,
         name: displayName,
