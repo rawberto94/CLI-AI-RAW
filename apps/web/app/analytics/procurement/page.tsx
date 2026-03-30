@@ -4,11 +4,13 @@ export const dynamic = 'force-dynamic'
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { PageBreadcrumb } from '@/components/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Users,
   Handshake,
@@ -91,6 +93,7 @@ export default function ProcurementAnalyticsHub() {
         ]);
       } catch (error) {
         console.error('Failed to fetch procurement stats:', error);
+        toast.error('Failed to load procurement statistics');
       } finally {
         setLoading(false);
       }
@@ -185,6 +188,10 @@ export default function ProcurementAnalyticsHub() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
       <div className="container mx-auto py-8 space-y-8">
+        {/* Breadcrumbs */}
+        <div className="mb-2">
+          <PageBreadcrumb />
+        </div>
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}

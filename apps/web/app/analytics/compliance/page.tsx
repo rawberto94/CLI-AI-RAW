@@ -6,6 +6,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { PageBreadcrumb } from '@/components/navigation';
 import { ComplianceMetricsCard } from '@/components/analytics/ComplianceMetricsCard';
 import { ComplianceIssuesList } from '@/components/analytics/ComplianceIssuesList';
 import { ComplianceTrendChart } from '@/components/analytics/ComplianceTrendChart';
@@ -230,6 +231,10 @@ export default function ComplianceAnalyticsPage() {
 
   return (
     <div className="container mx-auto py-8 space-y-6">
+      {/* Breadcrumbs */}
+      <div className="mb-2">
+        <PageBreadcrumb />
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

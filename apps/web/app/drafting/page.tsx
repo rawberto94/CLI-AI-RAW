@@ -468,6 +468,7 @@ export default function DraftingPage() {
       }
     } catch (err) {
       console.error('Failed to load drafts:', err)
+      toast.error('Failed to load drafts')
     } finally {
       setDraftsLoading(false)
     }

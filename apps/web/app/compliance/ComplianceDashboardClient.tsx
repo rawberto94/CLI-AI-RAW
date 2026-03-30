@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { PageBreadcrumb } from '@/components/navigation';
 import { DashboardLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -100,6 +101,10 @@ export default function ComplianceDashboardClient() {
       }
     >
       <div className="space-y-6">
+        {/* Breadcrumbs */}
+        <div className="mb-2">
+          <PageBreadcrumb />
+        </div>
         {/* Compliance Score Hero */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className={cn('border-2 relative overflow-hidden', complianceScore >= 80 ? 'border-green-200' : complianceScore >= 60 ? 'border-amber-200' : 'border-red-200')}>

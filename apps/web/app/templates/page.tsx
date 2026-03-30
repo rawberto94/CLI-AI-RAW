@@ -205,6 +205,10 @@ export default function TemplatesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [templateToDelete, setTemplateToDelete] = useState<{ id: string; name: string } | null>(null)
   
+  // Bulk action confirmation dialog state
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false)
+  const [bulkArchiveDialogOpen, setBulkArchiveDialogOpen] = useState(false)
+  
   // Bulk selection state
   const [selectedTemplates, setSelectedTemplates] = useState<Set<string>>(new Set())
   const [bulkActionMode, setBulkActionMode] = useState(false)
@@ -579,7 +583,10 @@ export default function TemplatesPage() {
 
   const handleBulkDelete = async () => {
     if (selectedTemplates.size === 0) return
-    
+    setBulkDeleteDialogOpen(true)
+  }
+
+  const handleConfirmBulkDelete = async () => {
     const count = selectedTemplates.size
     toast.info(`Deleting ${count} templates...`)
     const results = await Promise.allSettled(
@@ -594,6 +601,7 @@ export default function TemplatesPage() {
     clearSelection()
     crossModule.onTemplateChange()
     refetch()
+    setBulkDeleteDialogOpen(false)
   }
 
   const handleBulkDuplicate = async () => {
@@ -623,7 +631,10 @@ export default function TemplatesPage() {
 
   const handleBulkArchive = async () => {
     if (selectedTemplates.size === 0) return
-    
+    setBulkArchiveDialogOpen(true)
+  }
+
+  const handleConfirmBulkArchive = async () => {
     const count = selectedTemplates.size
     toast.info(`Archiving ${count} templates...`)
     const results = await Promise.allSettled(
@@ -644,6 +655,7 @@ export default function TemplatesPage() {
     clearSelection()
     crossModule.onTemplateChange()
     refetch()
+    setBulkArchiveDialogOpen(false)
   }
 
   const handleBulkExport = () => {
@@ -3201,6 +3213,27 @@ export default function TemplatesPage() {
           confirmLabel="Delete"
           onConfirm={handleConfirmDelete}
           isLoading={deleteTemplateMutation.isPending}
+        />
+        
+        {/* Bulk Delete Confirmation Dialog */}
+        <ConfirmDialog
+          open={bulkDeleteDialogOpen}
+          onOpenChange={setBulkDeleteDialogOpen}
+          title="Delete Selected Templates"
+          description={`Are you sure you want to delete ${selectedTemplates.size} template${selectedTemplates.size !== 1 ? 's' : ''}? This action cannot be undone.`}
+          variant="destructive"
+          confirmLabel="Delete All"
+          onConfirm={handleConfirmBulkDelete}
+        />
+        
+        {/* Bulk Archive Confirmation Dialog */}
+        <ConfirmDialog
+          open={bulkArchiveDialogOpen}
+          onOpenChange={setBulkArchiveDialogOpen}
+          title="Archive Selected Templates"
+          description={`Are you sure you want to archive ${selectedTemplates.size} template${selectedTemplates.size !== 1 ? 's' : ''}?`}
+          confirmLabel="Archive All"
+          onConfirm={handleConfirmBulkArchive}
         />
         
         {/* Submit for Approval Modal */}

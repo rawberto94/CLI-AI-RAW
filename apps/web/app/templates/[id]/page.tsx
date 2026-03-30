@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
+import { PageBreadcrumb } from '@/components/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -464,6 +465,10 @@ export default function TemplateEditorPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/30 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
+        {/* Breadcrumbs */}
+        <div className="mb-2">
+          <PageBreadcrumb />
+        </div>
         {/* Header */}
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div className="flex items-start gap-4">

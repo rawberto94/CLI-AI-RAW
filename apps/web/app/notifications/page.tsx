@@ -48,6 +48,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 
 
@@ -129,6 +130,8 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState<"all" | "unread" | "starred">("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
   
   // Fetch notifications from API
   const fetchNotifications = useCallback(async () => {
@@ -240,6 +243,11 @@ export default function NotificationsPage() {
         prev.map((n) => (n.id === id ? { ...n, starred: !n.starred } : n))
       );
     }
+  };
+
+  const requestDeleteNotifications = (ids: string[]) => {
+    setPendingDeleteIds(ids);
+    setDeleteConfirmOpen(true);
   };
 
   const deleteNotifications = async (ids: string[]) => {
@@ -403,7 +411,7 @@ export default function NotificationsPage() {
             <Button size="sm" variant="secondary" onClick={() => markAsRead(Array.from(selectedIds))}>
               <Check className="h-3.5 w-3.5 mr-2" /> Mark read
             </Button>
-            <Button size="sm" variant="destructive" onClick={() => deleteNotifications(Array.from(selectedIds))}>
+            <Button size="sm" variant="destructive" onClick={() => requestDeleteNotifications(Array.from(selectedIds))}>
               <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
@@ -555,7 +563,7 @@ export default function NotificationsPage() {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-red-600"
-                                onClick={() => deleteNotifications([notification.id])}
+                                onClick={() => requestDeleteNotifications([notification.id])}
                               >
                                 <Trash2 className="h-4 w-4 mr-2.5" /> Delete
                               </DropdownMenuItem>
@@ -571,6 +579,17 @@ export default function NotificationsPage() {
           </CardContent>
         </Card>
       </main>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete Notifications"
+        description={`Are you sure you want to delete ${pendingDeleteIds.length} notification${pendingDeleteIds.length !== 1 ? 's' : ''}? This action cannot be undone.`}
+        variant="destructive"
+        confirmLabel="Delete"
+        onConfirm={() => deleteNotifications(pendingDeleteIds)}
+      />
     </div>
   );
 }

@@ -103,6 +103,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { PageBreadcrumb } from '@/components/navigation';
 import { UnifiedAgentInterface } from '@/components/agents/UnifiedAgentInterface';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -228,6 +229,7 @@ export default function ContigoLabsPage() {
       }
     } catch (error) {
       console.error('Failed to fetch status:', error);
+      toast.error('Failed to load agent status');
     } finally {
       setLoading(false);
     }
@@ -284,6 +286,10 @@ export default function ContigoLabsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      {/* Breadcrumbs */}
+      <div className="max-w-7xl mx-auto px-6 pt-4">
+        <PageBreadcrumb />
+      </div>
       {/* Header */}
       <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">

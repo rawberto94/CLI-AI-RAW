@@ -36,6 +36,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { PageBreadcrumb } from '@/components/navigation';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   AlertTriangle,
   Calendar,
@@ -135,6 +136,8 @@ export default function ObligationsDashboardPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [contracts, setContracts] = useState<Array<{ id: string; title: string }>>([]);
+  const [completeConfirmOpen, setCompleteConfirmOpen] = useState(false);
+  const [obligationToComplete, setObligationToComplete] = useState<string | null>(null);
   
   // New obligation form state
   const [newObligation, setNewObligation] = useState({
@@ -336,10 +339,17 @@ export default function ObligationsDashboardPage() {
     }
   };
 
-  // Mark as complete
+  // Mark as complete - request confirmation
   const handleComplete = async (obligationId: string) => {
+    setObligationToComplete(obligationId);
+    setCompleteConfirmOpen(true);
+  };
+
+  // Confirm completion
+  const handleConfirmComplete = async () => {
+    if (!obligationToComplete) return;
     try {
-      const response = await fetch(`/api/obligations/${obligationId}`, {
+      const response = await fetch(`/api/obligations/${obligationToComplete}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -357,6 +367,9 @@ export default function ObligationsDashboardPage() {
       }
     } catch {
       toast.error('Failed to complete obligation');
+    } finally {
+      setCompleteConfirmOpen(false);
+      setObligationToComplete(null);
     }
   };
 
@@ -1078,6 +1091,16 @@ export default function ObligationsDashboardPage() {
             />
           </TabsContent>
         </Tabs>
+
+        {/* Complete Confirmation Dialog */}
+        <ConfirmDialog
+          open={completeConfirmOpen}
+          onOpenChange={setCompleteConfirmOpen}
+          title="Mark Obligation Complete"
+          description="Are you sure you want to mark this obligation as completed? This records the completion timestamp."
+          confirmLabel="Mark Complete"
+          onConfirm={handleConfirmComplete}
+        />
       </div>
     </div>
   );

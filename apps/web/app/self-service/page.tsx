@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { PageBreadcrumb } from "@/components/navigation";
 import {
   ArrowRight, ClipboardList, FileBarChart, FileText, HelpCircle,
   LayoutGrid, Loader2, PenTool, Plus, Rocket, Search, Sparkles,
@@ -109,6 +110,10 @@ export default function SelfServiceHubPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/30">
       <div className="max-w-[1200px] mx-auto p-6 space-y-8">
+        {/* Breadcrumbs */}
+        <div className="mb-2">
+          <PageBreadcrumb />
+        </div>
         {/* Hero */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-700 p-8 text-white">

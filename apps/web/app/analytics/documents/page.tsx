@@ -5,6 +5,7 @@
 
 import { Metadata } from "next";
 import dynamic from "next/dynamic";
+import { PageBreadcrumb } from "@/components/navigation";
 
 const DocumentAnalyticsCharts = dynamic(
   () => import("@/components/dashboard/DocumentAnalyticsCharts"),
@@ -19,6 +20,9 @@ export const metadata: Metadata = {
 export default function DocumentAnalyticsPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
+      <div className="mb-2">
+        <PageBreadcrumb />
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Document Analytics</h1>

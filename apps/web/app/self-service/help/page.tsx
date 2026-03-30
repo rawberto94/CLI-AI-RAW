@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { PageBreadcrumb } from "@/components/navigation";
 import {
   ArrowLeft, ArrowRight, BookOpen, Brain, CheckCircle2, ChevronDown,
   ChevronRight, ClipboardList, Clock, ExternalLink, FileBarChart,
@@ -217,6 +218,10 @@ export default function HelpPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/30">
       <div className="max-w-[1100px] mx-auto p-6 space-y-8">
+        {/* Breadcrumbs */}
+        <div className="mb-2">
+          <PageBreadcrumb />
+        </div>
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center gap-3 mb-4">
@@ -305,7 +310,11 @@ export default function HelpPage() {
                 return (
                   <Card key={guide.title} className={cn("border-slate-200 overflow-hidden transition-shadow", isOpen && "shadow-md ring-1 ring-violet-100")}>
                     <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50/50"
-                      onClick={() => setExpandedGuide(isOpen ? null : i)}>
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isOpen}
+                      onClick={() => setExpandedGuide(isOpen ? null : i)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedGuide(isOpen ? null : i); } }}>
                       <div className="flex items-center gap-3">
                         <div className={cn("h-10 w-10 rounded-xl bg-gradient-to-br flex items-center justify-center flex-shrink-0", guide.color)}>
                           <guide.icon className="h-5 w-5 text-white" />
@@ -363,7 +372,11 @@ export default function HelpPage() {
                 return (
                   <Card key={i} className={cn("border-slate-200 transition-shadow", isOpen && "shadow-sm")}>
                     <div className="p-4 cursor-pointer flex items-center justify-between gap-4 hover:bg-slate-50/50"
-                      onClick={() => setExpandedFaq(isOpen ? null : i)}>
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isOpen}
+                      onClick={() => setExpandedFaq(isOpen ? null : i)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedFaq(isOpen ? null : i); } }}>
                       <p className="text-sm font-medium text-slate-800">{faq.question}</p>
                       {isOpen ? <ChevronDown className="h-4 w-4 text-slate-400 flex-shrink-0" /> : <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />}
                     </div>

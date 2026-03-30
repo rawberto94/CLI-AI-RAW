@@ -3,11 +3,13 @@
 export const dynamic = 'force-dynamic'
 
 import React, { useState, useEffect } from 'react';
+import { PageBreadcrumb } from '@/components/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 import { 
   FileText, 
   DollarSign, 
@@ -86,6 +88,7 @@ export default function ArtifactsAnalyticsPage() {
       }
     } catch {
       // Set empty state on error
+      toast.error('Failed to load artifact analytics');
       setMetrics({
         totalArtifacts: 0,
         avgConfidence: 0,
@@ -138,6 +141,10 @@ export default function ArtifactsAnalyticsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
       <div className="container mx-auto py-8 space-y-6">
+        {/* Breadcrumbs */}
+        <div className="mb-2">
+          <PageBreadcrumb />
+        </div>
         {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
