@@ -78,7 +78,7 @@ export async function embedChunks(docId: string, tenantId: string, chunks: Chunk
     const texts = batch.map(c => c.text);
     
     try {
-      const dimensions = parseInt(process.env['RAG_EMBED_DIMENSIONS'] || '0', 10);
+      const dimensions = parseInt(process.env['RAG_EMBED_DIMENSIONS'] || '1024', 10);
       const embedParams: any = { model, input: texts };
       // Use Matryoshka dimension reduction for text-embedding-3-* models
       if (dimensions > 0 && model.includes('text-embedding-3')) {
@@ -136,7 +136,7 @@ export async function retrieve(docId: string, tenantId: string, query: string, k
     console.warn('[RAG-client] retrieve: OpenAI SDK unavailable:', (err as Error).message);
   }
   if (!openai) return [] as Array<{ text: string; score: number; chunkIndex: number }>;
-  const dimensions = parseInt(process.env['RAG_EMBED_DIMENSIONS'] || '0', 10);
+  const dimensions = parseInt(process.env['RAG_EMBED_DIMENSIONS'] || '1024', 10);
   const embedParams: any = { model, input: query };
   if (dimensions > 0 && model.includes('text-embedding-3')) {
     embedParams.dimensions = dimensions;

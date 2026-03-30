@@ -91,6 +91,28 @@ export function createOpenAIClient(apiKeyOverride?: string): OpenAI {
   return new OpenAI({ apiKey });
 }
 
+/**
+ * Returns an OpenAI client specifically configured for embedding operations.
+ * For Azure OpenAI, this targets the embedding deployment (text-embedding-3-small)
+ * rather than the chat deployment (gpt-4o).
+ */
+export function createEmbeddingClient(): OpenAI {
+  const config = getActiveProviderConfig();
+
+  if (config?.provider === 'azure') {
+    const embeddingDeployment = (process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || 'text-embedding-3-small').trim();
+    return new AzureOpenAI({
+      endpoint: config.endpoint,
+      apiKey: config.apiKey,
+      deployment: embeddingDeployment,
+      apiVersion: config.apiVersion,
+    }) as unknown as OpenAI;
+  }
+
+  // For non-Azure providers, the same client works for both chat and embeddings
+  return createOpenAIClient();
+}
+
 // Type the client with explicit chat method signature to ensure response_format is recognized
 interface TypedOpenAIClient {
   createStructured<T>(opts: {

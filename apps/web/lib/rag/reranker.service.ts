@@ -14,7 +14,7 @@
  */
 
 import OpenAI from 'openai';
-import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
+import { createOpenAIClient, createEmbeddingClient, hasAIClientConfig } from '@/lib/openai-client';
 
 // Types
 export interface RerankResult {
@@ -39,6 +39,7 @@ export interface ProgressiveRerankOptions extends RerankOptions {
 
 // Initialize OpenAI client
 const openai = createOpenAIClient();
+const embedOpenai = createEmbeddingClient();
 
 // ============================================================================
 // COHERE RERANKING (Primary — 10x cheaper, purpose-built)
@@ -256,10 +257,10 @@ export async function semanticRerank(
   const allTexts = [query, ...documents];
   
   const rerankModel = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
-  const rerankDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '0', 10);
+  const rerankDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
   const rerankParams: Record<string, unknown> = { model: rerankModel, input: allTexts };
   if (rerankDims > 0 && rerankModel.includes('text-embedding-3')) rerankParams.dimensions = rerankDims;
-  const response = await openai.embeddings.create(rerankParams as any);
+  const response = await embedOpenai.embeddings.create(rerankParams as any);
 
   const embeddings = response.data.map(d => d.embedding);
   const queryEmbed = embeddings[0];

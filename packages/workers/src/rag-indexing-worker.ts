@@ -44,6 +44,25 @@ let openaiModule: any = null;
 let _ragOpenAISingleton: any = null;
 async function getRagOpenAIClient(): Promise<any> {
   if (_ragOpenAISingleton) return _ragOpenAISingleton;
+
+  // Prefer Azure OpenAI when configured (embedding calls need the embedding deployment)
+  const azureKey = (process.env.AZURE_OPENAI_API_KEY || '').trim();
+  const azureEndpoint = (process.env.AZURE_OPENAI_ENDPOINT || '').trim();
+  if (azureKey && azureEndpoint) {
+    const Mod = openaiModule?.default || (await import('openai')).default;
+    const AzureOpenAI = Mod.AzureOpenAI || (await import('openai')).AzureOpenAI;
+    const embeddingDeployment = (process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || 'text-embedding-3-small').trim();
+    const apiVersion = (process.env.AZURE_OPENAI_API_VERSION || '2024-02-01').trim();
+    _ragOpenAISingleton = new AzureOpenAI({
+      endpoint: azureEndpoint.replace(/\/$/, ''),
+      apiKey: azureKey,
+      deployment: embeddingDeployment,
+      apiVersion,
+    });
+    return _ragOpenAISingleton;
+  }
+
+  // Fallback to standard OpenAI
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
   const Mod = openaiModule?.default || (await import('openai')).default;
@@ -127,10 +146,10 @@ export async function processRAGIndexingJob(
     
     await job.updateProgress(10);
     
-    // Check for OpenAI API key
-    const apiKey = process.env.OPENAI_API_KEY;
+    // Check for OpenAI API key (Azure or standard)
+    const apiKey = process.env.OPENAI_API_KEY || process.env.AZURE_OPENAI_API_KEY;
     if (!apiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
+      throw new Error('No AI API key configured. Set AZURE_OPENAI_API_KEY or OPENAI_API_KEY.');
     }
     
     // Semantic chunking (adaptive or regex-based)
@@ -146,7 +165,7 @@ export async function processRAGIndexingJob(
       const embedFn: EmbedFn = async (texts: string[]) => {
         // Batch in groups of 64 to stay within API limits
         const EMBED_BATCH = 64;
-        const embedDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '0', 10);
+        const embedDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
         const all: number[][] = [];
         for (let b = 0; b < texts.length; b += EMBED_BATCH) {
           const batch = texts.slice(b, b + EMBED_BATCH);
@@ -412,7 +431,7 @@ Return a JSON object with a "prefixes" key containing an array of strings, one p
     
     // Generate embeddings in batches with retry and rate limit handling
     const openai = await getRagOpenAIClient();
-    if (!openai) throw new Error('OPENAI_API_KEY not configured');
+    if (!openai) throw new Error('No AI API key configured for embeddings');
     const model = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
 
     // Idempotency: skip if we've already indexed the same rawText with the same embedding model.
@@ -486,7 +505,7 @@ Return a JSON object with a "prefixes" key containing an array of strings, one p
       
       jobLogger.info({ batch: batchNum, total: totalBatches }, 'Generating embeddings batch');
       
-      const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '0', 10);
+      const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
       const embParams: any = { model, input: texts };
       if (embDims > 0 && model.includes('text-embedding-3')) embParams.dimensions = embDims;
       const response = await retryWithBackoff(() => 

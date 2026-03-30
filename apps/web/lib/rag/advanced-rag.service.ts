@@ -30,7 +30,7 @@ import {
   type ChunkingOptions,
 } from '@repo/utils/rag/semantic-chunker';
 import { progressiveRerank as progressiveRerankService } from './reranker.service';
-import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
+import { createOpenAIClient, createEmbeddingClient, getOpenAIApiKey } from '@/lib/openai-client';
 
 // Re-export so existing callers (barrel, tests) keep working
 export { semanticChunk };
@@ -316,9 +316,9 @@ async function vectorSearch(
   let needsContractJoin = false;
   
   if (filters.contractIds?.length) {
-    // Validate UUID format to prevent injection
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const validIds = filters.contractIds.filter(id => uuidRegex.test(id));
+    // Validate IDs are safe (alphanumeric/hyphen/underscore). Prisma.join parameterizes values.
+    const idRegex = /^[a-zA-Z0-9_-]+$/;
+    const validIds = filters.contractIds.filter(id => idRegex.test(id));
     if (validIds.length > 0) {
       conditions.push(Prisma.sql`ce."contractId" IN (${Prisma.join(validIds)})`);
     }
@@ -367,7 +367,8 @@ async function vectorSearch(
     // ~30% faster searches with 92% recall. Override via RAG_EF_SEARCH env.
     const efSearch = parseInt(process.env.RAG_EF_SEARCH || '100', 10);
     const clampedEfSearch = Math.max(10, Math.min(400, efSearch));
-    await prisma.$executeRaw`SET hnsw.ef_search = ${clampedEfSearch}`;
+    // SET doesn't accept parameterized values ($1) — use raw unsafe with validated int
+    await prisma.$executeRawUnsafe(`SET hnsw.ef_search = ${clampedEfSearch}`);
     
     // Only JOIN Contract table when date/status filters are used.
     // tenantId and chunkType filters hit denormalized ContractEmbedding columns directly.
@@ -417,9 +418,9 @@ async function keywordSearch(
   let needsJoin = false;
   
   if (filters.contractIds?.length) {
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const validIds = filters.contractIds.filter(id => uuidRegex.test(id));
+    // Validate IDs are safe (alphanumeric/hyphen/underscore). Prisma.join parameterizes values.
+    const idRegex = /^[a-zA-Z0-9_-]+$/;
+    const validIds = filters.contractIds.filter(id => idRegex.test(id));
     if (validIds.length > 0) {
       conditions.push(Prisma.sql`ce."contractId" IN (${Prisma.join(validIds)})`);
     }
@@ -714,11 +715,11 @@ export async function hybridSearch(
     
     // Step 0.5: Check semantic cache for similar recent queries
     const OpenAI = (await import('openai')).OpenAI;
-    const openai = createOpenAIClient(apiKey);
+    const openai = createEmbeddingClient();
     
     // Generate embedding for cache lookup (we'll reuse it for search too)
     const embModel = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
-    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '0', 10);
+    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
     const embCreateParams: Record<string, unknown> = { model: embModel, input: [query] };
     if (embDims > 0 && embModel.includes('text-embedding-3')) embCreateParams.dimensions = embDims;
     const cacheEmbResponse = await openai.embeddings.create(embCreateParams as any);
@@ -1420,7 +1421,7 @@ export async function processContractWithSemanticChunking(
   
   // Step 2: Generate embeddings in batches
   const OpenAI = (await import('openai')).OpenAI;
-  const openai = createOpenAIClient(apiKey);
+  const openai = createEmbeddingClient();
   
   const BATCH_SIZE = 32;
   const embeddings: number[][] = [];
@@ -1429,7 +1430,7 @@ export async function processContractWithSemanticChunking(
     const batch = contextualizedChunks.slice(i, i + BATCH_SIZE);
     const texts = batch.map(c => c.text);
     
-    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '0', 10);
+    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
     const embParams: Record<string, unknown> = { model, input: texts };
     if (embDims > 0 && model.includes('text-embedding-3')) embParams.dimensions = embDims;
     const response = await openai.embeddings.create(embParams as any);

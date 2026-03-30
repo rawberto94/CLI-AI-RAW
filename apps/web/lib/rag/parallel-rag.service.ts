@@ -13,7 +13,7 @@
  */
 
 import OpenAI from 'openai';
-import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
+import { createOpenAIClient, createEmbeddingClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
@@ -106,6 +106,7 @@ export async function parallelMultiQueryRAG(
   }
 
   const openai = createOpenAIClient(apiKey);
+  const embedClient = createEmbeddingClient();
 
   try {
     // ========================================
@@ -133,10 +134,17 @@ export async function parallelMultiQueryRAG(
     // ========================================
     // STEP 2: GENERATE EMBEDDINGS FOR ALL QUERIES
     // ========================================
-    const embeddingsResponse = await openai.embeddings.create({
-      model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small',
+    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
+    const embModel = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
+    const embCreateParams: Record<string, unknown> = {
+      model: embModel,
       input: allQueries,
-    }, { signal: AbortSignal.timeout(10_000) });
+    };
+    if (embDims > 0 && embModel.includes('text-embedding-3')) embCreateParams.dimensions = embDims;
+    const embeddingsResponse = await embedClient.embeddings.create(
+      embCreateParams as any,
+      { signal: AbortSignal.timeout(10_000) },
+    );
 
     const queryEmbeddings = embeddingsResponse.data.map(d => d.embedding);
 

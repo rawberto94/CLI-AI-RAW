@@ -117,7 +117,7 @@ token = base64.b64encode((payload + '.' + sig).encode()).decode()
   - Env: `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`
   - Active deployment: `gpt-4o` (model `gpt-4o-2024-11-20`) — working ✅
   - API version: `2024-02-01` (`AZURE_OPENAI_API_VERSION`)
-  - **Embedding model not yet deployed** — RAG hybrid search falls back to keyword-only
+  - **Embedding deployment**: `text-embedding-3-small` — working ✅ (uses `createEmbeddingClient()`, dimensions: 1024)
 - **Azure Document Intelligence**: `https://contigodocumentintelligence.cognitiveservices.azure.com/`
   - Env: `AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT`, `AZURE_DOCUMENT_INTELLIGENCE_KEY`
   - Status: working ✅
@@ -136,7 +136,7 @@ Response: SSE events — `metadata` → `content` (or `error`) → `done`
 ### RAG / Context Gathering
 - `context-gathering.ts` uses `prisma.contractArtifact` (key-value, usually empty) NOT `prisma.artifact` (JSON blobs)
 - When `ContractArtifact` is empty → full `rawText` (8000 chars) used as system prompt context
-- `ContractEmbedding` rows only created when embedding model deployed (currently 0 rows)
+- `ContractEmbedding` rows created via `createEmbeddingClient()` → `text-embedding-3-small` deployment (dimensions: 1024)
 - RAG fallback searches `rawText` via FTS (`textVector` column)
 
 ### Audit Logging
@@ -193,7 +193,7 @@ cd apps/web && pnpm tsx ../../scripts/seed-comprehensive.ts
 
 - `contractType` defaults to `"NDA"` (regex false-match) — AI extraction will correct this
 - `clientName` / `supplierName` stay null for inline `("Buyer")`/`("Supplier")` format — AI will fix
-- `ContractEmbedding` has 0 rows — requires `text-embedding-3-small` deployment + `/api/contracts/{id}/rag-process`
+- `ContractEmbedding` rows created per-contract via `/api/contracts/{id}/rag-process` or upload pipeline
 - `chat_conversations` / `chat_messages` empty until AI responds successfully
 - `ContractVersion` tracking not triggered by upload flow — needs investigation
 

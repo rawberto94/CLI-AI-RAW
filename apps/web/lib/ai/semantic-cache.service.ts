@@ -15,7 +15,7 @@
 
 import { Redis } from '@upstash/redis';
 import OpenAI from 'openai';
-import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
+import { createOpenAIClient, createEmbeddingClient, hasAIClientConfig } from '@/lib/openai-client';
 
 // =============================================================================
 // TYPES
@@ -100,9 +100,9 @@ export class SemanticCacheService {
       });
     }
 
-    // Initialize OpenAI for embeddings
+    // Initialize OpenAI for embeddings — use embedding-specific client for Azure
     if (hasAIClientConfig()) {
-      this.openai = createOpenAIClient();
+      this.openai = createEmbeddingClient();
     }
   }
 
