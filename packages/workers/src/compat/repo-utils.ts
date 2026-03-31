@@ -1,20 +1,11 @@
-import queueServiceModule from '@repo/utils/queue/queue-service';
-import contractQueueModule from '@repo/utils/queue/contract-queue';
-import circuitBreakerModule from '@repo/utils/patterns/circuit-breaker';
-import retryModule from '@repo/utils/patterns/retry';
-import redisEventBusModule from '@repo/utils/events/redis-event-bus';
-import semanticChunkerModule from '@repo/utils/rag/semantic-chunker';
-import adaptiveChunkerModule from '@repo/utils/rag/adaptive-chunker';
-import distributedCacheModule from '@repo/utils/cache/distributed-cache';
-
-const queueService = queueServiceModule as typeof import('@repo/utils/queue/queue-service');
-const contractQueue = contractQueueModule as typeof import('@repo/utils/queue/contract-queue');
-const circuitBreaker = circuitBreakerModule as typeof import('@repo/utils/patterns/circuit-breaker');
-const retryHelpers = retryModule as typeof import('@repo/utils/patterns/retry');
-const redisEventBusExports = redisEventBusModule as typeof import('@repo/utils/events/redis-event-bus');
-const semanticChunker = semanticChunkerModule as typeof import('@repo/utils/rag/semantic-chunker');
-const adaptiveChunker = adaptiveChunkerModule as typeof import('@repo/utils/rag/adaptive-chunker');
-const distributedCache = distributedCacheModule as typeof import('@repo/utils/cache/distributed-cache');
+import * as queueService from '@repo/utils/queue/queue-service';
+import * as contractQueue from '@repo/utils/queue/contract-queue';
+import * as circuitBreaker from '@repo/utils/patterns/circuit-breaker';
+import * as retryHelpers from '@repo/utils/patterns/retry';
+import * as redisEventBusExports from '@repo/utils/events/redis-event-bus';
+import * as semanticChunker from '@repo/utils/rag/semantic-chunker';
+import * as adaptiveChunker from '@repo/utils/rag/adaptive-chunker';
+import * as distributedCache from '@repo/utils/cache/distributed-cache';
 
 export const getQueueService = queueService.getQueueService;
 export const QUEUE_NAMES = contractQueue.QUEUE_NAMES;

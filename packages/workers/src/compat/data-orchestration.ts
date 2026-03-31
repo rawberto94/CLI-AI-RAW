@@ -1,6 +1,4 @@
-import dataOrchestrationModule from '@repo/data-orchestration';
-
-const dataOrchestration = dataOrchestrationModule as typeof import('@repo/data-orchestration');
+import * as dataOrchestration from '@repo/data-orchestration';
 
 export const agentContextEnrichmentService = dataOrchestration.agentContextEnrichmentService;
 
