@@ -73,6 +73,7 @@ const CSRF_EXEMPT_PATHS = [
   '/api/auth/sso',             // SSO token exchange — external IdP callback
   // Infrastructure / monitoring
   '/api/health',
+  '/api/health/detailed',
   '/api/monitoring/health',
   '/api/webhooks',           // Inbound webhooks from external services
   '/api/csrf',               // CSRF token issuance — must be callable to get a token
@@ -231,6 +232,7 @@ const RATE_LIMITS: Record<string, { anonymous: number; user: number; admin: numb
 // Endpoints completely exempt from rate limiting (health checks, monitoring, SSE streams)
 const RATE_LIMIT_EXEMPT = [
   '/api/health',
+  '/api/health/detailed',
   '/api/monitoring/health',
   '/api/csrf',
 ];
@@ -287,6 +289,7 @@ const publicExactPaths = new Set([
 // API routes that don't require authentication (health checks only)
 const publicApiPaths = [
   "/api/health",
+  "/api/health/detailed",
   "/api/monitoring/health",
   "/api/auth",
   "/api/cron", // Allow cron endpoints (protected by CRON_SECRET)

@@ -380,6 +380,7 @@ export async function scheduleRenewalCheck(tenantId?: string, options?: Partial<
       ...options
     },
     {
+      jobId: tenantId ? `renewal-daily:${tenantId}` : 'renewal-daily:all-tenants',
       repeat: {
         pattern: '0 8 * * *', // Run daily at 8 AM
       },

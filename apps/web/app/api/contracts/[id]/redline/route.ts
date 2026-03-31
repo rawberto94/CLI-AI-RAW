@@ -9,6 +9,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { evaluateContractPreApprovalGates, formatUnmetPreApprovalGates } from '@/lib/governance/pre-approval-gates';
 import { logger } from '@/lib/logger';
 
 const redlineSaveSchema = z.object({
@@ -105,11 +106,103 @@ export async function POST(
     // Verify ownership
     const contract = await prisma.contract.findFirst({
       where: { id, tenantId, isDeleted: false },
-      select: { id: true, metadata: true, status: true },
+      select: {
+        id: true,
+        metadata: true,
+        status: true,
+        contractType: true,
+        totalValue: true,
+        currency: true,
+        contractTitle: true,
+        fileName: true,
+      },
     });
 
     if (!contract) {
       return createErrorResponse(authCtx, 'NOT_FOUND', 'Contract not found', 404);
+    }
+
+    if (finalize) {
+      const workflowExecution = await prisma.workflowExecution.findFirst({
+        where: { contractId: id, tenantId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          workflow: {
+            include: {
+              steps: {
+                orderBy: { order: 'asc' },
+              },
+            },
+          },
+          stepExecutions: {
+            include: {
+              step: {
+                select: {
+                  name: true,
+                  isRequired: true,
+                },
+              },
+            },
+            orderBy: { stepOrder: 'asc' },
+          },
+        },
+      });
+
+      const governance = await evaluateContractPreApprovalGates(
+        {
+          tenantId,
+          contractType: contract.contractType,
+          totalValue: contract.totalValue,
+          currency: contract.currency,
+        },
+        workflowExecution?.workflow?.steps || []
+      );
+
+      if (governance.applicableGates.length > 0) {
+        if (!workflowExecution?.workflow) {
+          return createErrorResponse(
+            authCtx,
+            'CONFLICT',
+            'This contract requires a completed pre-approval workflow before finalization.',
+            409,
+            { field: 'finalize', retryable: false }
+          );
+        }
+
+        if (governance.unmetGates.length > 0) {
+          return createErrorResponse(
+            authCtx,
+            'CONFLICT',
+            `Workflow is missing required pre-approval gates: ${formatUnmetPreApprovalGates(governance.unmetGates)}`,
+            409,
+            { field: 'finalize', retryable: false }
+          );
+        }
+
+        const pendingRequiredSteps = workflowExecution.stepExecutions.filter(
+          (stepExecution) =>
+            stepExecution.step.isRequired !== false &&
+            !['COMPLETED', 'SKIPPED'].includes(stepExecution.status)
+        );
+
+        if (workflowExecution.status !== 'COMPLETED' || pendingRequiredSteps.length > 0) {
+          const pendingStepLabel = pendingRequiredSteps
+            .map((stepExecution) => stepExecution.step.name || stepExecution.stepName)
+            .filter(Boolean)
+            .slice(0, 3)
+            .join(', ');
+
+          return createErrorResponse(
+            authCtx,
+            'CONFLICT',
+            pendingStepLabel
+              ? `Pre-approval workflow is not complete. Pending steps: ${pendingStepLabel}`
+              : 'Pre-approval workflow is not complete.',
+            409,
+            { field: 'finalize', retryable: false }
+          );
+        }
+      }
     }
 
     const now = new Date().toISOString();

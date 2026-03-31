@@ -23,6 +23,7 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
   const [content, setContent] = useState<string>('');
   const [contractTitle, setContractTitle] = useState<string>('Contract - Redline');
   const [loading, setLoading] = useState(true);
+  const [savedChanges, setSavedChanges] = useState<Change[]>([]);
   
   const currentUser = {
     id: 'current-user',
@@ -40,6 +41,7 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
           const { data } = await redlineRes.json();
           if (data.content && data.content.length > 100) {
             setContent(data.content);
+            setSavedChanges(Array.isArray(data.changes) ? data.changes : []);
             setContractTitle(data.contractTitle || 'Contract - Redline');
             if (data.documentStatus) setDocumentStatus(data.documentStatus as any);
             if (data.savedAt) setLastSaved(new Date(data.savedAt));
@@ -87,6 +89,8 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
       });
       if (!res.ok) throw new Error('Save failed');
       const { data } = await res.json();
+      setContent(content);
+      setSavedChanges(changes);
       setLastSaved(new Date());
       toast.success('Document saved', {
         description: `Version ${data.version} · ${data.pendingChanges} pending changes`,
@@ -99,10 +103,49 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
   }, [id, documentStatus]);
 
   const handleExport = useCallback((type: 'redline' | 'clean' | 'pdf') => {
-    toast.info(`Export as ${type.toUpperCase()} coming soon`, {
-      description: 'This feature is under development.',
-    });
-  }, []);
+    if (!content) {
+      toast.error('Nothing to export yet');
+      return;
+    }
+
+    const safeTitle = slugifyFilename(contractTitle || 'contract-redline');
+
+    if (type === 'redline') {
+      const html = buildExportHtml(contractTitle, content, {
+        includeChangeSummary: true,
+        changeCount: savedChanges.length,
+        lastSaved,
+      });
+      downloadBlob(`${safeTitle}-redline.html`, html, 'text/html;charset=utf-8');
+      toast.success('Redline export downloaded');
+      return;
+    }
+
+    if (type === 'clean') {
+      const cleanText = htmlToPlainText(content);
+      downloadBlob(`${safeTitle}-clean.txt`, cleanText, 'text/plain;charset=utf-8');
+      toast.success('Clean copy downloaded');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1024,height=768');
+    if (!printWindow) {
+      toast.error('Unable to open print window for PDF export');
+      return;
+    }
+
+    printWindow.document.write(buildExportHtml(contractTitle, content, {
+      includeChangeSummary: false,
+      lastSaved,
+    }));
+    printWindow.document.close();
+    printWindow.focus();
+    window.setTimeout(() => {
+      printWindow.print();
+    }, 250);
+
+    toast.success('Print dialog opened for PDF export');
+  }, [content, contractTitle, lastSaved, savedChanges.length]);
 
   const handleFinalize = useCallback(async () => {
     setIsSaving(true);
@@ -113,13 +156,17 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content, changes: [], finalize: true }),
       });
-      if (!res.ok) throw new Error('Finalize failed');
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(payload?.error?.details || payload?.error?.message || 'Finalize failed');
+      }
       setDocumentStatus('approved');
+      setLastSaved(new Date());
       toast.success('Document finalized', {
         description: 'All changes accepted — contract is now active.',
       });
-    } catch {
-      toast.error('Failed to finalize document');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to finalize document');
     } finally {
       setIsSaving(false);
     }
@@ -281,4 +328,71 @@ function formatTimeAgo(date: Date): string {
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   return `${Math.floor(seconds / 86400)}d ago`;
+}
+
+function slugifyFilename(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || 'contract-redline';
+}
+
+function downloadBlob(filename: string, content: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function htmlToPlainText(html: string): string {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  return doc.body.textContent?.trim() || '';
+}
+
+function buildExportHtml(
+  title: string,
+  html: string,
+  options: {
+    includeChangeSummary: boolean;
+    changeCount?: number;
+    lastSaved: Date | null;
+  }
+) {
+  const lastSavedLabel = options.lastSaved ? options.lastSaved.toLocaleString() : 'Unsaved draft';
+  const summary = options.includeChangeSummary
+    ? `<p><strong>Tracked changes:</strong> ${options.changeCount || 0}</p>`
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>${title}</title>
+    <style>
+      body { font-family: Georgia, 'Times New Roman', serif; color: #111827; margin: 40px auto; max-width: 900px; padding: 0 24px; }
+      header { border-bottom: 1px solid #e5e7eb; margin-bottom: 24px; padding-bottom: 16px; }
+      h1 { font-size: 28px; margin: 0 0 8px; }
+      .meta { color: #6b7280; font-size: 14px; }
+      article { line-height: 1.65; font-size: 16px; }
+      @media print { body { margin: 0; max-width: none; padding: 24px; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>${title}</h1>
+      <div class="meta">
+        <p><strong>Last saved:</strong> ${lastSavedLabel}</p>
+        ${summary}
+      </div>
+    </header>
+    <article>${html}</article>
+  </body>
+</html>`;
 }

@@ -50,17 +50,19 @@ export async function gatherContext(
   effectiveHistory: Array<{ role: string; content: string }>,
   contextContractId?: string,
 ): Promise<GatheredContext> {
-  const [ragResults, contractScopedResults, memories] = await Promise.all([
-    shouldUseRAG(message)
+  const useScopedContractRag = Boolean(contextContractId) && shouldUseRAG(message);
+  const scopedContractId = useScopedContractRag ? contextContractId : undefined;
+  const [ragResults, initialContractScopedResults, memories] = await Promise.all([
+    shouldUseRAG(message) && !useScopedContractRag
       ? withTimeout(parallelMultiQueryRAG(message, { tenantId, k: 7 }), emptyRag)
       : Promise.resolve(emptyRag),
-    contextContractId && shouldUseRAG(message)
+    scopedContractId
       ? withTimeout(hybridSearch(message, {
           mode: 'hybrid',
           k: 5,
           rerank: true,
           expandQuery: true,
-          filters: { tenantId, contractIds: [contextContractId] },
+          filters: { tenantId, contractIds: [scopedContractId] },
         }).catch(() => []), [])
       : Promise.resolve([]),
     withTimeout(retrieveRelevantMemories(userId, tenantId, message, effectiveHistory, {
@@ -90,19 +92,30 @@ export async function gatherContext(
     // Learning context unavailable
   }
 
-  const searchResults = ragResults.results || [];
-  const ragSources = searchResults.map(r => r.contractName);
+  const contractScopedResults = useScopedContractRag && initialContractScopedResults.length === 0 && contextContractId
+    ? await buildScopedFallbackResults(message, contextContractId, tenantId)
+    : initialContractScopedResults;
+
+  const scopedSearchResults = contractScopedResults.map((result) => ({
+    ...result,
+    sources: ['active-contract'],
+  }));
+
+  const searchResults = useScopedContractRag
+    ? scopedSearchResults
+    : (ragResults.results || []);
+  const ragSources = [...new Set(searchResults.map(r => r.contractName))];
 
   let ragContext = '';
-  if (contractScopedResults.length > 0) {
-    ragContext += `\n\n**Contract-Specific Information (${contractScopedResults.length} matches):**\n${contractScopedResults
+  if (useScopedContractRag && scopedSearchResults.length > 0) {
+    ragContext += `\n\n**Contract-Specific Information (${scopedSearchResults.length} matches):**\n${scopedSearchResults
       .map((r, i) => {
         const label = r.metadata?.heading || r.metadata?.section || `Section ${i + 1}`;
         return `[${i + 1}] **${label}** (${Math.round((r.score || 0) * 100)}% match):\n> ${r.text.slice(0, 500)}...`;
       })
       .join('\n\n')}`;
   }
-  if (searchResults.length > 0) {
+  if (!useScopedContractRag && searchResults.length > 0) {
     ragContext += `\n\n**Relevant Contract Information (${searchResults.length} matches):**\n${searchResults
       .map((r, i) => `[${i + 1}] **[${r.contractName}](/contracts/${r.contractId})** (${Math.round(r.score * 100)}% match):\n> ${r.text.slice(0, 400)}...`)
       .join('\n\n')}`;
@@ -232,4 +245,202 @@ async function buildContractProfile(contractId: string, tenantId: string): Promi
     logger.warn('[Stream v2] Contract profile injection failed', { action: 'contract-profile', error: err instanceof Error ? err.message : String(err) });
   }
   return context;
+}
+
+async function buildScopedFallbackResults(
+  message: string,
+  contractId: string,
+  tenantId: string,
+): Promise<Array<{ contractId: string; contractName: string; score: number; text: string; matchType?: string; sources?: string[]; metadata?: Record<string, unknown> }>> {
+  try {
+    const [contract, artifacts, clauses] = await Promise.all([
+      prisma.contract.findFirst({
+        where: { id: contractId, tenantId },
+        select: {
+          id: true,
+          contractTitle: true,
+          fileName: true,
+          rawText: true,
+          searchableText: true,
+        },
+      }),
+      prisma.artifact.findMany({
+        where: { contractId, tenantId },
+        select: { type: true, data: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 8,
+      }),
+      prisma.clause.findMany({
+        where: { contractId, contract: { tenantId } },
+        select: { category: true, text: true, riskLevel: true },
+        orderBy: { position: 'asc' },
+        take: 20,
+      }),
+    ]);
+
+    if (!contract) {
+      return [];
+    }
+
+    const queryTerms = extractQueryTerms(message);
+    const contractName = contract.contractTitle || contract.fileName || 'Active Contract';
+    const candidates: Array<{ heading: string; text: string; weight: number; section?: string }> = [];
+
+    for (const artifact of artifacts) {
+      const serialized = serializeArtifactData(artifact.type, artifact.data);
+      if (!serialized) continue;
+      candidates.push({
+        heading: `${artifact.type} artifact`,
+        section: artifact.type,
+        text: serialized,
+        weight: 0.22,
+      });
+    }
+
+    for (const clause of clauses) {
+      candidates.push({
+        heading: `${clause.category} clause`,
+        section: clause.category,
+        text: clause.text,
+        weight: clause.riskLevel === 'high' ? 0.14 : 0.1,
+      });
+    }
+
+    const rawText = contract.searchableText || contract.rawText || '';
+    for (const paragraph of splitIntoSearchParagraphs(rawText)) {
+      candidates.push({
+        heading: 'Document text',
+        section: 'rawText',
+        text: paragraph,
+        weight: 0.06,
+      });
+    }
+
+    const ranked = candidates
+      .map((candidate) => {
+        const overlap = scoreTextOverlap(queryTerms, candidate.text);
+        const fallbackBoost = queryTerms.length === 0 ? 0.18 : 0;
+        return {
+          contractId,
+          contractName,
+          score: Math.min(0.92, overlap + candidate.weight + fallbackBoost),
+          text: buildRelevantSnippet(candidate.text, queryTerms),
+          matchType: 'keyword' as const,
+          metadata: {
+            heading: candidate.heading,
+            section: candidate.section,
+            retrievalMode: 'same-contract-fallback',
+          },
+        };
+      })
+      .filter((candidate) => candidate.score >= 0.18)
+      .sort((left, right) => right.score - left.score);
+
+    return dedupeFallbackResults(ranked).slice(0, 5);
+  } catch (error) {
+    logger.warn('[Stream v2] Scoped fallback retrieval failed', {
+      action: 'scoped-fallback',
+      error: error instanceof Error ? error.message : String(error),
+      contractId,
+    });
+    return [];
+  }
+}
+
+function extractQueryTerms(message: string): string[] {
+  const stopWords = new Set([
+    'what', 'which', 'when', 'where', 'who', 'why', 'how', 'this', 'that', 'with', 'from', 'into',
+    'about', 'there', 'their', 'they', 'them', 'have', 'will', 'would', 'could', 'should', 'your',
+    'ours', 'ourselves', 'contract', 'agreement', 'please', 'tell', 'summarize', 'summary',
+  ]);
+
+  return message
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((term) => term.length >= 3 && !stopWords.has(term));
+}
+
+function serializeArtifactData(type: string, data: unknown): string {
+  if (!data || typeof data !== 'object') {
+    return '';
+  }
+
+  const serialized = JSON.stringify(data);
+  return `${type} ${serialized}`.slice(0, 2200);
+}
+
+function splitIntoSearchParagraphs(text: string): string[] {
+  if (!text) {
+    return [];
+  }
+
+  return text
+    .split(/\n\s*\n|\n(?=[A-Z][A-Za-z\s]{2,}:)/)
+    .map((part) => part.replace(/\s+/g, ' ').trim())
+    .filter((part) => part.length >= 80)
+    .slice(0, 20);
+}
+
+function scoreTextOverlap(queryTerms: string[], text: string): number {
+  if (!text) {
+    return 0;
+  }
+
+  const normalizedText = text.toLowerCase();
+  if (queryTerms.length === 0) {
+    return 0.12;
+  }
+
+  let score = 0;
+  for (const term of queryTerms) {
+    if (normalizedText.includes(term)) {
+      score += 0.18;
+    } else if (term === 'sla' && (normalizedText.includes('service level') || normalizedText.includes('uptime') || normalizedText.includes('performance'))) {
+      score += 0.16;
+    } else if (term.startsWith('penalt') && (normalizedText.includes('credit') || normalizedText.includes('reduction') || normalizedText.includes('liquidated damages'))) {
+      score += 0.14;
+    }
+  }
+
+  if (normalizedText.includes('penalt') || normalizedText.includes('service level')) {
+    score += 0.05;
+  }
+
+  return Math.min(score, 0.7);
+}
+
+function buildRelevantSnippet(text: string, queryTerms: string[]): string {
+  const compactText = text.replace(/\s+/g, ' ').trim();
+  if (compactText.length <= 500 || queryTerms.length === 0) {
+    return compactText.slice(0, 500);
+  }
+
+  const lower = compactText.toLowerCase();
+  const firstMatchIndex = queryTerms
+    .map((term) => lower.indexOf(term))
+    .filter((index) => index >= 0)
+    .sort((left, right) => left - right)[0];
+
+  if (firstMatchIndex == null) {
+    return compactText.slice(0, 500);
+  }
+
+  const start = Math.max(0, firstMatchIndex - 140);
+  const end = Math.min(compactText.length, start + 500);
+  return compactText.slice(start, end);
+}
+
+function dedupeFallbackResults<T extends { text: string }>(results: T[]): T[] {
+  const seen = new Set<string>();
+  const deduped: T[] = [];
+  for (const result of results) {
+    const key = result.text.slice(0, 180).toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(result);
+  }
+  return deduped;
 }

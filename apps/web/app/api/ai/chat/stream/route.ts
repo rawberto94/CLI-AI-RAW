@@ -144,6 +144,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
 
   let conversationSummary = '';
   let effectiveHistory = conversationHistory;
+  const contextContractId = context?.contractId as string | undefined;
   if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
     try {
       const summarized = await summarizeConversationHistory(conversationHistory);
@@ -159,7 +160,21 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   // STEP 1 — SEMANTIC CACHE CHECK
   // ═══════════════════════════════════════════════════════════════════════
 
-  const cached = await semanticCache.get(message, tenantId).catch((err) => {
+  // Explicit tenant-scoped authorization check on contractId before cache or data fetching
+  if (contextContractId) {
+    const contractExists = await prisma.contract.findFirst({
+      where: { id: contextContractId, tenantId },
+      select: { id: true },
+    });
+    if (!contractExists) {
+      return new NextResponse(JSON.stringify({ error: 'Contract not found or access denied' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
+  const cached = await semanticCache.get(message, tenantId, contextContractId ? { contractId: contextContractId } : undefined).catch((err) => {
     logger.warn('[Stream v2] Semantic cache lookup failed', { action: 'semantic-cache', error: err instanceof Error ? err.message : String(err) });
     return null;
   });
@@ -200,22 +215,6 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   // ═══════════════════════════════════════════════════════════════════════
   // STEP 2 — PARALLEL CONTEXT GATHERING (RAG + Episodic Memory)
   // ═══════════════════════════════════════════════════════════════════════
-
-  const contextContractId = context?.contractId as string | undefined;
-
-  // Explicit tenant-scoped authorization check on contractId before any data fetching
-  if (contextContractId) {
-    const contractExists = await prisma.contract.findFirst({
-      where: { id: contextContractId, tenantId },
-      select: { id: true },
-    });
-    if (!contractExists) {
-      return new NextResponse(JSON.stringify({ error: 'Contract not found or access denied' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-  }
 
   const {
     searchResults, ragSources, ragContext, memoryContext,
@@ -918,7 +917,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
                 confidence: finalAdjustedConfidence,
                 tokensUsed: countTokens(fullContent).tokens,
               },
-            }, tenantId)
+            }, tenantId, contextContractId ? { contractId: contextContractId } : undefined)
             .catch(() => { /* ignore */ });
         }
 

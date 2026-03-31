@@ -8,7 +8,7 @@ import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 import { ArtifactType } from 'clients-db';
 import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
-import { QUEUE_NAMES, GenerateArtifactsJobData } from '@repo/utils/queue/contract-queue';
+import { QUEUE_NAMES, JOB_NAMES, GenerateArtifactsJobData } from '@repo/utils/queue/contract-queue';
 import pino from 'pino';
 
 import { getTraceContextFromJobData } from './observability/trace';
@@ -580,6 +580,30 @@ export async function generateArtifactsJob(
       progress: 100,
       currentStep: 'artifacts.generate',
     });
+
+    if (finalStatus === 'COMPLETED' && contractText.trim().length > 100) {
+      try {
+        const queueService = getQueueService();
+        await queueService.addJob(
+          QUEUE_NAMES.RAG_INDEXING,
+          JOB_NAMES.INDEX_CONTRACT,
+          {
+            contractId,
+            tenantId,
+            artifactIds,
+            traceId: trace.traceId,
+            requestId: job.data.requestId,
+          },
+          {
+            priority: 15,
+            jobId: `rag-index-${contractId}`,
+          }
+        );
+        logger.info({ contractId, traceId: trace.traceId }, 'Queued RAG indexing after artifact generation');
+      } catch (ragQueueError) {
+        logger.warn({ contractId, ragQueueError }, 'Failed to queue RAG indexing after artifact generation');
+      }
+    }
 
     logger.info(
       { 

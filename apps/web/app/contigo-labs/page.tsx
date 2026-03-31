@@ -114,7 +114,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-// FloatingAIBubble functionality is embedded via EmbeddedChatInterface
+import { FloatingAIBubble } from '@/components/ai/FloatingAIBubble';
+import { MarkdownContent } from '@/components/ai/MarkdownContent';
 
 // Message type for chat interface
 interface Message {
@@ -3562,12 +3563,12 @@ function EventDetailModal({ event, onClose }: any) {
 
 /**
  * EmbeddedChatView - Full-page embedded version of the AI Chatbot
- * Uses the same FloatingAIBubble component for consistent experience
+ * Uses the shared assistant shell and backend in embedded mode.
  */
 function ChatView() {
   return (
     <div className="h-[calc(100vh-220px)]">
-      <EmbeddedAIBubble />
+      <FloatingAIBubble mode="embedded" />
     </div>
   );
 }
@@ -3862,9 +3863,16 @@ What would you like to explore?`,
                     {msg.agent}
                   </p>
                 )}
-                <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                  {msg.content}
-                </div>
+                {msg.role === 'assistant' ? (
+                  <MarkdownContent
+                    content={msg.content}
+                    className="prose-sm prose-p:my-0 prose-ul:my-2 prose-ol:my-2 prose-li:my-0 text-sm"
+                  />
+                ) : (
+                  <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                    {msg.content}
+                  </div>
+                )}
                 
                 {/* Suggestions */}
                 {msg.suggestions && msg.suggestions.length > 0 && (

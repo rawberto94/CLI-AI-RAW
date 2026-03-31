@@ -25,9 +25,14 @@ export interface CacheEntry {
   query: string;
   embedding: number[];
   response: CachedResponse;
+  scopeKey?: string;
   createdAt: number;
   hitCount: number;
   lastAccessed: number;
+}
+
+export interface CacheScope {
+  contractId?: string;
 }
 
 export interface CachedResponse {
@@ -66,6 +71,7 @@ export interface CacheStats {
 // =============================================================================
 
 export class SemanticCacheService {
+  private static readonly GLOBAL_SCOPE_KEY = '__global__';
   private redis: Redis | null = null;
   private openai: OpenAI | null = null;
   private config: CacheConfig;
@@ -109,12 +115,13 @@ export class SemanticCacheService {
   /**
    * Check cache for semantically similar query
    */
-  async get(query: string, tenantId: string): Promise<CachedResponse | null> {
+  async get(query: string, tenantId: string, scope?: CacheScope): Promise<CachedResponse | null> {
     if (!this.config.enabled || !this.openai) {
       return null;
     }
 
     try {
+      const scopeKey = this.buildScopeKey(scope);
       // Generate embedding for the query
       const queryEmbedding = await this.getEmbedding(query);
       if (!queryEmbedding) return null;
@@ -127,6 +134,9 @@ export class SemanticCacheService {
       let bestSimilarity = 0;
 
       for (const entry of entries) {
+        if (this.normalizeScopeKey(entry.scopeKey) !== scopeKey) {
+          continue;
+        }
         const similarity = this.cosineSimilarity(queryEmbedding, entry.embedding);
         
         if (similarity > bestSimilarity && similarity >= this.config.similarityThreshold) {
@@ -161,13 +171,15 @@ export class SemanticCacheService {
   async set(
     query: string,
     response: CachedResponse,
-    tenantId: string
+    tenantId: string,
+    scope?: CacheScope,
   ): Promise<void> {
     if (!this.config.enabled || !this.openai) {
       return;
     }
 
     try {
+      const scopeKey = this.buildScopeKey(scope);
       // Generate embedding for the query
       const embedding = await this.getEmbedding(query);
       if (!embedding) return;
@@ -176,6 +188,7 @@ export class SemanticCacheService {
         query,
         embedding,
         response,
+        scopeKey,
         createdAt: Date.now(),
         hitCount: 0,
         lastAccessed: Date.now(),
@@ -200,16 +213,17 @@ export class SemanticCacheService {
    */
   async invalidate(tenantId: string, contractId?: string): Promise<void> {
     try {
+      const contractScopeKey = contractId ? this.buildScopeKey({ contractId }) : null;
       if (this.redis) {
         if (contractId) {
           // Only invalidate entries related to this contract
           const entries = await this.getCacheEntries(tenantId);
           for (const entry of entries) {
-            const hasContract = entry.response.ragResults?.some(
+            const hasContract = this.normalizeScopeKey(entry.scopeKey) === contractScopeKey || entry.response.ragResults?.some(
               r => r.contractId === contractId
             );
             if (hasContract) {
-              await this.deleteCacheEntry(tenantId, entry.query);
+              await this.deleteCacheEntry(tenantId, entry.query, entry.scopeKey);
             }
           }
         } else {
@@ -221,7 +235,8 @@ export class SemanticCacheService {
         if (contractId) {
           for (const [key, entry] of this.memoryCache.entries()) {
             if (key.startsWith(tenantId) && 
-                entry.response.ragResults?.some(r => r.contractId === contractId)) {
+                (this.normalizeScopeKey(entry.scopeKey) === contractScopeKey ||
+                entry.response.ragResults?.some(r => r.contractId === contractId))) {
               this.memoryCache.delete(key);
             }
           }
@@ -327,7 +342,7 @@ export class SemanticCacheService {
   }
 
   private async storeCacheEntry(tenantId: string, entry: CacheEntry): Promise<void> {
-    const key = this.generateKey(entry.query);
+    const key = this.generateKey(entry.query, entry.scopeKey);
     
     if (this.redis) {
       await this.redis.hset(
@@ -355,8 +370,8 @@ export class SemanticCacheService {
     await this.storeCacheEntry(tenantId, entry);
   }
 
-  private async deleteCacheEntry(tenantId: string, query: string): Promise<void> {
-    const key = this.generateKey(query);
+  private async deleteCacheEntry(tenantId: string, query: string, scopeKey?: string): Promise<void> {
+    const key = this.generateKey(query, scopeKey);
     
     if (this.redis) {
       await this.redis.hdel(`semantic-cache:${tenantId}`, key);
@@ -372,23 +387,35 @@ export class SemanticCacheService {
     // Remove oldest 10%
     const toRemove = Math.ceil(entries.length * 0.1);
     for (let i = 0; i < toRemove; i++) {
-      await this.deleteCacheEntry(tenantId, entries[i].query);
+      await this.deleteCacheEntry(tenantId, entries[i].query, entries[i].scopeKey);
     }
   }
 
-  private generateKey(query: string): string {
+  private generateKey(query: string, scopeKey?: string): string {
     // FNV-1a 64-bit-ish hash — much lower collision rate than 32-bit djb2.
     // Uses two independent 32-bit accumulators to produce a 16-hex-char key.
+    const keyInput = `${this.normalizeScopeKey(scopeKey)}::${query}`;
     let h1 = 0x811c9dc5 | 0;
     let h2 = 0x01000193 | 0;
-    for (let i = 0; i < query.length; i++) {
-      const c = query.charCodeAt(i);
+    for (let i = 0; i < keyInput.length; i++) {
+      const c = keyInput.charCodeAt(i);
       h1 = Math.imul(h1 ^ c, 0x01000193);
       h2 = Math.imul(h2 ^ c, 0x811c9dc5);
     }
     const hex1 = (h1 >>> 0).toString(16).padStart(8, '0');
     const hex2 = (h2 >>> 0).toString(16).padStart(8, '0');
     return `q_${hex1}${hex2}`;
+  }
+
+  private buildScopeKey(scope?: CacheScope): string {
+    if (scope?.contractId) {
+      return `contract:${scope.contractId}`;
+    }
+    return SemanticCacheService.GLOBAL_SCOPE_KEY;
+  }
+
+  private normalizeScopeKey(scopeKey?: string): string {
+    return scopeKey || SemanticCacheService.GLOBAL_SCOPE_KEY;
   }
 
   private updateHitRate(): void {

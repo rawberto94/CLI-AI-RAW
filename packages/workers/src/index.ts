@@ -12,8 +12,8 @@ import { registerWebhookWorker } from './webhook-worker';
 import { registerRAGIndexingWorker } from './rag-indexing-worker';
 import { registerMetadataExtractionWorker } from './metadata-extraction-worker';
 import { registerCategorizationWorker } from './categorization-worker';
-import { registerRenewalAlertWorker } from './renewal-alert-worker';
-import { registerObligationTrackerWorker } from './obligation-tracker-worker';
+import { registerRenewalAlertWorker, scheduleRenewalCheck } from './renewal-alert-worker';
+import { registerObligationTrackerWorker, scheduleObligationCheck } from './obligation-tracker-worker';
 import { registerAgentOrchestratorWorker } from './agent-orchestrator-worker';
 import { registerAutonomousTriggers, processScheduledTrigger } from './autonomous-scheduler';
 import { registerEmbeddingRefreshScheduler } from './embedding-refresh-scheduler';
@@ -159,6 +159,16 @@ async function startWorkers() {
     const renewalAlertWorker = registerRenewalAlertWorker();
     const obligationTrackerWorker = registerObligationTrackerWorker();
     const agentOrchestratorWorker = registerAgentOrchestratorWorker();
+
+    try {
+      await Promise.all([
+        scheduleRenewalCheck(undefined, { source: 'scheduled' }),
+        scheduleObligationCheck(undefined, { source: 'scheduled' }),
+      ]);
+      logger.info('🗓️ Daily renewal and obligation schedules registered');
+    } catch (scheduleError) {
+      logger.warn({ error: scheduleError }, '⚠️ Failed to register daily renewal/obligation schedules (non-fatal)');
+    }
 
     // Register embedding refresh scheduler (daily stale-embedding re-indexing)
     const embeddingRefreshWorker = registerEmbeddingRefreshScheduler();

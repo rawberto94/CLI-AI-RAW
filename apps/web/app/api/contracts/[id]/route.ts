@@ -168,8 +168,8 @@ export async function GET(
     const ifNoneMatch = req.headers.get('If-None-Match');
     const cached = contractCache.get(cacheKey);
     if (cached) {
-      const cachedStatus = (cached.data as any)?.processing?.status;
-      const isCachedTerminal = cachedStatus === 'COMPLETED' || cachedStatus === 'FAILED';
+      const cachedStatus = String((cached.data as any)?.processing?.status || '').toLowerCase();
+      const isCachedTerminal = cachedStatus === 'completed' || cachedStatus === 'failed';
       if (isCachedTerminal) {
         if (contractCache.matches(cacheKey, ifNoneMatch)) {
           return new Response(null, {
@@ -317,7 +317,14 @@ export async function GET(
     const processingJob = await prisma.processingJob.findFirst({
       where: { contractId, tenantId },
       orderBy: { createdAt: 'desc' },
-      select: { progress: true, currentStep: true, status: true },
+      select: {
+        id: true,
+        progress: true,
+        currentStep: true,
+        status: true,
+        startedAt: true,
+        completedAt: true,
+      },
     });
 
     // Transform artifacts into expected format
@@ -363,16 +370,19 @@ export async function GET(
       fileSize: Number(contract.fileSize) || 0,
       mimeType: contract.mimeType || "application/pdf",
       processing: {
-        jobId: contract.id,
-        status: (contract.status || 'PROCESSING').toLowerCase(),
+        jobId: processingJob?.id || contract.id,
+        status: (processingJob?.status || contract.status || 'PROCESSING').toLowerCase(),
         currentStage: deriveStage(),
         progress: deriveProgress(),
         startTime:
-          contract.uploadedAt?.toISOString() || new Date().toISOString(),
+          processingJob?.startedAt?.toISOString() ||
+          contract.uploadedAt?.toISOString() ||
+          new Date().toISOString(),
         completedAt:
-          contract.status === "COMPLETED"
+          processingJob?.completedAt?.toISOString() ||
+          (contract.status === "COMPLETED"
             ? contract.processedAt?.toISOString() || new Date().toISOString()
-            : undefined,
+            : undefined),
       },
       extractedData: artifactsByType,
     };
@@ -632,9 +642,26 @@ export async function GET(
         : contractData.extractedData?.renewal,
       negotiationPoints: Array.isArray(contractData.extractedData)
         ? contractData.extractedData.find(
-            (a: ExtractedDataArtifact) => a.type === "NEGOTIATION" || a.type === "negotiation"
+            (a: ExtractedDataArtifact) =>
+              a.type === "NEGOTIATION_POINTS" ||
+              a.type === "NEGOTIATION" ||
+              a.type === "negotiation_points" ||
+              a.type === "negotiation"
           )?.data
-        : contractData.extractedData?.negotiation || contractData.extractedData?.negotiationPoints,
+        : contractData.extractedData?.negotiation_points ||
+          contractData.extractedData?.negotiation ||
+          contractData.extractedData?.negotiationPoints,
+      negotiation_points: Array.isArray(contractData.extractedData)
+        ? contractData.extractedData.find(
+            (a: ExtractedDataArtifact) =>
+              a.type === "NEGOTIATION_POINTS" ||
+              a.type === "NEGOTIATION" ||
+              a.type === "negotiation_points" ||
+              a.type === "negotiation"
+          )?.data
+        : contractData.extractedData?.negotiation_points ||
+          contractData.extractedData?.negotiation ||
+          contractData.extractedData?.negotiationPoints,
       amendments: Array.isArray(contractData.extractedData)
         ? contractData.extractedData.find(
             (a: ExtractedDataArtifact) => a.type === "AMENDMENTS" || a.type === "amendments"

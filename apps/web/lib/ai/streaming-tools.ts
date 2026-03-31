@@ -340,7 +340,7 @@ export const STREAMING_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           page: {
             type: 'string',
-            enum: ['dashboard', 'contracts', 'analytics', 'workflows', 'settings', 'vendors', 'compliance', 'risk-dashboard', 'reports', 'bulk-operations', 'calendar', 'intelligence', 'intelligence-graph', 'intelligence-health', 'intelligence-search', 'intelligence-negotiate', 'self-service', 'ecosystem', 'governance', 'admin', 'renewals', 'generate', 'drafting', 'drafting-copilot', 'approvals'],
+            enum: ['dashboard', 'contracts', 'analytics', 'workflows', 'settings', 'suppliers', 'vendors', 'compliance', 'risk', 'risk-dashboard', 'reports', 'bulk', 'bulk-operations', 'deadlines', 'calendar', 'intelligence', 'intelligence-graph', 'intelligence-health', 'intelligence-search', 'intelligence-negotiate', 'self-service', 'ecosystem', 'governance', 'admin', 'renewals', 'obligations', 'generate', 'drafting', 'drafting-copilot', 'approvals', 'agents', 'clauses'],
             description: 'Target page',
           },
           contractId: { type: 'string', description: 'Specific contract to navigate to' },
@@ -732,8 +732,8 @@ async function executeListExpiring(args: Record<string, unknown>, tenantId: stri
     },
     executionTimeMs: Date.now() - start,
     suggestedActions: [
-      { label: '📊 Risk Dashboard', action: 'navigate:/risk-dashboard' },
-      { label: '📅 Calendar View', action: 'navigate:/calendar' },
+      { label: '📊 Risk', action: 'navigate:/risk' },
+      { label: '📅 Deadlines', action: 'navigate:/deadlines' },
     ],
   };
 }
@@ -821,7 +821,7 @@ async function executeRiskAssessment(tenantId: string, start: number): Promise<T
       ].filter(Boolean),
     },
     executionTimeMs: Date.now() - start,
-    suggestedActions: [{ label: '🔴 Risk Dashboard', action: 'navigate:/risk-dashboard' }],
+    suggestedActions: [{ label: '🔴 Risk', action: 'navigate:/risk' }],
   };
 }
 
@@ -850,7 +850,7 @@ async function executeSupplierInfo(args: Record<string, unknown>, tenantId: stri
       contracts: (args.includeContracts !== false) ? contracts.slice(0, 10).map(c => ({ id: c.id, title: c.contractTitle, status: c.status, value: c.totalValue, type: c.contractType, expirationDate: c.expirationDate })) : undefined,
     },
     executionTimeMs: Date.now() - start,
-    suggestedActions: [{ label: '🏢 Vendor Details', action: 'navigate:/vendors' }],
+    suggestedActions: [{ label: '🏢 Suppliers', action: 'navigate:/suppliers' }],
   };
 }
 
@@ -909,9 +909,9 @@ async function executeStartWorkflow(args: Record<string, unknown>, tenantId: str
     success: true,
     data: { executionId: execution.id, workflowName: workflow.name, contractTitle: contract.contractTitle, totalSteps: workflow.steps.length },
     executionTimeMs: Date.now() - start,
-    navigation: { url: `/workflows/${execution.id}`, label: 'View Workflow' },
+    navigation: { url: `/contracts/${contractId}/workflow`, label: 'View Workflow' },
     suggestedActions: [
-      { label: '📋 View Workflow', action: `navigate:/workflows/${execution.id}` },
+      { label: '📋 View Workflow', action: `navigate:/contracts/${contractId}/workflow` },
       { label: '⏳ Pending Approvals', action: 'pending_approvals' },
     ],
   };
@@ -944,7 +944,7 @@ async function executeListWorkflows(args: Record<string, unknown>, tenantId: str
       ...(args.includeExecutions ? { activeExecutions } : {}),
     },
     executionTimeMs: Date.now() - start,
-    suggestedActions: [{ label: '⚙️ Workflow Settings', action: 'navigate:/settings/workflows' }],
+    suggestedActions: [{ label: '⚙️ Workflow Designer', action: 'navigate:/workflows/designer' }],
   };
 }
 
@@ -1343,7 +1343,7 @@ async function executeCreateContract(args: Record<string, unknown>, tenantId: st
     executionTimeMs: Date.now() - start,
     navigation: { url: `/contracts/${contract.id}`, label: 'View New Contract' },
     suggestedActions: [
-      { label: '📄 Edit Contract', action: `navigate:/contracts/${contract.id}/edit` },
+      { label: '✏️ Open Redline Editor', action: `navigate:/contracts/${contract.id}/redline` },
       { label: '🔄 Start Workflow', action: `start_workflow:${contract.id}` },
     ],
   };
@@ -1429,12 +1429,16 @@ async function executeNavigate(args: Record<string, unknown>, start: number): Pr
     analytics: '/analytics',
     workflows: '/workflows',
     settings: '/settings',
-    vendors: '/vendors',
+    suppliers: '/suppliers',
+    vendors: '/suppliers',
     compliance: '/compliance',
-    'risk-dashboard': '/risk-dashboard',
+    risk: '/risk',
+    'risk-dashboard': '/risk',
     reports: '/reports',
-    'bulk-operations': '/bulk-operations',
-    calendar: '/calendar',
+    bulk: '/contracts/bulk',
+    'bulk-operations': '/contracts/bulk',
+    deadlines: '/deadlines',
+    calendar: '/deadlines',
     intelligence: '/intelligence',
     'intelligence-graph': '/intelligence/graph',
     'intelligence-health': '/intelligence/health',
@@ -1445,10 +1449,13 @@ async function executeNavigate(args: Record<string, unknown>, start: number): Pr
     governance: '/governance',
     admin: '/admin',
     renewals: '/renewals',
+    obligations: '/obligations',
     generate: '/generate',
     drafting: '/drafting',
     'drafting-copilot': '/drafting/copilot',
     approvals: '/approvals',
+    agents: '/contigo-labs?tab=agents',
+    clauses: '/clauses',
   };
 
   const url = contractId ? `/contracts/${contractId}` : (routes[page] || '/dashboard');
@@ -1785,10 +1792,10 @@ async function executeAgentInsights(args: Record<string, unknown>, tenantId: str
       lastUpdated: new Date().toISOString(),
     },
     executionTimeMs: Date.now() - start,
-    navigation: { url: '/ai/agents', label: 'Agent Dashboard' },
+    navigation: { url: '/contigo-labs?tab=agents', label: 'AI Agents' },
     suggestedActions: [
-      { label: '🤖 Agent Dashboard', action: 'navigate:/ai/agents' },
-      { label: '⚠️ Risk Dashboard', action: 'navigate:/risk-dashboard' },
+      { label: '🤖 AI Agents', action: 'navigate:/contigo-labs?tab=agents' },
+      { label: '⚠️ Risk', action: 'navigate:/risk' },
     ],
   };
 }
@@ -2082,7 +2089,7 @@ async function executeExtractClauses(args: Record<string, unknown>, tenantId: st
     navigation: { url: `/contracts/${contractId}`, label: contract.contractTitle || 'View Contract' },
     suggestedActions: [
       { label: '📋 View Contract', action: `navigate:/contracts/${contractId}` },
-      { label: '⚖️ Clause Library', action: 'navigate:/clause-library' },
+      { label: '⚖️ Clause Library', action: 'navigate:/clauses' },
     ],
   };
 }

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { healthCheckService } from 'data-orchestration/services';
-import { withApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
+import { withPublicApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 /**
  * SSE connection-specific health check endpoint
  */
-export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
+export const GET = withPublicApiHandler(async (_request: NextRequest, ctx) => {
   try {
     const sseHealth = await healthCheckService.checkSSE();
     

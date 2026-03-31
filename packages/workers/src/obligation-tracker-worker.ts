@@ -119,6 +119,107 @@ export const OBLIGATION_TRACKER_CONFIG = {
   },
 };
 
+const OBLIGATION_TYPE_FILTERS: Record<NonNullable<ObligationCheckJobData['obligationType']>, string[] | null> = {
+  deliverable: ['DELIVERY'],
+  sla: ['SERVICE_LEVEL'],
+  milestone: ['MILESTONE'],
+  reporting: ['REPORTING'],
+  compliance: ['COMPLIANCE'],
+  all: null,
+};
+
+type PendingNotification = {
+  obligationId: string;
+  contractId: string;
+  tenantId: string;
+  type: 'reminder' | 'alert' | 'escalation';
+  subject: string;
+  message: string;
+  scheduledFor: Date;
+  recipients: Array<{ userId?: string; email?: string; name?: string }>;
+};
+
+function mapObligationTypeToAlertType(type?: string | null): ObligationAlert['type'] {
+  switch ((type || '').toUpperCase()) {
+    case 'DELIVERY':
+      return 'deliverable';
+    case 'SERVICE_LEVEL':
+      return 'sla';
+    case 'MILESTONE':
+      return 'milestone';
+    case 'REPORTING':
+      return 'reporting';
+    case 'COMPLIANCE':
+      return 'compliance';
+    default:
+      return 'other';
+  }
+}
+
+function mapOwnerLabel(owner?: string | null): string {
+  switch ((owner || '').toUpperCase()) {
+    case 'US':
+      return 'Us';
+    case 'COUNTERPARTY':
+      return 'Counterparty';
+    case 'BOTH':
+      return 'Both Parties';
+    case 'THIRD_PARTY':
+      return 'Third Party';
+    default:
+      return 'Unknown';
+  }
+}
+
+function parseReminderDays(value: unknown, fallback: number[]): number[] {
+  const candidates = Array.isArray(value) ? value : fallback;
+  const parsed = candidates
+    .map((item) => Number(item))
+    .filter((item) => Number.isFinite(item) && item >= 0);
+  return parsed.length > 0 ? Array.from(new Set(parsed)) : fallback;
+}
+
+function matchesPartyFilter(
+  partyFilter: string | undefined,
+  owner?: string | null,
+  assignedName?: string | null
+): boolean {
+  if (!partyFilter) return true;
+
+  const normalizedFilter = partyFilter.trim().toLowerCase();
+  const candidates = [owner, assignedName]
+    .filter((value): value is string => Boolean(value))
+    .map((value) => value.trim().toLowerCase());
+
+  return candidates.some((candidate) =>
+    candidate === normalizedFilter || candidate.includes(normalizedFilter)
+  );
+}
+
+function mapAlertTypeToNotificationType(
+  alertType: ObligationAlert['alertType']
+): PendingNotification['type'] {
+  if (alertType === 'overdue') return 'escalation';
+  if (alertType === 'info') return 'reminder';
+  return 'alert';
+}
+
+function buildNotificationSubject(alert: ObligationAlert): string {
+  if (alert.alertType === 'overdue') {
+    return `Overdue obligation: ${alert.obligationTitle}`;
+  }
+
+  if (alert.alertType === 'critical') {
+    return `Critical obligation due soon: ${alert.obligationTitle}`;
+  }
+
+  if (alert.alertType === 'warning') {
+    return `Upcoming obligation: ${alert.obligationTitle}`;
+  }
+
+  return `Obligation reminder: ${alert.obligationTitle}`;
+}
+
 // ============================================================================
 // WORKER FUNCTION
 // ============================================================================
@@ -156,194 +257,262 @@ export async function checkObligationsJob(
     // Dynamic import to avoid circular dependencies
     const getClient = (await import('clients-db')).default;
     const prisma = getClient();
+    const today = new Date();
+    const cutoffDate = new Date(today);
+    cutoffDate.setHours(23, 59, 59, 999);
+    cutoffDate.setDate(cutoffDate.getDate() + daysAhead);
 
-    // Build query for contracts with obligation artifacts
-    const whereClause: any = {
-      artifacts: {
-        some: {
-          type: 'OBLIGATIONS',
-        },
+    const obligationWhere: Record<string, any> = {
+      status: {
+        notIn: ['COMPLETED', 'WAIVED', 'CANCELLED'],
       },
-      status: 'COMPLETED',
+      OR: includeOverdue
+        ? [
+            { dueDate: { not: null, lte: cutoffDate } },
+            { nextOccurrenceDate: { not: null, lte: cutoffDate } },
+          ]
+        : [
+            { dueDate: { not: null, gte: today, lte: cutoffDate } },
+            { nextOccurrenceDate: { not: null, gte: today, lte: cutoffDate } },
+          ],
     };
 
     if (tenantId) {
-      whereClause.tenantId = tenantId;
+      obligationWhere.tenantId = tenantId;
     }
 
-    // Fetch contracts with obligation artifacts
-    const contracts = await prisma.contract.findMany({
-      where: whereClause,
+    const typeFilter = OBLIGATION_TYPE_FILTERS[obligationType] || null;
+    if (typeFilter) {
+      obligationWhere.type = { in: typeFilter };
+    }
+
+    const trackedObligations = await prisma.obligation.findMany({
+      where: obligationWhere,
       include: {
-        artifacts: {
-          where: { type: 'OBLIGATIONS' },
+        contract: {
+          select: {
+            id: true,
+            tenantId: true,
+            contractTitle: true,
+            originalName: true,
+            fileName: true,
+          },
+        },
+        assignedToUser: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
         },
       },
     });
 
     await job.updateProgress(20);
 
-    const today = new Date();
-
     let processedCount = 0;
-    const totalContracts = contracts.length;
+    const totalObligations = trackedObligations.length;
+    const pendingNotifications: PendingNotification[] = [];
+    const pendingStatusUpdates = new Map<string, 'OVERDUE' | 'AT_RISK'>();
 
-    for (const contract of contracts) {
+    for (const obligation of trackedObligations) {
       try {
-        const obligationArtifact = contract.artifacts[0];
-        if (!obligationArtifact) continue;
+        const dueDate = obligation.nextOccurrenceDate || obligation.dueDate;
+        const assignedName = obligation.assignedToUser
+          ? `${obligation.assignedToUser.firstName || ''} ${obligation.assignedToUser.lastName || ''}`.trim() || obligation.assignedToUser.email
+          : null;
 
-        const obligationData = obligationArtifact.data as any;
-        
-        // Process individual obligations
-        if (obligationData.obligations && Array.isArray(obligationData.obligations)) {
-          for (const obl of obligationData.obligations) {
-            // Filter by type if specified
-            if (obligationType !== 'all' && obl.type !== obligationType) continue;
-            
-            // Filter by party if specified
-            if (partyFilter && obl.party !== partyFilter) continue;
-            
-            if (obl.dueDate) {
-              const dueDate = new Date(obl.dueDate);
-              const daysRemaining = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        if (!dueDate || !matchesPartyFilter(partyFilter, obligation.owner, assignedName)) {
+          processedCount++;
+          const progress = 20 + Math.floor((processedCount / Math.max(totalObligations, 1)) * 70);
+          await job.updateProgress(progress);
+          continue;
+        }
 
-              // Check for overdue
-              if (includeOverdue && daysRemaining < 0) {
-                obligations.push({
-                  contractId: contract.id,
-                  contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
-                  obligationId: obl.id,
-                  obligationTitle: obl.title,
-                  party: obl.party || 'Unknown',
-                  type: obl.type || 'other',
-                  alertType: 'overdue',
-                  message: `Overdue by ${Math.abs(daysRemaining)} days: ${obl.title}`,
-                  dueDate: obl.dueDate,
-                  daysRemaining,
-                  slaCriteria: obl.slaCriteria,
-                  penalty: obl.penalty,
-                  tenantId: contract.tenantId,
-                  sourceClause: obl.sourceClause,
-                });
-              }
-              // Check for upcoming
-              else if (daysRemaining >= 0 && daysRemaining <= daysAhead) {
-                const alertType = daysRemaining <= criticalThresholdDays ? 'critical' : 
-                                  daysRemaining <= warningThresholdDays ? 'warning' : 'info';
+        const daysRemaining = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const reminderDays = parseReminderDays(obligation.reminderDays, [30, 14, warningThresholdDays, criticalThresholdDays, 7, 1]);
 
-                obligations.push({
-                  contractId: contract.id,
-                  contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
-                  obligationId: obl.id,
-                  obligationTitle: obl.title,
-                  party: obl.party || 'Unknown',
-                  type: obl.type || 'other',
-                  alertType,
-                  message: `Due in ${daysRemaining} days: ${obl.title}`,
-                  dueDate: obl.dueDate,
-                  daysRemaining,
-                  slaCriteria: obl.slaCriteria,
-                  penalty: obl.penalty,
-                  tenantId: contract.tenantId,
-                  sourceClause: obl.sourceClause,
-                });
-              }
-            }
+        let alertType: ObligationAlert['alertType'] | null = null;
+        if (includeOverdue && daysRemaining < 0) {
+          alertType = 'overdue';
+          if (obligation.status !== 'OVERDUE') {
+            pendingStatusUpdates.set(obligation.id, 'OVERDUE');
+          }
+        } else if (
+          daysRemaining >= 0 &&
+          daysRemaining <= daysAhead &&
+          (daysRemaining <= warningThresholdDays || reminderDays.includes(daysRemaining))
+        ) {
+          alertType = daysRemaining <= criticalThresholdDays
+            ? 'critical'
+            : daysRemaining <= warningThresholdDays
+              ? 'warning'
+              : 'info';
 
-            // Track recurring obligations
-            if (obl.recurring && !obl.dueDate) {
-              obligations.push({
-                contractId: contract.id,
-                contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
-                obligationId: obl.id,
-                obligationTitle: obl.title,
-                party: obl.party || 'Unknown',
-                type: obl.type || 'other',
-                alertType: 'info',
-                message: `Recurring ${obl.recurring.frequency}: ${obl.title}`,
-                dueDate: null,
-                daysRemaining: null,
-                slaCriteria: obl.slaCriteria,
-                penalty: obl.penalty,
-                tenantId: contract.tenantId,
-              });
-            }
+          if (daysRemaining <= criticalThresholdDays && obligation.status !== 'AT_RISK') {
+            pendingStatusUpdates.set(obligation.id, 'AT_RISK');
           }
         }
 
-        // Process milestones
-        if (obligationData.milestones && Array.isArray(obligationData.milestones)) {
-          for (const milestone of obligationData.milestones) {
-            if (obligationType !== 'all' && obligationType !== 'milestone') continue;
-            
-            if (milestone.date) {
-              const milestoneDate = new Date(milestone.date);
-              const daysRemaining = Math.ceil((milestoneDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-              if (includeOverdue && daysRemaining < 0 && milestone.status !== 'completed') {
-                obligations.push({
-                  contractId: contract.id,
-                  contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
-                  obligationId: milestone.id,
-                  obligationTitle: milestone.name,
-                  party: 'Both Parties',
-                  type: 'milestone',
-                  alertType: 'overdue',
-                  message: `Milestone missed by ${Math.abs(daysRemaining)} days: ${milestone.name}`,
-                  dueDate: milestone.date,
-                  daysRemaining,
-                  tenantId: contract.tenantId,
-                });
-              } else if (daysRemaining >= 0 && daysRemaining <= daysAhead) {
-                const alertType = daysRemaining <= warningThresholdDays ? 'critical' : 
-                                  daysRemaining <= 14 ? 'warning' : 'info';
-
-                obligations.push({
-                  contractId: contract.id,
-                  contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
-                  obligationId: milestone.id,
-                  obligationTitle: milestone.name,
-                  party: 'Both Parties',
-                  type: 'milestone',
-                  alertType,
-                  message: `Milestone due in ${daysRemaining} days: ${milestone.name}`,
-                  dueDate: milestone.date,
-                  daysRemaining,
-                  tenantId: contract.tenantId,
-                });
-              }
-            }
-          }
+        if (!alertType) {
+          processedCount++;
+          const progress = 20 + Math.floor((processedCount / Math.max(totalObligations, 1)) * 70);
+          await job.updateProgress(progress);
+          continue;
         }
 
-        // Process SLA metrics
-        if (obligationData.slaMetrics && Array.isArray(obligationData.slaMetrics)) {
-          for (const sla of obligationData.slaMetrics) {
-            if (sla.status === 'at-risk' || sla.status === 'breached') {
-              slaStatuses.push({
-                contractId: contract.id,
-                contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
-                metric: sla.metric,
-                target: sla.target,
-                currentValue: sla.currentValue,
-                status: sla.status,
-                penalty: sla.penalty,
-                tenantId: contract.tenantId,
-              });
-            }
-          }
+        const contractName = obligation.contract.contractTitle || obligation.contract.originalName || obligation.contract.fileName || 'Unnamed Contract';
+        const obligationTypeLabel = mapObligationTypeToAlertType(obligation.type);
+        const alert: ObligationAlert = {
+          contractId: obligation.contractId,
+          contractName,
+          obligationId: obligation.id,
+          obligationTitle: obligation.title,
+          party: mapOwnerLabel(obligation.owner),
+          type: obligationTypeLabel,
+          alertType,
+          message: alertType === 'overdue'
+            ? `Overdue by ${Math.abs(daysRemaining)} days: ${obligation.title}`
+            : `Due in ${daysRemaining} days: ${obligation.title}`,
+          dueDate: dueDate.toISOString(),
+          daysRemaining,
+          penalty: obligation.penaltyForMissing || undefined,
+          tenantId: obligation.tenantId,
+          sourceClause: obligation.clauseReference || obligation.sourceSection || undefined,
+        };
+
+        obligations.push(alert);
+
+        if (obligation.type === 'SERVICE_LEVEL' && alertType !== 'info') {
+          slaStatuses.push({
+            contractId: obligation.contractId,
+            contractName,
+            metric: obligation.title,
+            target: dueDate.toISOString(),
+            currentValue: alertType === 'overdue'
+              ? `${Math.abs(daysRemaining)} days overdue`
+              : `${daysRemaining} days remaining`,
+            status: alertType === 'overdue' ? 'breached' : 'at-risk',
+            penalty: obligation.penaltyForMissing || undefined,
+            tenantId: obligation.tenantId,
+          });
         }
+
+        pendingNotifications.push({
+          obligationId: obligation.id,
+          contractId: obligation.contractId,
+          tenantId: obligation.tenantId,
+          type: mapAlertTypeToNotificationType(alertType),
+          subject: buildNotificationSubject(alert),
+          message: alert.message,
+          scheduledFor: new Date(),
+          recipients: obligation.assignedToUser
+            ? [{
+                userId: obligation.assignedToUser.id,
+                email: obligation.assignedToUser.email,
+                name: assignedName || obligation.assignedToUser.email,
+              }]
+            : [],
+        });
 
         processedCount++;
-        const progress = 20 + Math.floor((processedCount / totalContracts) * 70);
+        const progress = 20 + Math.floor((processedCount / Math.max(totalObligations, 1)) * 70);
         await job.updateProgress(progress);
-
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        errors.push(`Contract ${contract.id}: ${errorMsg}`);
-        logger.error({ error, contractId: contract.id }, 'Error processing contract for obligations');
+        errors.push(`Obligation ${obligation.id}: ${errorMsg}`);
+        logger.error({ error, obligationId: obligation.id }, 'Error processing persisted obligation');
       }
+    }
+
+    if (pendingNotifications.length > 0) {
+      const startOfDay = new Date(today);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const existingNotifications = await prisma.obligationNotification.findMany({
+        where: {
+          obligationId: { in: Array.from(new Set(pendingNotifications.map((notification) => notification.obligationId))) },
+          status: { in: ['PENDING', 'SENT'] },
+          createdAt: { gte: startOfDay },
+        },
+        select: {
+          obligationId: true,
+          type: true,
+        },
+      });
+
+      const existingKeys = new Set(
+        existingNotifications.map((notification) => `${notification.obligationId}:${String(notification.type).toLowerCase()}`)
+      );
+
+      const notificationCounts = new Map<string, number>();
+
+      for (const notification of pendingNotifications) {
+        const dedupeKey = `${notification.obligationId}:${notification.type}`;
+        if (existingKeys.has(dedupeKey)) {
+          continue;
+        }
+
+        await prisma.obligationNotification.create({
+          data: {
+            tenantId: notification.tenantId,
+            contractId: notification.contractId,
+            obligationId: notification.obligationId,
+            type: notification.type,
+            status: 'PENDING',
+            scheduledFor: notification.scheduledFor,
+            subject: notification.subject,
+            message: notification.message,
+            recipients: notification.recipients,
+          },
+        });
+
+        existingKeys.add(dedupeKey);
+        notificationCounts.set(
+          notification.obligationId,
+          (notificationCounts.get(notification.obligationId) || 0) + 1
+        );
+      }
+
+      const now = new Date();
+      await Promise.all(
+        Array.from(new Set([
+          ...Array.from(notificationCounts.keys()),
+          ...Array.from(pendingStatusUpdates.keys()),
+        ])).map(async (obligationId) => {
+          const data: Record<string, unknown> = {};
+          const nextStatus = pendingStatusUpdates.get(obligationId);
+          const reminderIncrement = notificationCounts.get(obligationId) || 0;
+
+          if (nextStatus) {
+            data.status = nextStatus;
+          }
+
+          if (reminderIncrement > 0) {
+            data.lastReminderAt = now;
+            data.remindersSent = { increment: reminderIncrement };
+          }
+
+          if (Object.keys(data).length === 0) {
+            return;
+          }
+
+          await prisma.obligation.update({
+            where: { id: obligationId },
+            data,
+          });
+        })
+      );
+    } else if (pendingStatusUpdates.size > 0) {
+      await Promise.all(
+        Array.from(pendingStatusUpdates.entries()).map(async ([obligationId, status]) => {
+          await prisma.obligation.update({
+            where: { id: obligationId },
+            data: { status },
+          });
+        })
+      );
     }
 
     // Sort by urgency (overdue first, then by days remaining)
@@ -359,7 +528,7 @@ export async function checkObligationsJob(
 
     logger.info(
       { 
-        contractsChecked: contracts.length, 
+        contractsChecked: new Set(trackedObligations.map((obligation) => obligation.contractId)).size, 
         obligationAlerts: obligations.length,
         slaAlerts: slaStatuses.length,
         processingTimeMs
@@ -371,7 +540,7 @@ export async function checkObligationsJob(
       success: true,
       obligationAlerts: obligations.length,
       slaAlerts: slaStatuses.length,
-      contractsChecked: contracts.length,
+      contractsChecked: new Set(trackedObligations.map((obligation) => obligation.contractId)).size,
       obligations,
       slaStatuses,
       processingTimeMs,
@@ -420,6 +589,7 @@ export async function scheduleObligationCheck(tenantId?: string, options?: Parti
       ...options
     },
     {
+      jobId: tenantId ? `obligation-daily:${tenantId}` : 'obligation-daily:all-tenants',
       repeat: {
         pattern: '0 7 * * *', // Run daily at 7 AM
       },

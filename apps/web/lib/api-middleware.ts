@@ -347,7 +347,31 @@ export function withApiHandler(
   handler: (request: NextRequest, context: ApiContext) => Promise<NextResponse>
 ) {
   return async (request: NextRequest, routeContext?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
-    const context = getApiContext(request);
+    try {
+      const context = getApiContext(request);
+
+      // Merge Next.js route params into context for dynamic routes
+      const mergedContext = routeContext?.params
+        ? Object.assign(context, { params: routeContext.params })
+        : context;
+
+      return await handler(request, mergedContext);
+    } catch (error) {
+      return handleApiError(getPublicApiContext(request), error);
+    }
+  };
+}
+
+/**
+ * Wrapper for PUBLIC API route handlers.
+ * Uses a non-tenant-bound context so health checks and other unauthenticated
+ * infrastructure endpoints can run in production without x-tenant-id.
+ */
+export function withPublicApiHandler(
+  handler: (request: NextRequest, context: ApiContext) => Promise<NextResponse>
+) {
+  return async (request: NextRequest, routeContext?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
+    const context = getPublicApiContext(request);
 
     // Merge Next.js route params into context for dynamic routes
     const mergedContext = routeContext?.params

@@ -73,6 +73,17 @@ interface ContractWorkflow {
   updatedAt: string;
 }
 
+interface GovernanceGateSummary {
+  id: string;
+  name: string;
+  requiredApprovers: string[];
+}
+
+interface WorkflowGovernanceState {
+  applicableGates: GovernanceGateSummary[];
+  unmetGates: GovernanceGateSummary[];
+}
+
 const approverRoles = [
   'Procurement Manager',
   'Legal Counsel',
@@ -98,6 +109,7 @@ export default function ContractWorkflowPage() {
   const [isActive, setIsActive] = useState(true);
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
   const [availableApprovers, setAvailableApprovers] = useState<Array<{ id: string; name: string; role: string; email: string }>>([]);
+  const [governance, setGovernance] = useState<WorkflowGovernanceState | null>(null);
 
   useEffect(() => {
     loadContractAndWorkflow();
@@ -107,13 +119,17 @@ export default function ContractWorkflowPage() {
   const loadContractAndWorkflow = async () => {
     setLoading(true);
     try {
+      let loadedContract: any = null;
+      let loadedWorkflow: ContractWorkflow | null = null;
+
       // Load contract details
       const contractRes = await fetch(`/api/contracts/${contractId}`, {
         headers: { 'x-tenant-id': getTenantId() },
       });
       if (contractRes.ok) {
-        const contractData = await contractRes.json();
-        setContract(contractData);
+        const contractJson = await contractRes.json();
+        loadedContract = contractJson.data ?? contractJson;
+        setContract(loadedContract);
       }
 
       // Load available approvers from users API
@@ -143,8 +159,11 @@ export default function ContractWorkflowPage() {
       });
       
       if (workflowRes.ok) {
-        const workflowData = await workflowRes.json();
+        const workflowJson = await workflowRes.json();
+        const workflowData = workflowJson.data ?? workflowJson;
+        setGovernance(workflowData.governance || null);
         if (workflowData.workflow) {
+          loadedWorkflow = workflowData.workflow;
           setWorkflow(workflowData.workflow);
           setWorkflowName(workflowData.workflow.name);
           setWorkflowDescription(workflowData.workflow.description || '');
@@ -154,8 +173,8 @@ export default function ContractWorkflowPage() {
       }
 
       // If no workflow exists, create a default one
-      if (!workflow && steps.length === 0) {
-        setWorkflowName(`Approval Workflow - ${contract?.contractTitle || 'Contract'}`);
+      if (!loadedWorkflow && steps.length === 0) {
+        setWorkflowName(`Approval Workflow - ${loadedContract?.contractTitle || loadedContract?.fileName || 'Contract'}`);
         setSteps([
           {
             id: 'step-1',
@@ -215,14 +234,15 @@ export default function ContractWorkflowPage() {
     setSteps(newSteps.map((s, i) => ({ ...s, order: i + 1 })));
   };
 
-  const saveWorkflow = async () => {
+  const saveWorkflow = async (isActiveOverride?: boolean) => {
     setSaving(true);
     try {
+      const nextIsActive = isActiveOverride ?? isActive;
       const workflowData = {
         contractId,
         name: workflowName,
         description: workflowDescription,
-        isActive,
+        isActive: nextIsActive,
         steps,
       };
 
@@ -235,26 +255,33 @@ export default function ContractWorkflowPage() {
         body: JSON.stringify(workflowData),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setWorkflow(data.workflow);
-        toast.success('Workflow saved successfully');
-      } else {
-        throw new Error('Failed to save');
+      const json = await res.json().catch(() => null);
+      const payload = json?.data ?? json;
+
+      if (!res.ok) {
+        throw new Error(json?.error?.details || json?.error?.message || 'Failed to save workflow');
       }
-    } catch {
-      toast.error('Failed to save workflow');
+
+      setWorkflow(payload.workflow);
+  setIsActive(payload.workflow?.isActive ?? nextIsActive);
+      setGovernance(payload.governance || null);
+      toast.success('Workflow saved successfully');
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save workflow');
+      return false;
     } finally {
       setSaving(false);
     }
   };
 
   const activateWorkflow = async () => {
-    setIsActive(true);
-    await saveWorkflow();
-    toast.success('Workflow activated', {
-      description: 'This workflow will now be used for approvals.',
-    });
+    const saved = await saveWorkflow(true);
+    if (saved) {
+      toast.success('Workflow activated', {
+        description: 'This workflow will now be used for approvals.',
+      });
+    }
   };
 
   if (loading) {
@@ -386,6 +413,38 @@ export default function ContractWorkflowPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {governance?.applicableGates?.length ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-slate-500" />
+                    Governance Gates
+                  </CardTitle>
+                  <CardDescription>
+                    Contracts in this range must include these checkpoints before finalization.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {governance.applicableGates.map((gate) => {
+                    const unmet = governance.unmetGates.some((candidate) => candidate.id === gate.id);
+                    return (
+                      <div key={gate.id} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2">
+                        <div>
+                          <p className="font-medium text-slate-900">{gate.name}</p>
+                          <p className="text-xs text-slate-500">
+                            {gate.requiredApprovers.length > 0 ? gate.requiredApprovers.join(', ') : 'Required gate'}
+                          </p>
+                        </div>
+                        <Badge variant={unmet ? 'secondary' : 'default'} className={unmet ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-700'}>
+                          {unmet ? 'Missing' : 'Covered'}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            ) : null}
 
             {/* Quick Templates */}
             <Card>

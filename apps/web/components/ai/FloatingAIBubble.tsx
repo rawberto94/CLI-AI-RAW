@@ -327,6 +327,7 @@ function formatToolName(name: string): string {
 function getPageContext(pathname: string | null): string {
   if (!pathname) return 'dashboard';
   
+  if (pathname.includes('/contigo-labs')) return 'contigo-labs';
   if (pathname.includes('/intelligence/graph')) return 'intelligence-knowledge-graph';
   if (pathname.includes('/intelligence/health')) return 'intelligence-health-scores';
   if (pathname.includes('/intelligence/search')) return 'intelligence-rag-search';
@@ -368,10 +369,15 @@ function formatTimeAgo(date: Date): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export function FloatingAIBubble() {
+interface FloatingAIBubbleProps {
+  mode?: 'floating' | 'embedded';
+}
+
+export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isEmbedded = mode === 'embedded';
   
   // Contract ID override from openAIChatbot events (e.g. contracts list "Ask AI")
   const [eventContractId, setEventContractId] = useState<string | null>(null);
@@ -408,7 +414,7 @@ export function FloatingAIBubble() {
   const MAX_STORED_MESSAGES = 50; // Limit stored messages to prevent storage bloat
   
   // Core state
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(isEmbedded);
   const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
@@ -485,7 +491,7 @@ export function FloatingAIBubble() {
 
   // Accessibility: focus trap when chat is open
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isEmbedded) return;
     const panel = chatPanelRef.current;
     if (!panel) return;
 
@@ -517,7 +523,7 @@ export function FloatingAIBubble() {
     // Focus the input when opening
     setTimeout(() => inputRef.current?.focus(), 100);
     return () => panel.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
+  }, [isEmbedded, isOpen]);
 
   // Abort in-flight SSE stream on component unmount
   useEffect(() => {
@@ -676,10 +682,14 @@ export function FloatingAIBubble() {
       // Open with Cmd/Ctrl + /
       if ((e.metaKey || e.ctrlKey) && e.key === "/") {
         e.preventDefault();
+        if (isEmbedded) {
+          inputRef.current?.focus();
+          return;
+        }
         setIsOpen((prev) => !prev);
       }
       // Close with Escape
-      if (e.key === "Escape" && isOpen) {
+      if (!isEmbedded && e.key === "Escape" && isOpen) {
         setIsOpen(false);
         setIsExpanded(false);
       }
@@ -693,7 +703,7 @@ export function FloatingAIBubble() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
     
-  }, [isOpen]);
+  }, [isEmbedded, isOpen]);
 
   // Draggable functionality - handlers for mouse/touch events
   const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
@@ -919,7 +929,16 @@ export function FloatingAIBubble() {
     if (action.startsWith("view-contract:")) {
       const contractId = action.replace("view-contract:", "");
       router.push(`/contracts/${contractId}`);
-      setIsOpen(false);
+      if (!isEmbedded) setIsOpen(false);
+      return;
+    }
+
+    if (action.startsWith("navigate:")) {
+      const target = action.slice("navigate:".length).trim();
+      if (target) {
+        router.push(target);
+        if (!isEmbedded) setIsOpen(false);
+      }
       return;
     }
 
@@ -928,17 +947,17 @@ export function FloatingAIBubble() {
       case "view-contracts":
       case "search-contracts":
         router.push("/contracts");
-        setIsOpen(false);
+        if (!isEmbedded) setIsOpen(false);
         break;
       case "view-renewals":
         router.push("/renewals");
-        setIsOpen(false);
+        if (!isEmbedded) setIsOpen(false);
         break;
       case "view-analytics":
       case "supplier-analytics":
       case "view-dashboard":
         router.push("/analytics");
-        setIsOpen(false);
+        if (!isEmbedded) setIsOpen(false);
         break;
 
       // Chat-driven actions — re-send as a message to the AI
@@ -972,7 +991,7 @@ export function FloatingAIBubble() {
         }
         break;
     }
-  }, [router, safeSendMsg]);
+  }, [isEmbedded, router, safeSendMsg]);
 
   // Constants for request handling
   const REQUEST_TIMEOUT_MS = 60000; // 60 seconds
@@ -1646,9 +1665,13 @@ export function FloatingAIBubble() {
 
   // Toggle open state
   const toggleOpen = useCallback(() => {
+    if (isEmbedded) {
+      inputRef.current?.focus();
+      return;
+    }
     setIsOpen(!isOpen);
     if (!isOpen) setHasNewMessage(false);
-  }, [isOpen]);
+  }, [isEmbedded, isOpen]);
 
   // Memoized unread count
   const unreadCount = useMemo(() => {
@@ -1660,7 +1683,7 @@ export function FloatingAIBubble() {
       <>
         {/* Floating Bubble Button - Draggable with better animations */}
         <AnimatePresence>
-          {!isOpen && (
+          {!isEmbedded && !isOpen && (
             <motion.div key="FloatingAIBubble-ap-1"
               initial={{ scale: 0, opacity: 0, rotate: -180 }}
               animate={{ scale: 1, opacity: 1, rotate: 0 }}
@@ -1750,19 +1773,21 @@ export function FloatingAIBubble() {
         <AnimatePresence>
           {isOpen && (
             <motion.div key="open"
-              role="dialog"
-              aria-modal="true"
+              role={isEmbedded ? 'region' : 'dialog'}
+              aria-modal={isEmbedded ? undefined : true}
               aria-label="ConTigo AI Chat"
               initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 30 }}
               animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
               exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 30 }}
               transition={prefersReducedMotion ? { duration: 0.15 } : { type: "spring", damping: 20, stiffness: 280 }}
-              className={`fixed z-50 ${
-                isExpanded
+              className={`${isEmbedded ? 'relative h-full w-full' : 'fixed z-50'} ${
+                !isEmbedded && isExpanded
                   ? "inset-2 md:inset-4 lg:inset-8"
-                  : "w-[min(560px,calc(100vw-32px))] h-[min(780px,calc(100vh-80px))] sm:w-[90vw] sm:max-w-[560px] md:w-[560px]"
+                  : isEmbedded
+                    ? 'h-full w-full'
+                    : "w-[min(560px,calc(100vw-32px))] h-[min(780px,calc(100vh-80px))] sm:w-[90vw] sm:max-w-[560px] md:w-[560px]"
               }`}
-              style={!isExpanded ? {
+              style={!isEmbedded && !isExpanded ? {
                 bottom: `${16 + position.y}px`,
                 right: `${16 + position.x}px`,
               } : undefined}
@@ -1773,20 +1798,20 @@ export function FloatingAIBubble() {
                 
                 {/* Accent bar at top - also serves as drag handle */}
                 <motion.div 
-                  className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 cursor-grab active:cursor-grabbing"
+                  className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 ${isEmbedded ? '' : 'cursor-grab active:cursor-grabbing'}`}
                   animate={{ opacity: [0.7, 1, 0.7] }}
                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                  onMouseDown={handleDragStart}
-                  onTouchStart={handleDragStart}
+                  onMouseDown={isEmbedded ? undefined : handleDragStart}
+                  onTouchStart={isEmbedded ? undefined : handleDragStart}
                 />
 
                 {/* Content */}
                 <div className="relative h-full flex flex-col">
                   {/* Header - Clean glassmorphism design */}
                   <div 
-                    className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white/80 backdrop-blur-md cursor-grab active:cursor-grabbing select-none"
-                    onMouseDown={handleDragStart}
-                    onTouchStart={handleDragStart}
+                    className={`flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white/80 backdrop-blur-md select-none ${isEmbedded ? '' : 'cursor-grab active:cursor-grabbing'}`}
+                    onMouseDown={isEmbedded ? undefined : handleDragStart}
+                    onTouchStart={isEmbedded ? undefined : handleDragStart}
                   >
                     <div className="flex items-center gap-3.5 pointer-events-none">
                       <div className="relative">
@@ -1923,22 +1948,26 @@ export function FloatingAIBubble() {
                         </DropdownMenuContent>
                       </DropdownMenu>
 
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-                        onClick={() => setIsExpanded(!isExpanded)}
-                      >
-                        {isExpanded ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-                        onClick={toggleOpen}
-                      >
-                        <X className="w-5 h-5" />
-                      </Button>
+                      {!isEmbedded && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                          >
+                            {isExpanded ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                            onClick={toggleOpen}
+                          >
+                            <X className="w-5 h-5" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -2094,7 +2123,11 @@ export function FloatingAIBubble() {
                                             <a
                                               href={tp.navigation.url}
                                               className="text-violet-500 hover:underline ml-auto"
-                                              onClick={(e) => { e.preventDefault(); window.location.href = tp.navigation!.url; }}
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                router.push(tp.navigation!.url);
+                                                if (!isEmbedded) setIsOpen(false);
+                                              }}
                                             >
                                               {tp.navigation.label} →
                                             </a>
@@ -2679,10 +2712,12 @@ export function FloatingAIBubble() {
                           <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs text-gray-600 font-mono shadow-sm">Enter</kbd>
                           <span>send</span>
                         </span>
-                        <span className="text-xs text-gray-500 flex items-center gap-1.5">
-                          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs text-gray-600 font-mono shadow-sm">⌘/</kbd>
-                          <span>toggle</span>
-                        </span>
+                        {!isEmbedded && (
+                          <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                            <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs text-gray-600 font-mono shadow-sm">⌘/</kbd>
+                            <span>toggle</span>
+                          </span>
+                        )}
                       </div>
                       <motion.button 
                         onClick={() => setShowExamples(true)}

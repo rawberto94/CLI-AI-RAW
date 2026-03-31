@@ -2155,7 +2155,7 @@ export async function processOCRArtifactJob(
     let ocrResult = await performOCR(localFilePath, ocrMode, localFileSize, async (pct) => {
       try { await job.updateProgress(pct); } catch { /* best-effort */ }
     }, fileContentHash);
-    const rawExtractedText = ocrResult.text;
+    let rawExtractedText = ocrResult.text;
     
     // ============ OCR ENHANCEMENT PIPELINE ============
     // Skip enhancement for DI output — DI text is already clean and deterministic.
@@ -2322,16 +2322,12 @@ export async function processOCRArtifactJob(
             provider: secondaryDIMode,
           }, 'DI cross-validation produced better result — adopting');
           enhancedText = secondResult.text;
-          // Update ocrResult reference for downstream quality metrics
-          // Use spread to avoid mutating the shared reference
-          ocrResult = {
-            ...ocrResult,
-            confidence: secondResult.confidence,
-            tables: secondResult.tables,
-            keyValuePairs: secondResult.keyValuePairs,
-            paragraphs: secondResult.paragraphs,
-            source: secondResult.source,
-          };
+          rawExtractedText = secondResult.text;
+          ocrMode = secondaryDIMode;
+          // The adopted DI result must become the canonical source for downstream
+          // persistence, prompting, and metadata so we do not mix structures from
+          // two different DI passes.
+          ocrResult = secondResult;
         }
       } catch (diCrossErr) {
         jobLogger.warn({ error: (diCrossErr as Error).message }, 'DI cross-validation pass failed, continuing with primary');

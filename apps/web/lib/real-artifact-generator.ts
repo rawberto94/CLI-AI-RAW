@@ -13,6 +13,7 @@ import path from 'path';
 import pino from 'pino';
 import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { categorizeContract } from '@/lib/categorization-service';
+import { queueContractReindex } from '@/lib/rag/reindex-trigger';
 
 const logger = pino({ name: 'real-artifact-generator' });
 
@@ -108,6 +109,690 @@ interface ArtifactData {
   content: Record<string, any>;
 }
 
+type ExtractedParty = {
+  name: string;
+  role: string;
+};
+
+interface BasicContractExtraction {
+  title: string | null;
+  contractType: string | null;
+  summary: string | null;
+  totalValue: number | null;
+  currency: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  clientName: string | null;
+  supplierName: string | null;
+  parties: ExtractedParty[];
+  keyPoints: string[];
+  paymentTerms: string | null;
+  signatureStatus: string | null;
+  signatureDate: string | null;
+}
+
+const MONTH_NAMES = '(?:january|february|march|april|may|june|july|august|september|october|november|december)';
+const FULL_DATE_PATTERN = `(?:${MONTH_NAMES}\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+${MONTH_NAMES}\s+\d{4}|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})`;
+const LEGAL_ENTITY_SUFFIX_PATTERN = '(?:Inc\\.?|LLC|Ltd\\.?|Corp(?:oration)?\\.?|Co\\.?|LP|LLP|PLC|GmbH|AG|SA|SAS|BV|NV|SARL|S\\.r\\.l\\.?|Oy|AB)';
+
+const TITLE_PATTERNS = [
+  /^[\s\n]*((?:STATEMENT\s+OF\s+WORK|MASTER\s+SERVICE\s+AGREEMENT|NON[- ]?DISCLOSURE\s+AGREEMENT|SERVICE\s+AGREEMENT|SUPPLIER\s+AGREEMENT|SUPPLY\s+AGREEMENT|VENDOR\s+AGREEMENT|EMPLOYMENT\s+(?:AGREEMENT|CONTRACT)|LEASE\s+AGREEMENT|SOFTWARE\s+LICENSE\s+AGREEMENT|SUBSCRIPTION\s+AGREEMENT|PURCHASE\s+(?:ORDER|AGREEMENT)|AMENDMENT)[^\n]*)/im,
+  /^[\s\n]*([A-Z][A-Z\s]{2,80}(?:AGREEMENT|CONTRACT|STATEMENT\s+OF\s+WORK|ADDENDUM|AMENDMENT))/m,
+  /(?:^|\n)\s*(?:title|re|subject|regarding)[:\s]+([^\n]{3,120}?)(?:\n|$)/im,
+];
+
+const CONTRACT_TYPE_PATTERNS: Array<[RegExp, string]> = [
+  [/supplier\s+agreement|supply\s+agreement|vendor\s+agreement/i, 'SUPPLIER'],
+  [/statement\s+of\s+work|\bSOW\b/i, 'SOW'],
+  [/master\s+service\s+agreement|\bMSA\b/i, 'MSA'],
+  [/non[- ]?disclosure\s+agreement|\bNDA\b|confidentiality\s+agreement/i, 'NDA'],
+  [/employment\s+(?:agreement|contract)/i, 'EMPLOYMENT'],
+  [/professional\s+services?\s+agreement/i, 'SERVICE'],
+  [/service\s+(?:agreement|contract)/i, 'SERVICE'],
+  [/lease\s+(?:agreement|contract)/i, 'LEASE'],
+  [/purchase\s+(?:order|agreement)/i, 'PURCHASE_ORDER'],
+  [/software\s+license/i, 'SOFTWARE_LICENSE'],
+  [/subscription\s+agreement/i, 'SUBSCRIPTION'],
+  [/amendment/i, 'AMENDMENT'],
+];
+
+const START_DATE_PATTERNS = [
+  new RegExp(`effective\\s*date[:\\s]*(?:is\\s+)?(${FULL_DATE_PATTERN})`, 'i'),
+  new RegExp(`entered\\s+into\\s+on\\s+(${FULL_DATE_PATTERN})`, 'i'),
+  new RegExp(`effective\\s+as\\s+of\\s+(${FULL_DATE_PATTERN})`, 'i'),
+  new RegExp(`(?:commencing|starting|begins?)\\s*(?:on)?[:\\s]*(${FULL_DATE_PATTERN})`, 'i'),
+  new RegExp(`start\\s*date[:\\s]*(${FULL_DATE_PATTERN})`, 'i'),
+];
+
+const END_DATE_PATTERNS = [
+  new RegExp(`expir(?:ation|y|es?)\\s*date[:\\s]*(?:is\\s+)?(${FULL_DATE_PATTERN})`, 'i'),
+  new RegExp(`(?:terminat(?:ion|es?)|end)\\s*date[:\\s]*(${FULL_DATE_PATTERN})`, 'i'),
+  new RegExp(`through\\s+(${FULL_DATE_PATTERN})`, 'i'),
+  new RegExp(`until\\s+(${FULL_DATE_PATTERN})`, 'i'),
+];
+
+function normalizeWhitespace(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function parseMonetaryValue(value: string): number | null {
+  const cleaned = value.replace(/[^\d,.-]/g, '').trim();
+  if (!cleaned) return null;
+
+  let normalized = cleaned;
+  if (cleaned.includes(',') && cleaned.includes('.')) {
+    normalized = cleaned.lastIndexOf('.') > cleaned.lastIndexOf(',')
+      ? cleaned.replace(/,/g, '')
+      : cleaned.replace(/\./g, '').replace(',', '.');
+  } else if (cleaned.includes(',') && !cleaned.includes('.')) {
+    const parts = cleaned.split(',');
+    normalized = parts[parts.length - 1]?.length === 2
+      ? cleaned.replace(',', '.')
+      : cleaned.replace(/,/g, '');
+  }
+
+  const parsed = Number.parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function detectCurrencyCode(value: string): string | null {
+  if (/\bCHF\b/i.test(value)) return 'CHF';
+  if (/\bEUR\b/i.test(value) || /€/.test(value)) return 'EUR';
+  if (/\bGBP\b/i.test(value) || /£/.test(value)) return 'GBP';
+  if (/\bUSD\b/i.test(value) || /\$/.test(value)) return 'USD';
+  return null;
+}
+
+function extractEntityName(candidate: string): string | null {
+  let normalized = normalizeWhitespace(candidate)
+    .replace(/^(?:and|between)\s+/i, '')
+    .replace(/[.;:]$/, '');
+
+  const legalNameMatch = normalized.match(
+    new RegExp(`^(.*?\\b${LEGAL_ENTITY_SUFFIX_PATTERN})(?:,|$)`, 'i')
+  );
+  if (legalNameMatch?.[1]) {
+    normalized = normalizeWhitespace(legalNameMatch[1]);
+  } else if (normalized.includes(',')) {
+    normalized = normalizeWhitespace(normalized.split(',')[0] || '');
+  }
+
+  normalized = normalized.replace(/\s+\([^)]*\)$/, '').trim();
+  if (normalized.length < 2 || normalized.length > 140) return null;
+  return normalized;
+}
+
+function normalizePartyRole(role: string): string {
+  const normalized = normalizeWhitespace(role).toLowerCase();
+  if (normalized.includes('service provider')) return 'Service Provider';
+  if (normalized.includes('supplier')) return 'Supplier';
+  if (normalized.includes('vendor')) return 'Vendor';
+  if (normalized.includes('seller')) return 'Seller';
+  if (normalized.includes('contractor')) return 'Contractor';
+  if (normalized.includes('buyer')) return 'Buyer';
+  if (normalized.includes('client')) return 'Client';
+  if (normalized.includes('customer')) return 'Customer';
+  if (normalized.includes('purchaser')) return 'Purchaser';
+  return role.trim();
+}
+
+function isClientRole(role: string): boolean {
+  return /(buyer|client|customer|purchaser|licensee|recipient)/i.test(role);
+}
+
+function isSupplierRole(role: string): boolean {
+  return /(supplier|vendor|seller|service provider|provider|contractor|licensor)/i.test(role);
+}
+
+function dedupeParties(parties: ExtractedParty[]): ExtractedParty[] {
+  const deduped = new Map<string, ExtractedParty>();
+  for (const party of parties) {
+    const name = normalizeWhitespace(party.name);
+    if (!name) continue;
+    const key = name.toLowerCase();
+    const existing = deduped.get(key);
+    const nextParty = { name, role: party.role || 'Party' };
+    if (!existing) {
+      deduped.set(key, nextParty);
+      continue;
+    }
+
+    if (existing.role === 'Party' && nextParty.role !== 'Party') {
+      deduped.set(key, nextParty);
+    }
+  }
+
+  return Array.from(deduped.values()).slice(0, 10);
+}
+
+function extractRoleAnchoredParties(contractText: string): ExtractedParty[] {
+  const introText = normalizeWhitespace(contractText.substring(0, 2500));
+  const parties: ExtractedParty[] = [];
+  const roleAnchoredPattern = new RegExp(
+    `([A-Z][A-Za-z0-9&.,'’\\- ]{1,120}?\\b${LEGAL_ENTITY_SUFFIX_PATTERN})(?:,[^\\n\"]{0,180})?\\s*\\(\"([^\"]{2,40})\"\\)`,
+    'g'
+  );
+
+  let match: RegExpExecArray | null;
+  while ((match = roleAnchoredPattern.exec(introText)) !== null) {
+    const name = extractEntityName(match[1]);
+    const role = normalizePartyRole(match[2] || 'Party');
+    if (name) {
+      parties.push({ name, role });
+    }
+  }
+
+  const explicitLabelPatterns: Array<[RegExp, string]> = [
+    [new RegExp(`(?:client|customer|buyer|purchaser)\\s*[:\\-]\\s*([A-Z][A-Za-z0-9&.,'’\\- ]{1,120}?\\b${LEGAL_ENTITY_SUFFIX_PATTERN})`, 'ig'), 'Client'],
+    [new RegExp(`(?:service\\s+provider|vendor|supplier|contractor|seller)\\s*[:\\-]\\s*([A-Z][A-Za-z0-9&.,'’\\- ]{1,120}?\\b${LEGAL_ENTITY_SUFFIX_PATTERN})`, 'ig'), 'Supplier'],
+  ];
+
+  for (const [pattern, role] of explicitLabelPatterns) {
+    let labelMatch: RegExpExecArray | null;
+    while ((labelMatch = pattern.exec(contractText)) !== null) {
+      const name = extractEntityName(labelMatch[1]);
+      if (name) {
+        parties.push({ name, role });
+      }
+    }
+  }
+
+  if (parties.length === 0) {
+    const betweenPattern = new RegExp(
+      `(?:between|by\\s+and\\s+between)\\s+([A-Z][A-Za-z0-9&.,'’\\- ]{1,120}?\\b${LEGAL_ENTITY_SUFFIX_PATTERN})(?:,[^\\n]{0,140})?\\s+(?:and|,)\\s+([A-Z][A-Za-z0-9&.,'’\\- ]{1,120}?\\b${LEGAL_ENTITY_SUFFIX_PATTERN})`,
+      'i'
+    );
+    const betweenMatch = introText.match(betweenPattern);
+    if (betweenMatch?.[1] && betweenMatch[2]) {
+      const firstParty = extractEntityName(betweenMatch[1]);
+      const secondParty = extractEntityName(betweenMatch[2]);
+      if (firstParty) parties.push({ name: firstParty, role: 'Party' });
+      if (secondParty) parties.push({ name: secondParty, role: 'Party' });
+    }
+  }
+
+  return dedupeParties(parties);
+}
+
+function selectPrimaryParties(parties: ExtractedParty[]): { clientName: string | null; supplierName: string | null } {
+  const clientParty = parties.find(party => isClientRole(party.role));
+  const supplierParty = parties.find(party => isSupplierRole(party.role));
+
+  return {
+    clientName: clientParty?.name || parties[0]?.name || null,
+    supplierName: supplierParty?.name || parties[1]?.name || null,
+  };
+}
+
+function extractExplicitTotalValue(contractText: string): { value: number | null; currency: string | null } {
+  const moneyRegex = /((?:USD|EUR|GBP|CHF)\s*[\d,.]+|[$€£]\s*[\d,.]+)/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = moneyRegex.exec(contractText)) !== null) {
+    const amountText = match[1];
+    const context = normalizeWhitespace(
+      contractText.slice(Math.max(0, match.index - 100), Math.min(contractText.length, match.index + amountText.length + 100))
+    ).toLowerCase();
+
+    const looksExplicitTotal = /(total|aggregate|overall|contract value|contract amount|total fees?|purchase price|consideration)/.test(context);
+    const excludedContext = /(example|sample|illustrative|unit price|per unit|per order|order quantity|liability|insurance|coverage|discount|interest|penalt|shipment|forecast|warranty)/.test(context);
+    if (!looksExplicitTotal || excludedContext) {
+      continue;
+    }
+
+    const value = parseMonetaryValue(amountText);
+    if (value == null) continue;
+
+    return { value, currency: detectCurrencyCode(amountText) };
+  }
+
+  return { value: null, currency: null };
+}
+
+function extractPrimaryCurrency(contractText: string): string | null {
+  const currencyMatches = contractText.match(/\b(?:USD|EUR|GBP|CHF)\b|[$€£]/gi) || [];
+  if (currencyMatches.length === 0) return null;
+
+  const counts = new Map<string, number>();
+  for (const match of currencyMatches) {
+    const currency = detectCurrencyCode(match);
+    if (!currency) continue;
+    counts.set(currency, (counts.get(currency) || 0) + 1);
+  }
+
+  let topCurrency: string | null = null;
+  let topCount = 0;
+  for (const [currency, count] of counts.entries()) {
+    if (count > topCount) {
+      topCurrency = currency;
+      topCount = count;
+    }
+  }
+
+  return topCurrency;
+}
+
+function extractPaymentTerms(contractText: string): string | null {
+  const paymentPatterns = [
+    /([A-Z][^.\n]{0,40}\bpay[^.\n]{0,140}\bwithin\s+\d+\s+days[^.\n]*\.?)/i,
+    /(?:payment\s+(?:terms?|schedule|conditions?))[:\s]+([^\n]{10,220})/i,
+    /([A-Z][^.\n]{0,40}\binvoices?[^.\n]{0,140}\.)/i,
+  ];
+
+  for (const pattern of paymentPatterns) {
+    const match = contractText.match(pattern);
+    if (match?.[1]) {
+      return normalizeWhitespace(match[1]).replace(/\s+\.$/, '.');
+    }
+  }
+
+  return null;
+}
+
+function extractSignatureInfo(contractText: string): { signatureStatus: string | null; signatureDate: string | null } {
+  const signatureBlockPatterns = [
+    /(?:IN WITNESS WHEREOF|SIGNED|EXECUTED)\b/i,
+    /\bSignature[:\s]*_{3,}/i,
+    /\bSigned\s+by[:\s]/i,
+    /\/s\/\s+\w+/i,
+    /\[SIGNATURE\]/i,
+  ];
+  const signedIndicators = [
+    /\/s\/\s+\S+/i,
+    new RegExp(`(?:Signed|Executed)\s+(?:on|this)\s+${FULL_DATE_PATTERN}`, 'i'),
+    new RegExp(`\bDate(?:d)?[:\s]+${FULL_DATE_PATTERN}`, 'i'),
+  ];
+
+  const hasSignatureBlock = signatureBlockPatterns.some(pattern => pattern.test(contractText));
+  const hasSignedContent = signedIndicators.some(pattern => pattern.test(contractText));
+
+  if (!hasSignatureBlock && !hasSignedContent) {
+    return { signatureStatus: null, signatureDate: null };
+  }
+
+  const signatureDateMatch = contractText.match(
+    new RegExp(`(?:Executed|Signed|Dated?)\s+(?:this\s+)?(?:on\s+)?(${FULL_DATE_PATTERN})`, 'i')
+  ) || contractText.match(new RegExp(`\bDate(?:d)?[:\s]+(${FULL_DATE_PATTERN})`, 'i'));
+
+  return {
+    signatureStatus: hasSignedContent ? 'signed' : 'unsigned',
+    signatureDate: signatureDateMatch?.[1] ? tryParseDate(signatureDateMatch[1]) : null,
+  };
+}
+
+function buildArtifactGroundingContext(extracted: BasicContractExtraction, contractTitle?: string | null): string {
+  const facts: string[] = ['Known document facts extracted before AI analysis:'];
+  const title = contractTitle || extracted.title;
+
+  facts.push(`- title: ${title || 'unknown'}`);
+  facts.push(`- contractType: ${extracted.contractType || 'unknown'}`);
+  facts.push(`- clientName: ${extracted.clientName || 'unknown'}`);
+  facts.push(`- supplierName: ${extracted.supplierName || 'unknown'}`);
+  facts.push(`- effectiveDate: ${extracted.startDate || 'unknown'}`);
+  facts.push(`- endDate: ${extracted.endDate || 'unknown'}`);
+  facts.push(`- totalValue: ${extracted.totalValue != null ? `${extracted.totalValue} ${extracted.currency || ''}`.trim() : 'not explicitly stated'}`);
+  if (extracted.paymentTerms) {
+    facts.push(`- paymentTerms: ${extracted.paymentTerms}`);
+  }
+  if (extracted.parties.length > 0) {
+    facts.push(`- parties: ${extracted.parties.map(party => `${party.name} (${party.role})`).join('; ')}`);
+  }
+  facts.push('- Use these facts when consistent with the contract text. If the contract is ambiguous, return null instead of guessing.');
+  facts.push('- Do not treat unit prices, example calculations, insurance limits, liability caps, penalties, or forecast volumes as the total contract value unless explicitly labelled as the total or aggregate contract value.');
+
+  return facts.join('\n');
+}
+
+function mergeExtractedFactsWithMetadata(
+  extracted: BasicContractExtraction,
+  metadata: {
+    title?: string;
+    contractType?: string;
+    startDate?: string;
+    endDate?: string;
+    totalValue?: number;
+    currency?: string;
+    parties?: string[];
+    clientName?: string;
+    supplierName?: string;
+    signatureStatus?: string;
+    signatureDate?: string;
+  }
+): BasicContractExtraction {
+  const clientRole = extracted.parties.find(party => isClientRole(party.role))?.role || 'Client';
+  const supplierRole = extracted.parties.find(party => isSupplierRole(party.role))?.role || 'Supplier';
+  const mergedParties = dedupeParties([
+    ...extracted.parties,
+    ...(metadata.clientName ? [{ name: metadata.clientName, role: clientRole }] : []),
+    ...(metadata.supplierName ? [{ name: metadata.supplierName, role: supplierRole }] : []),
+    ...((metadata.parties || []).map((partyName, index) => ({
+      name: partyName,
+      role: index === 0 ? clientRole : index === 1 ? supplierRole : 'Party',
+    }))),
+  ]);
+  const primaryParties = selectPrimaryParties(mergedParties);
+
+  return {
+    ...extracted,
+    title: metadata.title || extracted.title,
+    contractType: metadata.contractType || extracted.contractType,
+    summary: extracted.summary,
+    totalValue: metadata.totalValue ?? extracted.totalValue,
+    currency: metadata.currency || extracted.currency,
+    startDate: metadata.startDate || extracted.startDate,
+    endDate: metadata.endDate || extracted.endDate,
+    clientName: metadata.clientName || primaryParties.clientName,
+    supplierName: metadata.supplierName || primaryParties.supplierName,
+    parties: mergedParties,
+    keyPoints: extracted.keyPoints,
+    paymentTerms: extracted.paymentTerms,
+    signatureStatus: metadata.signatureStatus || extracted.signatureStatus,
+    signatureDate: metadata.signatureDate || extracted.signatureDate,
+  };
+}
+
+function getObject(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+
+  return null;
+}
+
+function getString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+
+  const normalized = normalizeWhitespace(value);
+  return normalized.length > 0 ? normalized : null;
+}
+
+function getDateString(value: unknown): string | null {
+  const raw = getString(value);
+  return raw ? tryParseDate(raw) : null;
+}
+
+function getNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function extractPartiesFromMetadata(value: unknown): ExtractedParty[] {
+  if (!Array.isArray(value)) return [];
+
+  const parties: ExtractedParty[] = [];
+
+  for (const entry of value) {
+    if (typeof entry === 'string') {
+      const normalized = extractEntityName(entry) || normalizeWhitespace(entry);
+      if (normalized) {
+        parties.push({ name: normalized, role: 'Party' });
+      }
+      continue;
+    }
+
+    const record = getObject(entry);
+    if (!record) continue;
+
+    const nameCandidate =
+      getString(record.name) ||
+      getString(record.partyName) ||
+      getString(record.organization) ||
+      getString(record.entityName);
+
+    if (!nameCandidate) continue;
+
+    const name = extractEntityName(nameCandidate) || nameCandidate;
+    const role = normalizePartyRole(getString(record.role) || getString(record.type) || 'Party');
+    parties.push({ name, role });
+  }
+
+  return dedupeParties(parties);
+}
+
+function extractPersistedOcrFacts(aiMetadata: unknown): {
+  metadata: {
+    title?: string;
+    startDate?: string;
+    endDate?: string;
+    currency?: string;
+    parties?: string[];
+    clientName?: string;
+    supplierName?: string;
+    signatureStatus?: string;
+    signatureDate?: string;
+  };
+  ocrConfidence?: number;
+} {
+  const aiMeta = getObject(aiMetadata);
+  if (!aiMeta) {
+    return { metadata: {} };
+  }
+
+  const diStructuredMeta = getObject(aiMeta.ocrStructuredMeta);
+  const diContractFields = getObject(aiMeta.diContractFields);
+  const contractDates = getObject(diContractFields?.dates);
+
+  const mergedParties = dedupeParties([
+    ...extractPartiesFromMetadata(diContractFields?.parties),
+    ...extractPartiesFromMetadata(aiMeta.external_parties),
+  ]);
+  const primaryParties = selectPrimaryParties(mergedParties);
+
+  const metadata: {
+    title?: string;
+    startDate?: string;
+    endDate?: string;
+    currency?: string;
+    parties?: string[];
+    clientName?: string;
+    supplierName?: string;
+    signatureStatus?: string;
+    signatureDate?: string;
+  } = {};
+
+  const title = getString(diContractFields?.title) || getString(aiMeta.document_title);
+  if (title) metadata.title = title;
+
+  const startDate =
+    getDateString(contractDates?.effectiveDate) ||
+    getDateString(aiMeta.contract_effective_date) ||
+    getDateString(aiMeta.start_date);
+  if (startDate) metadata.startDate = startDate;
+
+  const endDate =
+    getDateString(contractDates?.expirationDate) ||
+    getDateString(aiMeta.contract_end_date) ||
+    getDateString(aiMeta.end_date);
+  if (endDate) metadata.endDate = endDate;
+
+  const signatureStatus = getString(aiMeta.signature_status);
+  if (signatureStatus) metadata.signatureStatus = signatureStatus;
+
+  const signatureDate = getDateString(aiMeta.signature_date) || getDateString(contractDates?.executionDate);
+  if (signatureDate) metadata.signatureDate = signatureDate;
+
+  const currency = getString(aiMeta.currency);
+  if (currency) metadata.currency = currency.toUpperCase();
+
+  if (mergedParties.length > 0) {
+    metadata.parties = mergedParties.map(party => party.name);
+    if (primaryParties.clientName) metadata.clientName = primaryParties.clientName;
+    if (primaryParties.supplierName) metadata.supplierName = primaryParties.supplierName;
+  }
+
+  const ocrConfidence = getNumber(diStructuredMeta?.confidence) ?? undefined;
+  return { metadata, ocrConfidence };
+}
+
+function coerceNumericValue(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') return parseMonetaryValue(value);
+  return null;
+}
+
+function canonicalizePartyName(candidate: unknown, canonicalName: string | null): string | null {
+  if (typeof candidate !== 'string' || !candidate.trim()) {
+    return canonicalName;
+  }
+
+  const normalizedCandidate = normalizeWhitespace(candidate);
+  if (!canonicalName) {
+    return normalizedCandidate;
+  }
+
+  const candidateLower = normalizedCandidate.toLowerCase();
+  const canonicalLower = canonicalName.toLowerCase();
+  if (canonicalLower.includes(candidateLower) || candidateLower.includes(canonicalLower)) {
+    return canonicalName;
+  }
+
+  return normalizedCandidate;
+}
+
+function deriveNarrativeAmount(description: string): number | null {
+  const normalized = normalizeWhitespace(description);
+  if (!normalized) return null;
+
+  const explicitAmountMatch = normalized.match(/((?:USD|EUR|GBP|CHF)\s*[\d,.]+|[$€£]\s*[\d,.]+)/i);
+  if (explicitAmountMatch?.[1]) {
+    return parseMonetaryValue(explicitAmountMatch[1]);
+  }
+
+  const quantityMatch = normalized.match(/([\d,]+)\s+units?/i);
+  const unitPriceMatch = normalized.match(/(?:at|price of)?\s*((?:USD|EUR|GBP|CHF)\s*[\d,.]+|[$€£]\s*[\d,.]+)\s*(?:per\s+unit|unit\s+price)?/i);
+  if (quantityMatch?.[1] && unitPriceMatch?.[1]) {
+    const quantity = parseMonetaryValue(quantityMatch[1]);
+    const unitPrice = parseMonetaryValue(unitPriceMatch[1]);
+    if (quantity != null && unitPrice != null) {
+      return quantity * unitPrice;
+    }
+  }
+
+  return null;
+}
+
+function repairArtifactData(
+  type: ArtifactType,
+  data: Record<string, any>,
+  extracted: BasicContractExtraction,
+  contractTitle?: string | null
+): Record<string, any> {
+  const repaired = { ...data };
+  const effectiveTitle = contractTitle || extracted.title || null;
+  const clientParty = extracted.parties.find(party => party.name === extracted.clientName);
+  const supplierParty = extracted.parties.find(party => party.name === extracted.supplierName);
+
+  switch (type) {
+    case 'OVERVIEW': {
+      if (!repaired.summary && extracted.summary) repaired.summary = extracted.summary;
+      if (!repaired.contractType && extracted.contractType) repaired.contractType = extracted.contractType;
+      if (!repaired.title && effectiveTitle) repaired.title = effectiveTitle;
+      if (!repaired.effectiveDate && extracted.startDate) repaired.effectiveDate = extracted.startDate;
+      if (!repaired.endDate && extracted.endDate) repaired.endDate = extracted.endDate;
+      if (!Array.isArray(repaired.parties) || repaired.parties.length === 0) {
+        repaired.parties = extracted.parties.map(party => party.name);
+      }
+      if (!repaired.clientName && extracted.clientName) repaired.clientName = extracted.clientName;
+      if (!repaired.supplierName && extracted.supplierName) repaired.supplierName = extracted.supplierName;
+      if (!Array.isArray(repaired.keyPoints) || repaired.keyPoints.length === 0) {
+        repaired.keyPoints = extracted.keyPoints;
+      }
+      break;
+    }
+    case 'FINANCIAL': {
+      const amounts = Array.isArray(repaired.amounts) ? repaired.amounts : [];
+      repaired.amounts = amounts
+        .map((amount: Record<string, any>) => {
+          if (!amount || typeof amount !== 'object') return null;
+
+          const nextAmount = { ...amount };
+          const currentValue = coerceNumericValue(nextAmount.value ?? nextAmount.amount);
+          const describedValue = deriveNarrativeAmount(String(nextAmount.description || ''));
+          const repairedValue = describedValue != null && (currentValue == null || currentValue < describedValue * 0.1)
+            ? describedValue
+            : currentValue;
+
+          nextAmount.value = repairedValue;
+          delete nextAmount.amount;
+          if (!nextAmount.currency && extracted.currency) {
+            nextAmount.currency = extracted.currency;
+          }
+
+          return repairedValue != null ? nextAmount : null;
+        })
+        .filter(Boolean);
+
+      if ((repaired.totalValue == null || !Number.isFinite(Number(repaired.totalValue))) && extracted.totalValue != null) {
+        repaired.totalValue = extracted.totalValue;
+      }
+      if (!repaired.currency && extracted.currency) repaired.currency = extracted.currency;
+      if (!repaired.paymentTerms && extracted.paymentTerms) repaired.paymentTerms = extracted.paymentTerms;
+      break;
+    }
+    case 'PARTIES': {
+      if (!Array.isArray(repaired.parties) || repaired.parties.length === 0) {
+        repaired.parties = extracted.parties.map(party => ({
+          name: party.name,
+          role: party.role,
+          type: 'Company',
+        }));
+      }
+      if (!repaired.partyRoles || typeof repaired.partyRoles !== 'object' || Array.isArray(repaired.partyRoles)) {
+        repaired.partyRoles = extracted.parties.reduce<Record<string, string>>((acc, party) => {
+          acc[party.name] = party.role;
+          return acc;
+        }, {});
+      }
+      break;
+    }
+    case 'TIMELINE': {
+      if (!repaired.effectiveDate && extracted.startDate) repaired.effectiveDate = extracted.startDate;
+      if (!repaired.endDate && extracted.endDate) repaired.endDate = extracted.endDate;
+      if (!Array.isArray(repaired.keyDates) || repaired.keyDates.length === 0) {
+        repaired.keyDates = [extracted.startDate, extracted.endDate].filter(Boolean);
+      }
+      break;
+    }
+    case 'EXECUTIVE_SUMMARY': {
+      if (!repaired.executiveSummary && extracted.summary) repaired.executiveSummary = extracted.summary;
+      if (!Array.isArray(repaired.keyTakeaways) || repaired.keyTakeaways.length === 0) {
+        repaired.keyTakeaways = extracted.keyPoints;
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  if (type !== 'PARTIES') {
+    repaired.clientName = canonicalizePartyName(repaired.clientName, extracted.clientName);
+    repaired.supplierName = canonicalizePartyName(repaired.supplierName, extracted.supplierName);
+  }
+  if (!repaired.partyRoles && (clientParty || supplierParty)) {
+    repaired.partyRoles = {
+      ...(clientParty ? { client: clientParty.name } : {}),
+      ...(supplierParty ? { supplier: supplierParty.name } : {}),
+    };
+  } else if (repaired.partyRoles && typeof repaired.partyRoles === 'object' && !Array.isArray(repaired.partyRoles)) {
+    repaired.partyRoles = {
+      ...repaired.partyRoles,
+      ...(Object.prototype.hasOwnProperty.call(repaired.partyRoles, 'client')
+        ? { client: canonicalizePartyName(repaired.partyRoles.client, extracted.clientName) }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(repaired.partyRoles, 'supplier')
+        ? { supplier: canonicalizePartyName(repaired.partyRoles.supplier, extracted.supplierName) }
+        : {}),
+    };
+  }
+
+  return repaired;
+}
+
 /**
  * Use GPT-4o to extract text from a scanned/image-based PDF.
  * Uses native PDF file input (NOT image_url which rejects application/pdf MIME).
@@ -160,6 +845,96 @@ Return the extracted text in clean markdown format.`,
   }
 }
 
+function buildDocumentIntelligenceOcrText(result: {
+  content?: string;
+  tables?: Array<{ headers?: string[]; rows?: string[][] }>;
+  keyValuePairs?: Array<{ key?: string; value?: string }>;
+}): string {
+  const parts: string[] = [];
+  const content = typeof result.content === 'string' ? result.content.trim() : '';
+
+  if (content) {
+    parts.push(content);
+  }
+
+  if (Array.isArray(result.tables) && result.tables.length > 0) {
+    const renderedTables: string[] = [];
+    for (const table of result.tables) {
+      const headers = Array.isArray(table.headers) ? table.headers.filter(Boolean) : [];
+      const rows = Array.isArray(table.rows) ? table.rows : [];
+      if (headers.length === 0 && rows.length === 0) continue;
+
+      if (headers.length > 0) {
+        renderedTables.push(`| ${headers.join(' | ')} |`);
+        renderedTables.push(`| ${headers.map(() => '---').join(' | ')} |`);
+      }
+      for (const row of rows) {
+        renderedTables.push(`| ${row.join(' | ')} |`);
+      }
+      renderedTables.push('');
+    }
+
+    if (renderedTables.length > 0) {
+      parts.push(['--- EXTRACTED TABLES ---', ...renderedTables].join('\n').trim());
+    }
+  }
+
+  if (Array.isArray(result.keyValuePairs) && result.keyValuePairs.length > 0) {
+    const kvLines = result.keyValuePairs
+      .map((pair) => {
+        const key = typeof pair.key === 'string' ? normalizeWhitespace(pair.key) : '';
+        const value = typeof pair.value === 'string' ? normalizeWhitespace(pair.value) : '';
+        return key && value ? `${key}: ${value}` : null;
+      })
+      .filter((line): line is string => Boolean(line));
+
+    if (kvLines.length > 0) {
+      parts.push(['--- KEY-VALUE PAIRS ---', ...kvLines].join('\n'));
+    }
+  }
+
+  return parts.join('\n\n').trim();
+}
+
+async function extractScannedPDFWithDocumentIntelligence(fileContent: Buffer): Promise<string> {
+  try {
+    const { analyzeLayout, analyzeRead, isDIConfigured, isDIEnabled } = await import('@repo/workers/azure-document-intelligence');
+
+    if (!isDIConfigured() || !isDIEnabled()) {
+      logger.info('Azure Document Intelligence not configured or disabled — skipping DI OCR for scanned PDF');
+      return '';
+    }
+
+    try {
+      const layoutResult = await analyzeLayout(fileContent, { extractKeyValuePairs: true });
+      const layoutText = buildDocumentIntelligenceOcrText(layoutResult);
+      if (layoutText.length > 10) {
+        logger.info({ textLength: layoutText.length, tables: layoutResult.tables.length, kvPairs: layoutResult.keyValuePairs.length }, 'Azure Document Intelligence layout OCR completed for scanned PDF');
+        return layoutText;
+      }
+      logger.warn('Azure Document Intelligence layout OCR returned insufficient text for scanned PDF');
+    } catch (layoutError) {
+      logger.warn({ error: layoutError }, 'Azure Document Intelligence layout OCR failed for scanned PDF, trying read model');
+    }
+
+    try {
+      const readResult = await analyzeRead(fileContent);
+      const readText = (readResult.content || '').trim();
+      if (readText.length > 10) {
+        logger.info({ textLength: readText.length }, 'Azure Document Intelligence read OCR completed for scanned PDF');
+        return readText;
+      }
+      logger.warn('Azure Document Intelligence read OCR returned insufficient text for scanned PDF');
+    } catch (readError) {
+      logger.warn({ error: readError }, 'Azure Document Intelligence read OCR failed for scanned PDF');
+    }
+  } catch (error) {
+    logger.warn({ error }, 'Azure Document Intelligence OCR unavailable in inline generator');
+  }
+
+  return '';
+}
+
 /**
  * Extract text content from a buffer based on file type
  */
@@ -180,21 +955,37 @@ async function extractTextFromBuffer(
       
       // Scanned / image-based PDF — very little extractable text
       if (meaningfulText.length < 50) {
-        logger.info({ extractedChars: meaningfulText.length }, 'Scanned/image PDF detected — attempting GPT-4o Vision OCR');
+        logger.info({ extractedChars: meaningfulText.length }, 'Scanned/image PDF detected — attempting Azure Document Intelligence OCR');
+        const diText = await extractScannedPDFWithDocumentIntelligence(fileContent);
+        if (diText && diText.length > 10) {
+          return diText;
+        }
+
+        logger.info({ extractedChars: meaningfulText.length }, 'Azure Document Intelligence unavailable or insufficient — attempting GPT-4o Vision OCR');
         const ocrText = await extractScannedPDFWithVision(fileContent);
         if (ocrText && ocrText.length > 10) {
           return ocrText;
         }
-        // If Vision OCR also fails, return whatever pdf-parse found
+
+        // If OCR providers fail, fall back to any small amount of parseable text.
         if (meaningfulText.length > 0) return data.text;
-        throw new Error('Scanned PDF with no extractable text and Vision OCR unavailable');
+        throw new Error('Scanned PDF with no extractable text and OCR providers unavailable');
       }
       
       return data.text;
     } catch (error) {
-      // If the error is from our scanned PDF handling, rethrow
-      if (error instanceof Error && error.message.includes('Scanned PDF')) throw error;
-      logger.warn({ error }, 'pdf-parse failed, trying alternative method');
+      logger.warn({ error }, 'pdf-parse failed, attempting OCR fallbacks');
+
+      const diText = await extractScannedPDFWithDocumentIntelligence(fileContent);
+      if (diText && diText.length > 10) {
+        return diText;
+      }
+
+      const ocrText = await extractScannedPDFWithVision(fileContent);
+      if (ocrText && ocrText.length > 10) {
+        return ocrText;
+      }
+
       // Fallback: Try extracting text patterns from raw PDF
       const rawText = fileContent.toString('utf8');
       const textMatches = rawText.match(/\(([^)]+)\)/g) || [];
@@ -266,7 +1057,11 @@ async function extractTextFromFile(
 function tryParseDate(dateStr: string): string {
   if (!dateStr) return '';
   try {
-    const d = new Date(dateStr);
+    const normalized = dateStr
+      .replace(/(\d)(st|nd|rd|th)\b/gi, '$1')
+      .replace(/[\s,]+$/g, '')
+      .trim();
+    const d = new Date(normalized);
     if (!isNaN(d.getTime())) {
       return d.toISOString().split('T')[0];
     }
@@ -281,7 +1076,8 @@ function tryParseDate(dateStr: string): string {
  */
 async function extractContractMetadata(
   contractText: string,
-  contractId: string
+  contractId: string,
+  seededBasicExtraction?: BasicContractExtraction
 ): Promise<{
   title?: string;
   contractType?: string;
@@ -290,12 +1086,14 @@ async function extractContractMetadata(
   totalValue?: number;
   currency?: string;
   parties?: string[];
+  clientName?: string;
+  supplierName?: string;
   signatureStatus?: string;
   signatureDate?: string;
 }> {
   const apiKey = getOpenAIApiKey();
-  
-  // Basic regex-based extraction as fallback
+  const basicFields = seededBasicExtraction ?? extractBasicFieldsFromText(contractText);
+
   const basicMetadata: {
     title?: string;
     contractType?: string;
@@ -304,162 +1102,23 @@ async function extractContractMetadata(
     totalValue?: number;
     currency?: string;
     parties?: string[];
+    clientName?: string;
+    supplierName?: string;
     signatureStatus?: string;
     signatureDate?: string;
-  } = {};
-
-  // Try to extract title
-  const titlePatterns = [
-    /^[\s\n]*(.+?(?:AGREEMENT|CONTRACT|STATEMENT OF WORK|SOW|NDA|AMENDMENT|ADDENDUM|MOU|MEMORANDUM))/im,
-    /(?:title|re|subject|regarding)[:\s]+(.+?)(?:\n|$)/i,
-  ];
-  for (const pattern of titlePatterns) {
-    const match = contractText.match(pattern);
-    if (match) {
-      basicMetadata.title = match[1].trim().replace(/\s+/g, ' ');
-      break;
-    }
-  }
-
-  // Try to extract contract type
-  const typePatterns: Array<[RegExp, string]> = [
-    [/statement\s+of\s+work|SOW/i, 'SOW'],
-    [/master\s+service\s+agreement|MSA/i, 'MSA'],
-    [/non[- ]?disclosure\s+agreement|NDA|confidentiality/i, 'NDA'],
-    [/employment\s+(?:agreement|contract)/i, 'EMPLOYMENT'],
-    [/service\s+(?:agreement|contract)/i, 'SERVICE'],
-    [/lease\s+(?:agreement|contract)/i, 'LEASE'],
-    [/purchase\s+(?:order|agreement)/i, 'PURCHASE_ORDER'],
-    [/software\s+license/i, 'SOFTWARE_LICENSE'],
-    [/subscription\s+agreement/i, 'SUBSCRIPTION'],
-    [/amendment/i, 'AMENDMENT'],
-  ];
-  for (const [pattern, cType] of typePatterns) {
-    if (pattern.test(contractText)) {
-      basicMetadata.contractType = cType;
-      break;
-    }
-  }
-
-  // Try to extract dates - multiple formats
-  const monthNames = '(?:january|february|march|april|may|june|july|august|september|october|november|december)';
-
-  // Effective/Start date patterns  
-  const startDatePatterns = [
-    new RegExp(`effective\\s*date[:\\s]*(?:is\\s+)?(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
-    new RegExp(`effective\\s*(?:date)?[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})`, 'i'),
-    new RegExp(`(?:commencing|starting|begins?)\\s*(?:on)?[:\\s]*(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
-    new RegExp(`(?:commencing|starting|begins?)\\s*(?:on)?[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})`, 'i'),
-    new RegExp(`start\\s*date[:\\s]*(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
-    new RegExp(`start\\s*date[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})`, 'i'),
-  ];
-  for (const pattern of startDatePatterns) {
-    const match = contractText.match(pattern);
-    if (match) {
-      basicMetadata.startDate = tryParseDate(match[1]);
-      break;
-    }
-  }
-
-  // Expiration/End date patterns
-  const endDatePatterns = [
-    new RegExp(`expir(?:ation|y|es?)\\s*date[:\\s]*(?:is\\s+)?(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
-    new RegExp(`expir(?:ation|y|es?)\\s*date[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})`, 'i'),
-    new RegExp(`(?:terminat(?:ion|es?)|end)\\s*date[:\\s]*(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
-    new RegExp(`(?:terminat(?:ion|es?)|end)\\s*date[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})`, 'i'),
-    new RegExp(`through\\s+(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
-  ];
-  for (const pattern of endDatePatterns) {
-    const match = contractText.match(pattern);
-    if (match) {
-      basicMetadata.endDate = tryParseDate(match[1]);
-      break;
-    }
-  }
-
-  // Try to extract monetary values
-  const moneyPatterns = [
-    /(?:total\s+(?:contract\s+)?value|contract\s+(?:value|amount|price))[:\s]*\$\s*([\d,]+(?:\.\d{2})?)\s*(?:USD)?/i,
-    /\$\s*([\d,]+(?:\.\d{2})?)\s*(?:USD|dollars?)?/i,
-  ];
-  for (const pattern of moneyPatterns) {
-    const moneyMatch = contractText.match(pattern);
-    if (moneyMatch) {
-      basicMetadata.totalValue = parseFloat(moneyMatch[1].replace(/,/g, ''));
-      basicMetadata.currency = 'USD';
-      break;
-    }
-  }
-  // Also check for other currencies
-  if (!basicMetadata.totalValue) {
-    const eurMatch = contractText.match(/€\s*([\d,.]+)/);
-    if (eurMatch) {
-      basicMetadata.totalValue = parseFloat(eurMatch[1].replace(/,/g, ''));
-      basicMetadata.currency = 'EUR';
-    }
-    const gbpMatch = contractText.match(/£\s*([\d,.]+)/);
-    if (gbpMatch) {
-      basicMetadata.totalValue = parseFloat(gbpMatch[1].replace(/,/g, ''));
-      basicMetadata.currency = 'GBP';
-    }
-  }
-
-  // Try to extract party names
-  const partyPatterns = [
-    /(?:client|customer|buyer|purchaser)[:\s]+([A-Z][A-Za-z\s&.,]+(?:Inc\.?|LLC|Ltd\.?|Corp(?:oration)?\.?|Co\.?|LP|LLP|PLC|GmbH|AG|SA|SAS|BV|NV)?)/gm,
-    /(?:service\s+provider|vendor|supplier|contractor|seller)[:\s]+([A-Z][A-Za-z\s&.,]+(?:Inc\.?|LLC|Ltd\.?|Corp(?:oration)?\.?|Co\.?|LP|LLP|PLC|GmbH|AG|SA|SAS|BV|NV)?)/gm,
-    /(?:between|by\s+and\s+between)\s+([A-Z][A-Za-z\s&.,]+(?:Inc\.?|LLC|Ltd\.?|Corp(?:oration)?\.?|Co\.?))\s+(?:and|,)\s+([A-Z][A-Za-z\s&.,]+(?:Inc\.?|LLC|Ltd\.?|Corp(?:oration)?\.?|Co\.?))/i,
-  ];
-  const extractedParties: string[] = [];
-  for (const pattern of partyPatterns) {
-    let match;
-    const regex = new RegExp(pattern.source, pattern.flags);
-    while ((match = regex.exec(contractText)) !== null) {
-      const partyName = match[1]?.trim().replace(/\s+/g, ' ');
-      if (partyName && partyName.length > 2 && partyName.length < 100 && !extractedParties.includes(partyName)) {
-        extractedParties.push(partyName);
-      }
-      if (match[2]) {
-        const party2 = match[2].trim().replace(/\s+/g, ' ');
-        if (party2 && party2.length > 2 && party2.length < 100 && !extractedParties.includes(party2)) {
-          extractedParties.push(party2);
-        }
-      }
-    }
-  }
-  if (extractedParties.length > 0) {
-    basicMetadata.parties = extractedParties.slice(0, 10);
-  }
-
-  // Detect signature status from text patterns
-  const signatureBlockPatterns = [
-    /(?:IN WITNESS WHEREOF|SIGNED|EXECUTED)\b/i,
-    /\bSignature[:\s]*_{3,}/i,
-    /\bSigned\s+by[:\s]/i,
-    /\/s\/\s+\w+/i,                           // e-sig marker /s/ Name
-    /\[SIGNATURE\]/i,
-  ];
-  const signedIndicators = [
-    /\/s\/\s+\S+/i,                            // /s/ ActualName
-    /(?:Signed|Executed)\s+(?:on|this)\s+\d/i, // "Signed on 12..."
-    /\bDate(?:d)?[:\s]+\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/i,
-  ];
-  const hasSignatureBlock = signatureBlockPatterns.some(p => p.test(contractText));
-  const hasSignedContent = signedIndicators.some(p => p.test(contractText));
-
-  if (hasSignedContent) {
-    basicMetadata.signatureStatus = 'signed';
-    // Try to extract signature date
-    const sigDateMatch = contractText.match(
-      /(?:Executed|Signed|Dated?)\s+(?:this\s+)?(?:on\s+)?(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\w+ \d{1,2},?\s+\d{4})/i
-    );
-    if (sigDateMatch) {
-      const parsed = tryParseDate(sigDateMatch[1]);
-      if (parsed) basicMetadata.signatureDate = parsed;
-    }
-  } else if (hasSignatureBlock) {
-    basicMetadata.signatureStatus = 'unsigned'; // Block present but no content yet
-  }
+  } = {
+    ...(basicFields.title ? { title: basicFields.title } : {}),
+    ...(basicFields.contractType ? { contractType: basicFields.contractType } : {}),
+    ...(basicFields.startDate ? { startDate: basicFields.startDate } : {}),
+    ...(basicFields.endDate ? { endDate: basicFields.endDate } : {}),
+    ...(basicFields.totalValue != null ? { totalValue: basicFields.totalValue } : {}),
+    ...(basicFields.currency ? { currency: basicFields.currency } : {}),
+    ...(basicFields.parties.length > 0 ? { parties: basicFields.parties.map(party => party.name) } : {}),
+    ...(basicFields.clientName ? { clientName: basicFields.clientName } : {}),
+    ...(basicFields.supplierName ? { supplierName: basicFields.supplierName } : {}),
+    ...(basicFields.signatureStatus ? { signatureStatus: basicFields.signatureStatus } : {}),
+    ...(basicFields.signatureDate ? { signatureDate: basicFields.signatureDate } : {}),
+  };
 
   // Try AI extraction if available
   if (apiKey) {
@@ -474,7 +1133,7 @@ async function extractContractMetadata(
         messages: [
           {
             role: 'system',
-            content: 'You are a contract metadata extractor. Extract key metadata and return valid JSON only.',
+            content: 'You are a contract metadata extractor. Extract only explicit facts from the contract and return valid JSON only. Do not use addresses as party names. Do not infer total contract value from unit prices, example calculations, insurance limits, liability caps, penalties, or forecasts. If a field is not explicit, return null.',
           },
           {
             role: 'user',
@@ -485,11 +1144,23 @@ async function extractContractMetadata(
 - endDate: Expiration/end date (ISO format YYYY-MM-DD or null)  
 - totalValue: Total contract value as number (or null)
 - currency: Currency code (e.g., USD, EUR, GBP)
-- parties: Array of party names (companies/individuals)
+- parties: Array of all party names as strings (companies/individuals only, no addresses)
+- clientName: Name of the client/buyer/customer party if explicit, otherwise null
+- supplierName: Name of the supplier/vendor/service provider party if explicit, otherwise null
 - signatureStatus: One of "signed", "partially_signed", "unsigned", or "unknown"
 - signatureDate: Date of final execution (ISO format YYYY-MM-DD or null)
 
 Return ONLY valid JSON.
+
+Known extracted facts:
+- title: ${basicFields.title || 'unknown'}
+- contractType: ${basicFields.contractType || 'unknown'}
+- clientName: ${basicFields.clientName || 'unknown'}
+- supplierName: ${basicFields.supplierName || 'unknown'}
+- startDate: ${basicFields.startDate || 'unknown'}
+- endDate: ${basicFields.endDate || 'unknown'}
+- totalValue: ${basicFields.totalValue != null ? `${basicFields.totalValue} ${basicFields.currency || ''}`.trim() : 'not explicitly stated'}
+- parties: ${basicFields.parties.length > 0 ? basicFields.parties.map(party => `${party.name} (${party.role})`).join('; ') : 'unknown'}
 
 Contract text:
 ${truncatedText}`,
@@ -503,6 +1174,17 @@ ${truncatedText}`,
       const content = response.choices[0]?.message?.content;
       if (content) {
         const parsed = JSON.parse(content);
+        const parsedParties = Array.isArray(parsed.parties)
+          ? parsed.parties
+              .map((party: unknown) => {
+                if (typeof party === 'string') return normalizeWhitespace(party);
+                if (party && typeof party === 'object' && typeof (party as Record<string, unknown>).name === 'string') {
+                  return normalizeWhitespace((party as Record<string, string>).name);
+                }
+                return null;
+              })
+              .filter((party: string | null): party is string => Boolean(party))
+          : basicMetadata.parties;
 
         // Log conflicts between regex and AI extraction for auditability
         const conflicts: string[] = [];
@@ -532,7 +1214,9 @@ ${truncatedText}`,
           endDate: parsed.endDate || basicMetadata.endDate,
           totalValue: parsed.totalValue ?? basicMetadata.totalValue,
           currency: parsed.currency || basicMetadata.currency,
-          parties: parsed.parties || basicMetadata.parties,
+          parties: parsedParties || basicMetadata.parties,
+          clientName: parsed.clientName || basicMetadata.clientName,
+          supplierName: parsed.supplierName || basicMetadata.supplierName,
           signatureStatus: parsed.signatureStatus || basicMetadata.signatureStatus,
           signatureDate: parsed.signatureDate || basicMetadata.signatureDate,
         };
@@ -562,6 +1246,8 @@ function extractBasicFieldsFromText(contractText: string): {
   parties: Array<{ name: string; role: string }>;
   keyPoints: string[];
   paymentTerms: string | null;
+  signatureStatus: string | null;
+  signatureDate: string | null;
 } {
   const result = {
     title: null as string | null,
@@ -576,42 +1262,23 @@ function extractBasicFieldsFromText(contractText: string): {
     parties: [] as Array<{ name: string; role: string }>,
     keyPoints: [] as string[],
     paymentTerms: null as string | null,
+    signatureStatus: null as string | null,
+    signatureDate: null as string | null,
   };
 
   if (!contractText || contractText.length < 10) return result;
 
-  const monthNames = '(?:january|february|march|april|may|june|july|august|september|october|november|december)';
-
   // --- Title ---
-  const titlePatterns = [
-    /^[\s\n]*((?:STATEMENT\s+OF\s+WORK|MASTER\s+SERVICE\s+AGREEMENT|NON[- ]?DISCLOSURE\s+AGREEMENT|SERVICE\s+AGREEMENT|SUPPLIER\s+AGREEMENT|SUPPLY\s+AGREEMENT|VENDOR\s+AGREEMENT|EMPLOYMENT\s+(?:AGREEMENT|CONTRACT)|LEASE\s+AGREEMENT|SOFTWARE\s+LICENSE\s+AGREEMENT|SUBSCRIPTION\s+AGREEMENT|PURCHASE\s+(?:ORDER|AGREEMENT)|AMENDMENT)[^\n]*)/im,
-    // Generic: word(s) + AGREEMENT/CONTRACT/etc at the very start of the document
-    /^[\s\n]*([A-Z][A-Z\s]{2,50}(?:AGREEMENT|CONTRACT|STATEMENT\s+OF\s+WORK|ADDENDUM|AMENDMENT))/m,
-    /(?:^|\n)\s*(?:title|re|subject)[:\s]+([^\n]{3,80}?)(?:\n|$)/im,
-  ];
-  for (const pattern of titlePatterns) {
+  for (const pattern of TITLE_PATTERNS) {
     const match = contractText.match(pattern);
     if (match) {
-      result.title = match[1].trim().replace(/\s+/g, ' ');
+      result.title = normalizeWhitespace(match[1]);
       break;
     }
   }
 
   // --- Contract Type ---
-  const typePatterns: Array<[RegExp, string]> = [
-    [/statement\s+of\s+work|SOW/i, 'SOW'],
-    [/master\s+service\s+agreement|MSA/i, 'MSA'],
-    [/non[- ]?disclosure\s+agreement|NDA|confidentiality\s+agreement/i, 'NDA'],
-    [/employment\s+(?:agreement|contract)/i, 'EMPLOYMENT'],
-    [/professional\s+services?\s+agreement/i, 'SERVICE'],
-    [/service\s+(?:agreement|contract)/i, 'SERVICE'],
-    [/lease\s+(?:agreement|contract)/i, 'LEASE'],
-    [/purchase\s+(?:order|agreement)/i, 'PURCHASE_ORDER'],
-    [/software\s+license/i, 'SOFTWARE_LICENSE'],
-    [/subscription\s+agreement/i, 'SUBSCRIPTION'],
-    [/amendment/i, 'AMENDMENT'],
-  ];
-  for (const [pattern, cType] of typePatterns) {
+  for (const [pattern, cType] of CONTRACT_TYPE_PATTERNS) {
     if (pattern.test(contractText)) {
       result.contractType = cType;
       break;
@@ -619,13 +1286,7 @@ function extractBasicFieldsFromText(contractText: string): {
   }
 
   // --- Dates ---
-  const startDatePatterns = [
-    new RegExp(`effective\\s*date[:\\s]*(?:is\\s+)?(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
-    new RegExp(`effective\\s*(?:date)?[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})`, 'i'),
-    new RegExp(`start\\s*date[:\\s]*(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
-    new RegExp(`(?:commencing|starting|begins?)\\s*(?:on)?[:\\s]*(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
-  ];
-  for (const pattern of startDatePatterns) {
+  for (const pattern of START_DATE_PATTERNS) {
     const match = contractText.match(pattern);
     if (match) {
       result.startDate = tryParseDate(match[1]);
@@ -633,13 +1294,7 @@ function extractBasicFieldsFromText(contractText: string): {
     }
   }
 
-  const endDatePatterns = [
-    new RegExp(`expir(?:ation|y|es?)\\s*date[:\\s]*(?:is\\s+)?(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
-    new RegExp(`expir(?:ation|y|es?)\\s*date[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})`, 'i'),
-    new RegExp(`(?:terminat(?:ion|es?)|end)\\s*date[:\\s]*(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
-    new RegExp(`through\\s+(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
-  ];
-  for (const pattern of endDatePatterns) {
+  for (const pattern of END_DATE_PATTERNS) {
     const match = contractText.match(pattern);
     if (match) {
       result.endDate = tryParseDate(match[1]);
@@ -648,51 +1303,23 @@ function extractBasicFieldsFromText(contractText: string): {
   }
 
   // --- Total Value ---
-  const moneyPatterns = [
-    /(?:total\s+(?:contract\s+)?value|contract\s+(?:value|amount|price))[:\s]*\$\s*([\d,]+(?:\.\d{2})?)/i,
-    /\$\s*([\d,]+(?:\.\d{2})?)\s*(?:USD)?/i,
-  ];
-  for (const pattern of moneyPatterns) {
-    const match = contractText.match(pattern);
-    if (match) {
-      result.totalValue = parseFloat(match[1].replace(/,/g, ''));
-      result.currency = 'USD';
-      break;
-    }
-  }
+  const explicitTotalValue = extractExplicitTotalValue(contractText);
+  result.totalValue = explicitTotalValue.value;
+  result.currency = explicitTotalValue.currency || extractPrimaryCurrency(contractText);
 
   // --- Parties ---
-  // Client/Buyer
-  const clientPatterns = [
-    /(?:client|customer|buyer|purchaser)[:\s]+([A-Z][A-Za-z\s&.,]+?\b(?:Inc\.?|LLC|Ltd\.?|Corp(?:oration)?\.?|Co\.?|LP|LLP|PLC|GmbH|AG|SA|SAS|BV|NV))/m,
-  ];
-  for (const pattern of clientPatterns) {
-    const match = contractText.match(pattern);
-    if (match) {
-      result.clientName = match[1].trim();
-      result.parties.push({ name: result.clientName, role: 'Client' });
-      break;
-    }
-  }
-
-  // Supplier/Vendor/Service Provider
-  const supplierPatterns = [
-    /(?:service\s+provider|vendor|supplier|contractor|seller)[:\s]+([A-Z][A-Za-z\s&.,]+?\b(?:Inc\.?|LLC|Ltd\.?|Corp(?:oration)?\.?|Co\.?|LP|LLP|PLC|GmbH|AG|SA|SAS|BV|NV))/m,
-  ];
-  for (const pattern of supplierPatterns) {
-    const match = contractText.match(pattern);
-    if (match) {
-      result.supplierName = match[1].trim();
-      result.parties.push({ name: result.supplierName, role: 'Service Provider' });
-      break;
-    }
-  }
+  result.parties = extractRoleAnchoredParties(contractText);
+  const primaryParties = selectPrimaryParties(result.parties);
+  result.clientName = primaryParties.clientName;
+  result.supplierName = primaryParties.supplierName;
 
   // --- Payment Terms ---
-  const paymentMatch = contractText.match(/(?:payment\s+(?:terms?|schedule|conditions?))[:\s]+([^\n]{10,200})/i);
-  if (paymentMatch) {
-    result.paymentTerms = paymentMatch[1].trim();
-  }
+  result.paymentTerms = extractPaymentTerms(contractText);
+
+  // --- Signatures ---
+  const signatureInfo = extractSignatureInfo(contractText);
+  result.signatureStatus = signatureInfo.signatureStatus;
+  result.signatureDate = signatureInfo.signatureDate;
 
   // --- Build summary as prose ---
   if (result.clientName && result.supplierName && result.totalValue && result.title) {
@@ -718,20 +1345,35 @@ function extractBasicFieldsFromText(contractText: string): {
   }
 
   // --- Key Points ---
-  if (result.clientName) result.keyPoints.push(`Client: ${result.clientName}`);
-  if (result.supplierName) result.keyPoints.push(`Service Provider: ${result.supplierName}`);
-  if (result.totalValue) result.keyPoints.push(`Total Value: ${result.currency === 'USD' ? '$' : ''}${result.totalValue.toLocaleString()} ${result.currency || ''}`);
+  if (result.clientName) result.keyPoints.push(`${clientLabel(result.parties, result.clientName)}: ${result.clientName}`);
+  if (result.supplierName) result.keyPoints.push(`${supplierLabel(result.parties, result.supplierName)}: ${result.supplierName}`);
+  if (result.totalValue) result.keyPoints.push(`Total Value: ${result.currency ? `${result.currency} ` : ''}${result.totalValue.toLocaleString()}`);
   if (result.startDate) result.keyPoints.push(`Effective: ${result.startDate}`);
   if (result.endDate) result.keyPoints.push(`Expires: ${result.endDate}`);
+  if (result.paymentTerms) result.keyPoints.push(`Payment Terms: ${result.paymentTerms}`);
 
   return result;
+}
+
+function clientLabel(parties: ExtractedParty[], clientName: string): string {
+  return parties.find(party => party.name === clientName)?.role || 'Client';
+}
+
+function supplierLabel(parties: ExtractedParty[], supplierName: string): string {
+  return parties.find(party => party.name === supplierName)?.role || 'Supplier';
 }
 
 /**
  * Generate basic artifact data without AI (fallback mode)
  * Now performs regex-based extraction from the document text
  */
-function generateBasicArtifact(type: ArtifactType, contractText: string, contractId: string, contractTitle?: string | null): Record<string, any> {
+function generateBasicArtifact(
+  type: ArtifactType,
+  contractText: string,
+  contractId: string,
+  contractTitle?: string | null,
+  extractedContractFacts?: BasicContractExtraction
+): Record<string, any> {
   const now = new Date().toISOString();
   const textPreview = contractText.substring(0, 500);
   const wordCount = contractText.split(/\s+/).length;
@@ -744,7 +1386,7 @@ function generateBasicArtifact(type: ArtifactType, contractText: string, contrac
   };
 
   // Extract basic metadata from text for enriching artifacts
-  const basicExtracted = extractBasicFieldsFromText(contractText);
+  const basicExtracted = extractedContractFacts ?? extractBasicFieldsFromText(contractText);
 
   switch (type) {
     case 'OVERVIEW': {
@@ -909,7 +1551,9 @@ async function generateAIArtifact(
   contractId: string,
   contractType?: string,
   ocrConfidence?: number,
-  detectedTables?: string[]
+  detectedTables?: string[],
+  extractedContractFacts?: BasicContractExtraction,
+  contractTitle?: string | null
 ): Promise<Record<string, any> | null> {
   const apiKey = getOpenAIApiKey();
   
@@ -927,6 +1571,10 @@ async function generateAIArtifact(
     const truncatedText = contractText.length > maxChars 
       ? contractText.substring(0, maxChars) + '\n\n[... text truncated for analysis ...]'
       : contractText;
+    const groundingFacts = buildArtifactGroundingContext(
+      extractedContractFacts ?? extractBasicFieldsFromText(contractText),
+      contractTitle
+    );
 
     const prompts: Record<string, string> = {
       OVERVIEW: `Analyze this contract and provide a JSON response with:
@@ -934,7 +1582,10 @@ async function generateAIArtifact(
         - keyPoints: Array of key points (max 5)
         - parties: Array of party names mentioned
         - effectiveDate: Date if found (ISO format or null)
-        - contractType: Type of contract if identifiable`,
+        - endDate: End or expiration date if found (ISO format or null)
+        - contractType: Type of contract if identifiable
+        - clientName: Client/buyer/customer party if explicit, otherwise null
+        - supplierName: Supplier/vendor/service provider party if explicit, otherwise null`,
       
       CLAUSES: `Extract the main clauses from this contract. Return JSON with:
         - clauses: Array of objects with {title, content, type, importance}
@@ -944,7 +1595,8 @@ async function generateAIArtifact(
         - amounts: Array of {value, currency, description}
         - totalValue: Total contract value if stated
         - currency: Primary currency
-        - paymentTerms: Payment terms if specified`,
+        - paymentTerms: Payment terms if specified
+        Use numbers only for value fields, with full amounts and no thousands separators in strings.`,
       
       RISK: `Analyze risks in this contract. Return JSON with:
         - riskLevel: 'LOW', 'MEDIUM', 'HIGH', or 'CRITICAL'
@@ -983,14 +1635,16 @@ async function generateAIArtifact(
       PARTIES: `Extract all parties mentioned in this contract. Return JSON with:
         - parties: Array of {name, role, type, jurisdiction, signatoryName}
         - relationships: Description of party relationships
-        - partyRoles: Object mapping party names to their contractual roles`,
+        - partyRoles: Object mapping party names to their contractual roles
+        Prefer the role labels used in the contract itself, such as Buyer or Supplier.`,
 
       TIMELINE: `Extract timeline information from this contract. Return JSON with:
         - effectiveDate: When contract begins
         - endDate: When contract ends
         - milestones: Array of {date, event, description}
         - keyDates: Array of important dates
-        - duration: Total contract duration`,
+        - duration: Total contract duration
+        Use ISO dates when the contract provides exact dates.`,
 
       DELIVERABLES: `Extract deliverables from this contract. Return JSON with:
         - deliverables: Array of {name, description, party, deadline, acceptanceCriteria}
@@ -1035,11 +1689,11 @@ async function generateAIArtifact(
       messages: [
         {
           role: 'system',
-          content: `You are a contract analysis expert. Always respond with valid JSON only, no markdown or explanation.${contractType && contractType !== 'OTHER' ? `\nThis document is a ${contractType.replace(/_/g, ' ')}. Focus your analysis on elements typical of this contract type.` : ''}${ocrConfidence !== undefined && ocrConfidence < 0.7 ? `\nWARNING: OCR text quality is low (${Math.round(ocrConfidence * 100)}% confidence). Be cautious with numbers, dates, and proper nouns. Flag any values you are uncertain about.` : ''}`,
+          content: `You are a contract analysis expert. Always respond with valid JSON only, no markdown or explanation. Prefer explicit facts from the contract. If a field is not clearly stated, return null or an empty array instead of guessing. Preserve full numeric values as numbers without truncation.${contractType && contractType !== 'OTHER' ? `\nThis document is a ${contractType.replace(/_/g, ' ')}. Focus your analysis on elements typical of this contract type.` : ''}${ocrConfidence !== undefined && ocrConfidence < 0.7 ? `\nWARNING: OCR text quality is low (${Math.round(ocrConfidence * 100)}% confidence). Be cautious with numbers, dates, and proper nouns. Flag any values you are uncertain about.` : ''}`,
         },
         {
           role: 'user',
-          content: `${prompt}\n\nContract text:\n${truncatedText}${tableContext}`,
+          content: `${prompt}\n\n${groundingFacts}\n\nContract text:\n${truncatedText}${tableContext}`,
         },
       ],
       temperature: 0.3,
@@ -1076,7 +1730,6 @@ const ARTIFACT_REQUIRED_FIELDS: Partial<Record<ArtifactType, string[]>> = {
   RISK: ['riskLevel', 'risks'],
   COMPLIANCE: ['complianceStatus'],
   OBLIGATIONS: ['obligations'],
-  RENEWAL: ['renewalTerms'],
   NEGOTIATION_POINTS: ['negotiationPoints'],
   AMENDMENTS: ['hasAmendments'],
   CONTACTS: ['contacts'],
@@ -1093,16 +1746,16 @@ const ARTIFACT_REQUIRED_FIELDS: Partial<Record<ArtifactType, string[]>> = {
 function validateArtifactData(type: ArtifactType, data: Record<string, unknown>): string[] {
   const issues: string[] = [];
   const requiredFields = ARTIFACT_REQUIRED_FIELDS[type];
-  if (!requiredFields) return issues;
-
-  for (const field of requiredFields) {
-    const value = data[field];
-    if (value === undefined || value === null) {
-      issues.push(`Missing required field: ${field}`);
-    } else if (Array.isArray(value) && value.length === 0) {
-      issues.push(`Empty array for required field: ${field}`);
-    } else if (typeof value === 'string' && value.trim() === '') {
-      issues.push(`Empty string for required field: ${field}`);
+  if (requiredFields) {
+    for (const field of requiredFields) {
+      const value = data[field];
+      if (value === undefined || value === null) {
+        issues.push(`Missing required field: ${field}`);
+      } else if (Array.isArray(value) && value.length === 0) {
+        issues.push(`Empty array for required field: ${field}`);
+      } else if (typeof value === 'string' && value.trim() === '') {
+        issues.push(`Empty string for required field: ${field}`);
+      }
     }
   }
 
@@ -1131,6 +1784,22 @@ function validateArtifactData(type: ArtifactType, data: Record<string, unknown>)
       if (d && typeof d === 'object' && d.date && isNaN(Date.parse(String(d.date)))) {
         issues.push(`Invalid date format in keyDates: ${d.date}`);
       }
+    }
+  }
+  if (type === 'RENEWAL') {
+    const hasRenewalTerms = typeof data.renewalTerms === 'string' && data.renewalTerms.trim() !== '';
+    const hasAutoRenewalFlag = typeof data.autoRenewal === 'boolean';
+    const hasNoticePeriod =
+      (typeof data.noticePeriod === 'string' && data.noticePeriod.trim() !== '') ||
+      (typeof data.noticePeriod === 'number' && Number.isFinite(data.noticePeriod)) ||
+      (typeof data.noticePeriodDays === 'number' && Number.isFinite(data.noticePeriodDays));
+    const hasExpiryDate =
+      (typeof data.expirationDate === 'string' && data.expirationDate.trim() !== '') ||
+      (typeof data.renewalDate === 'string' && data.renewalDate.trim() !== '');
+    const hasTerminationOptions = Array.isArray(data.terminationOptions) && data.terminationOptions.length > 0;
+
+    if (!hasRenewalTerms && !hasAutoRenewalFlag && !hasNoticePeriod && !hasExpiryDate && !hasTerminationOptions) {
+      issues.push('Missing renewal and expiry details');
     }
   }
 
@@ -1379,9 +2048,10 @@ export async function generateRealArtifacts(
     // Also store formatted HTML in metadata for the redline editor
     const existingContract = await prisma.contract.findUnique({
       where: { id: contractId },
-      select: { metadata: true },
+      select: { metadata: true, aiMetadata: true },
     });
     const existingMeta = (existingContract?.metadata as Record<string, unknown>) || {};
+    const persistedOcrFacts = extractPersistedOcrFacts(existingContract?.aiMetadata);
     const updateData: Record<string, unknown> = {
       rawText: contractText,
       searchableText: contractText.substring(0, 65535),
@@ -1403,10 +2073,16 @@ export async function generateRealArtifacts(
       },
     });
 
+    const extractedContractFacts = mergeExtractedFactsWithMetadata(
+      extractBasicFieldsFromText(contractText),
+      persistedOcrFacts.metadata
+    );
+    let artifactGroundingFacts = extractedContractFacts;
+
     // ── Extract metadata FIRST so contractTitle is in DB before artifacts run ──
     logger.info({ contractId }, 'Extracting contract metadata (pre-artifact)');
     try {
-      const preMetadata = await extractContractMetadata(contractText, contractId);
+      const preMetadata = await extractContractMetadata(contractText, contractId, extractedContractFacts);
       const preUpdateData: Record<string, any> = {};
       if (preMetadata.title) preUpdateData.contractTitle = preMetadata.title;
       if (preMetadata.contractType) preUpdateData.contractType = preMetadata.contractType;
@@ -1433,10 +2109,12 @@ export async function generateRealArtifacts(
         }
       }
       if (preMetadata.currency) preUpdateData.currency = preMetadata.currency;
+      if (preMetadata.clientName) preUpdateData.clientName = preMetadata.clientName;
+      if (preMetadata.supplierName) preUpdateData.supplierName = preMetadata.supplierName;
       if (preMetadata.parties && preMetadata.parties.length > 0) {
         const validParties = preMetadata.parties.filter(p => p && p.trim().length > 1);
-        if (validParties[0]) preUpdateData.clientName = validParties[0];
-        if (validParties[1] && validParties[1] !== validParties[0]) preUpdateData.supplierName = validParties[1];
+        if (!preUpdateData.clientName && validParties[0]) preUpdateData.clientName = validParties[0];
+        if (!preUpdateData.supplierName && validParties[1] && validParties[1] !== validParties[0]) preUpdateData.supplierName = validParties[1];
       }
       if (preMetadata.signatureStatus) {
         preUpdateData.signatureStatus = preMetadata.signatureStatus;
@@ -1450,6 +2128,7 @@ export async function generateRealArtifacts(
         await prisma.contract.update({ where: { id: contractId }, data: preUpdateData });
         logger.info({ contractId, fields: Object.keys(preUpdateData) }, 'Pre-artifact metadata written');
       }
+      artifactGroundingFacts = mergeExtractedFactsWithMetadata(extractedContractFacts, preMetadata);
     } catch (preMetaErr) {
       logger.warn({ preMetaErr, contractId }, 'Pre-artifact metadata extraction failed, continuing');
     }
@@ -1460,9 +2139,12 @@ export async function generateRealArtifacts(
 
     // Estimate OCR confidence from text quality heuristics
     // (When called from the worker pipeline, actual DI per-word confidence would be used instead)
-    const estimatedOcrConfidence = estimateTextConfidence(contractText);
-    if (estimatedOcrConfidence < 0.7) {
-      logger.warn({ contractId, confidence: estimatedOcrConfidence }, 'Low OCR confidence detected — artifacts will be flagged for review');
+    const resolvedOcrConfidence = persistedOcrFacts.ocrConfidence ?? estimateTextConfidence(contractText);
+    if (persistedOcrFacts.ocrConfidence !== undefined) {
+      logger.info({ contractId, confidence: resolvedOcrConfidence }, 'Using persisted OCR confidence from AI metadata');
+    }
+    if (resolvedOcrConfidence < 0.7) {
+      logger.warn({ contractId, confidence: resolvedOcrConfidence }, 'Low OCR confidence detected — artifacts will be flagged for review');
     }
 
     // Query contract record (contractTitle now populated from pre-artifact metadata)
@@ -1483,12 +2165,23 @@ export async function generateRealArtifacts(
           logger.info({ contractId, type }, `Generating ${type} artifact`);
           
           // Try AI generation first, fall back to basic
-          let artifactData = await generateAIArtifact(type, contractText, contractId, contractType, estimatedOcrConfidence, detectedTables);
+          let artifactData = await generateAIArtifact(
+            type,
+            contractText,
+            contractId,
+            contractType,
+            resolvedOcrConfidence,
+            detectedTables,
+            artifactGroundingFacts,
+            contractTitle
+          );
           
           if (!artifactData) {
             logger.info({ type }, 'Using basic artifact generation (no AI)');
-            artifactData = generateBasicArtifact(type, contractText, contractId, contractTitle);
+            artifactData = generateBasicArtifact(type, contractText, contractId, contractTitle, artifactGroundingFacts);
           }
+
+          artifactData = repairArtifactData(type, artifactData, artifactGroundingFacts, contractTitle);
 
           // Save the artifact
           const artifactId = await saveArtifact(prisma, contractId, tenantId, type, artifactData);
@@ -1579,6 +2272,15 @@ export async function generateRealArtifacts(
         error: errors.length > 0 ? errors.join('; ') : null,
       },
     });
+
+    if (finalStatus === 'COMPLETED') {
+      try {
+        const reindex = await queueContractReindex(contractId, tenantId);
+        logger.info({ contractId, queued: reindex.queued, message: reindex.message }, 'Queued contract reindex after artifact generation');
+      } catch (reindexError) {
+        logger.warn({ contractId, reindexError }, 'Post-artifact reindex trigger failed');
+      }
+    }
 
     const totalDurationMs = Math.round(performance.now() - startTime);
     logger.info({ 

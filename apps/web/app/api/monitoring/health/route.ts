@@ -11,7 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { Redis } from '@upstash/redis';
 import { alerts } from '@/lib/alerting';
 import { monitoringService } from 'data-orchestration/services';
-import { withApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
+import { withPublicApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 interface HealthCheck {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -37,7 +37,7 @@ interface ComponentHealth {
 const MEMORY_WARNING_THRESHOLD = 0.85; // 85%
 const MEMORY_CRITICAL_THRESHOLD = 0.95; // 95%
 
-export const GET = withApiHandler(async (request: NextRequest, ctx) => {
+export const GET = withPublicApiHandler(async (request: NextRequest, ctx) => {
   const startTime = Date.now();
   const probe = request.nextUrl.searchParams.get('probe');
 

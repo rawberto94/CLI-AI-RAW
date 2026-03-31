@@ -13,6 +13,7 @@
 
 'use client';
 
+import Link from 'next/link';
 import React, { memo, useCallback, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -47,20 +48,23 @@ function CopyButton({ getText }: { getText: () => string }) {
 
 const MarkdownLink: Components['a'] = ({ href, children, ...props }) => {
   const isInternal = href?.startsWith('/');
+  if (isInternal && href) {
+    return (
+      <Link
+        href={href}
+        className="text-violet-600 hover:text-violet-800 underline font-medium"
+      >
+        {children}
+      </Link>
+    );
+  }
+
   return (
     <a
       href={href}
       className="text-violet-600 hover:text-violet-800 underline font-medium"
-      target={isInternal ? undefined : '_blank'}
-      rel={isInternal ? undefined : 'noopener noreferrer'}
-      onClick={
-        isInternal
-          ? (e) => {
-              e.preventDefault();
-              window.location.href = href!;
-            }
-          : undefined
-      }
+      target="_blank"
+      rel="noopener noreferrer"
       {...props}
     >
       {children}

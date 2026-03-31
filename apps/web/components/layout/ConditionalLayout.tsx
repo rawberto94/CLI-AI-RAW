@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import EnhancedNavigation from '@/components/layout/EnhancedNavigation';
 import { FloatingDataModeToggle } from '@/components/ui/DataModeToggle';
 import { FloatingAIBubble } from '@/components/ai/FloatingAIBubble';
@@ -18,10 +18,12 @@ const MARKETING_PAGES = ['/', '/home', '/features', '/pricing', '/about', '/cont
 
 export function ConditionalLayout({ children }: ConditionalLayoutProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   
   // Auth pages and marketing pages should not show the navigation
   const isAuthPage = pathname?.startsWith('/auth');
   const isMarketingPage = MARKETING_PAGES.includes(pathname || '');
+  const hideFloatingAssistant = pathname === '/contigo-labs' && searchParams?.get('tab') === 'chat';
   
   // Move focus to main content after navigation when it was triggered from nav.
   // Use a longer delay to avoid racing with Next.js soft navigation transitions.
@@ -78,7 +80,7 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
       </main>
       <FloatingDataModeToggle />
       <Suspense fallback={null}>
-        <FloatingAIBubble />
+        {!hideFloatingAssistant && <FloatingAIBubble />}
       </Suspense>
       <Suspense fallback={null}>
         <WelcomeTutorial />

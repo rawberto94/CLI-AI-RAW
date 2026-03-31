@@ -7,12 +7,11 @@
 
 import { NextRequest } from 'next/server';
 import { getAllCircuitStats } from '@/lib/scalability/circuit-breaker';
-import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withPublicApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_request: NextRequest) {
-  const ctx = getApiContext(_request);
+export const GET = withPublicApiHandler(async (_request: NextRequest, ctx) => {
   try {
     const stats = getAllCircuitStats();
     
@@ -38,4 +37,4 @@ export async function GET(_request: NextRequest) {
   } catch (error) {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to retrieve circuit breaker metrics', 500, { details: (error as Error).message });
   }
-}
+});
