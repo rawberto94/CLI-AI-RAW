@@ -6,7 +6,8 @@
     "rootDir": "src",
     "composite": true,
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "types": []
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules", "test"]

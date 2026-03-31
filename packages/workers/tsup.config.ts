@@ -12,10 +12,8 @@ export default defineConfig({
   // Keep workspace packages and heavy native modules external
   external: [
     // Workspace packages (installed via pnpm)
-    'utils',
     'clients-db',
     'clients-openai',
-    'data-orchestration',
     'schemas',
     // Heavy native modules
     '@prisma/client',

@@ -18,7 +18,7 @@ dotenv.config();
 // Use local type definition for cross-package compatibility
 type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any };
 import pino from 'pino';
-import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
+import { getQueueService, type JobType } from './compat/repo-utils';
 
 const logger = pino({ name: 'obligation-tracker-worker' });
 

@@ -13,8 +13,7 @@
  * - If met, creates an AgentGoal and enqueues agent-orchestration work
  */
 
-import { getQueueService } from '@repo/utils/queue/queue-service';
-import { QUEUE_NAMES, JOB_NAMES } from '@repo/utils/queue/contract-queue';
+import { getQueueService, JOB_NAMES, QUEUE_NAMES } from './compat/repo-utils';
 import clientsDb from 'clients-db';
 import pino from 'pino';
 

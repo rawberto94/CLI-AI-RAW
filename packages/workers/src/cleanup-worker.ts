@@ -14,7 +14,7 @@ import { Worker as BullWorker, Queue as BullQueue } from 'bullmq';
 
 type BullWorkerType = InstanceType<typeof BullWorker>;
 type BullQueueType = InstanceType<typeof BullQueue>;
-import { getQueueService } from '@repo/utils/queue/queue-service';
+import { getQueueService } from './compat/repo-utils';
 import pino from 'pino';
 
 const isBuildTime = process.env.NEXT_BUILD === 'true';

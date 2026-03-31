@@ -15,8 +15,16 @@
 type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any };
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
-import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
-import { QUEUE_NAMES, IndexContractJobData } from '@repo/utils/queue/contract-queue';
+import {
+  adaptiveChunk,
+  getQueueService,
+  QUEUE_NAMES,
+  semanticChunk,
+  type EmbedFn,
+  type IndexContractJobData,
+  type JobType,
+  type SemanticChunk,
+} from './compat/repo-utils';
 import pino from 'pino';
 
 import { getTraceContextFromJobData } from './observability/trace';
@@ -70,8 +78,6 @@ async function getRagOpenAIClient(): Promise<any> {
   return _ragOpenAISingleton;
 }
 
-import { semanticChunk, type SemanticChunk } from '@repo/utils/rag/semantic-chunker';
-import { adaptiveChunk, type EmbedFn } from '@repo/utils/rag/adaptive-chunker';
 
 interface RAGIndexingResult {
   success: boolean;

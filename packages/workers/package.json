@@ -30,7 +30,10 @@
     "openai": "^4.10.0",
     "pino": "^8.15.1",
     "pino-pretty": "^13.1.1",
-    "@repo/utils": "workspace:*"
+    "@repo/utils": "workspace:*",
+    "schemas": "workspace:*",
+    "uuid": "^13.0.0",
+    "zod": "3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.8.0",

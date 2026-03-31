@@ -6,9 +6,14 @@ dotenv.config();
 type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any };
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
-import { ArtifactType } from 'clients-db';
-import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
-import { QUEUE_NAMES, JOB_NAMES, GenerateArtifactsJobData } from '@repo/utils/queue/contract-queue';
+import type { ArtifactType } from 'clients-db';
+import {
+  getQueueService,
+  JOB_NAMES,
+  QUEUE_NAMES,
+  type GenerateArtifactsJobData,
+  type JobType,
+} from './compat/repo-utils';
 import pino from 'pino';
 
 import { getTraceContextFromJobData } from './observability/trace';

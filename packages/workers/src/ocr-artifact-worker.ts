@@ -6,8 +6,23 @@ dotenv.config();
 type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any };
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
-import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
-import { QUEUE_NAMES, ProcessContractJobData, IndexContractJobData } from '@repo/utils/queue/contract-queue';
+import {
+  CircuitBreaker,
+  CircuitBreakerError,
+  CircuitState,
+  getQueueService,
+  ocrCache,
+  publishJobProgress,
+  QUEUE_NAMES,
+  redisEventBus,
+  RedisEvents,
+  retry,
+  retryOpenAI,
+  retryStorage,
+  type IndexContractJobData,
+  type JobType,
+  type ProcessContractJobData,
+} from './compat/repo-utils';
 import pino from 'pino';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
@@ -15,13 +30,6 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { createHash } from 'crypto';
-import { 
-  CircuitBreaker, 
-  CircuitState, 
-  CircuitBreakerError 
-} from '@repo/utils/patterns/circuit-breaker';
-import { retry, retryOpenAI, retryStorage } from '@repo/utils/patterns/retry';
-import { redisEventBus, RedisEvents, publishJobProgress } from '@repo/utils/events/redis-event-bus';
 import {
   ContractType,
   ArtifactType,
@@ -671,7 +679,6 @@ const storageCircuitBreaker = new CircuitBreaker('storage', {
 const prisma = getClient();
 
 // Use distributed Redis cache instead of in-memory cache
-import { ocrCache } from '@repo/utils/cache/distributed-cache';
 
 // ============ IMAGE PREPROCESSING UTILITIES ============
 

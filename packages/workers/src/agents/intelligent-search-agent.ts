@@ -13,7 +13,8 @@ import type {
 } from './types';
 import { logger } from '../utils/logger';
 import { openai } from '../lib/openai';
-import clientsDb, { Prisma } from 'clients-db';
+import clientsDb from 'clients-db';
+import type { Prisma } from 'clients-db';
 
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 const prisma = getClient();

@@ -12,7 +12,10 @@
 import { agentRegistry } from './index';
 import type { AgentInput, AgentOutput } from './types';
 import { logger } from '../utils/logger';
-import { agentContextEnrichmentService, type EnrichedAgentContext } from '@repo/data-orchestration';
+import {
+  agentContextEnrichmentService,
+  type EnrichedAgentContext,
+} from '../compat/data-orchestration';
 
 const AGENT_TIMEOUT_MS = parseInt(process.env.AGENT_DISPATCH_TIMEOUT_MS || '15000', 10);
 const ENABLE_CONTEXT_ENRICHMENT = process.env.ENABLE_AGENT_CONTEXT_ENRICHMENT !== 'false';

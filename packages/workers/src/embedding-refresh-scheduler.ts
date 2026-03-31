@@ -23,8 +23,13 @@
 import pino from 'pino';
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
-import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
-import { QUEUE_NAMES, JOB_NAMES, QUEUE_PRIORITY } from '@repo/utils/queue/contract-queue';
+import {
+  getQueueService,
+  JOB_NAMES,
+  QUEUE_NAMES,
+  QUEUE_PRIORITY,
+  type JobType,
+} from './compat/repo-utils';
 
 const logger = pino({ name: 'embedding-refresh-scheduler' });
 const prisma = getClient();

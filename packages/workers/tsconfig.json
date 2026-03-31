@@ -20,6 +20,8 @@
       "clients-db/*": ["../clients/db/*"],
       "clients-openai": ["../clients/openai/src"],
       "clients-openai/*": ["../clients/openai/src/*"],
+      "data-orchestration": ["../data-orchestration/src"],
+      "data-orchestration/*": ["../data-orchestration/src/*"],
       "@repo/db": ["../clients/db"],
       "@repo/db/*": ["../clients/db/*"],
       "@/*": ["../../apps/web/*"],

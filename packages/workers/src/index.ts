@@ -5,7 +5,7 @@ import './env';
 // Check if we're in build mode - skip worker initialization
 const isBuildTime = process.env.NEXT_BUILD === 'true';
 
-import { getQueueService } from '@repo/utils/queue/queue-service';
+import { getQueueService } from './compat/repo-utils';
 import { registerOCRArtifactWorker } from './ocr-artifact-worker';
 import { registerArtifactGeneratorWorker } from './artifact-generator';
 import { registerWebhookWorker } from './webhook-worker';

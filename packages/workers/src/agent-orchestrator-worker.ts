@@ -1,5 +1,10 @@
-import { JobType, getQueueService } from '@repo/utils/queue/queue-service';
-import { JOB_NAMES, QUEUE_NAMES, AgentOrchestrationJobData } from '@repo/utils/queue/contract-queue';
+import {
+  getQueueService,
+  JOB_NAMES,
+  QUEUE_NAMES,
+  type AgentOrchestrationJobData,
+  type JobType,
+} from './compat/repo-utils';
 import clientsDb from 'clients-db';
 import pino from 'pino';
 

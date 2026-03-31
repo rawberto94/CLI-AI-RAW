@@ -6,8 +6,12 @@ dotenv.config();
 type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any };
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
-import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
-import { QUEUE_NAMES, SendWebhookJobData } from '@repo/utils/queue/contract-queue';
+import {
+  getQueueService,
+  QUEUE_NAMES,
+  type JobType,
+  type SendWebhookJobData,
+} from './compat/repo-utils';
 import pino from 'pino';
 import crypto from 'crypto';
 
