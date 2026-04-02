@@ -3,7 +3,7 @@
  * Tests rate card management, benchmarking, and analysis features
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 test.describe('Rate Cards Management', () => {
   

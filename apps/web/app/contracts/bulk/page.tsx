@@ -17,7 +17,7 @@ export default function BulkOperationsPage() {
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-yellow-500/20 rounded-full blur-3xl" />
         
-        <div className="relative max-w-6xl mx-auto px-6 py-10">
+        <div className="relative max-w-[1600px] mx-auto px-6 py-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -113,7 +113,7 @@ export default function BulkOperationsPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
-        className="max-w-6xl mx-auto px-6 py-8"
+        className="max-w-[1600px] mx-auto px-6 py-8"
       >
         <BulkOperations />
       </motion.div>

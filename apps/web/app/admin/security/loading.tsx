@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SecurityLoading() {
   return (
-    <div className="container mx-auto py-8 px-4 space-y-6">
+    <div className="max-w-[1600px] mx-auto py-8 px-4 space-y-6">
       <div className="space-y-2">
         <Skeleton className="h-8 w-36" />
         <Skeleton className="h-4 w-64" />

@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, differenceInDays } from 'date-fns';
 import {
@@ -69,6 +69,7 @@ import { cn } from '@/lib/utils';
 import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { getCopilotHandoffStorageKey } from '@/lib/drafting/copilot-handoff';
 
 // Types
 interface OriginalContract {
@@ -126,6 +127,16 @@ interface RenewalTemplate {
   usageCount?: number;
 }
 
+interface RenewalPlaybookOption {
+  id: string;
+  name: string;
+  description?: string;
+  isDefault?: boolean;
+  contractTypes: string[];
+  clauses?: Array<{ id: string }>;
+  redFlags?: Array<{ id: string }>;
+}
+
 // AI Analysis result from the backend
 interface AIRenewalAnalysis {
   overallRiskScore: number;
@@ -173,10 +184,76 @@ const STEPS = [
   { id: 'confirm', title: 'Confirm', icon: Check },
 ];
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatRichText(value: string): string {
+  return value
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => `<p>${escapeHtml(block).replace(/\n/g, '<br />')}</p>`)
+    .join('\n');
+}
+
+function buildRenewalDraftHtml(draft: RenewalDraft, original: OriginalContract): string {
+  const partiesSection = draft.parties.length > 0
+    ? [
+        '<h2>Parties</h2>',
+        '<ul>',
+        ...draft.parties.map((party) => `<li><strong>${escapeHtml(party.role)}:</strong> ${escapeHtml(party.name)}${party.email ? ` (${escapeHtml(party.email)})` : ''}</li>`),
+        '</ul>',
+      ].join('\n')
+    : '';
+
+  const clausesSection = draft.clauses.length > 0
+    ? draft.clauses
+        .map((clause, index) => [
+          `<h2>${index + 1}. ${escapeHtml(clause.title)}</h2>`,
+          formatRichText(clause.content),
+        ].join('\n'))
+        .join('\n\n')
+    : '<p>[Add renewal clauses here]</p>';
+
+  const notesSection = draft.notes
+    ? ['<h2>Internal Renewal Notes</h2>', formatRichText(draft.notes)].join('\n')
+    : '';
+
+  const pricingSummary = [
+    `<p><strong>Renewal Period:</strong> ${format(draft.effectiveDate, 'PPP')} - ${format(draft.expirationDate, 'PPP')}</p>`,
+    `<p><strong>Contract Value:</strong> ${escapeHtml(draft.currency)} ${draft.totalValue.toLocaleString()}</p>`,
+    draft.adjustForInflation
+      ? `<p><strong>Inflation Adjustment:</strong> ${draft.inflationRate}% applied to renewal pricing.</p>`
+      : '',
+    `<p><strong>Based on Original Contract:</strong> ${escapeHtml(original.title)}</p>`,
+  ].filter(Boolean).join('\n');
+
+  return [
+    `<h1>${escapeHtml(draft.title || `${original.title} - Renewal`)}</h1>`,
+    pricingSummary,
+    partiesSection,
+    '<hr>',
+    clausesSection,
+    notesSection,
+    '<hr>',
+    '<h2>Signatures</h2>',
+    '<p>Authorized Representative (Party A): ________________________</p>',
+    '<p>Authorized Representative (Party B): ________________________</p>',
+  ].filter(Boolean).join('\n\n');
+}
+
 export default function ContractRenewalPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const contractId = params.id as string;
+  const requestedPlaybookId = searchParams?.get('playbook') || searchParams?.get('playbookId');
   
   // State
   const [loading, setLoading] = useState(true);
@@ -190,6 +267,12 @@ export default function ContractRenewalPage() {
   const [templates, setTemplates] = useState<RenewalTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<RenewalTemplate | null>(null);
+
+  // Policy pack state
+  const [availablePlaybooks, setAvailablePlaybooks] = useState<RenewalPlaybookOption[]>([]);
+  const [playbooksLoading, setPlaybooksLoading] = useState(false);
+  const [selectedPlaybookId, setSelectedPlaybookId] = useState<string | null>(requestedPlaybookId);
+  const [hasResolvedInitialPlaybook, setHasResolvedInitialPlaybook] = useState(false);
   
   // Approval workflow
   const [submitForApproval, setSubmitForApproval] = useState(false);
@@ -200,6 +283,25 @@ export default function ContractRenewalPage() {
   
   // Track if dates were auto-assumed (no expiration on original)
   const [datesAutoAssumed, setDatesAutoAssumed] = useState(false);
+
+  const selectedPlaybook = availablePlaybooks.find((playbook) => playbook.id === selectedPlaybookId) || null;
+
+  const handlePlaybookChange = useCallback((value: string) => {
+    const nextPlaybookId = value === 'none' ? null : value;
+    setSelectedPlaybookId(nextPlaybookId);
+    setHasResolvedInitialPlaybook(true);
+
+    const url = new URL(window.location.href);
+    if (nextPlaybookId) {
+      url.searchParams.set('playbook', nextPlaybookId);
+      url.searchParams.delete('playbookId');
+    } else {
+      url.searchParams.delete('playbook');
+      url.searchParams.delete('playbookId');
+    }
+
+    router.replace(url.pathname + url.search);
+  }, [router]);
   
   // Trigger AI analysis (called from ReviewStep or ContentStep)
   const runAiAnalysis = useCallback(async () => {
@@ -222,6 +324,7 @@ export default function ContractRenewalPage() {
             adjustForInflation: draft.adjustForInflation,
             inflationRate: draft.inflationRate,
           },
+          playbookId: selectedPlaybookId || undefined,
           analysisType: 'full',
         }),
       });
@@ -237,7 +340,7 @@ export default function ContractRenewalPage() {
     } finally {
       setAiAnalysisLoading(false);
     }
-  }, [draft, originalContract, contractId, aiAnalysisLoading]);
+  }, [draft, originalContract, contractId, aiAnalysisLoading, selectedPlaybookId]);
   
   // Load templates for renewal
   useEffect(() => {
@@ -261,6 +364,44 @@ export default function ContractRenewalPage() {
       }
     }
     loadTemplates();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPlaybooks() {
+      setPlaybooksLoading(true);
+      try {
+        const response = await fetch('/api/playbooks', {
+          headers: { 'x-tenant-id': getTenantId() },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to load policy packs');
+        }
+
+        const raw = await response.json();
+        const data = raw.data ?? raw;
+
+        if (!cancelled) {
+          setAvailablePlaybooks(data.playbooks || []);
+        }
+      } catch (error) {
+        console.error('Policy pack load error:', error);
+        if (!cancelled) {
+          toast.error('Could not load policy packs for this renewal');
+        }
+      } finally {
+        if (!cancelled) {
+          setPlaybooksLoading(false);
+        }
+      }
+    }
+
+    loadPlaybooks();
+    return () => {
+      cancelled = true;
+    };
   }, []);
   
   // Apply template to draft
@@ -388,13 +529,39 @@ export default function ContractRenewalPage() {
     
     loadContract();
   }, [contractId]);
+
+  useEffect(() => {
+    if (hasResolvedInitialPlaybook || availablePlaybooks.length === 0) {
+      return;
+    }
+
+    const normalizedContractType = originalContract?.contractType?.trim().toLowerCase();
+    const requestedPlaybook = requestedPlaybookId
+      ? availablePlaybooks.find((playbook) => playbook.id === requestedPlaybookId)
+      : undefined;
+    const contractTypeMatch = normalizedContractType
+      ? availablePlaybooks.find((playbook) =>
+          playbook.contractTypes.some((type) => type.trim().toLowerCase() === normalizedContractType),
+        )
+      : undefined;
+    const defaultPlaybook = availablePlaybooks.find((playbook) => playbook.isDefault);
+    const initialPlaybook = requestedPlaybook || contractTypeMatch || defaultPlaybook || null;
+
+    setSelectedPlaybookId(initialPlaybook?.id || null);
+    setHasResolvedInitialPlaybook(true);
+  }, [
+    hasResolvedInitialPlaybook,
+    availablePlaybooks,
+    originalContract,
+    requestedPlaybookId,
+  ]);
   
   // Navigation
   const canProceed = useCallback(() => {
     if (!draft) return false;
     switch (currentStep) {
       case 0: return true; // Review - always can proceed
-      case 1: return draft.effectiveDate && draft.expirationDate; // Terms
+      case 1: return draft.effectiveDate && draft.expirationDate && draft.expirationDate > draft.effectiveDate; // Terms
       case 2: return true; // Content - always can proceed
       case 3: return true; // Preview - always can proceed
       default: return true;
@@ -402,6 +569,11 @@ export default function ContractRenewalPage() {
   }, [currentStep, draft]);
   
   const handleNext = () => {
+    if (currentStep === 1 && draft && draft.expirationDate <= draft.effectiveDate) {
+      toast.error('Expiration date must be after the effective date');
+      return;
+    }
+
     if (currentStep < STEPS.length - 1 && canProceed()) {
       setCurrentStep(prev => prev + 1);
     }
@@ -464,6 +636,41 @@ export default function ContractRenewalPage() {
       setSaving(false);
     }
   };
+
+  const handleOpenInCopilot = useCallback(() => {
+    if (!draft || !originalContract) return;
+
+    const handoffId = `renewal-${contractId}-${Date.now()}`;
+
+    try {
+      window.sessionStorage.setItem(
+        getCopilotHandoffStorageKey(handoffId),
+        JSON.stringify({
+          title: draft.title,
+          content: buildRenewalDraftHtml(draft, originalContract),
+          sourceContractId: contractId,
+          sourceMode: 'renewal',
+          createdAt: new Date().toISOString(),
+        }),
+      );
+    } catch (error) {
+      console.error('Failed to prepare Copilot handoff:', error);
+      toast.error('Could not open AI Copilot with the current renewal draft');
+      return;
+    }
+
+    const copilotParams = new URLSearchParams({
+      mode: 'renewal',
+      from: contractId,
+      handoff: handoffId,
+    });
+
+    if (selectedPlaybookId) {
+      copilotParams.set('playbook', selectedPlaybookId);
+    }
+
+    router.push(`/drafting/copilot?${copilotParams.toString()}`);
+  }, [draft, originalContract, contractId, router, selectedPlaybookId]);
   
   // Update draft
   const updateDraft = (updates: Partial<RenewalDraft>) => {
@@ -511,7 +718,7 @@ export default function ContractRenewalPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" asChild>
@@ -542,7 +749,7 @@ export default function ContractRenewalPage() {
       </div>
       
       {/* Step Indicators */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex items-center justify-between mb-8">
           {STEPS.map((step, index) => {
             const Icon = step.icon;
@@ -595,6 +802,10 @@ export default function ContractRenewalPage() {
                 templatesLoading={templatesLoading}
                 selectedTemplate={selectedTemplate}
                 onApplyTemplate={applyTemplate}
+                availablePlaybooks={availablePlaybooks}
+                playbooksLoading={playbooksLoading}
+                selectedPlaybook={selectedPlaybook}
+                onPlaybookChange={handlePlaybookChange}
                 aiAnalysis={aiAnalysis}
                 aiAnalysisLoading={aiAnalysisLoading}
                 onRunAiAnalysis={runAiAnalysis}
@@ -604,7 +815,7 @@ export default function ContractRenewalPage() {
               <TermsStep draft={draft} onUpdate={updateDraft} original={originalContract} datesAutoAssumed={datesAutoAssumed} />
             )}
             {currentStep === 2 && (
-              <ContentStep draft={draft} onUpdate={updateDraft} original={originalContract} contractId={contractId} aiAnalysis={aiAnalysis} aiAnalysisLoading={aiAnalysisLoading} onRunAiAnalysis={runAiAnalysis} />
+              <ContentStep draft={draft} onUpdate={updateDraft} original={originalContract} contractId={contractId} aiAnalysis={aiAnalysis} aiAnalysisLoading={aiAnalysisLoading} onRunAiAnalysis={runAiAnalysis} onOpenCopilot={handleOpenInCopilot} selectedPlaybookName={selectedPlaybook?.name} selectedPlaybookId={selectedPlaybookId || undefined} />
             )}
             {currentStep === 3 && (
               <PreviewStep draft={draft} original={originalContract} aiAnalysis={aiAnalysis} />
@@ -671,6 +882,10 @@ function ReviewStep({
   templatesLoading,
   selectedTemplate,
   onApplyTemplate,
+  availablePlaybooks,
+  playbooksLoading,
+  selectedPlaybook,
+  onPlaybookChange,
   aiAnalysis,
   aiAnalysisLoading,
   onRunAiAnalysis,
@@ -680,6 +895,10 @@ function ReviewStep({
   templatesLoading: boolean;
   selectedTemplate: RenewalTemplate | null;
   onApplyTemplate: (template: RenewalTemplate) => void;
+  availablePlaybooks: RenewalPlaybookOption[];
+  playbooksLoading: boolean;
+  selectedPlaybook: RenewalPlaybookOption | null;
+  onPlaybookChange: (value: string) => void;
   aiAnalysis: AIRenewalAnalysis | null;
   aiAnalysisLoading: boolean;
   onRunAiAnalysis: () => void;
@@ -709,6 +928,67 @@ function ReviewStep({
           Review the key details of the contract you are renewing
         </p>
       </div>
+
+      <Card className="border-violet-200 bg-gradient-to-r from-violet-50/70 to-white">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-violet-100">
+                <BookOpen className="h-5 w-5 text-violet-600" />
+              </div>
+              <div>
+                <p className="font-medium text-slate-900">
+                  {selectedPlaybook ? (
+                    <>Policy pack: <span className="text-violet-700">{selectedPlaybook.name}</span></>
+                  ) : (
+                    'Apply a policy pack?'
+                  )}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Use standardized fallback positions and preferred language for AI renewal analysis, clause suggestions, and the Copilot handoff.
+                </p>
+                {selectedPlaybook && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Badge variant="outline" className="text-[10px] bg-white">
+                      {selectedPlaybook.clauses?.length ?? 0} preferred clauses
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px] bg-white">
+                      {selectedPlaybook.redFlags?.length ?? 0} red flags
+                    </Badge>
+                    {selectedPlaybook.contractTypes.length > 0 && (
+                      <Badge variant="outline" className="text-[10px] bg-white">
+                        {selectedPlaybook.contractTypes.join(', ')}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 lg:min-w-[320px]">
+              <Select value={selectedPlaybook?.id || 'none'} onValueChange={onPlaybookChange}>
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder={playbooksLoading ? 'Loading policy packs...' : 'Select a policy pack'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No policy pack</SelectItem>
+                  {availablePlaybooks.map((playbook) => (
+                    <SelectItem key={playbook.id} value={playbook.id}>
+                      {playbook.name}{playbook.isDefault ? ' (Default)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex justify-end">
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/playbooks" target="_blank">
+                    Manage Packs <ArrowRight className="h-4 w-4 ml-1" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       
       {/* Template Selection Banner */}
       <Card className="border-2 border-dashed border-primary/30 bg-primary/5">
@@ -1426,6 +1706,9 @@ function ContentStep({
   aiAnalysis,
   aiAnalysisLoading,
   onRunAiAnalysis,
+  onOpenCopilot,
+  selectedPlaybookName,
+  selectedPlaybookId,
 }: { 
   draft: RenewalDraft; 
   onUpdate: (updates: Partial<RenewalDraft>) => void;
@@ -1434,6 +1717,9 @@ function ContentStep({
   aiAnalysis: AIRenewalAnalysis | null;
   aiAnalysisLoading: boolean;
   onRunAiAnalysis: () => void;
+  onOpenCopilot: () => void;
+  selectedPlaybookName?: string;
+  selectedPlaybookId?: string;
 }) {
   const [activeClauseId, setActiveClauseId] = useState<string | null>(
     draft.clauses.length > 0 ? draft.clauses[0].id : null
@@ -1502,6 +1788,7 @@ function ContentStep({
           action,
           clauseTitle: clause.title,
           currentContent: clause.content,
+          playbookId: selectedPlaybookId,
         }),
       });
       if (response.ok) {
@@ -1762,6 +2049,36 @@ function ContentStep({
           </Button>
         </div>
       </div>
+
+      <div className="rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 to-white p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <Sparkles className="h-4 w-4 text-violet-600" />
+              Need deeper AI drafting support?
+            </div>
+            <p className="mt-1 text-sm text-slate-600">
+              Open this renewal in AI Copilot. Your current title, dates, notes, and clause edits will be carried into the drafting canvas.
+            </p>
+          </div>
+          <Button onClick={onOpenCopilot} className="bg-gradient-to-r from-violet-500 to-violet-600">
+            Continue in AI Copilot
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {selectedPlaybookName && (
+        <div className="rounded-xl border border-violet-200 bg-violet-50/70 px-4 py-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <BookOpen className="h-4 w-4 text-violet-600" />
+            Policy pack applied
+          </div>
+          <p className="mt-1 text-sm text-slate-600">
+            AI clause actions and renewal analysis are being guided by <span className="font-medium text-slate-900">{selectedPlaybookName}</span>.
+          </p>
+        </div>
+      )}
       
       <div className="grid lg:grid-cols-12 gap-6">
         {/* Clause List */}

@@ -72,7 +72,7 @@ export default function RateCardDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
-        <div className="container mx-auto p-6">
+        <div className="max-w-[1600px] mx-auto p-6">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -91,7 +91,7 @@ export default function RateCardDetailPage() {
   if (!rateCard) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50/30 to-rose-50/20">
-        <div className="container mx-auto p-6">
+        <div className="max-w-[1600px] mx-auto p-6">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -117,7 +117,7 @@ export default function RateCardDetailPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="max-w-[1600px] mx-auto p-6 space-y-6">
         <RateCardBreadcrumbs />
 
       {/* Header */}

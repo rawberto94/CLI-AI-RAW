@@ -206,7 +206,7 @@ export default function StoragePage({ params }: { params: Promise<{ id: string }
         if (res.ok) {
           const raw = await res.json();
           const data = raw.data ?? raw;
-          if (data.id) {
+          if (data?.id) {
             setContract({
               id: data.id,
               title: data.contractTitle || data.filename || 'Untitled Contract',
@@ -228,27 +228,29 @@ export default function StoragePage({ params }: { params: Promise<{ id: string }
 
   const handleStore = async () => {
     setStoring(true);
-    
-    // Simulate storing
-    await new Promise(resolve => setTimeout(resolve, 2500));
-    
-    // Update contract status
+
     try {
-      await fetch(`/api/contracts/${id}`, {
-        method: 'PATCH',
+      const response = await fetch(`/api/contracts/${id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'complete' }),
+        body: JSON.stringify({ status: 'COMPLETED' }),
       });
-    } catch {
-      // Error handled silently
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => null);
+        throw new Error(error?.error?.message || error?.message || 'Failed to finalize contract');
+      }
+
+      toast.success('Contract stored successfully!', {
+        description: 'The signed contract has been finalized and archived.',
+      });
+
+      setStored(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to finalize contract');
+    } finally {
+      setStoring(false);
     }
-    
-    toast.success('Contract stored successfully!', {
-      description: 'The contract has been archived and is ready for access.',
-    });
-    
-    setStored(true);
-    setStoring(false);
   };
 
   const handleCopyLink = () => {

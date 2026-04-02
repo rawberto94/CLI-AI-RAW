@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 /**
  * E2E Test: Rate Card Creation Flow
@@ -103,7 +103,7 @@ test.describe('Rate Card Creation Flow', () => {
     });
 
     // Step 7: Verify via API
-    const rateCardsResponse = await request.get('http://localhost:3000/api/rate-cards', {
+    const rateCardsResponse = await request.get('/api/rate-cards', {
       headers: { 'x-tenant-id': testTenantId }
     });
     
@@ -161,7 +161,7 @@ test.describe('Rate Card Creation Flow', () => {
 
   test('should edit existing rate card', async ({ page, request }) => {
     // First create a rate card via API
-    const createResponse = await request.post('http://localhost:3000/api/rate-cards', {
+    const createResponse = await request.post('/api/rate-cards', {
       headers: { 
         'x-tenant-id': testTenantId,
         'Content-Type': 'application/json'
@@ -208,7 +208,7 @@ test.describe('Rate Card Creation Flow', () => {
       await page.waitForTimeout(1000);
       
       // Check via API
-      const updatedResponse = await request.get(`http://localhost:3000/api/rate-cards/${cardId}`, {
+      const updatedResponse = await request.get(`/api/rate-cards/${cardId}`, {
         headers: { 'x-tenant-id': testTenantId }
       });
       

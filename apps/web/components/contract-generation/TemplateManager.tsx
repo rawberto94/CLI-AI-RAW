@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText,
@@ -77,6 +78,7 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
+import { coerceTemplateCategory } from '@/lib/drafting/template-routing';
 import type { Template, TemplateCategory, LibraryClause } from '@/types/contract-generation';
 
 // ====================
@@ -660,6 +662,8 @@ function TemplateStats({ templates, loading }: TemplateStatsProps) {
 export function TemplateManager() {
   const { useRealData } = useDataMode();
   const { toast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
@@ -669,6 +673,20 @@ export function TemplateManager() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [favorites, setFavorites] = useState<Set<string>>(new Set(['t1', 't3']));
   const [activeTab, setActiveTab] = useState('all');
+
+  useEffect(() => {
+    const requestedCategory = coerceTemplateCategory(searchParams?.get('category'));
+    const requestedSearch = searchParams?.get('search')?.trim() || '';
+
+    setSelectedCategory((currentValue) => {
+      const nextValue = requestedCategory || 'all';
+      return currentValue === nextValue ? currentValue : nextValue;
+    });
+
+    setSearchQuery((currentValue) => (
+      currentValue === requestedSearch ? currentValue : requestedSearch
+    ));
+  }, [searchParams]);
 
   // Fetch templates from API or use mock data
   useEffect(() => {
@@ -680,9 +698,12 @@ export function TemplateManager() {
         if (useRealData) {
           const data = await fetchTemplates(searchQuery, selectedCategory);
           setTemplates(data);
+        } else {
+          setTemplates(mockTemplates);
         }
       } catch {
-        setError('Failed to load templates.');
+        setTemplates(mockTemplates);
+        setError('Failed to load templates. Showing fallback templates.');
       } finally {
         setLoading(false);
       }
@@ -775,7 +796,7 @@ export function TemplateManager() {
     setLoading(true);
     try {
       const data = await fetchTemplates(searchQuery, selectedCategory);
-      setTemplates(data.length > 0 ? data : mockTemplates);
+      setTemplates(data);
       setError(null);
       toast({
         title: 'Refreshed',
@@ -793,8 +814,12 @@ export function TemplateManager() {
     }
   }, [searchQuery, selectedCategory, toast]);
 
+  const handleUseTemplate = useCallback((template: Template) => {
+    router.push(`/drafting/copilot?template=${template.id}&name=${encodeURIComponent(template.name)}`);
+  }, [router]);
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="max-w-[1600px] mx-auto py-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -914,7 +939,7 @@ export function TemplateManager() {
               onEdit={() => {}}
               onDuplicate={() => handleDuplicate(template)}
               onPreview={() => {}}
-              onUse={() => {}}
+              onUse={() => handleUseTemplate(template)}
               onDelete={() => handleDelete(template.id)}
             />
           ))}

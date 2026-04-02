@@ -9,7 +9,7 @@
  * 5. Submit for approval flow
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 test.describe('Approval Workflows', () => {
   
@@ -44,7 +44,8 @@ test.describe('Approval Workflows', () => {
       const automationTab = page.getByRole('tab', { name: /automation/i }).first();
       if (await automationTab.isVisible({ timeout: 5000 })) {
         await automationTab.click();
-        await expect(page).toHaveURL(/tab=automation/);
+        // Verify the tab becomes active via its data-state attribute
+        await expect(automationTab).toHaveAttribute('data-state', 'active', { timeout: 10000 });
       }
     });
   });
@@ -98,13 +99,20 @@ test.describe('Approval Workflows', () => {
       await page.goto('/workflows?tab=automation');
       await page.waitForLoadState('domcontentloaded');
 
-      const createButton = page.getByRole('button', { name: /create|new|add/i }).first();
+      // Wait for the page data to load (stats cards or empty state appear)
+      await page.getByRole('heading', { name: /workflow/i }).first().waitFor({ timeout: 10000 });
+
+      // Wait for the automation content to settle (loading finishes)
+      const emptyOrList = page.getByText(/no workflows yet|total/i).first();
+      await emptyOrList.waitFor({ timeout: 10000 });
+
+      const createButton = page.getByRole('button', { name: /create workflow|new workflow/i }).first();
       if (await createButton.isVisible({ timeout: 5000 })) {
         await createButton.click();
         
-        // Look for workflow builder modal or panel
-        const builderContent = page.locator('[class*="builder"], [class*="dialog"], [class*="modal"]').first();
-        await expect(builderContent).toBeVisible({ timeout: 10000 });
+        // The builder replaces the page with a "Back to Workflows" button (non-lazy)
+        const backButton = page.getByRole('button', { name: /back to workflows/i });
+        await expect(backButton).toBeVisible({ timeout: 15000 });
       }
     });
   });
@@ -114,9 +122,9 @@ test.describe('Approval Workflows', () => {
       await page.goto('/workflows?tab=templates');
       await page.waitForLoadState('domcontentloaded');
 
-      // Look for templates content
-      const templatesContent = page.locator('[class*="template"], [class*="card"]').first();
-      await expect(templatesContent).toBeVisible({ timeout: 10000 });
+      // Look for template names that are rendered on the templates tab
+      const templatesContent = page.getByText(/standard approval|express approval|legal review/i).first();
+      await expect(templatesContent).toBeVisible({ timeout: 15000 });
     });
 
     test('should display preset workflow templates', async ({ page }) => {

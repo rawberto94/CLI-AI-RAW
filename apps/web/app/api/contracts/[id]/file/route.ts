@@ -206,16 +206,22 @@ export async function GET(
 
     // If S3 failed or not S3 path, try local file system
     if (!fileBuffer) {
-      // Sanitize file paths to prevent path traversal
-      const safeFileName = contract.fileName ? sanitizePath(contract.fileName) : '';
-      const safeStoragePath = contract.storagePath ? sanitizePath(contract.storagePath) : '';
-      
       // Check for path traversal attempts
       if (hasPathTraversal(contract.fileName || '') || hasPathTraversal(contract.storagePath || '')) {
         return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid file path', 400);
       }
       
-      const localPath = safeStoragePath || path.join(process.cwd(), 'uploads', safeFileName);
+      // storagePath may be an absolute path (e.g. /app/apps/web/uploads/...) —
+      // use it directly when it starts with '/'.  Only sanitize and build a
+      // relative path for non-absolute / fileName-only fallbacks.
+      let localPath: string;
+      if (contract.storagePath && path.isAbsolute(contract.storagePath)) {
+        localPath = contract.storagePath;
+      } else {
+        const safeFileName = contract.fileName ? sanitizePath(contract.fileName) : '';
+        const safeStoragePath = contract.storagePath ? sanitizePath(contract.storagePath) : '';
+        localPath = safeStoragePath || path.join(process.cwd(), 'uploads', safeFileName);
+      }
       
       try {
         // Check if file exists

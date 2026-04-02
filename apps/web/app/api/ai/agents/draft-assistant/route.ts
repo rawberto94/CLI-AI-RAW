@@ -25,6 +25,10 @@ import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { getCircuitBreaker } from '@/lib/ai/circuit-breaker';
+import {
+  formatPlaybookPromptContext,
+  resolveRequestedPlaybook,
+} from '@/lib/playbooks/copilot-playbook';
 
 export const maxDuration = 120;
 
@@ -47,8 +51,12 @@ interface DraftAssistantRequest {
     tone?: 'formal' | 'standard' | 'plain-english';
     templateId?: string;
     title?: string;
+    currentContent?: string;
+    selectedText?: string;
+    documentSections?: string[];
+    playbookId?: string;
   };
-  action?: 'chat' | 'generate';
+  action?: 'chat' | 'generate' | 'editor_assist';
 }
 
 interface GenerationStep {
@@ -56,6 +64,15 @@ interface GenerationStep {
   name: string;
   status: 'running' | 'completed' | 'skipped' | 'failed';
   durationMs?: number;
+}
+
+interface EditorAssistResponse {
+  title: string;
+  assistantMessage: string;
+  draftHtml: string;
+  applyMode: 'replace_selection' | 'insert_at_cursor' | 'none';
+  quickReplies: Array<{ label: string; value: string }>;
+  followUpQuestion?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,6 +92,28 @@ const CONTRACT_TYPES = [
   { label: 'Lease', value: 'I need a Lease Agreement' },
   { label: 'Amendment', value: 'I need a Contract Amendment' },
 ];
+
+const EDITOR_ASSIST_SYSTEM_PROMPT = `You are ConTigo's in-editor contract copilot. The user already has a live contract draft open in the editor.
+
+Your job is to help them improve the current draft quickly and cleanly.
+
+Return valid JSON with exactly these fields:
+- title: short label for the response card (2-5 words)
+- assistantMessage: brief explanation of what you drafted or changed (max 2 short sentences)
+- draftHtml: directly usable HTML fragment for the editor. Use tags p, ul, ol, li, strong, em, h2, and h3 only. Return an empty string if there is nothing to insert.
+- applyMode: one of "replace_selection", "insert_at_cursor", or "none"
+- quickReplies: up to 4 objects with {"label":"...","value":"..."}
+- followUpQuestion: optional single short question if one critical detail is truly needed
+
+Behavior rules:
+- Act like an editor assistant, not an intake bot.
+- Prefer drafting a sensible default instead of asking broad clarifying questions.
+- If the user asks to add a clause, draft the clause.
+- If the user asks to rewrite or improve text and selectedText is provided, draft replacement language for that text.
+- Use the contract type, section headings, selected text, and document excerpt to stay consistent with the draft.
+- If you make an assumption, state it briefly in assistantMessage and still provide useful draftHtml.
+- Do not output markdown or code fences.
+- Keep the drafting business-ready and concise.`;
 
 // ---------------------------------------------------------------------------
 // SSE Helpers
@@ -443,6 +482,208 @@ function runFallbackFlow(
         },
       };
     }
+  }
+}
+
+function inferEditorTopic(message: string): 'payment' | 'termination' | 'confidentiality' | 'liability' | 'gdpr' | 'rewrite' | 'generic' {
+  const lower = message.toLowerCase();
+
+  if (/(rewrite|revise|redraft|improve|simplify|tighten)/.test(lower)) return 'rewrite';
+  if (/(payment|invoice|fee|billing|net\s*\d+)/.test(lower)) return 'payment';
+  if (/(terminate|termination|convenience|wind\s*down)/.test(lower)) return 'termination';
+  if (/(confidential|nda|non-disclosure|disclosure)/.test(lower)) return 'confidentiality';
+  if (/(liability|cap|damages|indirect|consequential)/.test(lower)) return 'liability';
+  if (/(gdpr|data protection|privacy|personal data|processor|controller)/.test(lower)) return 'gdpr';
+
+  return 'generic';
+}
+
+function runEditorAssistFallback(
+  message: string,
+  context: DraftAssistantRequest['context'],
+): EditorAssistResponse {
+  const topic = inferEditorTopic(message);
+  const hasSelection = Boolean(context.selectedText?.trim());
+
+  switch (topic) {
+    case 'payment':
+      return {
+        title: 'Payment Terms',
+        assistantMessage:
+          'I drafted a balanced payment clause using a standard net 30 structure, a short invoice dispute window, and a capped late-payment remedy.',
+        draftHtml:
+          '<h2>Fees and Payment</h2><p>Customer shall pay the fees set out in the applicable Statement of Work or Order Form. Unless otherwise agreed in writing, Supplier shall invoice Customer monthly in arrears, and Customer shall pay each undisputed invoice within thirty (30) days after receipt.</p><p>Customer shall notify Supplier in writing of any good-faith dispute regarding an invoice within ten (10) days after receipt, describing the basis of the dispute in reasonable detail. The parties shall work together promptly to resolve any such dispute, and Customer shall timely pay all undisputed amounts.</p><p>Any undisputed amount not paid when due may accrue interest at the lesser of one percent (1.0%) per month or the maximum rate permitted by applicable law, from the due date until paid in full.</p>',
+        applyMode: hasSelection ? 'replace_selection' : 'insert_at_cursor',
+        quickReplies: [
+          { label: 'Net 15', value: 'Use net 15 payment terms instead.' },
+          { label: 'Milestones', value: 'Rewrite this as milestone-based payments.' },
+          { label: 'No late fee', value: 'Remove the late payment interest language.' },
+          { label: 'Advance billing', value: 'Rewrite this for invoicing in advance.' },
+        ],
+      };
+
+    case 'termination':
+      return {
+        title: 'Termination Clause',
+        assistantMessage:
+          'I drafted a practical termination clause with cause, cure rights, and a clean transition obligation.',
+        draftHtml:
+          '<h2>Termination</h2><p>Either party may terminate this Agreement for material breach if the other party fails to cure such breach within thirty (30) days after receiving written notice describing the breach in reasonable detail.</p><p>Customer may terminate this Agreement for convenience upon sixty (60) days prior written notice, provided that Customer shall pay Supplier for Services properly performed and authorized expenses incurred through the effective date of termination.</p><p>Upon expiration or termination of this Agreement, each party shall promptly return or destroy the other party\'s Confidential Information, except to the extent retention is required by applicable law, and Supplier shall reasonably cooperate in an orderly transition of the Services.</p>',
+        applyMode: hasSelection ? 'replace_selection' : 'insert_at_cursor',
+        quickReplies: [
+          { label: 'Mutual convenience', value: 'Make termination for convenience mutual.' },
+          { label: 'Shorter notice', value: 'Change the convenience notice period to 30 days.' },
+          { label: 'Customer only', value: 'Keep convenience termination only for the customer.' },
+        ],
+      };
+
+    case 'confidentiality':
+      return {
+        title: 'Confidentiality',
+        assistantMessage:
+          'I drafted a standard confidentiality clause that covers use restrictions, permitted disclosures, and return-or-destroy obligations.',
+        draftHtml:
+          '<h2>Confidentiality</h2><p>Each party receiving Confidential Information from the other party shall protect such Confidential Information using at least the same degree of care it uses to protect its own similar information, and in no event less than reasonable care. The receiving party shall use Confidential Information solely to perform or exercise its rights under this Agreement and shall not disclose it to any third party except to its employees, contractors, and professional advisers who have a need to know and are bound by confidentiality obligations no less protective than those set out herein.</p><p>The foregoing obligations shall not apply to information that the receiving party can demonstrate is or becomes publicly available through no fault of the receiving party, was already lawfully known to the receiving party without restriction, is lawfully received from a third party without restriction, or is independently developed without use of the disclosing party\'s Confidential Information.</p><p>Upon written request or upon expiration or termination of this Agreement, the receiving party shall promptly return or destroy the disclosing party\'s Confidential Information, except to the extent retention is required by applicable law.</p>',
+        applyMode: hasSelection ? 'replace_selection' : 'insert_at_cursor',
+        quickReplies: [
+          { label: 'Mutual', value: 'Make this expressly mutual between both parties.' },
+          { label: '5-year term', value: 'Add a five-year confidentiality survival period.' },
+          { label: 'Trade secrets', value: 'Make trade secret obligations perpetual.' },
+        ],
+      };
+
+    case 'liability':
+      return {
+        title: 'Liability Cap',
+        assistantMessage:
+          'I drafted a market-standard liability limitation with a fee-based cap and a carve-out structure.',
+        draftHtml:
+          '<h2>Limitation of Liability</h2><p>Except for liability arising from a party\'s gross negligence, willful misconduct, breach of its confidentiality obligations, infringement of the other party\'s intellectual property rights, or amounts payable under its indemnification obligations, neither party shall be liable to the other party for any indirect, incidental, special, consequential, exemplary, or punitive damages, or for any loss of profits, revenue, goodwill, or anticipated savings, arising out of or related to this Agreement.</p><p>Except for the foregoing excluded liabilities, each party\'s aggregate liability arising out of or related to this Agreement shall not exceed the total fees paid or payable by Customer under this Agreement during the twelve (12) months preceding the event giving rise to the claim.</p>',
+        applyMode: hasSelection ? 'replace_selection' : 'insert_at_cursor',
+        quickReplies: [
+          { label: '2x fees', value: 'Increase the liability cap to two times the fees paid in the prior 12 months.' },
+          { label: 'Supplier friendly', value: 'Make the liability clause more supplier-friendly.' },
+          { label: 'Customer friendly', value: 'Make the liability clause more customer-protective.' },
+        ],
+      };
+
+    case 'gdpr':
+      return {
+        title: 'Data Protection',
+        assistantMessage:
+          'I drafted a concise GDPR-style data protection clause covering controller-processor responsibilities and security measures.',
+        draftHtml:
+          '<h2>Data Protection</h2><p>To the extent Supplier processes Personal Data on behalf of Customer in connection with the Services, Supplier shall process such Personal Data only on documented instructions from Customer, shall ensure that personnel authorized to process Personal Data are bound by appropriate confidentiality obligations, and shall implement appropriate technical and organizational measures to protect Personal Data against accidental or unlawful destruction, loss, alteration, unauthorized disclosure of, or access to Personal Data.</p><p>Supplier shall promptly notify Customer of any confirmed Personal Data Breach affecting Personal Data processed under this Agreement and shall provide reasonable cooperation to assist Customer in meeting its obligations under applicable data protection laws. Supplier shall not engage a sub-processor without ensuring that such sub-processor is bound by written obligations providing materially the same level of protection for Personal Data as set out in this Agreement.</p>',
+        applyMode: hasSelection ? 'replace_selection' : 'insert_at_cursor',
+        quickReplies: [
+          { label: 'Add SCCs', value: 'Add language covering international data transfers and standard contractual clauses.' },
+          { label: 'Short breach notice', value: 'Add a 48-hour breach notification deadline.' },
+          { label: 'Customer-friendly', value: 'Make the data protection clause more customer-protective.' },
+        ],
+      };
+
+    case 'rewrite':
+      return {
+        title: 'Rewrite Suggestion',
+        assistantMessage:
+          hasSelection
+            ? 'I can rewrite the selected text, but the AI editor service is unavailable right now. Please try again once AI generation is available.'
+            : 'Select the text you want rewritten and try again, or use one of the clause prompts for a ready-to-insert suggestion.',
+        draftHtml: '',
+        applyMode: 'none',
+        quickReplies: [
+          { label: 'Simplify wording', value: 'Simplify the selected text into plain English.' },
+          { label: 'Make more protective', value: 'Rewrite the selected text to be more protective of our side.' },
+        ],
+        followUpQuestion: hasSelection ? undefined : 'Which section should I rewrite?',
+      };
+
+    default:
+      return {
+        title: 'Drafting Help',
+        assistantMessage:
+          'I can help by drafting a clause, rewriting selected language, or tightening a risky provision. Tell me what you want to add or improve, and I will prepare insertion-ready text.',
+        draftHtml: '',
+        applyMode: 'none',
+        quickReplies: [
+          { label: 'Add payment terms', value: 'Add payment terms to this draft.' },
+          { label: 'Add termination clause', value: 'Add a termination clause to this draft.' },
+          { label: 'Limit liability', value: 'Add a balanced limitation of liability clause.' },
+          { label: 'Add GDPR clause', value: 'Add a GDPR-style data protection clause.' },
+        ],
+        followUpQuestion: 'What clause or section should I work on?',
+      };
+  }
+}
+
+async function runEditorAssist(
+  message: string,
+  context: DraftAssistantRequest['context'],
+  playbookPromptContext?: string,
+): Promise<EditorAssistResponse> {
+  if (!hasAIClientConfig()) {
+    return runEditorAssistFallback(message, context);
+  }
+
+  try {
+    const openai = createOpenAIClient();
+    const model = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o';
+    const excerpt = (context.currentContent || '').slice(0, 6000);
+    const selectedText = (context.selectedText || '').slice(0, 2000);
+    const headings = (context.documentSections || []).slice(0, 20);
+
+    const response = await openai.chat.completions.create({
+      model,
+      temperature: 0.2,
+      max_tokens: 1800,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: EDITOR_ASSIST_SYSTEM_PROMPT },
+        {
+          role: 'user',
+          content: `User request:\n${message}\n\nContract type: ${context.contractType || 'Unknown'}\nTone: ${context.tone || 'standard'}\nSelected text:\n${selectedText || 'None'}\n\nDocument sections:\n${headings.length > 0 ? headings.join(' | ') : 'None provided'}\n\nCurrent draft excerpt:\n${excerpt || 'No draft content yet.'}${playbookPromptContext ? `\n\nActive policy pack guidance:\n${playbookPromptContext}` : ''}`,
+        },
+      ],
+    });
+
+    const raw = response.choices[0]?.message?.content || '{}';
+    const parsed = JSON.parse(raw) as Partial<EditorAssistResponse> & {
+      quickReplies?: Array<{ label?: string; value?: string }>;
+    };
+    const quickReplies = Array.isArray(parsed.quickReplies)
+      ? parsed.quickReplies
+          .filter(
+            (item): item is { label: string; value: string } =>
+              Boolean(item && typeof item.label === 'string' && item.label.trim() && typeof item.value === 'string' && item.value.trim())
+          )
+          .slice(0, 4)
+      : [];
+
+    const applyMode = parsed.applyMode === 'replace_selection' || parsed.applyMode === 'insert_at_cursor' || parsed.applyMode === 'none'
+      ? parsed.applyMode
+      : selectedText
+        ? 'replace_selection'
+        : 'insert_at_cursor';
+
+    return {
+      title: typeof parsed.title === 'string' && parsed.title.trim() ? parsed.title.trim() : 'Suggested Language',
+      assistantMessage:
+        typeof parsed.assistantMessage === 'string' && parsed.assistantMessage.trim()
+          ? parsed.assistantMessage.trim()
+          : 'I drafted language you can insert directly into the contract.',
+      draftHtml: typeof parsed.draftHtml === 'string' ? parsed.draftHtml.trim() : '',
+      applyMode,
+      quickReplies,
+      followUpQuestion:
+        typeof parsed.followUpQuestion === 'string' && parsed.followUpQuestion.trim()
+          ? parsed.followUpQuestion.trim()
+          : undefined,
+    };
+  } catch (error) {
+    logger.warn('Editor assist fell back to deterministic response', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    return runEditorAssistFallback(message, context);
   }
 }
 
@@ -852,6 +1093,35 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
             logger.error('Generation pipeline error', { requestId: ctx.requestId, error: msg });
             emit('error', { message: 'Draft generation failed. Please try again.' });
           }
+          emit('done', { done: true });
+          controller.close();
+          return;
+        }
+
+        // ---------------------------------------------------------------
+        // Action: editor_assist — focused in-editor drafting help
+        // ---------------------------------------------------------------
+        if (body.action === 'editor_assist') {
+          const resolvedPlaybook = await resolveRequestedPlaybook(tenantId, undefined, body.context.playbookId);
+          const result = await runEditorAssist(
+            body.message,
+            body.context,
+            resolvedPlaybook ? formatPlaybookPromptContext(resolvedPlaybook) : undefined,
+          );
+
+          emit('assistant_message', {
+            title: result.title,
+            content: result.assistantMessage,
+            draftHtml: result.draftHtml,
+            applyMode: result.applyMode,
+            followUpQuestion: result.followUpQuestion || '',
+          });
+
+          if (result.quickReplies.length > 0) {
+            emit('suggestions', { suggestions: result.quickReplies });
+          }
+
+          assistantBreaker.recordSuccess();
           emit('done', { done: true });
           controller.close();
           return;

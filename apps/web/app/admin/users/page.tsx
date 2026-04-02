@@ -254,7 +254,7 @@ export default function UsersPage() {
   const pendingInvitations = invitations.filter(i => i.status === 'PENDING');
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
+    <div className="max-w-[1600px] mx-auto py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">

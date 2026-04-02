@@ -89,3 +89,4 @@ nohup.out
 *.tsbuildinfo
 *.bak
 *.old
+uploads-persist/

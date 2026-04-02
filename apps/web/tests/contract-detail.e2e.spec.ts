@@ -12,7 +12,7 @@
  * Requirements: CONTRACT_SYSTEM_ANALYSIS_VERIFIED - Gap: No Contract Detail Page E2E Tests
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 test.describe('Contract Detail Page', () => {
   const testTenantId = 'test-tenant-e2e-detail';

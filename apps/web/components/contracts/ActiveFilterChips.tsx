@@ -29,6 +29,7 @@ interface ActiveFilterChipsProps {
   onClearFilter: (filterType: keyof FilterState, value?: any) => void;
   onClearSearch: () => void;
   onClearAll: () => void;
+  categoryLabels?: Record<string, string>;
 }
 
 export function ActiveFilterChips({
@@ -37,6 +38,7 @@ export function ActiveFilterChips({
   onClearFilter,
   onClearSearch,
   onClearAll,
+  categoryLabels = {},
 }: ActiveFilterChipsProps) {
   const hasActiveFilters =
     filters.statuses.length > 0 ||
@@ -120,7 +122,7 @@ export function ActiveFilterChips({
         <FilterChip
           key={category}
           icon={<Tag className="h-3 w-3" />}
-          label={category}
+          label={categoryLabels[category] || category}
           onRemove={() => onClearFilter('categories', category)}
           color="amber"
         />
@@ -281,13 +283,20 @@ function FilterChip({ icon, label, onRemove, color }: FilterChipProps) {
 // Helper functions for formatting
 function formatStatus(status: string): string {
   const statusMap: Record<string, string> = {
+    uploaded: 'Uploaded',
+    processing: 'Processing',
+    completed: 'Active',
+    failed: 'Failed',
+    archived: 'Archived',
     DRAFT: 'Draft',
     PENDING: 'Pending',
+    UPLOADED: 'Uploaded',
     PROCESSING: 'Processing',
     ACTIVE: 'Active',
-    COMPLETED: 'Completed',
+    COMPLETED: 'Active',
     FAILED: 'Failed',
     EXPIRED: 'Expired',
+    ARCHIVED: 'Archived',
   };
   return statusMap[status] || status;
 }

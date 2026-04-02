@@ -8,6 +8,24 @@ import { NextRequest } from 'next/server';
 import { getLegalReviewService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
+function normalizeRiskThresholds(riskThresholds: Record<string, unknown> = {}) {
+  const criticalCount = Number(
+    riskThresholds.criticalCount ?? riskThresholds.criticalCountThreshold ?? 2,
+  );
+  const highRiskScore = Number(
+    riskThresholds.highRiskScore ?? riskThresholds.highRiskScoreThreshold ?? 70,
+  );
+  const overallAcceptable = Number(
+    riskThresholds.overallAcceptable ?? riskThresholds.acceptableScoreThreshold ?? 40,
+  );
+
+  return {
+    criticalCount: Number.isFinite(criticalCount) ? criticalCount : 2,
+    highRiskScore: Number.isFinite(highRiskScore) ? highRiskScore : 70,
+    overallAcceptable: Number.isFinite(overallAcceptable) ? overallAcceptable : 40,
+  };
+}
+
 // ============================================================================
 // GET - List all playbooks for tenant
 // ============================================================================
@@ -32,6 +50,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const body = await request.json();
   const {
     name,
+    description,
     contractTypes = [],
     clauses = [],
     fallbackPositions = {},
@@ -49,11 +68,12 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const legalReviewService = getLegalReviewService();
   const playbook = await legalReviewService.createPlaybook({
     name,
+    description,
     tenantId,
     contractTypes,
     clauses,
     fallbackPositions,
-    riskThresholds,
+    riskThresholds: normalizeRiskThresholds(riskThresholds),
     redFlags,
     isDefault,
     createdBy: ctx.userId,

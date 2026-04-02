@@ -1450,7 +1450,7 @@ async function executeNavigate(args: Record<string, unknown>, start: number): Pr
     admin: '/admin',
     renewals: '/renewals',
     obligations: '/obligations',
-    generate: '/generate',
+    generate: '/drafting',
     drafting: '/drafting',
     'drafting-copilot': '/drafting/copilot',
     approvals: '/approvals',

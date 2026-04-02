@@ -261,7 +261,7 @@ export default function ContractsPage() {
 
   // Update polling state when contract data changes
   useEffect(() => {
-    const anyProcessing = contractsData?.contracts?.some((c: Contract) => c.status === 'processing') ?? false;
+    const anyProcessing = contractsData?.contracts?.some((c: Contract) => c.status === 'processing' || c.status === 'queued') ?? false;
     if (anyProcessing && !hasProcessingContracts) {
       // Started processing — record time for adaptive interval
       processingStartTimeRef.current = Date.now();
@@ -368,28 +368,42 @@ export default function ContractsPage() {
     return Array.from(terms).filter(Boolean).sort();
   }, [contracts]);
 
-  // Apply only client-side supplementary filters (signature, documentType, etc.)
-  // Server already handles search, status, type, category, date, value filters.
+  const categoryLabels = useMemo(
+    () => Object.fromEntries(categories.map((category) => [category.id, category.name])),
+    [categories],
+  );
+
+  // Apply a local safety pass with the same criteria while keeping the
+  // server as the source of truth for totals and pagination.
   const filteredContracts = useMemo(
     () =>
       applyContractFilters(contracts, {
-        searchQuery: '', // Server already filtered by search
-        filterState: {}, // Server already filtered by status/type/category
-        dateRangePreset: undefined, // Server already filtered
+        searchQuery,
+        filterState,
+        dateRangePreset: dateRangeFilter,
         expirationFilters,
         signatureFilters,
         documentTypeFilters,
-        valueRangePreset: undefined, // Server already filtered
+        valueRangePreset: valueRangeFilter,
       }),
-    [contracts, expirationFilters, signatureFilters, documentTypeFilters],
+    [
+      contracts,
+      searchQuery,
+      filterState,
+      dateRangeFilter,
+      expirationFilters,
+      signatureFilters,
+      documentTypeFilters,
+      valueRangeFilter,
+    ],
   );
 
-  // Server already sorts — skip redundant client-side sort.
-  // When client-side supplementary filters are active, use filtered count for accurate pagination.
-  const hasClientFilters = expirationFilters.length > 0 || signatureFilters.length > 0 || documentTypeFilters.length > 0;
-  const effectiveTotal = hasClientFilters ? filteredContracts.length : (contractsData?.total ?? 0);
+  // Server already sorts and paginates.
+  const effectiveTotal = contractsData?.total ?? filteredContracts.length;
   const totalPages = Math.ceil(effectiveTotal / pageSize);
   const paginatedContracts = filteredContracts;
+  const resultRangeStart = effectiveTotal === 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
+  const resultRangeEnd = effectiveTotal === 0 ? 0 : Math.min(currentPage * pageSize, effectiveTotal);
 
   // Sparkline trend data — computed once, shared by both heroStats branches
   const trendData = useMemo(() => {
@@ -478,7 +492,7 @@ export default function ContractsPage() {
       highRiskContracts: highRisk,
       riskTrend: highRisk > 3 ? 'up' : 'down',
       processingCount: processing,
-      pendingReview: contracts.filter(c => c.status === 'pending').length,
+      pendingReview: contracts.filter(c => c.status === 'uploaded').length,
       recentlyAdded: contracts.filter(c => {
         if (!c.createdAt) return false;
         return new Date(c.createdAt).getTime() > now - 7 * 24 * 60 * 60 * 1000;
@@ -663,7 +677,7 @@ export default function ContractsPage() {
             onRefresh={() => refetch()}
             isRefreshing={true}
           />
-          <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6 space-y-5">
+          <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6 space-y-5">
             {/* Skeleton Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[...Array(4)].map((_, i) => (
@@ -727,13 +741,13 @@ export default function ContractsPage() {
         }}
       />
       
-      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6 space-y-5">
+      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6 space-y-5">
 
         {/* Hero Dashboard */}
         <ContractsHeroDashboard
           stats={heroStats}
           onUploadClick={() => router.push('/upload')}
-          onGenerateClick={() => router.push('/generate')}
+          onGenerateClick={() => router.push('/drafting')}
           onCompareClick={() => {
             if (selectedContracts.size === 2) {
               const ids = Array.from(selectedContracts);
@@ -769,7 +783,7 @@ export default function ContractsPage() {
             categories={categories.map(cat => ({ id: cat.id, name: cat.name, color: cat.color }))}
             onClearFilters={clearFilters}
             activeFilterCount={activeFilterCount}
-            totalResults={contractsData?.total ?? 0}
+            totalResults={effectiveTotal}
             isLoading={isRefetching}
             onAISearchClick={handleAISearchClick}
           />
@@ -847,7 +861,7 @@ export default function ContractsPage() {
                 filters={filterState}
                 onChange={setFilterState}
                 onClose={() => setShowAdvancedFilters(false)}
-                availableCategories={categories.map(cat => cat.name)}
+                availableCategories={categories.map(cat => ({ id: cat.id, name: cat.name }))}
                 availableSuppliers={availableSuppliers}
                 availableClients={availableClients}
                 availableContractTypes={availableContractTypes}
@@ -870,6 +884,7 @@ export default function ContractsPage() {
             onClearAll={() => {
               clearFilters();
             }}
+            categoryLabels={categoryLabels}
           />
           
           {/* Saved Search Presets */}
@@ -910,7 +925,7 @@ export default function ContractsPage() {
           <div className="flex items-center gap-3">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-slate-50 to-slate-100/50 rounded-xl border border-slate-200/60">
               <span className="text-2xl font-bold text-slate-900 tabular-nums">
-                <AnimatedCounter value={contractsData?.total ?? 0} />
+                <AnimatedCounter value={effectiveTotal} />
               </span>
               <span className="text-sm text-slate-500 font-medium">contracts</span>
               {hasActiveFilters && (
@@ -1067,7 +1082,7 @@ export default function ContractsPage() {
             >
               <Card className="overflow-hidden bg-white border-slate-200 shadow-sm rounded-xl" role="table" aria-label="Contracts list">
                 {/* Table Header */}
-                <div role="row" className="flex items-center gap-4 px-5 py-4 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider sticky top-16 lg:top-0 z-10">
+                <div role="row" className="flex items-center gap-4 px-5 py-4 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider sticky top-16 lg:top-0 z-30">
                   <div role="columnheader" className="w-10 flex-shrink-0 flex items-center justify-center">
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -1249,7 +1264,7 @@ export default function ContractsPage() {
                   
                   {/* Page Info */}
                   <div className="text-sm text-slate-600 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200">
-                    <span className="font-semibold text-slate-800 tabular-nums">{((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, effectiveTotal)}</span>
+                    <span className="font-semibold text-slate-800 tabular-nums">{resultRangeStart}–{resultRangeEnd}</span>
                     <span className="text-slate-400 mx-1.5"> of </span>
                     <span className="font-semibold text-slate-800 tabular-nums">{effectiveTotal}</span>
                     <span className="text-slate-500 ml-1"> contracts</span>

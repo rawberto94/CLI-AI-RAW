@@ -389,7 +389,7 @@ export default function PricingPage() {
 
       {/* Plans Overview */}
       <section className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               Choose Your Plan
@@ -723,7 +723,7 @@ export default function PricingPage() {
       <section className="py-32 px-6 bg-gradient-to-b from-gray-50 via-white to-gray-50 relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #8B5CF6 1px, transparent 0)', backgroundSize: '48px 48px' }} />
         <div className="absolute top-40 left-0 w-[800px] h-[800px] bg-gradient-to-r from-violet-100/30 to-transparent rounded-full blur-3xl" />
-        <div className="max-w-6xl mx-auto relative">
+        <div className="max-w-[1600px] mx-auto relative">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-gray-100 to-gray-50 border border-gray-200/50 rounded-full mb-6 shadow-sm">
               <Layers className="w-4 h-4 text-gray-600" aria-hidden="true" />

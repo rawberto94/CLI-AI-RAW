@@ -3,11 +3,11 @@
  * Tests main dashboard functionality, widgets, and KPIs
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 test.describe('Dashboard', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/dashboard');
     await page.waitForLoadState('domcontentloaded');
   });
 
@@ -17,16 +17,15 @@ test.describe('Dashboard', () => {
   });
 
   test('should display key performance metrics', async ({ page }) => {
-    // Look for common KPI indicators (numbers, percentages, currency values)
-    const metrics = page.locator('text=/\\$|\\d+%|\\d+\\.\\d+/').first();
-    await expect(metrics).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Total Contracts').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Renewals Due').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Portfolio Value').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should display recent contracts or activities', async ({ page }) => {
-    // Look for list of recent items
-    const recentItems = page.locator('[data-testid="recent-contracts"], [data-testid="recent-activities"], text=/recent/i').first();
-    await expect(recentItems).toBeVisible({ timeout: 10000 }).catch(() => {
-      console.log('Recent items section not found');
+    const recentItems = page.getByText(/contract lifecycle pipeline|recent contracts/i).first();
+    await expect(recentItems).toBeVisible({ timeout: 10000 }).catch(async () => {
+      await expect(page.getByText(/no contracts yet/i).first()).toBeVisible({ timeout: 5000 });
     });
   });
 
@@ -66,7 +65,7 @@ test.describe('Dashboard', () => {
         await link.click();
         await page.waitForLoadState('domcontentloaded');
         // Verify navigation occurred
-        await expect(page).not.toHaveURL(/^\/(dashboard)?$/);
+        await expect(page).not.toHaveURL(/\/dashboard$/);
       }
     }
   });

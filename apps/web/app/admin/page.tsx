@@ -517,7 +517,7 @@ export default function TenantAdminPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="container mx-auto py-8 px-4 max-w-6xl">
+      <div className="max-w-[1600px] mx-auto py-8 px-4">
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}

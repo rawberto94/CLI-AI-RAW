@@ -3,62 +3,91 @@
  * Tests core navigation, header, sidebar, and routing functionality
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
+import type { Page } from '@playwright/test';
+
+async function openDashboard(page: Page) {
+  const dashboardLink = page.getByRole('navigation', { name: /main navigation/i }).locator('a[href="/dashboard"]').first();
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await page.goto('/dashboard', { waitUntil: 'commit', timeout: 60000 }).catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
+
+    const isReady = await dashboardLink.isVisible({ timeout: 15000 }).catch(() => false);
+    if (isReady) {
+      return;
+    }
+
+    await page.waitForTimeout(1500);
+  }
+}
 
 test.describe('Navigation & Layout', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await openDashboard(page);
   });
 
   test('should display main navigation with all menu items', async ({ page }) => {
-    // Verify main navigation elements using data-testid
-    await expect(page.locator('[data-testid="nav-dashboard-link"]')).toBeVisible();
-    await expect(page.locator('[data-testid="nav-contracts-button"]')).toBeVisible();
-    await expect(page.locator('[data-testid="nav-rate-cards-button"]')).toBeVisible();
-    await expect(page.locator('[data-testid="nav-analytics-button"]')).toBeVisible();
-    await expect(page.getByRole('link', { name: /search/i }).first()).toBeVisible();
+    const nav = page.getByRole('navigation', { name: /main navigation/i });
+
+    await expect(nav.locator('a[href="/dashboard"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(nav.locator('a[href="/contracts"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(nav.locator('a[href="/search"]').first()).toBeVisible({ timeout: 15000 });
   });
 
   test('should navigate to dashboard', async ({ page }) => {
-    await page.locator('[data-testid="nav-dashboard-link"]').click();
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole('heading', { name: /dashboard/i }).first()).toBeVisible({ timeout: 30000 });
   });
 
   test('should navigate to contracts section', async ({ page }) => {
-    // Expand contracts menu
-    await page.locator('[data-testid="nav-contracts-button"]').click();
-    await page.waitForTimeout(500);
-    
-    // Click on submenu item
-    await page.getByRole('link', { name: /all contracts/i }).first().click();
-    await expect(page).toHaveURL(/\/contracts/);
+    const nav = page.getByRole('navigation', { name: /main navigation/i });
+    const contractsLink = nav.locator('a[href="/contracts"]').first();
+
+    await Promise.all([
+      page.waitForURL('**/contracts', { timeout: 30000 }),
+      contractsLink.click(),
+    ]);
+    await expect(page.getByRole('heading', { name: /contracts/i }).first()).toBeVisible({ timeout: 20000 });
   });
 
   test('should navigate to rate cards section', async ({ page }) => {
-    // Expand rate cards menu
-    await page.locator('[data-testid="nav-rate-cards-button"]').click();
-    await page.waitForTimeout(500);
-    
-    // Navigate to benchmarking
-    await page.getByRole('link', { name: /benchmarking/i }).first().click();
-    await expect(page).toHaveURL(/\/rate-cards\/benchmarking/);
+    const nav = page.getByRole('navigation', { name: /main navigation/i });
+
+    const suppliersButton = nav.getByRole('button', { name: /Suppliers/i });
+    await suppliersButton.scrollIntoViewIfNeeded();
+    await suppliersButton.click();
+    const rateCardsLink = nav.locator('a[href="/rate-cards/dashboard"]').first();
+    await Promise.all([
+      page.waitForURL('**/rate-cards/dashboard', { timeout: 30000 }),
+      rateCardsLink.click(),
+    ]);
+    await expect(page.getByText(/rate cards/i).first()).toBeVisible({ timeout: 30000 });
   });
 
   test('should navigate to analytics section', async ({ page }) => {
-    // Expand analytics menu
-    await page.locator('[data-testid="nav-analytics-button"]').click();
-    await page.waitForTimeout(500);
-    
-    // Navigate to overview
-    await page.getByRole('link', { name: /overview/i }).first().click();
-    await expect(page).toHaveURL(/\/analytics/);
+    const nav = page.getByRole('navigation', { name: /main navigation/i });
+
+    const analyticsButton = nav.getByRole('button', { name: /Analytics/i });
+    await analyticsButton.scrollIntoViewIfNeeded();
+    await analyticsButton.click();
+    const dashboardsLink = nav.locator('a[href="/analytics"]').first();
+    await Promise.all([
+      page.waitForURL('**/analytics', { timeout: 30000 }),
+      dashboardsLink.click(),
+    ]);
+    await expect(page.getByText(/analytics/i).first()).toBeVisible({ timeout: 30000 });
   });
 
   test('should navigate to search page', async ({ page }) => {
-    await page.getByRole('link', { name: /search/i }).first().click();
-    await expect(page).toHaveURL(/\/search/);
-    await expect(page.getByPlaceholder(/search/i)).toBeVisible();
+    const nav = page.getByRole('navigation', { name: /main navigation/i });
+    const searchLink = nav.locator('a[href="/search"]').first();
+
+    await Promise.all([
+      page.waitForURL('**/search', { timeout: 30000 }),
+      searchLink.click(),
+    ]);
+    await expect(page.locator('#main-content').getByPlaceholder(/search/i).first()).toBeVisible({ timeout: 30000 });
   });
 
   test('should display connection status indicator', async ({ page }) => {

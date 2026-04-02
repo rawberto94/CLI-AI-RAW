@@ -61,7 +61,7 @@ export default function TerminationWizardClient({ contractId }: TerminationWizar
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: 'TERMINATED',
+          status: 'CANCELLED',
           reason,
           notes,
           effectiveDate,

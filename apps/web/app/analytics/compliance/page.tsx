@@ -116,7 +116,7 @@ export default function ComplianceAnalyticsPage() {
     : 0;
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
+    <div className="max-w-[1600px] mx-auto py-8 space-y-6">
       {/* Breadcrumbs */}
       <div className="mb-2">
         <PageBreadcrumb />

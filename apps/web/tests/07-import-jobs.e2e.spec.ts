@@ -3,7 +3,7 @@
  * Tests data import, job processing, and status monitoring
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 test.describe('Import & Jobs', () => {
   

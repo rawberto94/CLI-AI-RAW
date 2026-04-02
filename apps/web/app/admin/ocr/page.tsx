@@ -535,7 +535,7 @@ export default function OCRAdminPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="max-w-[1600px] mx-auto py-8 px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

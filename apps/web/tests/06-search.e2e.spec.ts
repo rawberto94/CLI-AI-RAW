@@ -3,7 +3,7 @@
  * Tests search functionality, filters, and RAG integration
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 test.describe('Search Functionality', () => {
   

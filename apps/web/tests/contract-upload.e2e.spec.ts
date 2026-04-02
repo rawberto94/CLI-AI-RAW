@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -114,7 +114,7 @@ test.describe('Contract Upload Flow', () => {
     });
 
     // Step 11: Verify via API that contract was created
-    const contractResponse = await request.get(`http://localhost:3000/api/contracts/${contractId}`, {
+    const contractResponse = await request.get(`/api/contracts/${contractId}`, {
       headers: { 'x-tenant-id': testTenantId }
     });
     

@@ -121,7 +121,7 @@ export const ContractHeader = memo(function ContractHeader({
   }, [handleRenameSubmit, filename])
   return (
     <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50 sticky top-0 z-40 shadow-sm dark:shadow-slate-900/50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left: Back + Title */}
           <div className="flex items-center gap-4 min-w-0">

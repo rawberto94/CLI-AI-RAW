@@ -6,9 +6,10 @@
 'use client';
 
 import React, { createContext, useContext, useCallback, useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { useEventStream, StreamEvent } from '@/hooks/useEventStream';
 import { useToast } from '@/hooks/useToast';
-import { getTenantId } from '@/lib/tenant';
+import { getTenantId, setTenantId } from '@/lib/tenant';
 
 // ============================================================================
 // Event Types - Strongly typed event system
@@ -90,7 +91,17 @@ export function RealTimeProvider({
   autoReconnect = false, // Disabled by default to reduce noise
 }: RealTimeProviderProps) {
   const toast = useToast();
-  const resolvedTenantId = tenantId ?? getTenantId();
+  const { data: session } = useSession();
+
+  // Resolve tenant ID from: prop > session > localStorage > env
+  // Also sync session tenantId to localStorage so other utilities can use it
+  const sessionTenantId = (session?.user as { tenantId?: string } | undefined)?.tenantId;
+  if (sessionTenantId && typeof window !== 'undefined') {
+    setTenantId(sessionTenantId);
+  }
+  const resolvedTenantId = tenantId ?? sessionTenantId ?? getTenantId();
+  // Skip SSE connection if tenant ID is unresolved
+  const effectiveTenantId = resolvedTenantId === 'unknown' ? undefined : resolvedTenantId;
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [subscribers, setSubscribers] = useState<Map<string, Set<EventHandler>>>(
     new Map()
@@ -206,7 +217,7 @@ export function RealTimeProvider({
 
   // Use the event stream hook
   const { isConnected, lastEvent, error, reconnect, disconnect } = useEventStream({
-    tenantId: resolvedTenantId,
+    tenantId: effectiveTenantId,
     userId,
     autoReconnect,
     onEvent: handleEvent,

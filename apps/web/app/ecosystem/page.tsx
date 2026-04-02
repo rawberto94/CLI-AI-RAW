@@ -139,7 +139,7 @@ export default function EcosystemDashboardPage() {
   if (isLoading) return <LoadingSkeleton />;
   if (error || !data) {
     return (
-      <div className="p-8 max-w-7xl mx-auto">
+      <div className="p-8 max-w-[1600px] mx-auto">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="flex items-center gap-3 py-8">
             <AlertTriangle className="h-5 w-5 text-red-500" />
@@ -153,7 +153,7 @@ export default function EcosystemDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/30">
-      <div className="max-w-[1600px] mx-auto p-6 space-y-6">
+      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6 space-y-6">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
           <div>
@@ -833,7 +833,7 @@ function EmptyState({ message, action }: { message: string; action?: { label: st
 function LoadingSkeleton() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50/30">
-      <div className="max-w-[1600px] mx-auto p-6 space-y-6">
+      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6 space-y-6">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-slate-200 animate-pulse" />
           <div>

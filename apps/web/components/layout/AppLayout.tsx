@@ -28,9 +28,9 @@ export default function AppLayout({
           aria-label="Page header"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="sticky top-16 lg:top-0 z-20 border-b border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-slate-900/70"
+          className="sticky top-16 lg:top-0 z-30 border-b border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-slate-900/70"
         >
-          <div className="flex h-14 md:h-16 items-center justify-between px-4 lg:px-6">
+          <div className="flex h-14 md:h-16 items-center justify-between px-6 sm:px-8 lg:px-10">
             <div className="flex items-center gap-3 min-w-0">
               {title && (
                 <div className="min-w-0">
@@ -60,7 +60,7 @@ export default function AppLayout({
         aria-label={title || 'Main content'}
         className={cn('flex-1 w-full max-w-full overflow-x-hidden', className)}
       >
-        <div className="w-full px-4 lg:px-6 py-4 md:py-6">
+        <div className="max-w-[1600px] mx-auto w-full px-6 sm:px-8 lg:px-10 py-6">
           {children}
         </div>
       </main>

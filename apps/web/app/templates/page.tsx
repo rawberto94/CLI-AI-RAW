@@ -1484,7 +1484,7 @@ export default function TemplatesPage() {
         )}
       </AnimatePresence>
       
-      <div className="max-w-7xl mx-auto space-y-8 relative">
+      <div className="max-w-[1600px] mx-auto space-y-8 relative">
         <PageBreadcrumb />
         
         {/* Header - Enhanced */}

@@ -239,10 +239,10 @@ export const ContractCardView = memo(function ContractCardView({
                 <Edit3 className="h-4 w-4 mr-2 text-slate-500" /> Redline Editor
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => router.push(`/generate?create=renewal&from=${contract.id}`)} className="cursor-pointer text-sm">
+              <DropdownMenuItem onClick={() => router.push(`/contracts/${contract.id}/renew`)} className="cursor-pointer text-sm">
                 <RefreshCw className="h-4 w-4 mr-2 text-slate-500" /> Start Renewal
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push(`/generate?create=amendment&from=${contract.id}`)} className="cursor-pointer text-sm">
+              <DropdownMenuItem onClick={() => router.push(`/drafting/copilot?mode=amendment&from=${contract.id}`)} className="cursor-pointer text-sm">
                 <GitBranch className="h-4 w-4 mr-2 text-slate-500" /> Create Amendment
               </DropdownMenuItem>
               <DropdownMenuSeparator />

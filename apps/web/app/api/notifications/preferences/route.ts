@@ -87,10 +87,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
     channels: defaultPreferences.channels,
   } : defaultPreferences;
 
-  return createSuccessResponse(ctx, {
-    success: true,
-    data: responsePreferences,
-  });
+  return createSuccessResponse(ctx, responsePreferences);
 });
 
 /**

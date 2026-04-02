@@ -3,7 +3,7 @@
  * Tests monitoring dashboards, performance metrics, and system health
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 test.describe('Monitoring & Performance', () => {
   

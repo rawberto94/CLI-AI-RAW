@@ -610,13 +610,13 @@ export default function DraftingPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Sticky Header */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 px-6 py-3 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto">
+      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 px-6 sm:px-8 lg:px-10 py-3 sticky top-0 z-30">
+        <div className="max-w-[1600px] mx-auto">
           <PageBreadcrumb />
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6 space-y-6">
         {/* ============ HERO SECTION ============ */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}

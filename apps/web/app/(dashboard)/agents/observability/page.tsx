@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function AgentObservabilityPage() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="max-w-[1600px] mx-auto py-6 space-y-6">
       <AgentObservabilityDashboard />
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   History, MessageSquare, Wand2, AlertTriangle,
@@ -37,6 +37,80 @@ function formatTimeSince(date: Date): string {
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+const AI_HTML_SANITIZE_OPTIONS = {
+  ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'a', 'span', 'div', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'mark', 'sub', 'sup'],
+  ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style', 'data-*'],
+};
+
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function textToHtml(text: string): string {
+  return text
+    .split(/\n{2,}/)
+    .map((block) => `<p>${escapeHtml(block).replace(/\n/g, '<br />')}</p>`)
+    .join('');
+}
+
+function normalizeAiHtml(text: string): string {
+  const raw = /^\s*</.test(text) ? text : textToHtml(text);
+  return DOMPurify.sanitize(raw, AI_HTML_SANITIZE_OPTIONS);
+}
+
+function stripHtml(text: string): string {
+  return text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function renderSimpleMarkdown(text: string): ReactNode {
+  const lines = text.split('\n');
+  const elements: ReactNode[] = [];
+
+  const renderInline = (raw: string) => (
+    <>
+      {raw.split(/\*\*(.+?)\*\*/g).map((part, index) =>
+        index % 2 === 1 ? <strong key={index}>{part}</strong> : <span key={index}>{part}</span>
+      )}
+    </>
+  );
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+
+    if (/^[-•]\s/.test(line)) {
+      elements.push(
+        <li key={index} className="ml-4 list-disc">
+          {renderInline(line.replace(/^[-•]\s/, ''))}
+        </li>
+      );
+      continue;
+    }
+
+    if (/^\d+\.\s/.test(line)) {
+      elements.push(
+        <li key={index} className="ml-4 list-decimal">
+          {renderInline(line.replace(/^\d+\.\s/, ''))}
+        </li>
+      );
+      continue;
+    }
+
+    if (line.trim() === '') {
+      elements.push(<div key={index} className="h-2" />);
+      continue;
+    }
+
+    elements.push(<p key={index}>{renderInline(line)}</p>);
+  }
+
+  return <div className="space-y-1">{elements}</div>;
 }
 
 // ============================================================================
@@ -191,6 +265,24 @@ interface ApprovalEntry {
   timestamp: string;
 }
 
+interface ChatQuickReply {
+  label: string;
+  value: string;
+}
+
+interface AiChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+  isStreaming?: boolean;
+  title?: string;
+  draftHtml?: string;
+  applyMode?: 'replace_selection' | 'insert_at_cursor' | 'none';
+  suggestions?: ChatQuickReply[];
+  followUpQuestion?: string;
+}
+
 interface CopilotDraftingCanvasProps {
   contractId?: string;
   initialContent?: string;
@@ -237,10 +329,11 @@ export function CopilotDraftingCanvas({
 
   // UI state
   const [activeTab, setActiveTab] = useState<'copilot' | 'comments' | 'versions' | 'clauses' | 'ai-chat'>('copilot');
-  const [aiChatMessages, setAiChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [aiChatMessages, setAiChatMessages] = useState<AiChatMessage[]>([]);
   const [aiChatInput, setAiChatInput] = useState('');
   const [isAiChatStreaming, setIsAiChatStreaming] = useState(false);
   const aiChatAbortRef = useRef<AbortController | null>(null);
+  const aiChatScrollRef = useRef<HTMLDivElement | null>(null);
   const [isEditing, setIsEditing] = useState(true);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
@@ -295,6 +388,16 @@ export function CopilotDraftingCanvas({
       cleanup();
     };
   }, []);
+
+  useEffect(() => {
+    const container = aiChatScrollRef.current;
+    if (!container) return;
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: aiChatMessages.length > 1 ? 'smooth' : 'auto',
+    });
+  }, [aiChatMessages, isAiChatStreaming]);
 
   // ============================================================================
   // TIPTAP EDITOR
@@ -454,7 +557,7 @@ export function CopilotDraftingCanvas({
         body: JSON.stringify({
           text: content,
           contractType,
-          playbook: playbookId ? { id: playbookId } : undefined,
+          playbookId,
         }),
       });
 
@@ -1192,20 +1295,63 @@ export function CopilotDraftingCanvas({
     }
   };
 
+  const applyAiChatDraft = useCallback((message: AiChatMessage) => {
+    if (!editor || !message.draftHtml) return;
+
+    const sanitized = normalizeAiHtml(message.draftHtml);
+    const { from, to } = editor.state.selection;
+    const shouldReplace = message.applyMode === 'replace_selection' && from !== to;
+
+    if (shouldReplace) {
+      editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, sanitized).run();
+    } else {
+      editor.chain().focus().insertContent(sanitized).run();
+    }
+
+    setContent(editor.getHTML());
+    toast.success(shouldReplace ? 'AI rewrite applied' : 'AI draft inserted');
+  }, [editor]);
+
+  const copyAiChatContent = useCallback(async (message: AiChatMessage) => {
+    const text = message.draftHtml ? stripHtml(message.draftHtml) : message.content;
+    if (!text) return;
+
+    await navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard');
+  }, []);
+
   // ============================================================================
   // AI CHAT IN SIDEBAR
   // ============================================================================
 
   const sendAiChatMessage = useCallback(async (message: string) => {
-    if (!message.trim() || isAiChatStreaming) return;
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage || isAiChatStreaming) return;
 
-    const userMsg = { role: 'user' as const, content: message.trim() };
-    setAiChatMessages(prev => [...prev, userMsg]);
+    const assistantMessageId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `assistant-${Date.now()}`;
+    const userMessageId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `user-${Date.now()}`;
+
+    const userMsg: AiChatMessage = {
+      id: userMessageId,
+      role: 'user',
+      content: trimmedMessage,
+      timestamp: new Date(),
+    };
+    const assistantMsg: AiChatMessage = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      isStreaming: true,
+    };
+
+    setAiChatMessages(prev => [...prev, userMsg, assistantMsg]);
     setAiChatInput('');
     setIsAiChatStreaming(true);
-
-    const assistantMsg = { role: 'assistant' as const, content: '' };
-    setAiChatMessages(prev => [...prev, assistantMsg]);
 
     try {
       const controller = new AbortController();
@@ -1225,6 +1371,14 @@ export function CopilotDraftingCanvas({
         }
       });
 
+      const conversationHistory = [...aiChatMessages, userMsg].map((chatMessage) => ({
+        role: chatMessage.role,
+        content: [
+          chatMessage.content,
+          chatMessage.draftHtml ? `Suggested draft:\n${stripHtml(chatMessage.draftHtml)}` : '',
+        ].filter(Boolean).join('\n\n'),
+      }));
+
       const response = await fetch('/api/ai/agents/draft-assistant', {
         method: 'POST',
         headers: {
@@ -1233,15 +1387,16 @@ export function CopilotDraftingCanvas({
           ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
         },
         body: JSON.stringify({
-          message: message.trim(),
-          conversationHistory: aiChatMessages.map(m => ({ role: m.role, content: m.content })),
+          message: trimmedMessage,
+          conversationHistory,
           context: {
             contractType,
-            currentContent: editor?.getText()?.slice(0, 8000) || '',
+            currentContent: editor?.getText()?.slice(0, 12000) || '',
             selectedText: selectedText || undefined,
             documentSections: headings.length > 0 ? headings : undefined,
+            playbookId,
           },
-          action: 'chat',
+          action: 'editor_assist',
         }),
         signal: controller.signal,
       });
@@ -1267,81 +1422,148 @@ export function CopilotDraftingCanvas({
           if (line.startsWith('data: ')) {
             try {
               const parsed = JSON.parse(line.slice(6));
-              if ('content' in parsed && 'role' in parsed) {
+
+              if ('draftHtml' in parsed || 'applyMode' in parsed || 'title' in parsed || 'followUpQuestion' in parsed) {
                 setAiChatMessages(prev => {
-                  const updated = [...prev];
-                  const last = updated[updated.length - 1];
-                  if (last?.role === 'assistant') {
-                    updated[updated.length - 1] = { ...last, content: last.content + parsed.content };
-                  }
-                  return updated;
+                  return prev.map((chatMessage) =>
+                    chatMessage.id === assistantMessageId
+                      ? {
+                          ...chatMessage,
+                          content: typeof parsed.content === 'string' ? parsed.content : chatMessage.content,
+                          title: typeof parsed.title === 'string' ? parsed.title : chatMessage.title,
+                          draftHtml: typeof parsed.draftHtml === 'string' ? parsed.draftHtml : chatMessage.draftHtml,
+                          applyMode:
+                            parsed.applyMode === 'replace_selection' || parsed.applyMode === 'insert_at_cursor' || parsed.applyMode === 'none'
+                              ? parsed.applyMode
+                              : chatMessage.applyMode,
+                          followUpQuestion:
+                            typeof parsed.followUpQuestion === 'string' && parsed.followUpQuestion.trim()
+                              ? parsed.followUpQuestion
+                              : chatMessage.followUpQuestion,
+                          isStreaming: false,
+                        }
+                      : chatMessage
+                  );
                 });
+                continue;
+              }
+
+              if ('suggestions' in parsed && Array.isArray(parsed.suggestions)) {
+                setAiChatMessages(prev => prev.map((chatMessage) =>
+                  chatMessage.id === assistantMessageId
+                    ? {
+                        ...chatMessage,
+                        suggestions: parsed.suggestions.filter(
+                          (suggestion: { label?: unknown; value?: unknown }) =>
+                            typeof suggestion?.label === 'string' && typeof suggestion?.value === 'string'
+                        ) as ChatQuickReply[],
+                      }
+                    : chatMessage
+                ));
+                continue;
+              }
+
+              if ('content' in parsed && 'role' in parsed && typeof parsed.content === 'string') {
+                setAiChatMessages(prev => prev.map((chatMessage) =>
+                  chatMessage.id === assistantMessageId
+                    ? { ...chatMessage, content: chatMessage.content + parsed.content }
+                    : chatMessage
+                ));
+                continue;
+              }
+
+              if ('error' in parsed && typeof parsed.error === 'string') {
+                setAiChatMessages(prev => prev.map((chatMessage) =>
+                  chatMessage.id === assistantMessageId
+                    ? { ...chatMessage, content: parsed.error, isStreaming: false }
+                    : chatMessage
+                ));
+                continue;
               }
             } catch { /* skip malformed */ }
           }
         }
       }
     } catch (err) {
-      if ((err as Error)?.name === 'AbortError') return;
+      if ((err as Error)?.name === 'AbortError') {
+        setAiChatMessages(prev => prev.map((chatMessage) =>
+          chatMessage.id === assistantMessageId
+            ? { ...chatMessage, isStreaming: false, content: chatMessage.content || 'Request cancelled.' }
+            : chatMessage
+        ));
+        return;
+      }
+
       toast.error('AI chat error. Please try again.');
-      setAiChatMessages(prev => {
-        const updated = [...prev];
-        if (updated[updated.length - 1]?.role === 'assistant' && !updated[updated.length - 1].content) {
-          updated[updated.length - 1] = { ...updated[updated.length - 1], content: 'Sorry, I encountered an error. Please try again.' };
-        }
-        return updated;
-      });
+      setAiChatMessages(prev => prev.map((chatMessage) =>
+        chatMessage.id === assistantMessageId
+          ? {
+              ...chatMessage,
+              content: chatMessage.content || 'Sorry, I encountered an error. Please try again.',
+              isStreaming: false,
+            }
+          : chatMessage
+      ));
     } finally {
       setIsAiChatStreaming(false);
+      setAiChatMessages(prev => prev.map((chatMessage) =>
+        chatMessage.id === assistantMessageId
+          ? { ...chatMessage, isStreaming: false }
+          : chatMessage
+      ));
       aiChatAbortRef.current = null;
     }
-  }, [aiChatMessages, isAiChatStreaming, editor, contractType]);
+  }, [aiChatMessages, isAiChatStreaming, editor, contractType, playbookId]);
 
   // ============================================================================
   // SIDEBAR CONTENT (shared between desktop and mobile)
   // ============================================================================
 
   const renderSidebarContent = () => (
-    <>
+    <div className="flex h-full min-h-0 flex-col">
       {/* Tab Navigation */}
-      <div className="flex border-b border-gray-200 dark:border-slate-700" role="tablist" aria-label="Sidebar panels">
-        {[
-          { id: 'copilot', icon: Brain, label: 'Copilot', count: suggestions.length },
-          { id: 'ai-chat', icon: MessageSquare, label: 'AI Chat', count: null },
-          { id: 'comments', icon: MessageSquare, label: 'Comments', count: comments.length },
-          { id: 'versions', icon: History, label: 'History', count: versions.length },
-          { id: 'clauses', icon: BookOpen, label: 'Clauses', count: clauses.length },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            role="tab"
-            aria-selected={activeTab === tab.id}
-            aria-controls={`panel-${tab.id}`}
-            id={`tab-${tab.id}`}
-            onClick={() => setActiveTab(tab.id as typeof activeTab)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors border-b-2 ${
-              activeTab === tab.id
-                ? 'text-violet-600 dark:text-violet-400 border-violet-600 dark:border-violet-400'
-                : 'text-gray-500 dark:text-slate-400 border-transparent hover:text-gray-700 dark:hover:text-slate-300'
-            }`}
-          >
-            <tab.icon className="h-4 w-4" />
-            <span className="hidden xl:inline">{tab.label}</span>
-            {tab.count !== null && tab.count > 0 && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                activeTab === tab.id ? 'bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-300' : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300'
-              }`}>
-                {tab.count}
-              </span>
-            )}
-          </button>
-        ))}
+      <div className="border-b border-gray-200 px-3 pt-3 dark:border-slate-700">
+        <div className="flex gap-2 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Sidebar panels">
+          {[
+            { id: 'copilot', icon: Brain, label: 'Copilot', count: suggestions.length },
+            { id: 'ai-chat', icon: MessageSquare, label: 'AI Chat', count: null },
+            { id: 'comments', icon: MessageSquare, label: 'Comments', count: comments.length },
+            { id: 'versions', icon: History, label: 'History', count: versions.length },
+            { id: 'clauses', icon: BookOpen, label: 'Clauses', count: clauses.length },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`panel-${tab.id}`}
+              id={`tab-${tab.id}`}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-900/30 dark:text-violet-300'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-100'
+              }`}
+            >
+              <tab.icon className="h-3.5 w-3.5" />
+              <span>{tab.label}</span>
+              {tab.count !== null && tab.count > 0 && (
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                  activeTab === tab.id
+                    ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-200'
+                    : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'
+                }`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tab Content */}
-      <div className="p-4 overflow-y-auto max-h-[calc(100vh-200px)]">
+      <div className="flex-1 min-h-0 overflow-hidden p-4">
         {activeTab === 'copilot' && (
-          <div id="panel-copilot" role="tabpanel" aria-labelledby="tab-copilot" className="space-y-4">
+          <div id="panel-copilot" role="tabpanel" aria-labelledby="tab-copilot" className="h-full space-y-4 overflow-y-auto pr-1">
             {/* Risk Summary */}
             {risks.length > 0 && (
               <div className="p-3 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/50 dark:to-orange-950/50 rounded-lg border border-red-100 dark:border-red-800">
@@ -1545,20 +1767,34 @@ export function CopilotDraftingCanvas({
         )}
 
         {activeTab === 'ai-chat' && (
-          <div id="panel-ai-chat" role="tabpanel" aria-labelledby="tab-ai-chat" className="flex flex-col h-[calc(100vh-200px)]">
+          <div id="panel-ai-chat" role="tabpanel" aria-labelledby="tab-ai-chat" className="flex h-full min-h-0 flex-col">
+            <div className="mb-3 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 to-fuchsia-50 p-3 dark:border-violet-900/60 dark:from-violet-950/30 dark:to-fuchsia-950/20">
+              <div className="flex items-start gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
+                  <Brain className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">Inline Drafting Assistant</p>
+                  <p className="mt-1 text-xs leading-5 text-gray-600 dark:text-slate-300">
+                    Ask for clause language, rewrite a selected passage, or tighten a risky section. Responses now separate guidance from insertion-ready contract text.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto space-y-3 pb-3">
+            <div ref={aiChatScrollRef} className="flex-1 space-y-4 overflow-y-auto pr-1 pb-3">
               {aiChatMessages.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 dark:text-slate-400">
+                <div className="py-8 text-center text-gray-500 dark:text-slate-400">
                   <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm font-medium">AI Assistant</p>
-                  <p className="text-xs mt-1 max-w-[200px] mx-auto">Ask me to rewrite sections, add clauses, or improve your contract</p>
-                  <div className="flex flex-wrap gap-2 mt-4 justify-center">
+                  <p className="text-sm font-medium">Ready to improve this draft</p>
+                  <p className="mt-1 max-w-[240px] mx-auto text-xs">Try a quick action or describe the exact clause, section, or rewrite you want.</p>
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
                     {(AI_QUICK_PROMPTS[contractType?.toUpperCase() || ''] || AI_QUICK_PROMPTS.DEFAULT).map((prompt) => (
                       <button
                         key={prompt}
                         onClick={() => sendAiChatMessage(prompt)}
-                        className="text-xs px-3 py-1.5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-900/70 transition-colors"
+                        className="rounded-full bg-violet-100 px-3 py-1.5 text-xs text-violet-700 transition-colors hover:bg-violet-200 dark:bg-violet-900/50 dark:text-violet-300 dark:hover:bg-violet-900/70"
                       >
                         {prompt}
                       </button>
@@ -1566,54 +1802,96 @@ export function CopilotDraftingCanvas({
                   </div>
                 </div>
               ) : (
-                aiChatMessages.map((msg, i) => (
+                aiChatMessages.map((msg) => (
                   <div
-                    key={i}
+                    key={msg.id}
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className="max-w-[85%]">
-                      <div
-                        className={`px-3 py-2 rounded-lg text-sm ${
-                          msg.role === 'user'
-                            ? 'bg-violet-600 text-white rounded-br-none'
-                            : 'bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-slate-100 rounded-bl-none'
-                        }`}
-                      >
-                        {msg.content || (isAiChatStreaming && i === aiChatMessages.length - 1 ? (
-                          <span className="flex items-center gap-1">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            <span className="text-xs opacity-70">Thinking...</span>
-                          </span>
-                        ) : null)}
-                      </div>
-                      {/* Apply button for assistant messages with content */}
-                      {msg.role === 'assistant' && msg.content && !isAiChatStreaming && (
-                        <div className="flex gap-1 mt-1">
-                          <button
-                            onClick={() => {
-                              if (!editor) return;
-                              const { from, to } = editor.state.selection;
-                              if (from !== to) {
-                                editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, msg.content).run();
-                              } else {
-                                editor.chain().focus().insertContent(msg.content).run();
-                              }
-                              setContent(editor.getHTML());
-                              toast.success('AI suggestion applied');
-                            }}
-                            className="text-xs px-2 py-1 rounded bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-900/70 transition-colors flex items-center gap-1"
-                          >
-                            <Check className="h-3 w-3" /> Apply
-                          </button>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(msg.content);
-                              toast.success('Copied to clipboard');
-                            }}
-                            className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-                          >
-                            Copy
-                          </button>
+                    <div className="max-w-[94%]">
+                      {msg.role === 'user' ? (
+                        <div className="rounded-2xl rounded-tr-md bg-violet-600 px-4 py-2.5 text-sm leading-6 text-white shadow-sm">
+                          {renderSimpleMarkdown(msg.content)}
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl rounded-tl-md border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                          <div className="flex items-start gap-2.5">
+                            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
+                              <Brain className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0 flex-1 space-y-3">
+                              <div>
+                                {msg.title && (
+                                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
+                                    {msg.title}
+                                  </p>
+                                )}
+                                {msg.content ? (
+                                  <div className="text-sm leading-6 text-gray-900 dark:text-slate-100">
+                                    {renderSimpleMarkdown(msg.content)}
+                                  </div>
+                                ) : msg.isStreaming ? (
+                                  <div className="flex items-center gap-2 py-1 text-sm text-gray-500 dark:text-slate-400">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Drafting a response...
+                                  </div>
+                                ) : null}
+                              </div>
+
+                              {msg.followUpQuestion && (
+                                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+                                  <span className="font-semibold">Need one detail:</span> {msg.followUpQuestion}
+                                </div>
+                              )}
+
+                              {msg.draftHtml && (
+                                <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-3 dark:border-violet-800 dark:bg-violet-950/30">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700 dark:text-violet-300">
+                                      Suggested Contract Language
+                                    </p>
+                                    {msg.applyMode && msg.applyMode !== 'none' && (
+                                      <span className="rounded-full bg-white px-2 py-1 text-[10px] font-medium text-violet-700 shadow-sm dark:bg-slate-800 dark:text-violet-300">
+                                        {msg.applyMode === 'replace_selection' ? 'Replace selection' : 'Insert at cursor'}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div
+                                    className="prose prose-sm mt-3 max-h-64 overflow-y-auto rounded-lg bg-white px-3 py-3 text-gray-900 shadow-inner dark:prose-invert dark:bg-slate-900 dark:text-slate-100"
+                                    dangerouslySetInnerHTML={{ __html: normalizeAiHtml(msg.draftHtml) }}
+                                  />
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    <button
+                                      onClick={() => applyAiChatDraft(msg)}
+                                      className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-violet-700"
+                                    >
+                                      <Check className="h-3.5 w-3.5" />
+                                      {msg.applyMode === 'replace_selection' ? 'Replace selection' : 'Insert into draft'}
+                                    </button>
+                                    <button
+                                      onClick={() => copyAiChatContent(msg)}
+                                      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                                    >
+                                      Copy text
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {msg.role === 'assistant' && msg.suggestions && msg.suggestions.length > 0 && !msg.isStreaming && (
+                        <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                          {msg.suggestions.map((suggestion) => (
+                            <button
+                              key={`${msg.id}-${suggestion.value}`}
+                              onClick={() => sendAiChatMessage(suggestion.value)}
+                              className="shrink-0 rounded-full border border-violet-200 bg-white px-3 py-1.5 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-50 dark:border-violet-800 dark:bg-slate-800 dark:text-violet-300 dark:hover:bg-violet-950/30"
+                            >
+                              {suggestion.label}
+                            </button>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -1658,7 +1936,7 @@ export function CopilotDraftingCanvas({
         )}
 
         {activeTab === 'comments' && (
-          <div id="panel-comments" role="tabpanel" aria-labelledby="tab-comments" className="space-y-4">
+          <div id="panel-comments" role="tabpanel" aria-labelledby="tab-comments" className="h-full space-y-4 overflow-y-auto pr-1">
             {/* New comment input */}
             <div className="space-y-2">
               <div className="flex gap-2">
@@ -1781,7 +2059,7 @@ export function CopilotDraftingCanvas({
         )}
 
         {activeTab === 'versions' && (
-          <div id="panel-versions" role="tabpanel" aria-labelledby="tab-versions" className="space-y-3">
+          <div id="panel-versions" role="tabpanel" aria-labelledby="tab-versions" className="h-full space-y-3 overflow-y-auto pr-1">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-medium text-gray-900 dark:text-slate-100">Version History</h3>
               <button
@@ -1839,7 +2117,7 @@ export function CopilotDraftingCanvas({
 
         {/* Clause Library Tab */}
         {activeTab === 'clauses' && (
-          <div id="panel-clauses" role="tabpanel" aria-labelledby="tab-clauses" className="space-y-4">
+          <div id="panel-clauses" role="tabpanel" aria-labelledby="tab-clauses" className="h-full space-y-4 overflow-y-auto pr-1">
             <div className="space-y-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-500" />
@@ -1925,7 +2203,7 @@ export function CopilotDraftingCanvas({
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 
   // ============================================================================
@@ -2414,7 +2692,7 @@ export function CopilotDraftingCanvas({
         </div>
 
         {/* Right Sidebar - Copilot Panel (Desktop) */}
-        <div className="hidden lg:block w-80 xl:w-96 bg-white dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 min-h-[calc(100vh-120px)]">
+        <div className="hidden lg:flex w-80 xl:w-96 flex-col bg-white dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 min-h-[calc(100vh-120px)]">
           {renderSidebarContent()}
         </div>
 
@@ -2448,7 +2726,7 @@ export function CopilotDraftingCanvas({
                     <X className="h-5 w-5 text-gray-500 dark:text-slate-400" />
                   </button>
                 </div>
-                <div className="overflow-y-auto h-[calc(100vh-56px)]">
+                <div className="h-[calc(100vh-56px)] min-h-0">
                   {renderSidebarContent()}
                 </div>
               </motion.div>
@@ -2520,7 +2798,7 @@ export function CopilotDraftingCanvas({
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-auto"
+              className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-[1600px] max-h-[90vh] overflow-auto"
             >
               <VersionDiffView
                 versions={diffVersions}

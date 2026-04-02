@@ -1,15 +1,6 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-
-export default function UploadRedirect() {
-  const router = useRouter()
-  
-  useEffect(() => {
-    router.replace('/contracts/upload')
-  }, [router])
-  
-  return null
+export default function UploadRedirect(): never {
+  redirect('/contracts/upload')
 }
 

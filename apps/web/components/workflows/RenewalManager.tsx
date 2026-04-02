@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   RefreshCw,
   Calendar,
@@ -152,6 +153,14 @@ function filterRenewals(
       return true;
     })
     .sort((a, b) => a.daysUntilRenewal - b.daysUntilRenewal);
+}
+
+function getRenewalWizardHref(contractId: string): string {
+  return `/contracts/${contractId}/renew`;
+}
+
+function getRenewalCopilotHref(contractId: string): string {
+  return `/drafting/copilot?mode=renewal&from=${contractId}`;
 }
 
 // ============================================================================
@@ -320,7 +329,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
             {/* Start Renewal Wizard - Primary Action */}
             {(renewal.status === 'upcoming' || renewal.status === 'urgent' || renewal.status === 'pending-review' || renewal.status === 'in-negotiation') && (
               <Link
-                href={`/contracts/${renewal.contractId}/renew`}
+                href={getRenewalWizardHref(renewal.contractId)}
                 onClick={(e) => e.stopPropagation()}
                 className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                 title="Start renewal wizard"
@@ -331,7 +340,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
             {/* Draft Renewal in AI Copilot */}
             {(renewal.status === 'upcoming' || renewal.status === 'urgent' || renewal.status === 'pending-review' || renewal.status === 'in-negotiation') && (
               <Link
-                href={`/drafting/copilot?mode=renewal&contractId=${renewal.contractId}`}
+                href={getRenewalCopilotHref(renewal.contractId)}
                 onClick={(e) => e.stopPropagation()}
                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 title="Draft renewal with AI Copilot"
@@ -381,6 +390,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
 // ============================================================================
 
 export const RenewalManager: React.FC = () => {
+  const router = useRouter();
   const crossModule = useCrossModuleInvalidation();
   const { data: queryData, isLoading: loading, refetch } = useRenewals();
   const rawRenewals = queryData?.renewals ?? [];
@@ -485,15 +495,16 @@ export const RenewalManager: React.FC = () => {
     }
   }, [selectedRenewal, renewals, filter, searchQuery]);
   
-  const handleConfirmInitiateRenewal = useCallback(async () => {
+  const handleConfirmInitiateRenewal = useCallback(async (destination: 'wizard' | 'copilot') => {
     if (!selectedRenewalForInitiate) return;
+    const nextContractId = selectedRenewalForInitiate.contractId;
     try {
       const tenantId = getTenantId();
       const res = await fetch('/api/renewals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-tenant-id': tenantId },
         body: JSON.stringify({
-          contractId: selectedRenewalForInitiate.contractId,
+          contractId: nextContractId,
           action: 'initiate',
         }),
       });
@@ -502,20 +513,22 @@ export const RenewalManager: React.FC = () => {
         toast.error('Failed to initiate renewal', { description: json.error?.message || 'Please try again' });
         return;
       }
-      crossModule.onRenewalChange(selectedRenewalForInitiate.contractId);
+      crossModule.onRenewalChange(nextContractId);
 
       toast.success('Renewal initiated', {
-        description: `${selectedRenewalForInitiate.contractName} renewal process started`,
+        description: destination === 'copilot'
+          ? `${selectedRenewalForInitiate.contractName} is ready in AI Copilot`
+          : `${selectedRenewalForInitiate.contractName} is ready in the renewal wizard`,
       });
 
       setInitiateModalOpen(false);
-      setRenewalForApproval(selectedRenewalForInitiate);
-      setApprovalModalOpen(true);
       setSelectedRenewalForInitiate(null);
+
+      router.push(destination === 'copilot' ? getRenewalCopilotHref(nextContractId) : getRenewalWizardHref(nextContractId));
     } catch {
       toast.error('Failed to initiate renewal', { description: 'Network error. Please try again.' });
     }
-  }, [selectedRenewalForInitiate, crossModule]);
+  }, [selectedRenewalForInitiate, crossModule, router]);
   
   const handleApprovalSubmit = useCallback(() => {
     if (renewalForApproval) {
@@ -966,25 +979,34 @@ export const RenewalManager: React.FC = () => {
                   <div className="flex items-start gap-2">
                     <GitBranch className="w-4 h-4 text-violet-500 mt-0.5" />
                     <div className="text-sm">
-                      <p className="font-medium text-violet-900">Auto-submit for Approval</p>
-                      <p className="text-violet-700">This will start the approval workflow automatically after initiating the renewal.</p>
+                      <p className="font-medium text-violet-900">Choose the next step</p>
+                      <p className="text-violet-700">Initiating the renewal marks the workflow as active, then takes you into either the guided renewal wizard or AI Copilot with the source contract loaded.</p>
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    onClick={() => handleConfirmInitiateRenewal('copilot')}
+                    className="px-4 py-2 bg-white text-blue-700 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    <FileEdit className="w-4 h-4" />
+                    Open AI Copilot
+                  </button>
+                  <button
+                    onClick={() => handleConfirmInitiateRenewal('wizard')}
+                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    <Play className="w-4 h-4" />
+                    Open Renewal Wizard
+                  </button>
+                </div>
+                <div className="flex items-center gap-3 mt-3">
                   <button
                     onClick={() => setInitiateModalOpen(false)}
                     className="flex-1 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium"
                   >
                     Cancel
-                  </button>
-                  <button
-                    onClick={handleConfirmInitiateRenewal}
-                    className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium flex items-center justify-center gap-2"
-                  >
-                    <Play className="w-4 h-4" />
-                    Initiate & Submit
                   </button>
                 </div>
               </div>

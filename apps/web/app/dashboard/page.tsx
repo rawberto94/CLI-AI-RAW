@@ -58,23 +58,29 @@ interface DashboardData {
   complianceScore: number;
 }
 
-const fetchDashboardData = async (): Promise<{ stats: DashboardData | null; recentContracts: Array<{ id: string; fileName: string; status: string; createdAt: string }> }> => {
-  const headers: Record<string, string> = {};
-  
+const fetchDashboardData = async (): Promise<{ stats: DashboardData | null; recentContracts: Array<{ id: string; fileName: string; status: string; createdAt: string }>; error?: string }> => {
   try {
     const [statsRes, contractsRes] = await Promise.all([
-      fetch('/api/dashboard/stats', { headers }),
-      fetch('/api/contracts?limit=4&sortBy=createdAt&sortOrder=desc', { headers }),
+      fetch('/api/dashboard/stats', { credentials: 'same-origin' }),
+      fetch('/api/contracts?limit=4&sortBy=createdAt&sortOrder=desc', { credentials: 'same-origin' }),
     ]);
-    const statsData = statsRes.ok ? await statsRes.json() : { success: false };
+
+    if (!statsRes.ok) {
+      console.error('[Dashboard] Stats API failed:', statsRes.status, statsRes.statusText);
+      return { stats: null, recentContracts: [], error: `Stats API returned ${statsRes.status}` };
+    }
+
+    const statsData = await statsRes.json();
     const contractsData = contractsRes.ok ? await contractsRes.json() : { success: false, data: [] };
     
     return {
       stats: statsData.success ? statsData.data : null,
       recentContracts: contractsData.success ? (contractsData.data?.contracts || contractsData.data || []).slice(0, 4) : [],
+      error: statsData.success ? undefined : 'Stats API returned unsuccessful response',
     };
-  } catch {
-    return { stats: null, recentContracts: [] };
+  } catch (err) {
+    console.error('[Dashboard] Failed to fetch dashboard data:', err);
+    return { stats: null, recentContracts: [], error: err instanceof Error ? err.message : 'Network error' };
   }
 };
 
@@ -109,7 +115,7 @@ const quickActions = [
     icon: Zap,
     label: "Generate Contract",
     description: "Create with AI",
-    href: "/generate",
+    href: "/drafting",
     color: "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400",
   },
   {
@@ -171,16 +177,18 @@ export default function DashboardPage() {
     }
   }, [dashboardWidgets]);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error: queryError, refetch } = useQuery({
     queryKey: ['dashboard'],
     queryFn: fetchDashboardData,
     staleTime: 30_000, // 30 seconds – keep in sync with contract-stats
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
+    retry: 2,
   });
 
   const dashboardData = data?.stats || null;
   const recentContracts = data?.recentContracts || [];
+  const fetchError = data?.error || (queryError instanceof Error ? queryError.message : null);
 
   // Real-time updates
   const eventHandlers = useMemo(() => ({
@@ -191,13 +199,41 @@ export default function DashboardPage() {
 
   useRealTimeEvents(eventHandlers);
 
-  if (isLoading || !dashboardData) {
+  if (isLoading) {
     return (
       <DashboardLayout
         title="Dashboard"
         description="Your contract management overview"
       >
         <DashboardSkeleton />
+      </DashboardLayout>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <DashboardLayout
+        title="Dashboard"
+        description="Your contract management overview"
+      >
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <div className="text-center space-y-2">
+            <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-300">
+              Unable to load dashboard
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
+              {fetchError || 'Could not connect to the server. Please check your connection and try again.'}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => refetch()}
+            className="mt-2"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
+        </div>
       </DashboardLayout>
     );
   }
@@ -320,7 +356,7 @@ export default function DashboardPage() {
         )}
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
           {/* Total Contracts */}
           <motion.div variants={itemVariants} className="h-full">
             <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-sm hover:shadow-md transition-shadow duration-200 h-full">
@@ -478,7 +514,7 @@ export default function DashboardPage() {
 
         {/* Quick Actions */}
         <motion.div variants={itemVariants}>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             {quickActions.map((action, index) => {
               const Icon = action.icon;
               return (

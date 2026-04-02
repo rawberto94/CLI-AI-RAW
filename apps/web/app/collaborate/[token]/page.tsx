@@ -224,8 +224,8 @@ export default function CollaboratorPortalPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-purple-50">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4">
+      <header className="bg-white border-b sticky top-0 z-30">
+        <div className="max-w-[1600px] mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold">Contract Portal</h1>
@@ -256,7 +256,7 @@ export default function CollaboratorPortalPage() {
 
       {/* Permissions Banner */}
       <div className="bg-violet-50 border-b">
-        <div className="max-w-6xl mx-auto px-4 py-2">
+        <div className="max-w-[1600px] mx-auto px-4 py-2">
           <div className="flex items-center gap-4 text-sm">
             <span className="text-muted-foreground">Your permissions:</span>
             {collaborator.permissions.canView && (
@@ -279,7 +279,7 @@ export default function CollaboratorPortalPage() {
       </div>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-[1600px] mx-auto px-4 py-8">
         <h2 className="text-lg font-semibold mb-4">Shared Contracts ({contracts.length})</h2>
 
         {contracts.length === 0 ? (
@@ -409,7 +409,7 @@ export default function CollaboratorPortalPage() {
 
       {/* Footer */}
       <footer className="border-t bg-white mt-auto">
-        <div className="max-w-6xl mx-auto px-4 py-4 text-center text-sm text-muted-foreground">
+        <div className="max-w-[1600px] mx-auto px-4 py-4 text-center text-sm text-muted-foreground">
           This is a secure portal. Your access is logged for security purposes.
         </div>
       </footer>

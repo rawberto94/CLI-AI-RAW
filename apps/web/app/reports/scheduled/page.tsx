@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function ScheduledReportsPage() {
   return (
-    <div className="container mx-auto py-6">
+    <div className="max-w-[1600px] mx-auto py-6">
       <ScheduledReportsManager />
     </div>
   );

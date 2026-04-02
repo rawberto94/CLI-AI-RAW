@@ -336,8 +336,8 @@ export default function RFxDetailPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div className="max-w-[1600px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => router.push('/contigo-labs')} className="h-9 w-9">
@@ -409,7 +409,7 @@ export default function RFxDetailPage() {
       </div>
 
       {/* Stats bar */}
-      <div className="max-w-7xl mx-auto px-6 py-4">
+      <div className="max-w-[1600px] mx-auto px-6 py-4">
         <div className="grid grid-cols-5 gap-4">
           <StatCard label="Requirements" value={requirements.length} sub={`${userReqs.length} user + ${aiReqs.length} AI`} />
           <StatCard label="Vendors" value={event.invitedVendors?.length || 0} sub="invited" />
@@ -420,7 +420,7 @@ export default function RFxDetailPage() {
       </div>
 
       {/* Tab navigation */}
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-[1600px] mx-auto px-6">
         <div className="flex gap-1 border-b border-slate-200 mb-6">
           {[
             { key: 'requirements', label: 'Requirements', icon: FileText, count: requirements.length },

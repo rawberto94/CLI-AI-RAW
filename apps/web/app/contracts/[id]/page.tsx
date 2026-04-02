@@ -760,7 +760,7 @@ export default function ContractDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-4 mb-6 sm:mb-8">
             <div className="h-8 w-20 bg-gradient-to-r from-slate-200 to-slate-100 rounded-lg animate-pulse" />
             <div className="h-6 w-48 bg-gradient-to-r from-slate-200 to-slate-100 rounded-lg animate-pulse" />
@@ -789,7 +789,7 @@ export default function ContractDetailPage() {
       <SkipToContent targetId="main-content" />
 
       {/* Breadcrumbs */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 no-print">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-3 sm:pt-4 no-print">
         <div className="flex items-center justify-between">
           <Breadcrumbs
             items={[
@@ -900,7 +900,7 @@ export default function ContractDetailPage() {
           className={cn('overflow-auto', showPdfViewer ? 'flex-1' : 'w-full')}
           style={showPdfViewer && !isMobile ? { minWidth: '320px' } : undefined}
         >
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             {/* Processing Banner */}
             <AnimatePresence>
               {isProcessing && (

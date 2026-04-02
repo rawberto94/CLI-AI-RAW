@@ -470,7 +470,7 @@ export function RedlineViewer({
 
       {/* Main Content */}
       <div className="p-6">
-        <div className="max-w-6xl mx-auto space-y-4">
+        <div className="max-w-[1600px] mx-auto space-y-4">
           {Object.entries(groupedChanges).map(([section, changes]) => (
             <div key={section} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
               {/* Section Header */}
@@ -719,7 +719,7 @@ export function RedlineViewer({
 
         {/* Clause Assessments Panel */}
         {showAssessments && review.clauseAssessments.length > 0 && (
-          <div className="max-w-6xl mx-auto mt-8">
+          <div className="max-w-[1600px] mx-auto mt-8">
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
                 <h3 className="font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2">

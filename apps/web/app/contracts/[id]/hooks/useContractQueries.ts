@@ -352,7 +352,7 @@ export function useAIExtraction(id: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: contractKeys.detail(id) })
-      toast.success('AI extraction completed!')
+      toast.info('Refreshing contract status...')
     },
     onError: () => {
       toast.error('Failed to start AI extraction.')

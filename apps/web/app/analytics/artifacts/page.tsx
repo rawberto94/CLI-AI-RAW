@@ -112,7 +112,7 @@ export default function ArtifactsAnalyticsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
-        <div className="container mx-auto py-8">
+        <div className="max-w-[1600px] mx-auto py-8">
           <div className="flex items-center justify-center h-64">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -139,7 +139,7 @@ export default function ArtifactsAnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
-      <div className="container mx-auto py-8 space-y-6">
+      <div className="max-w-[1600px] mx-auto py-8 space-y-6">
         {/* Breadcrumbs */}
         <div className="mb-2">
           <PageBreadcrumb />

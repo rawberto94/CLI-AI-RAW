@@ -96,7 +96,7 @@ export default function ImportHistoryPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="max-w-[1600px] mx-auto p-6">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
         </div>
@@ -106,7 +106,7 @@ export default function ImportHistoryPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="max-w-[1600px] mx-auto p-6">
         <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg p-4">
           <h3 className="text-red-800 dark:text-red-300 font-semibold">Error Loading Import History</h3>
           <p className="text-red-600 dark:text-red-400 mt-2">{error instanceof Error ? error.message : 'An error occurred'}</p>
@@ -122,7 +122,7 @@ export default function ImportHistoryPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="max-w-[1600px] mx-auto p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>

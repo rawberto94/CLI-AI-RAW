@@ -104,7 +104,7 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-slate-400/10 rounded-full blur-3xl" />
       
       {/* Content */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="relative max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <PageBreadcrumb />
         
         <div className="mt-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">

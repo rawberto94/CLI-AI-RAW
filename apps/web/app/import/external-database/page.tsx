@@ -278,7 +278,7 @@ export default function ExternalDatabaseImportPage() {
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.6))]" />
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
         
-        <div className="relative max-w-6xl mx-auto px-6 py-8">
+        <div className="relative max-w-[1600px] mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/contracts">
@@ -308,7 +308,7 @@ export default function ExternalDatabaseImportPage() {
       </div>
 
       {/* Progress Steps */}
-      <div className="max-w-6xl mx-auto px-6 py-6">
+      <div className="max-w-[1600px] mx-auto px-6 py-6">
         <div className="flex items-center justify-between mb-8">
           {steps.map((s, index) => (
             <React.Fragment key={s.key}>

@@ -115,7 +115,7 @@ export default function SavedSearchesPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl space-y-6">
+    <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
       <PageBreadcrumb />
 
       {/* Header */}

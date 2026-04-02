@@ -17,6 +17,11 @@ import {
 } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
+import {
+  formatPlaybookPromptContext,
+  mapPlaybookToCopilotReference,
+  resolveRequestedPlaybook,
+} from '@/lib/playbooks/copilot-playbook';
 
 // ============================================================================
 // POST - Get real-time suggestions or AI-assisted generation
@@ -35,6 +40,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       isNegotiating = false,
       userRole = 'drafter',
       playbook,
+      playbookId,
       mode,
       prompt,
       selectedText } = body;
@@ -42,6 +48,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     if (!text && mode !== 'assist') {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Text is required', 400);
     }
+
+    const resolvedPlaybook = await resolveRequestedPlaybook(tenantId, playbook, playbookId);
 
     const context: CopilotContext = {
       tenantId,
@@ -51,7 +59,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       contractValue,
       isNegotiating,
       userRole,
-      activePlaybook: playbook };
+      activePlaybook: resolvedPlaybook ? mapPlaybookToCopilotReference(resolvedPlaybook) : undefined };
 
     const copilotService = getAICopilotService();
 
@@ -89,6 +97,7 @@ Rules:
 - If the user asks to rewrite/improve selected text, provide only the improved version
 
 ${contractType ? `Contract type: ${contractType}` : ''}
+${resolvedPlaybook ? `${formatPlaybookPromptContext(resolvedPlaybook)}\n\n` : ''}
 ${ragContext}`;
 
         const messages: Array<{ role: 'system' | 'user'; content: string }> = [

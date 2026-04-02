@@ -1013,7 +1013,7 @@ export default function UIShowcase() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-[1600px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
@@ -1031,7 +1031,7 @@ export default function UIShowcase() {
       </header>
 
       {/* Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-16">
+      <main className="max-w-[1600px] mx-auto px-6 py-8 space-y-16">
         <ButtonsSection />
         <BadgesSection />
         <CardsSection />
@@ -1049,7 +1049,7 @@ export default function UIShowcase() {
 
       {/* Footer */}
       <footer className="border-t border-slate-200 dark:border-slate-800 py-8 mt-16">
-        <div className="max-w-7xl mx-auto px-6 text-center text-sm text-slate-500">
+        <div className="max-w-[1600px] mx-auto px-6 text-center text-sm text-slate-500">
           <p>Built with Framer Motion, Radix UI, and Tailwind CSS</p>
         </div>
       </footer>

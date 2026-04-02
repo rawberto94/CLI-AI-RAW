@@ -3,7 +3,7 @@
  * Tests analytics dashboards, reports, and data visualization
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 test.describe('Analytics', () => {
   

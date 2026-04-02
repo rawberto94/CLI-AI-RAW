@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function BaselineImportPage() {
   return (
-    <div className="container mx-auto py-8">
+    <div className="max-w-[1600px] mx-auto py-8">
       <BaselineCSVImport />
     </div>
   );

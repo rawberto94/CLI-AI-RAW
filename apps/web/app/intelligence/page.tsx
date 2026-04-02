@@ -122,14 +122,14 @@ export default function IntelligencePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/30">
-      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 px-6 py-3 sticky top-0 z-10">
+      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 px-6 py-3 sticky top-0 z-30">
         <PageBreadcrumb />
       </div>
       
       <div className="p-6">
       {/* Header */}
       <motion.div 
-        className="max-w-6xl mx-auto mb-8"
+        className="max-w-[1600px] mx-auto mb-8"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -162,7 +162,7 @@ export default function IntelligencePage() {
       </motion.div>
 
       {/* Intelligence Dashboard — aggregate agent metrics */}
-      <div className="max-w-6xl mx-auto mb-8">
+      <div className="max-w-[1600px] mx-auto mb-8">
         <Suspense fallback={<div className="h-64 bg-slate-100 rounded-lg animate-pulse" />}>
           <IntelligenceDashboard />
         </Suspense>
@@ -170,7 +170,7 @@ export default function IntelligencePage() {
 
       {/* Quick Stats — LIVE from API */}
       <motion.div 
-        className="max-w-6xl mx-auto mb-8"
+        className="max-w-[1600px] mx-auto mb-8"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
@@ -186,7 +186,7 @@ export default function IntelligencePage() {
       {/* Active Insights (live) */}
       {insights.length > 0 && (
         <motion.div
-          className="max-w-6xl mx-auto mb-8"
+          className="max-w-[1600px] mx-auto mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.15 }}
@@ -223,7 +223,7 @@ export default function IntelligencePage() {
         variants={container}
         initial="hidden"
         animate="show"
-        className="max-w-6xl mx-auto grid grid-cols-2 gap-6"
+        className="max-w-[1600px] mx-auto grid grid-cols-2 gap-6"
       >
         {features.map((feature) => {
           const Icon = feature.icon;
@@ -264,7 +264,7 @@ export default function IntelligencePage() {
 
       {/* AI Assistant Banner — now opens chatbot */}
       <motion.div 
-        className="max-w-6xl mx-auto mt-8"
+        className="max-w-[1600px] mx-auto mt-8"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.5 }}
@@ -314,7 +314,7 @@ export default function IntelligencePage() {
       {/* Recent Activity (live) */}
       {activity.length > 0 && (
         <motion.div
-          className="max-w-6xl mx-auto mt-6 mb-4"
+          className="max-w-[1600px] mx-auto mt-6 mb-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}

@@ -135,7 +135,7 @@ export default function AddRateCardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}

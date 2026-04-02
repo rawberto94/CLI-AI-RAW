@@ -396,11 +396,31 @@ function extractSignatureInfo(contractText: string): { signatureStatus: string |
     /\bSigned\s+by[:\s]/i,
     /\/s\/\s+\w+/i,
     /\[SIGNATURE\]/i,
+    // Additional patterns for scanned/handwritten/electronic signatures
+    /\bFor and on behalf of\b/i,
+    /\bauthori[sz]ed\s+signator/i,
+    /\bduly\s+authori[sz]ed/i,
+    /\bPlace[,:\s]+Date[:\s]/i,
+    /\bOrt[,:\s]+Datum[:\s]/i,        // German: Place, Date
+    /\bUnterschrift/i,                 // German: Signature
+    /\bName[:\s]*_{3,}/i,
+    /\bTitle[:\s]*_{3,}/i,
+    /\bBy[:\s]*_{3,}/i,
+    /_{5,}\s*\n.*(?:Name|Title|Date)/i,
+    /\bDigitally signed\b/i,
+    /\bDocuSign/i,
+    /\bAdobe Sign/i,
+    /\belectronic(?:ally)?\s+signed/i,
   ];
   const signedIndicators = [
     /\/s\/\s+\S+/i,
     new RegExp(`(?:Signed|Executed)\s+(?:on|this)\s+${FULL_DATE_PATTERN}`, 'i'),
     new RegExp(`\bDate(?:d)?[:\s]+${FULL_DATE_PATTERN}`, 'i'),
+    // Additional signed indicators
+    /\bFor and on behalf of\b.*\n.*[A-Z][a-z]/i,
+    /\bduly\s+executed/i,
+    /\bDigitally signed by\b/i,
+    /\bDocuSigned by\b/i,
   ];
 
   const hasSignatureBlock = signatureBlockPatterns.some(pattern => pattern.test(contractText));
@@ -896,47 +916,82 @@ function buildDocumentIntelligenceOcrText(result: {
   return parts.join('\n\n').trim();
 }
 
-async function extractScannedPDFWithDocumentIntelligence(fileContent: Buffer): Promise<string> {
+interface DIExtractionResult {
+  text: string;
+  hasHandwriting: boolean;
+  handwrittenSpans: string[];
+}
+
+// Module-level store for DI handwriting results — set during extractTextFromBuffer,
+// read during signature detection in the main pipeline
+let lastDIHandwritingResult: { hasHandwriting: boolean; handwrittenSpans: string[] } = {
+  hasHandwriting: false,
+  handwrittenSpans: [],
+};
+
+async function extractPDFWithDocumentIntelligence(fileContent: Buffer): Promise<DIExtractionResult> {
+  const empty: DIExtractionResult = { text: '', hasHandwriting: false, handwrittenSpans: [] };
   try {
     const { analyzeLayout, analyzeRead, isDIConfigured, isDIEnabled } = await import('@repo/workers/azure-document-intelligence');
 
     if (!isDIConfigured() || !isDIEnabled()) {
-      logger.info('Azure Document Intelligence not configured or disabled — skipping DI OCR for scanned PDF');
-      return '';
+      logger.info('Azure Document Intelligence not configured or disabled — skipping DI extraction');
+      return empty;
     }
+
+    // Helper to extract handwritten spans from DI styles
+    const extractHandwritten = (content: string, styles?: Array<{ isHandwritten?: boolean; confidence?: number; spans?: Array<{ offset: number; length: number }> }>): string[] => {
+      if (!content || !styles?.length) return [];
+      const spans: string[] = [];
+      for (const style of styles) {
+        if (!style.isHandwritten || (style.confidence ?? 0) < 0.5) continue;
+        for (const span of style.spans ?? []) {
+          const text = content.substring(span.offset, span.offset + span.length).trim();
+          if (text.length > 0) spans.push(text);
+        }
+      }
+      return spans;
+    };
 
     try {
       const layoutResult = await analyzeLayout(fileContent, { extractKeyValuePairs: true });
       const layoutText = buildDocumentIntelligenceOcrText(layoutResult);
+      const handwrittenSpans = extractHandwritten(layoutResult.content || '', (layoutResult as any).styles);
       if (layoutText.length > 10) {
-        logger.info({ textLength: layoutText.length, tables: layoutResult.tables.length, kvPairs: layoutResult.keyValuePairs.length }, 'Azure Document Intelligence layout OCR completed for scanned PDF');
-        return layoutText;
+        logger.info({ textLength: layoutText.length, tables: layoutResult.tables.length, kvPairs: layoutResult.keyValuePairs.length, handwrittenSpans: handwrittenSpans.length }, 'Azure Document Intelligence layout extraction completed');
+        return { text: layoutText, hasHandwriting: handwrittenSpans.length > 0, handwrittenSpans };
       }
-      logger.warn('Azure Document Intelligence layout OCR returned insufficient text for scanned PDF');
+      logger.warn('Azure Document Intelligence layout extraction returned insufficient text');
     } catch (layoutError) {
-      logger.warn({ error: layoutError }, 'Azure Document Intelligence layout OCR failed for scanned PDF, trying read model');
+      logger.warn({ error: layoutError }, 'Azure Document Intelligence layout extraction failed, trying read model');
     }
 
     try {
       const readResult = await analyzeRead(fileContent);
       const readText = (readResult.content || '').trim();
+      const handwrittenSpans = extractHandwritten(readResult.content || '', (readResult as any).styles);
       if (readText.length > 10) {
-        logger.info({ textLength: readText.length }, 'Azure Document Intelligence read OCR completed for scanned PDF');
-        return readText;
+        logger.info({ textLength: readText.length, handwrittenSpans: handwrittenSpans.length }, 'Azure Document Intelligence read extraction completed');
+        return { text: readText, hasHandwriting: handwrittenSpans.length > 0, handwrittenSpans };
       }
-      logger.warn('Azure Document Intelligence read OCR returned insufficient text for scanned PDF');
+      logger.warn('Azure Document Intelligence read extraction returned insufficient text');
     } catch (readError) {
-      logger.warn({ error: readError }, 'Azure Document Intelligence read OCR failed for scanned PDF');
+      logger.warn({ error: readError }, 'Azure Document Intelligence read extraction failed');
     }
   } catch (error) {
-    logger.warn({ error }, 'Azure Document Intelligence OCR unavailable in inline generator');
+    logger.warn({ error }, 'Azure Document Intelligence unavailable in inline generator');
   }
 
-  return '';
+  return empty;
 }
 
 /**
- * Extract text content from a buffer based on file type
+ * Extract text content from a buffer based on file type.
+ *
+ * For PDFs, Azure Document Intelligence is **always** invoked (when configured)
+ * to provide richer structure (tables, key-value pairs, confidence scores).
+ * DI text is preferred over plain pdf-parse output; pdf-parse serves as a
+ * fallback when DI is unavailable or returns less content.
  */
 async function extractTextFromBuffer(
   fileContent: Buffer,
@@ -945,55 +1000,55 @@ async function extractTextFromBuffer(
 ): Promise<string> {
   const ext = path.extname(fileName).toLowerCase();
 
-  // PDF extraction using pdf-parse
+  // PDF extraction — always prefer Azure Document Intelligence for richer output
   if (ext === '.pdf' || mimeType === 'application/pdf') {
+    // 1. Always attempt DI first (structured tables, KV pairs, confidence)
+    let diText = '';
+    let diResult: DIExtractionResult = { text: '', hasHandwriting: false, handwrittenSpans: [] };
+    try {
+      diResult = await extractPDFWithDocumentIntelligence(fileContent);
+      diText = diResult.text;
+      // Store DI handwriting evidence for later use in signature detection
+      lastDIHandwritingResult = { hasHandwriting: diResult.hasHandwriting, handwrittenSpans: diResult.handwrittenSpans };
+      if (diText && diText.length > 10) {
+        logger.info({ diChars: diText.length, hasHandwriting: diResult.hasHandwriting }, 'Azure Document Intelligence extracted text for PDF (primary path)');
+      }
+    } catch (diError) {
+      logger.warn({ error: diError }, 'Azure Document Intelligence failed for PDF, will fall back to pdf-parse');
+    }
+
+    // 2. Also run pdf-parse as a secondary/fallback source
+    let pdfParseText = '';
     try {
       const pdfParse = (await import('pdf-parse')).default;
       const data = await pdfParse(fileContent);
-      const meaningfulText = (data.text || '').replace(/\s+/g, ' ').trim();
-      logger.info({ pages: data.numpages, chars: data.text.length, meaningfulChars: meaningfulText.length }, 'PDF parsed successfully');
-      
-      // Scanned / image-based PDF — very little extractable text
-      if (meaningfulText.length < 50) {
-        logger.info({ extractedChars: meaningfulText.length }, 'Scanned/image PDF detected — attempting Azure Document Intelligence OCR');
-        const diText = await extractScannedPDFWithDocumentIntelligence(fileContent);
-        if (diText && diText.length > 10) {
-          return diText;
-        }
-
-        logger.info({ extractedChars: meaningfulText.length }, 'Azure Document Intelligence unavailable or insufficient — attempting GPT-4o Vision OCR');
-        const ocrText = await extractScannedPDFWithVision(fileContent);
-        if (ocrText && ocrText.length > 10) {
-          return ocrText;
-        }
-
-        // If OCR providers fail, fall back to any small amount of parseable text.
-        if (meaningfulText.length > 0) return data.text;
-        throw new Error('Scanned PDF with no extractable text and OCR providers unavailable');
-      }
-      
-      return data.text;
-    } catch (error) {
-      logger.warn({ error }, 'pdf-parse failed, attempting OCR fallbacks');
-
-      const diText = await extractScannedPDFWithDocumentIntelligence(fileContent);
-      if (diText && diText.length > 10) {
-        return diText;
-      }
-
-      const ocrText = await extractScannedPDFWithVision(fileContent);
-      if (ocrText && ocrText.length > 10) {
-        return ocrText;
-      }
-
-      // Fallback: Try extracting text patterns from raw PDF
-      const rawText = fileContent.toString('utf8');
-      const textMatches = rawText.match(/\(([^)]+)\)/g) || [];
-      if (textMatches.length > 50) {
-        return textMatches.map(m => m.slice(1, -1)).join(' ');
-      }
-      throw new Error('Failed to extract text from PDF');
+      pdfParseText = data.text || '';
+      const meaningfulText = pdfParseText.replace(/\s+/g, ' ').trim();
+      logger.info({ pages: data.numpages, chars: pdfParseText.length, meaningfulChars: meaningfulText.length }, 'PDF parsed with pdf-parse (secondary)');
+    } catch (parseError) {
+      logger.warn({ error: parseError }, 'pdf-parse failed');
     }
+
+    // 3. Choose the best result — prefer DI when it returned meaningful content
+    if (diText && diText.length > 10) {
+      return diText;
+    }
+    if (pdfParseText.replace(/\s+/g, ' ').trim().length >= 50) {
+      logger.info('DI unavailable or insufficient — using pdf-parse text');
+      return pdfParseText;
+    }
+
+    // 4. Scanned/image PDF with no text from either source — try Vision OCR
+    logger.info('No meaningful text from DI or pdf-parse — attempting GPT-4o Vision OCR');
+    const ocrText = await extractScannedPDFWithVision(fileContent);
+    if (ocrText && ocrText.length > 10) {
+      return ocrText;
+    }
+
+    // 5. Last resort — if pdf-parse returned any small amount of text, use it
+    if (pdfParseText.trim().length > 0) return pdfParseText;
+
+    throw new Error('Failed to extract text from PDF — DI, pdf-parse, and Vision OCR all returned no content');
   }
 
   // Word documents using mammoth
@@ -1147,7 +1202,7 @@ async function extractContractMetadata(
 - parties: Array of all party names as strings (companies/individuals only, no addresses)
 - clientName: Name of the client/buyer/customer party if explicit, otherwise null
 - supplierName: Name of the supplier/vendor/service provider party if explicit, otherwise null
-- signatureStatus: One of "signed", "partially_signed", "unsigned", or "unknown"
+- signatureStatus: One of "signed", "partially_signed", "unsigned", or "unknown". Look for signature blocks, "For and on behalf of", "/s/" markers, names appearing after signature lines, handwritten-style names, DocuSign/Adobe Sign indicators, execution clauses, witness sections, or any indication the contract was executed. If the document has signature blocks with names filled in, it is "signed". If signature blocks exist but are blank, it is "unsigned".
 - signatureDate: Date of final execution (ISO format YYYY-MM-DD or null)
 
 Return ONLY valid JSON.
@@ -1555,12 +1610,9 @@ async function generateAIArtifact(
   extractedContractFacts?: BasicContractExtraction,
   contractTitle?: string | null
 ): Promise<Record<string, any> | null> {
+  // getOpenAIApiKey() throws if no AI key is configured — let it propagate
+  // so callers know AI is required
   const apiKey = getOpenAIApiKey();
-  
-  if (!apiKey) {
-    logger.warn('No OPENAI_API_KEY found, using basic artifact generation');
-    return null;
-  }
 
   try {
     const OpenAI = (await import('openai')).default;
@@ -2120,6 +2172,13 @@ export async function generateRealArtifacts(
         preUpdateData.signatureStatus = preMetadata.signatureStatus;
         preUpdateData.signatureRequiredFlag = preMetadata.signatureStatus === 'unsigned' || preMetadata.signatureStatus === 'partially_signed';
       }
+      // DI handwriting override: if Document Intelligence detected handwritten content
+      // in a document that has signature-related context, treat as signed
+      if (lastDIHandwritingResult.hasHandwriting && (!preUpdateData.signatureStatus || preUpdateData.signatureStatus === 'unknown')) {
+        logger.info({ contractId, handwrittenSpans: lastDIHandwritingResult.handwrittenSpans.length }, 'DI detected handwritten content — overriding signature status to signed');
+        preUpdateData.signatureStatus = 'signed';
+        preUpdateData.signatureRequiredFlag = false;
+      }
       if (preMetadata.signatureDate) {
         const sigDate = new Date(preMetadata.signatureDate);
         if (!isNaN(sigDate.getTime())) preUpdateData.signatureDate = sigDate;
@@ -2164,7 +2223,7 @@ export async function generateRealArtifacts(
         batch.map(async (type) => {
           logger.info({ contractId, type }, `Generating ${type} artifact`);
           
-          // Try AI generation first, fall back to basic
+          // AI generation is mandatory — no silent fallback to basic regex
           let artifactData = await generateAIArtifact(
             type,
             contractText,
@@ -2177,8 +2236,7 @@ export async function generateRealArtifacts(
           );
           
           if (!artifactData) {
-            logger.info({ type }, 'Using basic artifact generation (no AI)');
-            artifactData = generateBasicArtifact(type, contractText, contractId, contractTitle, artifactGroundingFacts);
+            throw new Error(`AI artifact generation returned no data for ${type} — check that AZURE_OPENAI_API_KEY or OPENAI_API_KEY is configured`);
           }
 
           artifactData = repairArtifactData(type, artifactData, artifactGroundingFacts, contractTitle);

@@ -117,7 +117,7 @@ export default function SecurityPage() {
           <div className="absolute bottom-0 -right-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl" />
         </div>
         
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="relative mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 mb-8">
               <Shield className="h-4 w-4 text-violet-400" aria-hidden="true" />
@@ -140,7 +140,7 @@ export default function SecurityPage() {
 
       {/* Certifications */}
       <section className="py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {certifications.map((cert) => (
               <div
@@ -160,7 +160,7 @@ export default function SecurityPage() {
 
       {/* Security Features */}
       <section className="py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-white">
               Security at Every Layer
@@ -189,7 +189,7 @@ export default function SecurityPage() {
 
       {/* Security Practices */}
       <section className="py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
               <h2 className="text-3xl font-bold text-white mb-6">Our Security Practices</h2>

@@ -500,7 +500,7 @@ export class LegalReviewService {
             initial: pos.initial,
             fallback1: pos.fallback1,
             fallback2: pos.fallback2,
-            walkaway: pos.walkaway,
+            walkaway: pos.walkaway || pos.fallback2 || pos.fallback1 || pos.initial,
           })),
         },
       },

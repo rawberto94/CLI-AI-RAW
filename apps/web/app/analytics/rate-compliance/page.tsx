@@ -150,7 +150,7 @@ export default function RateCompliancePage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 space-y-6">
+    <div className="max-w-[1600px] mx-auto py-8 px-4 space-y-6">
       <PageBreadcrumb />
 
       {/* Header */}

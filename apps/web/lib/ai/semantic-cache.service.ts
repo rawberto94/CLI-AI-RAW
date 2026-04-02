@@ -33,6 +33,7 @@ export interface CacheEntry {
 
 export interface CacheScope {
   contractId?: string;
+  userRole?: string;
 }
 
 export interface CachedResponse {
@@ -408,10 +409,14 @@ export class SemanticCacheService {
   }
 
   private buildScopeKey(scope?: CacheScope): string {
+    const parts: string[] = [];
     if (scope?.contractId) {
-      return `contract:${scope.contractId}`;
+      parts.push(`contract:${scope.contractId}`);
     }
-    return SemanticCacheService.GLOBAL_SCOPE_KEY;
+    if (scope?.userRole) {
+      parts.push(`role:${scope.userRole}`);
+    }
+    return parts.length > 0 ? parts.join('|') : SemanticCacheService.GLOBAL_SCOPE_KEY;
   }
 
   private normalizeScopeKey(scopeKey?: string): string {

@@ -11,7 +11,7 @@ import Link from 'next/link';
 export function BaselinesPageContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-purple-50/20">
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="max-w-[1600px] mx-auto p-6 space-y-6">
         <RateCardBreadcrumbs />
         
         <div className="flex items-center justify-between">

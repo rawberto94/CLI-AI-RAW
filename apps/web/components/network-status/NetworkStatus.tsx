@@ -210,7 +210,7 @@ function NetworkBanner({ isOnline, showReconnected }: NetworkBannerProps) {
           exit={{ y: -100, opacity: 0 }}
           className="fixed top-0 left-0 right-0 z-50 bg-red-600 text-white py-2 px-4"
         >
-          <div className="container mx-auto flex items-center justify-center gap-3">
+          <div className="max-w-[1600px] mx-auto flex items-center justify-center gap-3">
             <WifiOff className="w-5 h-5" />
             <span className="font-medium">You&apos;re offline. Some features may not work.</span>
             <button
@@ -231,7 +231,7 @@ function NetworkBanner({ isOnline, showReconnected }: NetworkBannerProps) {
           exit={{ y: -100, opacity: 0 }}
           className="fixed top-0 left-0 right-0 z-50 bg-green-600 text-white py-2 px-4"
         >
-          <div className="container mx-auto flex items-center justify-center gap-3">
+          <div className="max-w-[1600px] mx-auto flex items-center justify-center gap-3">
             <Wifi className="w-5 h-5" />
             <span className="font-medium">You&apos;re back online!</span>
           </div>

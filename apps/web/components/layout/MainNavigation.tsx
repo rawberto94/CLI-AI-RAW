@@ -117,7 +117,7 @@ const navigationItems: NavigationItem[] = [
   },
   {
     name: 'Generate',
-    href: '/generate',
+    href: '/drafting',
     icon: Zap,
     description: 'Create contracts',
     isPremium: true,
@@ -125,31 +125,31 @@ const navigationItems: NavigationItem[] = [
     children: [
       {
         name: 'New Contract',
-        href: '/generate?create=new',
+        href: '/drafting/copilot?mode=blank',
         icon: FileText,
         description: 'Start from scratch'
       },
       {
         name: 'From Template',
-        href: '/generate?create=template',
+        href: '/generate/templates',
         icon: FileText,
         description: 'Use a template'
       },
       {
         name: 'Renewal',
-        href: '/generate?create=renewal',
+        href: '/renewals',
         icon: GitBranch,
         description: 'Renew existing'
       },
       {
         name: 'Amendment',
-        href: '/generate?create=amendment',
+        href: '/drafting/copilot?mode=amendment',
         icon: GitBranch,
         description: 'Amend existing'
       },
       {
         name: 'All Drafts',
-        href: '/generate',
+        href: '/drafting',
         icon: FileText,
         description: 'View all drafts'
       }

@@ -65,7 +65,7 @@ export default function AIToolsPage() {
   const [activeTab, setActiveTab] = useState('batch');
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="max-w-[1600px] mx-auto py-8 px-4">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <Bot className="w-8 h-8 text-violet-600" />

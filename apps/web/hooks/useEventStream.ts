@@ -101,7 +101,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
       if (userId) params.set('userId', userId);
 
       const url = `/api/events?${params.toString()}`;
-      const es = new EventSource(url);
+      const es = new EventSource(url, { withCredentials: true });
       eventSourceRef.current = es;
 
       es.onopen = () => {

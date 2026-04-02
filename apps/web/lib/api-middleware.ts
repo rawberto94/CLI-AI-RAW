@@ -98,16 +98,21 @@ export type ContractQueryParams = z.infer<typeof contractQuerySchema>;
 // ============================================================================
 
 /**
- * Extract and validate API context from request
+ * Extract and validate API context from request.
+ *
+ * When used inside an authenticated handler the middleware will have
+ * injected `x-tenant-id`.  When called only to construct an error
+ * response (e.g. 401 for unauthenticated requests) the header may be
+ * absent — so we fall back to 'unknown' instead of throwing, which
+ * prevents unhandled exceptions in the 30+ routes that use
+ * `createErrorResponse(getApiContext(req), …)` for unauthenticated
+ * callers.
  */
 export function getApiContext(request: NextRequest): ApiContext {
   const tenantId = request.headers.get('x-tenant-id');
-  if (!tenantId && process.env.NODE_ENV === 'production') {
-    throw new Error('Tenant ID required. Provide x-tenant-id header.');
-  }
   return {
     requestId: request.headers.get('x-request-id') || nanoid(),
-    tenantId: tenantId || 'demo', // Only used in development
+    tenantId: tenantId || (process.env.NODE_ENV === 'production' ? 'unknown' : 'demo'),
     startTime: Date.now(),
     dataMode: (request.headers.get('x-data-mode') || 'real') as 'real' | 'mock',
   };

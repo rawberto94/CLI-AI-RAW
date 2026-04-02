@@ -110,7 +110,7 @@ const STATUS_OPTIONS: FilterOption[] = [
   { id: 'all', label: 'All Statuses', value: 'all', color: 'slate' },
   { id: 'completed', label: 'Active', value: 'completed', color: 'violet' },
   { id: 'processing', label: 'Processing', value: 'processing', color: 'blue' },
-  { id: 'pending', label: 'Pending', value: 'pending', color: 'amber' },
+  { id: 'uploaded', label: 'Uploaded', value: 'uploaded', color: 'amber' },
   { id: 'failed', label: 'Failed', value: 'failed', color: 'red' },
 ];
 

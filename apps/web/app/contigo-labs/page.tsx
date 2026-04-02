@@ -287,13 +287,12 @@ export default function ContigoLabsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      {/* Breadcrumbs */}
-      <div className="max-w-7xl mx-auto px-6 pt-4">
+      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 pt-6">
         <PageBreadcrumb />
       </div>
       {/* Header */}
-      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 sticky top-0 z-30">
+        <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 hover:scale-105 transition-all duration-300">
@@ -349,8 +348,8 @@ export default function ContigoLabsPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+      <main className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Navigation Tabs */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-1.5">
             <TabsList className="w-full justify-start bg-transparent h-auto p-0 gap-1 flex-wrap">

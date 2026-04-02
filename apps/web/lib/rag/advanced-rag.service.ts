@@ -31,6 +31,7 @@ import {
 } from '@repo/utils/rag/semantic-chunker';
 import { progressiveRerank as progressiveRerankService } from './reranker.service';
 import { createOpenAIClient, createEmbeddingClient, getOpenAIApiKey } from '@/lib/openai-client';
+import { logger } from '@/lib/logger';
 
 // Re-export so existing callers (barrel, tests) keep working
 export { semanticChunk };
@@ -400,7 +401,7 @@ async function vectorSearch(
     
     return results;
   } catch (err) {
-    console.error('[RAG] vectorSearch failed:', err instanceof Error ? err.message : err);
+    logger.error('[RAG] vectorSearch failed', err instanceof Error ? err : undefined, { errorDetail: String(err) });
     return [];
   }
 }
@@ -500,7 +501,7 @@ async function keywordSearch(
     
     return results;
   } catch (err) {
-    console.error('[RAG] keywordSearch failed:', err instanceof Error ? err.message : err);
+    logger.error('[RAG] keywordSearch failed', err instanceof Error ? err : undefined, { errorDetail: String(err) });
     return [];
   }
 }
@@ -601,7 +602,7 @@ async function rerank(
       };
     });
   } catch (err) {
-    console.warn('[RAG] Progressive rerank failed, using passthrough:', (err as Error).message);
+    logger.warn('[RAG] Progressive rerank failed, using passthrough', { error: (err as Error).message });
     return candidates.slice(0, topK).map(r => ({ ...r, originalScore: r.score, rerankedScore: r.score }));
   }
 }
@@ -935,7 +936,7 @@ export async function hybridSearch(
           }));
         }
       } catch (cragErr) {
-        console.warn('[RAG] CRAG validation skipped:', cragErr);
+        logger.warn('[RAG] CRAG validation skipped', { error: cragErr instanceof Error ? cragErr.message : String(cragErr) });
         // Continue with unvalidated results — graceful degradation
       }
     }
@@ -970,7 +971,7 @@ export async function hybridSearch(
           }
         }
       } catch (graphErr) {
-        console.warn('[RAG] Graph expansion skipped:', graphErr);
+        logger.warn('[RAG] Graph expansion skipped', { error: graphErr instanceof Error ? graphErr.message : String(graphErr) });
       }
     }
     
@@ -999,7 +1000,7 @@ export async function hybridSearch(
           }));
         }
       } catch (parentErr) {
-        console.warn('[RAG] Parent-doc retrieval skipped:', parentErr);
+        logger.warn('[RAG] Parent-doc retrieval skipped', { error: parentErr instanceof Error ? parentErr.message : String(parentErr) });
       }
     }
     
@@ -1029,7 +1030,7 @@ export async function hybridSearch(
           }
         }
       } catch (neo4jErr) {
-        console.warn('[RAG] Neo4j graph enrichment skipped:', neo4jErr);
+        logger.warn('[RAG] Neo4j graph enrichment skipped', { error: neo4jErr instanceof Error ? neo4jErr.message : String(neo4jErr) });
       }
     }
     
@@ -1139,7 +1140,7 @@ export async function hybridSearch(
     // If OpenAI fails (429 quota, network error, etc.), fall back to keyword-only search
     // instead of silently returning empty results
     const errorMsg = error?.message || 'Unknown error';
-    console.warn(`[RAG] Hybrid search failed: ${errorMsg.substring(0, 200)}. Falling back to keyword-only search.`);
+    logger.warn(`[RAG] Hybrid search failed — falling back to keyword-only`, { error: errorMsg.substring(0, 200) });
     
     try {
       // Fall back to keyword search on ContractEmbedding.chunkText
@@ -1149,7 +1150,7 @@ export async function hybridSearch(
       // If no ContractEmbedding chunks exist, search Contract.rawText directly
       return rawTextFallbackSearch(query, filters, k);
     } catch (error) {
-      console.error('[RAG] fallback search failed:', error instanceof Error ? error.message : error);
+      logger.error('[RAG] Keyword fallback search also failed', error instanceof Error ? error : undefined, { errorDetail: String(error) });
       return [];
     }
   }
@@ -1250,7 +1251,7 @@ async function rawTextFallbackSearch(
       highlights: extractHighlights(c.rawText, query),
     }));
   } catch (error) {
-    console.warn('[RAG] rawText fallback search failed:', error);
+    logger.warn('[RAG] rawText fallback search failed', { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
@@ -1415,7 +1416,7 @@ export async function processContractWithSemanticChunking(
       text: contextualized[i]?.contextualizedText || chunk.text,
     }));
   } catch (ctxErr) {
-    console.warn('[RAG] Contextual retrieval skipped:', ctxErr);
+    logger.warn('[RAG] Contextual retrieval skipped', { error: ctxErr instanceof Error ? ctxErr.message : String(ctxErr) });
     // Continue with original chunks — graceful degradation
   }
   
@@ -1492,7 +1493,7 @@ export async function processContractWithSemanticChunking(
       })),
     );
   } catch (graphErr) {
-    console.warn('[RAG] Graph building skipped:', graphErr);
+    logger.warn('[RAG] Graph building skipped', { error: graphErr instanceof Error ? graphErr.message : String(graphErr) });
   }
   
   // Step 5: Invalidate semantic cache for this contract's tenant
@@ -1523,7 +1524,7 @@ export async function processContractWithSemanticChunking(
       },
     });
   } catch (metaErr) {
-    console.warn('[RAG] ContractMetadata version tracking failed (non-fatal):', metaErr);
+    logger.warn('[RAG] ContractMetadata version tracking failed (non-fatal)', { error: metaErr instanceof Error ? metaErr.message : String(metaErr) });
   }
   
   return {

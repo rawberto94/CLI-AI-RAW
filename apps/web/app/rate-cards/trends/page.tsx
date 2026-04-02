@@ -17,7 +17,7 @@ export default async function EmergingTrendsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-violet-50/20">
-      <div className="container mx-auto py-6">
+      <div className="max-w-[1600px] mx-auto py-6">
         <Suspense fallback={
           <div className="flex items-center justify-center h-64">
             <div className="flex flex-col items-center gap-4">

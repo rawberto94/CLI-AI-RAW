@@ -144,7 +144,7 @@ export default function ClauseVersionHistory({ clauseId: propClauseId, onBack }:
   }, [leftVer, rightVer]);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="max-w-[1600px] mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {onBack && (

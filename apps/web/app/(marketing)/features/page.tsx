@@ -150,7 +150,7 @@ export default function FeaturesPage() {
           <div className="absolute top-1/3 -right-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl" />
         </div>
         
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="relative mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 mb-8">
               <Sparkles className="h-4 w-4 text-violet-400" aria-hidden="true" />
@@ -173,7 +173,7 @@ export default function FeaturesPage() {
 
       {/* Main Features */}
       <section className="py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
           <div className="space-y-24">
             {mainFeatures.map((feature, index) => (
               <div 
@@ -212,7 +212,7 @@ export default function FeaturesPage() {
 
       {/* Additional Features Grid */}
       <section className="py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-white">And Much More</h2>
             <p className="mt-4 text-lg text-slate-400">
@@ -239,7 +239,7 @@ export default function FeaturesPage() {
 
       {/* Security Section */}
       <section className="py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
           <div className="relative rounded-3xl border border-white/10 bg-gradient-to-br from-violet-500/10 to-purple-500/10 p-12 overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/20 rounded-full blur-3xl" />
             

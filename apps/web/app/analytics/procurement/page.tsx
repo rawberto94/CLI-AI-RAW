@@ -186,7 +186,7 @@ export default function ProcurementAnalyticsHub() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
-      <div className="container mx-auto py-8 space-y-8">
+      <div className="max-w-[1600px] mx-auto py-8 space-y-8">
         {/* Breadcrumbs */}
         <div className="mb-2">
           <PageBreadcrumb />

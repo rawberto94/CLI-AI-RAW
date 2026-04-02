@@ -139,7 +139,7 @@ export default function WorkflowDesignerPage() {
   const getStepMeta = (type: StepType) => STEP_TYPES.find(t => t.id === type)!;
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
+    <div className="max-w-4xl mx-auto py-8 px-4">
       <PageBreadcrumb />
 
       {/* Header */}

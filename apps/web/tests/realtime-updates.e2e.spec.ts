@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 /**
  * E2E Test: Real-Time Updates Flow
@@ -197,11 +197,11 @@ test.describe('Real-Time Updates Flow', () => {
 
   test('should show real-time notifications for events', async ({ page, request }) => {
     // Step 1: Navigate to dashboard or contracts page
-    await page.goto('/');
+    await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
 
     // Step 2: Trigger an event via API
-    const createResponse = await request.post('http://localhost:3000/api/contracts', {
+    const createResponse = await request.post('/api/contracts', {
       headers: { 
         'x-tenant-id': testTenantId,
         'Content-Type': 'application/json'

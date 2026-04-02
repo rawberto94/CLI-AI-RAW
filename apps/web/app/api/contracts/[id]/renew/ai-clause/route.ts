@@ -20,12 +20,17 @@ import {
 } from '@/lib/api-middleware';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 import { logger } from '@/lib/logger';
+import {
+  formatPlaybookPromptContext,
+  resolveRequestedPlaybook,
+} from '@/lib/playbooks/copilot-playbook';
 
 const RequestSchema = z.object({
   action: z.enum(['improve', 'generate', 'simplify', 'strengthen']),
   clauseTitle: z.string(),
   currentContent: z.string().optional(),
   context: z.string().optional().describe('Additional context such as industry, jurisdiction, etc.'),
+  playbookId: z.string().optional(),
 });
 
 const GeneratedClauseSchema = z.object({
@@ -68,6 +73,8 @@ export async function POST(
       ? `Contract: "${contract.contractTitle}" (${contract.contractType || 'General'}), between ${contract.clientName || 'Client'} and ${contract.supplierName || 'Supplier'}`
       : '';
 
+    const resolvedPlaybook = await resolveRequestedPlaybook(ctx.tenantId, undefined, input.playbookId);
+
     const actionPrompts: Record<string, string> = {
       improve: `Improve the following clause for a contract renewal. Make it more precise, reduce ambiguity, and ensure it protects both parties fairly. Maintain the original intent.`,
       generate: `Generate a professional, legally-sound clause for a contract renewal. The clause should be comprehensive and enterprise-grade.`,
@@ -83,6 +90,10 @@ export async function POST(
 ${actionPrompts[input.action]}
 
 ${contractContext}
+${resolvedPlaybook ? `${formatPlaybookPromptContext(resolvedPlaybook)}
+
+Use the policy pack as the preferred drafting and fallback baseline for this clause where relevant.
+` : ''}
 ${input.context ? `Additional context: ${input.context}` : ''}
 
 Clause Title: "${input.clauseTitle}"

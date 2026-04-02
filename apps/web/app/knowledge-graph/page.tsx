@@ -85,7 +85,7 @@ export default function KnowledgeGraphPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
+    <div className="max-w-[1600px] mx-auto py-8 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Knowledge Graph Explorer</h1>

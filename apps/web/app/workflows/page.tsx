@@ -281,7 +281,7 @@ function WorkflowsPageContent() {
   if (showBuilder) {
     return (
       <div className="h-full overflow-auto bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/20 dark:from-slate-900 dark:via-purple-950/20 dark:to-purple-950/20">
-        <div className="max-w-7xl mx-auto p-6">
+        <div className="max-w-[1600px] mx-auto p-6">
           <div className="mb-6">
             <Button variant="outline" onClick={() => setShowBuilder(false)} className="gap-2 dark:border-slate-600 dark:hover:bg-slate-700">
               <ArrowRight className="h-4 w-4 rotate-180" aria-hidden="true" />
@@ -316,7 +316,7 @@ function WorkflowsPageContent() {
 
   return (
     <div className="h-full overflow-auto bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/20 dark:from-slate-900 dark:via-purple-950/20 dark:to-purple-950/20">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-[1600px] mx-auto">
         {/* Breadcrumbs */}
         <div className="px-6 pt-4">
           <PageBreadcrumb />

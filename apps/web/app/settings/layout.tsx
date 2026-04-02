@@ -7,10 +7,12 @@ export default function SettingsLayout({
 }) {
   return (
     <div className="min-h-screen">
-      <div className="px-6 pt-4">
+      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 pt-6">
         <AutoBreadcrumbs homeHref="/dashboard" homeLabel="Dashboard" />
       </div>
-      {children}
+      <div className="max-w-[1600px] mx-auto">
+        {children}
+      </div>
     </div>
   );
 }

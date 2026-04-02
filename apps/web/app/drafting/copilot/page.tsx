@@ -18,10 +18,21 @@ import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { PageBreadcrumb } from '@/components/navigation';
-import { Sparkles, FileText, Edit3, RefreshCw, GitBranch } from 'lucide-react';
+import { Sparkles, FileText, Edit3, RefreshCw, GitBranch, BookOpen } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import TemplateVariableForm from '@/components/drafting/TemplateVariableForm';
+import { CopilotHandoffPayload, getCopilotHandoffStorageKey } from '@/lib/drafting/copilot-handoff';
+
+interface DraftingPlaybookOption {
+  id: string;
+  name: string;
+  description?: string;
+  isDefault?: boolean;
+  contractTypes: string[];
+}
 
 // Dynamic import to avoid SSR issues
 const CopilotDraftingCanvas = dynamic(
@@ -54,7 +65,9 @@ export default function CopilotDraftPage() {
   const templateId = searchParams?.get('template');
   const templateName = searchParams?.get('name');
   const draftId = searchParams?.get('draft');
-  const fromContractId = searchParams?.get('from');
+  const sourceContractId = searchParams?.get('from') || searchParams?.get('contractId');
+  const handoffId = searchParams?.get('handoff');
+  const playbookId = searchParams?.get('playbook') || searchParams?.get('playbookId');
   
   // Track if we've created a draft already
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(draftId || null);
@@ -65,6 +78,8 @@ export default function CopilotDraftPage() {
   const [showVariableForm, setShowVariableForm] = useState(false);
   const [hydratedContent, setHydratedContent] = useState<string | null>(null);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
+  const [availablePlaybooks, setAvailablePlaybooks] = useState<DraftingPlaybookOption[]>([]);
+  const [isLoadingPlaybooks, setIsLoadingPlaybooks] = useState(false);
 
   // Source contract data for renewal/amendment flows
   const [sourceContract, setSourceContract] = useState<{
@@ -79,19 +94,73 @@ export default function CopilotDraftPage() {
     rawText: string | null;
   } | null>(null);
 
+  useEffect(() => {
+    if (!handoffId || draftId || currentDraftId) return;
+
+    try {
+      const rawPayload = window.sessionStorage.getItem(getCopilotHandoffStorageKey(handoffId));
+      if (!rawPayload) return;
+
+      const payload = JSON.parse(rawPayload) as CopilotHandoffPayload;
+      if (payload.content) {
+        setHydratedContent(payload.content);
+      }
+      if (payload.title) {
+        savedTitleRef.current = payload.title;
+      }
+    } catch (error) {
+      console.error('Copilot handoff restore error:', error);
+    }
+  }, [handoffId, draftId, currentDraftId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchPlaybooks = async () => {
+      setIsLoadingPlaybooks(true);
+      try {
+        const response = await fetch('/api/playbooks');
+        if (!response.ok) {
+          throw new Error('Failed to fetch playbooks');
+        }
+
+        const data = await response.json();
+        const playbooks = data.data?.playbooks || data.playbooks || [];
+
+        if (!cancelled) {
+          setAvailablePlaybooks(playbooks);
+        }
+      } catch (error) {
+        console.error('Playbook fetch error:', error);
+        if (!cancelled) {
+          toast.error('Could not load policy packs');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingPlaybooks(false);
+        }
+      }
+    };
+
+    fetchPlaybooks();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Fetch source contract for renewal/amendment flows
   useEffect(() => {
-    if (!fromContractId || draftId || currentDraftId) return;
+    if (!sourceContractId || draftId || currentDraftId) return;
     if (mode !== 'renewal' && mode !== 'amendment') return;
     let cancelled = false;
 
     const fetchSourceContract = async () => {
       setIsLoadingTemplate(true);
       try {
-        const res = await fetch(`/api/contracts/${fromContractId}`);
+        const res = await fetch(`/api/contracts/${sourceContractId}`);
         if (!res.ok) throw new Error('Failed to fetch source contract');
         const data = await res.json();
-        const contract = data?.data?.contract || data?.contract;
+        const contract = data?.data;
         if (!cancelled && contract) {
           setSourceContract({
             id: contract.id,
@@ -126,7 +195,9 @@ export default function CopilotDraftPage() {
             '<p>Authorized Representative (Party B): ________________________</p>',
           ].filter(Boolean).join('\n');
 
-          setHydratedContent(preContent);
+          if (!handoffId) {
+            setHydratedContent(preContent);
+          }
         }
       } catch (err) {
         console.error('Source contract fetch error:', err);
@@ -138,7 +209,7 @@ export default function CopilotDraftPage() {
 
     fetchSourceContract();
     return () => { cancelled = true; };
-  }, [fromContractId, mode, draftId, currentDraftId]);
+  }, [sourceContractId, mode, draftId, currentDraftId, handoffId]);
 
   // Fetch template content when templateId is present
   useEffect(() => {
@@ -197,8 +268,10 @@ export default function CopilotDraftPage() {
         // Create new draft
         const isRenewal = mode === 'renewal';
         const isAmendment = mode === 'amendment';
-        const title = savedTitleRef.current || templateName 
-          ? `Draft - ${decodeURIComponent(templateName || 'New Contract')}`
+        const title = savedTitleRef.current
+          ? savedTitleRef.current
+          : templateName
+          ? `Draft - ${decodeURIComponent(templateName)}`
           : isRenewal && sourceContract
             ? `Renewal - ${sourceContract.title}`
             : isAmendment && sourceContract
@@ -215,7 +288,7 @@ export default function CopilotDraftPage() {
             status: 'DRAFT',
             sourceType: isRenewal ? 'RENEWAL' : isAmendment ? 'AMENDMENT' : templateId ? 'template' : 'blank',
             sourceTemplateId: templateId || undefined,
-            sourceContractId: fromContractId || undefined,
+            sourceContractId: sourceContractId || undefined,
           }),
         });
         
@@ -233,7 +306,15 @@ export default function CopilotDraftPage() {
           url.searchParams.delete('mode');
           url.searchParams.delete('template');
           url.searchParams.delete('name');
+          url.searchParams.delete('from');
+          url.searchParams.delete('contractId');
+          url.searchParams.delete('handoff');
           url.searchParams.set('draft', data.data.draft.id);
+
+          if (handoffId) {
+            window.sessionStorage.removeItem(getCopilotHandoffStorageKey(handoffId));
+          }
+
           router.replace(url.pathname + url.search);
           
           toast.success('Draft created');
@@ -244,7 +325,21 @@ export default function CopilotDraftPage() {
       toast.error('Failed to save draft');
       throw error;
     }
-  }, [currentDraftId, templateId, templateName, router]);
+  }, [currentDraftId, templateId, templateName, router, mode, sourceContract, sourceContractId, handoffId]);
+
+  const handlePlaybookChange = useCallback((value: string) => {
+    const url = new URL(window.location.href);
+
+    if (value === 'none') {
+      url.searchParams.delete('playbook');
+      url.searchParams.delete('playbookId');
+    } else {
+      url.searchParams.set('playbook', value);
+      url.searchParams.delete('playbookId');
+    }
+
+    router.replace(url.pathname + url.search);
+  }, [router]);
 
   // Determine the context for the header
   const getHeaderInfo = () => {
@@ -298,11 +393,13 @@ export default function CopilotDraftPage() {
 
   const headerInfo = getHeaderInfo();
   const HeaderIcon = headerInfo.icon;
+  const selectedPlaybook = availablePlaybooks.find((playbook) => playbook.id === playbookId);
+  const playbookSelectValue = selectedPlaybook ? selectedPlaybook.id : 'none';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 px-6 py-3 sticky top-0 z-10">
+      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 px-6 py-3 sticky top-0 z-30">
         <div className="max-w-[1600px] mx-auto">
           <PageBreadcrumb />
           <div className="flex items-center gap-3 mt-2">
@@ -323,6 +420,37 @@ export default function CopilotDraftPage() {
               <p className="text-sm text-slate-600">
                 {headerInfo.description}
               </p>
+              <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-violet-100 bg-violet-50/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
+                    <BookOpen className="h-4 w-4 text-violet-600" />
+                    Standardized Policy Pack
+                  </div>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {selectedPlaybook
+                      ? `${selectedPlaybook.name}${selectedPlaybook.contractTypes.length > 0 ? ` • ${selectedPlaybook.contractTypes.join(', ')}` : ''}`
+                      : 'No pack selected. Choose one to steer drafting suggestions, risk checks, and editor assistance.'}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 sm:min-w-[320px] sm:flex-row sm:items-center">
+                  <Select value={playbookSelectValue} onValueChange={handlePlaybookChange}>
+                    <SelectTrigger className="w-full bg-white sm:flex-1">
+                      <SelectValue placeholder={isLoadingPlaybooks ? 'Loading policy packs...' : 'Select a policy pack'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No policy pack</SelectItem>
+                      {availablePlaybooks.map((playbook) => (
+                        <SelectItem key={playbook.id} value={playbook.id}>
+                          {playbook.name}{playbook.isDefault ? ' (Default)' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" onClick={() => router.push('/playbooks')}>
+                    Manage Packs
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -367,6 +495,7 @@ export default function CopilotDraftPage() {
             isBlankDocument={mode === 'blank'}
             onSave={handleSave}
             initialContent={hydratedContent || undefined}
+            playbookId={playbookId || undefined}
           />
         )}
       </Suspense>

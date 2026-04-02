@@ -9,7 +9,7 @@
  * 5. Enhanced artifacts viewer receives correct data
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 test.describe('Artifacts API and Data Verification', () => {
   const TEST_TENANT_ID = 'test-tenant-artifacts-api';

@@ -99,7 +99,7 @@ export function CSVImportModal({ isOpen, onClose, onSuccess }: CSVImportModalPro
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[1600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Rate Cards from CSV</DialogTitle>
         </DialogHeader>

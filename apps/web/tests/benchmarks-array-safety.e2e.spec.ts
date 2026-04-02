@@ -3,7 +3,7 @@
  * Tests that the benchmarks compare page handles undefined/null data gracefully
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 test.describe('Benchmarks Compare Array Safety', () => {
   

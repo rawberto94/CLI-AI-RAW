@@ -227,14 +227,15 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
       try {
         const res = await fetch(`/api/contracts/${id}`);
         if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.contract) {
+          const raw = await res.json();
+          const data = raw.data ?? raw;
+          if (data?.id) {
             setContract({
-              id: data.contract.id,
-              title: data.contract.contractTitle || data.contract.filename || 'Untitled Contract',
-              supplier: data.contract.supplierName || 'Unknown Supplier',
-              value: data.contract.totalValue || 0,
-              status: data.contract.status,
+              id: data.id,
+              title: data.contractTitle || data.filename || 'Untitled Contract',
+              supplier: data.supplierName || 'Unknown Supplier',
+              value: data.totalValue || 0,
+              status: data.status,
             });
           }
         }
@@ -378,8 +379,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
   };
 
   const handleCompleteSignatures = () => {
-    // Navigate to storage/archive
-    window.location.href = `/contracts/${id}?tab=finalize`;
+    window.location.href = `/contracts/${id}/store`;
   };
 
   const allSigned = signers.length > 0 && signers.every(s => s.status === 'signed');

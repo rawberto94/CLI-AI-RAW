@@ -3,7 +3,7 @@
  * Tests that the contracts page handles undefined/null data gracefully
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 test.describe('Contracts Page Array Safety', () => {
   

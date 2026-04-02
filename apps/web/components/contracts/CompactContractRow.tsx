@@ -330,10 +330,10 @@ export const CompactContractRow = memo(function CompactContractRow({
               <Edit3 className="h-4 w-4 mr-2.5 text-slate-500" /> Redline Editor
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-1" />
-            <DropdownMenuItem onSelect={() => router.push(`/generate?create=renewal&from=${contract.id}`)} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
+            <DropdownMenuItem onSelect={() => router.push(`/contracts/${contract.id}/renew`)} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
               <RefreshCw className="h-4 w-4 mr-2.5 text-slate-500" /> Start Renewal
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => router.push(`/generate?create=amendment&from=${contract.id}`)} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
+            <DropdownMenuItem onSelect={() => router.push(`/drafting/copilot?mode=amendment&from=${contract.id}`)} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
               <GitBranch className="h-4 w-4 mr-2.5 text-slate-500" /> Create Amendment
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={onApproval} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">

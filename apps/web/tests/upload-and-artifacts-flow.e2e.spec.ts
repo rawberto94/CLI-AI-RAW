@@ -10,7 +10,7 @@
  * 6. Contract appears in list with proper status
  */
 
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, type Page } from './utils/auth-fixture';
 import path from 'path';
 import fs from 'fs';
 import { setupMockUploadPipeline } from './utils/mockUploadPipeline';

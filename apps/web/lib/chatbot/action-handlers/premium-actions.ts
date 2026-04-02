@@ -10,6 +10,7 @@
  */
 
 import { DetectedIntent, ActionResponse, ChatContext } from '../types';
+import { BLANK_DRAFTING_PATH, buildTemplateLibraryPath } from '@/lib/drafting/template-routing';
 
 // ============ TYPES ============
 
@@ -118,9 +119,9 @@ Generate a renewal from an existing contract.
 Create an amendment to modify existing terms.
 → "Create amendment" (while viewing a contract)
 
-👉 **[Open Contract Generator](/generate)**`,
+👉 **[Open Document Studio](/drafting)**`,
     data: {
-      navigation: { path: '/generate', action: 'navigate' },
+      navigation: { path: '/drafting', action: 'navigate' },
       options: ['blank', 'template', 'renewal', 'amendment']
     }
   };
@@ -138,16 +139,16 @@ I'll help you create a new contract from scratch. The AI will guide you through:
 3. **Key Terms** - Duration, value, obligations
 4. **Clauses** - AI-suggested standard clauses
 
-👉 **[Start Blank Contract](/generate?create=blank)**`,
+👉 **[Start Blank Contract](/drafting/copilot?mode=blank)**`,
     data: {
-      navigation: { path: '/generate?create=blank', action: 'navigate' }
+      navigation: { path: BLANK_DRAFTING_PATH, action: 'navigate' }
     }
   };
 }
 
 function handleGenerateTemplate(templateType?: string): ActionResponse {
   const template = templateType?.toLowerCase();
-  const queryParam = template ? `?create=template&type=${template}` : '?create=template';
+  const templateLibraryPath = buildTemplateLibraryPath(template);
   
   const templateOptions = [
     '• **NDA** - Non-Disclosure Agreement',
@@ -166,7 +167,7 @@ I'll generate a ${template.toUpperCase()} contract using our professional templa
 
 The template includes standard clauses that you can customize to your needs.
 
-👉 **[Generate ${template.toUpperCase()}](/generate${queryParam})**`
+👉 **[Generate ${template.toUpperCase()}](${templateLibraryPath})**`
     : `📋 **Generate from Template**
 
 Choose from our library of professional templates:
@@ -175,13 +176,13 @@ ${templateOptions}
 
 Each template includes standard legal clauses that you can customize.
 
-👉 **[Open Template Library](/generate?create=template)**`;
+👉 **[Open Template Library](/generate/templates)**`;
 
   return {
     success: true,
     message,
     data: {
-      navigation: { path: `/generate${queryParam}`, action: 'navigate' },
+      navigation: { path: templateLibraryPath, action: 'navigate' },
       selectedTemplate: template
     }
   };
@@ -197,13 +198,13 @@ I'll help you create a renewal for the current contract. The renewal will:
 • Allow you to update dates and values
 • Maintain the relationship to the parent contract
 
-👉 **[Create Renewal](/generate?create=renewal&from=${contractId})**`
+👉 **[Create Renewal](/contracts/${contractId}/renew)**`
     : `🔄 **Create Contract Renewal**
 
 To create a renewal, please navigate to the contract you want to renew, or tell me which contract.
 
-You can also go directly to generate:
-👉 **[Open Contract Generator](/generate?create=renewal)**`;
+You can also go directly to your renewal workspace:
+👉 **[Open Renewals](/renewals)**`;
 
   return {
     success: true,
@@ -211,8 +212,8 @@ You can also go directly to generate:
     data: {
       navigation: { 
         path: contractId 
-          ? `/generate?create=renewal&from=${contractId}` 
-          : '/generate?create=renewal',
+          ? `/contracts/${contractId}/renew` 
+          : '/renewals',
         action: 'navigate' 
       }
     }
@@ -229,13 +230,13 @@ I'll help you create an amendment to modify the current contract. The amendment 
 • Track all changes made
 • Maintain legal relationship to parent
 
-👉 **[Create Amendment](/generate?create=amendment&from=${contractId})**`
+👉 **[Create Amendment](/drafting/copilot?mode=amendment&from=${contractId})**`
     : `📄 **Create Contract Amendment**
 
 To create an amendment, please navigate to the contract you want to amend, or tell me which contract.
 
-You can also go directly to generate:
-👉 **[Open Contract Generator](/generate?create=amendment)**`;
+You can also start a direct amendment draft:
+👉 **[Open Amendment Drafting](/drafting/copilot?mode=amendment)**`;
 
   return {
     success: true,
@@ -243,8 +244,8 @@ You can also go directly to generate:
     data: {
       navigation: { 
         path: contractId 
-          ? `/generate?create=amendment&from=${contractId}` 
-          : '/generate?create=amendment',
+          ? `/drafting/copilot?mode=amendment&from=${contractId}` 
+          : '/drafting/copilot?mode=amendment',
         action: 'navigate' 
       }
     }

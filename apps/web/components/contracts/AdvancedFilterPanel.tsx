@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,7 +67,7 @@ interface AdvancedFilterPanelProps {
   filters: FilterState;
   onChange: (filters: FilterState) => void;
   onClose?: () => void;
-  availableCategories?: string[];
+  availableCategories?: Array<{ id: string; name: string }>;
   /** Dynamic options derived from actual contract data */
   availableSuppliers?: string[];
   availableClients?: string[];
@@ -78,13 +78,11 @@ interface AdvancedFilterPanelProps {
 }
 
 const STATUS_OPTIONS = [
-  { value: 'DRAFT', label: 'Draft', color: 'bg-violet-100 text-violet-700', icon: FileText },
-  { value: 'PENDING', label: 'Pending', color: 'bg-amber-100 text-amber-700', icon: Clock },
-  { value: 'PROCESSING', label: 'Processing', color: 'bg-violet-100 text-violet-700', icon: Clock },
-  { value: 'ACTIVE', label: 'Active', color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
-  { value: 'COMPLETED', label: 'Completed', color: 'bg-violet-100 text-violet-700', icon: CheckCircle2 },
-  { value: 'FAILED', label: 'Failed', color: 'bg-red-100 text-red-700', icon: X },
-  { value: 'EXPIRED', label: 'Expired', color: 'bg-orange-100 text-orange-700', icon: Clock },
+  { value: 'uploaded', label: 'Uploaded', color: 'bg-amber-100 text-amber-700', icon: FileText },
+  { value: 'processing', label: 'Processing', color: 'bg-violet-100 text-violet-700', icon: Clock },
+  { value: 'completed', label: 'Active', color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
+  { value: 'failed', label: 'Failed', color: 'bg-red-100 text-red-700', icon: X },
+  { value: 'archived', label: 'Archived', color: 'bg-slate-100 text-slate-700', icon: FileText },
 ];
 
 const DOCUMENT_ROLE_OPTIONS = [
@@ -108,6 +106,10 @@ export function AdvancedFilterPanel({
 }: AdvancedFilterPanelProps) {
   const [localFilters, setLocalFilters] = useState<FilterState>(filters);
 
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters]);
+
   const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     const updated = { ...localFilters, [key]: value };
     setLocalFilters(updated);
@@ -130,11 +132,11 @@ export function AdvancedFilterPanel({
     updateFilter('documentRoles', updated);
   };
 
-  const toggleCategory = (category: string) => {
+  const toggleCategory = (categoryId: string) => {
     const current = localFilters.categories;
-    const updated = current.includes(category)
-      ? current.filter(c => c !== category)
-      : [...current, category];
+    const updated = current.includes(categoryId)
+      ? current.filter(c => c !== categoryId)
+      : [...current, categoryId];
     updateFilter('categories', updated);
   };
 
@@ -403,10 +405,10 @@ export function AdvancedFilterPanel({
             </Label>
             <div className="flex flex-wrap gap-2">
               {availableCategories.map(category => {
-                const isSelected = localFilters.categories.includes(category);
+                const isSelected = localFilters.categories.includes(category.id);
                 return (
                   <Badge
-                    key={category}
+                    key={category.id}
                     variant={isSelected ? 'default' : 'outline'}
                     className={cn(
                       'cursor-pointer transition-all',
@@ -414,9 +416,9 @@ export function AdvancedFilterPanel({
                         ? 'bg-amber-500 hover:bg-amber-600'
                         : 'hover:border-amber-300'
                     )}
-                    onClick={() => toggleCategory(category)}
+                    onClick={() => toggleCategory(category.id)}
                   >
-                    {category}
+                    {category.name}
                     {isSelected && <X className="ml-1 h-3 w-3" />}
                   </Badge>
                 );

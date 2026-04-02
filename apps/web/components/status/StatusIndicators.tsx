@@ -364,7 +364,7 @@ export function ProcessingStatus({ isProcessing, message, progress, onCancel }: 
           className="overflow-hidden"
         >
           <div className="bg-violet-50 dark:bg-violet-900/20 border-b border-indigo-100 dark:border-indigo-800 px-4 py-2">
-            <div className="flex items-center justify-between max-w-7xl mx-auto">
+            <div className="flex items-center justify-between max-w-[1600px] mx-auto">
               <div className="flex items-center gap-3">
                 <RefreshCw className="h-4 w-4 text-violet-600 dark:text-indigo-400 animate-spin" />
                 <span className="text-sm text-violet-700 dark:text-indigo-300">
@@ -384,7 +384,7 @@ export function ProcessingStatus({ isProcessing, message, progress, onCancel }: 
               )}
             </div>
             {progress !== undefined && (
-              <div className="mt-2 h-1 bg-violet-100 dark:bg-violet-800 rounded-full max-w-7xl mx-auto overflow-hidden">
+              <div className="mt-2 h-1 bg-violet-100 dark:bg-violet-800 rounded-full max-w-[1600px] mx-auto overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}

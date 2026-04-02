@@ -103,9 +103,9 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
       const estimatedWaitMs = estimateWaitTime(priority);
       
       // Safety net: if no worker picks up the job within the timeout, process inline.
-      // This handles the common dev scenario where Redis is running but no BullMQ workers are active.
+      // This handles the common scenario where Redis is running but no BullMQ workers are active.
       // Skip for reprocesses — the worker is already running and artifact generation can take >30s.
-      const fallbackTimeoutMs = parseInt(process.env.BULLMQ_FALLBACK_TIMEOUT_MS || '120000', 10);
+      const fallbackTimeoutMs = parseInt(process.env.BULLMQ_FALLBACK_TIMEOUT_MS || '15000', 10);
       if (!isReprocess) {
         scheduleInlineFallback(options, fallbackTimeoutMs);
       }

@@ -190,7 +190,7 @@ export function Banner({
             className
           )}
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-center gap-4">
+          <div className="max-w-[1600px] mx-auto flex items-center justify-center gap-4">
             {type === 'promo' && (
               <Megaphone className="w-5 h-5 flex-shrink-0" />
             )}

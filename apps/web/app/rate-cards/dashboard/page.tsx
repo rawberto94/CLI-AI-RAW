@@ -53,7 +53,7 @@ export default function RateCardDashboardPage() {
   useRealTimeEvents(eventHandlers);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="max-w-[1600px] mx-auto p-6 space-y-6">
       <RateCardBreadcrumbs />
       
       <motion.div 

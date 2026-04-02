@@ -570,7 +570,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
                        metadata.lifecycle === 'NEW' ? 'NEW_CONTRACT' : 
                        metadata.lifecycle === 'AMENDMENT' ? 'AMENDMENT' :
                        metadata.lifecycle === 'RENEWAL' ? 'RENEWAL' : 'EXISTING',
-          uploadedBy: metadata.uploadedBy || "anonymous",
+          uploadedBy: metadata.uploadedBy || ctx.userId || "anonymous",
           contractType: metadata.contractType || "UNKNOWN",
           contractTitle: metadata.contractTitle || file.name,
           clientName: metadata.clientName || undefined,
@@ -596,7 +596,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
             storagePath: filePath,
             storageProvider: storageProvider,
             status: "PROCESSING",
-            uploadedBy: metadata.uploadedBy || "anonymous",
+            uploadedBy: metadata.uploadedBy || ctx.userId || "anonymous",
             contractType: metadata.contractType || "UNKNOWN",
             contractTitle: metadata.contractTitle || file.name,
             clientName: metadata.clientName || undefined,

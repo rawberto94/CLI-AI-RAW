@@ -341,6 +341,37 @@ export const authOptions: NextAuthConfig = {
     signOut: "/auth/signout",
     error: "/auth/error",
   },
+  // Prevent Auth.js from auto-detecting HTTPS and prefixing cookie names — must match auth.config.ts
+  useSecureCookies: false,
+  cookies: {
+    sessionToken: {
+      name: "authjs.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        secure: false,
+      },
+    },
+    callbackUrl: {
+      name: "authjs.callback-url",
+      options: {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        secure: false,
+      },
+    },
+    csrfToken: {
+      name: "authjs.csrf-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        secure: false,
+      },
+    },
+  },
   providers,
   callbacks: {
     async signIn({ user, account, profile }) {

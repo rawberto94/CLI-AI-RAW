@@ -91,7 +91,7 @@ export default function StateOfTheArtContractPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-purple-50">
-        <div className="container mx-auto p-6 space-y-6">
+        <div className="max-w-[1600px] mx-auto p-6 space-y-6">
           {/* Skeleton Loading */}
           <div className="space-y-4 animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-1/3"></div>
@@ -139,7 +139,7 @@ export default function StateOfTheArtContractPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-purple-50">
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="max-w-[1600px] mx-auto p-6 space-y-6">
         
         {/* Breadcrumb */}
         <motion.div

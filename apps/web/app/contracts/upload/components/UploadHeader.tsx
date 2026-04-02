@@ -45,7 +45,7 @@ export function UploadHeader({ dataMode, aiModel, isUploading, processingCount }
         />
       </div>
 
-      <div className="relative px-6 py-10 md:px-12 md:py-14 max-w-7xl mx-auto">
+      <div className="relative px-6 py-10 md:px-10 md:py-14 max-w-[1600px] mx-auto">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
             <motion.div className="p-4 bg-white/20 backdrop-blur-sm rounded-2xl shadow-lg" whileHover={{ scale: 1.05, rotate: 5 }}>

@@ -24,6 +24,10 @@ import {
 } from '@/lib/api-middleware';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 import { logger } from '@/lib/logger';
+import {
+  formatPlaybookPromptContext,
+  resolveRequestedPlaybook,
+} from '@/lib/playbooks/copilot-playbook';
 
 // ── Schemas ────────────────────────────────────────────────────────────
 
@@ -44,6 +48,7 @@ const RequestSchema = z.object({
     adjustForInflation: z.boolean().optional(),
     inflationRate: z.number().optional(),
   }).optional(),
+  playbookId: z.string().optional(),
   /** What kind of analysis to run */
   analysisType: z.enum(['full', 'clauses-only', 'risk-only', 'suggestions-only']).default('full'),
 });
@@ -139,6 +144,8 @@ export async function POST(
       return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
+    const resolvedPlaybook = await resolveRequestedPlaybook(ctx.tenantId, undefined, input.playbookId);
+
     // Build prompt context
     const clausesSummary = input.clauses
       .map((c, i) => `[Clause ${i + 1}: "${c.title}"]\n${c.content}`)
@@ -177,6 +184,11 @@ Analyze the following contract renewal draft and provide a thorough assessment.
 
 ${originalContext}
 ${termsContext}
+${resolvedPlaybook ? `Active policy pack guidance:
+${formatPlaybookPromptContext(resolvedPlaybook)}
+
+Treat this policy pack as the preferred negotiation and drafting baseline unless it conflicts with applicable law or the explicit renewal terms above.
+` : ''}
 
 === RENEWAL DRAFT CLAUSES ===
 ${clausesSummary || '(No clauses provided)'}

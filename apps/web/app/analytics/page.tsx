@@ -137,7 +137,7 @@ export default function ImprovedAnalyticsPage() {
   ]
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl space-y-8">
+    <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6 space-y-6">
       <PageBreadcrumb />
       
       {/* Header */}

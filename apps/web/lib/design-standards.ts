@@ -95,10 +95,10 @@ export const ICON_SIZES = {
 
 export const CONTAINERS = {
   // Main Pages - Dashboard, contracts list, etc.
-  mainPage: 'max-w-7xl', // 1280px
+  mainPage: 'max-w-[1600px]', // 1600px
   
   // Detail Pages - Contract detail, settings
-  detailPage: 'max-w-6xl', // 1152px
+  detailPage: 'max-w-[1600px]', // 1600px
   
   // Settings/Forms - Focused content
   formPage: 'max-w-4xl', // 896px

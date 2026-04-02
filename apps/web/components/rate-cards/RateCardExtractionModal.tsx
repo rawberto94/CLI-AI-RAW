@@ -127,7 +127,7 @@ export function RateCardExtractionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[1600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Review Extracted Rate Cards</DialogTitle>
           <DialogDescription>

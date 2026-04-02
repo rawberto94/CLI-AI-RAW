@@ -3,7 +3,7 @@
  * Tests compliance monitoring, supplier management, and regulatory features
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 test.describe('Compliance & Suppliers', () => {
   

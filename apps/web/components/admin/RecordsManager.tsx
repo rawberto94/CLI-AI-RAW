@@ -44,7 +44,7 @@ export default function RecordsManager() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="max-w-[1600px] mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div><h1 className="text-3xl font-bold tracking-tight flex items-center gap-2"><Archive className="h-8 w-8" /> Records Management</h1><p className="text-muted-foreground mt-1">Contract archival, retention, and defensible deletion</p></div>
         <Button onClick={() => setShowArchive(true)}><Archive className="h-4 w-4 mr-2" /> Archive Contract</Button>

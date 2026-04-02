@@ -433,7 +433,7 @@ export function AnnouncementBar({
 
   return (
     <div className={`relative ${typeStyles[type]} ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-center gap-4">
+      <div className="max-w-[1600px] mx-auto px-4 py-2 flex items-center justify-center gap-4">
         <p className="text-sm font-medium">
           {message}
           {link && (

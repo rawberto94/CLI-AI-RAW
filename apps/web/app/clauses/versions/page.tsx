@@ -132,7 +132,7 @@ export default function ClauseVersionsPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="max-w-[1600px] mx-auto py-8 px-4">
       <PageBreadcrumb />
       
       {/* Header */}

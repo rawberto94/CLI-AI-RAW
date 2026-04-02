@@ -69,7 +69,7 @@ export function SkeletonArtifactCard() {
 
 export function SkeletonArtifactList({ count = 3 }: { count?: number }) {
   return (
-    <div className="grid gap-6 max-w-6xl">
+    <div className="grid gap-6 max-w-[1600px]">
       {Array.from({ length: count }).map((_, i) => (
         <SkeletonArtifactCard key={i} />
       ))}

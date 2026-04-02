@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import NextAuth from "next-auth";
 import { authConfig } from "@/lib/auth.config";
+import { BLANK_DRAFTING_PATH, buildTemplateLibraryPath } from "@/lib/drafting/template-routing";
 import { Redis } from "@upstash/redis";
 
 // Edge-compatible auth wrapper (no Prisma/DB dependencies)
@@ -235,6 +236,7 @@ const RATE_LIMIT_EXEMPT = [
   '/api/health/detailed',
   '/api/monitoring/health',
   '/api/csrf',
+  '/api/events',  // SSE long-lived connection — has its own auth check
 ];
 
 // Patterns for SSE/streaming endpoints that have their own dedicated rate limiters
@@ -248,6 +250,7 @@ function getEndpointCategory(pathname: string): string {
   if (pathname.includes('/upload')) return 'upload';
   if (pathname.includes('/export')) return 'export';
   if (pathname.includes('/extraction/')) return 'read';  // Polling endpoints
+  if (pathname.includes('/dashboard')) return 'read';     // Dashboard polling
   if (pathname.includes('/contracts')) return 'contracts';
   return 'default';
 }
@@ -296,6 +299,7 @@ const publicApiPaths = [
   "/api/csrf", // CSRF token must be obtainable before/during login
   "/api/taxonomy/presets", // Industry preset templates (read-only, public)
   "/api/portal/validate-token", // Portal token validation
+  "/api/debug-auth", // Temporary diagnostic endpoint
 ];
 
 // Static/public assets that bypass auth
@@ -305,6 +309,11 @@ const staticPaths = [
   "/icons",
   "/images",
   "/fonts",
+  "/manifest.json",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/sw.js",
+  "/offline",
 ];
 
 // Routes that require admin or owner role
@@ -318,6 +327,65 @@ const adminRoutes = [
 // Check if user has admin permissions
 function hasAdminAccess(role: string | undefined): boolean {
   return role === "owner" || role === "admin";
+}
+
+function getRequestOrigin(req: NextRequest): string {
+  const protocol = req.headers.get('x-forwarded-proto') || req.nextUrl.protocol.replace(':', '') || 'http';
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || req.nextUrl.host;
+  return `${protocol}://${host}`;
+}
+
+function buildRequestUrl(req: NextRequest, path: string): URL {
+  return new URL(path, getRequestOrigin(req));
+}
+
+function resolveLegacyGeneratePath(url: URL): string {
+  const create = url.searchParams.get('create');
+  const from = url.searchParams.get('from');
+  const type = url.searchParams.get('type');
+  const playbook = url.searchParams.get('playbook') || url.searchParams.get('playbookId');
+
+  if (create === 'new' || create === 'blank') {
+    return BLANK_DRAFTING_PATH;
+  }
+
+  if (create === 'template') {
+    return buildTemplateLibraryPath(type);
+  }
+
+  if (create === 'renewal') {
+    if (from) {
+      const renewalParams = new URLSearchParams();
+      if (playbook) {
+        renewalParams.set('playbook', playbook);
+      }
+
+      const renewalQuery = renewalParams.toString();
+      return renewalQuery ? `/contracts/${from}/renew?${renewalQuery}` : `/contracts/${from}/renew`;
+    }
+
+    return '/renewals';
+  }
+
+  if (create === 'amendment') {
+    if (from) {
+      const amendmentParams = new URLSearchParams({
+        mode: 'amendment',
+        from,
+      });
+
+      if (playbook) {
+        amendmentParams.set('playbook', playbook);
+      }
+
+      return `/drafting/copilot?${amendmentParams.toString()}`;
+    }
+
+    return '/drafting/copilot?mode=amendment';
+  }
+
+  const params = url.searchParams.toString();
+  return params ? `/drafting?${params}` : '/drafting';
 }
 
 export default auth(async (req) => {
@@ -402,7 +470,7 @@ export default auth(async (req) => {
   if (publicExactPaths.has(pathname) || publicPaths.some((path) => pathname.startsWith(path))) {
     // Authenticated users hitting "/" should be redirected to /dashboard
     if (pathname === "/" && req.auth) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      return NextResponse.redirect(buildRequestUrl(req, "/dashboard"));
     }
     return addTracingHeaders(NextResponse.next());
   }
@@ -418,19 +486,30 @@ export default auth(async (req) => {
   }
 
   // Check if user is authenticated - redirect to sign-in if not
-  if (!req.auth) {
+  // Also treat sessions with missing user ID as unauthenticated — stale JWTs
+  // from older container builds may decode successfully but lack user data.
+  if (!req.auth || !req.auth.user?.id) {
     // For API routes, return 401 Unauthorized
     if (pathname.startsWith("/api/")) {
       const response = NextResponse.json(
         { error: "Unauthorized", message: "Authentication required", requestId },
         { status: 401 }
       );
+      // Clear the stale session cookie so the browser re-authenticates
+      if (req.auth && !req.auth.user?.id) {
+        response.cookies.set("authjs.session-token", "", { maxAge: 0, path: "/" });
+      }
       return addTracingHeaders(response);
     }
     // For pages, redirect to sign-in with callback URL
-    const signInUrl = new URL("/auth/signin", req.url);
+    // Clear stale cookie so login page sets a fresh one
+    const signInUrl = buildRequestUrl(req, "/auth/signin");
     signInUrl.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(signInUrl);
+    const redirectResponse = NextResponse.redirect(signInUrl);
+    if (req.auth && !req.auth.user?.id) {
+      redirectResponse.cookies.set("authjs.session-token", "", { maxAge: 0, path: "/" });
+    }
+    return redirectResponse;
   }
 
   // C1 FIX: MFA enforcement — redirect to MFA verify if required but not verified
@@ -446,9 +525,14 @@ export default auth(async (req) => {
       );
       return addTracingHeaders(response);
     }
-    const mfaUrl = new URL("/auth/mfa-verify", req.url);
+    const mfaUrl = buildRequestUrl(req, "/auth/mfa-verify");
     mfaUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(mfaUrl);
+  }
+
+  if (pathname === '/generate') {
+    const redirectUrl = buildRequestUrl(req, resolveLegacyGeneratePath(req.nextUrl));
+    return addTracingHeaders(NextResponse.redirect(redirectUrl));
   }
 
   // CSRF enforcement for state-changing API requests
@@ -542,7 +626,7 @@ export default auth(async (req) => {
         );
         return addTracingHeaders(response);
       }
-      return NextResponse.redirect(new URL("/", req.url));
+      return NextResponse.redirect(buildRequestUrl(req, "/"));
     }
   }
 
@@ -556,7 +640,7 @@ export default auth(async (req) => {
       );
       return addTracingHeaders(response);
     }
-    return NextResponse.redirect(new URL("/auth/signin", req.url));
+    return NextResponse.redirect(buildRequestUrl(req, "/auth/signin"));
   }
 
   // Add tenant ID, user ID, and request ID to headers for API routes

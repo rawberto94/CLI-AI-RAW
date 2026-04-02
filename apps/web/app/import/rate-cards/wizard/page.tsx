@@ -127,7 +127,7 @@ export default function ImportWizardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 py-8">
-      <div className="max-w-6xl mx-auto px-4">
+      <div className="max-w-[1600px] mx-auto px-4">
         {/* Progress Steps */}
         <div className="mb-8">
           <div className="flex items-center justify-between">

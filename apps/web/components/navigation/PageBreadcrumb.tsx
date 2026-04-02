@@ -59,7 +59,7 @@ const ROUTE_CONFIG: Record<string, { label: string; icon: React.ComponentType<{ 
   '/rate-cards/entries': { label: 'Entries', icon: FileText },
   '/rate-cards/benchmarking': { label: 'Benchmarking', icon: Target },
   '/rate-cards/opportunities': { label: 'Opportunities', icon: TrendingUp },
-  '/generate': { label: 'Generate', icon: Sparkles },
+  '/generate': { label: 'Drafting', icon: Edit3 },
   '/generate/templates': { label: 'Templates', icon: FileText },
   '/generate/workflows': { label: 'Workflows', icon: Activity },
   '/intelligence': { label: 'Intelligence', icon: Zap },

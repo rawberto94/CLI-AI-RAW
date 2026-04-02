@@ -61,7 +61,7 @@ export function AccessibilityExamples() {
 
       {/* Header */}
       <header className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <h1 className="text-2xl font-bold">Accessibility Examples</h1>
           <p className="text-gray-600 mt-1">
             WCAG 2.1 Level AA compliant components
@@ -70,7 +70,7 @@ export function AccessibilityExamples() {
       </header>
 
       {/* Main Content */}
-      <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main id="main-content" className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* User Preferences */}
         <section className="bg-white rounded-lg p-6 shadow-sm">
           <h2 className="text-xl font-semibold mb-4">User Preferences Detected</h2>

@@ -27,7 +27,7 @@ function AuditLogsPageLoading() {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-700">
-        <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-8">
+        <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-8">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-white/10 rounded-lg backdrop-blur-sm">
               <Shield className="h-5 w-5 text-white" />
@@ -42,7 +42,7 @@ function AuditLogsPageLoading() {
         </div>
       </div>
 
-      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6">
+      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6">
         <Card>
           <CardContent className="p-5">
             <div className="space-y-4">
@@ -62,7 +62,7 @@ export default function AuditLogsPage() {
     <div className="min-h-screen bg-slate-50">
       {/* Page Header */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-700">
-        <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-8">
+        <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-white/10 rounded-lg backdrop-blur-sm">
@@ -100,7 +100,7 @@ export default function AuditLogsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6">
+      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6">
         <Suspense fallback={<AuditLogsPageLoading />}>
           <AuditLogViewer />
         </Suspense>

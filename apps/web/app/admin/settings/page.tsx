@@ -42,7 +42,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <div className="container mx-auto py-8 px-4 max-w-7xl">
+      <div className="max-w-[1600px] mx-auto py-8 px-4 max-w-[1600px]">
         {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}

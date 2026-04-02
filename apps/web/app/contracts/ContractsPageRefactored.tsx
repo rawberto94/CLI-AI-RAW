@@ -552,7 +552,7 @@ export default function ContractsPageRefactored() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="max-w-[1600px] mx-auto p-6">
         <LoadingState message="Loading contracts..." />
       </div>
     );
@@ -561,7 +561,7 @@ export default function ContractsPageRefactored() {
   // Error state
   if (error) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="max-w-[1600px] mx-auto p-6">
         <div className="text-center py-12">
           <p className="text-destructive mb-4">Failed to load contracts</p>
           <Button onClick={() => refetch()}>
@@ -576,7 +576,7 @@ export default function ContractsPageRefactored() {
   // Empty state
   if (contracts.length === 0) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="max-w-[1600px] mx-auto p-6">
         <NoContracts onUpload={() => router.push('/upload')} />
       </div>
     );
@@ -584,7 +584,7 @@ export default function ContractsPageRefactored() {
 
   return (
     <TooltipProvider>
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="max-w-[1600px] mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>

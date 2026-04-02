@@ -102,8 +102,8 @@ export function PageContainer({
   return (
     <div className={cn('min-h-screen', className)}>
       {showHeader && (title || description || actions) && (
-        <header className="border-b bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
-          <div className="container mx-auto px-4 py-4">
+        <header className="border-b bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm sticky top-16 lg:top-0 z-30">
+          <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-4">
             <div className="flex items-center justify-between">
               <div>
                 {title && (
@@ -122,7 +122,7 @@ export function PageContainer({
       )}
       <main 
         id="main-content" 
-        className={cn('container mx-auto px-4 py-6', contentClassName)}
+        className={cn('max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6', contentClassName)}
         role="main"
         aria-label={title || 'Main content'}
       >

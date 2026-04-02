@@ -9,7 +9,7 @@
  * 5. Validate artifact confidence scores
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();

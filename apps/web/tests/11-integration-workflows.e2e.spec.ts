@@ -3,7 +3,7 @@
  * Tests complete user workflows and integration between different modules
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 test.describe('Integration Workflows', () => {
   

@@ -7,10 +7,11 @@
  */
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, type SetStateAction } from "react";
 import { type FilterState } from "@/components/contracts/AdvancedFilterPanel";
 import { type SavedSearch } from "@/components/contracts/SavedSearchPresets";
 import {
+  DATE_PRESETS,
   type SortField,
   type SortDirection,
   VALUE_RANGES,
@@ -35,6 +36,55 @@ const DEFAULT_FILTER_STATE: FilterState = {
   paymentTerms: [],
 };
 
+const UI_STATUS_TO_API_STATUS = {
+  uploaded: 'UPLOADED',
+  processing: 'PROCESSING',
+  completed: 'COMPLETED',
+  failed: 'FAILED',
+  archived: 'ARCHIVED',
+} as const;
+
+const STATUS_ALIASES: Record<string, keyof typeof UI_STATUS_TO_API_STATUS> = {
+  uploaded: 'uploaded',
+  pending: 'uploaded',
+  processing: 'processing',
+  queued: 'processing',
+  completed: 'completed',
+  active: 'completed',
+  failed: 'failed',
+  archived: 'archived',
+};
+
+function normalizeStatusValue(value: string): keyof typeof UI_STATUS_TO_API_STATUS | null {
+  const normalized = value.trim().toLowerCase();
+  return STATUS_ALIASES[normalized] ?? null;
+}
+
+function normalizeStatuses(values: string[] = []): string[] {
+  return Array.from(
+    new Set(
+      values
+        .map(normalizeStatusValue)
+        .filter((value): value is keyof typeof UI_STATUS_TO_API_STATUS => value !== null),
+    ),
+  );
+}
+
+function normalizeFilterState(filters: FilterState): FilterState {
+  return {
+    ...filters,
+    statuses: normalizeStatuses(filters.statuses),
+  };
+}
+
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+}
+
+function endOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+}
+
 export function useContractsPageFilters() {
   // ── Core filter state ──────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,7 +94,18 @@ export function useContractsPageFilters() {
   const [signatureFilters, setSignatureFilters] = useState<string[]>([]);
   const [documentTypeFilters, setDocumentTypeFilters] = useState<string[]>([]);
 
-  const [filterState, setFilterState] = useState<FilterState>(DEFAULT_FILTER_STATE);
+  const [filterStateValue, setFilterStateValue] = useState<FilterState>(DEFAULT_FILTER_STATE);
+
+  const setFilterState = useCallback((value: SetStateAction<FilterState>) => {
+    setFilterStateValue((current) => {
+      const next = typeof value === 'function'
+        ? (value as (prevState: FilterState) => FilterState)(current)
+        : value;
+      return normalizeFilterState(next);
+    });
+  }, []);
+
+  const filterState = filterStateValue;
 
   // ── Pagination & sorting ───────────────────────────────────────────
   const [currentPage, setCurrentPage] = useState(1);
@@ -92,6 +153,24 @@ export function useContractsPageFilters() {
     };
   }, [filterState.valueRange, valueRangeFilter]);
 
+  const effectiveUploadedRange = useMemo(() => {
+    let from = filterState.dateRange.from ? startOfDay(filterState.dateRange.from) : undefined;
+    let to = filterState.dateRange.to ? endOfDay(filterState.dateRange.to) : undefined;
+
+    if (dateRangeFilter) {
+      const preset = DATE_PRESETS.find((item) => item.value === dateRangeFilter);
+      if (preset) {
+        const presetFrom = startOfDay(new Date(Date.now() - preset.days * 86_400_000));
+        const presetTo = endOfDay(new Date());
+
+        from = from ? new Date(Math.max(from.getTime(), presetFrom.getTime())) : presetFrom;
+        to = to ? new Date(Math.min(to.getTime(), presetTo.getTime())) : presetTo;
+      }
+    }
+
+    return { from, to };
+  }, [filterState.dateRange, dateRangeFilter]);
+
   /** Ready-to-use params object for `useContracts(serverParams, opts)`. */
   const serverParams = useMemo(
     () => ({
@@ -101,13 +180,39 @@ export function useContractsPageFilters() {
       sortBy: mapSortFieldToApi(sortField),
       sortOrder: sortDirection,
       search: searchQuery || undefined,
+      documentRole: filterState.documentRoles.length > 0 ? filterState.documentRoles : undefined,
+      riskLevel: filterState.riskLevels?.length ? filterState.riskLevels : undefined,
       contractType: typeFilters.length > 0 ? typeFilters : undefined,
+      category: filterState.categories.length > 0 ? filterState.categories : undefined,
       clientName: filterState.clients?.length ? filterState.clients : undefined,
       supplierName: filterState.suppliers?.length ? filterState.suppliers : undefined,
+      currency: filterState.currencies?.length ? filterState.currencies : undefined,
+      jurisdiction: filterState.jurisdictions?.length ? filterState.jurisdictions : undefined,
+      paymentTerms: filterState.paymentTerms?.length ? filterState.paymentTerms : undefined,
+      signatureStatus: signatureFilters.length > 0 ? signatureFilters : undefined,
+      documentClassification: documentTypeFilters.length > 0 ? documentTypeFilters : undefined,
+      expirationFilter: expirationFilters.length > 0 ? expirationFilters : undefined,
+      hasDeadline: filterState.hasDeadline === true ? 'true' : undefined,
+      isExpiring: filterState.isExpiring === true ? 'true' : undefined,
       minValue: effectiveValueRange.min,
       maxValue: effectiveValueRange.max,
+      uploadedAfter: effectiveUploadedRange.from?.toISOString(),
+      uploadedBefore: effectiveUploadedRange.to?.toISOString(),
     }),
-    [filterState, currentPage, pageSize, sortField, sortDirection, searchQuery, typeFilters, effectiveValueRange],
+    [
+      currentPage,
+      pageSize,
+      sortField,
+      sortDirection,
+      searchQuery,
+      filterState,
+      typeFilters,
+      signatureFilters,
+      documentTypeFilters,
+      expirationFilters,
+      effectiveValueRange,
+      effectiveUploadedRange,
+    ],
   );
 
   // ── Active-filter indicators ───────────────────────────────────────

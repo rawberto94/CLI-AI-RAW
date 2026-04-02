@@ -505,8 +505,8 @@ export function RealtimeArtifactViewer({
                       <button 
                         className="text-xs text-violet-600 hover:underline font-medium"
                         onClick={() => {
-                          // Navigate to detailed view
-                          window.location.href = `/contracts/${contractId}?artifact=${artifact.type}`;
+                          // Navigate to AI tab on the contract detail page
+                          window.location.href = `/contracts/${contractId}?tab=ai`;
                         }}
                       >
                         View Details →

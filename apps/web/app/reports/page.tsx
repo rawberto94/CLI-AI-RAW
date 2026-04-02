@@ -162,7 +162,7 @@ export default function ReportDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 dark:from-slate-900 dark:via-purple-950/30 dark:to-purple-950/20">
-      <div className="container mx-auto py-8 space-y-8">
+      <div className="max-w-[1600px] mx-auto py-8 space-y-8">
         <PageBreadcrumb />
         {/* Header */}
         <div className="flex items-center gap-4">

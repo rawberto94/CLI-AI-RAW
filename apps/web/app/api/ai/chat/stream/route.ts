@@ -55,6 +55,58 @@ import { gatherContext } from '@/lib/ai/chat-stream/context-gathering';
 import { buildSystemPrompt, applyAgentPersona } from '@/lib/ai/chat-stream/system-prompt';
 import { detectTopic, summarizeToolResult, deduplicateActions, buildToolPreview } from '@/lib/ai/chat-stream/sse-helpers';
 
+// ─── Helpers ────────────────────────────────────────────────────────────
+
+/** Build context-aware suggested actions based on the user query's detected topic. */
+function buildInitialSuggestedActions(
+  message: string,
+  firstResult?: { contractId: string; contractName: string } | null,
+): Array<{ label: string; action: string }> {
+  const topic = detectTopic(message);
+  const actions: Array<{ label: string; action: string }> = [];
+
+  if (firstResult) {
+    actions.push({ label: '📄 View Contract', action: `navigate:/contracts/${firstResult.contractId}` });
+  }
+
+  switch (topic) {
+    case 'renewal':
+      actions.push({ label: '📅 Renewal Calendar', action: 'navigate:/renewals' });
+      actions.push({ label: '⏰ Expiring Soon', action: 'navigate:/contracts?status=expiring' });
+      break;
+    case 'risk':
+      actions.push({ label: '⚠️ Risk Dashboard', action: 'navigate:/analytics?tab=risk' });
+      actions.push({ label: '📋 Compliance', action: 'navigate:/analytics?tab=compliance' });
+      break;
+    case 'financial':
+      actions.push({ label: '💰 Spend Analysis', action: 'navigate:/analytics?tab=spend' });
+      actions.push({ label: '📊 Analytics', action: 'navigate:/analytics' });
+      break;
+    case 'supplier':
+      actions.push({ label: '🏢 Suppliers', action: 'navigate:/analytics?tab=suppliers' });
+      actions.push({ label: '🔍 Search Contracts', action: 'search-contracts' });
+      break;
+    case 'workflow':
+      actions.push({ label: '🔄 Workflows', action: 'navigate:/workflows' });
+      actions.push({ label: '✅ Pending Approvals', action: 'navigate:/approvals' });
+      break;
+    case 'legal':
+      actions.push({ label: '⚖️ Clause Library', action: 'navigate:/clauses' });
+      actions.push({ label: '🔍 Search Contracts', action: 'search-contracts' });
+      break;
+    default:
+      actions.push({ label: '🔍 Search Contracts', action: 'search-contracts' });
+      actions.push({ label: '📊 Analytics', action: 'navigate:/analytics' });
+      break;
+  }
+
+  if (!firstResult) {
+    actions.push({ label: '📋 Browse Contracts', action: 'navigate:/contracts' });
+  }
+
+  return actions.slice(0, 3);
+}
+
 // ─── Main Handler ───────────────────────────────────────────────────────
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
@@ -174,7 +226,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
     }
   }
 
-  const cached = await semanticCache.get(message, tenantId, contextContractId ? { contractId: contextContractId } : undefined).catch((err) => {
+  const cached = await semanticCache.get(message, tenantId, contextContractId ? { contractId: contextContractId, userRole: userRole ?? undefined } : { userRole: userRole ?? undefined }).catch((err) => {
     logger.warn('[Stream v2] Semantic cache lookup failed', { action: 'semantic-cache', error: err instanceof Error ? err.message : String(err) });
     return null;
   });
@@ -254,6 +306,13 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
       conversationHistory: effectiveHistory,
     });
     
+    if (!agentResponse.agentUsed || !agentResponse.response) {
+      logger.info('[Stream v2] Agent decided not to execute', {
+        action: 'agent-skip',
+        agentUsed: agentResponse.agentUsed,
+        hasResponse: Boolean(agentResponse.response),
+      });
+    }
     if (agentResponse.agentUsed && agentResponse.response) {
       // Stream agent response with plan visualization (#5)
       const encoder = new TextEncoder();
@@ -328,7 +387,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   );
   
   const budgetStats = getBudgetStats(budgetAllocation.totalUsed, process.env.OPENAI_MODEL || 'gpt-4o-mini');
-  if (budgetStats.status === 'warning') {
+  if (budgetStats.status === 'critical') {
+    logger.error(`[Stream v2] Token budget at ${budgetStats.percentage}% - CRITICAL, context may be truncated by model`);
+  } else if (budgetStats.status === 'warning') {
     logger.warn(`[Stream v2] Token budget at ${budgetStats.percentage}% - approaching limit`);
   }
 
@@ -380,16 +441,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           queryVariations: ragResults.queryVariations?.slice(0, 3),
           memoriesUsed: memories.length,
           toolsAvailable: STREAMING_TOOLS.length,
-          suggestedActions: firstResult
-            ? [
-                { label: '📄 View Contract', action: `navigate:/contracts/${firstResult.contractId}` },
-                { label: '🔍 Search More', action: 'search-contracts' },
-                { label: '📊 Analytics', action: 'navigate:/analytics' },
-              ]
-            : [
-                { label: '📋 Browse Contracts', action: 'navigate:/contracts' },
-                { label: '📊 View Dashboard', action: 'navigate:/dashboard' },
-              ],
+          suggestedActions: buildInitialSuggestedActions(message, firstResult),
         })}\n\n`));
 
         // ── Circuit breaker — reject if AI service is overwhelmed ──
@@ -568,6 +620,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
                       ));
                     } else if (event.delta.type === 'input_json_delta') {
                       currentToolUseInput += event.delta.partial_json;
+                      // Guard against unbounded accumulation (DoS via malformed tool input)
+                      if (currentToolUseInput.length > 500_000) {
+                        logger.warn('[Stream v2] Anthropic tool input exceeded 500KB, truncating', { toolName: currentToolUseName });
+                        break;
+                      }
                     }
                   } else if (event.type === 'content_block_stop') {
                     if (currentToolUseId) {
@@ -693,7 +750,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
               };
             }
 
-            // Permission check
+            // Permission check BEFORE emitting tool_start to avoid misleading UX
             if (!canUseTool(toolName, userRole ?? '')) {
               return {
                 toolCallId: tc.id,
@@ -786,7 +843,34 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           for (const { toolCallId, result } of toolResponses) {
             let resultJson = JSON.stringify(result.data || { error: result.error });
             if (resultJson.length > MAX_TOOL_RESULT_CHARS) {
-              resultJson = resultJson.slice(0, MAX_TOOL_RESULT_CHARS) + '... [truncated — result too large]';
+              // Truncate at valid JSON boundary to avoid feeding broken JSON to the model.
+              // Strategy: re-serialize a shallow summary instead of slicing mid-string.
+              const originalLength = resultJson.length;
+              const data = result.data;
+              if (Array.isArray(data)) {
+                // For arrays: keep first N items that fit within budget
+                const truncatedItems: unknown[] = [];
+                let accLen = 2; // opening/closing brackets
+                for (const item of data) {
+                  const itemJson = JSON.stringify(item);
+                  if (accLen + itemJson.length + 1 > MAX_TOOL_RESULT_CHARS - 200) break;
+                  truncatedItems.push(item);
+                  accLen += itemJson.length + 1;
+                }
+                resultJson = JSON.stringify({
+                  _truncated: true,
+                  _totalItems: data.length,
+                  _returnedItems: truncatedItems.length,
+                  _note: `Showing ${truncatedItems.length} of ${data.length} items (${originalLength} chars total). Ask the user to narrow their query for more detail.`,
+                  items: truncatedItems,
+                });
+              } else {
+                // For objects: serialize and slice at the last complete key-value pair
+                const sliced = resultJson.slice(0, MAX_TOOL_RESULT_CHARS);
+                const lastComma = sliced.lastIndexOf(',');
+                const safeCut = lastComma > 0 ? sliced.slice(0, lastComma) : sliced.slice(0, MAX_TOOL_RESULT_CHARS - 1);
+                resultJson = safeCut + `}  /* TRUNCATED: ${MAX_TOOL_RESULT_CHARS} of ${originalLength} chars. Ask the user to narrow their query. */`;
+              }
             }
             messages.push({
               role: 'tool',
@@ -875,12 +959,21 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
               selfCritiqueNote = 'Well-grounded in source data';
             }
 
-            // Check for hallucination indicators
-            const hallucinationPatterns = ['I believe', 'I think', 'probably', 'it seems like', 'I assume'];
-            const hasHedging = hallucinationPatterns.some(p => fullContent.toLowerCase().includes(p));
+            // Check for hallucination indicators — only flag phrases that indicate
+            // genuine uncertainty about facts, not normal conversational hedging.
+            // Require surrounding word boundaries to avoid partial matches.
+            const hedgingRegexes = [
+              /\bI(?:'m| am) not sure\b/i,
+              /\bI(?:'m| am) uncertain\b/i,
+              /\bI cannot verify\b/i,
+              /\bI don't have (?:enough |sufficient )?(?:information|data|context)\b/i,
+              /\bI(?:'m| am) unable to confirm\b/i,
+              /\bthis may not be accurate\b/i,
+            ];
+            const hasHedging = hedgingRegexes.some(re => re.test(fullContent));
             if (hasHedging && selfCritiqueScore > 0.6) {
               selfCritiqueScore -= 0.1;
-              selfCritiqueNote += '. Contains hedging language';
+              selfCritiqueNote += '. Contains uncertainty language';
             }
           } catch {
             // Self-critique is non-critical
@@ -917,7 +1010,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
                 confidence: finalAdjustedConfidence,
                 tokensUsed: countTokens(fullContent).tokens,
               },
-            }, tenantId, contextContractId ? { contractId: contextContractId } : undefined)
+            }, tenantId, contextContractId ? { contractId: contextContractId, userRole: userRole ?? undefined } : { userRole: userRole ?? undefined })
             .catch(() => { /* ignore */ });
         }
 
@@ -982,22 +1075,30 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
 
             // Audit log for GDPR compliance — track who created chat messages
             auditLog({
-              action: AuditAction.DATA_EXPORTED,
+              action: AuditAction.CHAT_MESSAGE_CREATED,
               tenantId,
               userId,
               resourceType: 'ChatConversation',
               resourceId: conversationId,
               metadata: {
-                event: 'CHAT_MESSAGE_CREATED',
                 messageCount: 2,
                 model: usedModel,
                 toolsUsed: allToolResults.length,
                 responseLength: fullContent.length,
                 contractId: contextContractId || null,
               },
-            }).catch(() => { /* non-critical */ });
-          } catch {
-            // Non-critical — don't break streaming
+            }).catch((err) => {
+              logger.warn('[Stream v2] Audit log failed for chat message', {
+                action: 'audit-log',
+                conversationId,
+                error: err instanceof Error ? err.message : String(err),
+              });
+            });
+          } catch (persistErr) {
+            logger.warn('[Stream v2] Chat message persistence failed', {
+              action: 'chat-persist',
+              error: persistErr instanceof Error ? persistErr.message : String(persistErr),
+            });
           }
         }
 

@@ -51,7 +51,7 @@ export function TenantContextBanner() {
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 shadow-md">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div className="max-w-[1600px] mx-auto flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Eye className="h-5 w-5" />
           <span className="font-medium">

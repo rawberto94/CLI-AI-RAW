@@ -125,7 +125,7 @@ const MODULE_PATHS: Record<ModuleType, string> = {
   upload: '/upload',
   analytics: '/dashboard',
   'rate-cards': '/rate-cards',
-  generate: '/generate',
+  generate: '/drafting',
   intelligence: '/intelligence',
   approvals: '/approvals',
   renewals: '/renewals',

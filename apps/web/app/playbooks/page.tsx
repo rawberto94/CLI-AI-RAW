@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DashboardLayout } from '@/components/layout/AppLayout'
@@ -43,6 +44,7 @@ import {
   ChevronRight,
   FileText,
   Scale,
+  Upload,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -93,6 +95,22 @@ interface Playbook {
   _count?: { clauses: number; redFlags: number; reviews: number }
 }
 
+function getPlaybookMutationHeaders() {
+  if (typeof document === 'undefined') {
+    return { 'Content-Type': 'application/json' }
+  }
+
+  const csrfCookie = document.cookie
+    .split('; ')
+    .find((cookie) => cookie.startsWith('csrf_token='))
+  const csrfToken = csrfCookie?.split('=').slice(1).join('=') || ''
+
+  return {
+    'Content-Type': 'application/json',
+    ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+  }
+}
+
 // ── API Hooks ────────────────────────────────────────────────────────────────
 
 function usePlaybooks() {
@@ -127,6 +145,55 @@ const CLAUSE_CATEGORIES = ['liability', 'indemnification', 'termination', 'confi
 const RISK_LEVELS = ['critical', 'high', 'medium', 'low']
 const SEVERITY_LEVELS = ['critical', 'high', 'medium', 'low']
 
+const SAMPLE_POLICY_PACK = JSON.stringify({
+  name: 'Enterprise SaaS Policy Pack',
+  description: 'Baseline positions for SaaS subscription and services agreements.',
+  contractTypes: ['MSA', 'SOW', 'SLA'],
+  clauses: [
+    {
+      category: 'payment_terms',
+      name: 'Net 30 Payment Terms',
+      preferredText: 'Customer shall pay each undisputed invoice within thirty (30) days after receipt.',
+      minimumAcceptable: 'Customer shall pay each undisputed invoice within forty-five (45) days after receipt.',
+      walkawayTriggers: ['Prepayment required for standard enterprise services'],
+      riskLevel: 'medium',
+      negotiationGuidance: 'Prefer net 30. Accept net 45 only with suspension rights for non-payment.',
+    },
+    {
+      category: 'limitation_of_liability',
+      name: 'Balanced Liability Cap',
+      preferredText: 'Each party\'s aggregate liability shall not exceed the fees paid or payable in the twelve (12) months preceding the claim.',
+      minimumAcceptable: 'Each party\'s aggregate liability shall not exceed one times the fees paid in the twelve (12) months preceding the claim.',
+      walkawayTriggers: ['Unlimited liability for ordinary breach'],
+      riskLevel: 'high',
+      negotiationGuidance: 'Preserve carve-outs for confidentiality, IP infringement, and willful misconduct.',
+    },
+  ],
+  fallbackPositions: {
+    limitation_of_liability: {
+      initial: 'Cap liability at fees paid or payable in the prior 12 months.',
+      fallback1: 'Cap liability at 1.5x fees paid or payable in the prior 12 months.',
+      fallback2: 'Cap liability at 2x fees paid or payable in the prior 12 months only if balanced with strong exclusions.',
+      walkaway: 'Reject unlimited general liability or uncapped consequential damages.',
+    },
+  },
+  riskThresholds: {
+    criticalCount: 2,
+    highRiskScore: 70,
+    overallAcceptable: 40,
+  },
+  redFlags: [
+    {
+      pattern: 'unlimited liability',
+      category: 'limitation_of_liability',
+      severity: 'high',
+      explanation: 'Unlimited liability is outside the standard enterprise fallback position.',
+      suggestion: 'Propose a fee-based aggregate cap with explicit carve-outs.',
+      isRegex: false,
+    },
+  ],
+}, null, 2)
+
 const RISK_COLORS: Record<string, string> = {
   critical: 'bg-red-100 text-red-700 border-red-200',
   high: 'bg-orange-100 text-orange-700 border-orange-200',
@@ -137,10 +204,12 @@ const RISK_COLORS: Record<string, string> = {
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function PlaybooksPage() {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const { data: playbooks = [], isLoading } = usePlaybooks()
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Playbook | null>(null)
@@ -154,7 +223,7 @@ export default function PlaybooksPage() {
     mutationFn: async (data: Record<string, unknown>) => {
       const res = await fetch('/api/playbooks', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getPlaybookMutationHeaders(),
         body: JSON.stringify(data),
       })
       if (!res.ok) throw new Error('Failed to create playbook')
@@ -172,7 +241,7 @@ export default function PlaybooksPage() {
     mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       const res = await fetch(`/api/playbooks/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getPlaybookMutationHeaders(),
         body: JSON.stringify(data),
       })
       if (!res.ok) throw new Error('Failed to update playbook')
@@ -188,7 +257,10 @@ export default function PlaybooksPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/playbooks/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/playbooks/${id}`, {
+        method: 'DELETE',
+        headers: getPlaybookMutationHeaders(),
+      })
       if (!res.ok) throw new Error('Failed to delete playbook')
       return res.json()
     },
@@ -204,7 +276,7 @@ export default function PlaybooksPage() {
     mutationFn: async (playbook: Playbook) => {
       const res = await fetch('/api/playbooks', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getPlaybookMutationHeaders(),
         body: JSON.stringify({
           name: `${playbook.name} (Copy)`,
           description: playbook.description,
@@ -226,6 +298,33 @@ export default function PlaybooksPage() {
     onError: () => toast.error('Failed to duplicate playbook'),
   })
 
+  const importMutation = useMutation({
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const res = await fetch('/api/playbooks/import', {
+        method: 'POST',
+        headers: getPlaybookMutationHeaders(),
+        body: JSON.stringify(payload),
+      })
+
+      const result = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(result?.error || 'Failed to import policy pack')
+      }
+
+      return result
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['playbooks'] })
+      setImportOpen(false)
+      const importedPlaybook = result.data?.playbook || result.playbook
+      if (importedPlaybook?.id) {
+        setDetailId(importedPlaybook.id)
+      }
+      toast.success('Policy pack imported')
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Failed to import policy pack'),
+  })
+
   // ── Filter ───────────────────────────────────────────────────────────────
 
   const filtered = playbooks.filter((p) =>
@@ -237,7 +336,7 @@ export default function PlaybooksPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <PageBreadcrumb items={[{ label: 'Playbooks', href: '/playbooks' }]} />
 
         {/* Header */}
@@ -251,10 +350,16 @@ export default function PlaybooksPage() {
               Define preferred clauses, risk thresholds, and negotiation positions for automated contract review
             </p>
           </div>
-          <Button onClick={() => setCreateOpen(true)} className="bg-violet-600 hover:bg-violet-700 text-white">
-            <Plus className="h-4 w-4 mr-2" />
-            New Playbook
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import Policy Pack
+            </Button>
+            <Button onClick={() => setCreateOpen(true)} className="bg-violet-600 hover:bg-violet-700 text-white">
+              <Plus className="h-4 w-4 mr-2" />
+              New Playbook
+            </Button>
+          </div>
         </div>
 
         {/* Search */}
@@ -437,6 +542,13 @@ export default function PlaybooksPage() {
           isSubmitting={createMutation.isPending || updateMutation.isPending}
         />
 
+        <PolicyPackImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onImport={(payload) => importMutation.mutate(payload)}
+          isSubmitting={importMutation.isPending}
+        />
+
         {/* ═══ Detail Dialog ═══ */}
         <Dialog open={!!detailId} onOpenChange={(open) => { if (!open) setDetailId(null) }}>
           <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
@@ -544,6 +656,18 @@ export default function PlaybooksPage() {
                     )}
                   </div>
                 </div>
+
+                <DialogFooter className="mt-6">
+                  <Button variant="outline" onClick={() => setEditId(detailPlaybook.id)}>
+                    <Pencil className="h-4 w-4 mr-2" /> Edit
+                  </Button>
+                  <Button
+                    className="bg-violet-600 hover:bg-violet-700 text-white"
+                    onClick={() => router.push(`/drafting/copilot?mode=blank&playbook=${detailPlaybook.id}`)}
+                  >
+                    Use In Drafting
+                  </Button>
+                </DialogFooter>
               </>
             ) : (
               <p className="text-sm text-slate-400 py-8 text-center">Playbook not found</p>
@@ -634,9 +758,9 @@ function PlaybookFormDialog({
       contractTypes: selectedTypes,
       isDefault,
       riskThresholds: {
-        highRiskScoreThreshold: riskHigh,
-        acceptableScoreThreshold: riskAcceptable,
-        criticalCountThreshold: criticalCount,
+        highRiskScore: riskHigh,
+        overallAcceptable: riskAcceptable,
+        criticalCount,
       },
     })
   }
@@ -732,6 +856,151 @@ function PlaybookFormDialog({
           >
             {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {editId ? 'Save Changes' : 'Create Playbook'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function PolicyPackImportDialog({
+  open,
+  onOpenChange,
+  onImport,
+  isSubmitting,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onImport: (payload: Record<string, unknown>) => void
+  isSubmitting: boolean
+}) {
+  const [fileName, setFileName] = useState('')
+  const [payload, setPayload] = useState<Record<string, unknown> | null>(null)
+  const [summary, setSummary] = useState<{
+    name: string
+    contractTypes: string[]
+    clauseCount: number
+    redFlagCount: number
+  } | null>(null)
+
+  React.useEffect(() => {
+    if (!open) {
+      setFileName('')
+      setPayload(null)
+      setSummary(null)
+    }
+  }, [open])
+
+  const downloadTemplate = useCallback(() => {
+    const blob = new Blob([SAMPLE_POLICY_PACK], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'policy-pack-template.json'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }, [])
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      setFileName('')
+      setPayload(null)
+      setSummary(null)
+      return
+    }
+
+    setFileName(file.name)
+
+    try {
+      const text = await file.text()
+      const parsed = JSON.parse(text) as Record<string, unknown>
+      const source = (parsed.policyPack as Record<string, unknown>) || (parsed.playbook as Record<string, unknown>) || parsed
+      const contractTypes = Array.isArray(source.contractTypes)
+        ? source.contractTypes.filter((type): type is string => typeof type === 'string')
+        : []
+      const preferredLanguage = source.preferredLanguage && typeof source.preferredLanguage === 'object'
+        ? Object.keys(source.preferredLanguage as Record<string, unknown>)
+        : []
+
+      setPayload(parsed)
+      setSummary({
+        name: typeof source.name === 'string' && source.name.trim().length > 0 ? source.name : file.name.replace(/\.json$/i, ''),
+        contractTypes,
+        clauseCount: Array.isArray(source.clauses) ? source.clauses.length : preferredLanguage.length,
+        redFlagCount: Array.isArray(source.redFlags) ? source.redFlags.length : 0,
+      })
+    } catch (error) {
+      console.error('Policy pack parse error:', error)
+      setPayload(null)
+      setSummary(null)
+      toast.error('The selected file is not valid JSON')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Import Policy Pack</DialogTitle>
+          <DialogDescription>
+            Upload a standardized JSON policy pack and convert it into a reusable drafting playbook.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="rounded-lg border border-violet-100 bg-violet-50/70 p-3 text-sm text-slate-700">
+            Accepted fields: <span className="font-medium">name</span>, <span className="font-medium">description</span>, <span className="font-medium">contractTypes</span>, <span className="font-medium">clauses</span>, <span className="font-medium">fallbackPositions</span>, <span className="font-medium">riskThresholds</span>, and <span className="font-medium">redFlags</span>.
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="policy-pack-file">JSON file</Label>
+            <Input
+              id="policy-pack-file"
+              type="file"
+              accept=".json,application/json"
+              onChange={handleFileChange}
+            />
+            <p className="text-xs text-slate-500">
+              {fileName ? `Loaded ${fileName}` : 'Choose a JSON file exported from your legal standards or negotiation library.'}
+            </p>
+          </div>
+
+          {summary && (
+            <div className="grid grid-cols-3 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{summary.clauseCount}</p>
+                <p className="text-[11px] text-slate-500">Clauses</p>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{summary.redFlagCount}</p>
+                <p className="text-[11px] text-slate-500">Red Flags</p>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{summary.contractTypes.length}</p>
+                <p className="text-[11px] text-slate-500">Contract Types</p>
+              </div>
+              <div className="col-span-3 rounded-md bg-white px-3 py-2 text-left">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pack Name</p>
+                <p className="mt-1 text-sm text-slate-900">{summary.name}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={downloadTemplate}>
+            <FileText className="h-4 w-4 mr-2" /> Sample JSON
+          </Button>
+          <Button
+            onClick={() => payload && onImport(payload)}
+            disabled={isSubmitting || !payload}
+            className="bg-violet-600 hover:bg-violet-700 text-white"
+          >
+            {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Import Policy Pack
           </Button>
         </DialogFooter>
       </DialogContent>

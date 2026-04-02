@@ -29,6 +29,42 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
+const UI_STATUS_ALIASES: Record<string, ContractStatus[]> = {
+  uploaded: [ContractStatus.UPLOADED, ContractStatus.PENDING, ContractStatus.DRAFT],
+  pending: [ContractStatus.UPLOADED, ContractStatus.PENDING, ContractStatus.DRAFT],
+  processing: [ContractStatus.PROCESSING, ContractStatus.QUEUED],
+  queued: [ContractStatus.QUEUED, ContractStatus.PROCESSING],
+  completed: [ContractStatus.COMPLETED, ContractStatus.ACTIVE],
+  active: [ContractStatus.ACTIVE, ContractStatus.COMPLETED],
+  failed: [ContractStatus.FAILED],
+  archived: [ContractStatus.ARCHIVED, ContractStatus.CANCELLED, ContractStatus.EXPIRED],
+  cancelled: [ContractStatus.CANCELLED],
+  expired: [ContractStatus.EXPIRED],
+  draft: [ContractStatus.DRAFT],
+};
+
+function mapContractStatusToUi(status: ContractStatus): string {
+  switch (status) {
+    case ContractStatus.COMPLETED:
+    case ContractStatus.ACTIVE:
+      return 'completed';
+    case ContractStatus.PROCESSING:
+    case ContractStatus.QUEUED:
+      return 'processing';
+    case ContractStatus.FAILED:
+      return 'failed';
+    case ContractStatus.ARCHIVED:
+    case ContractStatus.CANCELLED:
+    case ContractStatus.EXPIRED:
+      return 'archived';
+    case ContractStatus.UPLOADED:
+    case ContractStatus.PENDING:
+    case ContractStatus.DRAFT:
+    default:
+      return 'uploaded';
+  }
+}
+
 async function handler(request: NextRequest) {
   const startTime = Date.now();
   const { searchParams } = new URL(request.url);
@@ -58,14 +94,24 @@ async function handler(request: NextRequest) {
   // Additional filter parameters
   const contractTypes = searchParams.getAll("contractType");
   const categories = searchParams.getAll("category");
+  const documentRoles = searchParams.getAll("documentRole");
+  const riskLevels = searchParams.getAll("riskLevel");
   const clientNames = searchParams.getAll("clientName");
   const supplierNames = searchParams.getAll("supplierName");
+  const currencies = searchParams.getAll("currency");
+  const jurisdictions = searchParams.getAll("jurisdiction");
+  const paymentTerms = searchParams.getAll("paymentTerms");
+  const signatureStatuses = searchParams.getAll("signatureStatus");
+  const documentClassifications = searchParams.getAll("documentClassification");
+  const expirationFilters = searchParams.getAll("expirationFilter");
   const minValue = searchParams.get("minValue") ? Number(searchParams.get("minValue")) : undefined;
   const maxValue = searchParams.get("maxValue") ? Number(searchParams.get("maxValue")) : undefined;
   const expiringBefore = searchParams.get("expiringBefore");
   const expiringAfter = searchParams.get("expiringAfter");
   const uploadedAfter = searchParams.get("uploadedAfter");
   const uploadedBefore = searchParams.get("uploadedBefore");
+  const hasDeadline = searchParams.get("hasDeadline") === 'true';
+  const isExpiring = searchParams.get("isExpiring") === 'true';
 
   // Validate pagination parameters
   if (page < 1) {
@@ -78,10 +124,16 @@ async function handler(request: NextRequest) {
   // Valid ContractStatus values from Prisma schema
   const VALID_STATUSES: ContractStatus[] = [
     ContractStatus.UPLOADED,
+    ContractStatus.QUEUED,
     ContractStatus.PROCESSING,
     ContractStatus.COMPLETED,
     ContractStatus.FAILED,
     ContractStatus.ARCHIVED,
+    ContractStatus.ACTIVE,
+    ContractStatus.PENDING,
+    ContractStatus.DRAFT,
+    ContractStatus.EXPIRED,
+    ContractStatus.CANCELLED,
   ];
 
   // Build where clause - always filter out deleted contracts
@@ -104,9 +156,19 @@ async function handler(request: NextRequest) {
   }
 
   // Filter to only valid status values
-  const validStatuses = statuses.filter(
-    (s): s is ContractStatus =>
-      !!s && s !== 'undefined' && VALID_STATUSES.includes(s as ContractStatus)
+  const validStatuses = Array.from(
+    new Set(
+      statuses.flatMap((status) => {
+        const normalized = status.trim().toLowerCase();
+        if (UI_STATUS_ALIASES[normalized]) {
+          return UI_STATUS_ALIASES[normalized];
+        }
+
+        return VALID_STATUSES.includes(status as ContractStatus)
+          ? [status as ContractStatus]
+          : [];
+      }),
+    ),
   );
   if (validStatuses.length > 0) {
     where.status = { in: validStatuses };
@@ -119,7 +181,22 @@ async function handler(request: NextRequest) {
 
   // Category filter
   if (categories.length > 0) {
-    where.category = { in: categories };
+    const existingAnd = where.AND;
+    const categoryFilter: Prisma.ContractWhereInput = {
+      OR: [
+        { contractCategoryId: { in: categories } },
+        { category: { in: categories } },
+        { categoryL1: { in: categories } },
+        { categoryL2: { in: categories } },
+      ],
+    };
+    where.AND = existingAnd
+      ? [...(Array.isArray(existingAnd) ? existingAnd : [existingAnd]), categoryFilter]
+      : [categoryFilter];
+  }
+
+  if (documentRoles.length > 0) {
+    where.documentRole = { in: documentRoles };
   }
 
   // Party name filters
@@ -128,6 +205,26 @@ async function handler(request: NextRequest) {
   }
   if (supplierNames.length > 0) {
     where.supplierName = { in: supplierNames };
+  }
+
+  if (currencies.length > 0) {
+    where.currency = { in: currencies };
+  }
+
+  if (jurisdictions.length > 0) {
+    where.jurisdiction = { in: jurisdictions };
+  }
+
+  if (paymentTerms.length > 0) {
+    where.paymentTerms = { in: paymentTerms };
+  }
+
+  if (signatureStatuses.length > 0) {
+    where.signatureStatus = { in: signatureStatuses };
+  }
+
+  if (documentClassifications.length > 0) {
+    where.documentClassification = { in: documentClassifications };
   }
 
   // Value range filter
@@ -148,6 +245,78 @@ async function handler(request: NextRequest) {
     where.uploadedAt = {};
     if (uploadedAfter) where.uploadedAt.gte = new Date(uploadedAfter);
     if (uploadedBefore) where.uploadedAt.lte = new Date(uploadedBefore);
+  }
+
+  const andFilters: Prisma.ContractWhereInput[] = [];
+
+  if (riskLevels.length > 0) {
+    const riskClauses: Prisma.ContractWhereInput[] = [];
+
+    if (riskLevels.includes('low')) {
+      riskClauses.push({ contractMetadata: { riskScore: { gte: 0, lt: 30 } } });
+    }
+    if (riskLevels.includes('medium')) {
+      riskClauses.push({ contractMetadata: { riskScore: { gte: 30, lt: 70 } } });
+    }
+    if (riskLevels.includes('high')) {
+      riskClauses.push({ contractMetadata: { riskScore: { gte: 70 } } });
+    }
+
+    if (riskClauses.length > 0) {
+      andFilters.push({ OR: riskClauses });
+    }
+  }
+
+  if (expirationFilters.length > 0) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const in7Days = new Date(today);
+    in7Days.setDate(in7Days.getDate() + 7);
+    const in30Days = new Date(today);
+    in30Days.setDate(in30Days.getDate() + 30);
+    const in90Days = new Date(today);
+    in90Days.setDate(in90Days.getDate() + 90);
+
+    const expirationClauses: Prisma.ContractWhereInput[] = [];
+
+    if (expirationFilters.includes('expired')) {
+      expirationClauses.push({ expirationDate: { lt: today } });
+    }
+    if (expirationFilters.includes('expiring-7')) {
+      expirationClauses.push({ expirationDate: { gte: today, lte: in7Days } });
+    }
+    if (expirationFilters.includes('expiring-30')) {
+      expirationClauses.push({ expirationDate: { gte: today, lte: in30Days } });
+    }
+    if (expirationFilters.includes('expiring-90')) {
+      expirationClauses.push({ expirationDate: { gte: today, lte: in90Days } });
+    }
+    if (expirationFilters.includes('no-expiry')) {
+      expirationClauses.push({ expirationDate: null });
+    }
+
+    if (expirationClauses.length > 0) {
+      andFilters.push({ OR: expirationClauses });
+    }
+  }
+
+  if (hasDeadline) {
+    andFilters.push({ expirationDate: { not: null } });
+  }
+
+  if (isExpiring) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const in30Days = new Date(today);
+    in30Days.setDate(in30Days.getDate() + 30);
+    andFilters.push({ expirationDate: { gte: today, lte: in30Days } });
+  }
+
+  if (andFilters.length > 0) {
+    const existingAnd = where.AND;
+    where.AND = existingAnd
+      ? [...(Array.isArray(existingAnd) ? existingAnd : [existingAnd]), ...andFilters]
+      : andFilters;
   }
 
   // Cursor-based pagination setup
@@ -197,6 +366,24 @@ async function handler(request: NextRequest) {
     statuses,
     contractTypes,
     categories,
+    documentRoles,
+    riskLevels,
+    clientNames,
+    supplierNames,
+    currencies,
+    jurisdictions,
+    paymentTerms,
+    signatureStatuses,
+    documentClassifications,
+    expirationFilters,
+    minValue,
+    maxValue,
+    expiringBefore,
+    expiringAfter,
+    uploadedAfter,
+    uploadedBefore,
+    hasDeadline,
+    isExpiring,
   });
 
   // Try to get from cache or fetch from database
@@ -226,6 +413,8 @@ async function handler(request: NextRequest) {
             status: true,
             contractType: true,
             contractTitle: true,
+            contractCategoryId: true,
+            documentRole: true,
             clientName: true,
             supplierName: true,
             category: true,
@@ -261,6 +450,11 @@ async function handler(request: NextRequest) {
                 contractType: true,
               },
             },
+            contractMetadata: {
+              select: {
+                riskScore: true,
+              },
+            },
             _count: {
               select: {
                 childContracts: true,
@@ -275,14 +469,19 @@ async function handler(request: NextRequest) {
       const totalPages = Math.ceil(total / limit);
 
       // Fetch category details for contracts that have categories
-      const categoryNames = [...new Set(contracts.filter(c => c.category || (c as any).categoryL1).map(c => c.category || (c as any).categoryL1!))];
+      const categoryKeys = [...new Set(contracts
+        .filter(c => c.contractCategoryId || c.category || (c as any).categoryL1)
+        .map(c => c.contractCategoryId || c.category || (c as any).categoryL1!))];
       const categoryMap: Map<string, { id: string; name: string; color: string; icon: string; path: string }> = new Map();
       
-      if (categoryNames.length > 0) {
+      if (categoryKeys.length > 0) {
         const taxonomyCategories = await prisma.taxonomyCategory.findMany({
           where: {
             tenantId,
-            name: { in: categoryNames },
+            OR: [
+              { id: { in: categoryKeys } },
+              { name: { in: categoryKeys } },
+            ],
           },
           select: {
             id: true,
@@ -294,6 +493,7 @@ async function handler(request: NextRequest) {
         });
         
         for (const cat of taxonomyCategories) {
+          categoryMap.set(cat.id, cat);
           categoryMap.set(cat.name, cat);
         }
       }
@@ -381,9 +581,11 @@ async function handler(request: NextRequest) {
         success: true,
         data: {
           contracts: contracts.map((contract) => {
-            const categoryInfo = (contract.category ? categoryMap.get(contract.category) : null) || ((contract as any).categoryL1 ? categoryMap.get((contract as any).categoryL1) : null);
+            const categoryInfo = (contract.contractCategoryId ? categoryMap.get(contract.contractCategoryId) : null)
+              || (contract.category ? categoryMap.get(contract.category) : null)
+              || ((contract as any).categoryL1 ? categoryMap.get((contract as any).categoryL1) : null);
             // If this contract was just auto-resolved, reflect the correct status immediately
-            let effectiveStatus = contract.status.toLowerCase();
+            let effectiveStatus = mapContractStatusToUi(contract.status);
             if (staleIdSet.has(contract.id)) {
               effectiveStatus = failedIdSet.has(contract.id) ? 'failed' : 'completed';
             }
@@ -405,6 +607,7 @@ async function handler(request: NextRequest) {
                 client: contract.clientName || null,
                 supplier: contract.supplierName || null,
               },
+              documentRole: contract.documentRole,
               clientName: contract.clientName,
               supplierName: contract.supplierName,
               // Map to vendor/counterparty for UI compatibility
@@ -419,6 +622,7 @@ async function handler(request: NextRequest) {
               } : null,
               // Value field for frontend compatibility
               value: contract.totalValue ? Number(contract.totalValue) : null,
+              riskScore: (contract as any).contractMetadata?.riskScore ?? null,
               totalValue: contract.totalValue ? Number(contract.totalValue) : null,
               currency: contract.currency,
               effectiveDate: contract.effectiveDate?.toISOString(),
@@ -505,8 +709,18 @@ async function handler(request: NextRequest) {
               statuses: validStatuses,
               contractTypes,
               categories,
+              documentRoles,
+              riskLevels,
               clientNames,
               supplierNames,
+              currencies,
+              jurisdictions,
+              paymentTerms,
+              signatureStatuses,
+              documentClassifications,
+              expirationFilters,
+              hasDeadline: hasDeadline || null,
+              isExpiring: isExpiring || null,
               valueRange: minValue || maxValue ? { min: minValue, max: maxValue } : null,
             },
             sortBy,
@@ -530,7 +744,7 @@ async function handler(request: NextRequest) {
   const responseTime = Date.now() - startTime;
 
   // Build a deterministic cache key for server-side ETag memoization
-  const listCacheKey = `contracts:${tenantId}:p${page}:l${limit}:s${sortBy}:${sortOrder}:${search || ''}`;
+  const listCacheKey = `contracts:${tenantId}:${searchParams.toString()}`;
 
   const responseData = {
     ...cachedResult.data,

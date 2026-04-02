@@ -3,7 +3,7 @@
  * Enables offline functionality and push notifications
  */
 
-const CACHE_NAME = 'contigo-v2';
+const CACHE_NAME = 'contigo-v3';
 const OFFLINE_URL = '/offline';
 
 // Static assets to cache
@@ -74,7 +74,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets - cache first
+  // Navigation requests (HTML pages) and Next.js chunks - network first
+  // to avoid serving stale HTML that references outdated chunk hashes after rebuilds
+  if (request.mode === 'navigate' || url.pathname.startsWith('/_next/')) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // Other static assets (images, fonts, icons) - cache first
   event.respondWith(cacheFirst(request));
 });
 

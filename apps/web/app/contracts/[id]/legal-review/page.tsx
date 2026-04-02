@@ -141,13 +141,14 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
       try {
         const response = await fetch(`/api/contracts/${id}`);
         if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.contract) {
+          const raw = await response.json();
+          const data = raw.data ?? raw;
+          if (data?.id) {
             setContract({
-              id: data.contract.id,
-              contractTitle: data.contract.contractTitle || data.contract.filename || 'Contract',
-              rawText: data.contract.rawText || data.contract.extractedData?.rawText,
-              status: data.contract.status,
+              id: data.id,
+              contractTitle: data.contractTitle || data.filename || 'Contract',
+              rawText: data.rawText || data.extractedData?.rawText,
+              status: data.status,
             });
           }
         }
@@ -165,11 +166,13 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
       try {
         const response = await fetch('/api/playbooks');
         if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setPlaybooks(data.playbooks || []);
+          const raw = await response.json();
+          const data = raw.data ?? raw;
+          const items = data.playbooks || [];
+          if (items.length >= 0) {
+            setPlaybooks(items);
             // Auto-select default playbook
-            const defaultPlaybook = data.playbooks?.find((p: { isDefault: boolean }) => p.isDefault);
+            const defaultPlaybook = items.find((p: { isDefault: boolean }) => p.isDefault);
             if (defaultPlaybook) {
               setSelectedPlaybook(defaultPlaybook.id);
             }
@@ -188,9 +191,11 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
       try {
         const response = await fetch(`/api/legal-review?contractId=${id}`);
         if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.reviews?.length > 0) {
-            const latestReview = data.reviews[0];
+          const raw = await response.json();
+          const data = raw.data ?? raw;
+          const reviews = data.reviews || [];
+          if (reviews.length > 0) {
+            const latestReview = reviews[0];
             setReview({
               id: latestReview.id,
               overallRiskScore: latestReview.overallRiskScore || 0,
@@ -198,7 +203,10 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
               recommendation: latestReview.recommendation || '',
               clauseAssessments: latestReview.clauseAssessments || [],
               redlines: latestReview.redlines || [],
-              playbook: latestReview.playbook,
+              playbook: latestReview.playbook || (latestReview.playbookId ? {
+                id: latestReview.playbookId,
+                name: latestReview.playbookName || 'Playbook',
+              } : undefined),
             });
           }
         }
@@ -231,16 +239,21 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
       });
 
       if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.review) {
+        const raw = await response.json();
+        const data = raw.data ?? raw;
+        const reviewData = data.review || data;
+        if (reviewData?.id) {
           setReview({
-            id: data.review.id,
-            overallRiskScore: data.review.overallRiskScore || 0,
-            overallRiskLevel: data.review.overallRiskLevel || 'medium',
-            recommendation: data.review.recommendation || '',
-            clauseAssessments: data.review.clauseAssessments || [],
-            redlines: data.review.redlines || [],
-            playbook: data.review.playbook,
+            id: reviewData.id,
+            overallRiskScore: reviewData.overallRiskScore || 0,
+            overallRiskLevel: reviewData.overallRiskLevel || 'medium',
+            recommendation: reviewData.recommendation || '',
+            clauseAssessments: reviewData.clauseAssessments || [],
+            redlines: reviewData.redlines || [],
+            playbook: reviewData.playbook || (reviewData.playbookId ? {
+              id: reviewData.playbookId,
+              name: reviewData.playbookName || 'Playbook',
+            } : undefined),
           });
           toast.success('Legal review completed');
         }

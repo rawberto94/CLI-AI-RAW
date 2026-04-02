@@ -649,7 +649,7 @@ export default function AIReportBuilderPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
       {/* Hero Header */}
       <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-purple-600 text-white">
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="max-w-[1600px] mx-auto px-6 py-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-white/10 backdrop-blur-sm rounded-2xl">
@@ -1116,7 +1116,7 @@ export default function AIReportBuilderPage() {
         </div>
       )}
       
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-[1600px] mx-auto px-6 py-6 space-y-6">
         {/* Filter Section - Dropdown Filters */}
         <Card className="border-0 shadow-md">
           <CardHeader className="pb-3">

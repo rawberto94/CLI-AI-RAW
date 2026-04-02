@@ -560,7 +560,7 @@ export function ComprehensiveAIAnalysis({
     compliance: artifacts.compliance || artifacts.complianceCheck || null,
     obligations: artifacts.obligations || null,
     renewal: artifacts.renewal || null,
-    negotiationPoints: artifacts.negotiationPoints || null,
+    negotiationPoints: artifacts.negotiationPoints || artifacts.negotiation_points || null,
     amendments: artifacts.amendments || null,
     contacts: artifacts.contacts || null,
     deliverables: artifacts.deliverables || null,

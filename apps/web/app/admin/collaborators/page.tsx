@@ -4,7 +4,7 @@ import { ExternalCollaborators } from '@/components/admin/external-collaborators
 
 export default function CollaboratorsPage() {
   return (
-    <div className="container mx-auto py-8">
+    <div className="max-w-[1600px] mx-auto py-8">
       <ExternalCollaborators />
     </div>
   );

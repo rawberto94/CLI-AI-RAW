@@ -115,7 +115,7 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-violet-50/20">
       {/* Premium Header */}
       <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 shadow-xl">
-        <div className="max-w-7xl mx-auto px-6 py-5">
+        <div className="max-w-[1600px] mx-auto px-6 py-5">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -204,7 +204,7 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="max-w-7xl mx-auto px-6 py-6"
+        className="max-w-[1600px] mx-auto px-6 py-6"
       >
         {loading ? (
           <div className="flex items-center justify-center py-24">

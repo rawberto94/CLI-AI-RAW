@@ -16,6 +16,7 @@ import OpenAI from 'openai';
 import { createOpenAIClient, createEmbeddingClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { logger } from '@/lib/logger';
 
 // =============================================================================
 // TYPES
@@ -221,7 +222,7 @@ export async function parallelMultiQueryRAG(
       timingsMs: timings,
     };
   } catch (error) {
-    console.warn('[ParallelRAG] Vector search failed, falling back to keyword-only:', (error as Error).message);
+    logger.warn('[ParallelRAG] Vector search failed — falling back to keyword-only (tier 2)', { error: (error as Error).message });
     // Fallback: keyword-only search when OpenAI is unavailable (quota, key issues)
     try {
       const keywordResults = await keywordSearch(query, tenantId, k * 2);
@@ -250,7 +251,7 @@ export async function parallelMultiQueryRAG(
         };
       }
     } catch (fallbackError) {
-      console.error('[ParallelRAG] Keyword fallback also failed:', fallbackError);
+      logger.error('[ParallelRAG] Keyword fallback also failed (tier 2)', fallbackError instanceof Error ? fallbackError : undefined, { errorDetail: String(fallbackError) });
     }
     
     // Last resort: rawText search — use full-text search on the tsvector column
@@ -282,7 +283,7 @@ export async function parallelMultiQueryRAG(
         };
       }
     } catch (rawError) {
-      console.error('[ParallelRAG] rawText fallback also failed:', rawError);
+      logger.error('[ParallelRAG] rawText fallback also failed (tier 3)', rawError instanceof Error ? rawError : undefined, { errorDetail: String(rawError) });
     }
     
     return {
@@ -439,7 +440,7 @@ async function vectorSearch(
 
     return results;
   } catch (error) {
-    console.error('[ParallelRAG] vectorSearch failed:', error instanceof Error ? error.message : error);
+    logger.error('[ParallelRAG] vectorSearch failed', error instanceof Error ? error : undefined, { errorDetail: String(error) });
     return [];
   }
 }
@@ -480,7 +481,7 @@ async function keywordSearch(
 
     return results.map((r, i) => ({ ...r, rank: i + 1 }));
   } catch (error) {
-    console.error('[ParallelRAG] keywordSearch failed:', error instanceof Error ? error.message : error);
+    logger.error('[ParallelRAG] keywordSearch failed', error instanceof Error ? error : undefined, { errorDetail: String(error) });
     return [];
   }
 }

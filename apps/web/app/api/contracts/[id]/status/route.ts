@@ -14,6 +14,7 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { ContractStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
@@ -321,19 +322,20 @@ function formatDuration(ms: number): string {
 // Valid transitions: fromStatus → Set<validTargetStatuses>
 const VALID_TRANSITIONS: Record<string, Set<string>> = {
   DRAFT:      new Set(['PENDING', 'ACTIVE', 'PROCESSING', 'CANCELLED']),
-  PENDING:    new Set(['ACTIVE', 'DRAFT', 'CANCELLED', 'PROCESSING', 'TERMINATED']),
+  PENDING:    new Set(['ACTIVE', 'DRAFT', 'CANCELLED', 'PROCESSING']),
   QUEUED:     new Set(['PROCESSING', 'FAILED', 'CANCELLED', 'DRAFT']),
   PROCESSING: new Set(['COMPLETED', 'FAILED', 'PENDING']),
   COMPLETED:  new Set(['ACTIVE', 'ARCHIVED', 'DRAFT', 'PENDING']),
-  ACTIVE:     new Set(['EXPIRED', 'ARCHIVED', 'CANCELLED', 'DRAFT', 'PENDING', 'TERMINATED']),
-  EXPIRED:    new Set(['ACTIVE', 'ARCHIVED', 'TERMINATED']),
+  ACTIVE:     new Set(['EXPIRED', 'ARCHIVED', 'CANCELLED', 'DRAFT', 'PENDING']),
+  EXPIRED:    new Set(['ACTIVE', 'ARCHIVED']),
   FAILED:     new Set(['PROCESSING', 'DRAFT']),
   ARCHIVED:   new Set(['ACTIVE', 'DRAFT']),
   CANCELLED:  new Set(['DRAFT']),
   UPLOADED:   new Set(['QUEUED', 'PROCESSING', 'DRAFT', 'PENDING', 'ACTIVE']),
   DELETED:    new Set([]),
-  TERMINATED: new Set(['ARCHIVED']),
 };
+
+const VALID_STATUSES = new Set<string>(Object.values(ContractStatus));
 
 export async function PATCH(
   request: NextRequest,
@@ -367,6 +369,15 @@ export async function PATCH(
     const currentStatus = (contract.status || 'DRAFT').toUpperCase();
     const allowedTargets = VALID_TRANSITIONS[currentStatus];
 
+    if (!VALID_STATUSES.has(normalizedStatus)) {
+      return createErrorResponse(
+        ctx,
+        'INVALID_STATUS',
+        `Unsupported contract status: ${normalizedStatus}`,
+        422
+      );
+    }
+
     if (!allowedTargets || !allowedTargets.has(normalizedStatus)) {
       return createErrorResponse(
         ctx,
@@ -392,7 +403,7 @@ export async function PATCH(
     const updated = await prisma.contract.update({
       where: { id: contractId },
       data: {
-        status: normalizedStatus as Parameters<typeof prisma.contract.update>[0]['data']['status'],
+        status: normalizedStatus as ContractStatus,
         metadata: {
           ...meta,
           statusHistory,

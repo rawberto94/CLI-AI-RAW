@@ -83,7 +83,7 @@ export default function SupplierAnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-violet-50/20">
-      <div className="container mx-auto py-8 space-y-6">
+      <div className="max-w-[1600px] mx-auto py-8 space-y-6">
         <Breadcrumbs />
         {/* Header */}
         <motion.div 

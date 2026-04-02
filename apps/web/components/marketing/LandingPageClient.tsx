@@ -547,7 +547,7 @@ export default function LandingPageClient() {
         <GradientOrb className="bottom-20 right-40 w-[300px] h-[300px] bg-gradient-to-br from-fuchsia-400 to-pink-400" delay={2000} />
         <ParticleField />
         
-        <div className="max-w-7xl mx-auto relative w-full">
+        <div className="max-w-[1600px] mx-auto relative w-full">
           <div className="max-w-5xl mx-auto text-center">
             {/* Animated Badge */}
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-200/50 text-violet-700 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium mb-6 sm:mb-8 backdrop-blur-sm animate-pulse">
@@ -655,7 +655,7 @@ export default function LandingPageClient() {
           />
         </div>
         
-        <div className="max-w-6xl mx-auto relative">
+        <div className="max-w-[1600px] mx-auto relative">
           <div className="text-center mb-12 sm:mb-20">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-500/30 text-violet-400 px-5 py-2.5 rounded-full text-sm font-medium mb-6 backdrop-blur-sm">
               <Wand2 aria-hidden="true" className="w-4 h-4" />
@@ -744,7 +744,7 @@ export default function LandingPageClient() {
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-gradient-to-br from-violet-100/40 to-transparent rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-gradient-to-br from-violet-100/30 to-transparent rounded-full blur-3xl" />
         
-        <div className="max-w-7xl mx-auto relative">
+        <div className="max-w-[1600px] mx-auto relative">
           <div className="text-center mb-12 sm:mb-20">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/50 text-violet-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
               <Layers aria-hidden="true" className="w-4 h-4" />
@@ -840,7 +840,7 @@ export default function LandingPageClient() {
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-violet-200/40 to-transparent rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-violet-200/30 to-transparent rounded-full blur-3xl" />
         
-        <div className="max-w-7xl mx-auto relative">
+        <div className="max-w-[1600px] mx-auto relative">
           <div className="text-center mb-12 sm:mb-20">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/50 text-violet-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
               <Brain aria-hidden="true" className="w-4 h-4" />
@@ -963,7 +963,7 @@ export default function LandingPageClient() {
 
       {/* AI Architecture & Technology Section */}
       <section id="architecture" className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-[1600px] mx-auto">
           <div className="text-center mb-10 sm:mb-16">
             <div className="inline-flex items-center gap-2 bg-violet-50 border border-violet-200 text-violet-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
               <CircuitBoard aria-hidden="true" className="w-4 h-4" />
@@ -1048,7 +1048,7 @@ export default function LandingPageClient() {
         <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-gradient-to-br from-violet-200/40 to-transparent rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-gradient-to-tl from-violet-200/30 to-transparent rounded-full blur-3xl" />
         
-        <div className="max-w-6xl mx-auto relative">
+        <div className="max-w-[1600px] mx-auto relative">
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <div>
               <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/50 text-violet-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
@@ -1172,7 +1172,7 @@ export default function LandingPageClient() {
         <div className="absolute bottom-0 left-0 w-[700px] h-[700px] bg-gradient-to-tr from-violet-200/40 to-transparent rounded-full blur-3xl" />
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-violet-200/30 to-transparent rounded-full blur-3xl" />
         
-        <div className="max-w-7xl mx-auto relative">
+        <div className="max-w-[1600px] mx-auto relative">
           <div className="text-center mb-12 sm:mb-20">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/50 text-violet-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
               <Rocket aria-hidden="true" className="w-4 h-4" />
@@ -1469,7 +1469,7 @@ export default function LandingPageClient() {
           <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
         </div>
         
-        <div className="max-w-7xl mx-auto relative">
+        <div className="max-w-[1600px] mx-auto relative">
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <div>
               <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-500/30 text-violet-400 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 sm:mb-8 backdrop-blur-sm">
@@ -1620,7 +1620,7 @@ export default function LandingPageClient() {
         <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-gradient-to-br from-violet-200/30 to-transparent rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-gradient-to-tl from-purple-200/30 to-transparent rounded-full blur-3xl" />
 
-        <div className="max-w-7xl mx-auto relative">
+        <div className="max-w-[1600px] mx-auto relative">
           <div className="text-center mb-20">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/50 text-violet-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
               <Users aria-hidden="true" className="w-4 h-4" />
@@ -1712,7 +1712,7 @@ export default function LandingPageClient() {
       <section id="contact" className="py-16 sm:py-24 lg:py-32 px-4 sm:px-6 bg-gradient-to-b from-gray-50 via-rose-50/30 to-gray-50 relative overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-rose-200/30 via-purple-200/20 to-purple-200/30 rounded-full blur-3xl" />
 
-        <div className="max-w-7xl mx-auto relative">
+        <div className="max-w-[1600px] mx-auto relative">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200/50 text-rose-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
               <MessageSquare aria-hidden="true" className="w-4 h-4" />
@@ -1836,7 +1836,7 @@ export default function LandingPageClient() {
       <section id="support" className="py-16 sm:py-24 lg:py-32 px-4 sm:px-6 bg-gradient-to-b from-white via-rose-50/20 to-white relative overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-rose-200/30 via-purple-200/20 to-purple-200/30 rounded-full blur-3xl" />
         
-        <div className="max-w-7xl mx-auto relative">
+        <div className="max-w-[1600px] mx-auto relative">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200/50 text-rose-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
               <BookOpen aria-hidden="true" className="w-4 h-4" />
@@ -1930,7 +1930,7 @@ export default function LandingPageClient() {
         {/* Subtle Background */}
         <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
         
-        <div className="max-w-7xl mx-auto relative">
+        <div className="max-w-[1600px] mx-auto relative">
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-12 mb-10 sm:mb-16">
             <div className="lg:col-span-2">
               {/* Footer Logo */}

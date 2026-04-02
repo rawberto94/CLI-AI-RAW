@@ -52,6 +52,42 @@ export const authConfig = {
     strategy: "jwt" as const,
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  // Prevent Auth.js from auto-detecting HTTPS (via X-Forwarded-Proto) and
+  // prefixing cookie names with "__Secure-".  This is critical when running
+  // behind VS Code port forwarding or any reverse proxy that upgrades to HTTPS.
+  useSecureCookies: false,
+  // Force plain cookie names (no __Secure- prefix) so that sessions work
+  // consistently regardless of whether a reverse proxy (VS Code port forwarding,
+  // nginx, etc.) adds X-Forwarded-Proto: https headers.
+  cookies: {
+    sessionToken: {
+      name: "authjs.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        secure: false,
+      },
+    },
+    callbackUrl: {
+      name: "authjs.callback-url",
+      options: {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        secure: false,
+      },
+    },
+    csrfToken: {
+      name: "authjs.csrf-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        path: "/",
+        secure: false,
+      },
+    },
+  },
   // Providers are configured in auth.ts — keep empty here for Edge compatibility
   providers: [],
   callbacks: {

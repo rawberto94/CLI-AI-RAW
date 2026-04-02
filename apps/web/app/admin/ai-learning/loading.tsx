@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AILearningLoading() {
   return (
-    <div className="container mx-auto py-8 px-4 space-y-6">
+    <div className="max-w-[1600px] mx-auto py-8 px-4 space-y-6">
       <div className="flex items-center justify-between">
         <div className="space-y-2">
           <Skeleton className="h-8 w-40" />

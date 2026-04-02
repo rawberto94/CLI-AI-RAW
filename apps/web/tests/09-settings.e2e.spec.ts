@@ -3,7 +3,7 @@
  * Tests application settings, user preferences, and system configuration
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './utils/auth-fixture';
 
 test.describe('Settings & Configuration', () => {
   
@@ -63,12 +63,9 @@ test.describe('Settings & Configuration', () => {
       });
     });
 
-    test('should update profile', async ({ page }) => {
-      const saveButton = page.getByRole('button', { name: /save|update/i }).first();
-      if (await saveButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await saveButton.click();
-        await page.waitForTimeout(1000);
-      }
+    test('should link to dedicated profile settings', async ({ page }) => {
+      const editProfileLink = page.getByRole('link', { name: /edit in profile settings/i }).first();
+      await expect(editProfileLink).toBeVisible({ timeout: 5000 });
     });
   });
 
@@ -201,12 +198,9 @@ test.describe('Settings & Configuration', () => {
       });
     });
 
-    test('should export user data', async ({ page }) => {
-      const exportButton = page.getByRole('button', { name: /export|download/i }).first();
-      if (await exportButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await exportButton.click();
-        await page.waitForTimeout(1000);
-      }
+    test('should expose primary settings actions', async ({ page }) => {
+      await expect(page.getByRole('button', { name: /reset to defaults/i }).first()).toBeVisible({ timeout: 5000 });
+      await expect(page.getByRole('button', { name: /save changes|saved/i }).first()).toBeVisible({ timeout: 5000 });
     });
 
     test('should show data retention settings', async ({ page }) => {
@@ -307,32 +301,39 @@ test.describe('Settings & Configuration', () => {
     test('should save and persist settings', async ({ page }) => {
       await page.goto('/settings');
       await page.waitForLoadState('domcontentloaded').catch(() => {});
-      
-      const saveButton = page.getByRole('button', { name: /save|update/i }).first();
-      if (await saveButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await saveButton.click();
-        
-        // Wait for save confirmation
-        const successMessage = page.getByText(/saved|updated|success/i).first();
-        await expect(successMessage).toBeVisible({ timeout: 5000 }).catch(() => {
-          console.log('Save confirmation not found');
-        });
+
+      const saveButton = page.getByRole('button', { name: /save changes|saved/i }).first();
+      const firstSelect = page.locator('select').first();
+
+      if (await firstSelect.isVisible({ timeout: 3000 }).catch(() => false)) {
+        const currentValue = await firstSelect.inputValue();
+        const options = await firstSelect.locator('option').evaluateAll((nodes) =>
+          nodes
+            .map((node) => (node as HTMLOptionElement).value)
+            .filter((value) => value.length > 0),
+        );
+        const nextValue = options.find((value) => value !== currentValue);
+
+        if (nextValue) {
+          await firstSelect.selectOption(nextValue);
+          await expect(saveButton).toBeEnabled({ timeout: 5000 });
+          await saveButton.click();
+          await expect(saveButton).toHaveText(/saved/i, { timeout: 5000 });
+        }
       }
     });
 
     test('should reset settings to defaults', async ({ page }) => {
       await page.goto('/settings');
       await page.waitForLoadState('domcontentloaded').catch(() => {});
-      
-      const resetButton = page.getByRole('button', { name: /reset|default/i }).first();
+
+      const resetButton = page.getByRole('button', { name: /reset to defaults/i }).first();
+      const saveButton = page.getByRole('button', { name: /save changes|saved/i }).first();
+
       if (await resetButton.isVisible({ timeout: 3000 }).catch(() => false)) {
         await resetButton.click();
-        
-        // Confirm reset action
-        const confirmButton = page.getByRole('button', { name: /confirm|yes/i }).first();
-        if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await confirmButton.click();
-        }
+        await expect(saveButton).toBeEnabled({ timeout: 5000 });
+        await expect(saveButton).toHaveText(/save changes/i, { timeout: 5000 });
       }
     });
   });

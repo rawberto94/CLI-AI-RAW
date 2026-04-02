@@ -21,7 +21,7 @@ const breadcrumbItems = [
 
 export default function TeamPage() {
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="max-w-[1600px] mx-auto py-8 px-4">
       {/* Breadcrumbs */}
       <div className="mb-6">
         <Breadcrumbs items={breadcrumbItems} showHomeIcon />

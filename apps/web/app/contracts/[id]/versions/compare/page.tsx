@@ -436,7 +436,7 @@ export default function VersionComparePage() {
     )}>
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" asChild>
@@ -498,7 +498,7 @@ export default function VersionComparePage() {
         </div>
       </header>
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Version Selectors */}
         <Card className="mb-6">
           <CardContent className="pt-6">
