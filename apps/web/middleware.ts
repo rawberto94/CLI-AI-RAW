@@ -81,10 +81,10 @@ const CSRF_EXEMPT_PATHS = [
   '/api/cron',               // Scheduled jobs — server-to-server
   // Special upload handling
   '/api/contracts/upload',   // Multipart file uploads; XHR interceptor covers this
-  // Agent & AI endpoints (all session-authenticated, same-origin fetch calls)
-  // Uses startsWith matching, so these cover all sub-paths
-  '/api/agents/',            // All agent endpoints: chat, SSE, execute, orchestrator, etc.
-  '/api/ai/',                // All AI endpoints: chat/stream, summarize, extract, compare
+  // Agent & AI endpoints — only exempt specific known streaming/SSE sub-paths
+  '/api/agents/chat',        // Agent chat SSE stream
+  '/api/agents/execute',     // Agent execution stream
+  '/api/ai/chat/stream',     // AI chat SSE stream
   '/api/rfx',                // RFx creation/management (session-protected)
 ];
 
@@ -158,9 +158,15 @@ function cleanupRateLimitStore() {
 }
 
 // Upstash Redis REST client — Edge Runtime compatible (HTTP-based, no TCP)
+// For non-Upstash Redis (e.g. local Docker), the in-memory store is used automatically.
 let rateLimitRedis: Redis | null = null;
 try {
-  if (process.env.REDIS_URL && process.env.REDIS_TOKEN) {
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    rateLimitRedis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  } else if (process.env.REDIS_URL && process.env.REDIS_TOKEN) {
     rateLimitRedis = new Redis({
       url: process.env.REDIS_URL,
       token: process.env.REDIS_TOKEN,
@@ -299,7 +305,6 @@ const publicApiPaths = [
   "/api/csrf", // CSRF token must be obtainable before/during login
   "/api/taxonomy/presets", // Industry preset templates (read-only, public)
   "/api/portal/validate-token", // Portal token validation
-  "/api/debug-auth", // Temporary diagnostic endpoint
 ];
 
 // Static/public assets that bypass auth
@@ -389,6 +394,7 @@ function resolveLegacyGeneratePath(url: URL): string {
 }
 
 export default auth(async (req) => {
+ try {
   const { pathname } = req.nextUrl;
   const startTime = Date.now();
   
@@ -414,7 +420,7 @@ export default auth(async (req) => {
     const ip = forwarded?.split(',')[0] ?? 'unknown';
     const userId = req.auth?.user?.id;
     const tenantId = req.auth?.user?.tenantId;
-    const userRole = (req.auth?.user as any)?.role;
+    const userRole = req.auth?.user?.role;
     
     // Use tenant+user+category for rate limit grouping (per-category, per-tenant limits)
     const category = getEndpointCategory(pathname);
@@ -513,8 +519,8 @@ export default auth(async (req) => {
   }
 
   // C1 FIX: MFA enforcement — redirect to MFA verify if required but not verified
-  const mfaRequired = (req.auth.user as any)?.mfaRequired;
-  const mfaVerified = (req.auth.user as any)?.mfaVerified;
+  const mfaRequired = req.auth.user?.mfaRequired;
+  const mfaVerified = req.auth.user?.mfaVerified;
   const mfaPendingPaths = ['/auth/mfa-verify', '/api/auth/mfa', '/api/auth/session', '/api/auth/signout', '/api/auth/csrf'];
   
   if (mfaRequired && !mfaVerified && !mfaPendingPaths.some(p => pathname.startsWith(p))) {
@@ -547,8 +553,8 @@ export default auth(async (req) => {
   const isFileUploadRoute = pathname.includes('/signed-copy');
   const isCSRFExempt = CSRF_EXEMPT_PATHS.some((path) => pathname.startsWith(path));
 
-  // Diagnostic logging for upload requests
-  if (pathname.includes('/upload') || pathname.includes('/contract')) {
+  // Diagnostic logging for upload requests (dev only)
+  if (process.env.NODE_ENV === 'development' && (pathname.includes('/upload') || pathname.includes('/contract'))) {
     console.log(`[MW-DIAG] ${req.method} ${pathname} | auth=${!!req.auth} | userId=${req.auth?.user?.id || 'none'} | tenantId=${req.auth?.user?.tenantId || 'none'} | csrfExempt=${isCSRFExempt} | isFileUpload=${isFileUploadRoute} | reqId=${requestId}`);
   }
 
@@ -561,7 +567,7 @@ export default auth(async (req) => {
     const headerToken = req.headers.get(CSRF_HEADER_NAME);
 
     if (!headerToken) {
-      console.log(`[MW-DIAG] CSRF BLOCKED (missing) ${req.method} ${pathname} | reqId=${requestId}`);
+      if (process.env.NODE_ENV === 'development') console.log(`[MW-DIAG] CSRF BLOCKED (missing) ${req.method} ${pathname} | reqId=${requestId}`);
       const response = NextResponse.json(
         { error: "Forbidden", message: "CSRF token missing", code: "CSRF_MISSING", requestId },
         { status: 403 }
@@ -570,7 +576,7 @@ export default auth(async (req) => {
     }
 
     if (!(await verifyCSRFToken(headerToken, req.auth?.user?.id))) {
-      console.log(`[MW-DIAG] CSRF BLOCKED (invalid) ${req.method} ${pathname} | reqId=${requestId}`);
+      if (process.env.NODE_ENV === 'development') console.log(`[MW-DIAG] CSRF BLOCKED (invalid) ${req.method} ${pathname} | reqId=${requestId}`);
       const response = NextResponse.json(
         { error: "Forbidden", message: "Invalid or expired CSRF token", code: "CSRF_EXPIRED", requestId },
         { status: 403 }
@@ -588,7 +594,7 @@ export default auth(async (req) => {
 
       // If admin token is configured, require it
       if (adminToken) {
-        if (!authHeader || authHeader !== `Bearer ${adminToken}`) {
+        if (!authHeader || !constantTimeEqual(authHeader, `Bearer ${adminToken}`)) {
           const response = NextResponse.json(
             {
               error: "Unauthorized",
@@ -616,7 +622,7 @@ export default auth(async (req) => {
     }
 
     // For /admin pages, check user role
-    const userRole = (req.auth.user as any)?.role;
+    const userRole = req.auth.user?.role;
     if (!hasAdminAccess(userRole)) {
       // Return 403 for API routes, redirect for pages
       if (pathname.startsWith("/api/")) {
@@ -670,6 +676,11 @@ export default auth(async (req) => {
   // Apply security headers to page responses
   const response = NextResponse.next();
   return addTracingHeaders(response);
+ } catch (err) {
+  // Top-level safety net — prevents unhandled middleware errors from crashing the process
+  console.error('[Middleware] Unhandled error:', err instanceof Error ? err.message : String(err));
+  return NextResponse.next();
+ }
 });
 
 // Configure which routes require authentication
@@ -683,7 +694,8 @@ export const config = {
      * - favicon.ico / favicon.svg
      * - Static assets (logo-*, grid.svg, etc.)
      * - public folder
+     * - robots.txt, sitemap.xml, manifest.json
      */
-    "/((?!_next/static|_next/image|_dev-|favicon\\.ico|favicon\\.svg|logo-|grid\\.svg|public).*)",
+    "/((?!_next/static|_next/image|_dev-|favicon\\.ico|favicon\\.svg|logo-|grid\\.svg|public|robots\\.txt|sitemap\\.xml|manifest\\.json).*)",
   ],
 };

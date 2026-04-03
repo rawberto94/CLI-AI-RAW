@@ -330,19 +330,26 @@ async function handleSSOSignIn(
   return null;
 }
 
+const isProduction = process.env.NODE_ENV === 'production';
+const useSecure = isProduction && process.env.DISABLE_SECURE_COOKIES !== 'true';
+if (isProduction && process.env.DISABLE_SECURE_COOKIES === 'true') {
+  console.warn('[SECURITY] DISABLE_SECURE_COOKIES is set in production — cookie Secure flag is OFF. Only use behind an HTTP-only load balancer.');
+}
+
 export const authOptions: NextAuthConfig = {
   adapter: PrismaAdapter(prisma) as NextAuthConfig["adapter"],
   session: {
     strategy: "jwt" as const,
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 24 * 60 * 60, // 24 hours — short-lived for sensitive contract data
   },
   pages: {
     signIn: "/auth/signin",
     signOut: "/auth/signout",
     error: "/auth/error",
   },
-  // Prevent Auth.js from auto-detecting HTTPS and prefixing cookie names — must match auth.config.ts
-  useSecureCookies: false,
+  // In production, enable secure cookies for HTTPS.
+  // In development, keep plain cookie names to avoid __Secure- prefix issues.
+  useSecureCookies: useSecure,
   cookies: {
     sessionToken: {
       name: "authjs.session-token",
@@ -350,7 +357,7 @@ export const authOptions: NextAuthConfig = {
         httpOnly: true,
         sameSite: "lax" as const,
         path: "/",
-        secure: false,
+        secure: useSecure,
       },
     },
     callbackUrl: {
@@ -359,7 +366,7 @@ export const authOptions: NextAuthConfig = {
         httpOnly: true,
         sameSite: "lax" as const,
         path: "/",
-        secure: false,
+        secure: useSecure,
       },
     },
     csrfToken: {
@@ -368,7 +375,7 @@ export const authOptions: NextAuthConfig = {
         httpOnly: true,
         sameSite: "lax" as const,
         path: "/",
-        secure: false,
+        secure: useSecure,
       },
     },
   },

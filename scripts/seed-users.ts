@@ -4,7 +4,7 @@ import { hash } from 'bcryptjs';
 const p = new PrismaClient();
 
 async function main() {
-  const pw = await hash('password123', 10);
+  const pw = await hash('password123', 12);
 
   // Create acme tenant
   let tenant = await p.tenant.findFirst({ where: { slug: 'acme' } });

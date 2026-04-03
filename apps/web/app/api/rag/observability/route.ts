@@ -38,10 +38,19 @@ export async function GET(request: NextRequest) {
     return createErrorResponse(authCtx, 'RATE_LIMITED', 'Rate limited', 429);
   }
   lastRequestByIp.set(ip, now);
-  // Prevent memory leak
+  // Evict stale entries (>10 min) and cap size
+  if (lastRequestByIp.size > 200) {
+    const STALE_MS = 10 * 60_000;
+    for (const [key, ts] of lastRequestByIp) {
+      if (now - ts > STALE_MS) lastRequestByIp.delete(key);
+    }
+  }
   if (lastRequestByIp.size > 500) {
-    const oldest = lastRequestByIp.keys().next().value;
-    if (oldest) lastRequestByIp.delete(oldest);
+    // Hard cap: remove oldest entries
+    const sorted = [...lastRequestByIp.entries()].sort((a, b) => a[1] - b[1]);
+    for (let i = 0; i < sorted.length - 400; i++) {
+      lastRequestByIp.delete(sorted[i][0]);
+    }
   }
 
   try {

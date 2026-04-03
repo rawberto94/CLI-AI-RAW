@@ -421,6 +421,10 @@ function extractSignatureInfo(contractText: string): { signatureStatus: string |
     /\bduly\s+executed/i,
     /\bDigitally signed by\b/i,
     /\bDocuSigned by\b/i,
+    // Completed signature blocks: Signature field followed by Name/Title fields with values
+    // (indicates physical/handwritten signatures exist even if DI can't OCR the ink)
+    /\bSignature[:\s]*\n[\s\S]{0,200}?\bName[:\s]+[A-Z][a-z]/i,
+    /\bBuyer\b[\s\S]{0,300}?\bSupplier\b[\s\S]{0,300}?\bName[:\s]+\S/i,
   ];
 
   const hasSignatureBlock = signatureBlockPatterns.some(pattern => pattern.test(contractText));
@@ -837,9 +841,13 @@ async function extractScannedPDFWithVision(fileContent: Buffer): Promise<string>
           content: [
             {
               type: 'text',
-              text: `Extract ALL text from this scanned PDF document with high accuracy.
+              text: `Extract ALL text from this PDF document with high accuracy.
 Preserve the exact structure, formatting, and layout.
-Include all headings, paragraphs, lists, tables (as markdown), headers, footers, and any signatures.
+Include all headings, paragraphs, lists, tables (as markdown), headers, footers.
+IMPORTANT: Pay special attention to signature pages — include all signature blocks,
+"IN WITNESS WHEREOF" sections, "For and on behalf of" clauses, signer names, titles,
+dates of execution, and any handwritten signatures or marks.
+If you see handwritten text or signatures, transcribe them and note "[handwritten]" next to them.
 Return the extracted text in clean markdown format.`,
             },
             {
@@ -920,6 +928,8 @@ interface DIExtractionResult {
   text: string;
   hasHandwriting: boolean;
   handwrittenSpans: string[];
+  /** Number of pages DI actually processed (may be less than total PDF pages) */
+  pagesProcessed: number;
 }
 
 // Module-level store for DI handwriting results — set during extractTextFromBuffer,
@@ -929,8 +939,8 @@ let lastDIHandwritingResult: { hasHandwriting: boolean; handwrittenSpans: string
   handwrittenSpans: [],
 };
 
-async function extractPDFWithDocumentIntelligence(fileContent: Buffer): Promise<DIExtractionResult> {
-  const empty: DIExtractionResult = { text: '', hasHandwriting: false, handwrittenSpans: [] };
+async function extractPDFWithDocumentIntelligence(fileContent: Buffer, totalPdfPages?: number): Promise<DIExtractionResult> {
+  const empty: DIExtractionResult = { text: '', hasHandwriting: false, handwrittenSpans: [], pagesProcessed: 0 };
   try {
     const { analyzeLayout, analyzeRead, isDIConfigured, isDIEnabled } = await import('@repo/workers/azure-document-intelligence');
 
@@ -953,15 +963,60 @@ async function extractPDFWithDocumentIntelligence(fileContent: Buffer): Promise<
       return spans;
     };
 
-    try {
-      const layoutResult = await analyzeLayout(fileContent, { extractKeyValuePairs: true });
+    // Helper: call DI layout for a specific page range
+    const analyzePageRange = async (pages?: string): Promise<DIExtractionResult> => {
+      const layoutResult = await analyzeLayout(fileContent, { extractKeyValuePairs: true, pages });
       const layoutText = buildDocumentIntelligenceOcrText(layoutResult);
       const handwrittenSpans = extractHandwritten(layoutResult.content || '', (layoutResult as any).styles);
-      if (layoutText.length > 10) {
-        logger.info({ textLength: layoutText.length, tables: layoutResult.tables.length, kvPairs: layoutResult.keyValuePairs.length, handwrittenSpans: handwrittenSpans.length }, 'Azure Document Intelligence layout extraction completed');
-        return { text: layoutText, hasHandwriting: handwrittenSpans.length > 0, handwrittenSpans };
+      const diPageCount = layoutResult.metadata?.pageCount || layoutResult.pages?.length || 0;
+      return { text: layoutText, hasHandwriting: handwrittenSpans.length > 0, handwrittenSpans, pagesProcessed: diPageCount };
+    };
+
+    try {
+      // First call — let DI process without page range (covers first N pages, limited by tier)
+      const firstResult = await analyzePageRange();
+      if (firstResult.text.length <= 10) {
+        logger.warn('Azure Document Intelligence layout extraction returned insufficient text');
+      } else {
+        const diPages = firstResult.pagesProcessed;
+        logger.info({ textLength: firstResult.text.length, pagesProcessed: diPages, handwrittenSpans: firstResult.handwrittenSpans.length }, 'Azure Document Intelligence layout extraction completed');
+
+        // If DI processed fewer pages than the PDF total (e.g. free tier 2-page limit),
+        // make additional DI calls for remaining page ranges in batches of 2
+        if (totalPdfPages && totalPdfPages > diPages && diPages > 0) {
+          logger.info({ diPages, totalPdfPages, remaining: totalPdfPages - diPages }, 'DI tier page limit detected — making additional DI calls for remaining pages');
+          const allTexts = [firstResult.text];
+          let allHandwrittenSpans = [...firstResult.handwrittenSpans];
+          let hasHandwriting = firstResult.hasHandwriting;
+          let totalProcessed = diPages;
+          const batchSize = diPages; // Use same batch size as initial result (usually 2 for free tier)
+
+          for (let startPage = diPages + 1; startPage <= totalPdfPages; startPage += batchSize) {
+            const endPage = Math.min(startPage + batchSize - 1, totalPdfPages);
+            const pageRange = `${startPage}-${endPage}`;
+            try {
+              const batchResult = await analyzePageRange(pageRange);
+              if (batchResult.text.length > 0) {
+                allTexts.push(batchResult.text);
+                totalProcessed += batchResult.pagesProcessed;
+                if (batchResult.hasHandwriting) {
+                  hasHandwriting = true;
+                  allHandwrittenSpans = [...allHandwrittenSpans, ...batchResult.handwrittenSpans];
+                }
+                logger.info({ pageRange, textLength: batchResult.text.length, handwrittenSpans: batchResult.handwrittenSpans.length }, 'DI batch page range processed');
+              }
+            } catch (batchError) {
+              logger.warn({ pageRange, error: batchError }, 'DI batch page range failed — skipping');
+            }
+          }
+
+          const combinedText = allTexts.join('\n\n');
+          logger.info({ totalProcessed, totalChars: combinedText.length, hasHandwriting }, 'DI multi-batch extraction complete');
+          return { text: combinedText, hasHandwriting, handwrittenSpans: allHandwrittenSpans, pagesProcessed: totalProcessed };
+        }
+
+        return firstResult;
       }
-      logger.warn('Azure Document Intelligence layout extraction returned insufficient text');
     } catch (layoutError) {
       logger.warn({ error: layoutError }, 'Azure Document Intelligence layout extraction failed, trying read model');
     }
@@ -970,9 +1025,10 @@ async function extractPDFWithDocumentIntelligence(fileContent: Buffer): Promise<
       const readResult = await analyzeRead(fileContent);
       const readText = (readResult.content || '').trim();
       const handwrittenSpans = extractHandwritten(readResult.content || '', (readResult as any).styles);
+      const readPageCount = readResult.metadata?.pageCount || readResult.pages?.length || 0;
       if (readText.length > 10) {
-        logger.info({ textLength: readText.length, handwrittenSpans: handwrittenSpans.length }, 'Azure Document Intelligence read extraction completed');
-        return { text: readText, hasHandwriting: handwrittenSpans.length > 0, handwrittenSpans };
+        logger.info({ textLength: readText.length, handwrittenSpans: handwrittenSpans.length, pagesProcessed: readPageCount }, 'Azure Document Intelligence read extraction completed');
+        return { text: readText, hasHandwriting: handwrittenSpans.length > 0, handwrittenSpans, pagesProcessed: readPageCount };
       }
       logger.warn('Azure Document Intelligence read extraction returned insufficient text');
     } catch (readError) {
@@ -1002,31 +1058,33 @@ async function extractTextFromBuffer(
 
   // PDF extraction — always prefer Azure Document Intelligence for richer output
   if (ext === '.pdf' || mimeType === 'application/pdf') {
-    // 1. Always attempt DI first (structured tables, KV pairs, confidence)
-    let diText = '';
-    let diResult: DIExtractionResult = { text: '', hasHandwriting: false, handwrittenSpans: [] };
-    try {
-      diResult = await extractPDFWithDocumentIntelligence(fileContent);
-      diText = diResult.text;
-      // Store DI handwriting evidence for later use in signature detection
-      lastDIHandwritingResult = { hasHandwriting: diResult.hasHandwriting, handwrittenSpans: diResult.handwrittenSpans };
-      if (diText && diText.length > 10) {
-        logger.info({ diChars: diText.length, hasHandwriting: diResult.hasHandwriting }, 'Azure Document Intelligence extracted text for PDF (primary path)');
-      }
-    } catch (diError) {
-      logger.warn({ error: diError }, 'Azure Document Intelligence failed for PDF, will fall back to pdf-parse');
-    }
-
-    // 2. Also run pdf-parse as a secondary/fallback source
+    // 1. Get total page count from pdf-parse first (cheap, fast) so DI can batch if needed
     let pdfParseText = '';
+    let pdfParseTotalPages = 0;
     try {
       const pdfParse = (await import('pdf-parse')).default;
       const data = await pdfParse(fileContent);
       pdfParseText = data.text || '';
+      pdfParseTotalPages = data.numpages || 0;
       const meaningfulText = pdfParseText.replace(/\s+/g, ' ').trim();
-      logger.info({ pages: data.numpages, chars: pdfParseText.length, meaningfulChars: meaningfulText.length }, 'PDF parsed with pdf-parse (secondary)');
+      logger.info({ pages: data.numpages, chars: pdfParseText.length, meaningfulChars: meaningfulText.length }, 'PDF parsed with pdf-parse (page count + fallback)');
     } catch (parseError) {
       logger.warn({ error: parseError }, 'pdf-parse failed');
+    }
+
+    // 2. Run DI with total page count — handles free tier 2-page limit via batching
+    let diText = '';
+    let diResult: DIExtractionResult = { text: '', hasHandwriting: false, handwrittenSpans: [], pagesProcessed: 0 };
+    try {
+      diResult = await extractPDFWithDocumentIntelligence(fileContent, pdfParseTotalPages || undefined);
+      diText = diResult.text;
+      // Store DI handwriting evidence for later use in signature detection
+      lastDIHandwritingResult = { hasHandwriting: diResult.hasHandwriting, handwrittenSpans: diResult.handwrittenSpans };
+      if (diText && diText.length > 10) {
+        logger.info({ diChars: diText.length, pagesProcessed: diResult.pagesProcessed, hasHandwriting: diResult.hasHandwriting }, 'Azure Document Intelligence extracted text for PDF');
+      }
+    } catch (diError) {
+      logger.warn({ error: diError }, 'Azure Document Intelligence failed for PDF, will fall back to pdf-parse');
     }
 
     // 3. Choose the best result — prefer DI when it returned meaningful content
@@ -1272,7 +1330,12 @@ ${truncatedText}`,
           parties: parsedParties || basicMetadata.parties,
           clientName: parsed.clientName || basicMetadata.clientName,
           supplierName: parsed.supplierName || basicMetadata.supplierName,
-          signatureStatus: parsed.signatureStatus || basicMetadata.signatureStatus,
+          // For signatureStatus: prefer regex "signed" over AI "unsigned" because
+          // AI only sees extracted text and cannot detect handwritten/ink signatures
+          // that the regex heuristics identify from completed signature blocks
+          signatureStatus: (basicMetadata.signatureStatus === 'signed' && parsed.signatureStatus === 'unsigned')
+            ? basicMetadata.signatureStatus
+            : (parsed.signatureStatus || basicMetadata.signatureStatus),
           signatureDate: parsed.signatureDate || basicMetadata.signatureDate,
         };
       }

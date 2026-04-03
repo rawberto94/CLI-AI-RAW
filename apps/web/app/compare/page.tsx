@@ -14,7 +14,10 @@ const formatAIAnalysis = (content: string): string => {
     .replace(/### (.*)/g, '<h3 class="text-base font-semibold text-gray-800 mt-3 mb-1">$1</h3>')
     .replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>')
     .replace(/\n/g, '<br />')
-    .replace(/\|(.*?)\|/g, '<span class="font-mono text-sm bg-gray-100 px-1 rounded">$1</span>');
+    .replace(/\|(.*?)\|/g, (_match, inner) => {
+      const escaped = inner.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      return `<span class="font-mono text-sm bg-gray-100 px-1 rounded">${escaped}</span>`;
+    });
 };
 
 import {

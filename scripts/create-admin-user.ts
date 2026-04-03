@@ -33,7 +33,7 @@ async function main() {
     console.log('ℹ️  Deleted existing admin user');
   }
 
-  const passwordHash = await hash('Admin123!', 10);
+  const passwordHash = await hash('Admin123!', 12);
 
   const user = await prisma.user.create({
     data: {

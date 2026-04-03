@@ -4,29 +4,35 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiC
 export const dynamic = 'force-dynamic';
 
 // Saved Searches API — DB-backed with optional alert subscriptions
+// Module-level flag — DDL runs once per process, not per request
+let savedSearchesTableCreated = false;
+
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const { prisma } = await import('@/lib/prisma');
 
-    // Ensure table exists
-    await prisma.$executeRaw`
-      CREATE TABLE IF NOT EXISTS saved_searches (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tenant_id TEXT NOT NULL,
-        user_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        query TEXT NOT NULL,
-        filters JSONB DEFAULT '{}',
-        alert_enabled BOOLEAN DEFAULT false,
-        alert_frequency TEXT DEFAULT 'daily',
-        alert_channels JSONB DEFAULT '["in_app"]',
-        last_alert_at TIMESTAMPTZ,
-        result_count INTEGER DEFAULT 0,
-        is_pinned BOOLEAN DEFAULT false,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `;
+    // Ensure table exists (once per process lifetime)
+    if (!savedSearchesTableCreated) {
+      await prisma.$executeRaw`
+        CREATE TABLE IF NOT EXISTS saved_searches (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          tenant_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          query TEXT NOT NULL,
+          filters JSONB DEFAULT '{}',
+          alert_enabled BOOLEAN DEFAULT false,
+          alert_frequency TEXT DEFAULT 'daily',
+          alert_channels JSONB DEFAULT '["in_app"]',
+          last_alert_at TIMESTAMPTZ,
+          result_count INTEGER DEFAULT 0,
+          is_pinned BOOLEAN DEFAULT false,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `;
+      savedSearchesTableCreated = true;
+    }
 
     const searches = await prisma.$queryRaw`
       SELECT * FROM saved_searches 

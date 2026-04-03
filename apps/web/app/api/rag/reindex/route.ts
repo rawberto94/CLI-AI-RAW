@@ -140,10 +140,11 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           failed++;
         }
       } catch (error) {
+        console.error(`[RAG/Reindex] Failed contract ${contract.id}:`, error);
         results.push({
           contractId: contract.id,
           status: 'error',
-          message: error instanceof Error ? error.message : 'Unknown error' });
+          message: 'Reindexing failed' });
         failed++;
       }
     }

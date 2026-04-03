@@ -78,6 +78,8 @@ export function createOpenAIClient(apiKeyOverride?: string): OpenAI {
       apiKey: config.apiKey,
       deployment: config.deployment,
       apiVersion: config.apiVersion,
+      timeout: 60_000,
+      maxRetries: 2,
     }) as unknown as OpenAI;
   }
 
@@ -88,7 +90,7 @@ export function createOpenAIClient(apiKeyOverride?: string): OpenAI {
     );
   }
 
-  return new OpenAI({ apiKey });
+  return new OpenAI({ apiKey, timeout: 60_000, maxRetries: 2 });
 }
 
 /**
@@ -106,6 +108,8 @@ export function createEmbeddingClient(): OpenAI {
       apiKey: config.apiKey,
       deployment: embeddingDeployment,
       apiVersion: config.apiVersion,
+      timeout: 30_000,
+      maxRetries: 2,
     }) as unknown as OpenAI;
   }
 

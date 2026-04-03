@@ -305,7 +305,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       },
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Ecosystem data fetch failed: ${message}`, 500);
+    console.error('[Ecosystem] Data fetch failed:', error);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Ecosystem data fetch failed', 500);
   }
 });

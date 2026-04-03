@@ -42,6 +42,12 @@ declare module "@auth/core/jwt" {
   }
 }
 
+const isProduction = process.env.NODE_ENV === 'production';
+const useSecure = isProduction && process.env.DISABLE_SECURE_COOKIES !== 'true';
+if (isProduction && process.env.DISABLE_SECURE_COOKIES === 'true') {
+  console.warn('[SECURITY] DISABLE_SECURE_COOKIES is set in production — cookie Secure flag is OFF. Only use behind an HTTP-only load balancer.');
+}
+
 export const authConfig = {
   pages: {
     signIn: "/auth/signin",
@@ -50,15 +56,12 @@ export const authConfig = {
   },
   session: {
     strategy: "jwt" as const,
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 24 * 60 * 60, // 24 hours — short-lived for sensitive contract data
   },
-  // Prevent Auth.js from auto-detecting HTTPS (via X-Forwarded-Proto) and
-  // prefixing cookie names with "__Secure-".  This is critical when running
-  // behind VS Code port forwarding or any reverse proxy that upgrades to HTTPS.
-  useSecureCookies: false,
-  // Force plain cookie names (no __Secure- prefix) so that sessions work
-  // consistently regardless of whether a reverse proxy (VS Code port forwarding,
-  // nginx, etc.) adds X-Forwarded-Proto: https headers.
+  // In production, enable secure cookies for HTTPS.
+  // In development, keep plain cookie names to avoid __Secure- prefix issues
+  // with VS Code port forwarding and reverse proxies.
+  useSecureCookies: useSecure,
   cookies: {
     sessionToken: {
       name: "authjs.session-token",
@@ -66,7 +69,7 @@ export const authConfig = {
         httpOnly: true,
         sameSite: "lax" as const,
         path: "/",
-        secure: false,
+        secure: useSecure,
       },
     },
     callbackUrl: {
@@ -75,7 +78,7 @@ export const authConfig = {
         httpOnly: true,
         sameSite: "lax" as const,
         path: "/",
-        secure: false,
+        secure: useSecure,
       },
     },
     csrfToken: {
@@ -84,7 +87,7 @@ export const authConfig = {
         httpOnly: true,
         sameSite: "lax" as const,
         path: "/",
-        secure: false,
+        secure: useSecure,
       },
     },
   },

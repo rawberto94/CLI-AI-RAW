@@ -101,7 +101,24 @@ export class DatabaseSecurityService {
    * Setup Row-Level Security for multi-tenant isolation
    */
   async setupRowLevelSecurity(policies: RLSPolicy[]): Promise<void> {
+    // Validate policy identifiers to prevent SQL injection via $executeRawUnsafe
+    const SAFE_IDENTIFIER = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+    const SAFE_SQL_EXPR = /^[a-zA-Z0-9_().=\s'"]+$/;
+
     for (const policy of policies) {
+      if (!SAFE_IDENTIFIER.test(policy.table) || !SAFE_IDENTIFIER.test(policy.name)) {
+        throw new Error(`Invalid RLS identifier: table=${policy.table}, name=${policy.name}`);
+      }
+      if (policy.role && !SAFE_IDENTIFIER.test(policy.role)) {
+        throw new Error(`Invalid RLS role: ${policy.role}`);
+      }
+      if (policy.using && !SAFE_SQL_EXPR.test(policy.using)) {
+        throw new Error(`Invalid RLS USING clause: ${policy.using}`);
+      }
+      if (policy.withCheck && !SAFE_SQL_EXPR.test(policy.withCheck)) {
+        throw new Error(`Invalid RLS WITH CHECK clause: ${policy.withCheck}`);
+      }
+
       try {
         // Enable RLS on table
         await this.prisma.$executeRawUnsafe(`

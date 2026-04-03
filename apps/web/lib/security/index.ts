@@ -7,21 +7,9 @@
  */
 
 // Rate Limiter
-// TODO: Module './rate-limiter' does not exist
-// export {
-//   RateLimiter,
-//   SlidingWindowRateLimiter,
-//   MemoryStore,
-//   RedisStore,
-//   rateLimiters,
-//   getClientIP,
-//   rateLimitResponse,
-//   withRateLimit,
-//   type RateLimitConfig,
-//   type RateLimitResult,
-//   type RateLimitStore,
-//   type RedisClient,
-// } from './rate-limiter';
+// Rate limiting is implemented directly in middleware.ts with tiered
+// per-endpoint limits (auth: 10/min anon, AI: 50/min user, etc.)
+// backed by Redis with in-memory fallback.
 
 // Input Sanitization
 export {

@@ -46,3 +46,34 @@ temp
 # Uploads (don't include in image)
 uploads/**
 !uploads/.gitkeep
+
+# Source control
+.git
+
+# Documentation & non-runtime files
+docs/
+*.md
+!README.md
+LICENSE
+SECURITY.md
+CONTRIBUTING.md
+CHANGELOG.md
+FEATURES.md
+QUICK_START.md
+
+# Tests
+tests/
+**/*.test.*
+**/*.spec.*
+**/__tests__/
+
+# CI/CD & scripts not needed at runtime
+.github/
+scripts/
+helm/
+infrastructure/
+data/
+
+# Docker files (avoid recursive COPY)
+docker-compose*.yml
+Dockerfile*

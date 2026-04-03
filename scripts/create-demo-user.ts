@@ -43,7 +43,7 @@ async function main() {
     return;
   }
 
-  const passwordHash = await hash('demo123', 10);
+  const passwordHash = await hash('demo123', 12);
 
   const user = await prisma.user.create({
     data: {

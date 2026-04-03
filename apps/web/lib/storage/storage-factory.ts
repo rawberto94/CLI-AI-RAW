@@ -187,9 +187,13 @@ class LocalStorageAdapter implements IStorageProvider {
   }
 
   private getFullPath(fileName: string): string {
-    // Prevent path traversal
-    const sanitized = fileName.replace(/\.\./g, '').replace(/^\//, '');
-    return path.join(this.basePath, sanitized);
+    // Prevent path traversal — normalize, strip dangerous chars, then verify containment
+    const sanitized = path.basename(fileName).replace(/\.\.+/g, '');
+    const fullPath = path.resolve(this.basePath, sanitized);
+    if (!fullPath.startsWith(path.resolve(this.basePath))) {
+      throw new Error('Path traversal attempt blocked');
+    }
+    return fullPath;
   }
 
   async upload(options: {

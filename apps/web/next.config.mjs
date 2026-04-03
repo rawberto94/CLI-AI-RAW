@@ -68,6 +68,7 @@ const nextConfig = {
   },
   // Disable dev-mode devtools overlay to prevent segment-explorer context errors
   devIndicators: false,
+  poweredByHeader: false,
   output: "standalone",
 
   // Unique build ID per dependency set — prevents stale browser-cached chunks
@@ -111,6 +112,9 @@ const nextConfig = {
     'readable-stream',
   ],
   
+  // Enable gzip/brotli response compression
+  compress: true,
+
   // Optimized static generation
   staticPageGenerationTimeout: 300,
 
@@ -383,7 +387,7 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+              "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
@@ -393,6 +397,7 @@ const nextConfig = {
               "base-uri 'self'",
               "form-action 'self'",
               "object-src 'none'",
+              "upgrade-insecure-requests",
             ].join("; "),
           },
           {
@@ -418,6 +423,14 @@ const nextConfig = {
           {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains",
+          },
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin",
+          },
+          {
+            key: "Cross-Origin-Resource-Policy",
+            value: "same-origin",
           },
         ],
       },

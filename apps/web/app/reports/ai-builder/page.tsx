@@ -9,8 +9,12 @@ const formatAIContent = (content: string): string => {
   return sanitized
     .replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>')
     .replace(/\n/g, '<br />')
-    .replace(/\[([^\]]+)\]\(\/contracts\/([^)]+)\)/g, 
-      '<a href="/contracts/$2" class="text-violet-600 hover:text-violet-800 hover:underline font-medium">$1</a>');
+    .replace(/\[([^\]]+)\]\(\/contracts\/([^)]+)\)/g, (_match, text, id) => {
+      // Only allow alphanumeric/hyphen/underscore contract IDs to prevent XSS via href injection
+      const safeId = id.replace(/[^a-zA-Z0-9_-]/g, '');
+      const safeText = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return `<a href="/contracts/${safeId}" class="text-violet-600 hover:text-violet-800 hover:underline font-medium">${safeText}</a>`;
+    });
 };
 import { 
   FileText, 

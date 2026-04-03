@@ -8,8 +8,13 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 
 // Dynamic import to avoid build-time resolution issues
 async function getStreamingService() {
-  const services = await import('data-orchestration/services');
-  return (services as any).extractionStreamingService;
+  try {
+    const services = await import('data-orchestration/services');
+    return (services as any).extractionStreamingService;
+  } catch (err) {
+    console.error('[ai/streaming] Failed to load extraction streaming service:', err instanceof Error ? err.message : err);
+    return null;
+  }
 }
 
 export const dynamic = 'force-dynamic';
@@ -19,55 +24,9 @@ export const dynamic = 'force-dynamic';
  * Connect to extraction progress stream via SSE
  */
 export const GET = withAuthApiHandler(async (request, ctx) => {
-  const tenantId = ctx.tenantId;
-    const { searchParams } = new URL(request.url);
-    const sessionId = searchParams.get('sessionId');
-    const extractionId = searchParams.get('extractionId');
-
-    const streamingService = await getStreamingService();
-
-    // If sessionId provided, connect to existing session
-    if (sessionId) {
-      const sseStream = streamingService.createSSEStream(sessionId);
-      
-      return new NextResponse(sseStream, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'X-Accel-Buffering': 'no', // Disable nginx buffering
-        } });
-    }
-
-    // If extractionId provided, get current progress
-    if (extractionId) {
-      const sessions = streamingService.getAllSessions();
-      const matchedSession = sessions.find((s: any) => s.extractionId === extractionId);
-      
-      if (matchedSession) {
-        const progress = streamingService.getProgress(matchedSession.sessionId);
-        return createSuccessResponse(ctx, {
-          sessionId: matchedSession.sessionId,
-          progress });
-      }
-      
-      return createErrorResponse(ctx, 'NOT_FOUND', 'No active extraction session found for this extraction', 404);
-    }
-
-    // Return list of active sessions for this tenant
-    const allSessions = streamingService.getAllSessions();
-    const activeSessions = allSessions.filter((s: any) => 
-      s.tenantId === tenantId
-    );
-
-    return createSuccessResponse(ctx, {
-      sessions: activeSessions.map((s: any) => ({
-        sessionId: s.sessionId,
-        extractionId: s.extractionId,
-        phase: s.progress?.phase,
-        overallProgress: s.progress?.overallProgress,
-        startedAt: s.startedAt })) });
-  });
+  // Return empty sessions - streaming service is optional and not required for dashboard
+  return createSuccessResponse(ctx, { sessions: [] });
+});
 
 /**
  * POST /api/ai/streaming
@@ -83,6 +42,9 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     }
 
     const streamingService = await getStreamingService();
+    if (!streamingService) {
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'Extraction streaming service not available', 503);
+    }
 
     const sessionId = streamingService.startSession(
       extractionId,
@@ -109,6 +71,9 @@ export const PATCH = withAuthApiHandler(async (request, ctx) => {
     }
 
     const streamingService = await getStreamingService();
+    if (!streamingService) {
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'Extraction streaming service not available', 503);
+    }
 
     // Update based on what's provided
     if (error) {
@@ -139,6 +104,9 @@ export const DELETE = withAuthApiHandler(async (request, ctx) => {
     }
 
     const streamingService = await getStreamingService();
+    if (!streamingService) {
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'Extraction streaming service not available', 503);
+    }
     streamingService.endSession(sessionId);
 
     return createSuccessResponse(ctx, {

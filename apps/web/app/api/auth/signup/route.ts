@@ -45,9 +45,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let tenantId: string;
-    let userRole = "member";
-
     if (validated.inviteToken) {
       // Joining via invite - find the invitation
       const invitation = await prisma.teamInvitation.findFirst({
@@ -68,13 +65,89 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      tenantId = invitation.tenantId;
-      userRole = invitation.role;
+      const tenantId = invitation.tenantId;
+      const userRole = invitation.role;
 
-      // Mark invitation as accepted
-      await prisma.teamInvitation.update({
-        where: { id: invitation.id },
-        data: { status: "ACCEPTED", acceptedAt: new Date() },
+      // Wrap invite acceptance + user creation in a transaction to prevent
+      // duplicate users from concurrent requests with the same invite token
+      const passwordHash = await hash(validated.password, 12);
+
+      const result = await prisma.$transaction(async (tx) => {
+        // Re-check invitation status inside transaction to prevent race condition
+        const freshInvitation = await tx.teamInvitation.findUnique({
+          where: { id: invitation.id },
+        });
+        if (!freshInvitation || freshInvitation.status !== 'PENDING') {
+          throw new Error('Invitation already accepted');
+        }
+
+        // Mark invitation as accepted
+        await tx.teamInvitation.update({
+          where: { id: invitation.id },
+          data: { status: "ACCEPTED", acceptedAt: new Date() },
+        });
+
+        // Create user
+        const user = await tx.user.create({
+          data: {
+            email: validated.email,
+            firstName: validated.firstName,
+            lastName: validated.lastName,
+            passwordHash,
+            tenantId,
+            role: userRole,
+            status: "ACTIVE",
+            emailVerified: false,
+          },
+        });
+
+        // Find or create the role
+        let roleRecord = await tx.role.findFirst({
+          where: { name: userRole },
+        });
+        if (!roleRecord) {
+          roleRecord = await tx.role.create({
+            data: {
+              name: userRole,
+              description: `${userRole.charAt(0).toUpperCase() + userRole.slice(1)} role`,
+              isSystem: true,
+            },
+          });
+        }
+
+        // Assign role to user
+        await tx.userRole.create({
+          data: { userId: user.id, roleId: roleRecord.id },
+        });
+
+        // Create audit log
+        await tx.auditLog.create({
+          data: {
+            tenantId,
+            userId: user.id,
+            action: "USER_REGISTERED",
+            entityType: "USER",
+            entityId: user.id,
+            metadata: {
+              email: validated.email,
+              role: userRole,
+              method: "invitation",
+            },
+          },
+        });
+
+        return user;
+      });
+
+      return createSuccessResponse(ctx, {
+        success: true,
+        message: "Account created successfully",
+        user: {
+          id: result.id,
+          email: result.email,
+          firstName: result.firstName,
+          lastName: result.lastName,
+        },
       });
     } else if (validated.organizationName && validated.organizationSlug) {
       // Creating a new organization
@@ -199,75 +272,6 @@ export async function POST(request: NextRequest) {
         400
       );
     }
-
-    // --- Invite-based signup path (non-transactional since tenant already exists) ---
-
-    // Hash password
-    const passwordHash = await hash(validated.password, 12);
-
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        email: validated.email,
-        firstName: validated.firstName,
-        lastName: validated.lastName,
-        passwordHash,
-        tenantId,
-        role: userRole,
-        status: "ACTIVE",
-        emailVerified: false,
-      },
-    });
-
-    // Find or create the role
-    let roleRecord = await prisma.role.findFirst({
-      where: { name: userRole },
-    });
-
-    if (!roleRecord) {
-      roleRecord = await prisma.role.create({
-        data: {
-          name: userRole,
-          description: `${userRole.charAt(0).toUpperCase() + userRole.slice(1)} role`,
-          isSystem: true,
-        },
-      });
-    }
-
-    // Assign role to user
-    await prisma.userRole.create({
-      data: {
-        userId: user.id,
-        roleId: roleRecord.id,
-      },
-    });
-
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        tenantId,
-        userId: user.id,
-        action: "USER_REGISTERED",
-        entityType: "USER",
-        entityId: user.id,
-        metadata: {
-          email: validated.email,
-          role: userRole,
-          method: "invitation",
-        },
-      },
-    });
-
-    return createSuccessResponse(ctx, {
-      success: true,
-      message: "Account created successfully",
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-      },
-    });
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "ZodError") {
       const zodError = error as { errors?: Array<{ message?: string }> };

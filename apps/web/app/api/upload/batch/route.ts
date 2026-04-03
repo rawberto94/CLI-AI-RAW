@@ -147,9 +147,10 @@ export async function POST(req: NextRequest) {
           })
         }
       } catch (error) {
+        console.error(`[Upload/Batch] Failed to upload ${item.filename}:`, error);
         results.push({
           name: item.filename,
-          error: error instanceof Error ? error.message : 'Upload failed',
+          error: 'Upload processing failed',
           status: 'error'
         })
       }

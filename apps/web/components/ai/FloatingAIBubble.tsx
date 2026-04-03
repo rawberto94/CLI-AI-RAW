@@ -292,10 +292,10 @@ const formatContent = (content: string) => {
   return sanitized
     // Convert markdown links [text](/path) to clickable links
     .replace(/\[([^\]]+)\]\(\/contracts\/([^)]+)\)/g, 
-      '<a href="/contracts/$2" class="text-violet-600 hover:text-violet-800 underline font-medium" target="_blank">$1</a>')
+      '<a href="/contracts/$2" class="text-violet-600 hover:text-violet-800 underline font-medium" target="_blank" rel="noopener noreferrer">$1</a>')
     // Convert other markdown links
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, 
-      '<a href="$2" class="text-violet-600 hover:text-violet-800 underline" target="_blank">$1</a>')
+      '<a href="$2" class="text-violet-600 hover:text-violet-800 underline" target="_blank" rel="noopener noreferrer">$1</a>')
     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
     .replace(/\n/g, "<br />");
 };

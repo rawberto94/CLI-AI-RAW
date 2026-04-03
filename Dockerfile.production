@@ -29,7 +29,7 @@ RUN cd apps/web && pnpm build
 FROM node:22.12-alpine AS runner
 WORKDIR /app
 
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl tini
 
 # Install sharp for Next.js image optimization (standalone doesn't copy it)
 RUN npm install --cpu=x64 --os=linux --libc=musl sharp@0.34.5 && \
@@ -63,4 +63,5 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1
 
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "apps/web/server.js"]

@@ -15,7 +15,7 @@ import { hash, compare } from 'bcryptjs';
 const prisma = new PrismaClient();
 
 const DEFAULT_PASSWORD = 'password123';
-const BCRYPT_ROUNDS = 10;
+const BCRYPT_ROUNDS = 12;
 
 async function main() {
   console.log('🌱 Creating test tenants...\n');

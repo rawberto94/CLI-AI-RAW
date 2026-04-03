@@ -140,8 +140,8 @@ export const DELETE = withAuthApiHandler(async (_request: NextRequest, ctx) => {
     return createErrorResponse(ctx, 'NOT_FOUND', 'Conversation not found', 404);
   }
 
-  // Messages cascade-delete via schema relation
-  await prisma.chatConversation.delete({ where: { id } });
+  // Atomic delete with tenant isolation (avoids TOCTOU between findFirst and delete)
+  await prisma.chatConversation.deleteMany({ where: { id, tenantId, userId } });
 
   return createSuccessResponse(ctx, { deleted: true });
 });

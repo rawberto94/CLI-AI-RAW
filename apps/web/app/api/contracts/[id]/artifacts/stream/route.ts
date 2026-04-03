@@ -19,22 +19,30 @@ const MAX_CONNECTIONS_PER_CONTRACT = 3; // Allow a few concurrent viewers
 const CONNECTION_TTL_MS = 10 * 60 * 1000; // 10 minutes - stale connection cleanup threshold
 
 // Periodic cleanup of stale connections that failed to release properly
-const _connectionCleanupInterval = setInterval(() => {
-  const now = Date.now();
-  for (const [tenantId, connections] of activeConnections) {
-    for (const key of connections) {
-      // Key format: contractId:timestamp-rand
-      const parts = key.split(':');
-      const timestamp = parseInt(parts[1] || '0');
-      if (timestamp > 0 && now - timestamp > CONNECTION_TTL_MS) {
-        connections.delete(key);
+// Lazy-init to avoid accumulating intervals on hot reload
+let connectionCleanupStarted = false;
+function ensureConnectionCleanup() {
+  if (connectionCleanupStarted) return;
+  connectionCleanupStarted = true;
+  const interval = setInterval(() => {
+    const now = Date.now();
+    for (const [tenantId, connections] of activeConnections) {
+      for (const key of connections) {
+        // Key format: contractId:timestamp-rand
+        const parts = key.split(':');
+        const timestamp = parseInt(parts[1] || '0');
+        if (timestamp > 0 && now - timestamp > CONNECTION_TTL_MS) {
+          connections.delete(key);
+        }
+      }
+      if (connections.size === 0) {
+        activeConnections.delete(tenantId);
       }
     }
-    if (connections.size === 0) {
-      activeConnections.delete(tenantId);
-    }
-  }
-}, 60_000); // Run every minute
+  }, 60_000);
+  // unref() lets the process exit cleanly without waiting for this timer
+  if (typeof interval.unref === 'function') interval.unref();
+}
 
 function acquireConnection(tenantId: string, contractId: string): string | null {
   if (!activeConnections.has(tenantId)) {
@@ -108,6 +116,7 @@ function inferProcessingStage(contractStatus: string, artifactCount: number, com
  * - Timeout protection
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  ensureConnectionCleanup();
   const params = await props.params;
   const ctx = getAuthenticatedApiContext(request);
   if (!ctx) {
