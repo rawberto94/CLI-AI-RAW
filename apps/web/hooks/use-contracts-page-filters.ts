@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, type SetStateAction } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, type SetStateAction } from "react";
 import { type FilterState } from "@/components/contracts/AdvancedFilterPanel";
 import { type SavedSearch } from "@/components/contracts/SavedSearchPresets";
 import {
@@ -88,6 +88,15 @@ function endOfDay(date: Date): Date {
 export function useContractsPageFilters() {
   // ── Core filter state ──────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Debounce search query for server requests (300ms) to avoid firing
+  // an API call on every keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(searchTimerRef.current);
+  }, [searchQuery]);
   const [valueRangeFilter, setValueRangeFilter] = useState<string | null>(null);
   const [dateRangeFilter, setDateRangeFilter] = useState<string | null>(null);
   const [expirationFilters, setExpirationFilters] = useState<string[]>([]);
@@ -179,7 +188,7 @@ export function useContractsPageFilters() {
       limit: pageSize,
       sortBy: mapSortFieldToApi(sortField),
       sortOrder: sortDirection,
-      search: searchQuery || undefined,
+      search: debouncedSearch || undefined,
       documentRole: filterState.documentRoles.length > 0 ? filterState.documentRoles : undefined,
       riskLevel: filterState.riskLevels?.length ? filterState.riskLevels : undefined,
       contractType: typeFilters.length > 0 ? typeFilters : undefined,
@@ -204,7 +213,7 @@ export function useContractsPageFilters() {
       pageSize,
       sortField,
       sortDirection,
-      searchQuery,
+      debouncedSearch,
       filterState,
       typeFilters,
       signatureFilters,

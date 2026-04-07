@@ -957,9 +957,11 @@ export function ProfessionalDashboard() {
       };
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
       const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
+      link.href = url;
       link.download = `dashboard-report-${new Date().toISOString().split('T')[0]}.json`;
       link.click();
+      URL.revokeObjectURL(url);
       toast.success('Dashboard exported successfully');
     } catch (error) {
       toast.error('Failed to export dashboard');

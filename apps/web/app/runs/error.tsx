@@ -31,10 +31,10 @@ export default function RunsError({
             We encountered an error while loading the processing runs. Please try again.
           </p>
           
-          {error.message && (
-            <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 text-sm font-mono text-slate-600 dark:text-slate-400 break-all">
-              {error.message}
-            </div>
+          {error.digest && (
+            <p className="text-center text-xs text-muted-foreground">
+              Error ID: {error.digest}
+            </p>
           )}
 
           <div className="flex flex-col sm:flex-row gap-3">

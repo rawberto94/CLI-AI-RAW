@@ -252,7 +252,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
             {renewal.daysUntilRenewal}d
           </div>
           <div className="text-xs text-slate-400 mt-1">
-            {renewal.renewalDate}
+            {renewal.renewalDate ? new Date(renewal.renewalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
           </div>
         </div>
       </div>
@@ -284,7 +284,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
             <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded-lg">
               <AlertTriangle className="w-4 h-4 text-red-500" />
               <span className="text-xs text-red-700 font-medium">
-                Notice deadline: {renewal.noticeDeadline}
+                Notice deadline: {new Date(renewal.noticeDeadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
             </div>
           )}
@@ -558,8 +558,8 @@ export const RenewalManager: React.FC = () => {
       r.currentValue,
       r.autoRenewal ? 'Yes' : 'No',
       r.healthScore,
-      r.renewalDate ? new Date(r.renewalDate).toLocaleDateString() : '',
-      r.noticeDeadline ? new Date(r.noticeDeadline).toLocaleDateString() : '',
+      r.renewalDate ? new Date(r.renewalDate).toISOString().slice(0, 10) : '',
+      r.noticeDeadline ? new Date(r.noticeDeadline).toISOString().slice(0, 10) : '',
       r.recommendation,
     ]);
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');

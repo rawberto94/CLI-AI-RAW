@@ -96,30 +96,34 @@ export default function ContractsPage() {
   const router = useRouter();
   const { dataMode } = useDataMode();
 
-  // Preserve list scroll position when navigating to contract details and back
+  // Preserve list scroll position and search query when navigating to contract details and back
+  // Note: setSearchQuery comes from useContractsPageFilters below — useEffect runs
+  // after all hooks, so it's safe to reference setSearchQuery here.
+  const searchRestoreRef = useRef(false);
   useEffect(() => {
+    if (searchRestoreRef.current) return;
+    searchRestoreRef.current = true;
     try {
       const shouldRestore = sessionStorage.getItem('contracts:list:restore');
       if (shouldRestore !== '1') return;
       const y = sessionStorage.getItem('contracts:list:scrollY');
+      const savedSearch = sessionStorage.getItem('contracts:list:searchQuery');
       const yNum = y ? Number.parseInt(y, 10) : NaN;
-      if (!Number.isFinite(yNum)) return;
       sessionStorage.removeItem('contracts:list:restore');
-      requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, yNum)));
+      if (savedSearch) {
+        setSearchQueryRef.current?.(savedSearch);
+        sessionStorage.removeItem('contracts:list:searchQuery');
+      }
+      if (Number.isFinite(yNum)) {
+        requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, yNum)));
+      }
     } catch {
       // ignore storage/scroll errors
     }
   }, []);
 
-  const pushToContract = useCallback((id: string) => {
-    try {
-      sessionStorage.setItem('contracts:list:scrollY', String(window.scrollY));
-      sessionStorage.setItem('contracts:list:restore', '1');
-    } catch {
-      // ignore
-    }
-    router.push(`/contracts/${id}`, { scroll: true });
-  }, [router]);
+  // Ref for setSearchQuery — filled after hooks are called
+  const setSearchQueryRef = useRef<((v: string) => void) | null>(null);
   
   // ── Extracted hooks ──────────────────────────────────────────────────
   const {
@@ -138,11 +142,35 @@ export default function ContractsPage() {
     clearFilters, handleClearFilter, handleLoadPreset,
   } = useContractsPageFilters();
 
+  // Wire up search restore ref
+  setSearchQueryRef.current = setSearchQuery;
+
+  const pushToContract = useCallback((id: string) => {
+    try {
+      sessionStorage.setItem('contracts:list:scrollY', String(window.scrollY));
+      sessionStorage.setItem('contracts:list:restore', '1');
+      if (searchQuery) sessionStorage.setItem('contracts:list:searchQuery', searchQuery);
+    } catch {
+      // ignore
+    }
+    router.push(`/contracts/${id}`, { scroll: true });
+  }, [router, searchQuery]);
+
   // UI toggle state (not part of filter logic)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // View mode: 'compact' for table-like rows, 'cards' for detailed cards
-  const [viewMode, setViewMode] = useState<'compact' | 'cards'>('compact');
+  const [viewMode, setViewMode] = useState<'compact' | 'cards'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('contracts:viewMode');
+      if (saved === 'compact' || saved === 'cards') return saved;
+    }
+    return 'compact';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('contracts:viewMode', viewMode);
+  }, [viewMode]);
 
   // Enhanced UI state
   const [previewContract, setPreviewContract] = useState<ExtendedContract | null>(null);
@@ -280,10 +308,13 @@ export default function ContractsPage() {
         return;
       }
       
-      // Escape - clear selection
+      // Escape - clear selection first, then search
       if (e.key === 'Escape') {
-        setSelectedContracts(new Set());
-        setSearchQuery('');
+        if (selectedContracts.size > 0) {
+          setSelectedContracts(new Set());
+        } else if (searchQuery) {
+          setSearchQuery('');
+        }
       }
       
       // Slash - focus search
@@ -637,7 +668,7 @@ export default function ContractsPage() {
           c.expirationDate || '',
           c.riskScore?.toString() || ''
         ]);
-        const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+        const csv = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1092,8 +1123,12 @@ export default function ContractsPage() {
                             onCheckedChange={() => {
                               const visibleIds = paginatedContracts.map(c => c.id);
                               setSelectedContracts(prev => {
-                                if (allVisibleSelected) return new Set();
-                                return new Set(visibleIds);
+                                if (allVisibleSelected) {
+                                  const next = new Set(prev);
+                                  visibleIds.forEach(id => next.delete(id));
+                                  return next;
+                                }
+                                return new Set([...prev, ...visibleIds]);
                               });
                             }}
                             aria-label="Select all on this page"
@@ -1323,7 +1358,7 @@ export default function ContractsPage() {
                     
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
+                      disabled={currentPage >= totalPages || totalPages === 0}
                       className="p-2 rounded-lg border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 hover:border-slate-300 transition-colors focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 outline-none"
                       aria-label="Next page"
                     >
@@ -1331,7 +1366,7 @@ export default function ContractsPage() {
                     </button>
                     <button
                       onClick={() => setCurrentPage(totalPages)}
-                      disabled={currentPage === totalPages}
+                      disabled={currentPage >= totalPages || totalPages === 0}
                       className="p-2 rounded-lg border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 hover:border-slate-300 transition-colors focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 outline-none"
                       aria-label="Last page"
                     >
@@ -1375,7 +1410,13 @@ export default function ContractsPage() {
         open={bulkDeleteDialogOpen}
         onOpenChange={setBulkDeleteDialogOpen}
         title="Delete Multiple Contracts"
-        description={`Are you sure you want to delete ${selectedContracts.size} contracts? This action cannot be undone.`}
+        description={(() => {
+          const names = Array.from(selectedContracts)
+            .slice(0, 5)
+            .map(id => contracts.find(c => c.id === id)?.contractTitle || contracts.find(c => c.id === id)?.filename || id)
+          const extra = selectedContracts.size > 5 ? ` and ${selectedContracts.size - 5} more` : ''
+          return `Delete ${selectedContracts.size} contract${selectedContracts.size !== 1 ? 's' : ''}? ${names.join(', ')}${extra}. This cannot be undone.`
+        })()}
         variant="destructive"
         confirmLabel="Delete All"
         onConfirm={handleConfirmBulkDelete}

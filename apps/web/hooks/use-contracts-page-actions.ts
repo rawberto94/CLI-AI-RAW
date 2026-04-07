@@ -182,6 +182,7 @@ export function useContractsPageActions({
     if (selectedContracts.size === 0) return;
     setIsProcessingBulk(true);
     setBulkDeleteDialogOpen(false);
+    const toastId = toast.loading(`Deleting ${selectedContracts.size} contract${selectedContracts.size > 1 ? 's' : ''}...`);
     try {
       const response = await fetch("/api/contracts/bulk", {
         method: "POST",
@@ -202,14 +203,14 @@ export function useContractsPageActions({
       await crossModule.onContractChange();
       await refetchStats();
       if (failedCount > 0) {
-        toast.warning(`Deleted ${deletedCount} contracts, ${failedCount} failed`);
+        toast.warning(`Deleted ${deletedCount} contracts, ${failedCount} failed`, { id: toastId });
       } else {
-        toast.success(`Deleted ${deletedCount} contracts`);
+        toast.success(`Deleted ${deletedCount} contracts`, { id: toastId });
       }
       setSelectedContracts(new Set());
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to delete contracts";
-      toast.error(message);
+      toast.error(message, { id: toastId });
     } finally {
       setIsProcessingBulk(false);
     }

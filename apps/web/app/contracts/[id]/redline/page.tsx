@@ -140,6 +140,7 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
     }));
     printWindow.document.close();
     printWindow.focus();
+    printWindow.addEventListener('afterprint', () => printWindow.close());
     window.setTimeout(() => {
       printWindow.print();
     }, 250);

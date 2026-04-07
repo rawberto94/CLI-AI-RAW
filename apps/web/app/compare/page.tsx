@@ -585,6 +585,7 @@ export default function ContractComparisonPage() {
 
   // AI-powered comparison analysis
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [isAIFallback, setIsAIFallback] = useState(false);
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
 
   // Build group comparison with AI analysis
@@ -741,6 +742,7 @@ export default function ContractComparisonPage() {
     // Trigger AI analysis
     setIsAiAnalyzing(true);
     setAiAnalysis(null); // Clear previous analysis
+    setIsAIFallback(false);
     
     try {
       const aiResponse = await fetch("/api/ai/compare-contracts", {
@@ -794,6 +796,7 @@ export default function ContractComparisonPage() {
       
       if (analysisText) {
         setAiAnalysis(analysisText);
+        setIsAIFallback(false);
         
         // Update comparison with metrics from API if available
         if (aiData.data?.metrics) {
@@ -804,9 +807,11 @@ export default function ContractComparisonPage() {
         }
       } else {
         setAiAnalysis(generateFallbackAnalysis(stats1, stats2, keyInsights));
+        setIsAIFallback(true);
       }
     } catch {
       setAiAnalysis(generateFallbackAnalysis(stats1, stats2, keyInsights));
+      setIsAIFallback(true);
     } finally {
       setIsAiAnalyzing(false);
     }
@@ -1122,7 +1127,9 @@ export default function ContractComparisonPage() {
                     )}
                   </CardTitle>
                   <CardDescription>
-                    Intelligent comparison insights powered by AI
+                    {isAIFallback
+                      ? 'Basic comparison (AI analysis unavailable — showing rule-based insights)'
+                      : 'Intelligent comparison insights powered by AI'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-5">

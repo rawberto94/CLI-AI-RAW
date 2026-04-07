@@ -151,8 +151,8 @@ function SignUpForm() {
 
   const handleStep1Submit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     if (validateStep1()) {
+      setError("");
       if (inviteInfo) {
         // Skip organization step for invited users
         handleFinalSubmit();
@@ -164,8 +164,8 @@ function SignUpForm() {
 
   const handleFinalSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    setError("");
     setLoading(true);
+    setError("");
 
     try {
       const response = await fetch("/api/auth/signup", {
@@ -193,11 +193,6 @@ function SignUpForm() {
       }
 
       setStep("complete");
-      
-      // Auto sign-in after successful registration
-      setTimeout(() => {
-        router.push("/auth/signin?registered=true");
-      }, 2000);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -250,7 +245,7 @@ function SignUpForm() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
             >
-              Your account has been created successfully. Redirecting to sign in...
+              Your account has been created successfully.
             </motion.p>
             <motion.div 
               className="flex justify-center"
@@ -258,16 +253,12 @@ function SignUpForm() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
             >
-              <div className="flex gap-1">
-                {[0, 1, 2].map((i) => (
-                  <motion.div
-                    key={i}
-                    className="w-2 h-2 rounded-full bg-violet-500"
-                    animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
-                    transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-                  />
-                ))}
-              </div>
+              <Button
+                onClick={() => router.push('/auth/signin?registered=true')}
+                className="w-full h-11 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white"
+              >
+                Continue to Sign In
+              </Button>
             </motion.div>
           </Card>
         </motion.div>
@@ -608,7 +599,7 @@ function SignUpForm() {
                 </button>
               </div>
               {/* Password strength indicator */}
-              {formData.password && (
+              {formData.password ? (
                 <motion.div 
                   className="mt-2 space-y-2"
                   initial={{ opacity: 0, height: 0 }}
@@ -637,6 +628,7 @@ function SignUpForm() {
                       { key: "uppercase", label: "Uppercase" },
                       { key: "lowercase", label: "Lowercase" },
                       { key: "number", label: "Number" },
+                      { key: "special", label: "Special char" },
                     ].map((req) => (
                       <div 
                         key={req.key} 
@@ -650,6 +642,21 @@ function SignUpForm() {
                     ))}
                   </div>
                 </motion.div>
+              ) : (
+                <div className="mt-2 grid grid-cols-2 gap-1 text-[10px]">
+                  {[
+                    { label: "8+ characters" },
+                    { label: "Uppercase" },
+                    { label: "Lowercase" },
+                    { label: "Number" },
+                    { label: "Special char" },
+                  ].map((req) => (
+                    <div key={req.label} className="flex items-center gap-1 text-slate-400">
+                      <Check className="w-3 h-3" />
+                      <span>{req.label}</span>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 

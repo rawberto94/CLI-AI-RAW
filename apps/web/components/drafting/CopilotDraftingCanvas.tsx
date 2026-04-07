@@ -861,8 +861,8 @@ export function CopilotDraftingCanvas({
         setLockInfo(json.data?.draft || { isLocked: false, lockedBy: null, lockedAt: null });
         toast.success(action === 'lock' ? 'Draft locked for editing' : 'Draft unlocked');
       } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || `Failed to ${action} draft`);
+        await res.json().catch(() => ({}));
+        toast.error(`Failed to ${action} draft`);
       }
     } catch { toast.error(`Failed to ${action} draft`); }
     finally { setIsLocking(false); }
@@ -887,8 +887,8 @@ export function CopilotDraftingCanvas({
         fetchDraftMeta();
         toast.success('Draft approved!');
       } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || 'Approval failed');
+        await res.json().catch(() => ({}));
+        toast.error('Approval failed');
       }
     } catch { toast.error('Approval failed'); }
   }, [draftId, approvalComment, fetchDraftMeta]);
@@ -911,8 +911,8 @@ export function CopilotDraftingCanvas({
         fetchDraftMeta();
         toast.success('Draft rejected — returned to author');
       } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || 'Rejection failed');
+        await res.json().catch(() => ({}));
+        toast.error('Rejection failed');
       }
     } catch { toast.error('Rejection failed'); }
   }, [draftId, approvalComment, fetchDraftMeta]);
@@ -1062,8 +1062,8 @@ export function CopilotDraftingCanvas({
           setSuggestions(prev => [...data.suggestions, ...prev]);
         }
       } else {
-        const errorBody = await response.json().catch(() => null);
-        toast.error(errorBody?.error || 'AI generation returned an error');
+        await response.json().catch(() => null);
+        toast.error('AI generation returned an error');
       }
     } catch (error) {
       console.error('AI assist failed:', error);

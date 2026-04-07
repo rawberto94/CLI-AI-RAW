@@ -345,6 +345,7 @@ export default function UploadPage() {
     setFiles(prev => prev.map(f =>
       f.id === id ? { ...f, status: 'pending', progress: 0, error: undefined, isDuplicate: false, existingContractId: undefined, skipDuplicateCheck: true } : f
     ))
+    setShouldAutoStart(true)
   }, [])
 
   const clearCompleted = useCallback(() => {
@@ -387,9 +388,11 @@ export default function UploadPage() {
     batchCompleteRef.current = true
 
     if (completedCount > 0 && errorCount === 0) {
+      const completedFiles = files.filter(f => f.status === 'completed')
+      const singleContractId = completedFiles.length === 1 ? completedFiles[0].contractId : null
       toast.success(`All ${completedCount} file${completedCount !== 1 ? 's' : ''} processed successfully`, {
         description: 'AI analysis is complete for your batch',
-        action: { label: 'View Contracts', onClick: () => router.push('/contracts') },
+        action: { label: singleContractId ? 'View Contract' : 'View Contracts', onClick: () => router.push(singleContractId ? `/contracts/${singleContractId}` : '/contracts?sort=newest') },
         duration: 8000,
       })
     } else if (completedCount > 0 && errorCount > 0) {
@@ -462,13 +465,13 @@ export default function UploadPage() {
                   )}
                 </div>
               </div>
-              {files.length > 1 && (processingCount > 0 || completedCount > 0) && (
+              {files.length > 1 && (processingCount > 0 || completedCount > 0 || errorCount > 0) && (
                 <div className="mt-2">
                   <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-                    <span>{completedCount} of {files.length}</span>
-                    <span>{Math.round((completedCount / files.length) * 100)}%</span>
+                    <span>{completedCount + errorCount} of {files.length}{errorCount > 0 ? ` (${errorCount} failed)` : ''}</span>
+                    <span>{Math.round(((completedCount + errorCount) / files.length) * 100)}%</span>
                   </div>
-                  <Progress value={(completedCount / files.length) * 100} className="h-1" />
+                  <Progress value={((completedCount + errorCount) / files.length) * 100} className="h-1" />
                 </div>
               )}
             </CardHeader>

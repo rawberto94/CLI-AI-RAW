@@ -38,7 +38,7 @@ export default function AdminError({
           Something went wrong
         </h2>
         <p className="text-slate-600 dark:text-slate-400 mb-6">
-          {error.message || 'An unexpected error occurred in the admin panel.'}
+          An unexpected error occurred in the admin panel.
         </p>
 
         {error.digest && (

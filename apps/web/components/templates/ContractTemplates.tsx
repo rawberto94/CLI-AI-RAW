@@ -190,6 +190,7 @@ export const ContractTemplates = memo(function ContractTemplates({
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null);
   const [creating, setCreating] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [newTemplate, setNewTemplate] = useState({
     name: '',
     description: '',
@@ -291,8 +292,8 @@ export const ContractTemplates = memo(function ContractTemplates({
   };
 
   const deleteTemplate = (templateId: string) => {
-    if (!confirm('Are you sure you want to delete this template?')) return;
     setTemplates(prev => prev.filter(t => t.id !== templateId));
+    setDeleteConfirmId(null);
     toast.success('Template deleted');
   };
 
@@ -485,7 +486,7 @@ export const ContractTemplates = memo(function ContractTemplates({
                       template={template}
                       onToggleFavorite={toggleFavorite}
                       onDuplicate={duplicateTemplate}
-                      onDelete={deleteTemplate}
+                      onDelete={setDeleteConfirmId}
                       onPreview={handlePreview}
                       onUse={handleUseTemplate}
                     />
@@ -511,7 +512,7 @@ export const ContractTemplates = memo(function ContractTemplates({
                       template={template}
                       onToggleFavorite={toggleFavorite}
                       onDuplicate={duplicateTemplate}
-                      onDelete={deleteTemplate}
+                      onDelete={setDeleteConfirmId}
                       onPreview={handlePreview}
                       onUse={handleUseTemplate}
                     />
@@ -544,6 +545,22 @@ export const ContractTemplates = memo(function ContractTemplates({
               }}>
                 Use Template
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={!!deleteConfirmId} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Template</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this template? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
+              <Button variant="destructive" onClick={() => deleteConfirmId && deleteTemplate(deleteConfirmId)}>Delete</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

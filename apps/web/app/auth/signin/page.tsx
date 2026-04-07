@@ -62,8 +62,8 @@ function SignInForm() {
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
   const registered = searchParams.get("registered") === "true";
 
-  const [email, setEmail] = useState("admin@acme.com");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -97,6 +97,7 @@ function SignInForm() {
         setError("Invalid email or password");
         setLoading(false);
       } else if (result?.ok) {
+        setLoading(false);
         setShowWelcome(true);
       }
     } catch {
@@ -111,9 +112,12 @@ function SignInForm() {
 
   const handleSSOSignIn = async (provider: string) => {
     setSsoLoading(provider);
+    // Safety timeout: reset loading if SSO redirect doesn't happen within 10s
+    const ssoTimeout = setTimeout(() => setSsoLoading(null), 10000);
     try {
       await signIn(provider, { callbackUrl });
     } catch {
+      clearTimeout(ssoTimeout);
       setError(`Failed to sign in with ${provider}`);
       setSsoLoading(null);
     }

@@ -183,8 +183,8 @@ export default function PlatformAdminPage() {
       setCreateDialogOpen(false);
       setNewTenant({ name: "", slug: "", adminEmail: "", adminFirstName: "", adminLastName: "" });
       loadTenants();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch {
+      toast.error('Failed to create organization. Please try again.');
     } finally {
       setCreating(false);
     }
@@ -233,8 +233,8 @@ export default function PlatformAdminPage() {
 
       toast.success("Tenant suspended");
       loadTenants();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch {
+      toast.error('Failed to suspend tenant. Please try again.');
     }
   };
 

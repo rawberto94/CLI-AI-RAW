@@ -7,7 +7,7 @@
  * Consolidated from FloatingAIBubble and AIChatbot streaming logic.
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 export interface StreamingState {
   isStreaming: boolean;
@@ -374,6 +374,17 @@ export function useStreamingHandler(options: StreamOptions = {}) {
     }
   }, [opts, startThinkingAnimation, stopThinkingAnimation]);
   
+  // Cleanup on unmount: stop interval and abort any in-flight request
+  useEffect(() => {
+    return () => {
+      stopThinkingAnimation();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, [stopThinkingAnimation]);
+
   return {
     state,
     streamMessage,

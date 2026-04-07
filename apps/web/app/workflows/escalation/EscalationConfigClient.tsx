@@ -172,7 +172,7 @@ export default function EscalationConfigClient() {
       description="Define rules for automatic escalation and notifications"
       actions={
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => toast.success('Configuration saved')}>
+          <Button size="sm" variant="outline" onClick={() => toast.info('Escalation rules are stored locally for this session')}>
             <Save className="h-4 w-4 mr-2" /> Save All
           </Button>
           <Button size="sm" onClick={openCreate}>

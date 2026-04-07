@@ -801,15 +801,19 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
     return () => window.removeEventListener("openAIChatbot", handleOpenChatbot);
   }, []);
 
-  // Process pending auto-message when chat opens
+  // Process pending auto-message when chat opens — auto-send it
   useEffect(() => {
     if (isOpen && pendingAutoMessageRef.current && !isLoading) {
       const autoMessage = pendingAutoMessageRef.current;
       pendingAutoMessageRef.current = null; // Clear the ref
       
-      // Small delay to ensure chat is fully rendered, then set input
+      // Small delay to ensure chat is fully rendered, then send
       const timer = setTimeout(() => {
-        setInput(autoMessage);
+        if (sendMsgRef.current) {
+          sendMsgRef.current(autoMessage);
+        } else {
+          setInput(autoMessage);
+        }
       }, 150);
       
       return () => clearTimeout(timer);

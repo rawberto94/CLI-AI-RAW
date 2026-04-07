@@ -276,10 +276,10 @@ export const NoResults = memo(function NoResults({
         variants={itemVariants}
         className="flex flex-wrap justify-center gap-3"
       >
-        {searchTerm && onClearSearch && (
+        {onClearFilters && (hasFilters || searchTerm) && (
           <Button 
             variant="outline" 
-            onClick={onClearSearch}
+            onClick={onClearFilters}
             className="gap-2 border-2 hover:border-slate-300 hover:bg-slate-50"
           >
 

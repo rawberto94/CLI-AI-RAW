@@ -679,10 +679,11 @@ const QuickPreview = memo(function QuickPreview({ contract }: QuickPreviewProps)
       </div>
 
       {/* Parties */}
+      {contract.parties && Array.isArray(contract.parties) && contract.parties.length > 0 && (
       <div className="border-t border-slate-100 pt-4">
         <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2.5">Parties</p>
         <div className="space-y-2">
-          {contract.parties && Array.isArray(contract.parties) && contract.parties.slice(0, 3).map((party: ContractParty) => (
+          {contract.parties.slice(0, 3).map((party: ContractParty) => (
             <div key={party.id || party.name} className="flex items-center gap-2.5 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
               <PartyAvatar party={party} size="sm" />
               <span className="text-sm font-medium text-slate-700 truncate flex-1">{party.name}</span>
@@ -691,6 +692,7 @@ const QuickPreview = memo(function QuickPreview({ contract }: QuickPreviewProps)
           ))}
         </div>
       </div>
+      )}
 
       {/* Tags */}
       {contract.tags && contract.tags.length > 0 && (

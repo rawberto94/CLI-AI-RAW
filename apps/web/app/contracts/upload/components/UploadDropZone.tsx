@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FileText, FileUp, CloudUpload } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface UploadDropZoneProps {
   onDrop: (files: File[]) => void;
@@ -21,6 +22,14 @@ interface UploadDropZoneProps {
 export function UploadDropZone({ onDrop, disabled = false, uploadPurpose = 'store' }: UploadDropZoneProps) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    onDropRejected: (rejections) => {
+      const reasons = rejections.map(r => {
+        if (r.errors.some(e => e.code === 'file-too-large')) return `${r.file.name}: exceeds 100 MB limit`
+        if (r.errors.some(e => e.code === 'file-invalid-type')) return `${r.file.name}: unsupported file type`
+        return `${r.file.name}: invalid file`
+      })
+      toast.error('Some files were rejected', { description: reasons.slice(0, 3).join('. ') + (reasons.length > 3 ? ` and ${reasons.length - 3} more` : '') })
+    },
     accept: {
       'application/pdf': ['.pdf'],
       'application/msword': ['.doc'],

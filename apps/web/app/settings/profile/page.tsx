@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { PageBreadcrumb } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
@@ -125,6 +125,19 @@ export default function ProfileSettingsPage() {
   const [saveError, setSaveError] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' });
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [emailPrefs, setEmailPrefs] = useState({ renewals: true, risks: true, savings: true, weekly: true });
+
+  // Track dirty state for beforeunload
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -140,11 +153,13 @@ export default function ProfileSettingsPage() {
       timezone: user.timezone,
       language: user.language,
       bio: user.bio,
+      twoFactorEnabled: user.twoFactorEnabled,
     });
     
     setIsSaving(false);
     
     if (success) {
+      setIsDirty(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } else {
@@ -155,6 +170,7 @@ export default function ProfileSettingsPage() {
 
   const handleInputChange = (field: string, value: string) => {
     if (!user) return;
+    setIsDirty(true);
     
     // Handle name field specially - split into first/last
     if (field === 'name') {
@@ -300,17 +316,19 @@ export default function ProfileSettingsPage() {
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
+                      className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0 opacity-50 cursor-not-allowed"
+                      disabled
+                      title="Coming soon"
                     >
                       <Camera className="h-4 w-4" />
                     </Button>
                   </div>
                   <div>
-                    <Button variant="outline" size="sm" className="mb-2">
+                    <Button variant="outline" size="sm" className="mb-2" disabled>
                       Upload new photo
                     </Button>
                     <p className="text-xs text-muted-foreground">
-                      JPG, PNG or GIF. Max size 2MB.
+                      Photo upload coming soon
                     </p>
                   </div>
                 </div>
@@ -416,10 +434,11 @@ export default function ProfileSettingsPage() {
                     value={user.bio || ''}
                     onChange={(e) => handleInputChange("bio", e.target.value)}
                     rows={3}
+                    maxLength={200}
                     placeholder="Tell us a little about yourself..."
                   />
                   <p className="text-xs text-muted-foreground">
-                    Brief description for your profile. Max 200 characters.
+                    {(user.bio?.length || 0)}/200 characters
                   </p>
                 </div>
               </CardContent>
@@ -470,6 +489,12 @@ export default function ProfileSettingsPage() {
                       value={passwordForm.confirm}
                       onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm: e.target.value }))}
                     />
+                    {passwordForm.confirm && passwordForm.new && passwordForm.confirm !== passwordForm.new && (
+                      <p className="text-xs text-red-500">Passwords do not match</p>
+                    )}
+                    {passwordForm.new && passwordForm.new.length > 0 && passwordForm.new.length < 8 && (
+                      <p className="text-xs text-red-500">Password must be at least 8 characters</p>
+                    )}
                   </div>
                 </div>
                 <Button
@@ -559,6 +584,7 @@ export default function ProfileSettingsPage() {
                     checked={user.twoFactorEnabled}
                     onCheckedChange={(checked) => {
                       setUser((prev) => prev ? { ...prev, twoFactorEnabled: checked } : prev);
+                      setIsDirty(true);
                       toast.info(checked ? '2FA enabled — save changes to apply' : '2FA disabled — save changes to apply');
                     }}
                   />
@@ -581,7 +607,7 @@ export default function ProfileSettingsPage() {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Last login</span>
-                    <span>{user.lastLogin?.toLocaleString() ?? ''}</span>
+                    <span>{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Account created</span>
@@ -671,18 +697,24 @@ export default function ProfileSettingsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[
-                    { id: "renewals", label: "Renewal Reminders", description: "Get notified about upcoming contract renewals" },
-                    { id: "risks", label: "Risk Alerts", description: "Receive alerts about high-risk clauses" },
-                    { id: "savings", label: "Savings Opportunities", description: "Be notified of potential cost savings" },
-                    { id: "weekly", label: "Weekly Digest", description: "Receive a weekly summary of contract activity" },
-                  ].map((pref) => (
+                  {([
+                    { id: "renewals" as const, label: "Renewal Reminders", description: "Get notified about upcoming contract renewals" },
+                    { id: "risks" as const, label: "Risk Alerts", description: "Receive alerts about high-risk clauses" },
+                    { id: "savings" as const, label: "Savings Opportunities", description: "Be notified of potential cost savings" },
+                    { id: "weekly" as const, label: "Weekly Digest", description: "Receive a weekly summary of contract activity" },
+                  ]).map((pref) => (
                     <div key={pref.id} className="flex items-center justify-between">
                       <div>
                         <p className="font-medium text-sm">{pref.label}</p>
                         <p className="text-xs text-muted-foreground">{pref.description}</p>
                       </div>
-                      <Switch defaultChecked />
+                      <Switch
+                        checked={emailPrefs[pref.id]}
+                        onCheckedChange={(checked) => {
+                          setEmailPrefs(prev => ({ ...prev, [pref.id]: checked }));
+                          setIsDirty(true);
+                        }}
+                      />
                     </div>
                   ))}
                 </div>

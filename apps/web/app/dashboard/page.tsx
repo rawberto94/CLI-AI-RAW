@@ -456,10 +456,10 @@ export default function DashboardPage() {
                 <div className="space-y-1 mt-auto">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recently Added</p>
                   <p className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-                    +{dashboardData.overview.recentlyAdded}
+                    {dashboardData.overview.recentlyAdded > 0 ? `+${dashboardData.overview.recentlyAdded}` : '—'}
                   </p>
                   <p className="text-xs text-muted-foreground pt-1">
-                    This month
+                    {dashboardData.overview.recentlyAdded > 0 ? 'This month' : 'None this month'}
                   </p>
                 </div>
               </CardContent>
@@ -581,7 +581,7 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         <Badge variant="outline" className="px-3 py-1 text-xs bg-violet-50 text-violet-700 border-violet-200">
-                          {contract.status || 'Active'}
+                          {{ completed: 'Active', processing: 'Processing', uploaded: 'Uploaded', queued: 'Queued', error: 'Error', draft: 'Draft' }[contract.status || ''] || contract.status || 'Active'}
                         </Badge>
                       </motion.div>
                     </Link>

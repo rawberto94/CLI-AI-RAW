@@ -71,7 +71,7 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
       <EnhancedNavigation />
       <main 
         id="main-content"
-        className="min-h-screen lg:pl-64 pt-16 lg:pt-0 bg-slate-50 dark:bg-slate-900 overflow-x-hidden transition-colors duration-200 scroll-mt-16"
+        className="min-h-screen lg:pl-64 pt-16 lg:pt-0 pb-20 md:pb-0 bg-slate-50 dark:bg-slate-900 overflow-x-hidden transition-colors duration-200 scroll-mt-16"
         tabIndex={-1}
       >
         <div className="h-full w-full max-w-full">

@@ -121,7 +121,7 @@ export default function Error({
                     role="region"
                     aria-label="Error details"
                   >
-                    <p className="font-semibold text-red-600 dark:text-red-400">{error.message}</p>
+                    <p className="font-semibold text-red-600 dark:text-red-400">An unexpected error occurred</p>
                     {error.digest && (
                       <p className="text-slate-500 dark:text-slate-500 mt-1">ID: {error.digest}</p>
                     )}

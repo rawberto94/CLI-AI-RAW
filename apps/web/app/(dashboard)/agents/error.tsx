@@ -20,7 +20,7 @@ export default function ErrorBoundary({
       <AlertTriangle className="h-12 w-12 text-amber-500" />
       <h2 className="text-xl font-semibold text-gray-900">Something went wrong</h2>
       <p className="text-gray-500 text-center max-w-md">
-        {error.message || 'An unexpected error occurred. Please try again.'}
+        An unexpected error occurred. Please try again.
       </p>
       <Button onClick={reset} variant="outline">
         Try again

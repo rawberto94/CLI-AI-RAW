@@ -67,14 +67,16 @@ export default function SupplierAnalyticsPage() {
           s.costEfficiency || 0,
           s.riskLevel || 'N/A',
           s.totalSpend || 0
-        ].join(','))
+        ].map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       ].join('\n');
       
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
+      link.href = url;
       link.download = `supplier-analytics-${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
+      URL.revokeObjectURL(url);
       toast.success('Supplier analytics exported successfully');
     } catch (_error) {
       toast.error('Failed to export data');

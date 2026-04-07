@@ -22,9 +22,16 @@ function ResetPasswordForm() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
+  const passwordValid = password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!passwordValid) {
+      setError("Password must contain uppercase, lowercase, number, and special character");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match");

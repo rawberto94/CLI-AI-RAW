@@ -130,6 +130,7 @@ export function EnhancedDashboard() {
       }
     } catch {
       setMetrics(emptyMetrics);
+      toast.error('Failed to load analytics data');
     } finally {
       setLoading(false);
     }
@@ -146,9 +147,11 @@ export function EnhancedDashboard() {
       };
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
       const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
+      link.href = url;
       link.download = `dashboard-analytics-${new Date().toISOString().split('T')[0]}.json`;
       link.click();
+      URL.revokeObjectURL(url);
       toast.success('Dashboard data exported successfully');
     } catch (error) {
       toast.error('Failed to export data');
@@ -235,7 +238,9 @@ export function EnhancedDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Value</p>
-                <p className="text-3xl font-bold text-foreground mt-1">${(metrics?.totalValue ?? 0).toFixed(1)}M</p>
+                <p className="text-3xl font-bold text-foreground mt-1">
+                  {(() => { const v = metrics?.totalValue ?? 0; return v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `$${(v / 1_000).toFixed(0)}K` : `$${v.toLocaleString()}`; })()}
+                </p>
                 <div className="flex items-center gap-1 mt-2">
                   {(metrics?.trends.valueChange ?? 0) > 0 ? (
                     <ArrowUpRight className="h-4 w-4 text-violet-600" />

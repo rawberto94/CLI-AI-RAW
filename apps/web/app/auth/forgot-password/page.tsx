@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,26 @@ function ForgotPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
+  }, []);
+
+  const startCooldown = () => {
+    setCooldown(60);
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+    cooldownRef.current = setInterval(() => {
+      setCooldown(prev => {
+        if (prev <= 1) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,12 +50,30 @@ function ForgotPasswordForm() {
 
       if (res.ok) {
         setSent(true);
+        startCooldown();
       } else {
         const data = await res.json();
         setError(data.error?.message || "Something went wrong");
       }
     } catch {
       setError("Failed to send reset email. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (cooldown > 0) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) startCooldown();
+    } catch {
+      // silently fail — user already sees the "check email" screen
     } finally {
       setLoading(false);
     }
@@ -69,11 +107,21 @@ function ForgotPasswordForm() {
                 If an account exists for <strong>{email}</strong>, we&apos;ve sent a password reset link.
                 Check your inbox and follow the instructions.
               </p>
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/auth/signin"> 
-                  <ArrowLeft className="w-4 h-4 mr-2" /> Back to Sign In
-                </Link>
-              </Button>
+              <div className="space-y-3">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleResend}
+                  disabled={cooldown > 0 || loading}
+                >
+                  {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend Email"}
+                </Button>
+                <Button asChild variant="ghost" className="w-full">
+                  <Link href="/auth/signin"> 
+                    <ArrowLeft className="w-4 h-4 mr-2" /> Back to Sign In
+                  </Link>
+                </Button>
+              </div>
             </div>
           ) : (
             <>

@@ -1784,8 +1784,12 @@ export default function LandingPageClient() {
                         if (res.ok) {
                           form.reset();
                           toast.success('Thanks! We\u2019ll be in touch shortly.');
+                        } else {
+                          toast.error('Something went wrong. Please try again.');
                         }
-                      } catch { /* silently fail */ }
+                      } catch {
+                        toast.error('Network error. Please check your connection and try again.');
+                      }
                     }}
                     className="space-y-6"
                   >

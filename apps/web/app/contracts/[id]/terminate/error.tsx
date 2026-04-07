@@ -31,10 +31,10 @@ export default function ContractWorkflowError({
             We encountered an error loading the termination workflow. Your progress has been saved.
           </p>
           
-          {error.message && (
-            <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 text-sm font-mono text-slate-600 dark:text-slate-400 break-all">
-              {error.message}
-            </div>
+          {error.digest && (
+            <p className="text-center text-xs text-muted-foreground">
+              Error ID: {error.digest}
+            </p>
           )}
 
           <div className="flex flex-col sm:flex-row gap-3">

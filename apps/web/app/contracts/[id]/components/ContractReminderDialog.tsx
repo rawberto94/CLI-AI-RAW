@@ -28,6 +28,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 import { format, addDays } from 'date-fns'
 import {
   Bell,
@@ -84,6 +85,8 @@ export const ContractReminderDialog = memo(function ContractReminderDialog({
     try {
       await onSave(config)
       onClose()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save reminder')
     } finally {
       setIsSaving(false)
     }

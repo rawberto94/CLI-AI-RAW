@@ -7,7 +7,7 @@
 
 import React, { useState, useCallback, useEffect, memo, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -459,6 +459,8 @@ function EnhancedNavigation() {
     );
   }, []);
 
+  const searchParams = useSearchParams();
+
   const isActive = useCallback((href?: string) => {
     if (!href) return false;
     if (href === '/') return pathname === '/';
@@ -469,13 +471,22 @@ function EnhancedNavigation() {
     // Check if the base path matches
     if (!pathname.startsWith(hrefPath)) return false;
     
-    // If there's no query string in href, it's a match
-    if (!hrefQuery) return true;
+    // If there's no query string in href, match only if current URL also has no tab param
+    if (!hrefQuery) {
+      // If this is a parent path and children use query params, only match when no tab is set
+      const currentTab = searchParams.get('tab');
+      if (currentTab && pathname === hrefPath) return false;
+      return true;
+    }
     
-    // For query string URLs, check if we're on the right page
-    // (exact match for the path part)
-    return pathname === hrefPath;
-  }, [pathname]);
+    // For query string URLs, compare the query parameters
+    if (pathname !== hrefPath) return false;
+    const hrefParams = new URLSearchParams(hrefQuery);
+    for (const [key, value] of hrefParams.entries()) {
+      if (searchParams.get(key) !== value) return false;
+    }
+    return true;
+  }, [pathname, searchParams]);
 
   const isChildActive = useCallback((children?: NavigationItem[]): boolean => {
     return children?.some(child => child.href && isActive(child.href)) ?? false;

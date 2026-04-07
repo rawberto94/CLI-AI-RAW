@@ -237,6 +237,15 @@ export default function ContractDetailPage() {
     return () => { wsContext?.leaveDocument?.() }
   }, [contractId, wsContext])
 
+  // ── Dynamic browser tab title ─────────────────────────────────────────────
+  useEffect(() => {
+    const name = contract?.contractTitle || contract?.filename
+    if (name) {
+      document.title = `${name} | ConTigo`
+    }
+    return () => { document.title = 'Contracts | ConTigo' }
+  }, [contract?.contractTitle, contract?.filename])
+
   // ── Auto-refresh while processing ─────────────────────────────────────────
   useEffect(() => {
     if (!isProcessing || !contract) return
@@ -680,7 +689,7 @@ export default function ContractDetailPage() {
           case '1': setTab('overview'); break
           case '2': setTab('details'); break
           case '3': setTab('activity'); break
-          case '4': case 'a': case 'A': setTab('ai'); break
+          case '4': setTab('ai'); break
           case 'p': case 'P': setPdfViewerOpen(!showPdfViewer); break
           case 'e': case 'E': if (!isEditing) setIsEditing(true); break
           case 'Escape':

@@ -46,6 +46,15 @@ export default function NotFound() {
 
         {/* Quick Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
+          <Button
+            variant="ghost"
+            size="lg"
+            className="gap-2"
+            onClick={() => window.history.back()}
+          >
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+            Go Back
+          </Button>
           <Button asChild size="lg" className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
             <Link href="/">
               <Home className="w-4 h-4" aria-hidden="true" />

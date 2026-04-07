@@ -3815,6 +3815,7 @@ What would you like to explore?`,
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.',
         timestamp: new Date(),
+        suggestions: ['🔄 Try again'],
       }]);
     } finally {
       setIsLoading(false);
@@ -3994,7 +3995,7 @@ What would you like to explore?`,
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={(e) => {
                 handleMentionKeyDown(e);
-                if (e.key === 'Enter' && !e.shiftKey && !showAgentList) sendMessage();
+                if (e.key === 'Enter' && !e.shiftKey && !showAgentList && !isLoading) sendMessage();
               }}
               className="flex-1 h-12 rounded-xl bg-slate-50/50 border-slate-200 focus-visible:ring-violet-500/20 focus-visible:border-violet-500 transition-all duration-200 text-base font-medium"
             />

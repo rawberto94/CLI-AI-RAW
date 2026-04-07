@@ -108,6 +108,7 @@ export default function SettingsClient() {
           if (settings.notifications) setNotificationSettings(s => ({ ...s, ...settings.notifications }));
           if (settings.security) setSecuritySettings(s => ({ ...s, ...settings.security }));
           if (settings.display) setDisplaySettings(s => ({ ...s, ...settings.display }));
+          if (settings.processing) setProcessingSettings(s => ({ ...s, ...settings.processing }));
         }
       } catch {
         toast.error('Failed to load settings');
@@ -117,6 +118,17 @@ export default function SettingsClient() {
     }
     fetchSettings();
   }, []);
+
+  // Warn user before leaving with unsaved changes
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirty]);
 
   // Mark dirty when any setting changes
   const updateSystem = useCallback((updates: Partial<typeof DEFAULT_SETTINGS.system>) => {
@@ -170,7 +182,10 @@ export default function SettingsClient() {
         toast.success('Settings saved successfully');
         setDirty(false);
       } else {
-        toast.error('Some settings failed to save');
+        const failedSections = sections
+          .filter((_, i) => !results[i].ok)
+          .map(s => s.section);
+        toast.error(`Failed to save: ${failedSections.join(', ')}`);
       }
     } catch {
       toast.error('Failed to save settings');
@@ -691,14 +706,11 @@ export default function SettingsClient() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setShowApiKey(!showApiKey)}
-                        aria-label={showApiKey ? "Hide API key" : "Show API key"}
+                        disabled
+                        className="opacity-50 cursor-not-allowed"
+                        aria-label="No API key available"
                       >
-                        {showApiKey ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
+                        <Eye className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
@@ -726,10 +738,10 @@ export default function SettingsClient() {
                   </h4>
                   <div className="space-y-3">
                     {([
-                      ['contractUpdates', 'Contract Updates'],
+                      ['contractAlerts', 'Contract Updates'],
                       ['renewalReminders', 'Renewal Reminders'],
                       ['complianceAlerts', 'Compliance Alerts'],
-                      ['systemUpdates', 'System Updates'],
+                      ['weeklyDigest', 'Weekly Digest'],
                     ] as const).map(([key, label]) => (
                       <div key={key} className="flex items-center justify-between">
                         <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
@@ -750,8 +762,8 @@ export default function SettingsClient() {
                   </h4>
                   <div className="space-y-3">
                     {([
-                      ['browserNotifications', 'Browser Notifications'],
-                      ['desktopNotifications', 'Desktop Notifications'],
+                      ['emailEnabled', 'Email Notifications'],
+                      ['pushEnabled', 'Push Notifications'],
                     ] as const).map(([key, label]) => (
                       <div key={key} className="flex items-center justify-between">
                         <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
@@ -908,6 +920,26 @@ export default function SettingsClient() {
           )}
         </motion.div>
       </div>
+
+      {/* Sticky save bar on mobile when dirty */}
+      {dirty && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between gap-3 shadow-lg">
+          <span className="text-sm text-slate-600 dark:text-slate-400">Unsaved changes</span>
+          <Button
+            onClick={handleSaveChanges}
+            disabled={saving}
+            size="sm"
+            className="bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 shadow-lg"
+          >
+            {saving ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 mr-2" />
+            )}
+            {saving ? 'Saving...' : 'Save'}
+          </Button>
+        </div>
+      )}
     </div>
     </div>
   );

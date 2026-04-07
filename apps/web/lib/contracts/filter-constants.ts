@@ -139,11 +139,11 @@ export const QUICK_PRESETS: Array<{
 // Defined outside components to avoid re-creating references on every render
 // (which would break memo() on child rows)
 
-export function formatCurrency(value?: number) {
-  if (!value) return "—";
+export function formatCurrency(value?: number, currency?: string) {
+  if (value == null) return "—";
   return new Intl.NumberFormat("de-CH", {
     style: "currency",
-    currency: "CHF",
+    currency: currency || "CHF",
     maximumFractionDigits: 0,
   }).format(value);
 }
