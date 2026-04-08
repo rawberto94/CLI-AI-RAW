@@ -136,7 +136,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
         es.close();
         eventSourceRef.current = null;
 
-        // Auto-reconnect logic
+        // Auto-reconnect logic with session validation
         if (
           autoReconnect &&
           shouldConnectRef.current &&
@@ -144,15 +144,24 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
         ) {
           reconnectAttemptsRef.current += 1;
           onErrorRef.current?.(err);
-          reconnectTimerRef.current = setTimeout(() => {
-            if (shouldConnectRef.current) {
-              connect();
+          const delay = reconnectInterval * Math.min(reconnectAttemptsRef.current, 3);
+          reconnectTimerRef.current = setTimeout(async () => {
+            if (!shouldConnectRef.current) return;
+            // Verify session is still valid before reconnecting to avoid
+            // noisy retry loops when the user is simply not authenticated.
+            try {
+              const res = await fetch('/api/auth/session');
+              const sess = await res.json();
+              if (!sess?.user) {
+                console.log('[SSE] Session expired, stopping reconnect');
+                return;
+              }
+            } catch {
+              // Can't check session — try reconnect anyway
             }
-          }, reconnectInterval * Math.min(reconnectAttemptsRef.current, 3));
+            connect();
+          }, delay);
         }
-        // When autoReconnect is disabled, don't fire onError to avoid
-        // incrementing connectionAttempts in the provider (which causes
-        // the "Reconnecting..." UI even though nothing is reconnecting).
       };
     } catch (e) {
       const err = e instanceof Error ? e : new Error('Failed to connect to event stream');

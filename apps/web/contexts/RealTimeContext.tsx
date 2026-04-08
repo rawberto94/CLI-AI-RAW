@@ -88,7 +88,7 @@ export function RealTimeProvider({
   tenantId,
   userId,
   showConnectionToasts = false, // Disabled by default since SSE is optional
-  autoReconnect = false, // Disabled by default to reduce noise
+  autoReconnect = true, // Enabled so SSE recovers from transient failures
 }: RealTimeProviderProps) {
   const toast = useToast();
   const { data: session } = useSession();
