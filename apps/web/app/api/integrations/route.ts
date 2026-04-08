@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { monitoringService } from 'data-orchestration/services';
@@ -68,12 +69,26 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   }
 });
 
+const IntegrationActionSchema = z.object({
+  action: z.enum(['create', 'connect', 'disconnect', 'sync', 'test', 'configure']),
+  integrationId: z.string().optional(),
+  config: z.record(z.unknown()).optional(),
+  name: z.string().max(255).optional(),
+  type: z.string().optional(),
+  provider: z.string().optional(),
+  description: z.string().max(1000).optional(),
+});
+
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const tenantId = await ctx.tenantId;
   
   try {
     const body = await request.json();
-    const { action, integrationId, config, name, type, provider, description } = body;
+    const parsed = IntegrationActionSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid request body', 400);
+    }
+    const { action, integrationId, config, name, type, provider, description } = parsed.data;
 
     if (action === 'create') {
       try {

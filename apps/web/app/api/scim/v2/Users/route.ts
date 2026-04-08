@@ -1,5 +1,25 @@
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
+
+const ScimUserCreateSchema = z.object({
+  userName: z.string().max(255).optional(),
+  displayName: z.string().max(255).optional(),
+  name: z.object({
+    formatted: z.string().optional(),
+    givenName: z.string().optional(),
+    familyName: z.string().optional(),
+  }).optional(),
+  emails: z.array(z.object({
+    value: z.string().email(),
+    type: z.string().optional(),
+    primary: z.boolean().optional(),
+  })).optional(),
+  active: z.boolean().optional().default(true),
+  externalId: z.string().optional(),
+  id: z.string().optional(),
+  schemas: z.array(z.string()).optional(),
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +50,12 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
-    const body = await request.json();
+    const rawBody = await request.json();
+    const parsed = ScimUserCreateSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid SCIM request body', 400);
+    }
+    const body = parsed.data;
     const { prisma } = await import('@/lib/prisma');
 
     const email = body.emails?.[0]?.value || body.userName;

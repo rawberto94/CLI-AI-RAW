@@ -4,10 +4,18 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { auditTrailService } from 'data-orchestration/services';
 import { logger } from '@/lib/logger';
+
+const TeamInviteSchema = z.object({
+  email: z.string().email('Invalid email format').max(255),
+  role: z.enum(['admin', 'manager', 'member', 'viewer']).default('member'),
+  department: z.string().max(100).optional(),
+  tenantId: z.string().optional(),
+});
 
 type UserRole = 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
 type UserStatus = 'active' | 'invited' | 'inactive';
@@ -150,12 +158,12 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const body = await request.json();
-  const { email, role = 'member', department: _department } = body;
-  const tenantId = ctx.tenantId || body.tenantId;
-
-  if (!email) {
-    return createErrorResponse(ctx, 'BAD_REQUEST', 'Email is required', 400);
+  const parsed = TeamInviteSchema.safeParse(body);
+  if (!parsed.success) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid request body', 400);
   }
+  const { email, role } = parsed.data;
+  const tenantId = ctx.tenantId || parsed.data.tenantId;
 
   if (!tenantId) {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);

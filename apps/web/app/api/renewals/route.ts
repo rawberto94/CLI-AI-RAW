@@ -7,11 +7,35 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
+
+const RenewalActionSchema = z.object({
+  contractId: z.string().optional(),
+  renewalId: z.string().optional(),
+  action: z.enum(['initiate', 'send-notice', 'toggle-auto-renewal', 'complete', 'set-dates']),
+  renewalData: z.object({
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+  }).optional(),
+});
+
+const RenewalPatchSchema = z.object({
+  contractId: z.string().optional(),
+  renewalId: z.string().optional(),
+  updates: z.object({
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    value: z.number().optional(),
+    autoRenewal: z.boolean().optional(),
+    noticePeriod: z.number().optional(),
+    renewalStatus: z.string().optional(),
+  }),
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -375,7 +399,11 @@ export async function POST(request: NextRequest) {
   }
   try {
     const body = await request.json();
-    const { contractId, renewalId, action, renewalData } = body;
+    const parsed = RenewalActionSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid request body', 400);
+    }
+    const { contractId, renewalId, action, renewalData } = parsed.data;
     const tenantId = await getServerTenantId();
 
     // Extract contract ID from renewal ID if needed
@@ -540,7 +568,11 @@ export async function PATCH(request: NextRequest) {
   }
   try {
     const body = await request.json();
-    const { contractId, renewalId, updates } = body;
+    const parsed = RenewalPatchSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid request body', 400);
+    }
+    const { contractId, renewalId, updates } = parsed.data;
     const tenantId = await getServerTenantId();
 
     const actualContractId = contractId || renewalId?.replace('renewal-', '');

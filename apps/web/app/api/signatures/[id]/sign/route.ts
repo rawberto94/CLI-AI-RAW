@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { sendEmail } from '@/lib/email-service';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { logger } from '@/lib/logger';
+
+const SignActionSchema = z.object({
+  token: z.string().min(1, 'Signing token is required'),
+  action: z.enum(['sign', 'decline']),
+  signatureMethod: z.string().optional(),
+  signatureData: z.string().optional(),
+  agreedToTerms: z.boolean().optional(),
+  declineReason: z.string().max(1000).optional(),
+});
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -131,11 +141,11 @@ export async function POST(
   try {
     const { id: requestId } = await params;
     const body = await request.json();
-    const { token, action, signatureMethod, signatureData, agreedToTerms, declineReason } = body;
-
-    if (!token) {
-      return NextResponse.json({ success: false, error: 'Signing token is required' }, { status: 400 });
+    const parsed = SignActionSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error.issues[0]?.message || 'Invalid request body' }, { status: 400 });
     }
+    const { token, action, signatureMethod, signatureData, agreedToTerms, declineReason } = parsed.data;
 
     // Decode token
     let tokenData: { contractId?: string; email?: string; exp?: number };

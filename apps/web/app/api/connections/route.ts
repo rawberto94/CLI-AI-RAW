@@ -4,8 +4,17 @@
  */
 
 import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { sseConnectionManager } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+
+const ConnectionActionSchema = z.object({
+  action: z.enum(['cleanup', 'disconnect', 'broadcast']),
+  connectionId: z.string().optional(),
+  tenantId: z.string().optional(),
+  userId: z.string().optional(),
+  message: z.unknown().optional(),
+});
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -55,8 +64,16 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
  * Perform connection management actions
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden - Admin access required', 403);
+  }
+
   const body = await request.json();
-  const { action, connectionId, tenantId: _tenantId, userId: _userId } = body;
+  const parsed = ConnectionActionSchema.safeParse(body);
+  if (!parsed.success) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid request body', 400);
+  }
+  const { action, connectionId } = parsed.data;
 
   switch (action) {
     case 'cleanup':
