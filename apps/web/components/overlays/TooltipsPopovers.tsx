@@ -221,7 +221,14 @@ export function Popover({
 
   return (
     <div ref={containerRef} className={cn('relative inline-flex', className)}>
-      <div onClick={() => setIsOpen(!isOpen)} className="cursor-pointer">
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsOpen(!isOpen); } }}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isOpen}
+        className="cursor-pointer"
+      >
         {trigger}
       </div>
       <AnimatePresence>

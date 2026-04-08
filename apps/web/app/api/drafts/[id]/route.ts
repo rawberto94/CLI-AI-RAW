@@ -182,33 +182,70 @@ export async function PATCH(
     if (content !== undefined || clauses !== undefined) {
       updateData.version = existing.version + 1;
 
-      // Create a version snapshot (throttled: at most one every 2 minutes)
-      try {
-        const lastSnapshot = await prisma.draftVersion.findFirst({
-          where: { draftId: id },
-          orderBy: { createdAt: 'desc' },
-          select: { createdAt: true },
-        });
-        const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
-        if (!lastSnapshot || lastSnapshot.createdAt < twoMinutesAgo) {
-          await prisma.draftVersion.create({
-            data: {
-              draftId: id,
-              tenantId,
-              userId: ctx.userId,
-              version: existing.version, // snapshot of the PREVIOUS version
-              content: typeof existing.content === 'string' ? existing.content : JSON.stringify(existing.content || ''),
-              label: body.versionLabel || 'Auto-save',
-              changeSummary: body.changeSummary || null,
-            },
+      // Create a version snapshot + update atomically to prevent race conditions
+      const draft = await prisma.$transaction(async (tx) => {
+        // Snapshot (throttled: at most one every 2 minutes)
+        try {
+          const lastSnapshot = await tx.draftVersion.findFirst({
+            where: { draftId: id },
+            orderBy: { createdAt: 'desc' },
+            select: { createdAt: true },
           });
+          const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+          if (!lastSnapshot || lastSnapshot.createdAt < twoMinutesAgo) {
+            await tx.draftVersion.create({
+              data: {
+                draftId: id,
+                tenantId,
+                userId: ctx.userId,
+                version: existing.version, // snapshot of the PREVIOUS version
+                content: typeof existing.content === 'string' ? existing.content : JSON.stringify(existing.content || ''),
+                label: body.versionLabel || 'Auto-save',
+                changeSummary: body.changeSummary || null,
+              },
+            });
+          }
+        } catch (_snapshotErr) {
+          // Don't fail the update if snapshot creation fails (e.g., duplicate version)
+          logger.warn('Version snapshot creation skipped (may be duplicate):', _snapshotErr);
         }
-      } catch (_snapshotErr) {
-        // Don't fail the update if snapshot creation fails (e.g., duplicate version)
-        logger.warn('Version snapshot creation skipped (may be duplicate):', _snapshotErr);
-      }
+
+        return tx.contractDraft.update({
+          where: { id },
+          data: updateData,
+          include: {
+            template: {
+              select: {
+                id: true,
+                name: true,
+                category: true,
+              },
+            },
+            createdByUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        });
+      });
+
+      await auditLog({
+        action: AuditAction.CONTRACT_UPDATED,
+        resourceType: 'draft',
+        resourceId: id,
+        userId: ctx.userId,
+        tenantId,
+        metadata: { operation: 'update' },
+      }).catch(err => logger.error('[Draft] Audit log failed:', err));
+
+      return createSuccessResponse(ctx, { draft });
     }
 
+    // Non-content update (status, metadata, locking, etc.)
     const draft = await prisma.contractDraft.update({
       where: { id },
       data: updateData,

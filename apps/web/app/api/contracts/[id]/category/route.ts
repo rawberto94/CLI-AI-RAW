@@ -180,63 +180,65 @@ export async function PUT(
       }
     }
 
-    // Track the correction for learning loop
+    // Track the correction and update contract atomically
     const originalCategoryId = contract.contractCategoryId;
     const wasCorrect = originalCategoryId === categoryId;
     const meta = (contract.metadata as any) || {};
     const categorization = meta._categorization || meta._pendingCategorization;
 
-    await prisma.extractionCorrection.create({
-      data: {
-        tenantId,
-        contractId,
-        fieldName: "category",
-        originalValue: originalCategoryId || null,
-        correctedValue: categoryId || null,
-        confidence: categorization?.overallConfidence 
-          ? categorization.overallConfidence / 100 
-          : null,
-        wasCorrect,
-        source: "ai",
-        feedbackType,
-        contractType: contract.contractType,
-        documentLength: contract.rawText?.length || null,
-        modelUsed: categorization?.metadata?.model || "gpt-4o-mini",
-        metadata: {
-          originalL1: contract.categoryL1,
-          originalL2: contract.categoryL2,
-          newL1: newL1Name,
-          newL2: newL2Name,
-          matchScore: categorization?.taxonomy?.categoryL2?.matchScore || 
-                      categorization?.taxonomy?.categoryL1?.matchScore || null,
-          alternatives: categorization?.taxonomy?.alternatives?.slice(0, 3) || [],
-        },
-      },
-    });
-
-    // Update the contract with new category
     const existingMeta = (contract.metadata as Record<string, unknown>) || {};
-    
-    await prisma.contract.update({
-      where: { id: contractId },
-      data: {
-        contractCategoryId: categoryId,
-        categoryL1: newL1Name,
-        categoryL2: newL2Name,
-        classifiedAt: new Date(),
-        metadata: JSON.parse(JSON.stringify({
-          ...existingMeta,
-          _categorization: {
-            ...meta._categorization,
-            manualOverride: feedbackType !== "confirmation",
-            overriddenAt: new Date().toISOString(),
-            overriddenBy: ctx.userId,
+
+    await prisma.$transaction(async (tx) => {
+      await tx.extractionCorrection.create({
+        data: {
+          tenantId,
+          contractId,
+          fieldName: "category",
+          originalValue: originalCategoryId || null,
+          correctedValue: categoryId || null,
+          confidence: categorization?.overallConfidence 
+            ? categorization.overallConfidence / 100 
+            : null,
+          wasCorrect,
+          source: "ai",
+          feedbackType,
+          contractType: contract.contractType,
+          documentLength: contract.rawText?.length || null,
+          modelUsed: categorization?.metadata?.model || "gpt-4o-mini",
+          metadata: {
+            originalL1: contract.categoryL1,
+            originalL2: contract.categoryL2,
+            newL1: newL1Name,
+            newL2: newL2Name,
+            matchScore: categorization?.taxonomy?.categoryL2?.matchScore || 
+                        categorization?.taxonomy?.categoryL1?.matchScore || null,
+            alternatives: categorization?.taxonomy?.alternatives?.slice(0, 3) || [],
           },
-          // Remove pending if it existed
-          _pendingCategorization: undefined,
-        })),
-        updatedAt: new Date(),
-      },
+        },
+      });
+
+      // Update the contract with new category
+      await tx.contract.update({
+        where: { id: contractId },
+        data: {
+          contractCategoryId: categoryId,
+          categoryL1: newL1Name,
+          categoryL2: newL2Name,
+          classifiedAt: new Date(),
+          metadata: JSON.parse(JSON.stringify({
+            ...existingMeta,
+            _categorization: {
+              ...meta._categorization,
+              manualOverride: feedbackType !== "confirmation",
+              overriddenAt: new Date().toISOString(),
+              overriddenBy: ctx.userId,
+            },
+            // Remove pending if it existed
+            _pendingCategorization: undefined,
+          })),
+          updatedAt: new Date(),
+        },
+      });
     });
 
     await auditLog({
