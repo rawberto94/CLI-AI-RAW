@@ -394,9 +394,30 @@ export function CopilotDraftingCanvas({
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
 
   // Cleanup pending requests on unmount or page navigation
+  // Also release lock via sendBeacon so the next user isn't blocked.
+  const draftIdRef = useRef(draftId);
+  const lockInfoRef = useRef(lockInfo);
+  const sessionUserIdRef = useRef(session?.user?.id);
+  useEffect(() => { draftIdRef.current = draftId; }, [draftId]);
+  useEffect(() => { lockInfoRef.current = lockInfo; }, [lockInfo]);
+  useEffect(() => { sessionUserIdRef.current = session?.user?.id; }, [session?.user?.id]);
+
   useEffect(() => {
     const cleanup = () => {
       aiChatAbortRef.current?.abort();
+      // Release lock on exit (fire-and-forget, works during unload via keepalive)
+      const id = draftIdRef.current;
+      const lock = lockInfoRef.current;
+      if (id && lock.isLocked && lock.lockedBy === sessionUserIdRef.current) {
+        try {
+          fetch(`/api/drafts/${id}/lock`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
+            body: JSON.stringify({ action: 'unlock' }),
+            keepalive: true, // survives page unload
+          }).catch(() => {});
+        } catch { /* best-effort */ }
+      }
     };
     // Warn about unsaved changes
     const warnUnsaved = (e: BeforeUnloadEvent) => {
@@ -604,7 +625,7 @@ export function CopilotDraftingCanvas({
 
   // Auto-save: triggered by content changes (debounced via contentVersion)
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || draftStatus === 'FINALIZED') return;
 
     const html = editor.getHTML();
     if (html === lastSavedContentRef.current) return;
@@ -640,7 +661,7 @@ export function CopilotDraftingCanvas({
 
     autoSaveTimerRef.current = timer;
     return () => { clearTimeout(timer); autoSaveTimerRef.current = null; };
-  }, [debouncedContentVersion, editor, onSave, draftId]);
+  }, [debouncedContentVersion, editor, onSave, draftId, draftStatus]);
 
   // ====================================================================
   // FETCH COMMENTS, VERSIONS, CLAUSES, LOCK INFO from API
@@ -705,6 +726,8 @@ export function CopilotDraftingCanvas({
         const d = json.data?.draft;
         if (d) {
           setDraftStatus(d.status || 'DRAFT');
+          // Lock editor for finalized drafts
+          if (d.status === 'FINALIZED') setIsEditing(false);
           setLockInfo({ isLocked: d.isLocked, lockedBy: d.lockedBy, lockedAt: d.lockedAt });
           setApprovalHistory(Array.isArray(d.approvalWorkflow) ? d.approvalWorkflow : []);
         }
@@ -895,6 +918,9 @@ export function CopilotDraftingCanvas({
         failCount++;
         if (failCount >= 3) {
           toast.error('Lock lost — another user may take over. Save your work.', { id: 'lock-lost' });
+          setIsEditing(false);
+          setLockInfo({ isLocked: false, lockedBy: null, lockedAt: null });
+          clearInterval(interval);
         }
       }
     }, 2 * 60 * 1000);
@@ -1245,6 +1271,7 @@ export function CopilotDraftingCanvas({
       const contractId = result?.data?.data?.contract?.id || result?.data?.contract?.id;
 
       setDraftStatus('FINALIZED');
+      setIsEditing(false);
       setCreatedContractId(contractId || null);
 
       if (contractId) {
@@ -2357,7 +2384,8 @@ export function CopilotDraftingCanvas({
               {/* Mode Toggle */}
               <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded-lg p-0.5" role="radiogroup" aria-label="Editor mode">
                 <button
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => { if (draftStatus !== 'FINALIZED') setIsEditing(true); }}
+                  disabled={draftStatus === 'FINALIZED'}
                   role="radio"
                   aria-checked={isEditing}
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs transition-colors ${
@@ -2380,8 +2408,8 @@ export function CopilotDraftingCanvas({
                 </button>
               </div>
 
-              {/* Approval Actions — always visible when applicable */}
-              {draftId && (draftStatus === 'IN_REVIEW' || draftStatus === 'PENDING_APPROVAL') && (
+              {/* Approval Actions — only shown to users with approval roles */}
+              {draftId && (draftStatus === 'IN_REVIEW' || draftStatus === 'PENDING_APPROVAL') && ['admin', 'owner', 'manager'].includes(session?.user?.role || '') && (
                 <>
                   <button
                     onClick={() => setShowApprovalModal("approve")}
