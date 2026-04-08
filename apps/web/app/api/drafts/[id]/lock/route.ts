@@ -22,7 +22,7 @@ import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate
 
 export const dynamic = 'force-dynamic';
 
-const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes — auto-expire stale locks
+const LOCK_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes — auto-expire stale locks (clients send heartbeat every 2 min)
 
 export async function POST(
   request: NextRequest,

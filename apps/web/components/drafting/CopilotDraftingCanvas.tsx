@@ -8,7 +8,7 @@ import {
   GitBranch, Bold, Italic, Underline, List,
   Heading1, Heading2, Quote, X, Send, Clock, Zap, Shield, Scale,
   RefreshCw, Loader2, Brain, AlertCircle,
-  Download, FileDown, CheckCircle2, ArrowRight,
+  FileDown, CheckCircle2, ArrowRight,
   BookOpen, Search, Lock, Unlock, ThumbsUp, ThumbsDown,
   Check, Keyboard,
 } from 'lucide-react';
@@ -315,20 +315,28 @@ export function CopilotDraftingCanvas({
 
   // UI state
   const [activeTab, setActiveTab] = useState<'copilot' | 'comments' | 'versions' | 'clauses' | 'ai-chat'>('copilot');
-  const [aiChatMessages, setAiChatMessages] = useState<AiChatMessage[]>([]);
+  const [aiChatMessages, _setAiChatMessages] = useState<AiChatMessage[]>([]);
+  const aiChatMessagesRef = useRef<AiChatMessage[]>([]);
+  // Keep ref in sync so sendAiChatMessage reads latest without re-creating
+  const setAiChatMessages = useCallback((update: AiChatMessage[] | ((prev: AiChatMessage[]) => AiChatMessage[])) => {
+    _setAiChatMessages(prev => {
+      const next = typeof update === 'function' ? update(prev) : update;
+      aiChatMessagesRef.current = next;
+      return next;
+    });
+  }, []);
   const [aiChatInput, setAiChatInput] = useState('');
   const [isAiChatStreaming, setIsAiChatStreaming] = useState(false);
   const aiChatAbortRef = useRef<AbortController | null>(null);
   const aiChatScrollRef = useRef<HTMLDivElement | null>(null);
   const [isEditing, setIsEditing] = useState(true);
-  const [showAIPanel, setShowAIPanel] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
+
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [draftStatus, setDraftStatus] = useState<'DRAFT' | 'IN_REVIEW' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'FINALIZED'>('DRAFT');
   const [createdContractId, setCreatedContractId] = useState<string | null>(null);
@@ -521,7 +529,7 @@ export function CopilotDraftingCanvas({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text,
-          cursorPosition,
+          cursorPosition: cursorPositionRef.current,
           contractType,
         }),
       });
@@ -803,7 +811,6 @@ export function CopilotDraftingCanvas({
       ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style'],
     });
     editor.chain().focus().insertContent(sanitized).run();
-    setContent(editor.getHTML());
     toast.success(`Inserted clause: ${clause.title}`);
   }, [editor]);
 
@@ -831,6 +838,19 @@ export function CopilotDraftingCanvas({
     } catch { toast.error(`Failed to ${action} draft`); }
     finally { setIsLocking(false); }
   }, [draftId]);
+
+  // Lock heartbeat — re-acquire lock every 2 minutes to prevent stale-lock expiry
+  useEffect(() => {
+    if (!draftId || !lockInfo.isLocked || lockInfo.lockedBy !== session?.user?.id) return;
+    const interval = setInterval(() => {
+      fetch(`/api/drafts/${draftId}/lock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'lock' }),
+      }).catch(() => { /* silent heartbeat */ });
+    }, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [draftId, lockInfo.isLocked, lockInfo.lockedBy, session?.user?.id]);
 
   // ====================================================================
   // APPROVAL HANDLERS
@@ -906,10 +926,10 @@ export function CopilotDraftingCanvas({
       setShowExportMenu((v) => !v);
       return;
     }
-    // Ctrl+/ — Toggle AI panel
+    // Ctrl+/ — Toggle AI Chat
     if (isMod && e.key === '/') {
       e.preventDefault();
-      setShowAIPanel((v) => !v);
+      setActiveTab((t) => (t === 'ai-chat' ? 'suggestions' : 'ai-chat'));
       return;
     }
     // Ctrl+Shift+? — Show shortcut help
@@ -966,7 +986,6 @@ export function CopilotDraftingCanvas({
         } else {
           // Can't locate the text — insert at current cursor instead
           editor.chain().focus().insertContent(suggestion.suggestedText).run();
-          setContent(editor.getHTML());
           setSelectedSuggestion(null);
           setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
           return;
@@ -974,7 +993,6 @@ export function CopilotDraftingCanvas({
       } else {
         // No original text to search for — insert at cursor
         editor.chain().focus().insertContent(suggestion.suggestedText).run();
-        setContent(editor.getHTML());
         setSelectedSuggestion(null);
         setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
         return;
@@ -986,58 +1004,11 @@ export function CopilotDraftingCanvas({
     to = Math.max(from, Math.min(to, docSize));
 
     editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, suggestion.suggestedText).run();
-    setContent(editor.getHTML());
     setSelectedSuggestion(null);
     setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
   }, [editor]);
 
-  const handleAIAssist = useCallback(async () => {
-    if (!aiPrompt.trim() || !editor) return;
 
-    setIsGenerating(true);
-    try {
-      const response = await fetch('/api/copilot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: editor.getHTML(),
-          cursorPosition,
-          selectedText,
-          contractType,
-          playbookId,
-          mode: 'assist',
-          prompt: aiPrompt,
-        }),
-      });
-
-      if (response.ok) {
-        const json = await response.json();
-        const data = json.data || json;
-        if (data.generatedText) {
-          // Sanitize AI-generated HTML before inserting
-          const sanitized = DOMPurify.sanitize(data.generatedText, {
-            ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'a', 'span', 'div', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'mark', 'sub', 'sup'],
-            ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style', 'data-*'],
-          });
-          editor.chain().focus().insertContent(sanitized).run();
-          setContent(editor.getHTML());
-        }
-        if (data.suggestions) {
-          setSuggestions(prev => [...data.suggestions, ...prev]);
-        }
-      } else {
-        await response.json().catch(() => null);
-        toast.error('AI generation returned an error');
-      }
-    } catch (error) {
-      console.error('AI assist failed:', error);
-      toast.error('AI generation failed. Please try again.');
-    } finally {
-      setIsGenerating(false);
-      setAiPrompt('');
-      setShowAIPanel(false);
-    }
-  }, [aiPrompt, editor, cursorPosition, selectedText, contractType, playbookId]);
 
   const handleSave = useCallback(async () => {
     if (!onSave || !editor) return;
@@ -1279,7 +1250,6 @@ export function CopilotDraftingCanvas({
       editor.chain().focus().insertContent(sanitized).run();
     }
 
-    setContent(editor.getHTML());
     toast.success(shouldReplace ? 'AI rewrite applied' : 'AI draft inserted');
   }, [editor]);
 
@@ -1342,7 +1312,7 @@ export function CopilotDraftingCanvas({
         }
       });
 
-      const conversationHistory = [...aiChatMessages, userMsg].map((chatMessage) => ({
+      const conversationHistory = [...aiChatMessagesRef.current, userMsg].map((chatMessage) => ({
         role: chatMessage.role,
         content: [
           chatMessage.content,
@@ -1484,7 +1454,7 @@ export function CopilotDraftingCanvas({
       ));
       aiChatAbortRef.current = null;
     }
-  }, [aiChatMessages, isAiChatStreaming, editor, contractType, playbookId]);
+  }, [isAiChatStreaming, editor, contractType, playbookId]);
 
   // ============================================================================
   // SIDEBAR CONTENT (shared between desktop and mobile)
@@ -2260,27 +2230,6 @@ export function CopilotDraftingCanvas({
 
             {/* Right: actions */}
             <div className="flex items-center gap-1.5">
-              {/* Lock/Unlock */}
-              {draftId && (
-                <button
-                  onClick={() => handleLock(lockInfo.isLocked ? 'unlock' : 'lock')}
-                  disabled={isLocking}
-                  className="p-1.5 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-                  title={lockInfo.isLocked ? 'Unlock document' : 'Lock document'}
-                >
-                  {isLocking ? <Loader2 className="h-4 w-4 animate-spin" /> : lockInfo.isLocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                </button>
-              )}
-
-              {/* Keyboard Shortcuts Help */}
-              <button
-                onClick={() => setShowShortcutHelp((v) => !v)}
-                className="hidden sm:flex p-1.5 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-                title="Keyboard shortcuts (Ctrl+Shift+?)"
-              >
-                <Keyboard className="h-4 w-4" />
-              </button>
-
               {/* Mobile Sidebar Toggle */}
               <button
                 onClick={() => setShowMobileSidebar(true)}
@@ -2288,10 +2237,7 @@ export function CopilotDraftingCanvas({
                 aria-label="Open AI Copilot panel"
               >
                 <Brain className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Copilot</span>
               </button>
-
-              <div className="h-5 w-px bg-gray-200 dark:bg-slate-600" />
 
               {/* Mode Toggle */}
               <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded-lg p-0.5" role="radiogroup" aria-label="Editor mode">
@@ -2319,37 +2265,7 @@ export function CopilotDraftingCanvas({
                 </button>
               </div>
 
-              {/* Export */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowExportMenu(!showExportMenu)}
-                  disabled={isExporting}
-                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                >
-                  {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                  Export
-                </button>
-                {showExportMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-50 overflow-hidden">
-                    <button
-                      onClick={handleExportPDF}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                    >
-                      <FileDown className="h-4 w-4 text-red-500" />
-                      Export as PDF
-                    </button>
-                    <button
-                      onClick={handleExportDOCX}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                    >
-                      <FileDown className="h-4 w-4 text-blue-500" />
-                      Export as DOCX
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Approval Actions */}
+              {/* Approval Actions — always visible when applicable */}
               {draftId && (draftStatus === 'IN_REVIEW' || draftStatus === 'PENDING_APPROVAL') && (
                 <>
                   <button
@@ -2371,43 +2287,100 @@ export function CopilotDraftingCanvas({
                 </>
               )}
 
-              {/* Workflow Actions */}
-              {draftId && draftStatus === 'DRAFT' && (
+              {/* Actions dropdown — Export, Lock, Workflow, Shortcuts */}
+              <div className="relative">
                 <button
-                  onClick={() => handleStatusChange('IN_REVIEW')}
-                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                  onClick={() => { setShowActionsMenu(v => !v); setShowExportMenu(false); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                 >
-                  <ArrowRight className="h-3.5 w-3.5" />
-                  Submit for Review
+                  <Zap className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Actions</span>
                 </button>
-              )}
-              {draftId && (draftStatus === 'APPROVED' || draftStatus === 'IN_REVIEW') && (
-                <button
-                  onClick={handleFinalize}
-                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Finalize
-                </button>
-              )}
-              {draftId && draftStatus === 'FINALIZED' && createdContractId && (
-                <button
-                  onClick={() => router.push(`/contracts/${createdContractId}`)}
-                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  <ArrowRight className="h-3.5 w-3.5" />
-                  View Contract
-                </button>
-              )}
-              {draftId && draftStatus === 'REJECTED' && (
-                <button
-                  onClick={handleRevertToDraft}
-                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-amber-300 dark:border-amber-600 text-amber-700 dark:text-amber-300 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors"
-                >
-                  <Edit3 className="h-3.5 w-3.5" />
-                  Revise
-                </button>
-              )}
+                {showActionsMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-50 overflow-hidden py-1">
+                    {/* Export */}
+                    <button
+                      onClick={() => { handleExportPDF(); setShowActionsMenu(false); }}
+                      disabled={isExporting}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <FileDown className="h-4 w-4 text-red-500" />
+                      Export as PDF
+                    </button>
+                    <button
+                      onClick={() => { handleExportDOCX(); setShowActionsMenu(false); }}
+                      disabled={isExporting}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <FileDown className="h-4 w-4 text-blue-500" />
+                      Export as DOCX
+                    </button>
+
+                    <div className="my-1 border-t border-gray-100 dark:border-slate-700" />
+
+                    {/* Lock */}
+                    {draftId && (
+                      <button
+                        onClick={() => { handleLock(lockInfo.isLocked ? 'unlock' : 'lock'); setShowActionsMenu(false); }}
+                        disabled={isLocking}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        {lockInfo.isLocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                        {lockInfo.isLocked ? 'Unlock document' : 'Lock for editing'}
+                      </button>
+                    )}
+
+                    {/* Workflow Actions */}
+                    {draftId && draftStatus === 'DRAFT' && (
+                      <button
+                        onClick={() => { handleStatusChange('IN_REVIEW'); setShowActionsMenu(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                        Submit for Review
+                      </button>
+                    )}
+                    {draftId && (draftStatus === 'APPROVED' || draftStatus === 'IN_REVIEW') && (
+                      <button
+                        onClick={() => { handleFinalize(); setShowActionsMenu(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Finalize as Contract
+                      </button>
+                    )}
+                    {draftId && draftStatus === 'FINALIZED' && createdContractId && (
+                      <button
+                        onClick={() => { router.push(`/contracts/${createdContractId}`); setShowActionsMenu(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                        View Contract
+                      </button>
+                    )}
+                    {draftId && draftStatus === 'REJECTED' && (
+                      <button
+                        onClick={() => { handleRevertToDraft(); setShowActionsMenu(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                        Revise Draft
+                      </button>
+                    )}
+
+                    <div className="my-1 border-t border-gray-100 dark:border-slate-700" />
+
+                    {/* Keyboard Shortcuts */}
+                    <button
+                      onClick={() => { setShowShortcutHelp(v => !v); setShowActionsMenu(false); }}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <Keyboard className="h-4 w-4" />
+                      Keyboard Shortcuts
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <button
                 onClick={handleSave}
@@ -2468,12 +2441,8 @@ export function CopilotDraftingCanvas({
                   </span>
                 )}
                 <button
-                  onClick={() => setShowAIPanel(!showAIPanel)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${
-                    showAIPanel
-                      ? 'bg-violet-600 text-white'
-                      : 'bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600'
-                  }`}
+                  onClick={() => setActiveTab('ai-chat')}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600 transition-colors"
                 >
                   <Wand2 className="h-3.5 w-3.5" />
                   AI Assist
@@ -2486,7 +2455,7 @@ export function CopilotDraftingCanvas({
           {!isEditing && (
             <div className="mt-2 flex justify-end pb-2 border-t border-gray-100 dark:border-slate-700 pt-2">
               <button
-                onClick={() => setShowAIPanel(!showAIPanel)}
+                onClick={() => setActiveTab('ai-chat')}
                 className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600 transition-colors"
               >
                 <Wand2 className="h-3.5 w-3.5" />
@@ -2502,66 +2471,6 @@ export function CopilotDraftingCanvas({
         {/* Editor */}
         <div className="flex-1 p-4 md:p-8">
           <div className="max-w-4xl mx-auto">
-            {/* AI Panel */}
-            <AnimatePresence>
-              {showAIPanel && (
-                <motion.div key="a-i-panel"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mb-6 overflow-hidden"
-                >
-                  <div className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/50 dark:to-purple-950/50 rounded-xl p-4 border border-violet-100 dark:border-violet-800">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-                        <Brain className="h-5 w-5 text-violet-500 dark:text-violet-400" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium text-gray-900 dark:text-slate-100 mb-2">AI Copilot Assistant</h3>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={aiPrompt}
-                            onChange={(e) => setAiPrompt(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleAIAssist()}
-                            placeholder="Ask AI to help... (e.g., 'Strengthen the liability clause', 'Add GDPR compliance language')"
-                            aria-label="AI prompt input"
-                            className="flex-1 px-4 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                          />
-                          <button
-                            onClick={handleAIAssist}
-                            disabled={isGenerating || !aiPrompt.trim()}
-                            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50"
-                          >
-                            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Generate'}
-                          </button>
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {[
-                            'Strengthen liability cap',
-                            'Add GDPR clause',
-                            'Improve termination terms',
-                            'Clarify IP ownership',
-                          ].map((suggestion) => (
-                            <button
-                              key={suggestion}
-                              onClick={() => setAiPrompt(suggestion)}
-                              className="px-3 py-1 text-sm bg-white dark:bg-slate-800 text-violet-700 dark:text-violet-300 rounded-full hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors border border-violet-200 dark:border-violet-700"
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <button onClick={() => setShowAIPanel(false)} className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300" aria-label="Close AI panel">
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             {/* Document Content */}
             <div className="relative">
               <div
@@ -2807,7 +2716,7 @@ export function CopilotDraftingCanvas({
                 {[
                   { keys: 'Ctrl + S', action: 'Save draft' },
                   { keys: 'Ctrl + Shift + E', action: 'Toggle export menu' },
-                  { keys: 'Ctrl + /', action: 'Toggle AI assistant' },
+                  { keys: 'Ctrl + /', action: 'Toggle AI Chat' },
                   { keys: 'Ctrl + Shift + ?', action: 'Show this help' },
                   { keys: 'Ctrl + Z', action: 'Undo' },
                   { keys: 'Ctrl + Y', action: 'Redo' },

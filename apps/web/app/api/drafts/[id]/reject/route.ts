@@ -98,25 +98,15 @@ export async function POST(
       });
     }
 
-    // Send email notification via approvals notify API (fire-and-forget)
+    // Send email notification directly (no self-HTTP call)
     if (creator?.email) {
-      fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'}/api/approvals/notify`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-user-id': ctx.userId,
-          'x-tenant-id': tenantId,
-        },
-        body: JSON.stringify({
-          type: 'approval_rejected',
-          contractId: draftId,
-          contractTitle: updated.title,
-          recipientEmail: creator.email,
-          recipientName: `${creator.firstName || ''} ${creator.lastName || ''}`.trim() || creator.email,
-          senderName: ctx.userId,
-          message: reason,
-          actionUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'}/drafting/copilot?draft=${draftId}`,
-        }),
+      const { sendEmail } = await import('@/lib/email/email-service');
+      const recipientName = `${creator.firstName || ''} ${creator.lastName || ''}`.trim() || creator.email;
+      const actionUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'}/drafting/copilot?draft=${draftId}`;
+      sendEmail({
+        to: creator.email,
+        subject: `✗ Rejected: "${updated.title}"`,
+        html: `<p>Hi ${recipientName},</p><p>Your draft <strong>"${updated.title}"</strong> was rejected.</p>${reason ? `<p>Reason: ${reason}</p>` : ''}<p><a href="${actionUrl}">View Details</a></p>`,
       }).catch(() => { /* fire-and-forget */ });
     }
 
