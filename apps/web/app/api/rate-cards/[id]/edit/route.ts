@@ -1,28 +1,14 @@
 import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { rateCardManagementService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
-export const PATCH = async (request: NextRequest, props: { params: Promise<{ id: string }> }) => {
-  const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-  try {
-    const { id } = params;
+export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
+    const { id } = await (ctx as any).params;
     const body = await request.json();
     const tenantId = ctx.tenantId;
-    
-    // Require tenant ID for security - stricter in production
-    if (!tenantId) {
-      if (process.env.NODE_ENV === 'production') {
-        return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
-      }
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
-    }
     
     const {
       clientName,
@@ -123,24 +109,11 @@ export const PATCH = async (request: NextRequest, props: { params: Promise<{ id:
       success: true,
       rateCard: updatedRateCard,
     });
-  } catch {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update rate card', 500);
-  }
-}
+});
 
-export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
-    const { id } = params;
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+    const { id } = await (ctx as any).params;
     const tenantId = ctx.tenantId;
-
-    if (!tenantId) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
-    }
 
     const rateCard = await prisma.rateCardEntry.findFirst({
       where: { id, tenantId },
@@ -161,7 +134,4 @@ try {
     }
 
     return createSuccessResponse(ctx, rateCard);
-  } catch {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch rate card', 500);
-  }
-}
+});

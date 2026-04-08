@@ -209,6 +209,7 @@ export function createErrorResponse(
   const headers: Record<string, string> = {
     'X-Request-ID': context.requestId,
     'X-Response-Time': `${Date.now() - context.startTime}ms`,
+    'Cache-Control': 'no-store',
   };
 
   if (options?.retryAfter) {
@@ -267,6 +268,7 @@ export function createSuccessResponse<T>(
         'X-Request-ID': context.requestId,
         'X-Response-Time': `${responseTime}ms`,
         'X-Data-Source': options?.dataSource ?? 'database',
+        'Cache-Control': 'private, no-cache, must-revalidate',
         ...options?.headers,
       },
     }

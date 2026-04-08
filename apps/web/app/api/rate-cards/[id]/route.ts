@@ -9,100 +9,46 @@ const rateCardService = new rateCardEntryService(prisma);
  * GET /api/rate-cards/[id]
  * Get a single rate card entry by ID
  */
-export const GET = async (request: NextRequest, props: { params: Promise<{ id: string }> }) => {
-  const params = await props.params;
-  const ctx = getApiContext(request);
-  try {
-    const { id } = params;
-    
-    // Production mode requires real tenant authentication
-    if (process.env.NODE_ENV === 'production' && !ctx.tenantId) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
-    }
-    
-    // Get authenticated user from session
-    const tenantId = ctx.tenantId || ctx.tenantId;
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params;
+  const tenantId = ctx.tenantId;
 
-    // Require tenant ID for data isolation
-    if (!tenantId) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
-    }
+  const entry = await rateCardService.getEntry(id, tenantId);
 
-    const entry = await rateCardService.getEntry(id, tenantId);
-
-    return createSuccessResponse(ctx, entry);
-  } catch (error: unknown) {
-    return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card not found. Please try again.', 404);
-  }
-}
+  return createSuccessResponse(ctx, entry);
+});
 
 /**
  * PUT /api/rate-cards/[id]
  * Update a rate card entry
  */
-export const PUT = async (request: NextRequest, props: { params: Promise<{ id: string }> }) => {
-  const params = await props.params;
-  const ctx = getApiContext(request);
-  try {
-    const { id } = params;
-    const body = await request.json();
-    
-    // Production mode requires authentication
-    if (process.env.NODE_ENV === 'production' && !ctx.tenantId) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
-    }
-    
-    // Get authenticated user from session
-    const tenantId = ctx.tenantId || ctx.tenantId;
+export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params;
+  const tenantId = ctx.tenantId;
+  const body = await request.json();
 
-    // Require tenant ID for data isolation
-    if (!tenantId) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
-    }
-
-    // Convert date strings to Date objects
-    if (body.effectiveDate) {
-      body.effectiveDate = new Date(body.effectiveDate);
-    }
-    if (body.expiryDate) {
-      body.expiryDate = new Date(body.expiryDate);
-    }
-
-    const entry = await rateCardService.updateEntry(id, body, tenantId);
-
-    return createSuccessResponse(ctx, entry);
-  } catch (error: unknown) {
-    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to update rate card. Please try again.', 400);
+  // Convert date strings to Date objects
+  if (body.effectiveDate) {
+    body.effectiveDate = new Date(body.effectiveDate);
   }
-}
+  if (body.expiryDate) {
+    body.expiryDate = new Date(body.expiryDate);
+  }
+
+  const entry = await rateCardService.updateEntry(id, body, tenantId);
+
+  return createSuccessResponse(ctx, entry);
+});
 
 /**
  * DELETE /api/rate-cards/[id]
  * Delete a rate card entry
  */
-export const DELETE = async (request: NextRequest, props: { params: Promise<{ id: string }> }) => {
-  const params = await props.params;
-  const ctx = getApiContext(request);
-  try {
-    const { id } = params;
-    
-    // Production mode requires authentication
-    if (process.env.NODE_ENV === 'production' && !ctx.tenantId) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
-    }
-    
-    // Get authenticated user from session
-    const tenantId = ctx.tenantId || ctx.tenantId;
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params;
+  const tenantId = ctx.tenantId;
 
-    // Require tenant ID for data isolation
-    if (!tenantId) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
-    }
+  await rateCardService.deleteEntry(id, tenantId);
 
-    await rateCardService.deleteEntry(id, tenantId);
-
-    return createSuccessResponse(ctx, { message: 'Rate card deleted' });
-  } catch (error: unknown) {
-    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to delete rate card. Please try again.', 400);
-  }
-}
+  return createSuccessResponse(ctx, { message: 'Rate card deleted' });
+});
