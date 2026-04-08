@@ -399,58 +399,46 @@ export default function CopilotDraftPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 px-6 py-3 sticky top-0 z-30">
+      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 px-6 py-2.5 sticky top-0 z-30">
         <div className="max-w-[1600px] mx-auto">
           <PageBreadcrumb />
-          <div className="flex items-center gap-3 mt-2">
-            <div className="p-2 bg-gradient-to-br from-violet-500 to-pink-500 rounded-xl shadow-lg">
-              <HeaderIcon className="w-5 h-5 text-white" />
+
+          {/* Compact title row */}
+          <div className="flex items-center justify-between gap-4 mt-1.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <HeaderIcon className="h-4 w-4 text-violet-600 flex-shrink-0" />
+              <h1 className="text-base font-semibold text-slate-900 truncate">
+                {headerInfo.title}
+              </h1>
+              {headerInfo.badge && (
+                <Badge variant="secondary" className="bg-violet-100 text-violet-700 text-[11px] px-2 py-0 leading-5 flex-shrink-0">
+                  {headerInfo.badge}
+                </Badge>
+              )}
+              {draftId || currentDraftId ? (
+                <span className="text-xs text-slate-400 hidden sm:inline flex-shrink-0">DRAFT</span>
+              ) : null}
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
-                  {headerInfo.title}
-                </h1>
-                {headerInfo.badge && (
-                  <Badge variant="secondary" className="bg-violet-100 text-violet-700 text-xs">
-                    {headerInfo.badge}
-                  </Badge>
-                )}
-              </div>
-              <p className="text-sm text-slate-600">
-                {headerInfo.description}
-              </p>
-              <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-violet-100 bg-violet-50/70 p-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
-                    <BookOpen className="h-4 w-4 text-violet-600" />
-                    Standardized Policy Pack
-                  </div>
-                  <p className="mt-1 text-xs text-slate-600">
-                    {selectedPlaybook
-                      ? `${selectedPlaybook.name}${selectedPlaybook.contractTypes.length > 0 ? ` • ${selectedPlaybook.contractTypes.join(', ')}` : ''}`
-                      : 'No pack selected. Choose one to steer drafting suggestions, risk checks, and editor assistance.'}
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 sm:min-w-[320px] sm:flex-row sm:items-center">
-                  <Select value={playbookSelectValue} onValueChange={handlePlaybookChange}>
-                    <SelectTrigger className="w-full bg-white sm:flex-1">
-                      <SelectValue placeholder={isLoadingPlaybooks ? 'Loading policy packs...' : 'Select a policy pack'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No policy pack</SelectItem>
-                      {availablePlaybooks.map((playbook) => (
-                        <SelectItem key={playbook.id} value={playbook.id}>
-                          {playbook.name}{playbook.isDefault ? ' (Default)' : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline" onClick={() => router.push('/playbooks')}>
-                    Manage Packs
-                  </Button>
-                </div>
-              </div>
+
+            {/* Policy pack inline */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <BookOpen className="h-3.5 w-3.5 text-slate-400 hidden md:block" />
+              <Select value={playbookSelectValue} onValueChange={handlePlaybookChange}>
+                <SelectTrigger className="h-8 w-auto min-w-[160px] max-w-[220px] bg-white text-xs border-slate-200">
+                  <SelectValue placeholder={isLoadingPlaybooks ? 'Loading...' : 'No policy pack'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No policy pack</SelectItem>
+                  {availablePlaybooks.map((playbook) => (
+                    <SelectItem key={playbook.id} value={playbook.id}>
+                      {playbook.name}{playbook.isDefault ? ' (Default)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" className="h-8 text-xs hidden md:inline-flex" onClick={() => router.push('/playbooks')}>
+                Manage Packs
+              </Button>
             </div>
           </div>
         </div>

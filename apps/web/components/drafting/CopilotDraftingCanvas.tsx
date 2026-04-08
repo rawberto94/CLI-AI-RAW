@@ -5,11 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   History, MessageSquare, Wand2, AlertTriangle,
   Lightbulb, Save, Eye, Edit3, Sparkles,
-  GitBranch, Undo2, Redo2, Bold, Italic, Underline, List,
+  GitBranch, Bold, Italic, Underline, List,
   Heading1, Heading2, Quote, X, Send, Clock, Zap, Shield, Scale,
-  FileCheck, RefreshCw, Loader2, Brain, AlertCircle, Menu,
+  RefreshCw, Loader2, Brain, AlertCircle,
   Download, FileDown, CheckCircle2, ArrowRight,
-  BookOpen, Search, Lock, Unlock, Users, ThumbsUp, ThumbsDown,
+  BookOpen, Search, Lock, Unlock, ThumbsUp, ThumbsDown,
   Check, Keyboard,
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -198,25 +198,6 @@ interface AutoCompletion {
   riskLevel?: 'low' | 'medium' | 'high';
 }
 
-interface Comment {
-  id: string;
-  author: string;
-  content: string;
-  timestamp: string;
-  resolved: boolean;
-  position: { paragraph: number; offset: number };
-  replies: Array<{ id: string; author: string; content: string; timestamp: string }>;
-}
-
-interface Version {
-  id: string;
-  version: string;
-  author: string;
-  timestamp: string;
-  changes: number;
-  label?: string;
-}
-
 /** Comment from API */
 interface ApiComment {
   id: string;
@@ -312,11 +293,16 @@ export function CopilotDraftingCanvas({
 }: CopilotDraftingCanvasProps) {
   const { data: session } = useSession();
 
-  // Content state — TipTap manages the DOM; we keep a plain-text mirror for AI APIs
-  const [content, setContent] = useState(initialContent);
-  const [cursorPosition, setCursorPosition] = useState(0);
-  const [selectedText, setSelectedText] = useState('');
-  const debouncedContent = useDebounce(content, 500);
+  // Content state — TipTap manages the DOM; we keep refs for AI API payloads
+  // to avoid re-rendering the entire component on every keystroke/cursor move.
+  const contentRef = useRef(initialContent);
+  const cursorPositionRef = useRef(0);
+  const selectedTextRef = useRef('');
+  // Lightweight state only for the debounce trigger (string length, not full HTML)
+  const [contentVersion, setContentVersion] = useState(0);
+  const debouncedContentVersion = useDebounce(contentVersion, 500);
+  // Expose content length for guards (cheap number comparison, no re-render on text change)
+  const contentLengthRef = useRef(0);
 
   // Copilot state
   const [suggestions, setSuggestions] = useState<CopilotSuggestion[]>([]);
@@ -359,6 +345,7 @@ export function CopilotDraftingCanvas({
 
   // Clause library state
   const [clauseSearch, setClauseSearch] = useState('');
+  const debouncedClauseSearch = useDebounce(clauseSearch, 300);
   const [clauseCategory, setClauseCategory] = useState('all');
   const [clauses, setClauses] = useState<LibraryClause[]>([]);
   const [isLoadingClauses, setIsLoadingClauses] = useState(false);
@@ -426,11 +413,16 @@ export function CopilotDraftingCanvas({
     },
     onUpdate: ({ editor: ed }) => {
       const text = ed.getText();
-      setContent(ed.getHTML());
+      const html = ed.getHTML();
+      contentRef.current = html;
+      contentLengthRef.current = html.length;
+      // Bump version to trigger debounce — no full HTML in state
+      setContentVersion(v => v + 1);
 
       // trigger auto-completions only when user pauses typing at end of a
       // substantial line (not mid-sentence edits or cursor-only moves)
       const { from } = ed.state.selection;
+      cursorPositionRef.current = from;
       const resolvedPos = ed.state.doc.resolve(from);
       const lineEnd = resolvedPos.end();
       const isAtLineEnd = from >= lineEnd - 1; // within 1 char of line end
@@ -463,9 +455,9 @@ export function CopilotDraftingCanvas({
     },
     onSelectionUpdate: ({ editor: ed }) => {
       const { from } = ed.state.selection;
-      setCursorPosition(from);
+      cursorPositionRef.current = from;
       const sel = ed.state.doc.textBetween(ed.state.selection.from, ed.state.selection.to, ' ');
-      setSelectedText(sel);
+      selectedTextRef.current = sel;
       // Dismiss auto-complete when user moves cursor (avoids stale popups)
       if (showCompletionPopup) setShowCompletionPopup(false);
     },
@@ -481,7 +473,8 @@ export function CopilotDraftingCanvas({
   // ============================================================================
 
   const fetchSuggestions = useCallback(async () => {
-    if (!content || content.length < 50) return;
+    const currentContent = contentRef.current;
+    if (!currentContent || currentContent.length < 50) return;
 
     setIsLoadingSuggestions(true);
     try {
@@ -489,9 +482,9 @@ export function CopilotDraftingCanvas({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: content,
-          cursorPosition,
-          selectedText,
+          text: currentContent,
+          cursorPosition: cursorPositionRef.current,
+          selectedText: selectedTextRef.current,
           contractType,
           playbookId,
           mode: 'realtime',
@@ -513,7 +506,7 @@ export function CopilotDraftingCanvas({
     } finally {
       setIsLoadingSuggestions(false);
     }
-  }, [content, cursorPosition, selectedText, contractType, playbookId]);
+  }, [contractType, playbookId]);
 
   const fetchAutoCompletions = useCallback(async (text: string) => {
     if (!text || text.length < 10) {
@@ -545,62 +538,28 @@ export function CopilotDraftingCanvas({
     } catch (error) {
       console.error('Failed to fetch completions:', error);
     }
-  }, [cursorPosition, contractType]);
+  }, [contractType]);
 
-  const fetchRisks = useCallback(async () => {
-    if (!content || content.length < 100) return;
-
-    try {
-      const response = await fetch('/api/copilot/risks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: content,
-          contractType,
-          playbookId,
-        }),
-      });
-
-      if (response.ok) {
-        const json = await response.json();
-        const data = json.data || json;
-        setRisks(data.risks || []);
-      } else {
-        console.warn('Risk analysis non-OK:', response.status);
-      }
-    } catch (error) {
-      console.error('Failed to fetch risks:', error);
-      toast.error('Failed to analyze risks');
-    }
-  }, [content, contractType, playbookId]);
+  // Risks are fetched alongside suggestions in fetchSuggestions — no separate poll needed.
 
   // ============================================================================
   // EFFECTS
   // ============================================================================
 
-  // Fetch suggestions when content changes (debounced)
+  // Fetch suggestions when content changes (debounced via contentVersion)
   useEffect(() => {
-    if (debouncedContent.length > 100) {
+    if (contentLengthRef.current > 100) {
       fetchSuggestions();
     }
-  }, [debouncedContent, fetchSuggestions]);
-
-  // Fetch risks periodically (only when actively editing)
-  useEffect(() => {
-    if (!isEditing) return;
-    const interval = setInterval(() => {
-      if (content.length > 200) {
-        fetchRisks();
-      }
-    }, 30000); // Every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [content, fetchRisks, isEditing]);
+  }, [debouncedContentVersion, fetchSuggestions]);
 
   // Track last saved content to avoid redundant auto-saves
   const lastSavedContentRef = useRef(initialContent);
+  // Lock to prevent concurrent auto-save and manual save
+  const saveLockRef = useRef(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-save: triggered by content changes (debounced 500ms) + periodic fallback
+  // Auto-save: triggered by content changes (debounced via contentVersion)
   useEffect(() => {
     if (!editor) return;
 
@@ -608,6 +567,9 @@ export function CopilotDraftingCanvas({
     if (html === lastSavedContentRef.current) return;
 
     const timer = setTimeout(async () => {
+      // Skip if a manual save is in progress
+      if (saveLockRef.current) return;
+      saveLockRef.current = true;
       // Content changed — save via onSave callback or direct API
       setIsSaving(true);
       try {
@@ -632,11 +594,13 @@ export function CopilotDraftingCanvas({
         console.error('Auto-save failed:', error);
       } finally {
         setIsSaving(false);
+        saveLockRef.current = false;
       }
     }, 5000); // 5s after last debounced content change
 
-    return () => clearTimeout(timer);
-  }, [debouncedContent, editor, onSave, draftId]);
+    autoSaveTimerRef.current = timer;
+    return () => { clearTimeout(timer); autoSaveTimerRef.current = null; };
+  }, [debouncedContentVersion, editor, onSave, draftId]);
 
   // ====================================================================
   // FETCH COMMENTS, VERSIONS, CLAUSES, LOCK INFO from API
@@ -672,7 +636,7 @@ export function CopilotDraftingCanvas({
     setIsLoadingClauses(true);
     try {
       const params = new URLSearchParams();
-      if (clauseSearch) params.set('search', clauseSearch);
+      if (debouncedClauseSearch) params.set('search', debouncedClauseSearch);
       if (clauseCategory && clauseCategory !== 'all') params.set('category', clauseCategory);
       params.set('limit', '30');
 
@@ -686,7 +650,7 @@ export function CopilotDraftingCanvas({
     } finally {
       setIsLoadingClauses(false);
     }
-  }, [clauseSearch, clauseCategory]);
+  }, [debouncedClauseSearch, clauseCategory]);
 
   const fetchDraftMeta = useCallback(async () => {
     if (!draftId) return;
@@ -1078,6 +1042,12 @@ export function CopilotDraftingCanvas({
   const handleSave = useCallback(async () => {
     if (!onSave || !editor) return;
     
+    // Cancel pending auto-save and acquire lock
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+    saveLockRef.current = true;
     setIsSaving(true);
     try {
       const html = editor.getHTML();
@@ -1090,6 +1060,7 @@ export function CopilotDraftingCanvas({
       toast.error('Save failed');
     } finally {
       setIsSaving(false);
+      saveLockRef.current = false;
     }
   }, [editor, onSave]);
 
@@ -2213,110 +2184,98 @@ export function CopilotDraftingCanvas({
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm">
-        <div className="px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-              <div className="flex items-center gap-2">
-                <Brain className="h-6 w-6 text-violet-600 dark:text-violet-400" />
-                <div>
-                  <h1 className="font-semibold text-gray-900 dark:text-slate-100">AI Copilot Editor</h1>
-                  <p className="text-xs text-gray-500 dark:text-slate-400">{contractType} • Real-time AI assistance</p>
-                </div>
-              </div>
-              <div className="h-6 w-px bg-gray-200 dark:bg-slate-600" />
-              <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-slate-400">
+      <div className="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
+        <div className="px-4 py-2">
+          <div className="flex items-center justify-between gap-3">
+            {/* Left: save status + risk badges */}
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-400">
                 {isSaving ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     <span>Saving...</span>
                   </>
                 ) : lastSaved ? (
                   <>
-                    <Clock className="h-4 w-4" />
+                    <Clock className="h-3.5 w-3.5" />
                     <span>Saved {formatTimeSince(lastSaved)}</span>
                   </>
                 ) : (
                   <>
-                    <Clock className="h-4 w-4" />
-                    <span>Not saved yet</span>
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>Not saved</span>
                   </>
                 )}
               </div>
 
-              {/* Risk Summary Badge */}
+              {/* Risk Summary Badges */}
               {(riskSummary.critical > 0 || riskSummary.high > 0) && (
                 <>
-                  <div className="h-6 w-px bg-gray-200 dark:bg-slate-600 hidden sm:block" />
-                  <div className="flex items-center gap-2">
+                  <div className="h-4 w-px bg-gray-200 dark:bg-slate-600" />
+                  <div className="flex items-center gap-1.5">
                     {riskSummary.critical > 0 && (
-                      <span className="flex items-center gap-1 px-2 py-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-full text-xs font-medium">
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-full text-[11px] font-medium">
                         <AlertCircle className="h-3 w-3" />
-                        {riskSummary.critical} Critical
+                        {riskSummary.critical}
                       </span>
                     )}
                     {riskSummary.high > 0 && (
-                      <span className="flex items-center gap-1 px-2 py-1 bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 rounded-full text-xs font-medium">
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 rounded-full text-[11px] font-medium">
                         <AlertTriangle className="h-3 w-3" />
-                        {riskSummary.high} High
+                        {riskSummary.high}
                       </span>
                     )}
                   </div>
                 </>
               )}
-            </div>
 
-            <div className="flex items-center gap-2 sm:gap-3">
               {/* Lock Indicator */}
               {lockInfo.isLocked && (
-                <span className="flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded-full text-xs font-medium">
-                  <Lock className="h-3 w-3" />
-                  <span className="hidden sm:inline">Locked{lockInfo.lockedBy ? ` by ${lockInfo.lockedBy}` : ''}</span>
-                </span>
+                <>
+                  <div className="h-4 w-px bg-gray-200 dark:bg-slate-600" />
+                  <span className="flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                    <Lock className="h-3 w-3" />
+                    <span className="hidden sm:inline">Locked{lockInfo.lockedBy ? ` by ${lockInfo.lockedBy}` : ''}</span>
+                  </span>
+                </>
               )}
 
-              {/* Lock/Unlock Button */}
+              {/* Draft Status Badge */}
+              {draftId && draftStatus !== 'DRAFT' && (
+                <>
+                  <div className="h-4 w-px bg-gray-200 dark:bg-slate-600 hidden sm:block" />
+                  <span className={`hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                    draftStatus === 'FINALIZED' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' :
+                    draftStatus === 'IN_REVIEW' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' :
+                    draftStatus === 'APPROVED' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' :
+                    draftStatus === 'PENDING_APPROVAL' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300' :
+                    'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300'
+                  }`}>
+                    {draftStatus === 'FINALIZED' && <CheckCircle2 className="h-3 w-3" />}
+                    {draftStatus.replace('_', ' ')}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Right: actions */}
+            <div className="flex items-center gap-1.5">
+              {/* Lock/Unlock */}
               {draftId && (
                 <button
                   onClick={() => handleLock(lockInfo.isLocked ? 'unlock' : 'lock')}
                   disabled={isLocking}
-                  className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors ${
-                    lockInfo.isLocked
-                      ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900'
-                      : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600'
-                  }`}
-                  title={lockInfo.isLocked ? 'Unlock document' : 'Lock document for editing'}
+                  className="p-1.5 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                  title={lockInfo.isLocked ? 'Unlock document' : 'Lock document'}
                 >
-                  {isLocking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : lockInfo.isLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                  {isLocking ? <Loader2 className="h-4 w-4 animate-spin" /> : lockInfo.isLocked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                 </button>
-              )}
-
-              {/* Approval Actions */}
-              {draftId && (draftStatus === 'IN_REVIEW' || draftStatus === 'PENDING_APPROVAL') && (
-                <>
-                  <button
-                    onClick={handleApprove}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-xs hover:bg-green-200 dark:hover:bg-green-900 transition-colors"
-                    title="Approve this draft"
-                  >
-                    <ThumbsUp className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Approve</span>
-                  </button>
-                  <button
-                    onClick={() => setShowApprovalModal("reject")}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg text-xs hover:bg-red-200 dark:hover:bg-red-900 transition-colors"
-                    title="Reject this draft"
-                  >
-                    <ThumbsDown className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Reject</span>
-                  </button>
-                </>
               )}
 
               {/* Keyboard Shortcuts Help */}
               <button
                 onClick={() => setShowShortcutHelp((v) => !v)}
-                className="hidden sm:flex items-center p-1.5 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                className="hidden sm:flex p-1.5 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                 title="Keyboard shortcuts (Ctrl+Shift+?)"
               >
                 <Keyboard className="h-4 w-4" />
@@ -2325,65 +2284,49 @@ export function CopilotDraftingCanvas({
               {/* Mobile Sidebar Toggle */}
               <button
                 onClick={() => setShowMobileSidebar(true)}
-                className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 text-sm text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 rounded-lg hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors"
+                className="lg:hidden flex items-center gap-1 px-2 py-1.5 text-xs text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 rounded-lg hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors"
                 aria-label="Open AI Copilot panel"
               >
-                <Brain className="h-4 w-4" />
+                <Brain className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Copilot</span>
               </button>
 
+              <div className="h-5 w-px bg-gray-200 dark:bg-slate-600" />
+
               {/* Mode Toggle */}
-              <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-700 rounded-lg p-1" role="radiogroup" aria-label="Editor mode">
+              <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded-lg p-0.5" role="radiogroup" aria-label="Editor mode">
                 <button
                   onClick={() => setIsEditing(true)}
                   role="radio"
                   aria-checked={isEditing}
-                  aria-label="Switch to edit mode"
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                    isEditing ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-slate-100'
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs transition-colors ${
+                    isEditing ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-500 dark:text-slate-400'
                   }`}
                 >
-                  <Edit3 className="h-4 w-4" />
+                  <Edit3 className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Edit</span>
                 </button>
                 <button
                   onClick={() => setIsEditing(false)}
                   role="radio"
                   aria-checked={!isEditing}
-                  aria-label="Switch to preview mode"
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                    !isEditing ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-slate-100'
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs transition-colors ${
+                    !isEditing ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-500 dark:text-slate-400'
                   }`}
                 >
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Preview</span>
                 </button>
               </div>
 
-              <div className="h-6 w-px bg-gray-200 dark:bg-slate-600 hidden sm:block" />
-
-              {/* Draft Status Badge */}
-              {draftId && (
-                <span className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                  draftStatus === 'FINALIZED' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' :
-                  draftStatus === 'IN_REVIEW' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' :
-                  draftStatus === 'APPROVED' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' :
-                  draftStatus === 'PENDING_APPROVAL' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300' :
-                  'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300'
-                }`}>
-                  {draftStatus === 'FINALIZED' && <CheckCircle2 className="h-3 w-3" />}
-                  {draftStatus.replace('_', ' ')}
-                </span>
-              )}
-
-              {/* Export Menu */}
+              {/* Export */}
               <div className="relative">
                 <button
                   onClick={() => setShowExportMenu(!showExportMenu)}
                   disabled={isExporting}
-                  className="hidden sm:flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                 >
-                  {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                   Export
                 </button>
                 {showExportMenu && (
@@ -2406,61 +2349,72 @@ export function CopilotDraftingCanvas({
                 )}
               </div>
 
-              {/* Actions */}
-              {onLegalReview && (
-                <button
-                  onClick={onLegalReview}
-                  className="hidden sm:flex items-center gap-2 px-3 py-2 border border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-300 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors"
-                >
-                  <FileCheck className="h-4 w-4" />
-                  Legal Review
-                </button>
+              {/* Approval Actions */}
+              {draftId && (draftStatus === 'IN_REVIEW' || draftStatus === 'PENDING_APPROVAL') && (
+                <>
+                  <button
+                    onClick={() => setShowApprovalModal("approve")}
+                    className="flex items-center gap-1 px-2 py-1.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-xs hover:bg-green-200 dark:hover:bg-green-900 transition-colors"
+                    title="Approve this draft"
+                  >
+                    <ThumbsUp className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Approve</span>
+                  </button>
+                  <button
+                    onClick={() => setShowApprovalModal("reject")}
+                    className="flex items-center gap-1 px-2 py-1.5 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg text-xs hover:bg-red-200 dark:hover:bg-red-900 transition-colors"
+                    title="Reject this draft"
+                  >
+                    <ThumbsDown className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Reject</span>
+                  </button>
+                </>
               )}
 
-              {/* Finalization Actions */}
+              {/* Workflow Actions */}
               {draftId && draftStatus === 'DRAFT' && (
                 <button
                   onClick={() => handleStatusChange('IN_REVIEW')}
-                  className="hidden sm:flex items-center gap-2 px-3 py-2 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
                 >
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-3.5 w-3.5" />
                   Submit for Review
                 </button>
               )}
               {draftId && (draftStatus === 'APPROVED' || draftStatus === 'IN_REVIEW') && (
                 <button
                   onClick={handleFinalize}
-                  className="hidden sm:flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                 >
-                  <CheckCircle2 className="h-4 w-4" />
+                  <CheckCircle2 className="h-3.5 w-3.5" />
                   Finalize
                 </button>
               )}
               {draftId && draftStatus === 'FINALIZED' && createdContractId && (
                 <button
                   onClick={() => router.push(`/contracts/${createdContractId}`)}
-                  className="hidden sm:flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                 >
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-3.5 w-3.5" />
                   View Contract
                 </button>
               )}
               {draftId && draftStatus === 'REJECTED' && (
                 <button
                   onClick={handleRevertToDraft}
-                  className="hidden sm:flex items-center gap-2 px-3 py-2 border border-amber-300 dark:border-amber-600 text-amber-700 dark:text-amber-300 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors"
+                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-amber-300 dark:border-amber-600 text-amber-700 dark:text-amber-300 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors"
                 >
-                  <Edit3 className="h-4 w-4" />
-                  Revise &amp; Re-submit
+                  <Edit3 className="h-3.5 w-3.5" />
+                  Revise
                 </button>
               )}
 
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 text-white text-xs font-medium rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50"
               >
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 Save
               </button>
             </div>
@@ -2468,78 +2422,74 @@ export function CopilotDraftingCanvas({
 
           {/* Toolbar */}
           {isEditing && (
-            <div className="mt-3 flex flex-wrap items-center gap-1 pb-2 border-b border-gray-100 dark:border-slate-700" role="toolbar" aria-label="Document formatting toolbar">
-              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-50 dark:bg-slate-700" role="group" aria-label="History controls">
-                <button onClick={handleUndo} disabled={!editor?.can().undo()} className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-30" title="Undo (Ctrl+Z)" aria-label="Undo last action">
-                  <Undo2 className="h-4 w-4 text-gray-600 dark:text-slate-300" />
+            <div className="mt-2 flex items-center gap-0.5 pb-2 border-t border-gray-100 dark:border-slate-700 pt-2" role="toolbar" aria-label="Document formatting toolbar">
+              <div className="flex items-center gap-0.5" role="group" aria-label="Text formatting">
+                <button onClick={() => insertFormatting('bold')} className={`p-1.5 rounded transition-colors ${editor?.isActive('bold') ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Bold" aria-label="Bold">
+                  <Bold className="h-4 w-4" />
                 </button>
-                <button onClick={handleRedo} disabled={!editor?.can().redo()} className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-30" title="Redo (Ctrl+Y)" aria-label="Redo last action">
-                  <Redo2 className="h-4 w-4 text-gray-600 dark:text-slate-300" />
+                <button onClick={() => insertFormatting('italic')} className={`p-1.5 rounded transition-colors ${editor?.isActive('italic') ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Italic" aria-label="Italic">
+                  <Italic className="h-4 w-4" />
                 </button>
-              </div>
-              <div className="h-5 w-px bg-gray-200 dark:bg-slate-600 mx-1" />
-              <div className="flex items-center gap-1" role="group" aria-label="Text formatting">
-                <button onClick={() => insertFormatting('bold')} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors" title="Bold (**text**)" aria-label="Bold text">
-                  <Bold className="h-4 w-4 text-gray-600 dark:text-slate-300" />
-                </button>
-                <button onClick={() => insertFormatting('italic')} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors" title="Italic (*text*)" aria-label="Italic text">
-                  <Italic className="h-4 w-4 text-gray-600 dark:text-slate-300" />
-                </button>
-                <button onClick={() => insertFormatting('underline')} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors" title="Underline (__text__)" aria-label="Underline text">
-                  <Underline className="h-4 w-4 text-gray-600 dark:text-slate-300" />
+                <button onClick={() => insertFormatting('underline')} className={`p-1.5 rounded transition-colors ${editor?.isActive('underline') ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Underline" aria-label="Underline">
+                  <Underline className="h-4 w-4" />
                 </button>
               </div>
-              <div className="h-5 w-px bg-gray-200 dark:bg-slate-600 mx-1" />
-              <div className="flex items-center gap-1" role="group" aria-label="Headings">
-                <button onClick={() => insertFormatting('h1')} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors" title="Heading 1 (# )" aria-label="Insert heading level 1">
-                  <Heading1 className="h-4 w-4 text-gray-600 dark:text-slate-300" />
+              <div className="h-4 w-px bg-gray-200 dark:bg-slate-700 mx-1" />
+              <div className="flex items-center gap-0.5" role="group" aria-label="Headings">
+                <button onClick={() => insertFormatting('h1')} className={`p-1.5 rounded transition-colors ${editor?.isActive('heading', { level: 1 }) ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Heading 1" aria-label="Heading 1">
+                  <Heading1 className="h-4 w-4" />
                 </button>
-                <button onClick={() => insertFormatting('h2')} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors" title="Heading 2 (## )" aria-label="Insert heading level 2">
-                  <Heading2 className="h-4 w-4 text-gray-600 dark:text-slate-300" />
-                </button>
-              </div>
-              <div className="h-5 w-px bg-gray-200 dark:bg-slate-600 mx-1" />
-              <div className="flex items-center gap-1" role="group" aria-label="Block elements">
-                <button onClick={() => insertFormatting('list')} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors" title="List (- item)" aria-label="Insert list">
-                  <List className="h-4 w-4 text-gray-600 dark:text-slate-300" />
-                </button>
-                <button onClick={() => insertFormatting('quote')} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors" title="Quote (> text)" aria-label="Insert quote">
-                  <Quote className="h-4 w-4 text-gray-600 dark:text-slate-300" />
+                <button onClick={() => insertFormatting('h2')} className={`p-1.5 rounded transition-colors ${editor?.isActive('heading', { level: 2 }) ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Heading 2" aria-label="Heading 2">
+                  <Heading2 className="h-4 w-4" />
                 </button>
               </div>
-              <div className="flex-1" />
-              
-              {/* Copilot Status */}
-              <div className="flex items-center gap-2 mr-2">
-                {isLoadingSuggestions && (
-                  <span className="flex items-center gap-1 text-xs text-violet-600 dark:text-violet-400">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    <span className="hidden sm:inline">Analyzing...</span>
-                  </span>
-                )}
-                <span className="text-xs text-gray-500 dark:text-slate-400 hidden sm:inline">
-                  {suggestions.length} suggestions
-                </span>
+              <div className="h-4 w-px bg-gray-200 dark:bg-slate-700 mx-1" />
+              <div className="flex items-center gap-0.5" role="group" aria-label="Block elements">
+                <button onClick={() => insertFormatting('list')} className={`p-1.5 rounded transition-colors ${editor?.isActive('bulletList') ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="List" aria-label="List">
+                  <List className="h-4 w-4" />
+                </button>
+                <button onClick={() => insertFormatting('quote')} className={`p-1.5 rounded transition-colors ${editor?.isActive('blockquote') ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Quote" aria-label="Quote">
+                  <Quote className="h-4 w-4" />
+                </button>
               </div>
 
-              <button
-                onClick={() => setShowAIPanel(!showAIPanel)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-lg hover:from-violet-600 hover:to-purple-600 transition-colors text-sm"
-              >
-                <Wand2 className="h-4 w-4" />
-                AI Assist
-              </button>
+              <div className="flex-1" />
+
+              {/* Copilot status + AI Assist */}
+              <div className="flex items-center gap-2">
+                {isLoadingSuggestions && (
+                  <span className="flex items-center gap-1 text-[11px] text-violet-600 dark:text-violet-400">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  </span>
+                )}
+                {suggestions.length > 0 && (
+                  <span className="text-[11px] text-gray-400 dark:text-slate-500 hidden sm:inline tabular-nums">
+                    {suggestions.length} suggestions
+                  </span>
+                )}
+                <button
+                  onClick={() => setShowAIPanel(!showAIPanel)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${
+                    showAIPanel
+                      ? 'bg-violet-600 text-white'
+                      : 'bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600'
+                  }`}
+                >
+                  <Wand2 className="h-3.5 w-3.5" />
+                  AI Assist
+                </button>
+              </div>
             </div>
           )}
 
-          {/* AI Assist button visible in preview mode */}
+          {/* AI Assist button in preview mode */}
           {!isEditing && (
-            <div className="mt-3 flex justify-end pb-2 border-b border-gray-100 dark:border-slate-700">
+            <div className="mt-2 flex justify-end pb-2 border-t border-gray-100 dark:border-slate-700 pt-2">
               <button
                 onClick={() => setShowAIPanel(!showAIPanel)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-lg hover:from-violet-600 hover:to-purple-600 transition-colors text-sm"
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600 transition-colors"
               >
-                <Wand2 className="h-4 w-4" />
+                <Wand2 className="h-3.5 w-3.5" />
                 AI Assist
               </button>
             </div>
@@ -2591,9 +2541,7 @@ export function CopilotDraftingCanvas({
                             'Strengthen liability cap',
                             'Add GDPR clause',
                             'Improve termination terms',
-                            'Add indemnification',
                             'Clarify IP ownership',
-                            'Add force majeure',
                           ].map((suggestion) => (
                             <button
                               key={suggestion}
@@ -2735,7 +2683,7 @@ export function CopilotDraftingCanvas({
         </AnimatePresence>
       </div>
 
-      {/* ── Rejection Modal ── */}
+      {/* ── Approval / Rejection Modal ── */}
       <AnimatePresence>
         {showApprovalModal && (
           <motion.div
@@ -2754,14 +2702,20 @@ export function CopilotDraftingCanvas({
               className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md p-6"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-2">Reject Draft</h3>
-              <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">Please provide a reason for rejection.</p>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-2">
+                {showApprovalModal === 'approve' ? 'Approve Draft' : 'Reject Draft'}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+                {showApprovalModal === 'approve'
+                  ? 'Are you sure you want to approve this draft? You may add an optional comment.'
+                  : 'Please provide a reason for rejection.'}
+              </p>
               <textarea
                 value={approvalComment}
                 onChange={(e) => setApprovalComment(e.target.value)}
-                placeholder="Reason for rejection..."
+                placeholder={showApprovalModal === 'approve' ? 'Optional approval comment...' : 'Reason for rejection...'}
                 rows={4}
-                className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                className={`w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 ${showApprovalModal === 'approve' ? 'focus:ring-green-500' : 'focus:ring-red-500'} resize-none`}
               />
               <div className="flex justify-end gap-3 mt-4">
                 <button
@@ -2770,13 +2724,22 @@ export function CopilotDraftingCanvas({
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={() => { handleReject(); setShowApprovalModal(null); }}
-                  disabled={!approvalComment.trim()}
-                  className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                >
-                  Reject
-                </button>
+                {showApprovalModal === 'approve' ? (
+                  <button
+                    onClick={() => { handleApprove(); }}
+                    className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Approve
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { handleReject(); }}
+                    disabled={!approvalComment.trim()}
+                    className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    Reject
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>

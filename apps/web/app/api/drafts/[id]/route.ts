@@ -174,19 +174,27 @@ export async function PATCH(
     if (content !== undefined || clauses !== undefined) {
       updateData.version = existing.version + 1;
 
-      // Create a version snapshot
+      // Create a version snapshot (throttled: at most one every 2 minutes)
       try {
-        await prisma.draftVersion.create({
-          data: {
-            draftId: id,
-            tenantId,
-            userId: ctx.userId,
-            version: existing.version, // snapshot of the PREVIOUS version
-            content: typeof existing.content === 'string' ? existing.content : JSON.stringify(existing.content || ''),
-            label: body.versionLabel || 'Auto-save',
-            changeSummary: body.changeSummary || null,
-          },
+        const lastSnapshot = await prisma.draftVersion.findFirst({
+          where: { draftId: id },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true },
         });
+        const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+        if (!lastSnapshot || lastSnapshot.createdAt < twoMinutesAgo) {
+          await prisma.draftVersion.create({
+            data: {
+              draftId: id,
+              tenantId,
+              userId: ctx.userId,
+              version: existing.version, // snapshot of the PREVIOUS version
+              content: typeof existing.content === 'string' ? existing.content : JSON.stringify(existing.content || ''),
+              label: body.versionLabel || 'Auto-save',
+              changeSummary: body.changeSummary || null,
+            },
+          });
+        }
       } catch (_snapshotErr) {
         // Don't fail the update if snapshot creation fails (e.g., duplicate version)
         logger.warn('Version snapshot creation skipped (may be duplicate):', _snapshotErr);

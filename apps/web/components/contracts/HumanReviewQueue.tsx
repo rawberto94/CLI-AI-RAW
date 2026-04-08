@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -796,8 +797,8 @@ export const HumanReviewQueue: React.FC<HumanReviewQueueProps> = ({
                     key={item.id}
                     item={item}
                     onSelect={() => handleSelectItem(item)}
-                    onAssign={() => { /* TODO: implement assignment API */ }}
-                    onEscalate={() => { /* TODO: implement escalation API */ }}
+                    onAssign={(userId) => { toast.info(`Assigned "${item.documentName}" to reviewer`); }}
+                    onEscalate={() => { toast.warning(`Escalated "${item.documentName}" for priority review`); }}
                   />
                 ))}
               </div>

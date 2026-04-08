@@ -932,12 +932,14 @@ interface DIExtractionResult {
   pagesProcessed: number;
 }
 
-// Module-level store for DI handwriting results — set during extractTextFromBuffer,
-// read during signature detection in the main pipeline
-let lastDIHandwritingResult: { hasHandwriting: boolean; handwrittenSpans: string[] } = {
-  hasHandwriting: false,
-  handwrittenSpans: [],
-};
+// Per-invocation DI handwriting results — returned from extractTextFromBuffer
+// instead of using unsafe module-level mutable state.
+interface DIHandwritingEvidence {
+  hasHandwriting: boolean;
+  handwrittenSpans: string[];
+}
+
+const NO_HANDWRITING: DIHandwritingEvidence = { hasHandwriting: false, handwrittenSpans: [] };
 
 async function extractPDFWithDocumentIntelligence(fileContent: Buffer, totalPdfPages?: number): Promise<DIExtractionResult> {
   const empty: DIExtractionResult = { text: '', hasHandwriting: false, handwrittenSpans: [], pagesProcessed: 0 };
@@ -1053,7 +1055,7 @@ async function extractTextFromBuffer(
   fileContent: Buffer,
   fileName: string,
   mimeType: string
-): Promise<string> {
+): Promise<{ text: string; diHandwriting: DIHandwritingEvidence }> {
   const ext = path.extname(fileName).toLowerCase();
 
   // PDF extraction — always prefer Azure Document Intelligence for richer output
@@ -1075,11 +1077,13 @@ async function extractTextFromBuffer(
     // 2. Run DI with total page count — handles free tier 2-page limit via batching
     let diText = '';
     let diResult: DIExtractionResult = { text: '', hasHandwriting: false, handwrittenSpans: [], pagesProcessed: 0 };
+    const diHandwriting: DIHandwritingEvidence = { hasHandwriting: false, handwrittenSpans: [] };
     try {
       diResult = await extractPDFWithDocumentIntelligence(fileContent, pdfParseTotalPages || undefined);
       diText = diResult.text;
-      // Store DI handwriting evidence for later use in signature detection
-      lastDIHandwritingResult = { hasHandwriting: diResult.hasHandwriting, handwrittenSpans: diResult.handwrittenSpans };
+      // Capture DI handwriting evidence for return to caller
+      diHandwriting.hasHandwriting = diResult.hasHandwriting;
+      diHandwriting.handwrittenSpans = diResult.handwrittenSpans;
       if (diText && diText.length > 10) {
         logger.info({ diChars: diText.length, pagesProcessed: diResult.pagesProcessed, hasHandwriting: diResult.hasHandwriting }, 'Azure Document Intelligence extracted text for PDF');
       }
@@ -1089,22 +1093,22 @@ async function extractTextFromBuffer(
 
     // 3. Choose the best result — prefer DI when it returned meaningful content
     if (diText && diText.length > 10) {
-      return diText;
+      return { text: diText, diHandwriting };
     }
     if (pdfParseText.replace(/\s+/g, ' ').trim().length >= 50) {
       logger.info('DI unavailable or insufficient — using pdf-parse text');
-      return pdfParseText;
+      return { text: pdfParseText, diHandwriting };
     }
 
     // 4. Scanned/image PDF with no text from either source — try Vision OCR
     logger.info('No meaningful text from DI or pdf-parse — attempting GPT-4o Vision OCR');
     const ocrText = await extractScannedPDFWithVision(fileContent);
     if (ocrText && ocrText.length > 10) {
-      return ocrText;
+      return { text: ocrText, diHandwriting };
     }
 
     // 5. Last resort — if pdf-parse returned any small amount of text, use it
-    if (pdfParseText.trim().length > 0) return pdfParseText;
+    if (pdfParseText.trim().length > 0) return { text: pdfParseText, diHandwriting };
 
     throw new Error('Failed to extract text from PDF — DI, pdf-parse, and Vision OCR all returned no content');
   }
@@ -1115,7 +1119,7 @@ async function extractTextFromBuffer(
       const mammoth = await import('mammoth');
       const result = await mammoth.extractRawText({ buffer: fileContent });
       logger.info({ chars: result.value.length }, 'DOCX parsed successfully');
-      return result.value;
+      return { text: result.value, diHandwriting: NO_HANDWRITING };
     } catch (error) {
       logger.error({ error }, 'mammoth failed to parse DOCX');
       throw new Error('Failed to extract text from DOCX');
@@ -1124,22 +1128,22 @@ async function extractTextFromBuffer(
 
   // Plain text files
   if (['.txt', '.md', '.csv', '.json', '.xml', '.html', '.htm'].includes(ext)) {
-    return fileContent.toString('utf8');
+    return { text: fileContent.toString('utf8'), diHandwriting: NO_HANDWRITING };
   }
 
   // RTF files - basic extraction
   if (ext === '.rtf') {
     const text = fileContent.toString('utf8');
-    return text
+    return { text: text
       .replace(/\\[a-z]+\d*\s?/gi, '')
       .replace(/[{}]/g, '')
       .replace(/\\\\/g, '\\')
-      .trim();
+      .trim(), diHandwriting: NO_HANDWRITING };
   }
 
   // Image files - return placeholder (would need OCR)
   if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'].includes(ext)) {
-    return '[Image file - text extraction requires OCR processing]';
+    return { text: '[Image file - text extraction requires OCR processing]', diHandwriting: NO_HANDWRITING };
   }
 
   // Unknown format - try as text
@@ -1147,7 +1151,7 @@ async function extractTextFromBuffer(
   const textContent = fileContent.toString('utf8');
   const printableRatio = textContent.replace(/[^\x20-\x7E\n\r\t]/g, '').length / textContent.length;
   if (printableRatio > 0.8) {
-    return textContent;
+    return { text: textContent, diHandwriting: NO_HANDWRITING };
   }
 
   throw new Error(`Unsupported file format: ${ext}`);
@@ -1159,7 +1163,7 @@ async function extractTextFromBuffer(
 async function extractTextFromFile(
   filePath: string,
   mimeType: string
-): Promise<string> {
+): Promise<{ text: string; diHandwriting: DIHandwritingEvidence }> {
   const fileContent = await fs.readFile(filePath);
   return extractTextFromBuffer(fileContent, filePath, mimeType);
 }
@@ -2130,7 +2134,7 @@ export async function generateRealArtifacts(
 
     // Extract text from the file
     logger.info({ actualPath, mimeType, hasBuffer: !!fileContent }, 'Extracting text from file');
-    const rawExtractedText = fileContent 
+    const { text: rawExtractedText, diHandwriting: diHandwritingEvidence } = fileContent 
       ? await extractTextFromBuffer(fileContent, filePath, mimeType)
       : await extractTextFromFile(actualPath, mimeType);
     
@@ -2237,8 +2241,8 @@ export async function generateRealArtifacts(
       }
       // DI handwriting override: if Document Intelligence detected handwritten content
       // in a document that has signature-related context, treat as signed
-      if (lastDIHandwritingResult.hasHandwriting && (!preUpdateData.signatureStatus || preUpdateData.signatureStatus === 'unknown')) {
-        logger.info({ contractId, handwrittenSpans: lastDIHandwritingResult.handwrittenSpans.length }, 'DI detected handwritten content — overriding signature status to signed');
+      if (diHandwritingEvidence.hasHandwriting && (!preUpdateData.signatureStatus || preUpdateData.signatureStatus === 'unknown')) {
+        logger.info({ contractId, handwrittenSpans: diHandwritingEvidence.handwrittenSpans.length }, 'DI detected handwritten content — overriding signature status to signed');
         preUpdateData.signatureStatus = 'signed';
         preUpdateData.signatureRequiredFlag = false;
       }

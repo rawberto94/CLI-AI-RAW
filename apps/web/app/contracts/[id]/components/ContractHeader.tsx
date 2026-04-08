@@ -226,29 +226,6 @@ export const ContractHeader = memo(function ContractHeader({
               </Tooltip>
             </TooltipProvider>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={onDownloadReport}
-                    disabled={isDownloadingReport}
-                    className="shadow-sm bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white transition-all"
-                    aria-label="Download contract report as PDF"
-                  >
-                    {isDownloadingReport ? (
-                      <Loader2 className="h-4 w-4 animate-spin sm:mr-1.5" />
-                    ) : (
-                      <FileDown className="h-4 w-4 sm:mr-1.5" />
-                    )}
-                    <span className="hidden sm:inline">Report</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Download full report (PDF)</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button 
@@ -262,6 +239,15 @@ export const ContractHeader = memo(function ContractHeader({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 shadow-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800">
+                <DropdownMenuItem onClick={onDownloadReport} disabled={isDownloadingReport} className="cursor-pointer font-medium">
+                  {isDownloadingReport ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileDown className="h-4 w-4 mr-2" />
+                  )}
+                  {isDownloadingReport ? 'Generating...' : 'Download Report'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onTogglePdf} className="cursor-pointer">
                   <FileType className="h-4 w-4 mr-2" />
                   {showPdfViewer ? 'Hide PDF' : 'View PDF'}

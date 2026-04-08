@@ -193,27 +193,6 @@ const QUICK_ACTIONS = [
     color: "from-cyan-500 to-blue-500",
     description: "Find contracts quickly",
   },
-  {
-    icon: Shield,
-    label: "Compliance",
-    query: "Show me compliance status",
-    color: "from-emerald-500 to-teal-500",
-    description: "Risk & compliance overview",
-  },
-  {
-    icon: DollarSign,
-    label: "Cost Analysis",
-    query: "Analyze my contract costs",
-    color: "from-rose-500 to-pink-500",
-    description: "Spending breakdown",
-  },
-  {
-    icon: FileText,
-    label: "Categories",
-    query: "Show me all procurement categories",
-    color: "from-slate-500 to-gray-600",
-    description: "Taxonomy & categorization",
-  },
 ];
 
 const KEYBOARD_SHORTCUTS = [
@@ -231,7 +210,6 @@ const EXAMPLE_PROMPTS = [
     prompts: [
       "Summarize all Deloitte contracts from 2024",
       "What's our total contract value by supplier?",
-      "Show me contracts over $100,000",
     ],
   },
   {
@@ -239,9 +217,7 @@ const EXAMPLE_PROMPTS = [
     icon: DollarSign,
     prompts: [
       "Compare Deloitte vs Accenture contracts",
-      "What's the difference between Microsoft and AWS agreements?",
       "Compare payment terms in IBM and Oracle contracts",
-      "Compare termination clauses between Deloitte and KPMG",
     ],
   },
   {
@@ -249,17 +225,7 @@ const EXAMPLE_PROMPTS = [
     icon: Shield,
     prompts: [
       "What contracts expire in the next 30 days?",
-      "Show me contracts with auto-renewal clauses",
       "Which contracts are high risk?",
-    ],
-  },
-  {
-    category: "Search",
-    icon: Search,
-    prompts: [
-      "Find all IT services contracts",
-      "Show me contracts with AWS",
-      "List active MSAs",
     ],
   },
 ];
@@ -268,9 +234,9 @@ const INITIAL_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
   content:
-    "👋 Hey! I'm **ConTigo AI**, your intelligent contract assistant powered by RAG technology.\n\n**What I can do:**\n• 🔍 **Smart Search** - Find contracts by supplier, type, value, or any criteria\n• 📊 **Deep Analysis** - Get summaries, spending insights, and duration patterns\n• 🔄 **Compare Contracts** - Side-by-side supplier comparison with rates and clauses\n• ⚠️ **Risk Alerts** - Track expirations, auto-renewals, and compliance\n\n**Pro Tips:**\n• Try: \"Compare Deloitte vs Accenture contracts\"\n• Ask follow-ups: I remember our conversation context\n• Click suggestions below or type anything!\n\nWhat would you like to explore?",
+    "👋 Hi! I'm **ConTigo AI**, your contract assistant.\n\nI can **search**, **analyze**, **compare** contracts, and flag **risks** or **renewals**.\n\nTry asking a question or click a suggestion below!",
   timestamp: new Date(),
-  suggestions: ["📊 Contract summary", "🔄 Compare suppliers", "⏰ Expiring soon", "💰 Top suppliers"],
+  suggestions: ["📊 Contract summary", "⏰ Expiring soon", "🔄 Compare suppliers"],
   metadata: {
     confidence: 1,
     source: "system",
@@ -435,7 +401,6 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
   const [showExamples, setShowExamples] = useState(false);
   const [conversationContext, setConversationContext] = useState<ConversationContext>({});
   const [isTyping, setIsTyping] = useState(false);
-  const [_streamingContent, setStreamingContent] = useState<string>("");
   
   // Artifact context state - for real-time updates
   const [artifactVersion, setArtifactVersion] = useState(0);
@@ -539,7 +504,6 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
       abortControllerRef.current = null;
       setIsLoading(false);
       setIsTyping(false);
-      setStreamingContent("");
     }
   }, []);
 
@@ -646,18 +610,20 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
     };
     
     // Listen for real-time artifact updates
-    window.addEventListener('realtime-event', ((e: Event) => {
+    const realtimeHandler = ((e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail?.type === 'artifact:updated') {
         handleArtifactUpdate(customEvent);
       }
-    }) as EventListener);
+    }) as EventListener;
+    
+    window.addEventListener('realtime-event', realtimeHandler);
     
     // Also listen for custom artifact update events
     window.addEventListener('artifact-updated', handleArtifactUpdate as EventListener);
     
     return () => {
-      window.removeEventListener('realtime-event', handleArtifactUpdate as EventListener);
+      window.removeEventListener('realtime-event', realtimeHandler);
       window.removeEventListener('artifact-updated', handleArtifactUpdate as EventListener);
     };
   }, [currentContractId]);
@@ -1029,7 +995,6 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
     
     setIsLoading(true);
     setIsTyping(true);
-    setStreamingContent("");
     
     if (retryCount === 0) {
       playSound("send");
@@ -1067,10 +1032,13 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
           signal, // Add abort signal for timeout/cancellation
           body: JSON.stringify({
             message: messageContent,
-            conversationHistory: messages.slice(-10).map(m => ({
-              role: m.role,
-              content: m.content,
-            })),
+            conversationHistory: messages
+              .filter(m => m.role === 'user' || m.role === 'assistant')
+              .slice(-10)
+              .map(m => ({
+                role: m.role,
+                content: m.content,
+              })),
             context: {
               ...conversationContext,
               conversationId: persistence.conversationId || undefined,
@@ -1327,7 +1295,6 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
           throw new Error(streamError);
         }
 
-        setStreamingContent("");
         playSound("receive");
         
         // Server-side persistence handles message saving in the streaming route
@@ -1341,10 +1308,13 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             message: messageContent,
-            conversationHistory: messages.slice(-10).map(m => ({
-              role: m.role,
-              content: m.content,
-            })),
+            conversationHistory: messages
+              .filter(m => m.role === 'user' || m.role === 'assistant')
+              .slice(-10)
+              .map(m => ({
+                role: m.role,
+                content: m.content,
+              })),
             context: {
               ...conversationContext,
               conversationId: persistence.conversationId || undefined,
@@ -1449,16 +1419,8 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
         setMessages((prev) => [...prev, assistantMessage]);
         playSound("receive");
         
-        // Persist assistant message to database
-        if (persistence.isAuthenticated && persistence.conversationId) {
-          persistence.addMessage({
-            role: 'assistant',
-            content: assistantMessage.content,
-            metadata: assistantMessage.metadata as Record<string, unknown>,
-          }).catch(() => {
-            // Continue even if persistence fails
-          });
-        }
+        // Server-side persistence handles message saving in the non-streaming route
+        // (conversationMemoryService.addMessage) — no duplicate client-side write needed.
       }
       
       if (!isOpen) setHasNewMessage(true);
@@ -1893,16 +1855,6 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                           }
                         }}
                       />
-                      
-                      {/* History Panel Toggle */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 rounded-xl text-gray-500 hover:text-violet-600 hover:bg-violet-50"
-                        onClick={() => setShowHistoryPanel(!showHistoryPanel)}
-                      >
-                        <History className="w-5 h-5" />
-                      </Button>
                       
                       {/* Settings dropdown */}
                       <DropdownMenu>
@@ -2600,7 +2552,7 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                         Suggested Queries
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {QUICK_ACTIONS.slice(0, 4).map((action, idx) => (
+                        {QUICK_ACTIONS.map((action, idx) => (
                           <motion.button
                             key={idx}
                             initial={{ opacity: 0, y: 10, scale: 0.95 }}

@@ -13,10 +13,9 @@ import { NextRequest } from 'next/server';
 import { 
   getAICopilotService,
   type CopilotContext,
-  type RealtimeSuggestion as _RealtimeSuggestion 
 } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
-import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
+import { createOpenAIClient, hasAIClientConfig, getDeploymentName } from '@/lib/openai-client';
 import {
   formatPlaybookPromptContext,
   mapPlaybookToCopilotReference,
@@ -66,8 +65,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     // ── ASSIST MODE: AI generates text from user prompt ──
     if (mode === 'assist' && prompt) {
       try {
-        const OpenAI = (await import('openai')).OpenAI;
         const openai = createOpenAIClient();
+        const deploymentModel = getDeploymentName();
 
         // Build context from existing content & RAG
         let ragContext = '';
@@ -114,7 +113,7 @@ ${ragContext}`;
         messages.push({ role: 'user', content: userMessage });
 
         const completion = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+          model: deploymentModel,
           messages,
           temperature: 0.3,
           max_tokens: 2000,
@@ -124,7 +123,7 @@ ${ragContext}`;
 
         return createSuccessResponse(ctx, {
           generatedText,
-          model: 'gpt-4o-mini',
+          model: deploymentModel,
           ragContextUsed: ragContext.length > 0,
           suggestions: [],
         });

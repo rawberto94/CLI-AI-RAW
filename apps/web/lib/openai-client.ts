@@ -69,6 +69,14 @@ export function isAzureOpenAIEnabled(): boolean {
   return config?.provider === 'azure';
 }
 
+/** Returns the active deployment/model name (e.g. 'gpt-4o') for chat completions. */
+export function getDeploymentName(): string {
+  const config = getActiveProviderConfig();
+  return config?.provider === 'azure'
+    ? config.deployment
+    : 'gpt-4o';
+}
+
 export function createOpenAIClient(apiKeyOverride?: string): OpenAI {
   const config = getActiveProviderConfig();
 

@@ -345,7 +345,7 @@ export function ContractForm({
         <Button
           type="button"
           variant="outline"
-          onClick={() => form.reset()}
+          onClick={() => { form.reset(); setSaveError(null); }}
           disabled={!form.formState.isDirty || isSaving}
         >
           Reset

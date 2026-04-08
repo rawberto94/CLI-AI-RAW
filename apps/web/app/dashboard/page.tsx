@@ -343,7 +343,7 @@ export default function DashboardPage() {
                         <div className="text-xs text-muted-foreground">Try contract Q&A, comparisons, and reports.</div>
                         <div className="mt-3">
                           <Button asChild size="sm" variant="outline">
-                            <Link href="/ai/chat">Open chat</Link>
+                            <Link href="/contigo-labs?tab=chat">Open chat</Link>
                           </Button>
                         </div>
                       </div>

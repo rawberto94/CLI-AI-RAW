@@ -372,7 +372,7 @@ export function AgenticDraftDialog({ open, onOpenChange, initialPrompt }: Agenti
                   <div className="text-xs text-gray-500">Risks</div>
                 </div>
                 <div className="py-2 px-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
-                  <div className="text-lg font-semibold text-blue-600">{(result.totalDurationMs / 1000).toFixed(1)}s</div>
+                  <div className="text-lg font-semibold text-blue-600">{result.totalDurationMs ? (result.totalDurationMs / 1000).toFixed(1) : '0'}s</div>
                   <div className="text-xs text-gray-500">Duration</div>
                 </div>
               </div>

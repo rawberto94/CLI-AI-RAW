@@ -68,7 +68,6 @@ function SignInForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [ssoLoading, setSsoLoading] = useState<string | null>(null);
-  const [rememberMe, setRememberMe] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [providers, setProviders] = useState<string[]>(["credentials"]);
 
@@ -374,23 +373,6 @@ function SignInForm() {
                   )}
                 </button>
               </div>
-            </div>
-
-            {/* Remember me */}
-            <div className="flex items-center gap-2">
-              <input
-                id="remember-me"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-slate-300 text-violet-600 focus:ring-violet-500/20"
-              />
-              <Label
-                htmlFor="remember-me"
-                className="text-sm text-slate-500 font-normal cursor-pointer select-none"
-              >
-                Remember me for 30 days
-              </Label>
             </div>
 
             {/* Error */}

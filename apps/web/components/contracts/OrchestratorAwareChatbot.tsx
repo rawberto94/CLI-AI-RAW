@@ -32,7 +32,6 @@ import {
   Maximize2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { sanitizeHtml } from '@/lib/security/sanitize';
 import { useOrchestratorChatbot } from '@/hooks/useOrchestratorChatbot';
 
 interface OrchestratorAwareChatbotProps {
@@ -232,7 +231,7 @@ export function OrchestratorAwareChatbot({
                             'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
                             message.role === 'user'
                               ? 'bg-violet-500'
-                              : 'bg-violet-500'
+                              : 'bg-slate-600'
                           )}
                         >
                           {message.role === 'user' ? (
@@ -248,17 +247,19 @@ export function OrchestratorAwareChatbot({
                             'flex-1 rounded-2xl px-4 py-2.5 text-sm max-w-[85%]',
                             message.role === 'user'
                               ? 'bg-violet-500 text-white ml-auto'
-                              : 'bg-gray-100 text-gray-900'
+                              : 'bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-gray-100'
                           )}
                         >
-                          <div
-                            className="whitespace-pre-wrap break-words"
-                            dangerouslySetInnerHTML={{
-                              __html: sanitizeHtml(message.content)
-                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                .replace(/\n/g, '<br />'),
-                            }}
-                          />
+                          <div className="whitespace-pre-wrap break-words">
+                            {message.content.split(/(\*\*.*?\*\*)/).map((part, i) => {
+                              const boldMatch = part.match(/^\*\*(.*)\*\*$/);
+                              return boldMatch ? (
+                                <strong key={i}>{boldMatch[1]}</strong>
+                              ) : (
+                                <span key={i}>{part}</span>
+                              );
+                            })}
+                          </div>
                           
                           {/* Orchestrator info badge */}
                           {message.orchestratorInfo && (
@@ -312,7 +313,7 @@ export function OrchestratorAwareChatbot({
             </CardContent>
 
             {/* Input */}
-            <div className="p-3 border-t border-gray-200 bg-gray-50">
+            <div className="p-3 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900">
               <div className="flex gap-2">
                 <Textarea
                   ref={inputRef}

@@ -473,13 +473,38 @@ export const authOptions: NextAuthConfig = {
             where: { id: user.id },
             data: { lastLoginAt: new Date() },
           });
+
+          // Create a UserSession record for session management tracking
+          const sessionToken = crypto.randomUUID();
+          await prisma.userSession.create({
+            data: {
+              userId: user.id,
+              token: sessionToken,
+              sessionToken: `ses_${crypto.randomUUID()}`,
+              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
+              ipAddress: null, // Not accessible from the event; headers not passed
+              userAgent: null, // Updated on first API request via middleware
+              deviceType: 'desktop',
+              lastActive: new Date(),
+            },
+          }).catch((err) => {
+            console.warn('[Auth] Failed to create UserSession:', err instanceof Error ? err.message : err);
+          });
+
+          // Prune expired sessions for this user (housekeeping)
+          await prisma.userSession.deleteMany({
+            where: {
+              userId: user.id,
+              expiresAt: { lt: new Date() },
+            },
+          }).catch(() => {});
         }
       } catch {
         // User might not exist yet for SSO (will be created by adapter)
       }
     },
     async signOut() {
-      // User signed out — can add cleanup here
+      // Note: session cleanup happens via expiry pruning on next signIn
     },
     async createUser({ user }) {
       // New user created by adapter (SSO first login)

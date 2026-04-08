@@ -68,11 +68,11 @@ export function SessionManagement() {
   const [revoking, setRevoking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSessions = async () => {
+  const fetchSessions = async (signal?: AbortSignal) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/auth/sessions');
+      const response = await fetch('/api/auth/sessions', { signal });
       
       if (!response.ok) {
         throw new Error('Failed to fetch sessions');
@@ -81,6 +81,7 @@ export function SessionManagement() {
       const data: SessionsData = await response.json();
       setSessions(data.sessions);
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       setError('Unable to load active sessions');
       console.error(err);
     } finally {
@@ -89,7 +90,9 @@ export function SessionManagement() {
   };
 
   useEffect(() => {
-    fetchSessions();
+    const controller = new AbortController();
+    fetchSessions(controller.signal);
+    return () => controller.abort();
   }, []);
 
   const revokeSession = async (sessionId: string) => {

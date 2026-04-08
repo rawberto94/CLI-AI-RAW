@@ -18,16 +18,11 @@ import {
   Upload,
   Activity,
   TrendingUp,
-  Users,
-  DollarSign,
   Calendar,
-  Briefcase,
-  FileBarChart,
   Menu,
   X,
   ChevronDown,
   ChevronRight,
-  Import,
   CreditCard,
   Target,
   Shield,
@@ -38,9 +33,7 @@ import {
   Scale,
   Edit3,
   Bot,
-  Zap,
   FilePlus,
-  PenLine,
   Key,
 } from 'lucide-react'
 import { ApprovalNotificationBell } from '@/components/workflows/ApprovalNotificationBell'
@@ -67,13 +60,39 @@ const navigationItems: NavigationItem[] = [
     name: 'Contracts',
     href: '/contracts',
     icon: FileText,
-    description: 'Manage contracts'
-  },
-  {
-    name: 'Upload',
-    href: '/upload',
-    icon: Upload,
-    description: 'Upload contracts'
+    description: 'Manage contracts',
+    children: [
+      {
+        name: 'All Contracts',
+        href: '/contracts',
+        icon: FileText,
+        description: 'Browse contracts'
+      },
+      {
+        name: 'Upload',
+        href: '/upload',
+        icon: Upload,
+        description: 'Upload contracts'
+      },
+      {
+        name: 'Search',
+        href: '/search',
+        icon: Search,
+        description: 'Find contracts'
+      },
+      {
+        name: 'Templates',
+        href: '/templates',
+        icon: FileText,
+        description: 'Contract templates'
+      },
+      {
+        name: 'Clauses',
+        href: '/clauses',
+        icon: Scale,
+        description: 'Clause library'
+      },
+    ]
   },
   {
     name: 'AI Studio',
@@ -96,6 +115,13 @@ const navigationItems: NavigationItem[] = [
         isPremium: true
       },
       {
+        name: 'New Contract',
+        href: '/drafting/copilot?mode=blank',
+        icon: FilePlus,
+        description: 'Start from scratch',
+        badge: 'NEW'
+      },
+      {
         name: 'AI Chat',
         href: '/ai/chat',
         icon: Sparkles,
@@ -107,52 +133,6 @@ const navigationItems: NavigationItem[] = [
         icon: Activity,
         description: 'Agent activity monitor'
       },
-      {
-        name: 'Agent Transparency',
-        href: '/ai/agents',
-        icon: Activity,
-        description: 'Agent health & learning'
-      }
-    ]
-  },
-  {
-    name: 'Generate',
-    href: '/drafting',
-    icon: Zap,
-    description: 'Create contracts',
-    isPremium: true,
-    badge: 'NEW',
-    children: [
-      {
-        name: 'New Contract',
-        href: '/drafting/copilot?mode=blank',
-        icon: FileText,
-        description: 'Start from scratch'
-      },
-      {
-        name: 'From Template',
-        href: '/generate/templates',
-        icon: FileText,
-        description: 'Use a template'
-      },
-      {
-        name: 'Renewal',
-        href: '/renewals',
-        icon: GitBranch,
-        description: 'Renew existing'
-      },
-      {
-        name: 'Amendment',
-        href: '/drafting/copilot?mode=amendment',
-        icon: GitBranch,
-        description: 'Amend existing'
-      },
-      {
-        name: 'All Drafts',
-        href: '/drafting',
-        icon: FileText,
-        description: 'View all drafts'
-      }
     ]
   },
   {
@@ -202,24 +182,6 @@ const navigationItems: NavigationItem[] = [
     ]
   },
   {
-    name: 'Search',
-    href: '/search',
-    icon: Search,
-    description: 'Find contracts'
-  },
-  {
-    name: 'Templates',
-    href: '/templates',
-    icon: FileText,
-    description: 'Contract templates'
-  },
-  {
-    name: 'Approvals',
-    href: '/approvals',
-    icon: CheckCircle2,
-    description: 'Approval workflows'
-  },
-  {
     name: 'Workflows',
     href: '/workflows',
     icon: GitBranch,
@@ -230,6 +192,12 @@ const navigationItems: NavigationItem[] = [
         href: '/workflows',
         icon: GitBranch,
         description: 'Manage workflows'
+      },
+      {
+        name: 'Approvals',
+        href: '/approvals',
+        icon: CheckCircle2,
+        description: 'Approval workflows'
       },
       {
         name: 'Analytics',
@@ -249,20 +217,21 @@ const navigationItems: NavigationItem[] = [
     name: 'Renewals',
     href: '/renewals',
     icon: Calendar,
-    description: 'Contract renewals',
-    badge: 'NEW'
-  },
-  {
-    name: 'Deadlines',
-    href: '/deadlines',
-    icon: AlertTriangle,
-    description: 'Key dates tracking'
-  },
-  {
-    name: 'Clauses',
-    href: '/clauses',
-    icon: Scale,
-    description: 'Clause library'
+    description: 'Renewals & deadlines',
+    children: [
+      {
+        name: 'Renewals',
+        href: '/renewals',
+        icon: Calendar,
+        description: 'Contract renewals'
+      },
+      {
+        name: 'Deadlines',
+        href: '/deadlines',
+        icon: AlertTriangle,
+        description: 'Key dates tracking'
+      }
+    ]
   },
   {
     name: 'Intelligence',

@@ -35,9 +35,10 @@ export function MultiSelect({
       const t = e.target as Node;
       if (popRef.current?.contains(t) || btnRef.current?.contains(t)) return;
       setOpen(false);
+      setQ("");
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") { setOpen(false); setQ(""); }
     };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
@@ -172,7 +173,7 @@ export function MultiSelect({
             ) : (
               <span className="text-xs text-gray-500">No selection</span>
             )}
-            <button onClick={() => setOpen(false)} className="px-3 py-1.5 text-xs rounded bg-gray-900 text-white dark:bg-white dark:text-gray-900">Done</button>
+            <button onClick={() => { setQ(""); setOpen(false); }} className="px-3 py-1.5 text-xs rounded bg-gray-900 text-white dark:bg-white dark:text-gray-900">Done</button>
           </div>
         </div>
       )}

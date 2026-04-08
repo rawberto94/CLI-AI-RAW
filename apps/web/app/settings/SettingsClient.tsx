@@ -23,8 +23,6 @@ import {
   Users,
   BarChart3,
   Lock,
-  Eye,
-  EyeOff,
   Save,
   RefreshCw,
   Tag,
@@ -74,7 +72,6 @@ interface UserInfo {
 
 export default function SettingsClient() {
   const [activeTab, setActiveTab] = React.useState("general");
-  const [showApiKey, setShowApiKey] = React.useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -447,7 +444,7 @@ export default function SettingsClient() {
               <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-gradient-to-br from-violet-500 to-violet-500 rounded-lg shadow-lg shadow-green-500/25">
+                    <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-lg shadow-blue-500/25">
                       <Globe className="w-5 h-5 text-white" />
                     </div>
                     System Preferences
@@ -538,10 +535,10 @@ export default function SettingsClient() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg border border-violet-200">
+                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 rounded-lg border border-violet-200 dark:border-violet-800">
                     <div>
-                      <h4 className="font-medium text-violet-900">App Tour & Learning Center</h4>
-                      <p className="text-sm text-violet-700">
+                      <h4 className="font-medium text-violet-900 dark:text-violet-200">App Tour & Learning Center</h4>
+                      <p className="text-sm text-violet-700 dark:text-violet-400">
                         Interactive walkthrough and feature guides
                       </p>
                     </div>
@@ -672,47 +669,18 @@ export default function SettingsClient() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-200 dark:border-violet-800">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-700">
                     <div>
-                      <h4 className="font-medium text-violet-800 dark:text-violet-300">
+                      <h4 className="font-medium text-slate-800 dark:text-slate-200">
                         API Tokens
                       </h4>
-                      <p className="text-sm text-violet-600 dark:text-violet-400">
-                        Manage API keys for programmatic access
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        Programmatic access to the Contigo API will be available soon.
                       </p>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled
-                      className="opacity-60"
-                    >
+                    <span className="text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-full">
                       Coming Soon
-                    </Button>
-                  </div>
-
-                  <div>
-                    <label htmlFor="primaryApiKey" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Primary API Key
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        id="primaryApiKey"
-                        type={showApiKey ? "text" : "password"}
-                        value="Contact admin to generate API keys"
-                        disabled
-                        className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-sm"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled
-                        className="opacity-50 cursor-not-allowed"
-                        aria-label="No API key available"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -869,7 +837,7 @@ export default function SettingsClient() {
             <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <div className="p-2 bg-gradient-to-br from-violet-500 to-violet-500 rounded-lg shadow-lg shadow-green-500/25">
+                    <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg shadow-lg shadow-emerald-500/25">
                     <Globe className="w-5 h-5 text-white" />
                   </div>
                   Third-Party Integrations

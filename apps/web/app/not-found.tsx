@@ -56,7 +56,7 @@ export default function NotFound() {
             Go Back
           </Button>
           <Button asChild size="lg" className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
-            <Link href="/">
+            <Link href="/dashboard">
               <Home className="w-4 h-4" aria-hidden="true" />
               Go to Dashboard
             </Link>

@@ -139,7 +139,7 @@ export function ContractCard({
       onHoverEnd={() => setShowActions(false)}
       data-testid="contract-card"
       className={cn(
-        "relative bg-white rounded-lg border border-gray-200 overflow-hidden transition-all duration-200",
+        "relative bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden transition-all duration-200",
         "hover:shadow-lg hover:-translate-y-1",
         "touch-manipulation", // Better touch interactions on mobile
         selected && "ring-2 ring-violet-500 border-violet-500"
@@ -152,7 +152,7 @@ export function ContractCard({
             type="checkbox"
             checked={selected}
             onChange={handleSelect}
-            className="w-4 h-4 text-violet-600 bg-white border-gray-300 rounded focus:ring-violet-500 focus:ring-2 cursor-pointer"
+            className="w-4 h-4 text-violet-600 bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 rounded focus:ring-violet-500 focus:ring-2 cursor-pointer"
             aria-label={`Select ${contract.originalName}`}
           />
         </div>
@@ -167,21 +167,21 @@ export function ContractCard({
         >
           <button
             onClick={(e) => handleAction("view", e)}
-            className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors"
+            className="p-2 bg-white dark:bg-slate-700 rounded-lg shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors"
             aria-label="View contract"
           >
             <Eye className="w-4 h-4 text-gray-600" />
           </button>
           <button
             onClick={(e) => handleAction("download", e)}
-            className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors"
+            className="p-2 bg-white dark:bg-slate-700 rounded-lg shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors"
             aria-label="Download contract"
           >
             <Download className="w-4 h-4 text-gray-600" />
           </button>
           <button
             onClick={(e) => handleAction("delete", e)}
-            className="p-2 bg-white rounded-lg shadow-md hover:bg-red-50 transition-colors"
+            className="p-2 bg-white dark:bg-slate-700 rounded-lg shadow-md hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
             aria-label="Delete contract"
           >
             <Trash2 className="w-4 h-4 text-red-600" />
@@ -197,7 +197,7 @@ export function ContractCard({
               e.stopPropagation();
               setShowActions(!showActions);
             }}
-            className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors"
+            className="p-2 bg-white dark:bg-slate-700 rounded-lg shadow-md hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors"
             aria-label="More actions"
           >
             <MoreVertical className="w-4 h-4 text-gray-600" />
@@ -207,25 +207,25 @@ export function ContractCard({
             <MotionDiv
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="absolute right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[150px]"
+              className="absolute right-0 mt-2 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 py-1 min-w-[150px]"
             >
               <button
                 onClick={(e) => handleAction("view", e)}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"
               >
                 <Eye className="w-4 h-4" />
                 View
               </button>
               <button
                 onClick={(e) => handleAction("download", e)}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"
               >
                 <Download className="w-4 h-4" />
                 Download
               </button>
               <button
                 onClick={(e) => handleAction("delete", e)}
-                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
               >
                 <Trash2 className="w-4 h-4" />
                 Delete
@@ -269,7 +269,7 @@ export function ContractCard({
           </div>
 
           {contract.contractType && (
-            <span className="px-2.5 sm:px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs sm:text-sm font-medium">
+            <span className="px-2.5 sm:px-3 py-1 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-full text-xs sm:text-sm font-medium">
               {contract.contractType.toUpperCase()}
             </span>
           )}
@@ -311,7 +311,7 @@ export function ContractCard({
             
             {/* Progress Bar */}
             {contract.approvalStatus.currentStep && contract.approvalStatus.totalSteps && (
-              <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden mb-2">
+              <div className="h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden mb-2">
                 <div 
                   className={cn(
                     "h-full rounded-full transition-all duration-500",
@@ -393,7 +393,7 @@ export function ContractCard({
                         {contract.riskScore}%
                       </span>
                     </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
                       <div
                         className={cn(
                           "h-full rounded-full transition-all duration-300",
@@ -417,7 +417,7 @@ export function ContractCard({
                         {contract.complianceScore}%
                       </span>
                     </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-violet-500 rounded-full transition-all duration-300"
                         style={{ width: `${contract.complianceScore}%` }}
@@ -434,7 +434,7 @@ export function ContractCard({
                 {contract.tags.map((tag, index) => (
                   <span
                     key={index}
-                    className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs"
+                    className="px-2 py-1 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 rounded text-xs"
                   >
                     {tag}
                   </span>
@@ -444,7 +444,7 @@ export function ContractCard({
 
             {/* Expandable Additional Details */}
             {contract.processedAt && (
-              <div className="pt-3 border-t border-gray-100">
+              <div className="pt-3 border-t border-gray-100 dark:border-slate-700">
                 <button
                   onClick={() => setIsExpanded(!isExpanded)}
                   className="flex items-center justify-between w-full text-sm text-gray-600 hover:text-gray-900 transition-colors"

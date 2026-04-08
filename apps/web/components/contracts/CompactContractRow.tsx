@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -72,12 +72,16 @@ export const CompactContractRow = memo(function CompactContractRow({
   formatDate,
 }: CompactContractRowProps) {
   const router = useRouter();
-  const isExpiringSoon = contract.expirationDate && 
-    new Date(contract.expirationDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-  const isNew = contract.createdAt && 
-    new Date(contract.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-  const isExpired = contract.expirationDate && new Date(contract.expirationDate) < new Date();
+  const { isExpiringSoon, isNew, isExpired } = useMemo(() => {
+    const now = Date.now();
+    return {
+      isExpiringSoon: !!(contract.expirationDate && 
+        new Date(contract.expirationDate).getTime() < now + 30 * 24 * 60 * 60 * 1000),
+      isNew: !!(contract.createdAt && 
+        new Date(contract.createdAt).getTime() > now - 7 * 24 * 60 * 60 * 1000),
+      isExpired: !!(contract.expirationDate && new Date(contract.expirationDate).getTime() < now),
+    };
+  }, [contract.expirationDate, contract.createdAt]);
 
   const handleRowKeyDown = (e: React.KeyboardEvent) => {
     // Only activate when the row itself is focused (not a child control like checkbox/buttons/menus)

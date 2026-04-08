@@ -369,7 +369,8 @@ async function vectorSearch(
     const efSearch = parseInt(process.env.RAG_EF_SEARCH || '100', 10);
     const clampedEfSearch = Math.max(10, Math.min(400, efSearch));
     // SET doesn't accept parameterized values ($1) — use raw unsafe with validated int
-    await prisma.$executeRawUnsafe(`SET hnsw.ef_search = ${clampedEfSearch}`);
+    // Use SET LOCAL so it's transaction-scoped and doesn't leak to other pooled connections
+    await prisma.$executeRawUnsafe(`SET LOCAL hnsw.ef_search = ${clampedEfSearch}`);
     
     // Only JOIN Contract table when date/status filters are used.
     // tenantId and chunkType filters hit denormalized ContractEmbedding columns directly.

@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "rootDir": ".",
     "outDir": "./dist",
     "noEmit": false,
     "composite": false,
@@ -10,7 +11,6 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "baseUrl": ".",
     "paths": {
       "utils": ["../utils/src"],
       "utils/*": ["../utils/src/*"],

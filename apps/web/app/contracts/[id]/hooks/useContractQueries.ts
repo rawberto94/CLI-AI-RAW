@@ -347,12 +347,10 @@ export function useAIExtraction(id: string) {
       })
       if (!response.ok) throw new Error('AI extraction failed')
       toast.success('AI extraction started. This may take a few moments...')
-      // Wait for processing to start before invalidating
-      await new Promise(resolve => setTimeout(resolve, 3000))
     },
     onSuccess: () => {
+      // Invalidate immediately — contract detail page has its own processing poller
       queryClient.invalidateQueries({ queryKey: contractKeys.detail(id) })
-      toast.info('Refreshing contract status...')
     },
     onError: () => {
       toast.error('Failed to start AI extraction.')

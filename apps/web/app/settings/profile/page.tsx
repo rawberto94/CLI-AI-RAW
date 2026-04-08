@@ -34,7 +34,6 @@ import {
   Lock,
   Shield,
   Key,
-  Camera,
   Save,
   CheckCircle2,
   AlertCircle,
@@ -43,6 +42,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { SessionManagement } from "@/components/security/session-management";
+import { PersonalActivityFeed } from "@/components/security/personal-activity-feed";
 
 
 
@@ -154,6 +155,7 @@ export default function ProfileSettingsPage() {
       language: user.language,
       bio: user.bio,
       twoFactorEnabled: user.twoFactorEnabled,
+      emailPreferences: emailPrefs,
     });
     
     setIsSaving(false);
@@ -282,15 +284,15 @@ export default function ProfileSettingsPage() {
       <main className="max-w-4xl mx-auto px-4 py-6">
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList className="p-1 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 rounded-xl">
-            <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 transition-all duration-300">Profile</TabsTrigger>
-            <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 transition-all duration-300">Security</TabsTrigger>
-            <TabsTrigger value="preferences" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 transition-all duration-300">Preferences</TabsTrigger>
+            <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-300 data-[state=active]:shadow-sm transition-all duration-200">Profile</TabsTrigger>
+            <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-300 data-[state=active]:shadow-sm transition-all duration-200">Security</TabsTrigger>
+            <TabsTrigger value="preferences" className="rounded-lg data-[state=active]:bg-white data-[state=active]:dark:bg-slate-700 data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-300 data-[state=active]:shadow-sm transition-all duration-200">Preferences</TabsTrigger>
           </TabsList>
 
           {/* Profile Tab */}
           <TabsContent value="profile" className="space-y-6">
             {/* Avatar Section */}
-            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
+            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-400 to-purple-600 text-white shadow-lg shadow-violet-500/30">
@@ -313,21 +315,9 @@ export default function ProfileSettingsPage() {
                         {user.initials || user.name.split(" ").map((n) => n[0]).join("")}
                       </AvatarFallback>
                     </Avatar>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0 opacity-50 cursor-not-allowed"
-                      disabled
-                      title="Coming soon"
-                    >
-                      <Camera className="h-4 w-4" />
-                    </Button>
                   </div>
                   <div>
-                    <Button variant="outline" size="sm" className="mb-2" disabled>
-                      Upload new photo
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                       Photo upload coming soon
                     </p>
                   </div>
@@ -336,7 +326,7 @@ export default function ProfileSettingsPage() {
             </Card>
 
             {/* Basic Info */}
-            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
+            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-400 to-violet-600 text-white shadow-lg shadow-violet-500/30">
@@ -447,7 +437,7 @@ export default function ProfileSettingsPage() {
 
           {/* Security Tab */}
           <TabsContent value="security" className="space-y-6">
-            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
+            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-500/30">
@@ -543,7 +533,7 @@ export default function ProfileSettingsPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
+            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-400 to-purple-600 text-white shadow-lg shadow-violet-500/30">
@@ -592,26 +582,39 @@ export default function ProfileSettingsPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
+            {/* Active Sessions — real device tracking */}
+            <SessionManagement />
+
+            {/* Recent Activity Feed */}
+            <PersonalActivityFeed />
+
+            {/* Account Details */}
+            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-gradient-to-br from-slate-400 to-slate-600 text-white shadow-lg shadow-slate-500/30">
-                    <Key className="h-5 w-5" />
+                    <User className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle>Session Information</CardTitle>
+                    <CardTitle>Account Details</CardTitle>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Last login</span>
+                    <span className="text-muted-foreground">Last sign-in</span>
                     <span>{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Account created</span>
-                    <span>{new Date(user.createdAt).toLocaleDateString()}</span>
+                    <span>{new Date(user.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Two-factor auth</span>
+                    <span className={user.twoFactorEnabled ? 'text-green-600 dark:text-green-400 font-medium' : 'text-slate-500'}>
+                      {user.twoFactorEnabled ? 'Enabled' : 'Disabled'}
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -620,7 +623,7 @@ export default function ProfileSettingsPage() {
 
           {/* Preferences Tab */}
           <TabsContent value="preferences" className="space-y-6">
-            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
+            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-400 to-purple-600 text-white shadow-lg shadow-violet-500/30">
@@ -681,7 +684,7 @@ export default function ProfileSettingsPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
+            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl bg-gradient-to-br from-rose-400 to-pink-600 text-white shadow-lg shadow-rose-500/30">

@@ -27,8 +27,6 @@
     "noCheck": false,
     "types": ["react", "react-dom"],
     "plugins": [{ "name": "next" }],
-    "ignoreDeprecations": "5.0",
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
       "@/apps/*": ["../../apps/*"],

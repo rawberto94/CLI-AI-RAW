@@ -88,27 +88,56 @@ export default function UploadPage() {
   const [isMounted, setIsMounted] = useState(false)
   const [shouldAutoStart, setShouldAutoStart] = useState(false)
 
-  // Clear stale HMR state on mount
+  // Clear stale HMR state on mount + cleanup on unmount
   useEffect(() => {
     setFiles([])
     setIsUploading(false)
     setIsMounted(true)
-    if (typeof window !== 'undefined') {
-      const keysToRemove: string[] = []
-      for (let i = 0; i < sessionStorage.length; i++) {
-        const key = sessionStorage.key(i)
-        if (key && (key.startsWith('artifact-stream-') || key.startsWith('artifact-complete-') || key.startsWith('artifact-notfound-') || key.startsWith('valid-contract-'))) {
-          keysToRemove.push(key)
+    const cleanupSessionKeys = () => {
+      if (typeof window !== 'undefined') {
+        const keysToRemove: string[] = []
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i)
+          if (key && (key.startsWith('artifact-stream-') || key.startsWith('artifact-complete-') || key.startsWith('artifact-notfound-') || key.startsWith('valid-contract-'))) {
+            keysToRemove.push(key)
+          }
         }
+        keysToRemove.forEach(key => sessionStorage.removeItem(key))
       }
-      keysToRemove.forEach(key => sessionStorage.removeItem(key))
     }
+    cleanupSessionKeys()
+    return () => cleanupSessionKeys()
   }, [])
 
   // ── File callbacks ──────────────────────────────────────────────────────
 
+  const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100 MB
+  const ACCEPTED_TYPES = new Set([
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/plain', 'text/csv', 'text/markdown',
+    'application/json', 'application/xml', 'text/xml',
+    'application/rtf',
+  ])
+  const ACCEPTED_EXTENSIONS = new Set(['.pdf', '.docx', '.txt', '.md', '.csv', '.json', '.xml', '.rtf', '.html', '.htm'])
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newFiles: UploadFile[] = acceptedFiles.map(file => ({
+    const validFiles: File[] = []
+    for (const file of acceptedFiles) {
+      const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase()
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`${file.name} exceeds the 100 MB size limit`)
+        continue
+      }
+      if (!ACCEPTED_TYPES.has(file.type) && !ACCEPTED_EXTENSIONS.has(ext)) {
+        toast.error(`${file.name}: unsupported file type. Use PDF, DOCX, TXT, CSV, or other text formats.`)
+        continue
+      }
+      validFiles.push(file)
+    }
+    if (validFiles.length === 0) return
+
+    const newFiles: UploadFile[] = validFiles.map(file => ({
       id: crypto.randomUUID(),
       file,
       status: 'pending',
@@ -378,9 +407,12 @@ export default function UploadPage() {
   // ── Batch completion notification ───────────────────────────────────────
   const batchCompleteRef = useRef(false)
   useEffect(() => {
-    if (files.length === 0 || processingCount > 0 || pendingCount > 0) {
-      // Reset when a new batch starts
-      if (processingCount > 0 || pendingCount > 0) batchCompleteRef.current = false
+    if (files.length === 0) {
+      batchCompleteRef.current = false
+      return
+    }
+    if (processingCount > 0 || pendingCount > 0) {
+      batchCompleteRef.current = false
       return
     }
     // All files settled (completed or error)

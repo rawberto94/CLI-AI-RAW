@@ -40,6 +40,14 @@ export function ContractSearch({
   const [showDropdown, setShowDropdown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Cleanup blur timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+    };
+  }, []);
 
   // Handle click outside to close dropdown
   const handleClickOutside = useCallback(() => {
@@ -93,7 +101,7 @@ export function ContractSearch({
   const handleBlur = () => {
     setIsFocused(false);
     // Delay to allow click on dropdown items
-    setTimeout(() => {
+    blurTimeoutRef.current = setTimeout(() => {
       if (!dropdownRef.current?.contains(document.activeElement)) {
         setShowDropdown(false);
       }
