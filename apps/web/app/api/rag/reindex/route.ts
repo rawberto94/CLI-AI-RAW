@@ -13,6 +13,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { processContractWithSemanticChunking } from '@/lib/rag/advanced-rag.service';
 import { Prisma } from '@prisma/client';
+import { logger } from '@/lib/logger';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { aiArtifactGeneratorService } from 'data-orchestration/services';
 
@@ -140,7 +141,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           failed++;
         }
       } catch (error) {
-        console.error(`[RAG/Reindex] Failed contract ${contract.id}:`, error);
+        logger.error(`[RAG/Reindex] Failed contract ${contract.id}:`, error);
         results.push({
           contractId: contract.id,
           status: 'error',

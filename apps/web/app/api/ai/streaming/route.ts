@@ -12,7 +12,8 @@ async function getStreamingService() {
     const services = await import('data-orchestration/services');
     return (services as any).extractionStreamingService;
   } catch (err) {
-    console.error('[ai/streaming] Failed to load extraction streaming service:', err instanceof Error ? err.message : err);
+    const { logger: log } = await import('@/lib/logger');
+    log.error('[ai/streaming] Failed to load extraction streaming service:', err instanceof Error ? err.message : err);
     return null;
   }
 }

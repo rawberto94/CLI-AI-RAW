@@ -10,6 +10,7 @@ import { createOpenAIClient, getOpenAIApiKey, hasAIClientConfig } from '@/lib/op
 import { prisma } from '@/lib/prisma';
 import { analyticalIntelligenceService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
@@ -60,6 +61,9 @@ interface Obligation {
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
+
+  const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/ai/analyze', AI_RATE_LIMITS.standard);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
   try {
     const body = await request.json();

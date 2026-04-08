@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -305,7 +306,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       },
     });
   } catch (error: unknown) {
-    console.error('[Ecosystem] Data fetch failed:', error);
+    logger.error('[Ecosystem] Data fetch failed:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Ecosystem data fetch failed', 500);
   }
 });

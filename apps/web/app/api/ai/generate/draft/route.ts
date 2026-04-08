@@ -19,6 +19,7 @@ import {
   type AuthenticatedApiContext,
 } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 interface DraftRequest {
   templateId?: string;
@@ -31,7 +32,10 @@ interface DraftRequest {
 }
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
-  const { tenantId } = ctx;
+  const { tenantId, userId } = ctx;
+
+  const rl = checkRateLimit(tenantId, userId, '/api/ai/generate/draft', AI_RATE_LIMITS.standard);
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
   if (!hasAIClientConfig()) {
     return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE',
