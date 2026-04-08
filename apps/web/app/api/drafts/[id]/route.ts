@@ -107,6 +107,14 @@ export async function PATCH(
       return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Draft is locked by another user', 423);
     }
 
+    // Only the draft creator or admin/owner/manager can edit
+    const EDIT_ROLES = ['admin', 'owner', 'manager'];
+    const isCreator = existing.createdBy === ctx.userId;
+    const hasElevatedRole = ctx.userRole && EDIT_ROLES.includes(ctx.userRole);
+    if (!isCreator && !hasElevatedRole) {
+      return createErrorResponse(ctx, 'FORBIDDEN', 'You do not have permission to edit this draft', 403);
+    }
+
     const {
       title,
       content,
@@ -266,6 +274,14 @@ export async function DELETE(
     // Don't allow deleting finalized drafts
     if (existing.status === 'FINALIZED') {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Cannot delete finalized drafts', 400);
+    }
+
+    // Only the draft creator or admin/owner/manager can delete
+    const DELETE_ROLES = ['admin', 'owner', 'manager'];
+    const isCreator = existing.createdBy === ctx.userId;
+    const hasElevatedRole = ctx.userRole && DELETE_ROLES.includes(ctx.userRole);
+    if (!isCreator && !hasElevatedRole) {
+      return createErrorResponse(ctx, 'FORBIDDEN', 'You do not have permission to delete this draft', 403);
     }
 
     await prisma.contractDraft.delete({

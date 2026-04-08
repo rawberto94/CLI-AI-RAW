@@ -53,6 +53,15 @@ function escapeHtml(text: string): string {
     .replaceAll("'", '&#39;');
 }
 
+/** Extract CSRF token from cookie for mutating API calls */
+function getCsrfHeaders(): Record<string, string> {
+  const csrfCookie = document.cookie.split('; ').find(c => c.startsWith('csrf_token='));
+  const csrfToken = csrfCookie?.split('=').slice(1).join('=') || '';
+  return csrfToken
+    ? { 'x-csrf-token': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }
+    : { 'X-Requested-With': 'XMLHttpRequest' };
+}
+
 function textToHtml(text: string): string {
   return text
     .split(/\n{2,}/)
@@ -513,7 +522,7 @@ export function CopilotDraftingCanvas({
     try {
       const response = await fetch('/api/copilot', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({
           text: currentContent,
           cursorPosition: cursorPositionRef.current,
@@ -551,7 +560,7 @@ export function CopilotDraftingCanvas({
     try {
       const response = await fetch('/api/copilot/complete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({
           text,
           cursorPosition: cursorPositionRef.current,
@@ -610,14 +619,11 @@ export function CopilotDraftingCanvas({
         if (onSave) {
           await onSave(html);
         } else if (draftId) {
-          const csrfCookie = document.cookie.split('; ').find(c => c.startsWith('csrf_token='));
-          const csrfToken = csrfCookie?.split('=').slice(1).join('=') || '';
           await fetch(`/api/drafts/${draftId}`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest',
-              ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+              ...getCsrfHeaders(),
             },
             body: JSON.stringify({ content: html }),
           });
@@ -742,7 +748,7 @@ export function CopilotDraftingCanvas({
     try {
       const res = await fetch(`/api/drafts/${draftId}/comments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({ content: newComment.trim() }),
       });
       if (res.ok) {
@@ -758,7 +764,7 @@ export function CopilotDraftingCanvas({
     try {
       const res = await fetch(`/api/drafts/${draftId}/comments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({ content: replyContent.trim(), parentId }),
       });
       if (res.ok) {
@@ -774,7 +780,7 @@ export function CopilotDraftingCanvas({
     try {
       await fetch(`/api/drafts/${draftId}/comments/${commentId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({ resolved }),
       });
       fetchComments();
@@ -784,7 +790,7 @@ export function CopilotDraftingCanvas({
   const handleDeleteComment = useCallback(async (commentId: string) => {
     if (!draftId) return;
     try {
-      await fetch(`/api/drafts/${draftId}/comments/${commentId}`, { method: 'DELETE' });
+      await fetch(`/api/drafts/${draftId}/comments/${commentId}`, { method: 'DELETE', headers: getCsrfHeaders() });
       fetchComments();
       toast.success('Comment deleted');
     } catch { toast.error('Failed to delete comment'); }
@@ -854,7 +860,7 @@ export function CopilotDraftingCanvas({
     try {
       const res = await fetch(`/api/drafts/${draftId}/lock`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({ action }),
       });
       if (res.ok) {
@@ -877,7 +883,7 @@ export function CopilotDraftingCanvas({
       try {
         const res = await fetch(`/api/drafts/${draftId}/lock`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
           body: JSON.stringify({ action: 'lock' }),
         });
         if (res.ok) {
@@ -904,7 +910,7 @@ export function CopilotDraftingCanvas({
     try {
       const res = await fetch(`/api/drafts/${draftId}/approve`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({ comment: approvalComment }),
       });
       if (res.ok) {
@@ -928,7 +934,7 @@ export function CopilotDraftingCanvas({
     try {
       const res = await fetch(`/api/drafts/${draftId}/reject`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({ reason: approvalComment }),
       });
       if (res.ok) {
@@ -1083,14 +1089,11 @@ export function CopilotDraftingCanvas({
       if (onSave) {
         await onSave(html);
       } else if (draftId) {
-        const csrfCookie = document.cookie.split('; ').find(c => c.startsWith('csrf_token='));
-        const csrfToken = csrfCookie?.split('=').slice(1).join('=') || '';
         const res = await fetch(`/api/drafts/${draftId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+            ...getCsrfHeaders(),
           },
           body: JSON.stringify({ content: html }),
         });
@@ -1210,7 +1213,7 @@ export function CopilotDraftingCanvas({
     try {
       const response = await fetch(`/api/drafts/${draftId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({ status: newStatus }),
       });
 
@@ -1230,7 +1233,7 @@ export function CopilotDraftingCanvas({
     try {
       const response = await fetch(`/api/drafts/${draftId}/finalize`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
       });
 
       if (!response.ok) {
@@ -1264,7 +1267,7 @@ export function CopilotDraftingCanvas({
     try {
       const response = await fetch(`/api/drafts/${draftId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
         body: JSON.stringify({ status: 'DRAFT' }),
       });
       if (!response.ok) throw new Error('Failed to revert to draft');
@@ -1371,9 +1374,6 @@ export function CopilotDraftingCanvas({
       const controller = new AbortController();
       aiChatAbortRef.current = controller;
 
-      const csrfCookie = document.cookie.split('; ').find(c => c.startsWith('csrf_token='));
-      const csrfToken = csrfCookie?.split('=').slice(1).join('=') || '';
-
       const selectedText = editor?.state?.selection ? 
         editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to, ' ') : '';
 
@@ -1397,8 +1397,7 @@ export function CopilotDraftingCanvas({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+          ...getCsrfHeaders(),
         },
         body: JSON.stringify({
           message: trimmedMessage,

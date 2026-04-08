@@ -614,6 +614,9 @@ export default auth(async (req) => {
         if (req.auth.user?.id) {
           requestHeaders.set("x-user-id", req.auth.user.id);
         }
+        if (req.auth.user?.role) {
+          requestHeaders.set("x-user-role", req.auth.user.role);
+        }
         const response = NextResponse.next({
           request: { headers: requestHeaders },
         });
@@ -663,6 +666,9 @@ export default auth(async (req) => {
     }
     if (req.auth.user?.id) {
       requestHeaders.set("x-user-id", req.auth.user.id);
+    }
+    if (req.auth.user?.role) {
+      requestHeaders.set("x-user-role", req.auth.user.role);
     }
 
     const response = NextResponse.next({

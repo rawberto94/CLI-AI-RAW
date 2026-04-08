@@ -56,6 +56,17 @@ export async function POST(
       );
     }
 
+    // Only admin, manager, or owner roles can approve drafts
+    const APPROVAL_ROLES = ['admin', 'owner', 'manager'];
+    if (ctx.userRole && !APPROVAL_ROLES.includes(ctx.userRole)) {
+      return createErrorResponse(
+        ctx,
+        'FORBIDDEN',
+        'Insufficient permissions. Only admins, managers, or owners can approve drafts.',
+        403,
+      );
+    }
+
     // Authors cannot approve their own drafts
     if (draft.createdBy === ctx.userId) {
       return createErrorResponse(
