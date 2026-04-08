@@ -31,23 +31,15 @@ interface DiffSegment {
   text: string;
 }
 
-/** Simple word-level diff */
-function diffWords(oldText: string, newText: string): DiffSegment[] {
-  const stripHtml = (s: string) => s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-  const oldWords = stripHtml(oldText).split(' ').filter(Boolean);
-  const newWords = stripHtml(newText).split(' ').filter(Boolean);
+const STRIP_HTML = (s: string) => s.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 
-  // LCS-based diff (optimized for reasonable sizes)
+/** LCS word-level diff for small arrays (safe up to ~100K cells) */
+function lcsDiff(oldWords: string[], newWords: string[]): DiffSegment[] {
   const m = oldWords.length;
   const n = newWords.length;
 
-  // For very large documents, fall back to a simpler approach
-  if (m * n > 500_000) {
-    return simpleDiff(oldWords, newWords);
-  }
-
-  // Build LCS table
-  const dp = Array.from({ length: m + 1 }, () => new Uint16Array(n + 1));
+  // Use Uint32Array to avoid overflow (Uint16Array caps at 65535)
+  const dp = Array.from({ length: m + 1 }, () => new Uint32Array(n + 1));
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       dp[i][j] = oldWords[i - 1] === newWords[j - 1]
@@ -57,9 +49,8 @@ function diffWords(oldText: string, newText: string): DiffSegment[] {
   }
 
   // Trace back
-  const segments: DiffSegment[] = [];
-  let i = m, j = n;
   const stack: DiffSegment[] = [];
+  let i = m, j = n;
 
   while (i > 0 || j > 0) {
     if (i > 0 && j > 0 && oldWords[i - 1] === newWords[j - 1]) {
@@ -76,6 +67,7 @@ function diffWords(oldText: string, newText: string): DiffSegment[] {
 
   // Merge consecutive same-type segments
   stack.reverse();
+  const segments: DiffSegment[] = [];
   for (const seg of stack) {
     if (segments.length > 0 && segments[segments.length - 1].type === seg.type) {
       segments[segments.length - 1].text += ' ' + seg.text;
@@ -83,15 +75,80 @@ function diffWords(oldText: string, newText: string): DiffSegment[] {
       segments.push({ ...seg });
     }
   }
-
   return segments;
 }
 
-function simpleDiff(oldWords: string[], newWords: string[]): DiffSegment[] {
-  const segments: DiffSegment[] = [];
-  if (oldWords.length > 0) segments.push({ type: 'removed', text: oldWords.join(' ') });
-  if (newWords.length > 0) segments.push({ type: 'added', text: newWords.join(' ') });
-  return segments;
+/**
+ * Chunked diff: split into lines first, identify changed line-ranges via LCS,
+ * then run word-level diff only within those ranges. This keeps memory bounded
+ * even for very large documents.
+ */
+function chunkedDiff(oldWords: string[], newWords: string[]): DiffSegment[] {
+  // Split into ~50-word chunks to create "lines"
+  const CHUNK = 50;
+  const toChunks = (words: string[]) => {
+    const chunks: string[] = [];
+    for (let i = 0; i < words.length; i += CHUNK) {
+      chunks.push(words.slice(i, i + CHUNK).join(' '));
+    }
+    return chunks;
+  };
+  const oldChunks = toChunks(oldWords);
+  const newChunks = toChunks(newWords);
+
+  // Line-level LCS
+  const lineSegments = lcsDiff(oldChunks, newChunks);
+
+  // For "same" segments just pass through; for changed segments do word-level diff
+  const result: DiffSegment[] = [];
+  let pendingRemoved = '';
+  let pendingAdded = '';
+
+  const flushPending = () => {
+    if (!pendingRemoved && !pendingAdded) return;
+    const rWords = pendingRemoved ? pendingRemoved.split(' ').filter(Boolean) : [];
+    const aWords = pendingAdded ? pendingAdded.split(' ').filter(Boolean) : [];
+    if (rWords.length * aWords.length <= 100_000) {
+      result.push(...lcsDiff(rWords, aWords));
+    } else {
+      // Still too large — just show as removed+added blocks
+      if (rWords.length > 0) result.push({ type: 'removed', text: rWords.join(' ') });
+      if (aWords.length > 0) result.push({ type: 'added', text: aWords.join(' ') });
+    }
+    pendingRemoved = '';
+    pendingAdded = '';
+  };
+
+  for (const seg of lineSegments) {
+    if (seg.type === 'same') {
+      flushPending();
+      result.push(seg);
+    } else if (seg.type === 'removed') {
+      pendingRemoved += (pendingRemoved ? ' ' : '') + seg.text;
+    } else {
+      pendingAdded += (pendingAdded ? ' ' : '') + seg.text;
+    }
+  }
+  flushPending();
+
+  return result;
+}
+
+/** Simple word-level diff — routes to LCS or chunked strategy based on size */
+function diffWords(oldText: string, newText: string): DiffSegment[] {
+  const oldWords = STRIP_HTML(oldText).split(' ').filter(Boolean);
+  const newWords = STRIP_HTML(newText).split(' ').filter(Boolean);
+
+  const m = oldWords.length;
+  const n = newWords.length;
+
+  // Direct LCS for small docs (≤100K cells ≈ ~316 × 316 words)
+  if (m * n <= 100_000) {
+    return lcsDiff(oldWords, newWords);
+  }
+
+  // Chunked strategy for larger docs — keeps memory bounded
+  return chunkedDiff(oldWords, newWords);
 }
 
 function DiffSegmentView({ segment }: { segment: DiffSegment }) {

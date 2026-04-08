@@ -314,7 +314,19 @@ export function CopilotDraftingCanvas({
   const [completionPopupPos, setCompletionPopupPos] = useState<{ top: number; left: number }>({ top: 80, left: 32 });
 
   // UI state
-  const [activeTab, setActiveTab] = useState<'copilot' | 'comments' | 'versions' | 'clauses' | 'ai-chat'>('copilot');
+  const [activeTab, setActiveTabRaw] = useState<'copilot' | 'comments' | 'versions' | 'clauses' | 'ai-chat'>(() => {
+    if (typeof window === 'undefined') return 'copilot';
+    const saved = localStorage.getItem('drafting-sidebar-tab');
+    if (saved === 'copilot' || saved === 'comments' || saved === 'versions' || saved === 'clauses' || saved === 'ai-chat') return saved;
+    return 'copilot';
+  });
+  const setActiveTab = useCallback((tab: typeof activeTab | ((prev: typeof activeTab) => typeof activeTab)) => {
+    setActiveTabRaw(prev => {
+      const next = typeof tab === 'function' ? tab(prev) : tab;
+      try { localStorage.setItem('drafting-sidebar-tab', next); } catch { /* quota exceeded */ }
+      return next;
+    });
+  }, []);
   const [aiChatMessages, _setAiChatMessages] = useState<AiChatMessage[]>([]);
   const aiChatMessagesRef = useRef<AiChatMessage[]>([]);
   // Keep ref in sync so sendAiChatMessage reads latest without re-creating
@@ -366,7 +378,7 @@ export function CopilotDraftingCanvas({
 
   // Approval workflow state
   const [approvalHistory, setApprovalHistory] = useState<ApprovalEntry[]>([]);
-  const [showApprovalModal, setShowApprovalModal] = useState<'approve' | 'reject' | null>(null);
+  const [showApprovalModal, setShowApprovalModal] = useState<'approve' | 'reject' | 'submit_review' | null>(null);
   const [approvalComment, setApprovalComment] = useState('');
 
   // Keyboard shortcut help
@@ -558,6 +570,7 @@ export function CopilotDraftingCanvas({
       }
     } catch (error) {
       console.error('Failed to fetch completions:', error);
+      toast.error('Auto-complete unavailable', { id: 'autocomplete-err' });
     }
   }, [contractType]);
 
@@ -665,9 +678,13 @@ export function CopilotDraftingCanvas({
       if (res.ok) {
         const json = await res.json();
         setClauses(json.clauses || json.data?.clauses || []);
+      } else {
+        console.warn('Clauses fetch non-OK:', res.status);
+        toast.error('Failed to load clause library', { id: 'clauses-err' });
       }
     } catch (err) {
       console.error('Failed to fetch clauses:', err);
+      toast.error('Failed to load clause library', { id: 'clauses-err' });
     } finally {
       setIsLoadingClauses(false);
     }
@@ -2109,6 +2126,49 @@ export function CopilotDraftingCanvas({
                 </div>
               ))
             )}
+
+            {/* Approval History */}
+            {approvalHistory.length > 0 && (
+              <div className="mt-6">
+                <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-violet-500" />
+                  Approval History
+                </h4>
+                <div className="space-y-2">
+                  {approvalHistory.map((entry, idx) => (
+                    <div
+                      key={`approval-${idx}`}
+                      className={`p-3 rounded-lg border text-xs ${
+                        entry.action === 'APPROVED'
+                          ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20'
+                          : 'border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        {entry.action === 'APPROVED' ? (
+                          <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                        )}
+                        <span className={`font-medium ${
+                          entry.action === 'APPROVED' ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+                        }`}>
+                          {entry.action === 'APPROVED' ? 'Approved' : 'Rejected'}
+                        </span>
+                        <span className="text-gray-400 dark:text-slate-500 ml-auto">
+                          {new Date(entry.timestamp).toLocaleString()}
+                        </span>
+                      </div>
+                      {(entry.comment || entry.reason) && (
+                        <p className="text-gray-600 dark:text-slate-300 mt-1 pl-6">
+                          {entry.comment || entry.reason}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -2389,7 +2449,7 @@ export function CopilotDraftingCanvas({
                     {/* Workflow Actions */}
                     {draftId && draftStatus === 'DRAFT' && (
                       <button
-                        onClick={() => { handleStatusChange('IN_REVIEW'); setShowActionsMenu(false); }}
+                        onClick={() => { setShowApprovalModal('submit_review'); setShowActionsMenu(false); }}
                         className="w-full flex items-center gap-2 px-4 py-2 text-sm text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
                       >
                         <ArrowRight className="h-4 w-4" />
@@ -2668,13 +2728,16 @@ export function CopilotDraftingCanvas({
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-2">
-                {showApprovalModal === 'approve' ? 'Approve Draft' : 'Reject Draft'}
+                {showApprovalModal === 'approve' ? 'Approve Draft' : showApprovalModal === 'reject' ? 'Reject Draft' : 'Submit for Review'}
               </h3>
               <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
                 {showApprovalModal === 'approve'
                   ? 'Are you sure you want to approve this draft? You may add an optional comment.'
-                  : 'Please provide a reason for rejection.'}
+                  : showApprovalModal === 'reject'
+                  ? 'Please provide a reason for rejection.'
+                  : 'Once submitted, the draft will be locked for review. Reviewers will be able to approve or request changes.'}
               </p>
+              {showApprovalModal !== 'submit_review' && (
               <textarea
                 value={approvalComment}
                 onChange={(e) => setApprovalComment(e.target.value)}
@@ -2682,6 +2745,7 @@ export function CopilotDraftingCanvas({
                 rows={4}
                 className={`w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 ${showApprovalModal === 'approve' ? 'focus:ring-green-500' : 'focus:ring-red-500'} resize-none`}
               />
+              )}
               <div className="flex justify-end gap-3 mt-4">
                 <button
                   onClick={() => { setShowApprovalModal(null); setApprovalComment(''); }}
@@ -2696,13 +2760,20 @@ export function CopilotDraftingCanvas({
                   >
                     Approve
                   </button>
-                ) : (
+                ) : showApprovalModal === 'reject' ? (
                   <button
                     onClick={() => { handleReject(); }}
                     disabled={!approvalComment.trim()}
                     className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                   >
                     Reject
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { handleStatusChange('IN_REVIEW'); setShowApprovalModal(null); }}
+                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Submit for Review
                   </button>
                 )}
               </div>
