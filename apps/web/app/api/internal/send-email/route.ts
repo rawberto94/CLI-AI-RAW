@@ -5,6 +5,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import crypto from 'crypto';
 import EmailService from '@/lib/services/email.service';
 import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
@@ -28,7 +29,12 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
   
   const token = authHeader.split(' ')[1];
-  if (token !== INTERNAL_API_SECRET) {
+  if (
+    !token ||
+    !INTERNAL_API_SECRET ||
+    token.length !== INTERNAL_API_SECRET.length ||
+    !crypto.timingSafeEqual(Buffer.from(token), Buffer.from(INTERNAL_API_SECRET))
+  ) {
     return createErrorResponse(ctx, 'UNAUTHORIZED', 'Invalid token', 401);
   }
 

@@ -59,7 +59,18 @@ const features = [
 function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const rawCallbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  // Prevent open redirect: only allow relative paths on the same origin
+  const callbackUrl = (() => {
+    try {
+      const url = new URL(rawCallbackUrl, window.location.origin);
+      if (url.origin !== window.location.origin) return '/dashboard';
+      return url.pathname + url.search + url.hash;
+    } catch {
+      if (/^\/[^/\\]/.test(rawCallbackUrl)) return rawCallbackUrl;
+      return '/dashboard';
+    }
+  })();
   const registered = searchParams.get("registered") === "true";
 
   const [email, setEmail] = useState("");

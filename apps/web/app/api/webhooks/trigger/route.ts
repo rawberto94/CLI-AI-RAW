@@ -33,10 +33,19 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
       logger.error('INTERNAL_API_SECRET not configured in production');
       return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Server misconfiguration', 500);
     }
-    if (internalSecret !== expectedSecret) {
+    if (
+      !internalSecret ||
+      internalSecret.length !== expectedSecret.length ||
+      !crypto.timingSafeEqual(Buffer.from(internalSecret), Buffer.from(expectedSecret))
+    ) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
-  } else if (!expectedSecret || internalSecret !== expectedSecret) {
+  } else if (
+    !expectedSecret ||
+    !internalSecret ||
+    internalSecret.length !== expectedSecret.length ||
+    !crypto.timingSafeEqual(Buffer.from(internalSecret), Buffer.from(expectedSecret))
+  ) {
     // In development, INTERNAL_API_SECRET must still be set
     return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
   }

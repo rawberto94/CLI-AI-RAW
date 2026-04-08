@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { ZodSchema, ZodError } from 'zod';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
@@ -441,7 +442,12 @@ export function withCronHandler(
       return createErrorResponse(context, 'CONFIG_ERROR', 'Cron secret not configured', 500);
     }
 
-    if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
+    const expected = `Bearer ${cronSecret}`;
+    if (
+      !authHeader ||
+      authHeader.length !== expected.length ||
+      !crypto.timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected))
+    ) {
       return createErrorResponse(context, 'UNAUTHORIZED', 'Invalid cron secret', 401, {
         retryable: false,
       });
