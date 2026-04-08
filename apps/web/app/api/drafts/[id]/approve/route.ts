@@ -56,6 +56,16 @@ export async function POST(
       );
     }
 
+    // Authors cannot approve their own drafts
+    if (draft.createdBy === ctx.userId) {
+      return createErrorResponse(
+        ctx,
+        'FORBIDDEN',
+        'You cannot approve your own draft',
+        403,
+      );
+    }
+
     // Build approval entry
     const existingWorkflow = Array.isArray(draft.approvalWorkflow) ? draft.approvalWorkflow : [];
     const approvalEntry = {
@@ -105,7 +115,7 @@ export async function POST(
         to: creator.email,
         subject: `✓ Approved: "${updated.title}"`,
         html: `<p>Hi ${recipientName},</p><p>Your draft <strong>"${updated.title}"</strong> has been approved.</p>${comment ? `<p>Comment: ${comment}</p>` : ''}<p><a href="${actionUrl}">View Details</a></p>`,
-      }).catch(() => { /* fire-and-forget */ });
+      }).catch(err => logger.error('[Draft] Approval email failed', err));
     }
 
     await auditLog({

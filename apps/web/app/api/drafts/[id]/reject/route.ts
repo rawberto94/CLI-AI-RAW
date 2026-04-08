@@ -59,6 +59,16 @@ export async function POST(
       );
     }
 
+    // Authors cannot reject their own drafts
+    if (draft.createdBy === ctx.userId) {
+      return createErrorResponse(
+        ctx,
+        'FORBIDDEN',
+        'You cannot reject your own draft',
+        403,
+      );
+    }
+
     const existingWorkflow = Array.isArray(draft.approvalWorkflow) ? draft.approvalWorkflow : [];
     const rejectionEntry = {
       userId: ctx.userId,
@@ -107,7 +117,7 @@ export async function POST(
         to: creator.email,
         subject: `✗ Rejected: "${updated.title}"`,
         html: `<p>Hi ${recipientName},</p><p>Your draft <strong>"${updated.title}"</strong> was rejected.</p>${reason ? `<p>Reason: ${reason}</p>` : ''}<p><a href="${actionUrl}">View Details</a></p>`,
-      }).catch(() => { /* fire-and-forget */ });
+      }).catch(err => logger.error('[Draft] Rejection email failed', err));
     }
 
     await auditLog({

@@ -377,9 +377,17 @@ export function CopilotDraftingCanvas({
     const cleanup = () => {
       aiChatAbortRef.current?.abort();
     };
+    // Warn about unsaved changes
+    const warnUnsaved = (e: BeforeUnloadEvent) => {
+      if (contentRef.current !== lastSavedContentRef.current) {
+        e.preventDefault();
+      }
+    };
     window.addEventListener('beforeunload', cleanup);
+    window.addEventListener('beforeunload', warnUnsaved);
     return () => {
       window.removeEventListener('beforeunload', cleanup);
+      window.removeEventListener('beforeunload', warnUnsaved);
       cleanup();
     };
   }, []);
@@ -442,14 +450,19 @@ export function CopilotDraftingCanvas({
 
       // Only trigger when: at end-of-line, line is substantial, and line ends
       // with natural pause punctuation or a space (user paused typing)
-      if (isAtLineEnd && currentLine.length > 30 && /[\s,;.]$/.test(currentLine)) {
+      if (isAtLineEnd && currentLine.length > 15 && /[\s,;.]$/.test(currentLine)) {
         // Capture cursor coordinates for popup positioning
         try {
           const coords = ed.view.coordsAtPos(from);
           const editorRect = ed.view.dom.getBoundingClientRect();
+          const scrollParent = ed.view.dom.closest('.overflow-y-auto, .overflow-auto') || ed.view.dom.parentElement;
+          const scrollTop = scrollParent?.scrollTop || 0;
+          const rawTop = coords.bottom - editorRect.top + scrollTop + 4;
+          const rawLeft = coords.left - editorRect.left;
+          // Clamp within visible editor area
           setCompletionPopupPos({
-            top: coords.bottom - editorRect.top + 4,
-            left: Math.min(coords.left - editorRect.left, editorRect.width - 400),
+            top: Math.max(0, Math.min(rawTop, editorRect.height - 100)),
+            left: Math.max(8, Math.min(rawLeft, editorRect.width - 400)),
           });
         } catch { /* use previous position */ }
 
@@ -842,12 +855,25 @@ export function CopilotDraftingCanvas({
   // Lock heartbeat — re-acquire lock every 2 minutes to prevent stale-lock expiry
   useEffect(() => {
     if (!draftId || !lockInfo.isLocked || lockInfo.lockedBy !== session?.user?.id) return;
-    const interval = setInterval(() => {
-      fetch(`/api/drafts/${draftId}/lock`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'lock' }),
-      }).catch(() => { /* silent heartbeat */ });
+    let failCount = 0;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/drafts/${draftId}/lock`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'lock' }),
+        });
+        if (res.ok) {
+          failCount = 0; // reset on success
+        } else {
+          throw new Error(`Lock heartbeat ${res.status}`);
+        }
+      } catch {
+        failCount++;
+        if (failCount >= 3) {
+          toast.error('Lock lost — another user may take over. Save your work.', { id: 'lock-lost' });
+        }
+      }
     }, 2 * 60 * 1000);
     return () => clearInterval(interval);
   }, [draftId, lockInfo.isLocked, lockInfo.lockedBy, session?.user?.id]);
@@ -932,6 +958,20 @@ export function CopilotDraftingCanvas({
       setActiveTab((t) => (t === 'ai-chat' ? 'suggestions' : 'ai-chat'));
       return;
     }
+    // Ctrl+Space — Manual auto-complete trigger
+    if (isMod && e.key === ' ') {
+      e.preventDefault();
+      if (editor) {
+        const { from } = editor.state.selection;
+        const docText = editor.state.doc.textBetween(0, from, '\n');
+        const lines = docText.split('\n');
+        const currentLine = (lines[lines.length - 1] || '').trim();
+        if (currentLine.length > 5) {
+          fetchAutoCompletions(currentLine);
+        }
+      }
+      return;
+    }
     // Ctrl+Shift+? — Show shortcut help
     if (isMod && e.shiftKey && e.key === '?') {
       e.preventDefault();
@@ -956,7 +996,7 @@ export function CopilotDraftingCanvas({
         setShowCompletionPopup(false);
       }
     }
-  }, [showCompletionPopup, autoCompletions, selectedCompletionIndex]);
+  }, [showCompletionPopup, autoCompletions, selectedCompletionIndex, editor, fetchAutoCompletions]);
 
   const applyCompletion = useCallback((completion: AutoCompletion) => {
     if (!editor) return;
@@ -1011,7 +1051,8 @@ export function CopilotDraftingCanvas({
 
 
   const handleSave = useCallback(async () => {
-    if (!onSave || !editor) return;
+    if (!editor) return;
+    if (!onSave && !draftId) return;
     
     // Cancel pending auto-save and acquire lock
     if (autoSaveTimerRef.current) {
@@ -1022,7 +1063,22 @@ export function CopilotDraftingCanvas({
     setIsSaving(true);
     try {
       const html = editor.getHTML();
-      await onSave(html);
+      if (onSave) {
+        await onSave(html);
+      } else if (draftId) {
+        const csrfCookie = document.cookie.split('; ').find(c => c.startsWith('csrf_token='));
+        const csrfToken = csrfCookie?.split('=').slice(1).join('=') || '';
+        const res = await fetch(`/api/drafts/${draftId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+          },
+          body: JSON.stringify({ content: html }),
+        });
+        if (!res.ok) throw new Error('Save failed');
+      }
       lastSavedContentRef.current = html;
       setLastSaved(new Date());
       toast.success('Document saved');
@@ -1033,7 +1089,7 @@ export function CopilotDraftingCanvas({
       setIsSaving(false);
       saveLockRef.current = false;
     }
-  }, [editor, onSave]);
+  }, [editor, onSave, draftId]);
 
   // Keep ref in sync so handleKeyDown (Ctrl+S) always calls latest handler
   handleSaveRef.current = handleSave;
@@ -2717,6 +2773,7 @@ export function CopilotDraftingCanvas({
                   { keys: 'Ctrl + S', action: 'Save draft' },
                   { keys: 'Ctrl + Shift + E', action: 'Toggle export menu' },
                   { keys: 'Ctrl + /', action: 'Toggle AI Chat' },
+                  { keys: 'Ctrl + Space', action: 'Trigger auto-complete' },
                   { keys: 'Ctrl + Shift + ?', action: 'Show this help' },
                   { keys: 'Ctrl + Z', action: 'Undo' },
                   { keys: 'Ctrl + Y', action: 'Redo' },
