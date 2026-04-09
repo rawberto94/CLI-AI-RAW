@@ -8,7 +8,7 @@ import { auditLog, AuditAction } from '@/lib/security/audit';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 // Helper to transform Prisma template to UI-expected format
-function transformTemplate(template: Record<string, unknown>) {
+function transformTemplate(template: Record<string, unknown>, detail = false) {
   const metadata = (template.metadata || {}) as Record<string, unknown>
   const clauses = template.clauses as Array<Record<string, unknown>> || []
   const variables = (metadata.variables || []) as Array<Record<string, unknown>>
@@ -23,8 +23,8 @@ function transformTemplate(template: Record<string, unknown>) {
     content: metadata.content || '',
     // Map language from metadata  
     language: metadata.language || 'en-US',
-    // Calculate variables count
-    variables: variables.length,
+    // Return full variables for detail, count for list
+    variables: detail ? variables : variables.length,
     // Calculate clauses count (if array) or keep as-is
     clauses: Array.isArray(clauses) ? clauses.length : (clauses || 0),
     // Add lastModified alias
@@ -71,7 +71,7 @@ export async function GET(
 
     return createSuccessResponse(ctx, {
       success: true,
-      template: transformTemplate(template as unknown as Record<string, unknown>),
+      template: transformTemplate(template as unknown as Record<string, unknown>, true),
     });
   } catch (error) {
     return handleApiError(ctx, error);
