@@ -132,7 +132,6 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         data: defaultLibraryClauses.map(clause => ({
           ...clause,
           tenantId,
-          tags: JSON.stringify(clause.tags),
           createdBy: 'system',
         })),
         skipDuplicates: true,

@@ -701,7 +701,7 @@ export function CopilotDraftingCanvas({
       if (clauseCategory && clauseCategory !== 'all') params.set('category', clauseCategory);
       params.set('limit', '30');
 
-      const res = await fetch(`/api/clauses?${params}`);
+      const res = await fetch(`/api/clauses/library?${params}`);
       if (res.ok) {
         const json = await res.json();
         setClauses(json.clauses || json.data?.clauses || []);

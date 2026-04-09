@@ -490,9 +490,12 @@ Date: _______________________
 async function main() {
   console.log('🌱 Seeding contract templates...\n');
 
-  // Get or create demo tenant (used in development)
+  // Accept --tenant=<id> argument, default to 'acme'
+  const tenantArg = process.argv.find(a => a.startsWith('--tenant='));
+  const requestedTenantId = tenantArg ? tenantArg.split('=')[1] : 'acme';
+
   let tenant = await prisma.tenant.findFirst({
-    where: { id: 'demo' }
+    where: { id: requestedTenantId }
   });
   
   if (!tenant) {
@@ -502,12 +505,12 @@ async function main() {
   
   if (!tenant) {
     // Create demo tenant if none exists
-    console.log('📁 Creating demo tenant...');
+    console.log('📁 Creating default tenant...');
     tenant = await prisma.tenant.create({
       data: {
-        id: 'demo',
-        name: 'Demo Organization',
-        slug: 'demo',
+        id: requestedTenantId,
+        name: requestedTenantId === 'acme' ? 'Acme Corp' : 'Demo Organization',
+        slug: requestedTenantId,
         status: 'ACTIVE',
       }
     });
@@ -516,8 +519,7 @@ async function main() {
     console.log(`📁 Using tenant: ${tenant.name} (${tenant.id})\n`);
   }
   
-  // Use 'demo' tenant ID if it exists, otherwise use the found tenant
-  const tenantId = tenant.id === 'demo' ? 'demo' : tenant.id;
+  const tenantId = tenant.id;
 
   // Check existing templates
   const existingCount = await prisma.contractTemplate.count({
