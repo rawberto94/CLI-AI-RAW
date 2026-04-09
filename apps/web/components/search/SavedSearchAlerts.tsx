@@ -216,13 +216,13 @@ export default function SavedSearchAlerts() {
                         )}
                       </div>
                       <div className="flex items-center gap-1 ml-4">
-                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => togglePin(s.id)} title={s.is_pinned ? 'Unpin' : 'Pin'}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => togglePin(s.id)} title={s.is_pinned ? 'Unpin' : 'Pin'} aria-label={s.is_pinned ? 'Unpin search' : 'Pin search'}>
                           {s.is_pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => toggleAlert(s.id)} title={s.alert_enabled ? 'Disable alert' : 'Enable alert'}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => toggleAlert(s.id)} title={s.alert_enabled ? 'Disable alert' : 'Enable alert'} aria-label={s.alert_enabled ? 'Disable alert' : 'Enable alert'}>
                           {s.alert_enabled ? <BellOff className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => deleteSearch(s.id)} title="Delete">
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => deleteSearch(s.id)} title="Delete" aria-label="Delete saved search">
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>

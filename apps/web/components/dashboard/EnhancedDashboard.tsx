@@ -197,10 +197,10 @@ export function EnhancedDashboard() {
             </SelectContent>
           </Select>
           <div className="flex gap-2">
-            <Button variant="outline" size="icon" onClick={handleExport} title="Export">
+            <Button variant="outline" size="icon" onClick={handleExport} title="Export" aria-label="Export dashboard data">
               <Download className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="icon" onClick={fetchMetrics} title="Refresh">
+            <Button variant="outline" size="icon" onClick={fetchMetrics} title="Refresh" aria-label="Refresh dashboard">
               <RefreshCw className="h-4 w-4" />
             </Button>
           </div>

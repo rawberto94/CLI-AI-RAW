@@ -546,12 +546,12 @@ export default function ESignatureWorkflow({ contractId, contractTitle, classNam
 
                         <div className="flex items-center gap-1">
                           {envelope.status !== 'draft' && signer.status !== 'signed' && signer.role !== 'cc' && (
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => resendToSigner(signer.id)} title="Send reminder">
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => resendToSigner(signer.id)} title="Send reminder" aria-label="Send reminder">
                               <RefreshCw className="h-3 w-3" />
                             </Button>
                           )}
                           {envelope.status === 'draft' && (
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => removeSignatory(signer.id)}>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => removeSignatory(signer.id)} aria-label="Remove signatory">
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           )}

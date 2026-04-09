@@ -439,7 +439,7 @@ export function EnhancedUploadProgress({
             <RefreshCw className="h-3.5 w-3.5 mr-1" />
             Re-process Anyway
           </Button>
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={onRemove}>
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={onRemove} aria-label="Remove file">
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -567,7 +567,7 @@ export function EnhancedUploadProgress({
           )}
 
           {(status === 'pending' || status === 'error' || status === 'completed' || isCompleted) && (
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={onRemove}>
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={onRemove} aria-label="Remove file">
               <X className="h-4 w-4" />
             </Button>
           )}

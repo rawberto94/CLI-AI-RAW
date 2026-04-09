@@ -202,7 +202,7 @@ function FavoriteItem({ contract, onRemove, showQuickActions, isDragging, varian
         <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label="Contract actions">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -244,6 +244,7 @@ function FavoriteItem({ contract, onRemove, showQuickActions, isDragging, varian
       <Link 
         href={`/contracts/${contract.id}`}
         className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+        aria-label={`Open contract ${contract.title || contract.originalName}`}
       >
         <ExternalLink className="h-4 w-4 text-slate-400 hover:text-violet-500" />
       </Link>

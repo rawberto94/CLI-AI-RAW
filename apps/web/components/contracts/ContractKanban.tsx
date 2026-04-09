@@ -355,7 +355,7 @@ function KanbanColumnComponent({
               {column.contracts.length}
             </Badge>
             {isCollapsed !== undefined && (
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-white/70 hover:text-white hover:bg-white/20">
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-white/70 hover:text-white hover:bg-white/20" aria-label={isCollapsed ? 'Expand column' : 'Collapse column'}>
                 {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
               </Button>
             )}

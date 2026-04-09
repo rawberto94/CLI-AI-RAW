@@ -1350,8 +1350,8 @@ function MetadataField({
           )}
           {isFieldEditing && (
             <div className="flex items-center gap-0.5">
-              <button onClick={handleSaveField} className="p-1 hover:bg-emerald-50 rounded text-emerald-600"><Check className="h-3 w-3" /></button>
-              <button onClick={handleCancelField} className="p-1 hover:bg-red-50 rounded text-red-500"><X className="h-3 w-3" /></button>
+              <button onClick={handleSaveField} className="p-1 hover:bg-emerald-50 rounded text-emerald-600" aria-label="Save field"><Check className="h-3 w-3" /></button>
+              <button onClick={handleCancelField} className="p-1 hover:bg-red-50 rounded text-red-500" aria-label="Cancel editing"><X className="h-3 w-3" /></button>
             </div>
           )}
         </div>
