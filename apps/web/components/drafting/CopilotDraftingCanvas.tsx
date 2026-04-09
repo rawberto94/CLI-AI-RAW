@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  History, MessageSquare, Wand2, AlertTriangle,
+  History, MessageSquare, MessageCircle, Wand2, AlertTriangle,
   Lightbulb, Save, Eye, Edit3, Sparkles,
   GitBranch, Bold, Italic, Underline, List,
   Heading1, Heading2, Quote, X, Send, Clock, Zap, Shield, Scale,
@@ -323,10 +323,10 @@ export function CopilotDraftingCanvas({
   const [completionPopupPos, setCompletionPopupPos] = useState<{ top: number; left: number }>({ top: 80, left: 32 });
 
   // UI state
-  const [activeTab, setActiveTabRaw] = useState<'copilot' | 'comments' | 'versions' | 'clauses' | 'ai-chat'>(() => {
+  const [activeTab, setActiveTabRaw] = useState<'copilot' | 'comments' | 'versions' | 'clauses'>(() => {
     if (typeof window === 'undefined') return 'copilot';
     const saved = localStorage.getItem('drafting-sidebar-tab');
-    if (saved === 'copilot' || saved === 'comments' || saved === 'versions' || saved === 'clauses' || saved === 'ai-chat') return saved;
+    if (saved === 'copilot' || saved === 'comments' || saved === 'versions' || saved === 'clauses') return saved;
     return 'copilot';
   });
   const setActiveTab = useCallback((tab: typeof activeTab | ((prev: typeof activeTab) => typeof activeTab)) => {
@@ -1001,10 +1001,10 @@ export function CopilotDraftingCanvas({
       setShowExportMenu((v) => !v);
       return;
     }
-    // Ctrl+/ — Toggle AI Chat
+    // Ctrl+/ — Toggle AI Copilot
     if (isMod && e.key === '/') {
       e.preventDefault();
-      setActiveTab((t) => (t === 'ai-chat' ? 'suggestions' : 'ai-chat'));
+      setActiveTab('copilot');
       return;
     }
     // Ctrl+Space — Manual auto-complete trigger
@@ -1565,9 +1565,8 @@ export function CopilotDraftingCanvas({
       <div className="border-b border-gray-200 px-3 pt-3 dark:border-slate-700">
         <div className="flex gap-2 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Sidebar panels">
           {[
-            { id: 'copilot', icon: Brain, label: 'Copilot', count: suggestions.length },
-            { id: 'ai-chat', icon: MessageSquare, label: 'AI Chat', count: null },
-            { id: 'comments', icon: MessageSquare, label: 'Comments', count: comments.length },
+            { id: 'copilot', icon: Brain, label: 'AI Copilot', count: suggestions.length + aiChatMessages.length },
+            { id: 'comments', icon: MessageCircle, label: 'Comments', count: comments.length },
             { id: 'versions', icon: History, label: 'History', count: versions.length },
             { id: 'clauses', icon: BookOpen, label: 'Clauses', count: clauses.length },
           ].map((tab) => (
@@ -1603,233 +1602,176 @@ export function CopilotDraftingCanvas({
       {/* Tab Content */}
       <div className="flex-1 min-h-0 overflow-hidden p-4">
         {activeTab === 'copilot' && (
-          <div id="panel-copilot" role="tabpanel" aria-labelledby="tab-copilot" className="h-full space-y-4 overflow-y-auto pr-1">
-            {/* Risk Summary */}
-            {risks.length > 0 && (
-              <div className="p-3 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/50 dark:to-orange-950/50 rounded-lg border border-red-100 dark:border-red-800">
-                <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 mb-2 flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-red-500" />
-                  Risk Analysis
-                </h4>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { label: 'Critical', value: riskSummary.critical, color: 'text-red-600 dark:text-red-400' },
-                    { label: 'High', value: riskSummary.high, color: 'text-orange-600 dark:text-orange-400' },
-                    { label: 'Medium', value: riskSummary.medium, color: 'text-yellow-600 dark:text-yellow-400' },
-                    { label: 'Low', value: riskSummary.low, color: 'text-green-600 dark:text-green-400' },
-                  ].map((stat) => (
-                    <div key={stat.label} className="text-center">
-                      <div className={`text-lg font-bold ${stat.color}`}>{stat.value}</div>
-                      <div className="text-xs text-gray-500 dark:text-slate-400">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Suggestions List */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100">AI Suggestions</h4>
-                <button
-                  onClick={() => fetchSuggestions()}
-                  aria-label="Refresh AI suggestions"
-                  className="flex items-center gap-1 text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  Refresh
-                </button>
-              </div>
-
-              {isLoadingSuggestions && suggestions.length === 0 ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
-                </div>
-              ) : suggestions.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 dark:text-slate-400">
-                  <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm font-medium">No suggestions yet</p>
-                  <p className="text-xs mt-1 max-w-[200px] mx-auto">Start typing your contract content — AI will analyze and suggest improvements in real time</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {suggestions.map((suggestion) => (
-                    <motion.div
-                      key={suggestion.id}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      tabIndex={0}
-                      role="button"
-                      aria-expanded={selectedSuggestion === suggestion.id}
-                      className={`p-3 rounded-lg border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-500 ${
-                        selectedSuggestion === suggestion.id
-                          ? 'border-violet-300 dark:border-violet-600 bg-violet-50 dark:bg-violet-900/30'
-                          : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800'
-                      }`}
-                      onClick={() => setSelectedSuggestion(selectedSuggestion === suggestion.id ? null : suggestion.id)}
-                      onKeyDown={(e) => e.key === 'Enter' && setSelectedSuggestion(selectedSuggestion === suggestion.id ? null : suggestion.id)}
-                    >
-                      <div className="flex items-start gap-2">
-                        {getSuggestionIcon(suggestion.type)}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{suggestion.explanation}</p>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${
-                              suggestion.source.type === 'playbook' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' :
-                              suggestion.source.type === 'clause_library' ? 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300' :
-                              suggestion.source.type === 'historical' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' :
-                              'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300'
-                            }`}>
-                              {suggestion.source.type}
-                            </span>
-                            {suggestion.riskLevel && (
-                              <span className={`text-xs px-1.5 py-0.5 rounded ${getRiskColor(suggestion.riskLevel)}`}>
-                                {suggestion.riskLevel}
-                              </span>
-                            )}
-                          </div>
-
-                          <AnimatePresence>
-                            {selectedSuggestion === suggestion.id && (
-                              <motion.div key="selected-suggestion"
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="mt-3 space-y-2"
-                              >
-                                <div className="p-2 bg-red-50 dark:bg-red-950/50 rounded text-xs text-red-700 dark:text-red-300 line-through">
-                                  {suggestion.triggerText.length > 100 ? suggestion.triggerText.slice(0, 100) + '...' : suggestion.triggerText}
-                                </div>
-                                <div className="p-2 bg-green-50 dark:bg-green-950/50 rounded text-xs text-green-700 dark:text-green-300">
-                                  {suggestion.suggestedText.length > 150 ? suggestion.suggestedText.slice(0, 150) + '...' : suggestion.suggestedText}
-                                </div>
-                                <div className="flex items-center gap-2 mt-2">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      applySuggestion(suggestion);
-                                    }}
-                                    className="flex-1 px-3 py-1.5 bg-violet-600 text-white text-xs rounded-lg hover:bg-violet-700 transition-colors"
-                                  >
-                                    Apply
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
-                                      setSelectedSuggestion(null);
-                                    }}
-                                    className="flex-1 px-3 py-1.5 border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 text-xs rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                                  >
-                                    Dismiss
-                                  </button>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                        <div className="text-xs text-gray-400 dark:text-slate-500">
-                          {Math.round(suggestion.confidence * 100)}%
-                        </div>
+          <div id="panel-copilot" role="tabpanel" aria-labelledby="tab-copilot" className="flex h-full min-h-0 flex-col">
+            {/* Scrollable content: suggestions, risks, chat messages */}
+            <div ref={aiChatScrollRef} className="flex-1 space-y-4 overflow-y-auto pr-1 pb-3">
+              {/* Risk Summary */}
+              {risks.length > 0 && (
+                <div className="p-3 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/50 dark:to-orange-950/50 rounded-lg border border-red-100 dark:border-red-800">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 mb-2 flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-red-500" />
+                    Risk Analysis
+                  </h4>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { label: 'Critical', value: riskSummary.critical, color: 'text-red-600 dark:text-red-400' },
+                      { label: 'High', value: riskSummary.high, color: 'text-orange-600 dark:text-orange-400' },
+                      { label: 'Medium', value: riskSummary.medium, color: 'text-yellow-600 dark:text-yellow-400' },
+                      { label: 'Low', value: riskSummary.low, color: 'text-green-600 dark:text-green-400' },
+                    ].map((stat) => (
+                      <div key={stat.label} className="text-center">
+                        <div className={`text-lg font-bold ${stat.color}`}>{stat.value}</div>
+                        <div className="text-xs text-gray-500 dark:text-slate-400">{stat.label}</div>
                       </div>
-                    </motion.div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
-            </div>
 
-            {/* Risks List */}
-            {risks.length > 0 && (
-              <div className="mt-6">
-                <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 mb-3 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
-                  Detected Risks
-                </h4>
-                <div className="space-y-2">
-                  {risks.slice(0, 5).map((risk) => (
-                    <div
-                      key={risk.id}
-                      className={`p-2 rounded-lg border ${getRiskColor(risk.riskLevel)}`}
+              {/* Suggestions List */}
+              {(suggestions.length > 0 || isLoadingSuggestions) && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100">Suggestions</h4>
+                    <button
+                      onClick={() => fetchSuggestions()}
+                      aria-label="Refresh AI suggestions"
+                      className="flex items-center gap-1 text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300"
                     >
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="text-xs font-medium">{risk.category}</p>
-                          <p className="text-xs mt-0.5 opacity-80">{risk.explanation}</p>
+                      <RefreshCw className="h-3 w-3" />
+                      Refresh
+                    </button>
+                  </div>
+
+                  {isLoadingSuggestions && suggestions.length === 0 ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-violet-500" />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {suggestions.map((suggestion) => (
+                        <motion.div
+                          key={suggestion.id}
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          tabIndex={0}
+                          role="button"
+                          aria-expanded={selectedSuggestion === suggestion.id}
+                          className={`p-3 rounded-lg border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-500 ${
+                            selectedSuggestion === suggestion.id
+                              ? 'border-violet-300 dark:border-violet-600 bg-violet-50 dark:bg-violet-900/30'
+                              : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800'
+                          }`}
+                          onClick={() => setSelectedSuggestion(selectedSuggestion === suggestion.id ? null : suggestion.id)}
+                          onKeyDown={(e) => e.key === 'Enter' && setSelectedSuggestion(selectedSuggestion === suggestion.id ? null : suggestion.id)}
+                        >
+                          <div className="flex items-start gap-2">
+                            {getSuggestionIcon(suggestion.type)}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{suggestion.explanation}</p>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                  suggestion.source.type === 'playbook' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' :
+                                  suggestion.source.type === 'clause_library' ? 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300' :
+                                  suggestion.source.type === 'historical' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' :
+                                  'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300'
+                                }`}>
+                                  {suggestion.source.type}
+                                </span>
+                                {suggestion.riskLevel && (
+                                  <span className={`text-xs px-1.5 py-0.5 rounded ${getRiskColor(suggestion.riskLevel)}`}>
+                                    {suggestion.riskLevel}
+                                  </span>
+                                )}
+                              </div>
+
+                              <AnimatePresence>
+                                {selectedSuggestion === suggestion.id && (
+                                  <motion.div key="selected-suggestion"
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="mt-3 space-y-2"
+                                  >
+                                    <div className="p-2 bg-red-50 dark:bg-red-950/50 rounded text-xs text-red-700 dark:text-red-300 line-through">
+                                      {suggestion.triggerText.length > 100 ? suggestion.triggerText.slice(0, 100) + '...' : suggestion.triggerText}
+                                    </div>
+                                    <div className="p-2 bg-green-50 dark:bg-green-950/50 rounded text-xs text-green-700 dark:text-green-300">
+                                      {suggestion.suggestedText.length > 150 ? suggestion.suggestedText.slice(0, 150) + '...' : suggestion.suggestedText}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          applySuggestion(suggestion);
+                                        }}
+                                        className="flex-1 px-3 py-1.5 bg-violet-600 text-white text-xs rounded-lg hover:bg-violet-700 transition-colors"
+                                      >
+                                        Apply
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
+                                          setSelectedSuggestion(null);
+                                        }}
+                                        className="flex-1 px-3 py-1.5 border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 text-xs rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                                      >
+                                        Dismiss
+                                      </button>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                            <div className="text-xs text-gray-400 dark:text-slate-500">
+                              {Math.round(suggestion.confidence * 100)}%
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Risks List */}
+              {risks.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                    Detected Risks
+                  </h4>
+                  <div className="space-y-2">
+                    {risks.slice(0, 5).map((risk) => (
+                      <div
+                        key={risk.id}
+                        className={`p-2 rounded-lg border ${getRiskColor(risk.riskLevel)}`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium">{risk.category}</p>
+                            <p className="text-xs mt-0.5 opacity-80">{risk.explanation}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Negotiation Alternatives */}
-            {suggestions.filter(s => s.type === 'negotiation').length > 0 && (
-              <div className="mt-6">
-                <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 mb-3 flex items-center gap-2">
-                  <Scale className="h-4 w-4 text-green-500" />
-                  Negotiation Alternatives
-                </h4>
-                <p className="text-xs text-gray-500 dark:text-slate-400 mb-3">
-                  Alternative clause wordings for different negotiation positions
-                </p>
-                <div className="space-y-2">
-                  {suggestions.filter(s => s.type === 'negotiation').map((suggestion) => (
-                    <div
-                      key={suggestion.id}
-                      className="p-3 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20"
-                    >
-                      <p className="text-xs font-medium text-green-800 dark:text-green-300 mb-1">{suggestion.explanation}</p>
-                      <div className="p-2 bg-green-100/50 dark:bg-green-900/30 rounded text-xs text-green-700 dark:text-green-300 mb-2">
-                        {suggestion.suggestedText.length > 150 ? suggestion.suggestedText.slice(0, 150) + '...' : suggestion.suggestedText}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => applySuggestion(suggestion)}
-                          className="flex-1 px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors"
-                        >
-                          Apply Alternative
-                        </button>
-                        <button
-                          onClick={() => setSuggestions(prev => prev.filter(s => s.id !== suggestion.id))}
-                          className="px-3 py-1.5 border border-green-200 dark:border-green-700 text-green-600 dark:text-green-400 text-xs rounded-lg hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
-                        >
-                          Dismiss
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+              {/* Divider before chat (only when there are suggestions/risks above) */}
+              {(suggestions.length > 0 || risks.length > 0) && aiChatMessages.length > 0 && (
+                <div className="border-t border-gray-200 dark:border-slate-700 pt-2" />
+              )}
 
-        {activeTab === 'ai-chat' && (
-          <div id="panel-ai-chat" role="tabpanel" aria-labelledby="tab-ai-chat" className="flex h-full min-h-0 flex-col">
-            <div className="mb-3 rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 to-fuchsia-50 p-3 dark:border-violet-900/60 dark:from-violet-950/30 dark:to-fuchsia-950/20">
-              <div className="flex items-start gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
-                  <Brain className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">Inline Drafting Assistant</p>
-                  <p className="mt-1 text-xs leading-5 text-gray-600 dark:text-slate-300">
-                    Ask for clause language, rewrite a selected passage, or tighten a risky section. Responses now separate guidance from insertion-ready contract text.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Chat Messages */}
-            <div ref={aiChatScrollRef} className="flex-1 space-y-4 overflow-y-auto pr-1 pb-3">
+              {/* AI Chat Messages */}
               {aiChatMessages.length === 0 ? (
-                <div className="py-8 text-center text-gray-500 dark:text-slate-400">
-                  <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm font-medium">Ready to improve this draft</p>
-                  <p className="mt-1 max-w-[240px] mx-auto text-xs">Try a quick action or describe the exact clause, section, or rewrite you want.</p>
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <div className="py-6 text-center text-gray-500 dark:text-slate-400">
+                  <MessageSquare className="h-7 w-7 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm font-medium">Ask AI to improve your draft</p>
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
                     {(AI_QUICK_PROMPTS[contractType?.toUpperCase() || ''] || AI_QUICK_PROMPTS.DEFAULT).map((prompt) => (
                       <button
                         key={prompt}
@@ -1940,7 +1882,7 @@ export function CopilotDraftingCanvas({
               )}
             </div>
 
-            {/* Chat Input */}
+            {/* Chat Input — always visible at bottom */}
             <div className="border-t border-gray-200 dark:border-slate-700 pt-3 mt-auto">
               <div className="flex gap-2">
                 <input
@@ -2584,7 +2526,7 @@ export function CopilotDraftingCanvas({
                   </span>
                 )}
                 <button
-                  onClick={() => setActiveTab('ai-chat')}
+                  onClick={() => setActiveTab('copilot')}
                   className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600 transition-colors"
                 >
                   <Wand2 className="h-3.5 w-3.5" />
@@ -2598,7 +2540,7 @@ export function CopilotDraftingCanvas({
           {!isEditing && (
             <div className="mt-2 flex justify-end pb-2 border-t border-gray-100 dark:border-slate-700 pt-2">
               <button
-                onClick={() => setActiveTab('ai-chat')}
+                onClick={() => setActiveTab('copilot')}
                 className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600 transition-colors"
               >
                 <Wand2 className="h-3.5 w-3.5" />
@@ -2870,7 +2812,7 @@ export function CopilotDraftingCanvas({
                 {[
                   { keys: 'Ctrl + S', action: 'Save draft' },
                   { keys: 'Ctrl + Shift + E', action: 'Toggle export menu' },
-                  { keys: 'Ctrl + /', action: 'Toggle AI Chat' },
+                  { keys: 'Ctrl + /', action: 'Toggle AI Copilot' },
                   { keys: 'Ctrl + Space', action: 'Trigger auto-complete' },
                   { keys: 'Ctrl + Shift + ?', action: 'Show this help' },
                   { keys: 'Ctrl + Z', action: 'Undo' },

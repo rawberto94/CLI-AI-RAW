@@ -29,17 +29,10 @@ import {
   Copy,
   MoreHorizontal,
   BookOpen,
-  Shield,
-  Zap,
-  Brain,
-  MessageSquare,
-  Lightbulb,
   PenTool,
-  Target,
   RefreshCw,
   LayoutTemplate,
   Bot,
-  FileCheck,
   Download,
 } from 'lucide-react'
 import {
@@ -50,7 +43,6 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { AgenticDraftDialog } from '@/components/drafting/AgenticDraftDialog'
-import { InteractiveDraftChat } from '@/components/drafting/InteractiveDraftChat'
 import {
   Dialog,
   DialogContent,
@@ -99,64 +91,12 @@ interface Template {
 // Constants
 // ============================================================================
 
-const AI_CAPABILITIES = [
-  {
-    icon: Brain,
-    title: 'AI Auto-Complete',
-    description: 'Intelligent clause suggestions as you type, powered by your contract library',
-    color: 'violet' as const,
-  },
-  {
-    icon: Shield,
-    title: 'Risk Detection',
-    description: 'Real-time risk analysis flags problematic clauses before they become issues',
-    color: 'red' as const,
-  },
-  {
-    icon: MessageSquare,
-    title: 'AI Chat Copilot',
-    description: 'Ask questions about clauses, get rewriting suggestions, or generate new sections',
-    color: 'blue' as const,
-  },
-  {
-    icon: Zap,
-    title: 'Smart Templates',
-    description: 'AI fills variables, adapts language by jurisdiction, and ensures compliance',
-    color: 'amber' as const,
-  },
-  {
-    icon: Target,
-    title: 'Compliance Check',
-    description: 'Automated regulatory compliance scanning against your policy library',
-    color: 'emerald' as const,
-  },
-  {
-    icon: Lightbulb,
-    title: 'Clause Library',
-    description: 'Access pre-approved clauses with AI-powered relevance ranking',
-    color: 'purple' as const,
-  },
-]
-
 const QUICK_STARTS = [
   { id: 'nda', label: 'NDA', icon: '🔒', desc: 'Non-Disclosure Agreement' },
   { id: 'msa', label: 'MSA', icon: '📋', desc: 'Master Services Agreement' },
   { id: 'sow', label: 'SOW', icon: '📝', desc: 'Statement of Work' },
-  { id: 'rfx-award', label: 'RFx Award', icon: '🏆', desc: 'Contract from RFx Award' },
   { id: 'employment', label: 'Employment', icon: '👥', desc: 'Employment Contract' },
-  { id: 'lease', label: 'Lease', icon: '🏢', desc: 'Lease Agreement' },
-  { id: 'vendor', label: 'Vendor', icon: '🤝', desc: 'Vendor Agreement' },
-  { id: 'amendment', label: 'Amendment', icon: '📎', desc: 'Contract Amendment' },
 ]
-
-const colorMap: Record<string, { bg: string; text: string; gradient: string }> = {
-  violet: { bg: 'bg-violet-50', text: 'text-violet-600', gradient: 'from-violet-500 to-purple-600' },
-  red: { bg: 'bg-red-50', text: 'text-red-600', gradient: 'from-red-500 to-rose-600' },
-  blue: { bg: 'bg-blue-50', text: 'text-blue-600', gradient: 'from-blue-500 to-indigo-600' },
-  amber: { bg: 'bg-amber-50', text: 'text-amber-600', gradient: 'from-amber-500 to-orange-600' },
-  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', gradient: 'from-emerald-500 to-teal-600' },
-  purple: { bg: 'bg-purple-50', text: 'text-purple-600', gradient: 'from-purple-500 to-pink-600' },
-}
 
 // ============================================================================
 // Sub-components
@@ -389,37 +329,7 @@ function TemplateQuickCard({
   )
 }
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  color = 'violet',
-}: {
-  icon: React.ElementType
-  label: string
-  value: number | string
-  color?: string
-}) {
-  const c = colorMap[color] || colorMap.violet
-  return (
-    <Card className={cn('border-0 shadow-sm hover:shadow-md transition-shadow', c.bg)}>
-      <CardContent className="p-4 flex items-center gap-3">
-        <div
-          className={cn(
-            'p-2.5 rounded-xl bg-gradient-to-br text-white shadow-md',
-            c.gradient,
-          )}
-        >
-          <Icon className="h-4 w-4" />
-        </div>
-        <div>
-          <p className="text-xl font-bold text-slate-900">{value}</p>
-          <p className={cn('text-xs font-medium', c.text)}>{label}</p>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
+
 
 // ============================================================================
 // Main Component
@@ -436,7 +346,6 @@ export default function DraftingPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [showAgenticDialog, setShowAgenticDialog] = useState(false)
-  const [showGuidedDrafting, setShowGuidedDrafting] = useState(false)
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null)
   const [previewContent, setPreviewContent] = useState<string>('')
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -498,7 +407,6 @@ export default function DraftingPage() {
       inProgress: drafts.filter(
         (d) => d.status === 'IN_PROGRESS' || d.status === 'DRAFT',
       ).length,
-      fromTemplates: drafts.filter((d) => d.sourceType === 'template').length,
       aiGenerated: drafts.filter((d) => d.sourceType === 'ai').length,
       templatesAvailable: templates.length,
     }),
@@ -643,20 +551,6 @@ export default function DraftingPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2 mt-4">
-                <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm">
-                  <Sparkles className="h-3 w-3 mr-1" /> AI Copilot
-                </Badge>
-                <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm">
-                  <Shield className="h-3 w-3 mr-1" /> Risk Detection
-                </Badge>
-                <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm">
-                  <BookOpen className="h-3 w-3 mr-1" /> Clause Library
-                </Badge>
-                <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm">
-                  <FileCheck className="h-3 w-3 mr-1" /> Compliance Check
-                </Badge>
-              </div>
             </div>
 
             {/* CTA Buttons */}
@@ -667,10 +561,7 @@ export default function DraftingPage() {
                 onClick={() => router.push('/drafting/copilot?mode=blank')}
               >
                 <Plus className="h-5 w-5 mr-2" />
-                <div className="text-left">
-                  <div>New Document</div>
-                  <div className="text-[10px] font-normal opacity-70">Blank canvas with AI copilot</div>
-                </div>
+                New Document
               </Button>
               <Button
                 size="lg"
@@ -678,50 +569,39 @@ export default function DraftingPage() {
                 onClick={() => setShowAgenticDialog(true)}
               >
                 <Sparkles className="h-5 w-5 mr-2" />
-                <div className="text-left">
-                  <div>Generate with AI</div>
-                  <div className="text-[10px] font-normal opacity-70">6-step agentic pipeline</div>
-                </div>
-              </Button>
-              <Button
-                size="lg"
-                className="bg-white/20 text-white hover:bg-white/30 font-semibold shadow-lg shadow-black/10 rounded-xl px-6 backdrop-blur-sm border border-white/30"
-                onClick={() => setShowGuidedDrafting(true)}
-              >
-                <MessageSquare className="h-5 w-5 mr-2" />
-                <div className="text-left">
-                  <div>Guided Drafting</div>
-                  <div className="text-[10px] font-normal opacity-70">Interactive AI assistant</div>
-                </div>
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-white/40 text-white hover:bg-white/10 font-semibold rounded-xl px-6"
-                onClick={() => setActiveTab('templates')}
-              >
-                <LayoutTemplate className="h-5 w-5 mr-2" />
-                <div className="text-left">
-                  <div>Browse Templates</div>
-                  <div className="text-[10px] font-normal opacity-70">Start from a pre-built template</div>
-                </div>
+                Generate with AI
               </Button>
             </div>
           </div>
         </motion.div>
 
-        {/* ============ STATS ROW ============ */}
+        {/* ============ COMPACT STATS ============ */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 md:grid-cols-5 gap-4"
+          className="flex flex-wrap items-center gap-4 text-sm text-slate-600"
         >
-          <StatCard icon={FileText} label="Total Drafts" value={stats.totalDrafts} color="violet" />
-          <StatCard icon={Edit3} label="In Progress" value={stats.inProgress} color="blue" />
-          <StatCard icon={LayoutTemplate} label="From Templates" value={stats.fromTemplates} color="amber" />
-          <StatCard icon={Bot} label="AI Generated" value={stats.aiGenerated} color="purple" />
-          <StatCard icon={BookOpen} label="Templates" value={stats.templatesAvailable} color="emerald" />
+          <span className="flex items-center gap-1.5">
+            <FileText className="h-4 w-4 text-violet-500" />
+            <span className="font-semibold text-slate-900">{stats.totalDrafts}</span> drafts
+          </span>
+          {stats.inProgress > 0 && (
+            <span className="flex items-center gap-1.5">
+              <Edit3 className="h-4 w-4 text-blue-500" />
+              <span className="font-semibold text-slate-900">{stats.inProgress}</span> in progress
+            </span>
+          )}
+          {stats.aiGenerated > 0 && (
+            <span className="flex items-center gap-1.5">
+              <Bot className="h-4 w-4 text-purple-500" />
+              <span className="font-semibold text-slate-900">{stats.aiGenerated}</span> AI generated
+            </span>
+          )}
+          <span className="flex items-center gap-1.5">
+            <BookOpen className="h-4 w-4 text-emerald-500" />
+            <span className="font-semibold text-slate-900">{stats.templatesAvailable}</span> templates
+          </span>
         </motion.div>
 
         {/* ============ AI QUICK GENERATE ============ */}
@@ -797,29 +677,14 @@ export default function DraftingPage() {
         >
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold text-slate-900">Quick Start</h2>
-            <Link
-              href="/templates"
-              className="text-sm text-violet-600 hover:text-violet-700 font-medium flex items-center gap-1"
-            >
-              All templates <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {QUICK_STARTS.map((item) => (
               <motion.button
                 key={item.id}
                 whileHover={{ y: -2, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
-                  // Special routes for RFx Award and Amendment flows
-                  if (item.id === 'rfx-award') {
-                    router.push('/rfx?tab=awarded')
-                    return
-                  }
-                  if (item.id === 'amendment') {
-                    router.push('/contracts?action=amend')
-                    return
-                  }
                   const match = templates.find(
                     (t) =>
                       t.name.toLowerCase().includes(item.id) ||
@@ -877,13 +742,6 @@ export default function DraftingPage() {
                       {templates.length}
                     </Badge>
                   )}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="ai"
-                  className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm px-4 gap-2"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  AI Capabilities
                 </TabsTrigger>
               </TabsList>
 
@@ -1112,86 +970,6 @@ export default function DraftingPage() {
               )}
             </TabsContent>
 
-            {/* ── AI CAPABILITIES TAB ── */}
-            <TabsContent value="ai" className="space-y-6 mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {AI_CAPABILITIES.map((cap, idx) => {
-                  const c = colorMap[cap.color] || colorMap.violet
-                  return (
-                    <motion.div
-                      key={cap.title}
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                    >
-                      <Card
-                        className={cn(
-                          'border-0 shadow-sm hover:shadow-lg transition-all duration-200 group overflow-hidden',
-                          c.bg,
-                        )}
-                      >
-                        <CardContent className="p-6">
-                          <div
-                            className={cn(
-                              'p-3 rounded-xl bg-gradient-to-br text-white shadow-md w-fit mb-4',
-                              c.gradient,
-                            )}
-                          >
-                            <cap.icon className="h-5 w-5" />
-                          </div>
-                          <h3 className="font-semibold text-slate-900 mb-1.5">
-                            {cap.title}
-                          </h3>
-                          <p className="text-sm text-slate-600 leading-relaxed">
-                            {cap.description}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  )
-                })}
-              </div>
-
-              {/* CTA banner */}
-              <Card className="bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 border-0 text-white overflow-hidden">
-                <CardContent className="p-8 text-center relative">
-                  <div className="absolute inset-0 opacity-10">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/3" />
-                  </div>
-                  <div className="relative">
-                    <div className="mx-auto w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-4">
-                      <Sparkles className="h-7 w-7" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-2">
-                      Ready to draft with AI?
-                    </h3>
-                    <p className="text-violet-100 mb-6 max-w-md mx-auto">
-                      Experience intelligent contract drafting with real-time
-                      suggestions, risk detection, and compliance checks.
-                    </p>
-                    <div className="flex justify-center gap-3">
-                      <Button
-                        size="lg"
-                        className="bg-white text-violet-700 hover:bg-violet-50 font-semibold shadow-lg rounded-xl px-8"
-                        onClick={() => setShowAgenticDialog(true)}
-                      >
-                        <Sparkles className="h-5 w-5 mr-2" />
-                        Generate with AI
-                      </Button>
-                      <Button
-                        size="lg"
-                        variant="outline"
-                        className="border-white/40 text-white hover:bg-white/10 font-semibold rounded-xl px-6"
-                        onClick={() => router.push('/drafting/copilot?mode=blank')}
-                      >
-                        <PenTool className="h-5 w-5 mr-2" />
-                        Blank + Copilot
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
         </motion.div>
       </div>
@@ -1258,23 +1036,6 @@ export default function DraftingPage() {
         initialPrompt={aiPrompt}
       />
 
-      {/* Interactive Guided Drafting */}
-      {showGuidedDrafting && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-5xl h-[85vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden">
-            <InteractiveDraftChat
-              onDraftCreated={(draftId, editUrl) => {
-                setShowGuidedDrafting(false)
-                router.push(editUrl)
-              }}
-              onClose={() => {
-                setShowGuidedDrafting(false)
-                fetchDrafts()
-              }}
-            />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
