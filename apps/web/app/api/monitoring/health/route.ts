@@ -91,7 +91,7 @@ export const GET = withPublicApiHandler(async (request: NextRequest, ctx) => {
     health.checks.database = {
       status: 'down',
       latencyMs: Date.now() - dbStart,
-      message: error instanceof Error ? error.message : 'Database connection failed',
+      message: 'Database connection failed',
     };
     health.status = 'unhealthy';
     // Send alert for database down
@@ -132,7 +132,7 @@ export const GET = withPublicApiHandler(async (request: NextRequest, ctx) => {
     health.checks.redis = {
       status: 'down',
       latencyMs: Date.now() - redisStart,
-      message: error instanceof Error ? error.message : 'Redis connection failed',
+      message: 'Redis connection failed',
     };
     // Redis failure is degraded, not unhealthy (app can work without cache)
     if (health.status === 'healthy') {

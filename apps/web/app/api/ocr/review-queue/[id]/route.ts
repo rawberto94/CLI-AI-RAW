@@ -104,7 +104,7 @@ export const DELETE = withAuthApiHandler(async (
     return createErrorResponse(ctx, 'NOT_FOUND', 'Review item not found', 404);
   }
 
-  await prisma.ocrReviewItem.delete({ where: { id } });
+  await prisma.ocrReviewItem.deleteMany({ where: { id, tenantId: ctx.tenantId } });
 
   return createSuccessResponse(ctx, { success: true, id });
 });

@@ -740,7 +740,21 @@ When responding:
     const toolCallResults = await Promise.all(
       choice.message.tool_calls.map(async (toolCall) => {
         const toolName = toolCall.function.name;
-        const args = JSON.parse(toolCall.function.arguments);
+        let args: Record<string, unknown>;
+        try {
+          args = JSON.parse(toolCall.function.arguments);
+        } catch {
+          return {
+            toolCallId: toolCall.id,
+            result: {
+              toolName,
+              success: false,
+              data: null,
+              error: `Invalid tool arguments for ${toolName}`,
+              executionTimeMs: 0,
+            },
+          };
+        }
         
         toolsUsed.push(toolName);
         

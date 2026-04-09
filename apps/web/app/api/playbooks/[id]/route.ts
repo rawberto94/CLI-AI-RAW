@@ -87,7 +87,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Playbook not found', 404);
     }
 
-    await prisma.playbook.delete({ where: { id } });
+    await prisma.playbook.deleteMany({ where: { id, tenantId: ctx.tenantId } });
 
     return createSuccessResponse(ctx, {
       success: true,

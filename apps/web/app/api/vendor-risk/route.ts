@@ -14,10 +14,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     if (riskTier) where.riskTier = riskTier;
 
     const [profiles, allProfiles] = await Promise.all([
-      prisma.vendorRiskProfile.findMany({ where, orderBy: { overallScore: 'desc' } }),
+      prisma.vendorRiskProfile.findMany({ where, orderBy: { overallScore: 'desc' }, take: 1000 }),
       prisma.vendorRiskProfile.findMany({
         where: { tenantId: ctx.tenantId },
         select: { riskTier: true, overallScore: true, nextAssessmentDue: true },
+        take: 5000,
       }),
     ]);
 

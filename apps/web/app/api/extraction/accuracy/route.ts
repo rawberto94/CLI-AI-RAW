@@ -34,7 +34,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         wasCorrect: true,
         contractType: true,
         createdAt: true,
-      }
+      },
+      take: 10000,
     })
 
     const totalCount = corrections.length
@@ -106,7 +107,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         originalValue: true,
         correctedValue: true,
         contractType: true,
-      }
+      },
+      take: 10000,
     })
 
     const patterns = analyzePatterns(corrections)
@@ -128,7 +130,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         wasCorrect: true,
         createdAt: true,
       },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
+      take: 10000,
     })
 
     // Group by week
