@@ -7,6 +7,7 @@
 
 import React, { useState, useCallback, useEffect, memo, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
@@ -637,7 +638,7 @@ function EnhancedNavigation() {
                 <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white font-medium text-xs shadow-sm overflow-hidden">
                   {session?.user?.image ? (
                     
-                    <img src={session.user.image} alt={`${session.user.name || 'User'}'s profile photo`} className="w-full h-full object-cover" />
+                    <Image src={session.user.image} alt={`${session.user.name || 'User'}'s profile photo`} width={32} height={32} className="w-full h-full object-cover" />
                   ) : (
                     <span>{session?.user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'U'}</span>
                   )}

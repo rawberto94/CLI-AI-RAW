@@ -118,3 +118,25 @@ export function SkeletonContractOverview() {
     </div>
   );
 }
+
+/**
+ * Generic page-level skeleton for Suspense fallbacks.
+ * Renders metric cards + a content area placeholder.
+ */
+export function PageSkeleton({ cards = 3, rows = 4 }: { cards?: number; rows?: number }) {
+  return (
+    <div className="space-y-6 animate-pulse p-6">
+      <div className="h-8 w-48 bg-gradient-to-r from-slate-200 to-violet-100/50 dark:from-slate-700 dark:to-violet-900/30 rounded-lg" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[...Array(cards)].map((_, i) => (
+          <div key={i} className="h-24 bg-gradient-to-r from-slate-200 to-violet-100/50 dark:from-slate-700 dark:to-violet-900/30 rounded-lg" />
+        ))}
+      </div>
+      <div className="space-y-3">
+        {[...Array(rows)].map((_, i) => (
+          <div key={i} className="h-12 bg-gradient-to-r from-slate-200 to-violet-100/50 dark:from-slate-700 dark:to-violet-900/30 rounded-lg" style={{ width: `${90 - i * 5}%` }} />
+        ))}
+      </div>
+    </div>
+  );
+}

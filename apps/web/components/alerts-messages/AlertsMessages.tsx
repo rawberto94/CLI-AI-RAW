@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   AlertCircle, AlertTriangle, CheckCircle, Info, X, 
@@ -338,7 +339,7 @@ export function MessageBubble({
     <div className={`flex gap-2 ${isUser ? 'flex-row-reverse' : ''} ${className}`}>
       {avatar && (
         
-        <img src={avatar} alt={`${name}'s avatar`} className="w-8 h-8 rounded-full shrink-0" />
+        <Image src={avatar} alt={`${name}'s avatar`} width={32} height={32} className="w-8 h-8 rounded-full shrink-0" />
       )}
       <div className={`max-w-[70%] ${isUser ? 'items-end' : 'items-start'}`}>
         {name && !isUser && (

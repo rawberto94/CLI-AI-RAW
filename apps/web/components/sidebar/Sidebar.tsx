@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu,
@@ -495,7 +496,7 @@ export function UserMenu({ user, onProfile, onSettings, onLogout }: UserMenuProp
       >
         {user.avatar ? (
           
-          <img src={user.avatar} alt={`${user.name}'s profile photo`} className="w-8 h-8 rounded-full" />
+          <Image src={user.avatar} alt={`${user.name}'s profile photo`} width={32} height={32} className="w-8 h-8 rounded-full" />
         ) : (
           <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center">
             <span className="text-sm font-medium text-violet-600 dark:text-violet-400">

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import {
   CheckCircle2,
@@ -259,7 +260,7 @@ export function WorkflowProgressStepper({
                     <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-medium text-slate-600">
                       {step.assignee.avatar ? (
                         
-                        <img src={step.assignee.avatar} alt={`${step.assignee.name}'s avatar`} className="w-full h-full rounded-full" />
+                        <Image src={step.assignee.avatar} alt={`${step.assignee.name}'s avatar`} width={24} height={24} className="w-full h-full rounded-full" />
                       ) : (
                         step.assignee.name.charAt(0)
                       )}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { toast } from 'sonner';
 import { 
   FileText, 
@@ -386,7 +387,7 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
       <div className={`fixed right-0 top-0 bottom-0 z-50 w-[280px] sm:w-[320px] bg-white shadow-2xl lg:hidden transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <img src="/logo-icon.svg" alt="ConTigo" width={28} height={28} className="object-contain" />
+            <Image src="/logo-icon.svg" alt="ConTigo" width={28} height={28} className="object-contain" />
             <span className="text-lg font-bold">
               <span className="text-violet-700">con</span>
               <span className="text-slate-900">tigo</span>
@@ -480,7 +481,7 @@ export default function LandingPageClient() {
         }`}>
           {/* Mobile Brand */}
           <a href="#" className="md:hidden flex items-center gap-1.5 pl-1 pr-2 flex-shrink-0">
-            <img src="/logo-icon.svg" alt="ConTigo" width={24} height={24} className="object-contain" />
+            <Image src="/logo-icon.svg" alt="ConTigo" width={24} height={24} className="object-contain" />
             <span className="text-sm font-bold">
               <span className="text-violet-700">con</span>
               <span className="text-slate-900">tigo</span>
@@ -564,7 +565,7 @@ export default function LandingPageClient() {
               <div className="absolute inset-0 bg-gradient-to-r from-violet-400/30 via-purple-400/30 to-fuchsia-400/30 blur-3xl scale-150" />
               {/* Contigo Logo */}
               <div className="relative z-10 flex items-center gap-4 sm:gap-8">
-                <img src="/logo-icon.svg" alt="ConTigo" className="w-[80px] h-[80px] sm:w-[120px] sm:h-[120px] lg:w-[160px] lg:h-[160px] drop-shadow-2xl" />
+                <Image src="/logo-icon.svg" alt="ConTigo" width={160} height={160} className="w-[80px] h-[80px] sm:w-[120px] sm:h-[120px] lg:w-[160px] lg:h-[160px] drop-shadow-2xl" />
                 <span className="text-5xl sm:text-7xl lg:text-9xl tracking-tight drop-shadow-lg">
                   <span className="font-bold text-violet-700">con</span><span className="font-light text-slate-900">tigo</span>
                 </span>
@@ -1939,7 +1940,7 @@ export default function LandingPageClient() {
             <div className="lg:col-span-2">
               {/* Footer Logo */}
               <div className="flex items-center gap-3 mb-6">
-                <img src="/logo-icon-white.svg" alt="ConTigo" width={40} height={40} className="object-contain" />
+                <Image src="/logo-icon-white.svg" alt="ConTigo" width={40} height={40} className="object-contain" />
                 <span className="text-2xl font-bold">
                   <span className="text-violet-400">con</span>
                   <span className="text-white">tigo</span>
