@@ -397,34 +397,43 @@ export default function CopilotDraftPage() {
   const playbookSelectValue = selectedPlaybook ? selectedPlaybook.id : 'none';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+    <div className="min-h-screen bg-[#f6f4ef]">
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 px-6 py-2.5 sticky top-0 z-30">
-        <div className="max-w-[1600px] mx-auto">
+      <div className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 px-6 py-3 backdrop-blur-xl">
+        <div className="mx-auto max-w-[1600px]">
           <PageBreadcrumb />
 
-          {/* Compact title row */}
-          <div className="flex items-center justify-between gap-4 mt-1.5">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <HeaderIcon className="h-4 w-4 text-violet-600 flex-shrink-0" />
-              <h1 className="text-base font-semibold text-slate-900 truncate">
-                {headerInfo.title}
-              </h1>
-              {headerInfo.badge && (
-                <Badge variant="secondary" className="bg-violet-100 text-violet-700 text-[11px] px-2 py-0 leading-5 flex-shrink-0">
-                  {headerInfo.badge}
-                </Badge>
-              )}
-              {draftId || currentDraftId ? (
-                <span className="text-xs text-slate-400 hidden sm:inline flex-shrink-0">DRAFT</span>
-              ) : null}
+          <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0 space-y-2">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-violet-50 text-violet-600">
+                  <HeaderIcon className="h-4 w-4 flex-shrink-0" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="truncate text-lg font-semibold text-slate-950">
+                      {headerInfo.title}
+                    </h1>
+                    {headerInfo.badge && (
+                      <Badge variant="secondary" className="rounded-full bg-violet-100 px-2.5 py-0.5 text-[11px] text-violet-700">
+                        {headerInfo.badge}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-slate-500">
+                    {headerInfo.description}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            {/* Policy pack inline */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <BookOpen className="h-3.5 w-3.5 text-slate-400 hidden md:block" />
+            <div className="flex flex-wrap items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm">
+              <div className="hidden items-center gap-2 text-xs font-medium text-slate-500 sm:flex">
+                <BookOpen className="h-3.5 w-3.5" />
+                Policy pack
+              </div>
               <Select value={playbookSelectValue} onValueChange={handlePlaybookChange}>
-                <SelectTrigger className="h-8 w-auto min-w-[160px] max-w-[220px] bg-white text-xs border-slate-200">
+                <SelectTrigger className="h-8 min-w-[170px] rounded-full border-slate-200 bg-transparent text-xs shadow-none">
                   <SelectValue placeholder={isLoadingPlaybooks ? 'Loading...' : 'No policy pack'} />
                 </SelectTrigger>
                 <SelectContent>
@@ -436,8 +445,13 @@ export default function CopilotDraftPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" className="h-8 text-xs hidden md:inline-flex" onClick={() => router.push('/playbooks')}>
-                Manage Packs
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-full px-3 text-xs text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                onClick={() => router.push('/playbooks')}
+              >
+                Manage
               </Button>
             </div>
           </div>

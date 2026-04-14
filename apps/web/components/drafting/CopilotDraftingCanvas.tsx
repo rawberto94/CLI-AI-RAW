@@ -3,14 +3,14 @@
 import { useState, useCallback, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  History, MessageSquare, MessageCircle, Wand2, AlertTriangle,
+  History, MessageSquare, Wand2, AlertTriangle,
   Lightbulb, Save, Eye, Edit3, Sparkles,
-  GitBranch, Bold, Italic, Underline, List,
-  Heading1, Heading2, Quote, X, Send, Clock, Zap, Shield, Scale,
+  GitBranch, Bold, Italic, List,
+  Heading1, X, Send, Clock, Zap, Shield, Scale,
   RefreshCw, Loader2, Brain, AlertCircle,
   FileDown, CheckCircle2, ArrowRight,
   BookOpen, Search, Lock, Unlock, ThumbsUp, ThumbsDown,
-  Check, Keyboard,
+  Check,
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -323,11 +323,15 @@ export function CopilotDraftingCanvas({
   const [completionPopupPos, setCompletionPopupPos] = useState<{ top: number; left: number }>({ top: 80, left: 32 });
 
   // UI state
-  const [activeTab, setActiveTabRaw] = useState<'copilot' | 'comments' | 'versions' | 'clauses'>(() => {
-    if (typeof window === 'undefined') return 'copilot';
+  const [activeTab, setActiveTabRaw] = useState<'assistant' | 'review' | 'clauses'>(() => {
+    if (typeof window === 'undefined') return 'assistant';
     const saved = localStorage.getItem('drafting-sidebar-tab');
-    if (saved === 'copilot' || saved === 'comments' || saved === 'versions' || saved === 'clauses') return saved;
-    return 'copilot';
+    if (saved === 'assistant') return saved;
+    if (saved === 'review') return saved;
+    if (saved === 'clauses') return saved;
+    if (saved === 'copilot') return 'assistant';
+    if (saved === 'comments' || saved === 'versions') return 'review';
+    return 'assistant';
   });
   const setActiveTab = useCallback((tab: typeof activeTab | ((prev: typeof activeTab) => typeof activeTab)) => {
     setActiveTabRaw(prev => {
@@ -356,7 +360,6 @@ export function CopilotDraftingCanvas({
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [draftStatus, setDraftStatus] = useState<'DRAFT' | 'IN_REVIEW' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'FINALIZED'>('DRAFT');
@@ -389,9 +392,6 @@ export function CopilotDraftingCanvas({
   const [approvalHistory, setApprovalHistory] = useState<ApprovalEntry[]>([]);
   const [showApprovalModal, setShowApprovalModal] = useState<'approve' | 'reject' | 'submit_review' | null>(null);
   const [approvalComment, setApprovalComment] = useState('');
-
-  // Keyboard shortcut help
-  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
 
   // Cleanup pending requests on unmount or page navigation
   // Also release lock via sendBeacon so the next user isn't blocked.
@@ -995,16 +995,16 @@ export function CopilotDraftingCanvas({
       handleSaveRef.current();
       return;
     }
-    // Ctrl+Shift+E — Export menu
+    // Ctrl+Shift+E — More actions
     if (isMod && e.shiftKey && e.key === 'E') {
       e.preventDefault();
-      setShowExportMenu((v) => !v);
+      setShowActionsMenu((v) => !v);
       return;
     }
-    // Ctrl+/ — Toggle AI Copilot
+    // Ctrl+/ — Open assistant
     if (isMod && e.key === '/') {
       e.preventDefault();
-      setActiveTab('copilot');
+      setActiveTab('assistant');
       return;
     }
     // Ctrl+Space — Manual auto-complete trigger
@@ -1021,13 +1021,6 @@ export function CopilotDraftingCanvas({
       }
       return;
     }
-    // Ctrl+Shift+? — Show shortcut help
-    if (isMod && e.shiftKey && e.key === '?') {
-      e.preventDefault();
-      setShowShortcutHelp((v) => !v);
-      return;
-    }
-
     // Handle auto-completion navigation
     if (showCompletionPopup && autoCompletions.length > 0) {
       if (e.key === 'ArrowDown') {
@@ -1202,7 +1195,7 @@ export function CopilotDraftingCanvas({
       toast.error('PDF export failed');
     } finally {
       setIsExporting(false);
-      setShowExportMenu(false);
+      setShowActionsMenu(false);
     }
   }, [editor, contractType, session]);
 
@@ -1222,7 +1215,7 @@ export function CopilotDraftingCanvas({
       toast.error('DOCX export failed');
     } finally {
       setIsExporting(false);
-      setShowExportMenu(false);
+      setShowActionsMenu(false);
     }
   }, [editor, contractType, session]);
 
@@ -1565,9 +1558,8 @@ export function CopilotDraftingCanvas({
       <div className="border-b border-gray-200 px-3 pt-3 dark:border-slate-700">
         <div className="flex gap-2 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Sidebar panels">
           {[
-            { id: 'copilot', icon: Brain, label: 'AI Copilot', count: suggestions.length + aiChatMessages.length },
-            { id: 'comments', icon: MessageCircle, label: 'Comments', count: comments.length },
-            { id: 'versions', icon: History, label: 'History', count: versions.length },
+            { id: 'assistant', icon: Brain, label: 'Assistant', count: suggestions.length + aiChatMessages.length },
+            { id: 'review', icon: CheckCircle2, label: 'Review', count: comments.length + approvalHistory.length },
             { id: 'clauses', icon: BookOpen, label: 'Clauses', count: clauses.length },
           ].map((tab) => (
             <button
@@ -1601,38 +1593,48 @@ export function CopilotDraftingCanvas({
 
       {/* Tab Content */}
       <div className="flex-1 min-h-0 overflow-hidden p-4">
-        {activeTab === 'copilot' && (
-          <div id="panel-copilot" role="tabpanel" aria-labelledby="tab-copilot" className="flex h-full min-h-0 flex-col">
-            {/* Scrollable content: suggestions, risks, chat messages */}
+        {activeTab === 'assistant' && (
+          <div id="panel-assistant" role="tabpanel" aria-labelledby="tab-assistant" className="flex h-full min-h-0 flex-col">
             <div ref={aiChatScrollRef} className="flex-1 space-y-4 overflow-y-auto pr-1 pb-3">
-              {/* Risk Summary */}
-              {risks.length > 0 && (
-                <div className="p-3 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/50 dark:to-orange-950/50 rounded-lg border border-red-100 dark:border-red-800">
-                  <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 mb-2 flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-red-500" />
-                    Risk Analysis
-                  </h4>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      { label: 'Critical', value: riskSummary.critical, color: 'text-red-600 dark:text-red-400' },
-                      { label: 'High', value: riskSummary.high, color: 'text-orange-600 dark:text-orange-400' },
-                      { label: 'Medium', value: riskSummary.medium, color: 'text-yellow-600 dark:text-yellow-400' },
-                      { label: 'Low', value: riskSummary.low, color: 'text-green-600 dark:text-green-400' },
-                    ].map((stat) => (
-                      <div key={stat.label} className="text-center">
-                        <div className={`text-lg font-bold ${stat.color}`}>{stat.value}</div>
-                        <div className="text-xs text-gray-500 dark:text-slate-400">{stat.label}</div>
-                      </div>
-                    ))}
+              <div className="rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 to-fuchsia-50 p-4 dark:border-violet-900/60 dark:from-violet-950/30 dark:to-fuchsia-950/20">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-sm">
+                    <Brain className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">AI drafting assistant</p>
+                    <p className="mt-1 text-xs leading-5 text-gray-600 dark:text-slate-300">
+                      Ask for rewrites, insert a clause, or tighten risky sections without leaving the draft.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {(riskSummary.critical > 0 || riskSummary.high > 0) && (
+                <div className="rounded-2xl border border-red-100 bg-red-50/90 p-3 dark:border-red-900/60 dark:bg-red-950/30">
+                  <div className="flex items-center gap-2 text-sm font-medium text-red-800 dark:text-red-200">
+                    <Shield className="h-4 w-4" />
+                    Review flagged clauses before finalizing.
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    {riskSummary.critical > 0 && (
+                      <span className="rounded-full bg-red-100 px-2.5 py-1 font-medium text-red-700 dark:bg-red-900/60 dark:text-red-200">
+                        {riskSummary.critical} critical
+                      </span>
+                    )}
+                    {riskSummary.high > 0 && (
+                      <span className="rounded-full bg-orange-100 px-2.5 py-1 font-medium text-orange-700 dark:bg-orange-900/60 dark:text-orange-200">
+                        {riskSummary.high} high
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* Suggestions List */}
               {(suggestions.length > 0 || isLoadingSuggestions) && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100">Suggestions</h4>
+                    <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100">Suggested edits</h4>
                     <button
                       onClick={() => fetchSuggestions()}
                       aria-label="Refresh AI suggestions"
@@ -1649,7 +1651,7 @@ export function CopilotDraftingCanvas({
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {suggestions.map((suggestion) => (
+                      {suggestions.slice(0, 4).map((suggestion) => (
                         <motion.div
                           key={suggestion.id}
                           initial={{ opacity: 0, x: 20 }}
@@ -1657,7 +1659,7 @@ export function CopilotDraftingCanvas({
                           tabIndex={0}
                           role="button"
                           aria-expanded={selectedSuggestion === suggestion.id}
-                          className={`p-3 rounded-lg border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-500 ${
+                          className={`cursor-pointer rounded-2xl border p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 ${
                             selectedSuggestion === suggestion.id
                               ? 'border-violet-300 dark:border-violet-600 bg-violet-50 dark:bg-violet-900/30'
                               : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800'
@@ -1693,10 +1695,7 @@ export function CopilotDraftingCanvas({
                                     exit={{ opacity: 0, height: 0 }}
                                     className="mt-3 space-y-2"
                                   >
-                                    <div className="p-2 bg-red-50 dark:bg-red-950/50 rounded text-xs text-red-700 dark:text-red-300 line-through">
-                                      {suggestion.triggerText.length > 100 ? suggestion.triggerText.slice(0, 100) + '...' : suggestion.triggerText}
-                                    </div>
-                                    <div className="p-2 bg-green-50 dark:bg-green-950/50 rounded text-xs text-green-700 dark:text-green-300">
+                                    <div className="rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
                                       {suggestion.suggestedText.length > 150 ? suggestion.suggestedText.slice(0, 150) + '...' : suggestion.suggestedText}
                                     </div>
                                     <div className="flex items-center gap-2 mt-2">
@@ -1730,46 +1729,23 @@ export function CopilotDraftingCanvas({
                           </div>
                         </motion.div>
                       ))}
+                      {suggestions.length > 4 && (
+                        <p className="text-xs text-slate-400 dark:text-slate-500">
+                          Showing the top 4 suggestions. Use refresh after major edits.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Risks List */}
-              {risks.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 mb-3 flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                    Detected Risks
-                  </h4>
-                  <div className="space-y-2">
-                    {risks.slice(0, 5).map((risk) => (
-                      <div
-                        key={risk.id}
-                        className={`p-2 rounded-lg border ${getRiskColor(risk.riskLevel)}`}
-                      >
-                        <div className="flex items-start gap-2">
-                          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs font-medium">{risk.category}</p>
-                            <p className="text-xs mt-0.5 opacity-80">{risk.explanation}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Divider before chat (only when there are suggestions/risks above) */}
-              {(suggestions.length > 0 || risks.length > 0) && aiChatMessages.length > 0 && (
+              {(suggestions.length > 0 || riskSummary.critical > 0 || riskSummary.high > 0) && aiChatMessages.length > 0 && (
                 <div className="border-t border-gray-200 dark:border-slate-700 pt-2" />
               )}
 
-              {/* AI Chat Messages */}
               {aiChatMessages.length === 0 ? (
-                <div className="py-6 text-center text-gray-500 dark:text-slate-400">
-                  <MessageSquare className="h-7 w-7 mx-auto mb-2 opacity-50" />
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-white/80 px-4 py-6 text-center text-gray-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                  <MessageSquare className="mx-auto mb-2 h-7 w-7 opacity-50" />
                   <p className="text-sm font-medium">Ask AI to improve your draft</p>
                   <div className="mt-3 flex flex-wrap justify-center gap-2">
                     {(AI_QUICK_PROMPTS[contractType?.toUpperCase() || ''] || AI_QUICK_PROMPTS.DEFAULT).map((prompt) => (
@@ -1890,7 +1866,7 @@ export function CopilotDraftingCanvas({
                   value={aiChatInput}
                   onChange={(e) => setAiChatInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendAiChatMessage(aiChatInput)}
-                  placeholder="Ask AI to edit your contract..."
+                  placeholder="Ask AI to rewrite, add, or review..."
                   disabled={isAiChatStreaming}
                   className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50"
                 />
@@ -1917,202 +1893,216 @@ export function CopilotDraftingCanvas({
           </div>
         )}
 
-        {activeTab === 'comments' && (
-          <div id="panel-comments" role="tabpanel" aria-labelledby="tab-comments" className="h-full space-y-4 overflow-y-auto pr-1">
-            {/* New comment input */}
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
-                  placeholder="Add a comment..."
-                  aria-label="Add a comment"
-                  className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
-                />
+        {activeTab === 'review' && (
+          <div id="panel-review" role="tabpanel" aria-labelledby="tab-review" className="h-full space-y-4 overflow-y-auto pr-1">
+            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-800">
+              <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">Review workspace</p>
+              <p className="mt-1 text-xs leading-5 text-gray-600 dark:text-slate-300">
+                Keep comments, version history, and approvals in one place while you draft.
+              </p>
+            </div>
+
+            <section className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-slate-100">Comments</h3>
+                {comments.length > 0 && (
+                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                    {comments.length} thread{comments.length === 1 ? '' : 's'}
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+                    placeholder="Add a comment..."
+                    aria-label="Add a comment"
+                    className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  />
+                  <button
+                    onClick={handleAddComment}
+                    disabled={!newComment.trim()}
+                    className="rounded-lg bg-violet-600 p-2 text-white transition-colors hover:bg-violet-700 disabled:opacity-50"
+                    aria-label="Submit comment"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {comments.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center text-gray-500 dark:border-slate-700 dark:text-slate-400">
+                  <MessageSquare className="mx-auto mb-2 h-8 w-8 opacity-50" />
+                  <p className="text-sm">No comments yet</p>
+                  <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">Use comments for review notes and discussion.</p>
+                </div>
+              ) : (
+                comments.map((comment) => (
+                  <div key={comment.id} className={`rounded-2xl border p-3 ${comment.resolved ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
+                    <div className="flex items-start gap-2">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500 text-sm font-medium text-white">
+                        {(comment.user?.firstName?.[0] || '') + (comment.user?.lastName?.[0] || '')}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                            {comment.user?.firstName} {comment.user?.lastName}
+                          </span>
+                          <span className="text-xs text-gray-400 dark:text-slate-500">
+                            {new Date(comment.createdAt).toLocaleString()}
+                          </span>
+                          {comment.resolved && (
+                            <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                              Resolved
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">{comment.content}</p>
+
+                        <div className="mt-2 flex items-center gap-2">
+                          <button
+                            onClick={() => setReplyTarget(replyTarget === comment.id ? null : comment.id)}
+                            className="text-xs text-violet-600 hover:underline dark:text-violet-400"
+                          >
+                            Reply
+                          </button>
+                          {!comment.resolved && (
+                            <button
+                              onClick={() => handleResolveComment(comment.id, true)}
+                              className="flex items-center gap-0.5 text-xs text-green-600 hover:underline dark:text-green-400"
+                            >
+                              <Check className="h-3 w-3" /> Resolve
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteComment(comment.id)}
+                            className="text-xs text-red-500 hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </div>
+
+                        {replyTarget === comment.id && (
+                          <div className="mt-2 flex gap-2">
+                            <input
+                              type="text"
+                              value={replyContent}
+                              onChange={(e) => setReplyContent(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleReply(comment.id)}
+                              placeholder="Write a reply..."
+                              className="flex-1 rounded border border-gray-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                            />
+                            <button
+                              onClick={() => handleReply(comment.id)}
+                              disabled={!replyContent.trim()}
+                              className="rounded bg-violet-600 px-2 py-1 text-xs text-white hover:bg-violet-700 disabled:opacity-50"
+                            >
+                              Send
+                            </button>
+                          </div>
+                        )}
+
+                        {comment.replies && comment.replies.length > 0 && (
+                          <div className="mt-3 space-y-2 border-l-2 border-gray-200 pl-3 dark:border-slate-600">
+                            {comment.replies.map((reply: ApiComment) => (
+                              <div key={reply.id} className="text-xs">
+                                <span className="font-medium text-gray-800 dark:text-slate-200">
+                                  {reply.user?.firstName} {reply.user?.lastName}
+                                </span>
+                                <span className="ml-2 text-gray-400 dark:text-slate-500">
+                                  {new Date(reply.createdAt).toLocaleString()}
+                                </span>
+                                <p className="mt-0.5 text-gray-600 dark:text-slate-300">{reply.content}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </section>
+
+            <section className="border-t border-gray-200 pt-4 dark:border-slate-700">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-slate-100">Version history</h3>
                 <button
-                  onClick={handleAddComment}
-                  disabled={!newComment.trim()}
-                  className="p-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50"
-                  aria-label="Submit comment"
+                  onClick={handleOpenDiff}
+                  disabled={versions.length < 1}
+                  className="flex items-center gap-1 text-sm text-violet-600 transition-colors hover:text-violet-700 disabled:opacity-40 dark:text-violet-400 dark:hover:text-violet-300"
+                  aria-label="Compare versions"
                 >
-                  <Send className="h-4 w-4" />
+                  <GitBranch className="h-4 w-4" />
+                  Compare
                 </button>
               </div>
-            </div>
 
-            {comments.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 dark:text-slate-400">
-                <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No comments yet</p>
-                <p className="text-xs mt-1 text-gray-400 dark:text-slate-500">Comments will appear here during review</p>
-              </div>
-            ) : (
-              comments.map((comment) => (
-                <div key={comment.id} className={`p-3 rounded-lg border ${comment.resolved ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
-                  <div className="flex items-start gap-2">
-                    <div className="h-8 w-8 rounded-full bg-violet-500 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
-                      {(comment.user?.firstName?.[0] || '') + (comment.user?.lastName?.[0] || '')}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
-                          {comment.user?.firstName} {comment.user?.lastName}
-                        </span>
-                        <span className="text-xs text-gray-400 dark:text-slate-500">
-                          {new Date(comment.createdAt).toLocaleString()}
-                        </span>
-                        {comment.resolved && (
-                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">
-                            Resolved
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-slate-300 mt-1">{comment.content}</p>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2 mt-2">
-                        <button
-                          onClick={() => setReplyTarget(replyTarget === comment.id ? null : comment.id)}
-                          className="text-xs text-violet-600 dark:text-violet-400 hover:underline"
-                        >
-                          Reply
-                        </button>
-                        {!comment.resolved && (
-                          <button
-                            onClick={() => handleResolveComment(comment.id, true)}
-                            className="text-xs text-green-600 dark:text-green-400 hover:underline flex items-center gap-0.5"
-                          >
-                            <Check className="h-3 w-3" /> Resolve
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDeleteComment(comment.id)}
-                          className="text-xs text-red-500 hover:underline"
-                        >
-                          Delete
-                        </button>
-                      </div>
-
-                      {/* Reply input */}
-                      {replyTarget === comment.id && (
-                        <div className="flex gap-2 mt-2">
-                          <input
-                            type="text"
-                            value={replyContent}
-                            onChange={(e) => setReplyContent(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleReply(comment.id)}
-                            placeholder="Write a reply..."
-                            className="flex-1 px-2 py-1.5 text-xs border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded focus:outline-none focus:ring-1 focus:ring-violet-500"
-                          />
-                          <button
-                            onClick={() => handleReply(comment.id)}
-                            disabled={!replyContent.trim()}
-                            className="px-2 py-1 bg-violet-600 text-white text-xs rounded hover:bg-violet-700 disabled:opacity-50"
-                          >
-                            Send
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Threaded replies */}
-                      {comment.replies && comment.replies.length > 0 && (
-                        <div className="mt-3 space-y-2 pl-3 border-l-2 border-gray-200 dark:border-slate-600">
-                          {comment.replies.map((reply: ApiComment) => (
-                            <div key={reply.id} className="text-xs">
-                              <span className="font-medium text-gray-800 dark:text-slate-200">
-                                {reply.user?.firstName} {reply.user?.lastName}
-                              </span>
-                              <span className="text-gray-400 dark:text-slate-500 ml-2">
-                                {new Date(reply.createdAt).toLocaleString()}
-                              </span>
-                              <p className="text-gray-600 dark:text-slate-300 mt-0.5">{reply.content}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+              {versions.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center text-gray-500 dark:border-slate-700 dark:text-slate-400">
+                  <History className="mx-auto mb-2 h-8 w-8 opacity-50" />
+                  <p className="text-sm">No versions yet</p>
+                  <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">Save the draft to start version history.</p>
                 </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {activeTab === 'versions' && (
-          <div id="panel-versions" role="tabpanel" aria-labelledby="tab-versions" className="h-full space-y-3 overflow-y-auto pr-1">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium text-gray-900 dark:text-slate-100">Version History</h3>
-              <button
-                onClick={handleOpenDiff}
-                disabled={versions.length < 1}
-                className="flex items-center gap-1 text-sm text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors disabled:opacity-40"
-                aria-label="Compare versions"
-              >
-                <GitBranch className="h-4 w-4" />
-                Compare
-              </button>
-            </div>
-            {versions.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 dark:text-slate-400">
-                <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No versions yet</p>
-                <p className="text-xs mt-1 text-gray-400 dark:text-slate-500">Save to create a version</p>
-              </div>
-            ) : (
-              versions.map((version, index) => (
-                <div
-                  key={version.id}
-                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                    index === 0 ? 'border-violet-200 dark:border-violet-700 bg-violet-50 dark:bg-violet-900/30' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900 dark:text-slate-100">v{version.version}</span>
-                        {version.label && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${
-                            index === 0 ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300'
-                          }`}>
-                            {version.label}
-                          </span>
+              ) : (
+                <div className="space-y-3">
+                  {versions.map((version, index) => (
+                    <div
+                      key={version.id}
+                      className={`rounded-2xl border p-3 transition-colors ${
+                        index === 0 ? 'border-violet-200 dark:border-violet-700 bg-violet-50 dark:bg-violet-900/30' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900 dark:text-slate-100">v{version.version}</span>
+                            {version.label && (
+                              <span className={`rounded px-1.5 py-0.5 text-xs ${
+                                index === 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'
+                              }`}>
+                                {version.label}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-0.5 text-xs text-gray-500 dark:text-slate-400">
+                            {version.user?.firstName} {version.user?.lastName}
+                          </p>
+                          <p className="mt-0.5 text-xs text-gray-400 dark:text-slate-500">
+                            {new Date(version.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        {version.changeSummary && (
+                          <div className="max-w-[120px] truncate text-xs text-gray-500 dark:text-slate-400">{version.changeSummary}</div>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                        {version.user?.firstName} {version.user?.lastName}
-                      </p>
-                      <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
-                        {new Date(version.createdAt).toLocaleString()}
-                      </p>
                     </div>
-                    {version.changeSummary && (
-                      <div className="text-xs text-gray-500 dark:text-slate-400 max-w-[120px] truncate">{version.changeSummary}</div>
-                    )}
-                  </div>
+                  ))}
                 </div>
-              ))
-            )}
+              )}
+            </section>
 
-            {/* Approval History */}
             {approvalHistory.length > 0 && (
-              <div className="mt-6">
-                <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100 mb-3 flex items-center gap-2">
+              <section className="border-t border-gray-200 pt-4 dark:border-slate-700">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-slate-100">
                   <CheckCircle2 className="h-4 w-4 text-violet-500" />
-                  Approval History
+                  Approval history
                 </h4>
                 <div className="space-y-2">
                   {approvalHistory.map((entry, idx) => (
                     <div
                       key={`approval-${idx}`}
-                      className={`p-3 rounded-lg border text-xs ${
+                      className={`rounded-2xl border p-3 text-xs ${
                         entry.action === 'APPROVED'
                           ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20'
                           : 'border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/20'
                       }`}
                     >
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="mb-1 flex items-center gap-2">
                         {entry.action === 'APPROVED' ? (
                           <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                         ) : (
@@ -2123,19 +2113,19 @@ export function CopilotDraftingCanvas({
                         }`}>
                           {entry.action === 'APPROVED' ? 'Approved' : 'Rejected'}
                         </span>
-                        <span className="text-gray-400 dark:text-slate-500 ml-auto">
+                        <span className="ml-auto text-gray-400 dark:text-slate-500">
                           {new Date(entry.timestamp).toLocaleString()}
                         </span>
                       </div>
                       {(entry.comment || entry.reason) && (
-                        <p className="text-gray-600 dark:text-slate-300 mt-1 pl-6">
+                        <p className="mt-1 pl-6 text-gray-600 dark:text-slate-300">
                           {entry.comment || entry.reason}
                         </p>
                       )}
                     </div>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
           </div>
         )}
@@ -2236,7 +2226,7 @@ export function CopilotDraftingCanvas({
   // ============================================================================
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-[#f6f4ef] dark:bg-slate-900">
       {/* Header */}
       <div className="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
         <div className="px-4 py-2">
@@ -2318,7 +2308,7 @@ export function CopilotDraftingCanvas({
               <button
                 onClick={() => setShowMobileSidebar(true)}
                 className="lg:hidden flex items-center gap-1 px-2 py-1.5 text-xs text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 rounded-lg hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors"
-                aria-label="Open AI Copilot panel"
+                aria-label="Open assistant panel"
               >
                 <Brain className="h-3.5 w-3.5" />
               </button>
@@ -2372,18 +2362,28 @@ export function CopilotDraftingCanvas({
                 </>
               )}
 
-              {/* Actions dropdown — Export, Lock, Workflow, Shortcuts */}
+              {/* Actions dropdown — save, export, workflow */}
               <div className="relative">
                 <button
-                  onClick={() => { setShowActionsMenu(v => !v); setShowExportMenu(false); }}
+                  onClick={() => { setShowActionsMenu(v => !v); }}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                 >
                   <Zap className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Actions</span>
+                  <span className="hidden sm:inline">More</span>
                 </button>
                 {showActionsMenu && (
                   <div className="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-50 overflow-hidden py-1">
-                    {/* Export */}
+                    <button
+                      onClick={() => { handleSaveRef.current(); setShowActionsMenu(false); }}
+                      disabled={isSaving}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                    >
+                      <Save className="h-4 w-4 text-violet-500" />
+                      Save now
+                    </button>
+
+                    <div className="my-1 border-t border-gray-100 dark:border-slate-700" />
+
                     <button
                       onClick={() => { handleExportPDF(); setShowActionsMenu(false); }}
                       disabled={isExporting}
@@ -2453,34 +2453,15 @@ export function CopilotDraftingCanvas({
                       </button>
                     )}
 
-                    <div className="my-1 border-t border-gray-100 dark:border-slate-700" />
-
-                    {/* Keyboard Shortcuts */}
-                    <button
-                      onClick={() => { setShowShortcutHelp(v => !v); setShowActionsMenu(false); }}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                    >
-                      <Keyboard className="h-4 w-4" />
-                      Keyboard Shortcuts
-                    </button>
                   </div>
                 )}
               </div>
-
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 text-white text-xs font-medium rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50"
-              >
-                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                Save
-              </button>
             </div>
           </div>
 
           {/* Toolbar */}
           {isEditing && (
-            <div className="mt-2 flex items-center gap-0.5 pb-2 border-t border-gray-100 dark:border-slate-700 pt-2" role="toolbar" aria-label="Document formatting toolbar">
+            <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-gray-100 pt-2 pb-2 dark:border-slate-700" role="toolbar" aria-label="Document formatting toolbar">
               <div className="flex items-center gap-0.5" role="group" aria-label="Text formatting">
                 <button onClick={() => insertFormatting('bold')} className={`p-1.5 rounded transition-colors ${editor?.isActive('bold') ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Bold" aria-label="Bold">
                   <Bold className="h-4 w-4" />
@@ -2488,17 +2469,11 @@ export function CopilotDraftingCanvas({
                 <button onClick={() => insertFormatting('italic')} className={`p-1.5 rounded transition-colors ${editor?.isActive('italic') ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Italic" aria-label="Italic">
                   <Italic className="h-4 w-4" />
                 </button>
-                <button onClick={() => insertFormatting('underline')} className={`p-1.5 rounded transition-colors ${editor?.isActive('underline') ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Underline" aria-label="Underline">
-                  <Underline className="h-4 w-4" />
-                </button>
               </div>
               <div className="h-4 w-px bg-gray-200 dark:bg-slate-700 mx-1" />
               <div className="flex items-center gap-0.5" role="group" aria-label="Headings">
                 <button onClick={() => insertFormatting('h1')} className={`p-1.5 rounded transition-colors ${editor?.isActive('heading', { level: 1 }) ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Heading 1" aria-label="Heading 1">
                   <Heading1 className="h-4 w-4" />
-                </button>
-                <button onClick={() => insertFormatting('h2')} className={`p-1.5 rounded transition-colors ${editor?.isActive('heading', { level: 2 }) ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Heading 2" aria-label="Heading 2">
-                  <Heading2 className="h-4 w-4" />
                 </button>
               </div>
               <div className="h-4 w-px bg-gray-200 dark:bg-slate-700 mx-1" />
@@ -2506,14 +2481,11 @@ export function CopilotDraftingCanvas({
                 <button onClick={() => insertFormatting('list')} className={`p-1.5 rounded transition-colors ${editor?.isActive('bulletList') ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="List" aria-label="List">
                   <List className="h-4 w-4" />
                 </button>
-                <button onClick={() => insertFormatting('quote')} className={`p-1.5 rounded transition-colors ${editor?.isActive('blockquote') ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Quote" aria-label="Quote">
-                  <Quote className="h-4 w-4" />
-                </button>
               </div>
 
               <div className="flex-1" />
 
-              {/* Copilot status + AI Assist */}
+              {/* Assistant status + AI access */}
               <div className="flex items-center gap-2">
                 {isLoadingSuggestions && (
                   <span className="flex items-center gap-1 text-[11px] text-violet-600 dark:text-violet-400">
@@ -2526,11 +2498,11 @@ export function CopilotDraftingCanvas({
                   </span>
                 )}
                 <button
-                  onClick={() => setActiveTab('copilot')}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600 transition-colors"
+                  onClick={() => setActiveTab('assistant')}
+                  className="flex items-center gap-1.5 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-slate-800"
                 >
                   <Wand2 className="h-3.5 w-3.5" />
-                  AI Assist
+                  Ask AI
                 </button>
               </div>
             </div>
@@ -2540,11 +2512,11 @@ export function CopilotDraftingCanvas({
           {!isEditing && (
             <div className="mt-2 flex justify-end pb-2 border-t border-gray-100 dark:border-slate-700 pt-2">
               <button
-                onClick={() => setActiveTab('copilot')}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600 transition-colors"
+                onClick={() => setActiveTab('assistant')}
+                className="flex items-center gap-1.5 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-slate-800"
               >
                 <Wand2 className="h-3.5 w-3.5" />
-                AI Assist
+                Ask AI
               </button>
             </div>
           )}
@@ -2555,7 +2527,7 @@ export function CopilotDraftingCanvas({
       <div className="flex relative">
         {/* Editor */}
         <div className="flex-1 p-4 md:p-8">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-3xl mx-auto">
             {/* Document Content */}
             <div className="relative">
               <div
@@ -2633,8 +2605,8 @@ export function CopilotDraftingCanvas({
           </div>
         </div>
 
-        {/* Right Sidebar - Copilot Panel (Desktop) */}
-        <div className="hidden lg:flex w-80 xl:w-96 flex-col bg-white dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 min-h-[calc(100vh-120px)]">
+        {/* Right Sidebar (Desktop) */}
+        <div className="hidden min-h-[calc(100vh-120px)] w-72 flex-col border-l border-gray-200 bg-white/92 dark:border-slate-700 dark:bg-slate-800 lg:flex xl:w-80">
           {renderSidebarContent()}
         </div>
 
@@ -2659,7 +2631,7 @@ export function CopilotDraftingCanvas({
                 className="fixed right-0 top-0 bottom-0 w-[85vw] max-w-[400px] bg-white dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 z-50 lg:hidden shadow-2xl"
               >
                 <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-slate-700">
-                  <h3 className="font-semibold text-gray-900 dark:text-slate-100">AI Copilot</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-slate-100">Assistant</h3>
                   <button
                     onClick={() => setShowMobileSidebar(false)}
                     className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
@@ -2772,62 +2744,6 @@ export function CopilotDraftingCanvas({
                 versions={diffVersions}
                 onClose={() => setShowDiffView(false)}
               />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Keyboard Shortcut Help Modal ── */}
-      <AnimatePresence>
-        {showShortcutHelp && (
-          <motion.div
-            key="shortcut-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            onClick={() => setShowShortcutHelp(false)}
-          >
-            <motion.div
-              key="shortcut-panel"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-sm p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
-                  <Keyboard className="h-5 w-5 text-violet-500" />
-                  Keyboard Shortcuts
-                </h3>
-                <button
-                  onClick={() => setShowShortcutHelp(false)}
-                  className="p-1 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="space-y-3">
-                {[
-                  { keys: 'Ctrl + S', action: 'Save draft' },
-                  { keys: 'Ctrl + Shift + E', action: 'Toggle export menu' },
-                  { keys: 'Ctrl + /', action: 'Toggle AI Copilot' },
-                  { keys: 'Ctrl + Space', action: 'Trigger auto-complete' },
-                  { keys: 'Ctrl + Shift + ?', action: 'Show this help' },
-                  { keys: 'Ctrl + Z', action: 'Undo' },
-                  { keys: 'Ctrl + Y', action: 'Redo' },
-                  { keys: 'Ctrl + B', action: 'Bold text' },
-                  { keys: 'Ctrl + I', action: 'Italic text' },
-                ].map((shortcut) => (
-                  <div key={shortcut.keys} className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600 dark:text-slate-300">{shortcut.action}</span>
-                    <kbd className="px-2 py-1 text-xs font-mono bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded border border-gray-200 dark:border-slate-600">
-                      {shortcut.keys}
-                    </kbd>
-                  </div>
-                ))}
-              </div>
             </motion.div>
           </motion.div>
         )}

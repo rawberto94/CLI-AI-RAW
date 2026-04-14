@@ -29,10 +29,7 @@ import {
   Copy,
   MoreHorizontal,
   BookOpen,
-  PenTool,
-  RefreshCw,
   LayoutTemplate,
-  Bot,
   Download,
 } from 'lucide-react'
 import {
@@ -135,48 +132,35 @@ function DraftCard({
 
   return (
     <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.15 }}>
-      <Card className="group bg-white border-slate-200/80 hover:border-violet-300 hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden">
-        <CardContent className="p-0">
-          <div className="h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div
-                className="flex-1 min-w-0"
-                onClick={() => router.push(`/drafting/copilot?draft=${draft.id}`)}
-              >
-                <div className="flex items-center gap-2 mb-1.5">
-                  <FileText className="h-4 w-4 text-violet-500 flex-shrink-0" />
-                  <h3 className="font-semibold text-slate-900 truncate text-sm">
+      <Card className="group cursor-pointer rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:border-slate-300 hover:shadow-md">
+        <CardContent className="p-5">
+          <div className="flex items-start gap-3">
+            <button
+              type="button"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-violet-600 transition-colors group-hover:bg-violet-50"
+              onClick={() => router.push(`/drafting/copilot?draft=${draft.id}`)}
+              aria-label={`Open ${draft.title || 'Untitled Draft'}`}
+            >
+              <FileText className="h-4 w-4" />
+            </button>
+
+            <div
+              className="min-w-0 flex-1"
+              onClick={() => router.push(`/drafting/copilot?draft=${draft.id}`)}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-semibold text-slate-900">
                     {draft.title || 'Untitled Draft'}
                   </h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Edited {timeAgo}
+                    {draft.template ? ` · ${draft.template.name}` : ''}
+                  </p>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-slate-500">
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {timeAgo}
-                  </span>
-                  {draft.template && (
-                    <span className="flex items-center gap-1">
-                      <LayoutTemplate className="h-3 w-3" />
-                      {draft.template.name}
-                    </span>
-                  )}
-                  {draft.sourceType && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                      {draft.sourceType === 'template'
-                        ? 'From template'
-                        : draft.sourceType === 'ai'
-                          ? 'AI Generated'
-                          : 'Blank'}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
                 <Badge
                   className={cn(
-                    'text-[10px] font-medium px-2 py-0.5 border-0',
+                    'shrink-0 border-0 px-2 py-0.5 text-[10px] font-medium',
                     statusColors[draft.status] || statusColors.DRAFT,
                   )}
                 >
@@ -186,69 +170,71 @@ function DraftCard({
                       ? 'In Progress'
                       : draft.status}
                 </Badge>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-slate-100 transition-all">
-                      <MoreHorizontal className="h-4 w-4 text-slate-400" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem
-                      onClick={() => router.push(`/drafting/copilot?draft=${draft.id}`)}
-                      className="gap-2 cursor-pointer"
-                    >
-                      <Edit3 className="h-3.5 w-3.5" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => onDuplicate(draft.id)}
-                      className="gap-2 cursor-pointer"
-                    >
-                      <Copy className="h-3.5 w-3.5" /> Duplicate
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => onExport(draft.id, 'pdf')}
-                      className="gap-2 cursor-pointer"
-                    >
-                      <Download className="h-3.5 w-3.5" /> Export PDF
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => onExport(draft.id, 'docx')}
-                      className="gap-2 cursor-pointer"
-                    >
-                      <Download className="h-3.5 w-3.5" /> Export DOCX
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => setShowDeleteConfirm(true)}
-                      className="gap-2 cursor-pointer text-red-600"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete draft?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete &ldquo;{draft.title}&rdquo;. This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => onDelete(draft.id)}
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               </div>
+            </div>
+
+            <div className="shrink-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem
+                    onClick={() => router.push(`/drafting/copilot?draft=${draft.id}`)}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <Edit3 className="h-3.5 w-3.5" /> Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onDuplicate(draft.id)}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <Copy className="h-3.5 w-3.5" /> Duplicate
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onExport(draft.id, 'pdf')}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <Download className="h-3.5 w-3.5" /> Export PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onExport(draft.id, 'docx')}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <Download className="h-3.5 w-3.5" /> Export DOCX
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="gap-2 cursor-pointer text-red-600"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete draft?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete &ldquo;{draft.title}&rdquo;. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => onDelete(draft.id)}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </CardContent>
@@ -280,47 +266,47 @@ function TemplateQuickCard({
 
   return (
     <div className="text-left w-full">
-      <Card className="bg-white border-slate-200/80 hover:border-violet-300 hover:shadow-md transition-all duration-200 overflow-hidden group">
-        <CardContent className="p-4">
+      <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:border-slate-300 hover:shadow-md">
+        <CardContent className="p-5">
           <div className="flex items-start gap-3">
-            <span className="text-xl flex-shrink-0">{icon}</span>
-            <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-slate-900 text-sm truncate group-hover:text-violet-700 transition-colors">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-lg">
+              {icon}
+            </div>
+            <div className="min-w-0 flex-1">
+              {template.category && (
+                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
+                  {template.category}
+                </p>
+              )}
+              <h4 className="mt-1 truncate text-sm font-semibold text-slate-900">
                 {template.name}
               </h4>
               {template.description && (
-                <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                <p className="mt-1 text-xs leading-5 text-slate-500 line-clamp-2">
                   {template.description}
                 </p>
               )}
-              <div className="flex items-center gap-2 mt-2">
-                {template.category && (
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                    {template.category}
-                  </Badge>
-                )}
-                {(template.usageCount ?? 0) > 0 && (
-                  <span className="text-[10px] text-slate-400">
-                    {template.usageCount} uses
-                  </span>
-                )}
+              <div className="mt-4 flex items-center gap-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onPreview() }}
+                  className="text-xs font-medium text-slate-500 transition-colors hover:text-violet-700"
+                  title="Preview template"
+                >
+                  Preview
+                </button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 rounded-full bg-slate-900 px-3 text-xs text-white hover:bg-slate-800"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onClick()
+                  }}
+                >
+                  Use template
+                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </Button>
               </div>
-            </div>
-            <div className="flex flex-col gap-1 flex-shrink-0 mt-0.5">
-              <button
-                onClick={(e) => { e.stopPropagation(); onPreview(); }}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                title="Preview template"
-              >
-                <Search className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onClick(); }}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                title="Use template"
-              >
-                <ArrowRight className="h-3.5 w-3.5" />
-              </button>
             </div>
           </div>
         </CardContent>
@@ -343,14 +329,11 @@ export default function DraftingPage() {
   const debouncedSearch = useDebounce(searchQuery, 300)
   const [activeTab, setActiveTab] = useState('drafts')
   const [aiPrompt, setAiPrompt] = useState('')
-  const [isGenerating, setIsGenerating] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [showAgenticDialog, setShowAgenticDialog] = useState(false)
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null)
   const [previewContent, setPreviewContent] = useState<string>('')
   const [previewLoading, setPreviewLoading] = useState(false)
-  const [dateFrom, setDateFrom] = useState<string>('')
-  const [dateTo, setDateTo] = useState<string>('')
 
   // Fetch templates via React Query
   const { data: templatesData, isLoading: templatesLoading } = useTemplates()
@@ -368,8 +351,6 @@ export default function DraftingPage() {
       const params = new URLSearchParams({ limit: '50', sortBy: 'updatedAt', sortOrder: 'desc' })
       if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim())
       if (statusFilter) params.set('status', statusFilter)
-      if (dateFrom) params.set('dateFrom', new Date(dateFrom).toISOString())
-      if (dateTo) params.set('dateTo', new Date(dateTo + 'T23:59:59').toISOString())
       const res = await fetch(`/api/drafts?${params.toString()}`)
       if (res.ok) {
         const data = await res.json()
@@ -381,7 +362,7 @@ export default function DraftingPage() {
     } finally {
       setDraftsLoading(false)
     }
-  }, [debouncedSearch, statusFilter, dateFrom, dateTo])
+  }, [debouncedSearch, statusFilter])
 
   useEffect(() => {
     fetchDrafts()
@@ -400,18 +381,6 @@ export default function DraftingPage() {
         (t.category || '').toLowerCase().includes(q),
     )
   }, [templates, debouncedSearch])
-
-  const stats = useMemo(
-    () => ({
-      totalDrafts: drafts.length,
-      inProgress: drafts.filter(
-        (d) => d.status === 'IN_PROGRESS' || d.status === 'DRAFT',
-      ).length,
-      aiGenerated: drafts.filter((d) => d.sourceType === 'ai').length,
-      templatesAvailable: templates.length,
-    }),
-    [drafts, templates],
-  )
 
   // Handlers
   const handleDeleteDraft = useCallback(async (id: string) => {
@@ -516,198 +485,164 @@ export default function DraftingPage() {
   // ============================================================================
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#f6f4ef]">
       {/* Sticky Header */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 px-6 sm:px-8 lg:px-10 py-3 sticky top-0 z-30">
+      <div className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 px-6 py-3 backdrop-blur-xl sm:px-8 lg:px-10">
         <div className="max-w-[1600px] mx-auto">
           <PageBreadcrumb />
         </div>
       </div>
 
-      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6 space-y-6">
-        {/* ============ HERO SECTION ============ */}
+      <div className="mx-auto max-w-[1480px] space-y-8 px-6 py-8 sm:px-8 lg:px-10">
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 p-8 text-white"
+          className="grid gap-4 lg:grid-cols-[1.3fr_0.9fr]"
         >
-          {/* Background decoration */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full -translate-y-1/2 translate-x-1/3" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-white rounded-full translate-y-1/2 -translate-x-1/4" />
-          </div>
+          <Card className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
+            <CardContent className="p-6 sm:p-8">
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <Badge className="rounded-full bg-violet-100 px-3 py-1 text-[11px] font-medium text-violet-700 hover:bg-violet-100">
+                    AI drafting studio
+                  </Badge>
+                  <div className="space-y-2">
+                    <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                      Start from a prompt, a template, or a blank page.
+                    </h1>
+                    <p className="max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
+                      Keep the workspace quiet, write in one place, and pull in AI help only when you need it.
+                    </p>
+                  </div>
+                </div>
 
-          <div className="relative flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                  <PenTool className="h-7 w-7" />
+                <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                  <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-900">
+                    <Wand2 className="h-4 w-4 text-violet-600" />
+                    Describe the document you want
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Input
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder='e.g. "Draft an NDA for a software consulting engagement with a 2-year term"'
+                      className="h-12 rounded-full border-slate-200 bg-white px-5 text-sm shadow-sm focus:border-violet-400 focus:ring-violet-400/20"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAIGenerate()}
+                    />
+                    <Button
+                      onClick={handleAIGenerate}
+                      disabled={!aiPrompt.trim()}
+                      className="h-12 rounded-full bg-slate-950 px-5 text-sm font-medium text-white hover:bg-slate-800"
+                    >
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Generate with AI
+                    </Button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {[
+                      'NDA for tech partnership',
+                      'MSA with SaaS vendor',
+                      'Employment contract',
+                    ].map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => setAiPrompt(suggestion)}
+                        className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <h1 className="text-3xl font-bold">Document Studio</h1>
-                  <p className="text-violet-100 text-base mt-1">
-                    Draft, generate, and collaborate on contracts with AI-powered
-                    intelligence
-                  </p>
-                </div>
-              </div>
-            </div>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                size="lg"
-                className="bg-white text-violet-700 hover:bg-violet-50 font-semibold shadow-lg shadow-black/20 rounded-xl px-6"
-                onClick={() => router.push('/drafting/copilot?mode=blank')}
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                New Document
-              </Button>
-              <Button
-                size="lg"
-                className="bg-white/20 text-white hover:bg-white/30 font-semibold shadow-lg shadow-black/10 rounded-xl px-6 backdrop-blur-sm border border-white/30"
-                onClick={() => setShowAgenticDialog(true)}
-              >
-                <Sparkles className="h-5 w-5 mr-2" />
-                Generate with AI
-              </Button>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ============ COMPACT STATS ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex flex-wrap items-center gap-4 text-sm text-slate-600"
-        >
-          <span className="flex items-center gap-1.5">
-            <FileText className="h-4 w-4 text-violet-500" />
-            <span className="font-semibold text-slate-900">{stats.totalDrafts}</span> drafts
-          </span>
-          {stats.inProgress > 0 && (
-            <span className="flex items-center gap-1.5">
-              <Edit3 className="h-4 w-4 text-blue-500" />
-              <span className="font-semibold text-slate-900">{stats.inProgress}</span> in progress
-            </span>
-          )}
-          {stats.aiGenerated > 0 && (
-            <span className="flex items-center gap-1.5">
-              <Bot className="h-4 w-4 text-purple-500" />
-              <span className="font-semibold text-slate-900">{stats.aiGenerated}</span> AI generated
-            </span>
-          )}
-          <span className="flex items-center gap-1.5">
-            <BookOpen className="h-4 w-4 text-emerald-500" />
-            <span className="font-semibold text-slate-900">{stats.templatesAvailable}</span> templates
-          </span>
-        </motion.div>
-
-        {/* ============ AI QUICK GENERATE ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-        >
-          <Card className="border-violet-200/60 bg-gradient-to-r from-violet-50/80 via-white to-purple-50/80 shadow-sm overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl text-white shadow-md">
-                  <Wand2 className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">
-                    AI Contract Generator
-                  </h3>
-                  <p className="text-sm text-slate-500">
-                    Describe what you need and AI will draft it for you
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <Input
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder='e.g. "Draft an NDA for a software consulting engagement with a 2-year term"'
-                    className="h-12 pl-4 pr-4 text-sm border-slate-200 focus:border-violet-400 focus:ring-violet-400/20 rounded-xl bg-white"
-                    onKeyDown={(e) => e.key === 'Enter' && handleAIGenerate()}
-                  />
-                </div>
-                <Button
-                  onClick={handleAIGenerate}
-                  disabled={isGenerating || !aiPrompt.trim()}
-                  className="h-12 px-6 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white rounded-xl font-medium shadow-lg shadow-violet-500/25"
-                >
-                  {isGenerating ? (
-                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 mr-2" />
-                  )}
-                  Generate
-                </Button>
-              </div>
-              {/* Quick suggestion chips */}
-              <div className="flex flex-wrap gap-2 mt-3">
-                {[
-                  'NDA for tech partnership',
-                  'MSA with SaaS vendor',
-                  'Employment contract',
-                  'Consulting SOW',
-                ].map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    onClick={() => setAiPrompt(suggestion)}
-                    className="text-xs px-3 py-1.5 rounded-full bg-violet-100/80 text-violet-700 hover:bg-violet-200 transition-colors font-medium"
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    size="lg"
+                    className="rounded-full bg-violet-600 px-5 text-white hover:bg-violet-700"
+                    onClick={() => router.push('/drafting/copilot?mode=blank')}
                   >
-                    {suggestion}
-                  </button>
-                ))}
+                    <Plus className="mr-2 h-4 w-4" />
+                    Start blank
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="rounded-full border-slate-300 bg-white px-5 text-slate-700 hover:bg-slate-100"
+                    onClick={() => setActiveTab('templates')}
+                  >
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    Browse templates
+                  </Button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-500">
+                  <span>
+                    <span className="font-semibold text-slate-900">{drafts.length}</span> drafts ready
+                  </span>
+                  <span>
+                    <span className="font-semibold text-slate-900">{templates.length}</span> approved templates
+                  </span>
+                  <span>
+                    Search, draft, review, and finalize from one workspace.
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>
-        </motion.div>
 
-        {/* ============ QUICK START CARDS ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-slate-900">Quick Start</h2>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {QUICK_STARTS.map((item) => (
-              <motion.button
-                key={item.id}
-                whileHover={{ y: -2, scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  const match = templates.find(
-                    (t) =>
-                      t.name.toLowerCase().includes(item.id) ||
-                      t.name.toLowerCase().includes(item.label.toLowerCase()),
-                  )
-                  if (match) {
-                    handleTemplateUse(match)
-                  } else {
-                    router.push(`/drafting/copilot?mode=blank&type=${item.id}`)
-                  }
-                }}
-                className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-slate-200/80 hover:border-violet-300 hover:shadow-md transition-all text-center group"
-              >
-                <span className="text-2xl">{item.icon}</span>
-                <span className="text-sm font-semibold text-slate-800 group-hover:text-violet-700 transition-colors">
-                  {item.label}
-                </span>
-                <span className="text-[10px] text-slate-400 leading-tight">
-                  {item.desc}
-                </span>
-              </motion.button>
-            ))}
-          </div>
+          <Card className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
+            <CardContent className="flex h-full flex-col p-6 sm:p-8">
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold text-slate-950">Fast starts</h2>
+                <p className="text-sm leading-6 text-slate-500">
+                  Use a familiar structure, then let AI reshape it as you draft.
+                </p>
+              </div>
+
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                {QUICK_STARTS.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      const match = templates.find(
+                        (t) =>
+                          t.name.toLowerCase().includes(item.id) ||
+                          t.name.toLowerCase().includes(item.label.toLowerCase()),
+                      )
+                      if (match) {
+                        handleTemplateUse(match)
+                      } else {
+                        router.push(`/drafting/copilot?mode=blank&type=${item.id}`)
+                      }
+                    }}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left transition-colors hover:border-slate-300 hover:bg-slate-100"
+                  >
+                    <div className="text-xl">{item.icon}</div>
+                    <div className="mt-3 text-sm font-semibold text-slate-900">{item.label}</div>
+                    <div className="mt-1 text-xs leading-5 text-slate-500">{item.desc}</div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-6 rounded-[24px] bg-slate-950 p-5 text-white">
+                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                  Prefer proven language?
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-200">
+                  Start from your approved templates and refine the draft with AI in the editor.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-4 rounded-full bg-white px-4 text-slate-950 hover:bg-slate-100"
+                  onClick={() => setActiveTab('templates')}
+                >
+                  Open template library
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </motion.div>
 
         {/* ============ TABBED CONTENT ============ */}
@@ -717,14 +652,21 @@ export default function DraftingPage() {
           transition={{ delay: 0.25 }}
         >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <TabsList className="bg-slate-100 p-1 rounded-xl">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div className="space-y-2">
+                <div>
+                  <p className="text-sm font-medium text-slate-900">Continue drafting</p>
+                  <p className="text-sm text-slate-500">
+                    Recent work on the left, trusted starting points on the right.
+                  </p>
+                </div>
+                <TabsList className="rounded-full bg-white p-1 shadow-sm ring-1 ring-slate-200">
                 <TabsTrigger
                   value="drafts"
-                  className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm px-4 gap-2"
+                  className="gap-2 rounded-full px-4 data-[state=active]:bg-slate-950 data-[state=active]:text-white data-[state=active]:shadow-none"
                 >
                   <FileText className="h-4 w-4" />
-                  My Drafts
+                  Drafts
                   {drafts.length > 0 && (
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">
                       {drafts.length}
@@ -733,7 +675,7 @@ export default function DraftingPage() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="templates"
-                  className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm px-4 gap-2"
+                  className="gap-2 rounded-full px-4 data-[state=active]:bg-slate-950 data-[state=active]:text-white data-[state=active]:shadow-none"
                 >
                   <BookOpen className="h-4 w-4" />
                   Templates
@@ -743,12 +685,13 @@ export default function DraftingPage() {
                     </Badge>
                   )}
                 </TabsTrigger>
-              </TabsList>
+                </TabsList>
+              </div>
 
               {/* Search */}
               {(activeTab === 'drafts' || activeTab === 'templates') && (
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative w-full sm:w-60">
+                  <div className="relative w-full sm:w-72">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
                       value={searchQuery}
@@ -758,7 +701,7 @@ export default function DraftingPage() {
                           ? 'Search drafts...'
                           : 'Search templates...'
                       }
-                      className="pl-9 h-9 rounded-lg text-sm"
+                      className="h-10 rounded-full border-slate-200 bg-white pl-9 text-sm shadow-sm"
                     />
                     {searchQuery && (
                       <button
@@ -788,7 +731,7 @@ export default function DraftingPage() {
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
-                      className="h-9 px-3 text-sm border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      className="h-10 rounded-full border border-slate-200 bg-white px-4 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                     >
                       <option value="">All Statuses</option>
                       <option value="DRAFT">Draft</option>
@@ -799,33 +742,13 @@ export default function DraftingPage() {
                       <option value="FINALIZED">Finalized</option>
                     </select>
                   )}
-
-                  {/* Date Range (drafts tab only) */}
-                  {activeTab === 'drafts' && (
-                    <>
-                      <input
-                        type="date"
-                        value={dateFrom}
-                        onChange={(e) => setDateFrom(e.target.value)}
-                        className="h-9 px-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                        aria-label="From date"
-                      />
-                      <input
-                        type="date"
-                        value={dateTo}
-                        onChange={(e) => setDateTo(e.target.value)}
-                        className="h-9 px-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                        aria-label="To date"
-                      />
-                      {(statusFilter || dateFrom || dateTo) && (
-                        <button
-                          onClick={() => { setStatusFilter(''); setDateFrom(''); setDateTo(''); }}
-                          className="h-9 px-3 text-xs text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50"
-                        >
-                          Clear filters
-                        </button>
-                      )}
-                    </>
+                  {activeTab === 'drafts' && statusFilter && (
+                    <button
+                      onClick={() => setStatusFilter('')}
+                      className="h-10 rounded-full border border-slate-200 bg-white px-4 text-xs font-medium text-slate-500 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      Clear filter
+                    </button>
                   )}
                 </div>
               )}
