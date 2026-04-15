@@ -5,18 +5,28 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useKeyboardShortcuts, KeyboardShortcut } from '@/hooks/useKeyboardShortcuts';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { useFeedback } from '@/components/feedback/FeedbackSystem';
 import { CommandPalette } from '@/components/ui/command-palette';
+import { canAccessNavigationAudience, getNavigationAudiences, type NavigationAudience } from '@/lib/navigation/visibility';
+
+interface KeyboardShortcutConfig extends KeyboardShortcut {
+  audiences?: NavigationAudience[];
+}
 
 export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { data: session } = useSession();
   const feedback = useFeedback();
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  const userRole = session?.user?.role || 'member';
+  const activeAudiences = useMemo(() => getNavigationAudiences(userRole), [userRole]);
 
   // Listen for custom event to open shortcuts modal
   useEffect(() => {
@@ -26,7 +36,7 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
   }, []);
 
   // Define global shortcuts
-  const shortcuts: KeyboardShortcut[] = [
+  const allShortcuts = useMemo<KeyboardShortcutConfig[]>(() => [
     // Help & Navigation
     {
       key: '?',
@@ -34,13 +44,15 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
       description: 'Show keyboard shortcuts',
       action: () => setShowShortcutsModal(true),
       category: 'Help',
+      audiences: ['all'],
     },
     {
       key: 'h',
       ctrl: true,
-      description: 'Go to home',
-      action: () => router.push('/'),
+      description: 'Go to dashboard',
+      action: () => router.push('/dashboard'),
       category: 'Navigation',
+      audiences: ['all'],
     },
     {
       key: 'c',
@@ -49,6 +61,25 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
       description: 'Go to contracts',
       action: () => router.push('/contracts'),
       category: 'Navigation',
+      audiences: ['all'],
+    },
+    {
+      key: 'd',
+      ctrl: true,
+      shift: true,
+      description: 'Go to drafting studio',
+      action: () => router.push('/drafting'),
+      category: 'Navigation',
+      audiences: ['operator'],
+    },
+    {
+      key: 'w',
+      ctrl: true,
+      shift: true,
+      description: 'Go to workflows',
+      action: () => router.push('/workflows'),
+      category: 'Navigation',
+      audiences: ['operator'],
     },
     {
       key: 'r',
@@ -57,6 +88,7 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
       description: 'Go to rate cards',
       action: () => router.push('/rate-cards'),
       category: 'Navigation',
+      audiences: ['commercial'],
     },
     {
       key: 'a',
@@ -65,6 +97,7 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
       description: 'Go to analytics',
       action: () => router.push('/analytics'),
       category: 'Navigation',
+      audiences: ['oversight'],
     },
     {
       key: 'u',
@@ -73,6 +106,7 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
       description: 'Go to upload',
       action: () => router.push('/upload'),
       category: 'Navigation',
+      audiences: ['operator'],
     },
 
     // Search
@@ -84,6 +118,7 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
         setIsCommandPaletteOpen(prev => !prev);
       },
       category: 'Actions',
+      audiences: ['all'],
     },
     {
       key: '/',
@@ -95,6 +130,7 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
         }));
       },
       category: 'Actions',
+      audiences: ['all'],
     },
     {
       key: '/',
@@ -106,6 +142,7 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
         }
       },
       category: 'Search',
+      audiences: ['all'],
     },
 
     // Actions
@@ -117,6 +154,7 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
         feedback.showInfo('New Item', 'Create new item shortcut triggered');
       },
       category: 'Actions',
+      audiences: ['all'],
     },
     {
       key: 's',
@@ -131,6 +169,7 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
         }
       },
       category: 'Actions',
+      audiences: ['all'],
     },
     {
       key: 'Escape',
@@ -142,6 +181,7 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
         }
       },
       category: 'Actions',
+      audiences: ['all'],
     },
 
     // Editing
@@ -156,6 +196,7 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
         }
       },
       category: 'Editing',
+      audiences: ['all'],
     },
     {
       key: 'd',
@@ -168,6 +209,7 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
         }
       },
       category: 'Editing',
+      audiences: ['all'],
     },
 
     // View
@@ -183,6 +225,7 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
         }
       },
       category: 'View',
+      audiences: ['all'],
     },
     {
       key: 'b',
@@ -195,6 +238,7 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
         }
       },
       category: 'View',
+      audiences: ['all'],
     },
 
     // Refresh
@@ -211,8 +255,14 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
         }
       },
       category: 'Actions',
+      audiences: ['all'],
     },
-  ];
+  ], [feedback, router]);
+
+  const shortcuts = useMemo<KeyboardShortcut[]>(
+    () => allShortcuts.filter((shortcut) => canAccessNavigationAudience(shortcut.audiences, activeAudiences)),
+    [activeAudiences, allShortcuts]
+  );
 
   useKeyboardShortcuts({
     shortcuts,

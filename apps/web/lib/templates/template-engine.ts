@@ -268,9 +268,10 @@ class TemplateEngine {
   }
 
   private async fetchClause(clauseId: string, _tenantId: string) {
-    return prisma.clause.findFirst({
+    return prisma.clauseLibrary.findFirst({
       where: {
         id: clauseId,
+        tenantId: _tenantId,
       },
     });
   }
@@ -371,7 +372,7 @@ class TemplateEngine {
     if (section.clauseId) {
       const clause = await this.fetchClause(section.clauseId, tenantId);
       if (clause) {
-        sectionContent = clause.text;
+        sectionContent = clause.content;
         clausesUsed.push(section.clauseId);
       }
     }

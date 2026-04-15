@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useState, useCallback, useEffect, memo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, memo, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -21,6 +21,12 @@ import { ThemeToggle } from '@/components/theme/ThemeProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOnClickOutside } from '@/hooks/useEventListener';
 import {
+  canAccessNavigationAudience,
+  getNavigationAudiences,
+  isAdminNavigationRole,
+  type NavigationAudience,
+} from '@/lib/navigation/visibility';
+import {
   LayoutDashboard,
   FileText,
   Search,
@@ -29,30 +35,19 @@ import {
   Upload,
   Activity,
   TrendingUp,
-  Users,
-  DollarSign,
   Calendar,
-  Briefcase,
-  FileBarChart,
   Menu,
   X,
   ChevronDown,
-  ChevronRight,
-  CreditCard,
-  Target,
-  Command,
   User,
   LogOut,
   Sparkles,
-  AlertCircle,
   CheckCircle2,
   Clock,
   Zap,
-  Link2,
   Building2,
   Shield,
   FolderKanban,
-  Brain,
   Database,
   Keyboard,
   RefreshCcw,
@@ -69,11 +64,6 @@ import {
   CheckSquare,
   PenTool,
   ScrollText,
-  Award,
-  TrendingDown,
-  MessageSquare,
-  Bot,
-  ListChecks,
   Rocket,
   Gavel,
 } from 'lucide-react';
@@ -82,157 +72,157 @@ interface NavigationItem {
   name: string;
   href?: string;
   icon: React.ComponentType<{ className?: string }>;
+  audiences?: NavigationAudience[];
   badge?: string | number;
   badgeVariant?: 'default' | 'success' | 'warning' | 'error';
   description?: string;
   children?: NavigationItem[];
   isNew?: boolean;
-  action?: 'openAIChatbot'; // Special actions handled in component
-  requiresAdmin?: boolean; // Only show for admin/owner users
+  action?: 'openAIChatbot';
+  requiresAdmin?: boolean;
 }
 
 interface NavigationGroup {
   id: string;
   label: string;
+  audiences?: NavigationAudience[];
   items: NavigationItem[];
-  requiresAdmin?: boolean; // Only show entire group for admin/owner users
+  requiresAdmin?: boolean;
 }
 
-// Full navigation — streamlined for enterprise clarity
-// 5 groups: Core, AI Platform, Contract Lifecycle, Analytics & Risk, Admin
+// Enterprise navigation: keep the primary rail job-based, not page-based.
+// Deep or specialized destinations stay one level down or inside their local pages.
 const navigationGroups: NavigationGroup[] = [
   {
-    id: 'core',
-    label: 'Core',
+    id: 'workspace',
+    label: 'Workspace',
     items: [
-      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, description: 'Overview & insights' },
-      { name: 'Contracts', href: '/contracts', icon: FileText, description: 'Manage your contracts' },
-      { name: 'Search', href: '/search', icon: Search, description: 'Smart semantic search' },
-    ]
-  },
-  {
-    id: 'contigo-labs',
-    label: 'Contigo Labs',
-    items: [
-      { name: 'Overview', href: '/contigo-labs', icon: Rocket, description: 'AI command center', isNew: true },
-      { 
-        name: 'AI Agents', 
-        href: '/contigo-labs?tab=agents', 
-        icon: Bot, 
-        description: 'AI agents & approvals',
-        isNew: true,
-        children: [
-          { name: 'Agent Center', href: '/contigo-labs?tab=agents', icon: Bot, description: 'Monitor all agents' },
-          { name: 'Approvals', href: '/contigo-labs?tab=approvals', icon: ListChecks, description: 'Review recommendations', badge: 'pending' },
-        ]
-      },
-      { name: 'AI Assistant', href: '/contigo-labs?tab=chat', icon: MessageSquare, description: 'Chat with @mentions', isNew: true },
-      { name: 'Knowledge Graph', href: '/contigo-labs?tab=knowledge', icon: Network, description: 'Entity relationships', isNew: true },
-      { name: 'Predictions', href: '/contigo-labs?tab=analytics', icon: TrendingUp, description: 'AI-powered forecasts', isNew: true },
-    ]
-  },
-  {
-    id: 'lifecycle',
-    label: 'Contract Lifecycle',
-    items: [
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, description: 'Overview & insights', audiences: ['all'] },
       {
-        name: 'Drafting',
+        name: 'Contracts',
+        href: '/contracts',
+        icon: FileText,
+        description: 'Repository, intake, and contract records',
+        audiences: ['all'],
+        children: [
+          { name: 'Upload', href: '/upload', icon: Upload, description: 'Ingest documents', audiences: ['operator'] },
+          { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Approved starting points', audiences: ['legal'] },
+          { name: 'Clauses', href: '/clauses', icon: BookOpen, description: 'Clause library', audiences: ['legal'] },
+        ],
+      },
+      {
+        name: 'Drafting Studio',
         href: '/drafting',
         icon: PenTool,
-        description: 'Create & manage contracts',
+        description: 'AI-assisted drafting and negotiation',
+        audiences: ['operator'],
         children: [
-          { name: 'Document Studio', href: '/drafting', icon: PenTool, description: 'AI-assisted drafting' },
-          { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Contract templates' },
-          { name: 'Clauses', href: '/clauses', icon: BookOpen, description: 'Clause library' },
-          { name: 'Playbooks', href: '/playbooks', icon: Gavel, description: 'Legal playbooks' },
-        ]
+          { name: 'AI Copilot', href: '/drafting/copilot', icon: Sparkles, description: 'Deep drafting workspace', audiences: ['operator'] },
+          { name: 'Playbooks', href: '/playbooks', icon: Gavel, description: 'Legal standards and fallbacks', audiences: ['legal'] },
+        ],
       },
+    ],
+  },
+  {
+    id: 'execution',
+    label: 'Execution',
+    items: [
       {
         name: 'Workflows',
         href: '/workflows',
         icon: GitBranch,
-        description: 'Approvals & automation',
+        description: 'Requests, approvals, and automation',
+        audiences: ['operator'],
         children: [
-          { name: 'Workflows', href: '/workflows', icon: GitBranch, description: 'Manage workflows' },
-          { name: 'Requests', href: '/requests', icon: Zap, description: 'Contract requests' },
-          { name: 'My Tasks', href: '/self-service/my-requests', icon: CheckSquare, description: 'Your tasks' },
-        ]
+          { name: 'Approvals', href: '/approvals', icon: CheckCircle2, description: 'Pending approvals', audiences: ['oversight'] },
+          { name: 'Requests', href: '/requests', icon: Zap, description: 'Contract intake pipeline', audiences: ['operator'] },
+          { name: 'My Tasks', href: '/self-service/my-requests', icon: CheckSquare, description: 'Assigned work', audiences: ['operator'] },
+        ],
       },
       {
-        name: 'Tracking',
+        name: 'Obligations & Renewals',
         href: '/obligations',
         icon: Calendar,
-        description: 'Obligations & renewals',
+        description: 'Post-signature commitments and milestones',
+        audiences: ['all'],
         children: [
-          { name: 'Obligations', href: '/obligations', icon: Calendar, description: 'Track commitments' },
-          { name: 'Renewals', href: '/renewals', icon: RefreshCcw, description: 'Manage renewals' },
-          { name: 'Compare', href: '/compare', icon: Target, description: 'Compare contracts' },
-        ]
+          { name: 'Renewals', href: '/renewals', icon: RefreshCcw, description: 'Upcoming renewals', audiences: ['all'] },
+          { name: 'Deadlines', href: '/deadlines', icon: Clock, description: 'Critical dates', audiences: ['all'] },
+        ],
       },
-    ]
+      {
+        name: 'Suppliers & Spend',
+        href: '/suppliers',
+        icon: Truck,
+        description: 'Supplier performance and commercials',
+        audiences: ['commercial'],
+        children: [
+          { name: 'Rate Cards', href: '/rate-cards/dashboard', icon: Receipt, description: 'Rate monitoring', audiences: ['commercial'] },
+          { name: 'Spend Analysis', href: '/spend', icon: Wallet, description: 'Spend visibility', audiences: ['commercial'] },
+          { name: 'Forecasting', href: '/forecast', icon: TrendingUp, description: 'Demand and spend forecast', audiences: ['commercial'] },
+        ],
+      },
+    ],
   },
   {
-    id: 'analytics-risk',
-    label: 'Analytics & Risk',
+    id: 'insights',
+    label: 'Insights',
     items: [
-      { name: 'Intelligence Hub', href: '/intelligence', icon: Lightbulb, description: 'AI insights & negotiation' },
+      {
+        name: 'Intelligence',
+        href: '/intelligence',
+        icon: Lightbulb,
+        description: 'AI insights, portfolio health, and risk signals',
+        audiences: ['all'],
+        children: [
+          { name: 'Contract Health', href: '/intelligence/health', icon: ShieldCheck, description: 'Portfolio health scores', audiences: ['all'] },
+          { name: 'Risk', href: '/risk', icon: AlertTriangle, description: 'Risk analysis', audiences: ['all'] },
+          { name: 'Compliance', href: '/compliance', icon: ClipboardCheck, description: 'Compliance tracking', audiences: ['legal'] },
+          { name: 'Knowledge Graph', href: '/knowledge-graph', icon: Network, description: 'Entity relationships', audiences: ['oversight'] },
+        ],
+      },
       {
         name: 'Analytics',
         href: '/analytics',
         icon: BarChart3,
-        description: 'Reports & dashboards',
+        description: 'Dashboards and reporting',
+        audiences: ['oversight'],
         children: [
-          { name: 'Dashboards', href: '/analytics', icon: BarChart3, description: 'Analytics dashboards' },
-          { name: 'Reports', href: '/reports', icon: FileBarChart, description: 'Custom reports' },
-          { name: 'Contract Health', href: '/intelligence/health', icon: ShieldCheck, description: 'Portfolio health scores' },
-        ]
+          { name: 'Reports', href: '/reports', icon: FileText, description: 'Custom reports', audiences: ['oversight'] },
+        ],
       },
-      {
-        name: 'Suppliers',
-        href: '/suppliers',
-        icon: Truck,
-        description: 'Supplier management & spend',
-        children: [
-          { name: 'Supplier Directory', href: '/suppliers', icon: Truck, description: 'Supplier management' },
-          { name: 'Rate Cards', href: '/rate-cards/dashboard', icon: Receipt, description: 'Rate monitoring' },
-          { name: 'Spend Analysis', href: '/spend', icon: Wallet, description: 'PO & Invoice matching' },
-          { name: 'Forecasting', href: '/forecast', icon: TrendingUp, description: 'Spend forecasting' },
-        ]
-      },
-      {
-        name: 'Governance',
-        href: '/governance',
-        icon: ShieldCheck,
-        description: 'Compliance & risk',
-        children: [
-          { name: 'Governance', href: '/governance', icon: ShieldCheck, description: 'Policies & routing' },
-          { name: 'Compliance', href: '/compliance', icon: ClipboardCheck, description: 'Compliance tracking' },
-          { name: 'Risk', href: '/risk', icon: AlertTriangle, description: 'Risk assessment' },
-        ]
-      },
-    ]
+      { name: 'AI Workspace', href: '/contigo-labs', icon: Rocket, description: 'Advanced AI operations', audiences: ['oversight'], isNew: true },
+    ],
+  },
+  {
+    id: 'platform',
+    label: 'Platform',
+    items: [
+      { name: 'Governance', href: '/governance', icon: Shield, description: 'Policies, routing, and controls', audiences: ['legal'] },
+      { name: 'Settings', href: '/settings', icon: Settings, description: 'Personal and platform settings', audiences: ['all'] },
+    ],
   },
   {
     id: 'admin',
     label: 'Administration',
+    audiences: ['admin'],
     requiresAdmin: true,
     items: [
-      { name: 'Organization', href: '/admin', icon: Building2, description: 'Team & organization settings', requiresAdmin: true },
-      { name: 'Settings', href: '/settings', icon: Settings, description: 'Platform settings', requiresAdmin: true },
+      { name: 'Organization', href: '/admin', icon: Building2, description: 'Tenant and organization setup', audiences: ['admin'], requiresAdmin: true },
       {
         name: 'System',
         href: '/audit-logs',
         icon: ScrollText,
-        description: 'Logs & monitoring',
+        description: 'Audit, queues, and integrations',
+        audiences: ['admin'],
         requiresAdmin: true,
         children: [
-          { name: 'Clients', href: '/platform', icon: Users, description: 'Client organizations' },
-          { name: 'Queue', href: '/admin/queue', icon: Activity, description: 'Processing queues' },
-          { name: 'Audit Logs', href: '/audit-logs', icon: ScrollText, description: 'Audit trail' },
-          { name: 'Integrations', href: '/admin/integrations', icon: Database, description: 'Data connections' },
-        ]
+          { name: 'Audit Logs', href: '/audit-logs', icon: ScrollText, description: 'Audit trail', audiences: ['admin'] },
+          { name: 'Queue', href: '/admin/queue', icon: Activity, description: 'Processing queues', audiences: ['admin'] },
+          { name: 'Integrations', href: '/admin/integrations', icon: Database, description: 'Data connections', audiences: ['admin'] },
+        ],
       },
-    ]
+    ],
   },
 ];
 
@@ -274,18 +264,22 @@ function NavItem({
   if (hasChildren) {
     return (
       <div>
-        <button
-          onClick={onToggle}
-          aria-expanded={isExpanded}
-          aria-controls={`nav-children-${item.name.replace(/\s+/g, '-').toLowerCase()}`}
+        <div
           className={cn(
-            'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-violet-500/50',
-            (itemActive || hasActiveChild)
-              ? 'bg-violet-50/80 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400'
-              : 'text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-slate-100'
+            'flex items-center gap-1',
           )}
         >
-          <div className="flex items-center gap-2.5">
+          <Link
+            href={item.href || '#'}
+            onClick={onMobileClose}
+            aria-current={itemActive ? 'page' : undefined}
+            className={cn(
+              'flex-1 flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-left',
+              (itemActive || hasActiveChild)
+                ? 'bg-violet-50/80 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400'
+                : 'text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-slate-100'
+            )}
+          >
             <item.icon className={cn(
               'h-4 w-4',
               (itemActive || hasActiveChild) ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-slate-500'
@@ -296,12 +290,34 @@ function NavItem({
                 NEW
               </span>
             )}
-          </div>
-          <ChevronDown className={cn(
-            'h-4 w-4 text-gray-400 dark:text-slate-500 transition-transform duration-200',
-            isExpanded && 'rotate-180'
-          )} aria-hidden="true" />
-        </button>
+            {item.badge && (
+              <Badge className={cn(
+                'ml-auto text-[10px] px-1.5 h-5 border-0',
+                getBadgeStyles(item.badgeVariant)
+              )}>
+                {item.badge}
+              </Badge>
+            )}
+          </Link>
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={isExpanded}
+            aria-controls={`nav-children-${item.name.replace(/\s+/g, '-').toLowerCase()}`}
+            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${item.name}`}
+            className={cn(
+              'shrink-0 flex h-9 w-9 items-center justify-center rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-violet-500/50',
+              (itemActive || hasActiveChild)
+                ? 'text-violet-700 dark:text-violet-400 hover:bg-violet-100/80 dark:hover:bg-violet-900/40'
+                : 'text-gray-400 dark:text-slate-500 hover:bg-gray-50 dark:hover:bg-slate-800'
+            )}
+          >
+            <ChevronDown className={cn(
+              'h-4 w-4 transition-transform duration-200',
+              isExpanded && 'rotate-180'
+            )} aria-hidden="true" />
+          </button>
+        </div>
         
         <AnimatePresence>
           {isExpanded && (
@@ -404,7 +420,7 @@ function EnhancedNavigation() {
   const router = useRouter();
   const { data: session } = useSession();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<string[]>(['AI Hub']);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -420,16 +436,46 @@ function EnhancedNavigation() {
 
   // Check if user is admin/owner (power user)
   const userRole = session?.user?.role || 'member';
-  const isAdmin = (userRole === 'admin' || userRole === 'owner') && !isViewingAsClient;
+  const isAdmin = useMemo(
+    () => isAdminNavigationRole(userRole, { viewingAsClient: isViewingAsClient }),
+    [userRole, isViewingAsClient]
+  );
+  const activeAudiences = useMemo(
+    () => getNavigationAudiences(userRole, { viewingAsClient: isViewingAsClient }),
+    [userRole, isViewingAsClient]
+  );
 
-  // Filter navigation groups based on user role (hide admin when viewing as client)
-  const filteredNavigationGroups = navigationGroups
-    .filter(group => !group.requiresAdmin || isAdmin)
-    .map(group => ({
-      ...group,
-      items: group.items.filter(item => !item.requiresAdmin || isAdmin)
-    }))
-    .filter(group => group.items.length > 0);
+  const filteredNavigationGroups = useMemo(() => {
+    const filterItem = (item: NavigationItem): NavigationItem | null => {
+      const visibleChildren = item.children
+        ?.map(filterItem)
+        .filter((child): child is NavigationItem => child !== null);
+
+      const canShowItem =
+        canAccessNavigationAudience(item.audiences, activeAudiences) &&
+        (!item.requiresAdmin || isAdmin);
+
+      if (!canShowItem && (!visibleChildren || visibleChildren.length === 0)) {
+        return null;
+      }
+
+      return {
+        ...item,
+        children: visibleChildren,
+      };
+    };
+
+    return navigationGroups
+      .filter((group) => canAccessNavigationAudience(group.audiences, activeAudiences))
+      .filter((group) => !group.requiresAdmin || isAdmin)
+      .map((group) => ({
+        ...group,
+        items: group.items
+          .map(filterItem)
+          .filter((item): item is NavigationItem => item !== null),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [activeAudiences, isAdmin]);
 
   // Keyboard shortcut for search (Cmd/Ctrl + K)
   useEffect(() => {
@@ -492,6 +538,20 @@ function EnhancedNavigation() {
   const isChildActive = useCallback((children?: NavigationItem[]): boolean => {
     return children?.some(child => child.href && isActive(child.href)) ?? false;
   }, [isActive]);
+
+  useEffect(() => {
+    const activeParents = filteredNavigationGroups.flatMap((group) =>
+      group.items
+        .filter((item) => Boolean(item.children?.length) && ((item.href && isActive(item.href)) || isChildActive(item.children)))
+        .map((item) => item.name)
+    );
+
+    if (activeParents.length === 0) {
+      return;
+    }
+
+    setExpandedItems((current) => Array.from(new Set([...current, ...activeParents])));
+  }, [filteredNavigationGroups, isActive, isChildActive]);
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();

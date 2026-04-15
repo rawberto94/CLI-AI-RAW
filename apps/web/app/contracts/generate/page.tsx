@@ -31,6 +31,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { normalizeTemplateClauses } from '@/lib/templates/template-record'
 
 interface Template {
   id: string
@@ -109,13 +110,13 @@ export default function GenerateContractPage() {
       ])
 
       if (libraryResp.ok) {
-        const json = (await libraryResp.json()) as { clauses?: unknown }
-        tryAdd(json?.clauses)
+        const json = (await libraryResp.json()) as { clauses?: unknown; data?: { clauses?: unknown } }
+        tryAdd(json?.clauses ?? json?.data?.clauses)
       }
 
       if (clausesResp.ok) {
-        const json = (await clausesResp.json()) as { clauses?: unknown }
-        tryAdd(json?.clauses)
+        const json = (await clausesResp.json()) as { clauses?: unknown; data?: { clauses?: unknown } }
+        tryAdd(json?.clauses ?? json?.data?.clauses)
       }
     } catch {
       // Clause library unavailable — templates still work without pre-built clauses
@@ -208,17 +209,25 @@ export default function GenerateContractPage() {
       .filter(Boolean) as Template[]
   }
 
-  const hydrateTemplateVariables = async (template: Template) => {
-    if (template.variables.length > 0) return template
+  const hydrateTemplateDetails = async (template: Template) => {
+    if (template.variables.length > 0 && Array.isArray(template.clauses)) return template
 
     try {
-      const response = await fetch(`/api/templates/${template.id}/variables`)
+      const response = await fetch(`/api/templates/${template.id}`)
       if (!response.ok) return template
-      const json = (await response.json()) as { variables?: unknown }
-      const variables = mapApiVariables(json?.variables)
+      const json = (await response.json()) as { template?: unknown; data?: { template?: unknown } }
+      const detail = (json?.data?.template ?? json?.template) as Record<string, unknown> | undefined
+      if (!detail) return template
+
+      const variables = mapApiVariables(detail.variables)
 
       const hydrated: Template = {
         ...template,
+        description: typeof detail.description === 'string' ? detail.description : template.description,
+        category: typeof detail.category === 'string' ? detail.category : template.category,
+        clauses: detail.clauses ?? template.clauses,
+        structure: detail.structure ?? template.structure,
+        metadata: detail.metadata ?? template.metadata,
         variables,
         variableCount: variables.length,
       }
@@ -235,9 +244,10 @@ export default function GenerateContractPage() {
     try {
       const response = await fetch('/api/templates?limit=100')
       if (response.ok) {
-        const json = (await response.json()) as { success?: boolean; templates?: unknown }
-        if (json?.success && json.templates) {
-          const apiTemplates = mapApiTemplates(json.templates)
+        const json = (await response.json()) as { success?: boolean; templates?: unknown; data?: { templates?: unknown } }
+        const rawTemplates = json?.data?.templates ?? json?.templates
+        if (json?.success && rawTemplates) {
+          const apiTemplates = mapApiTemplates(rawTemplates)
           if (apiTemplates.length > 0) {
             setTemplates(apiTemplates)
             return
@@ -251,7 +261,7 @@ export default function GenerateContractPage() {
   }
 
   const selectTemplate = async (template: Template) => {
-    const hydrated = await hydrateTemplateVariables(template)
+    const hydrated = await hydrateTemplateDetails(template)
     setSelectedTemplate(hydrated)
 
     // Initialize form data with default values
@@ -346,33 +356,19 @@ export default function GenerateContractPage() {
             }
           }
         } else {
-          const clauses = selectedTemplate.clauses
-          if (Array.isArray(clauses) && clauses.length > 0) {
+          const clauses = normalizeTemplateClauses(selectedTemplate.clauses)
+          if (clauses.length > 0) {
+            const neededClauseIds = new Set<string>()
+            clauses.forEach((clause) => {
+              if (clause.clauseId) neededClauseIds.add(clause.clauseId)
+            })
+            const clauseIndex = neededClauseIds.size > 0 ? await fetchClauseIndex() : new Map<string, { title?: string; content: string }>()
+
             content += `## Template Clauses\n\n`
             for (const clause of clauses) {
-              if (typeof clause === 'string') {
-                const text = interpolate(clause, formData)
-                if (text.trim()) content += `${text}\n\n`
-                continue
-              }
-              if (!clause || typeof clause !== 'object') continue
-              const c = clause as Record<string, unknown>
-              const title =
-                typeof c.title === 'string'
-                  ? c.title
-                  : typeof c.name === 'string'
-                    ? c.name
-                    : typeof c.heading === 'string'
-                      ? c.heading
-                      : ''
-              const body =
-                typeof c.content === 'string'
-                  ? c.content
-                  : typeof c.text === 'string'
-                    ? c.text
-                    : typeof c.body === 'string'
-                      ? c.body
-                      : ''
+              const latestClause = clause.clauseId ? clauseIndex.get(clause.clauseId) : undefined
+              const title = latestClause?.title || clause.title || ''
+              const body = latestClause?.content || clause.content || ''
 
               if (title) content += `### ${interpolate(title, formData)}\n`
               if (body) content += `${interpolate(body, formData)}\n\n`

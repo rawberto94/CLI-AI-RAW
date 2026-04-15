@@ -43,6 +43,14 @@ export async function GET(
             structure: true,
           },
         },
+        playbook: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            isDefault: true,
+          },
+        },
         sourceContract: {
           select: {
             id: true,
@@ -121,6 +129,7 @@ export async function PATCH(
       clauses,
       variables,
       structure,
+      playbookId,
       status,
       estimatedValue,
       currency,
@@ -140,6 +149,26 @@ export async function PATCH(
     if (clauses !== undefined) updateData.clauses = clauses;
     if (variables !== undefined) updateData.variables = variables;
     if (structure !== undefined) updateData.structure = structure;
+    if (playbookId !== undefined) {
+      if (playbookId === null || playbookId === '') {
+        updateData.playbookId = null;
+      } else {
+        const playbook = await prisma.playbook.findFirst({
+          where: {
+            id: playbookId,
+            tenantId,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+
+        if (!playbook) {
+          return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Selected policy pack was not found', 400);
+        }
+
+        updateData.playbookId = playbook.id;
+      }
+    }
     if (status !== undefined) {
       // Validate status transitions
       const VALID_STATUSES = ['DRAFT', 'IN_REVIEW', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'FINALIZED'];
@@ -221,6 +250,13 @@ export async function PATCH(
                 category: true,
               },
             },
+            playbook: {
+              select: {
+                id: true,
+                name: true,
+                isDefault: true,
+              },
+            },
             createdByUser: {
               select: {
                 id: true,
@@ -255,6 +291,13 @@ export async function PATCH(
             id: true,
             name: true,
             category: true,
+          },
+        },
+        playbook: {
+          select: {
+            id: true,
+            name: true,
+            isDefault: true,
           },
         },
         createdByUser: {

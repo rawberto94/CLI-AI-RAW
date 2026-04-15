@@ -3,14 +3,14 @@
 import { useState, useCallback, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  History, MessageSquare, Wand2, AlertTriangle,
-  Lightbulb, Save, Eye, Edit3, Sparkles,
+  History, MessageSquare, AlertTriangle,
+  Lightbulb, Save, Eye, Edit3, Sparkles, FileText,
   GitBranch, Bold, Italic, List,
   Heading1, X, Send, Clock, Zap, Shield, Scale,
   RefreshCw, Loader2, Brain, AlertCircle,
   FileDown, CheckCircle2, ArrowRight,
   BookOpen, Search, Lock, Unlock, ThumbsUp, ThumbsDown,
-  Check,
+  Check, GripVertical,
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -24,6 +24,7 @@ import DOMPurify from 'isomorphic-dompurify';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
 import { exportDraftAsPDF, exportDraftAsDOCX } from '@/lib/drafting/draft-export';
+import type { CopilotWorkflowContext } from '@/lib/drafting/copilot-handoff';
 import { VersionDiffView } from './VersionDiffView';
 
 // ============================================================================
@@ -78,6 +79,106 @@ function stripHtml(text: string): string {
   return text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function resolveDraftTitle(title: string | null | undefined, fallback: string): string {
+  const trimmed = title?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : fallback;
+}
+
+const DESKTOP_SIDEBAR_DEFAULT_WIDTH = 400;
+const DESKTOP_SIDEBAR_MIN_WIDTH = 340;
+const DESKTOP_SIDEBAR_MAX_WIDTH = 560;
+const DESKTOP_SIDEBAR_STORAGE_KEY = 'drafting-desktop-sidebar-width';
+
+function clampDesktopSidebarWidth(width: number, viewportWidth?: number): number {
+  const widthToClamp = Number.isFinite(width) ? width : DESKTOP_SIDEBAR_DEFAULT_WIDTH;
+  const viewportBound = typeof viewportWidth === 'number' && Number.isFinite(viewportWidth)
+    ? Math.max(
+        DESKTOP_SIDEBAR_MIN_WIDTH,
+        Math.min(DESKTOP_SIDEBAR_MAX_WIDTH, viewportWidth - 380),
+      )
+    : DESKTOP_SIDEBAR_MAX_WIDTH;
+
+  return Math.min(viewportBound, Math.max(DESKTOP_SIDEBAR_MIN_WIDTH, Math.round(widthToClamp)));
+}
+
+function resolveInitialDesktopSidebarWidth(): number {
+  if (typeof window === 'undefined') {
+    return DESKTOP_SIDEBAR_DEFAULT_WIDTH;
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(DESKTOP_SIDEBAR_STORAGE_KEY);
+    const parsedWidth = rawValue ? Number(rawValue) : NaN;
+    return clampDesktopSidebarWidth(parsedWidth, window.innerWidth);
+  } catch {
+    return DESKTOP_SIDEBAR_DEFAULT_WIDTH;
+  }
+}
+
+function normalizeSourceTrailAction(action: unknown): 'inserted' | 'replaced' {
+  return action === 'replaced' ? 'replaced' : 'inserted';
+}
+
+function normalizeSourceTrailEntry(entry: unknown): SourceTrailEntry | null {
+  if (!entry || typeof entry !== 'object') return null;
+
+  const candidate = entry as Record<string, unknown>;
+  const label = typeof candidate.label === 'string' ? candidate.label.trim() : '';
+  const sourceLabel = typeof candidate.sourceLabel === 'string' ? candidate.sourceLabel.trim() : '';
+  if (!label || !sourceLabel) return null;
+
+  const timestamp = candidate.timestamp instanceof Date
+    ? candidate.timestamp
+    : typeof candidate.timestamp === 'string'
+      ? new Date(candidate.timestamp)
+      : new Date();
+
+  return {
+    id: typeof candidate.id === 'string' && candidate.id.trim().length > 0
+      ? candidate.id
+      : `source-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'entry'}`,
+    label,
+    sourceLabel,
+    action: normalizeSourceTrailAction(candidate.action),
+    timestamp: Number.isNaN(timestamp.getTime()) ? new Date() : timestamp,
+    confidence: typeof candidate.confidence === 'number' ? candidate.confidence : undefined,
+    detail: typeof candidate.detail === 'string' ? candidate.detail : undefined,
+    sourceId: typeof candidate.sourceId === 'string' ? candidate.sourceId : undefined,
+    sourceKind: typeof candidate.sourceKind === 'string' ? candidate.sourceKind : undefined,
+  };
+}
+
+function normalizeSourceTrail(entries: unknown): SourceTrailEntry[] {
+  if (!Array.isArray(entries)) return [];
+
+  return entries
+    .map((entry) => normalizeSourceTrailEntry(entry))
+    .filter((entry): entry is SourceTrailEntry => Boolean(entry));
+}
+
+function serializeSourceTrail(entries: SourceTrailEntry[]): Array<Record<string, unknown>> {
+  return entries.map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    sourceLabel: entry.sourceLabel,
+    action: entry.action,
+    timestamp: entry.timestamp.toISOString(),
+    confidence: entry.confidence,
+    detail: entry.detail,
+    sourceId: entry.sourceId,
+    sourceKind: entry.sourceKind,
+  }));
+}
+
+function normalizeDraftHeading(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function matchesDraftKeywords(title: string, keywords: string[]): boolean {
+  const normalizedTitle = normalizeDraftHeading(title);
+  return keywords.some((keyword) => normalizedTitle.includes(normalizeDraftHeading(keyword)));
+}
+
 function renderSimpleMarkdown(text: string): ReactNode {
   const lines = text.split('\n');
   const elements: ReactNode[] = [];
@@ -122,6 +223,151 @@ function renderSimpleMarkdown(text: string): ReactNode {
   return <div className="space-y-1">{elements}</div>;
 }
 
+interface DiffSegment {
+  type: 'equal' | 'add' | 'remove';
+  value: string;
+}
+
+function tokenizeDiffText(text: string): string[] {
+  return text.split(/(\s+|[()[\]{},.;:!?/\\-])/).filter(Boolean);
+}
+
+function mergeDiffSegments(segments: DiffSegment[]): DiffSegment[] {
+  return segments.reduce<DiffSegment[]>((merged, segment) => {
+    if (!segment.value) return merged;
+
+    const previous = merged[merged.length - 1];
+    if (previous && previous.type === segment.type) {
+      previous.value += segment.value;
+      return merged;
+    }
+
+    merged.push({ ...segment });
+    return merged;
+  }, []);
+}
+
+function computeDiffSegments(before: string, after: string): DiffSegment[] {
+  const beforeTokens = tokenizeDiffText(before);
+  const afterTokens = tokenizeDiffText(after);
+
+  if (beforeTokens.length === 0 && afterTokens.length === 0) return [];
+  if (beforeTokens.length === 0) return mergeDiffSegments([{ type: 'add', value: after }]);
+  if (afterTokens.length === 0) return mergeDiffSegments([{ type: 'remove', value: before }]);
+
+  const complexity = beforeTokens.length * afterTokens.length;
+  if (complexity > 24000) {
+    return mergeDiffSegments([
+      { type: 'remove', value: before },
+      { type: 'add', value: after },
+    ]);
+  }
+
+  const dp = Array.from({ length: beforeTokens.length + 1 }, () => Array<number>(afterTokens.length + 1).fill(0));
+
+  for (let i = beforeTokens.length - 1; i >= 0; i -= 1) {
+    for (let j = afterTokens.length - 1; j >= 0; j -= 1) {
+      dp[i][j] = beforeTokens[i] === afterTokens[j]
+        ? dp[i + 1][j + 1] + 1
+        : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+
+  const segments: DiffSegment[] = [];
+  let i = 0;
+  let j = 0;
+
+  while (i < beforeTokens.length && j < afterTokens.length) {
+    if (beforeTokens[i] === afterTokens[j]) {
+      segments.push({ type: 'equal', value: beforeTokens[i] });
+      i += 1;
+      j += 1;
+      continue;
+    }
+
+    if (dp[i + 1][j] >= dp[i][j + 1]) {
+      segments.push({ type: 'remove', value: beforeTokens[i] });
+      i += 1;
+    } else {
+      segments.push({ type: 'add', value: afterTokens[j] });
+      j += 1;
+    }
+  }
+
+  while (i < beforeTokens.length) {
+    segments.push({ type: 'remove', value: beforeTokens[i] });
+    i += 1;
+  }
+
+  while (j < afterTokens.length) {
+    segments.push({ type: 'add', value: afterTokens[j] });
+    j += 1;
+  }
+
+  return mergeDiffSegments(segments);
+}
+
+function InlineDiffPreview({ before, after }: { before: string; after: string }) {
+  const segments = computeDiffSegments(before, after);
+
+  if (segments.length === 0) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+        No textual delta detected.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs leading-5 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+      {segments.map((segment, index) => {
+        if (segment.type === 'equal') {
+          return <span key={`${segment.type}-${index}`}>{segment.value}</span>;
+        }
+
+        if (segment.type === 'add') {
+          return (
+            <span
+              key={`${segment.type}-${index}`}
+              className="rounded bg-emerald-100/90 px-0.5 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
+            >
+              {segment.value}
+            </span>
+          );
+        }
+
+        return (
+          <span
+            key={`${segment.type}-${index}`}
+            className="rounded bg-rose-100/80 px-0.5 text-rose-700 line-through dark:bg-rose-900/30 dark:text-rose-200"
+          >
+            {segment.value}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function normalizeConfidence(confidence?: number): number | null {
+  if (typeof confidence !== 'number' || Number.isNaN(confidence)) return null;
+  return confidence > 1 ? Math.min(confidence / 100, 1) : Math.min(Math.max(confidence, 0), 1);
+}
+
+function formatConfidenceLabel(confidence?: number): string | null {
+  const normalized = normalizeConfidence(confidence);
+  if (normalized === null) return null;
+  return `${Math.round(normalized * 100)}% confidence`;
+}
+
+function getConfidenceTone(confidence?: number): 'high' | 'medium' | 'low' | 'unknown' {
+  const normalized = normalizeConfidence(confidence);
+  if (normalized === null) return 'unknown';
+  if (normalized >= 0.85) return 'high';
+  if (normalized >= 0.65) return 'medium';
+  return 'low';
+}
+
 // ============================================================================
 // CONSTANTS
 // ============================================================================
@@ -164,6 +410,400 @@ const AI_QUICK_PROMPTS: Record<string, string[]> = {
     'Add compliance notes',
   ],
 };
+
+const NEGOTIATION_QUICK_PROMPTS: Record<string, string[]> = {
+  NDA: [
+    'Make this more mutual for both parties',
+    'Anticipate recipient pushback on confidentiality scope',
+    'Create a fallback on residual knowledge language',
+  ],
+  MSA: [
+    'Rewrite this clause in a buyer-favorable position',
+    'Anticipate supplier pushback on liability caps',
+    'Create a balanced fallback for payment timing',
+  ],
+  EMPLOYMENT: [
+    'Pressure-test the termination language for negotiation risk',
+    'Create an employer-friendly fallback position',
+    'Rewrite this clause in a more balanced tone',
+  ],
+  SOW: [
+    'Create a customer-friendly fallback for acceptance criteria',
+    'Anticipate vendor pushback on milestones',
+    'Rewrite this section in a more balanced delivery posture',
+  ],
+  SLA: [
+    'Make service credits more enforceable for the customer',
+    'Anticipate supplier pushback on uptime obligations',
+    'Create a fallback for chronic breach escalation',
+  ],
+  DEFAULT: [
+    'Rewrite this clause in a stronger commercial position',
+    'Anticipate likely counterparty pushback',
+    'Create a balanced fallback position',
+  ],
+};
+
+interface StructureBlockTemplate {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  html: string;
+  contractTypes?: string[];
+}
+
+interface SlashCommandConfig {
+  id: string;
+  label: string;
+  description: string;
+  kind: 'block' | 'ai';
+  blockId?: string;
+  prompt?: string;
+  keywords?: string[];
+}
+
+interface DraftBlueprintStep {
+  id: string;
+  title: string;
+  description: string;
+  keywords: string[];
+  blockId?: string;
+}
+
+interface AssistantJourneyAction {
+  id: string;
+  title: string;
+  description: string;
+  badge: string;
+  emphasis: 'violet' | 'emerald' | 'amber' | 'slate';
+  mode: 'prompt' | 'block';
+  prompt?: string;
+  blockId?: string;
+}
+
+const STRUCTURE_BLOCKS: StructureBlockTemplate[] = [
+  {
+    id: 'parties',
+    title: 'Parties and purpose',
+    description: 'Add the contracting parties, background, and scope setup.',
+    category: 'Core',
+    html: '<h2>Parties</h2><p>This Agreement is entered into between [Party A], a [jurisdiction and entity type], and [Party B], a [jurisdiction and entity type].</p><h2>Purpose</h2><p>The parties wish to define the terms governing [services, supply, or project scope].</p>',
+  },
+  {
+    id: 'definitions',
+    title: 'Definitions',
+    description: 'Create a standard definitions section for key terms.',
+    category: 'Core',
+    html: '<h2>Definitions</h2><p>In this Agreement, the following terms have the meanings set out below.</p><ul><li><strong>Confidential Information</strong> means any non-public information disclosed by one party to the other in connection with this Agreement.</li><li><strong>Deliverables</strong> means the outputs, reports, materials, or services expressly described in this Agreement.</li><li><strong>Effective Date</strong> means the date on which this Agreement becomes binding on both parties.</li></ul>',
+  },
+  {
+    id: 'payment',
+    title: 'Commercial terms',
+    description: 'Insert pricing, invoicing, and payment language.',
+    category: 'Commercial',
+    html: '<h2>Fees and Payment</h2><p>In consideration for the services under this Agreement, [Customer] shall pay [Supplier] the fees set out in the applicable order form or statement of work.</p><ul><li>Invoices are due within [30] days of receipt.</li><li>Any disputed amount must be notified in writing within [10] business days.</li><li>Late payments may accrue interest at the lesser of [1.0%] per month or the maximum rate permitted by law.</li></ul>',
+  },
+  {
+    id: 'milestones',
+    title: 'Milestones and deliverables',
+    description: 'Create a milestone section for delivery tracking.',
+    category: 'Operations',
+    html: '<h2>Milestones and Deliverables</h2><table><thead><tr><th>Milestone</th><th>Deliverable</th><th>Owner</th><th>Target Date</th></tr></thead><tbody><tr><td>[Milestone 1]</td><td>[Deliverable]</td><td>[Owner]</td><td>[Date]</td></tr><tr><td>[Milestone 2]</td><td>[Deliverable]</td><td>[Owner]</td><td>[Date]</td></tr></tbody></table>',
+    contractTypes: ['SOW', 'MSA', 'SLA'],
+  },
+  {
+    id: 'governance',
+    title: 'Governance and escalation',
+    description: 'Add operating cadence, meetings, and escalation flow.',
+    category: 'Operations',
+    html: '<h2>Governance and Escalation</h2><p>The parties shall maintain an operating cadence appropriate for the services under this Agreement.</p><ul><li>Operational review meetings will take place [monthly].</li><li>Commercial issues will be escalated to [role or team].</li><li>Critical incidents will be escalated within [time period] to designated executive sponsors.</li></ul>',
+  },
+  {
+    id: 'termination',
+    title: 'Termination and exit',
+    description: 'Insert termination rights and transition obligations.',
+    category: 'Risk',
+    html: '<h2>Termination</h2><p>Either party may terminate this Agreement for material breach if the other party fails to cure the breach within [30] days after written notice.</p><p>Upon termination or expiry, each party shall promptly return or securely destroy the other party\'s Confidential Information, except where retention is required by law.</p><h3>Transition Assistance</h3><p>Upon request, [Supplier] shall provide reasonable transition assistance for a period of [30-90] days on mutually agreed commercial terms.</p>',
+  },
+  {
+    id: 'signature',
+    title: 'Signature block',
+    description: 'Add execution lines for both parties.',
+    category: 'Execution',
+    html: '<h2>Signatures</h2><p>IN WITNESS WHEREOF, the parties have caused this Agreement to be executed by their duly authorized representatives.</p><table><tbody><tr><td><strong>[Party A]</strong><br />By: ______________________<br />Name: ____________________<br />Title: _____________________<br />Date: _____________________</td><td><strong>[Party B]</strong><br />By: ______________________<br />Name: ____________________<br />Title: _____________________<br />Date: _____________________</td></tr></tbody></table>',
+  },
+];
+
+const SLASH_COMMANDS: SlashCommandConfig[] = [
+  { id: 'parties', label: '/parties', description: 'Insert a parties and purpose section.', kind: 'block', blockId: 'parties', keywords: ['introduction', 'scope'] },
+  { id: 'definitions', label: '/definitions', description: 'Insert a definitions section.', kind: 'block', blockId: 'definitions', keywords: ['terms', 'glossary'] },
+  { id: 'payment', label: '/payment', description: 'Insert commercial and payment terms.', kind: 'block', blockId: 'payment', keywords: ['fees', 'commercial'] },
+  { id: 'milestones', label: '/milestones', description: 'Insert milestones and deliverables.', kind: 'block', blockId: 'milestones', keywords: ['delivery', 'timeline'] },
+  { id: 'termination', label: '/termination', description: 'Insert termination and exit language.', kind: 'block', blockId: 'termination', keywords: ['breach', 'exit'] },
+  { id: 'signature', label: '/signature', description: 'Insert a signature block.', kind: 'block', blockId: 'signature', keywords: ['execution', 'signatures'] },
+  { id: 'rewrite', label: '/rewrite', description: 'Ask AI to rewrite the current passage more clearly.', kind: 'ai', prompt: 'Rewrite the current clause in clearer, more precise legal language while preserving intent.', keywords: ['improve', 'clarify'] },
+  { id: 'review', label: '/review', description: 'Ask AI to review the current clause for risks and gaps.', kind: 'ai', prompt: 'Review the current clause for legal, operational, and drafting risks. Call out gaps and suggest improvements.', keywords: ['risk', 'check'] },
+  { id: 'buyer', label: '/buyer', description: 'Ask AI to strengthen the current clause for your side.', kind: 'ai', prompt: 'Rewrite the current clause into a stronger negotiation position while keeping it commercially credible.', keywords: ['negotiation', 'stronger'] },
+  { id: 'fallback', label: '/fallback', description: 'Ask AI for a fallback clause package.', kind: 'ai', prompt: 'Create a preferred clause, a fallback clause, and a walk-away issue for the current clause or section.', keywords: ['negotiation', 'backup'] },
+  { id: 'summary', label: '/summary', description: 'Ask AI what is still missing in the draft.', kind: 'ai', prompt: 'Summarize the current draft and identify the most important missing sections, risks, or follow-up questions.', keywords: ['missing', 'overview'] },
+];
+
+const DRAFTING_BLUEPRINTS: Record<string, DraftBlueprintStep[]> = {
+  NDA: [
+    {
+      id: 'parties',
+      title: 'Parties and purpose',
+      description: 'Anchor who is sharing information and the purpose of the exchange.',
+      keywords: ['parties', 'purpose'],
+      blockId: 'parties',
+    },
+    {
+      id: 'definitions',
+      title: 'Confidential information and definitions',
+      description: 'Define what is protected and how the core terms are interpreted.',
+      keywords: ['definitions', 'confidential information', 'defined terms'],
+      blockId: 'definitions',
+    },
+    {
+      id: 'use-disclosure',
+      title: 'Use and disclosure guardrails',
+      description: 'Set permitted use, exceptions, and recipient handling obligations.',
+      keywords: ['permitted disclosures', 'use restrictions', 'confidentiality obligations', 'exceptions'],
+    },
+    {
+      id: 'termination',
+      title: 'Term and return or destruction',
+      description: 'Cover duration, return or deletion, and post-termination obligations.',
+      keywords: ['term', 'termination', 'return', 'destroy'],
+      blockId: 'termination',
+    },
+    {
+      id: 'signature',
+      title: 'Execution',
+      description: 'Make signature mechanics and authorization explicit.',
+      keywords: ['signatures', 'signature', 'execution'],
+      blockId: 'signature',
+    },
+  ],
+  MSA: [
+    {
+      id: 'parties',
+      title: 'Parties and purpose',
+      description: 'Set the relationship, commercial intent, and baseline scope.',
+      keywords: ['parties', 'purpose'],
+      blockId: 'parties',
+    },
+    {
+      id: 'definitions',
+      title: 'Definitions',
+      description: 'Clarify the recurring business and legal terms up front.',
+      keywords: ['definitions', 'defined terms'],
+      blockId: 'definitions',
+    },
+    {
+      id: 'payment',
+      title: 'Commercial terms',
+      description: 'Define pricing, invoicing, and payment timing.',
+      keywords: ['fees', 'payment', 'commercial terms'],
+      blockId: 'payment',
+    },
+    {
+      id: 'milestones',
+      title: 'Milestones and deliverables',
+      description: 'Describe outputs, milestones, and delivery expectations.',
+      keywords: ['milestones', 'deliverables', 'acceptance'],
+      blockId: 'milestones',
+    },
+    {
+      id: 'governance',
+      title: 'Governance and escalation',
+      description: 'Set meeting cadence, issue ownership, and escalation routes.',
+      keywords: ['governance', 'escalation', 'operational review'],
+      blockId: 'governance',
+    },
+    {
+      id: 'termination',
+      title: 'Risk and exit',
+      description: 'Cover termination, transition, and core protection mechanics.',
+      keywords: ['termination', 'transition assistance', 'liability', 'indemnity'],
+      blockId: 'termination',
+    },
+    {
+      id: 'signature',
+      title: 'Execution',
+      description: 'Lock the agreement with signature language and authority lines.',
+      keywords: ['signatures', 'signature', 'execution'],
+      blockId: 'signature',
+    },
+  ],
+  EMPLOYMENT: [
+    {
+      id: 'parties',
+      title: 'Role and relationship',
+      description: 'Identify the employee, employer, and purpose of the engagement.',
+      keywords: ['parties', 'employment', 'position', 'role'],
+      blockId: 'parties',
+    },
+    {
+      id: 'payment',
+      title: 'Compensation and benefits',
+      description: 'Define salary, bonus logic, and core benefits or allowances.',
+      keywords: ['compensation', 'salary', 'benefits', 'payment'],
+      blockId: 'payment',
+    },
+    {
+      id: 'governance',
+      title: 'Duties and reporting',
+      description: 'Set responsibilities, reporting lines, and performance cadence.',
+      keywords: ['responsibilities', 'duties', 'reporting', 'performance'],
+      blockId: 'governance',
+    },
+    {
+      id: 'termination',
+      title: 'Termination and restrictive covenants',
+      description: 'Cover notice, cause, exit obligations, and post-employment limits.',
+      keywords: ['termination', 'notice', 'non compete', 'restrictive covenants'],
+      blockId: 'termination',
+    },
+    {
+      id: 'signature',
+      title: 'Execution',
+      description: 'Capture signature authority and acceptance mechanics.',
+      keywords: ['signatures', 'signature', 'execution'],
+      blockId: 'signature',
+    },
+  ],
+  SOW: [
+    {
+      id: 'parties',
+      title: 'Parties and statement of intent',
+      description: 'Tie the work order back to the parties and engagement scope.',
+      keywords: ['parties', 'purpose', 'statement of work'],
+      blockId: 'parties',
+    },
+    {
+      id: 'milestones',
+      title: 'Scope, milestones, and deliverables',
+      description: 'Define what gets delivered, by whom, and when.',
+      keywords: ['scope', 'milestones', 'deliverables', 'acceptance'],
+      blockId: 'milestones',
+    },
+    {
+      id: 'payment',
+      title: 'Commercial terms',
+      description: 'Link milestones to pricing and payment triggers.',
+      keywords: ['fees', 'payment', 'commercial terms'],
+      blockId: 'payment',
+    },
+    {
+      id: 'governance',
+      title: 'Governance and escalation',
+      description: 'Set operational governance and issue escalation paths.',
+      keywords: ['governance', 'escalation', 'reporting'],
+      blockId: 'governance',
+    },
+    {
+      id: 'termination',
+      title: 'Change control and termination',
+      description: 'Explain what happens when scope changes or the work stops.',
+      keywords: ['change control', 'termination', 'exit'],
+      blockId: 'termination',
+    },
+    {
+      id: 'signature',
+      title: 'Execution',
+      description: 'Close the work order with authorized signature lines.',
+      keywords: ['signatures', 'signature', 'execution'],
+      blockId: 'signature',
+    },
+  ],
+  SLA: [
+    {
+      id: 'parties',
+      title: 'Parties and service context',
+      description: 'Identify the service relationship and service boundary.',
+      keywords: ['parties', 'purpose', 'services'],
+      blockId: 'parties',
+    },
+    {
+      id: 'definitions',
+      title: 'Service definitions',
+      description: 'Clarify uptime, incidents, exclusions, and measurement terms.',
+      keywords: ['definitions', 'service levels', 'availability'],
+      blockId: 'definitions',
+    },
+    {
+      id: 'milestones',
+      title: 'Service levels and response times',
+      description: 'Spell out target metrics, windows, and service commitments.',
+      keywords: ['service levels', 'response times', 'uptime', 'deliverables'],
+      blockId: 'milestones',
+    },
+    {
+      id: 'governance',
+      title: 'Monitoring and escalation',
+      description: 'Set reporting cadence, incident ownership, and escalation rules.',
+      keywords: ['governance', 'escalation', 'monitoring'],
+      blockId: 'governance',
+    },
+    {
+      id: 'termination',
+      title: 'Remedies and exit',
+      description: 'Address service credits, chronic breach, and termination mechanics.',
+      keywords: ['service credits', 'termination', 'remedies'],
+      blockId: 'termination',
+    },
+    {
+      id: 'signature',
+      title: 'Execution',
+      description: 'Finalize with signature and authorization mechanics.',
+      keywords: ['signatures', 'signature', 'execution'],
+      blockId: 'signature',
+    },
+  ],
+  DEFAULT: [
+    {
+      id: 'parties',
+      title: 'Parties and purpose',
+      description: 'Identify the parties and what the agreement is for.',
+      keywords: ['parties', 'purpose'],
+      blockId: 'parties',
+    },
+    {
+      id: 'definitions',
+      title: 'Definitions',
+      description: 'Clarify the most reusable terms early.',
+      keywords: ['definitions', 'defined terms'],
+      blockId: 'definitions',
+    },
+    {
+      id: 'payment',
+      title: 'Commercial terms',
+      description: 'Explain how value, invoices, and payment timing work.',
+      keywords: ['fees', 'payment', 'commercial terms'],
+      blockId: 'payment',
+    },
+    {
+      id: 'termination',
+      title: 'Termination and exit',
+      description: 'Describe how the agreement ends and what obligations survive.',
+      keywords: ['termination', 'exit'],
+      blockId: 'termination',
+    },
+    {
+      id: 'signature',
+      title: 'Execution',
+      description: 'Capture signature and authority details.',
+      keywords: ['signatures', 'signature', 'execution'],
+      blockId: 'signature',
+    },
+  ],
+};
+
+function hasEditorDropPayload(dataTransfer: DataTransfer): boolean {
+  return Array.from(dataTransfer.types || []).includes(EDITOR_DROP_MIME);
+}
 
 // ============================================================================
 // TYPES
@@ -271,17 +911,81 @@ interface AiChatMessage {
   applyMode?: 'replace_selection' | 'insert_at_cursor' | 'none';
   suggestions?: ChatQuickReply[];
   followUpQuestion?: string;
+  comparisonText?: string;
 }
+
+interface EditorDropPayload {
+  kind: 'suggestion' | 'clause' | 'ai-draft';
+  label: string;
+  plainText: string;
+  html: string;
+  sourceLabel?: string;
+  confidence?: number;
+  detail?: string;
+  applyMode?: 'replace_selection' | 'insert_at_cursor' | 'none';
+}
+
+interface SourceTrailEntry {
+  id: string;
+  label: string;
+  sourceLabel: string;
+  action: 'inserted' | 'replaced';
+  timestamp: Date;
+  confidence?: number;
+  detail?: string;
+  sourceId?: string;
+  sourceKind?: string;
+}
+
+interface HeatmapMarker {
+  id: string;
+  type: 'risk' | 'comment';
+  topPercent: number;
+  from: number;
+  to?: number;
+  label: string;
+  detail: string;
+  tone: 'critical' | 'high' | 'medium' | 'low' | 'comment';
+}
+
+interface DraftOutlineSection {
+  id: string;
+  title: string;
+  level: number;
+  startPos: number;
+  endPos: number;
+}
+
+interface SelectionToolbarState {
+  top: number;
+  left: number;
+  from: number;
+  to: number;
+  text: string;
+}
+
+interface DropIndicatorState {
+  top: number;
+  left: number;
+  width: number;
+  insertPos: number;
+}
+
+const EDITOR_DROP_MIME = 'application/x-contigo-editor-snippet';
+const OUTLINE_REORDER_MIME = 'application/x-contigo-outline-section';
 
 interface CopilotDraftingCanvasProps {
   contractId?: string;
   initialContent?: string;
+  initialTitle?: string;
+  initialSourceTrail?: unknown;
   contractType?: string;
   playbookId?: string;
   templateId?: string;
   draftId?: string;
   isBlankDocument?: boolean;
-  onSave?: (content: string) => Promise<void>;
+  workflowContext?: CopilotWorkflowContext;
+  onSave?: (payload: { content: string; title: string; clauses?: Array<Record<string, unknown>> }) => Promise<void>;
   onLegalReview?: () => void;
 }
 
@@ -292,11 +996,14 @@ interface CopilotDraftingCanvasProps {
 export function CopilotDraftingCanvas({
   contractId,
   initialContent = '',
+  initialTitle,
+  initialSourceTrail,
   contractType = 'MSA',
   playbookId,
   templateId,
   draftId,
   isBlankDocument,
+  workflowContext,
   onSave,
   onLegalReview,
 }: CopilotDraftingCanvasProps) {
@@ -312,6 +1019,17 @@ export function CopilotDraftingCanvas({
   const debouncedContentVersion = useDebounce(contentVersion, 500);
   // Expose content length for guards (cheap number comparison, no re-render on text change)
   const contentLengthRef = useRef(0);
+  const fallbackDocumentTitle = useMemo(
+    () => resolveDraftTitle(initialTitle, `${contractType} Contract`),
+    [initialTitle, contractType],
+  );
+  const [draftTitle, setDraftTitle] = useState(fallbackDocumentTitle);
+  const debouncedDraftTitle = useDebounce(draftTitle, 300);
+  const hasEditedTitleRef = useRef(false);
+  const documentCanvasTitle = useMemo(
+    () => resolveDraftTitle(draftTitle, `${contractType} Contract`),
+    [draftTitle, contractType],
+  );
 
   // Copilot state
   const [suggestions, setSuggestions] = useState<CopilotSuggestion[]>([]);
@@ -321,6 +1039,10 @@ export function CopilotDraftingCanvas({
   const [showCompletionPopup, setShowCompletionPopup] = useState(false);
   const [selectedCompletionIndex, setSelectedCompletionIndex] = useState(0);
   const [completionPopupPos, setCompletionPopupPos] = useState<{ top: number; left: number }>({ top: 80, left: 32 });
+  const [showSlashMenu, setShowSlashMenu] = useState(false);
+  const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
+  const [slashMenuPos, setSlashMenuPos] = useState<{ top: number; left: number }>({ top: 120, left: 40 });
+  const [slashQuery, setSlashQuery] = useState('');
 
   // UI state
   const [activeTab, setActiveTabRaw] = useState<'assistant' | 'review' | 'clauses'>(() => {
@@ -355,10 +1077,24 @@ export function CopilotDraftingCanvas({
   const aiChatAbortRef = useRef<AbortController | null>(null);
   const aiChatScrollRef = useRef<HTMLDivElement | null>(null);
   const [isEditing, setIsEditing] = useState(true);
+  const [workspaceMode, setWorkspaceMode] = useState<'draft' | 'negotiate'>('draft');
+  const [showDesktopSidebar, setShowDesktopSidebar] = useState(false);
+  const [desktopSidebarWidth, setDesktopSidebarWidth] = useState(resolveInitialDesktopSidebarWidth);
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  const [isEditorDropActive, setIsEditorDropActive] = useState(false);
+  const [draggedSnippetLabel, setDraggedSnippetLabel] = useState<string | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<DropIndicatorState | null>(null);
+  const [selectionToolbar, setSelectionToolbar] = useState<SelectionToolbarState | null>(null);
+  const [showInlineCommentComposer, setShowInlineCommentComposer] = useState(false);
+  const [inlineCommentDraft, setInlineCommentDraft] = useState('');
+  const [draggedOutlineId, setDraggedOutlineId] = useState<string | null>(null);
+  const [outlineDropTargetId, setOutlineDropTargetId] = useState<string | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
+  const [selectedHeatmapMarkerId, setSelectedHeatmapMarkerId] = useState<string | null>(null);
+  const [sourceTrail, setSourceTrail] = useState<SourceTrailEntry[]>(() => normalizeSourceTrail(initialSourceTrail));
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -398,9 +1134,53 @@ export function CopilotDraftingCanvas({
   const draftIdRef = useRef(draftId);
   const lockInfoRef = useRef(lockInfo);
   const sessionUserIdRef = useRef(session?.user?.id);
+  const sidebarResizeRef = useRef({ startX: 0, startWidth: DESKTOP_SIDEBAR_DEFAULT_WIDTH });
   useEffect(() => { draftIdRef.current = draftId; }, [draftId]);
   useEffect(() => { lockInfoRef.current = lockInfo; }, [lockInfo]);
   useEffect(() => { sessionUserIdRef.current = session?.user?.id; }, [session?.user?.id]);
+
+  const setClampedDesktopSidebarWidth = useCallback((nextWidth: number) => {
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : undefined;
+    setDesktopSidebarWidth(clampDesktopSidebarWidth(nextWidth, viewportWidth));
+  }, []);
+
+  const handleDesktopSidebarResizeStart = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    sidebarResizeRef.current = {
+      startX: event.clientX,
+      startWidth: desktopSidebarWidth,
+    };
+    setIsResizingSidebar(true);
+  }, [desktopSidebarWidth]);
+
+  const handleDesktopSidebarResizeKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      setClampedDesktopSidebarWidth(desktopSidebarWidth + 24);
+      return;
+    }
+
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      setClampedDesktopSidebarWidth(desktopSidebarWidth - 24);
+      return;
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault();
+      setClampedDesktopSidebarWidth(DESKTOP_SIDEBAR_MIN_WIDTH);
+      return;
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault();
+      setClampedDesktopSidebarWidth(DESKTOP_SIDEBAR_MAX_WIDTH);
+    }
+  }, [desktopSidebarWidth, setClampedDesktopSidebarWidth]);
 
   useEffect(() => {
     const cleanup = () => {
@@ -435,6 +1215,50 @@ export function CopilotDraftingCanvas({
   }, []);
 
   useEffect(() => {
+    try {
+      window.localStorage.setItem(DESKTOP_SIDEBAR_STORAGE_KEY, String(desktopSidebarWidth));
+    } catch {
+      // ignore storage failures
+    }
+  }, [desktopSidebarWidth]);
+
+  useEffect(() => {
+    const handleWindowResize = () => {
+      setDesktopSidebarWidth((currentWidth) => clampDesktopSidebarWidth(currentWidth, window.innerWidth));
+    };
+
+    window.addEventListener('resize', handleWindowResize);
+    return () => window.removeEventListener('resize', handleWindowResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizingSidebar) {
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const deltaX = event.clientX - sidebarResizeRef.current.startX;
+      setClampedDesktopSidebarWidth(sidebarResizeRef.current.startWidth - deltaX);
+    };
+
+    const handlePointerUp = () => {
+      setIsResizingSidebar(false);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizingSidebar, setClampedDesktopSidebarWidth]);
+
+  useEffect(() => {
     const container = aiChatScrollRef.current;
     if (!container) return;
 
@@ -457,7 +1281,7 @@ export function CopilotDraftingCanvas({
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({
         placeholder: isBlankDocument 
-          ? 'Start drafting your contract here… Press Ctrl+/ to open AI Copilot, or check the Clause Library on the right →'
+          ? 'Start drafting your contract here. Press Ctrl+/ or open Assistant when you need clauses, rewrites, or review help.'
           : 'Start drafting your contract…',
       }),
     ],
@@ -465,12 +1289,11 @@ export function CopilotDraftingCanvas({
     editable: isEditing,
     editorProps: {
       attributes: {
-        class: 'tiptap-editor prose prose-lg dark:prose-invert max-w-none focus:outline-none min-h-[550px] md:min-h-[750px] font-serif leading-relaxed text-base md:text-lg',
-        style: 'font-family: Georgia, serif',
+        class: 'tiptap-editor prose prose-lg max-w-none focus:outline-none min-h-[620px] md:min-h-[780px] font-serif text-[17px] leading-[1.95] tracking-[0.003em] text-slate-800 prose-headings:font-semibold prose-headings:tracking-[-0.03em] prose-h1:mb-6 prose-h1:text-[2.25rem] prose-h2:mt-12 prose-h2:mb-4 prose-h2:text-[1.45rem] prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-[1.12rem] prose-p:my-5 prose-p:text-slate-700 prose-li:my-1 prose-li:text-slate-700 prose-strong:text-slate-900 prose-a:text-violet-700 prose-blockquote:border-l-slate-300 prose-blockquote:text-slate-600 dark:prose-invert dark:text-slate-100 dark:prose-p:text-slate-300 dark:prose-li:text-slate-300 dark:prose-strong:text-slate-50 dark:prose-a:text-violet-300 dark:prose-blockquote:border-l-slate-600 dark:prose-blockquote:text-slate-300 md:text-[18px]',
+        style: "font-family: Charter, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif",
       },
     },
     onUpdate: ({ editor: ed }) => {
-      const text = ed.getText();
       const html = ed.getHTML();
       contentRef.current = html;
       contentLengthRef.current = html.length;
@@ -489,6 +1312,32 @@ export function CopilotDraftingCanvas({
       const currentLine = (lines[lines.length - 1] || '').trim();
 
       if (completionTimerRef.current) clearTimeout(completionTimerRef.current);
+
+      const slashMatch = ed.state.selection.empty
+        ? ed.state.doc.textBetween(Math.max(0, from - 80), from, '\n').match(/(?:^|\s)\/([a-z-]*)$/i)
+        : null;
+
+      if (slashMatch) {
+        const query = slashMatch[1].toLowerCase();
+        slashCommandRangeRef.current = { from: from - query.length - 1, to: from };
+        setSlashQuery(query);
+        setSelectedSlashIndex(0);
+
+        try {
+          const coords = ed.view.coordsAtPos(from);
+          const editorRect = (editorSurfaceRef.current || ed.view.dom).getBoundingClientRect();
+          setSlashMenuPos({
+            top: Math.max(12, Math.min(coords.bottom - editorRect.top + 8, editorRect.height - 180)),
+            left: Math.max(12, Math.min(coords.left - editorRect.left, editorRect.width - 320)),
+          });
+        } catch { /* preserve previous slash menu position */ }
+
+        setShowSlashMenu(true);
+      } else {
+        slashCommandRangeRef.current = null;
+        setShowSlashMenu(false);
+        setSlashQuery('');
+      }
 
       // Only trigger when: at end-of-line, line is substantial, and line ends
       // with natural pause punctuation or a space (user paused typing)
@@ -517,12 +1366,40 @@ export function CopilotDraftingCanvas({
       }
     },
     onSelectionUpdate: ({ editor: ed }) => {
-      const { from } = ed.state.selection;
+      const { from, to } = ed.state.selection;
       cursorPositionRef.current = from;
-      const sel = ed.state.doc.textBetween(ed.state.selection.from, ed.state.selection.to, ' ');
+      const sel = ed.state.doc.textBetween(from, to, ' ');
       selectedTextRef.current = sel;
       // Dismiss auto-complete when user moves cursor (avoids stale popups)
       if (showCompletionPopup) setShowCompletionPopup(false);
+
+      if (!ed.state.selection.empty && ed.isEditable) {
+        try {
+          const startCoords = ed.view.coordsAtPos(from);
+          const endCoords = ed.view.coordsAtPos(to);
+          const editorRect = (editorSurfaceRef.current || ed.view.dom).getBoundingClientRect();
+          const center = ((startCoords.left + endCoords.right) / 2) - editorRect.left;
+
+          setSelectionToolbar({
+            from,
+            to,
+            text: sel,
+            top: Math.max(12, startCoords.top - editorRect.top - 54),
+            left: Math.max(16, Math.min(center - 150, editorRect.width - 340)),
+          });
+        } catch {
+          setSelectionToolbar(null);
+        }
+      } else {
+        setSelectionToolbar(null);
+        setShowInlineCommentComposer(false);
+      }
+
+      if (!ed.state.selection.empty) {
+        setShowSlashMenu(false);
+        setSlashQuery('');
+        slashCommandRangeRef.current = null;
+      }
     },
   });
 
@@ -619,16 +1496,34 @@ export function CopilotDraftingCanvas({
 
   // Track last saved content to avoid redundant auto-saves
   const lastSavedContentRef = useRef(initialContent);
+  const lastSavedTitleRef = useRef(fallbackDocumentTitle);
   // Lock to prevent concurrent auto-save and manual save
   const saveLockRef = useRef(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editorDragCounterRef = useRef(0);
+  const editorSurfaceRef = useRef<HTMLDivElement | null>(null);
+  const slashCommandRangeRef = useRef<{ from: number; to: number } | null>(null);
 
-  // Auto-save: triggered by content changes (debounced via contentVersion)
+  useEffect(() => {
+    if (hasEditedTitleRef.current) return;
+
+    setDraftTitle(fallbackDocumentTitle);
+    if (!draftId) {
+      lastSavedTitleRef.current = fallbackDocumentTitle;
+    }
+  }, [draftId, fallbackDocumentTitle]);
+
+  // Auto-save: triggered by content or draft-title changes.
   useEffect(() => {
     if (!editor || draftStatus === 'FINALIZED') return;
 
     const html = editor.getHTML();
-    if (html === lastSavedContentRef.current) return;
+    const nextTitle = resolveDraftTitle(debouncedDraftTitle, `${contractType} Contract`);
+    const contentChanged = html !== lastSavedContentRef.current;
+    const titleChanged = nextTitle !== lastSavedTitleRef.current;
+
+    if (!contentChanged && !titleChanged) return;
+    if (!draftId && !contentChanged && stripHtml(html).length === 0) return;
 
     const timer = setTimeout(async () => {
       // Skip if a manual save is in progress
@@ -637,8 +1532,9 @@ export function CopilotDraftingCanvas({
       // Content changed — save via onSave callback or direct API
       setIsSaving(true);
       try {
+        const serializedSourceTrail = serializeSourceTrail(sourceTrail);
         if (onSave) {
-          await onSave(html);
+          await onSave({ content: html, title: nextTitle, clauses: serializedSourceTrail });
         } else if (draftId) {
           await fetch(`/api/drafts/${draftId}`, {
             method: 'PATCH',
@@ -646,10 +1542,12 @@ export function CopilotDraftingCanvas({
               'Content-Type': 'application/json',
               ...getCsrfHeaders(),
             },
-            body: JSON.stringify({ content: html }),
+            body: JSON.stringify({ content: html, title: nextTitle, clauses: serializedSourceTrail }),
           });
         }
         lastSavedContentRef.current = html;
+        lastSavedTitleRef.current = nextTitle;
+        hasEditedTitleRef.current = false;
         setLastSaved(new Date());
       } catch (error) {
         console.error('Auto-save failed:', error);
@@ -661,7 +1559,7 @@ export function CopilotDraftingCanvas({
 
     autoSaveTimerRef.current = timer;
     return () => { clearTimeout(timer); autoSaveTimerRef.current = null; };
-  }, [debouncedContentVersion, editor, onSave, draftId, draftStatus]);
+  }, [debouncedContentVersion, debouncedDraftTitle, editor, onSave, draftId, draftStatus, contractType, sourceTrail]);
 
   // ====================================================================
   // FETCH COMMENTS, VERSIONS, CLAUSES, LOCK INFO from API
@@ -730,12 +1628,20 @@ export function CopilotDraftingCanvas({
           if (d.status === 'FINALIZED') setIsEditing(false);
           setLockInfo({ isLocked: d.isLocked, lockedBy: d.lockedBy, lockedAt: d.lockedAt });
           setApprovalHistory(Array.isArray(d.approvalWorkflow) ? d.approvalWorkflow : []);
+          const serverTitle = resolveDraftTitle(d.title, fallbackDocumentTitle);
+          lastSavedTitleRef.current = serverTitle;
+          if (!hasEditedTitleRef.current) {
+            setDraftTitle(serverTitle);
+          }
+          if (d.updatedAt) {
+            setLastSaved(new Date(d.updatedAt));
+          }
         }
       }
     } catch (err) {
       console.error('Failed to fetch draft meta:', err);
     }
-  }, [draftId]);
+  }, [draftId, fallbackDocumentTitle]);
 
   // On mount: fetch draft metadata, comments, versions
   useEffect(() => {
@@ -782,6 +1688,42 @@ export function CopilotDraftingCanvas({
     } catch { toast.error('Failed to add comment'); }
   }, [newComment, draftId, fetchComments]);
 
+  const handleInlineCommentCreate = useCallback(async () => {
+    if (!draftId) {
+      toast.error('Save the draft before adding inline comments');
+      return;
+    }
+    if (!selectionToolbar || !inlineCommentDraft.trim()) return;
+
+    try {
+      const res = await fetch(`/api/drafts/${draftId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getCsrfHeaders() },
+        body: JSON.stringify({
+          content: inlineCommentDraft.trim(),
+          anchorPos: {
+            from: selectionToolbar.from,
+            to: selectionToolbar.to,
+            text: selectionToolbar.text,
+          },
+        }),
+      });
+
+      if (res.ok) {
+        setInlineCommentDraft('');
+        setShowInlineCommentComposer(false);
+        setActiveTab('review');
+        setShowDesktopSidebar(true);
+        fetchComments();
+        toast.success('Inline review comment added');
+      } else {
+        toast.error('Failed to add inline comment');
+      }
+    } catch {
+      toast.error('Failed to add inline comment');
+    }
+  }, [draftId, fetchComments, inlineCommentDraft, selectionToolbar, setActiveTab]);
+
   const handleReply = useCallback(async (parentId: string) => {
     if (!replyContent.trim() || !draftId) return;
     try {
@@ -818,6 +1760,94 @@ export function CopilotDraftingCanvas({
       toast.success('Comment deleted');
     } catch { toast.error('Failed to delete comment'); }
   }, [draftId, fetchComments]);
+
+  const handleJumpToCommentAnchor = useCallback((anchorPos: Record<string, unknown>) => {
+    if (!editor) return;
+
+    const from = typeof anchorPos.from === 'number' ? anchorPos.from : null;
+    const to = typeof anchorPos.to === 'number' ? anchorPos.to : null;
+    if (from === null) return;
+
+    if (to && to > from) {
+      editor.chain().focus().setTextSelection({ from, to }).run();
+    } else {
+      editor.chain().focus().setTextSelection(from).run();
+    }
+  }, [editor]);
+
+  const recordSourceTrail = useCallback((entry: Omit<SourceTrailEntry, 'id' | 'timestamp'> & { timestamp?: Date }) => {
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `source-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    setSourceTrail((previous) => [
+      {
+        ...entry,
+        id,
+        timestamp: entry.timestamp ?? new Date(),
+      },
+      ...previous,
+    ].slice(0, 8));
+  }, []);
+
+  const focusDraftRange = useCallback((from: number, to?: number) => {
+    if (!editor) return false;
+
+    const docSize = editor.state.doc.content.size;
+    const safeFrom = Math.max(1, Math.min(from, docSize));
+    const safeTo = typeof to === 'number' ? Math.max(safeFrom, Math.min(to, docSize)) : undefined;
+
+    if (safeTo && safeTo > safeFrom) {
+      editor.chain().focus().setTextSelection({ from: safeFrom, to: safeTo }).run();
+    } else {
+      editor.chain().focus().setTextSelection(safeFrom).run();
+    }
+
+    return true;
+  }, [editor]);
+
+  const locateTextRange = useCallback((text: string) => {
+    if (!editor) return null;
+
+    const raw = text.trim();
+    if (!raw) return null;
+
+    const candidates = [raw, raw.replace(/\s+/g, ' '), raw.slice(0, 80)].filter(Boolean);
+    const docText = editor.state.doc.textContent;
+
+    for (const candidate of candidates) {
+      const index = docText.indexOf(candidate);
+      if (index !== -1) {
+        return { from: index + 1, to: index + 1 + candidate.length };
+      }
+    }
+
+    return null;
+  }, [editor]);
+
+  const handleFocusRisk = useCallback((risk: RiskHighlight) => {
+    let from = risk.position.startOffset;
+    let to = risk.position.endOffset;
+
+    const docSize = editor?.state.doc.content.size ?? 0;
+    const isUsableRange = from > 0 && to >= from && to <= docSize;
+
+    if (!isUsableRange) {
+      const located = locateTextRange(risk.text);
+      if (located) {
+        from = located.from;
+        to = located.to;
+      }
+    }
+
+    if (from > 0) {
+      focusDraftRange(from, to);
+    }
+
+    setSelectedHeatmapMarkerId(`risk-${risk.id}`);
+    setActiveTab('review');
+    setShowDesktopSidebar(true);
+  }, [editor, focusDraftRange, locateTextRange, setActiveTab]);
 
   // ====================================================================
   // VERSION DIFF HANDLERS
@@ -861,17 +1891,253 @@ export function CopilotDraftingCanvas({
   // CLAUSE LIBRARY HANDLER
   // ====================================================================
 
-  const handleInsertClause = useCallback((clause: LibraryClause) => {
+  const insertHtmlIntoDraft = useCallback((html: string, options?: { position?: number; successLabel?: string }) => {
     if (!editor) return;
-    const rawHtml = clause.content.startsWith('<') ? clause.content : `<p>${clause.content}</p>`;
-    // Sanitize clause content before inserting (library clauses may contain arbitrary HTML)
-    const sanitized = DOMPurify.sanitize(rawHtml, {
-      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'a', 'span', 'div', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'mark', 'sub', 'sup'],
-      ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style'],
-    });
-    editor.chain().focus().insertContent(sanitized).run();
-    toast.success(`Inserted clause: ${clause.title}`);
+
+    const sanitized = normalizeAiHtml(html);
+    if (typeof options?.position === 'number') {
+      editor.chain().focus().insertContentAt(options.position, sanitized).run();
+    } else {
+      editor.chain().focus().insertContent(sanitized).run();
+    }
+
+    if (options?.successLabel) {
+      toast.success(`Inserted ${options.successLabel}`);
+    }
   }, [editor]);
+
+  const findStructureBlock = useCallback(
+    (blockId: string) => STRUCTURE_BLOCKS.find(
+      (block) => block.id === blockId && (!block.contractTypes || block.contractTypes.includes(contractType?.toUpperCase() || '')),
+    ),
+    [contractType],
+  );
+
+  const handleInsertStructureBlock = useCallback((block: StructureBlockTemplate, position?: number) => {
+    insertHtmlIntoDraft(block.html, { position, successLabel: block.title });
+    recordSourceTrail({
+      label: block.title,
+      sourceLabel: 'Studio block',
+      action: 'inserted',
+      confidence: 0.96,
+      detail: `${block.category} template`,
+      sourceId: block.id,
+      sourceKind: 'studio-block',
+    });
+  }, [insertHtmlIntoDraft, recordSourceTrail]);
+
+  const handleInsertClause = useCallback((clause: LibraryClause, position?: number) => {
+    const rawHtml = clause.content.startsWith('<') ? clause.content : `<p>${clause.content}</p>`;
+    insertHtmlIntoDraft(rawHtml, { position, successLabel: clause.title });
+    recordSourceTrail({
+      label: clause.title,
+      sourceLabel: clause.isStandard ? 'Standard clause library' : 'Clause library',
+      action: 'inserted',
+      detail: `${clause.category} · used ${clause.usageCount} times`,
+      sourceId: clause.id,
+      sourceKind: 'library-clause',
+    });
+  }, [insertHtmlIntoDraft, recordSourceTrail]);
+
+  const buildEditorDropPayload = useCallback((payload: EditorDropPayload) => {
+    const normalizedHtml = payload.html ? normalizeAiHtml(payload.html) : textToHtml(payload.plainText);
+    return {
+      ...payload,
+      html: normalizedHtml,
+      plainText: payload.plainText || stripHtml(normalizedHtml),
+    };
+  }, []);
+
+  const clearEditorDragState = useCallback(() => {
+    editorDragCounterRef.current = 0;
+    setIsEditorDropActive(false);
+    setDraggedSnippetLabel(null);
+    setDropIndicator(null);
+  }, []);
+
+  const handleSnippetDragStart = useCallback((event: React.DragEvent<HTMLElement>, payload: EditorDropPayload) => {
+    const normalizedPayload = buildEditorDropPayload(payload);
+    event.dataTransfer.effectAllowed = 'copy';
+    event.dataTransfer.setData(EDITOR_DROP_MIME, JSON.stringify(normalizedPayload));
+    event.dataTransfer.setData('text/plain', normalizedPayload.plainText);
+    setDraggedSnippetLabel(normalizedPayload.label);
+  }, [buildEditorDropPayload]);
+
+  const handleSnippetDragEnd = useCallback(() => {
+    clearEditorDragState();
+  }, [clearEditorDragState]);
+
+  const readEditorDropPayload = useCallback((event: Pick<React.DragEvent<HTMLElement>, 'dataTransfer'>): EditorDropPayload | null => {
+    const rawPayload = event.dataTransfer.getData(EDITOR_DROP_MIME);
+    if (!rawPayload) return null;
+
+    try {
+      const parsed = JSON.parse(rawPayload) as EditorDropPayload;
+      if (!parsed?.label || !parsed?.plainText) return null;
+      return buildEditorDropPayload(parsed);
+    } catch {
+      return null;
+    }
+  }, [buildEditorDropPayload]);
+
+  const maybeAutoScrollWindow = useCallback((clientY: number) => {
+    const edgeThreshold = 120;
+    if (clientY < edgeThreshold) {
+      window.scrollBy({ top: -32, left: 0, behavior: 'auto' });
+    } else if (window.innerHeight - clientY < edgeThreshold) {
+      window.scrollBy({ top: 32, left: 0, behavior: 'auto' });
+    }
+  }, []);
+
+  const updateDropIndicator = useCallback((clientX: number, clientY: number) => {
+    if (!editor || !editorSurfaceRef.current) return editor?.state.selection.from || 1;
+
+    const coords = editor.view.posAtCoords({ left: clientX, top: clientY });
+    const insertPos = coords?.pos ?? editor.state.selection.from;
+    const safePos = Math.max(1, Math.min(insertPos, editor.state.doc.content.size));
+
+    try {
+      const markerCoords = editor.view.coordsAtPos(safePos);
+      const editorRect = editorSurfaceRef.current.getBoundingClientRect();
+
+      setDropIndicator({
+        insertPos: safePos,
+        top: Math.max(16, markerCoords.top - editorRect.top),
+        left: 16,
+        width: Math.max(140, editorRect.width - 32),
+      });
+    } catch {
+      setDropIndicator(null);
+    }
+
+    return safePos;
+  }, [editor]);
+
+  const insertDroppedContent = useCallback((payload: EditorDropPayload, clientX: number, clientY: number) => {
+    const insertPosition = dropIndicator?.insertPos ?? updateDropIndicator(clientX, clientY);
+    insertHtmlIntoDraft(payload.html, { position: insertPosition, successLabel: payload.label });
+    recordSourceTrail({
+      label: payload.label,
+      sourceLabel: payload.sourceLabel || 'Dragged content',
+      action: payload.applyMode === 'replace_selection' ? 'replaced' : 'inserted',
+      confidence: payload.confidence,
+      detail: payload.detail || 'Dropped into draft',
+      sourceKind: payload.kind,
+    });
+  }, [dropIndicator?.insertPos, insertHtmlIntoDraft, recordSourceTrail, updateDropIndicator]);
+
+  const handleEditorDragEnter = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasEditorDropPayload(event.dataTransfer)) return;
+    event.preventDefault();
+    editorDragCounterRef.current += 1;
+    setIsEditorDropActive(true);
+  }, []);
+
+  const handleEditorDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasEditorDropPayload(event.dataTransfer)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    maybeAutoScrollWindow(event.clientY);
+    setIsEditorDropActive(true);
+    updateDropIndicator(event.clientX, event.clientY);
+  }, [maybeAutoScrollWindow, updateDropIndicator]);
+
+  const handleEditorDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasEditorDropPayload(event.dataTransfer)) return;
+    event.preventDefault();
+    editorDragCounterRef.current = Math.max(0, editorDragCounterRef.current - 1);
+    if (editorDragCounterRef.current === 0) {
+      setIsEditorDropActive(false);
+    }
+  }, []);
+
+  const handleEditorDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    const payload = readEditorDropPayload(event);
+    if (!payload) return;
+
+    event.preventDefault();
+    insertDroppedContent(payload, event.clientX, event.clientY);
+    clearEditorDragState();
+  }, [clearEditorDragState, insertDroppedContent, readEditorDropPayload]);
+
+  const handleFocusOutlineSection = useCallback((section: DraftOutlineSection) => {
+    if (!editor) return;
+    editor.chain().focus().setTextSelection(Math.max(section.startPos + 1, 1)).run();
+  }, [editor]);
+
+  const moveOutlineSection = useCallback((sourceId: string, targetId: string) => {
+    if (!editor || sourceId === targetId) return;
+
+    const currentSections: DraftOutlineSection[] = [];
+    const headings: Array<{ title: string; level: number; startPos: number }> = [];
+
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'heading') {
+        headings.push({
+          title: node.textContent.trim() || 'Untitled section',
+          level: typeof node.attrs.level === 'number' ? node.attrs.level : 1,
+          startPos: pos,
+        });
+      }
+    });
+
+    headings.forEach((heading, index) => {
+      currentSections.push({
+        id: `${heading.startPos}-${heading.title}`,
+        title: heading.title,
+        level: heading.level,
+        startPos: heading.startPos,
+        endPos: index + 1 < headings.length ? headings[index + 1].startPos : editor.state.doc.content.size,
+      });
+    });
+
+    const sourceSection = currentSections.find((section) => section.id === sourceId);
+    const targetSection = currentSections.find((section) => section.id === targetId);
+    if (!sourceSection || !targetSection) return;
+
+    const sectionSize = sourceSection.endPos - sourceSection.startPos;
+    if (sectionSize <= 0) return;
+
+    const sectionSlice = editor.state.doc.slice(sourceSection.startPos, sourceSection.endPos);
+    let insertPos = targetSection.startPos;
+
+    let transaction = editor.state.tr.delete(sourceSection.startPos, sourceSection.endPos);
+    if (sourceSection.startPos < targetSection.startPos) {
+      insertPos -= sectionSize;
+    }
+
+    transaction = transaction.insert(insertPos, sectionSlice.content).scrollIntoView();
+    editor.view.dispatch(transaction);
+    toast.success(`Moved ${sourceSection.title}`);
+  }, [editor]);
+
+  const handleOutlineDragStart = useCallback((event: React.DragEvent<HTMLButtonElement>, sectionId: string) => {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData(OUTLINE_REORDER_MIME, sectionId);
+    setDraggedOutlineId(sectionId);
+  }, []);
+
+  const handleOutlineDragOver = useCallback((event: React.DragEvent<HTMLButtonElement>, sectionId: string) => {
+    const sourceId = event.dataTransfer.getData(OUTLINE_REORDER_MIME);
+    if (!sourceId || sourceId === sectionId) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    setOutlineDropTargetId(sectionId);
+  }, []);
+
+  const handleOutlineDrop = useCallback((event: React.DragEvent<HTMLButtonElement>, sectionId: string) => {
+    const sourceId = event.dataTransfer.getData(OUTLINE_REORDER_MIME);
+    if (!sourceId || sourceId === sectionId) return;
+    event.preventDefault();
+    moveOutlineSection(sourceId, sectionId);
+    setDraggedOutlineId(null);
+    setOutlineDropTargetId(null);
+  }, [moveOutlineSection]);
+
+  const handleOutlineDragEnd = useCallback(() => {
+    setDraggedOutlineId(null);
+    setOutlineDropTargetId(null);
+  }, []);
 
   // ====================================================================
   // LOCK HANDLERS
@@ -983,7 +2249,9 @@ export function CopilotDraftingCanvas({
   // Auto-completion debounce ref
   const completionTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Ref to always call the latest handleSave (avoids stale closure since it's defined later)
-  const handleSaveRef = useRef<() => void>(() => {});
+  const handleSaveRef = useRef<(titleOverride?: string) => Promise<void> | void>(() => {});
+  const applySlashCommandRef = useRef<(command: SlashCommandConfig) => void>(() => {});
+  const filteredSlashCommandsRef = useRef<SlashCommandConfig[]>([]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // ── Global keyboard shortcuts ──
@@ -1005,6 +2273,7 @@ export function CopilotDraftingCanvas({
     if (isMod && e.key === '/') {
       e.preventDefault();
       setActiveTab('assistant');
+      setShowDesktopSidebar(true);
       return;
     }
     // Ctrl+Space — Manual auto-complete trigger
@@ -1020,6 +2289,34 @@ export function CopilotDraftingCanvas({
         }
       }
       return;
+    }
+    // Slash commands
+    if (showSlashMenu && filteredSlashCommandsRef.current.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedSlashIndex((index) => Math.min(index + 1, filteredSlashCommandsRef.current.length - 1));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedSlashIndex((index) => Math.max(index - 1, 0));
+        return;
+      }
+      if (e.key === 'Tab' || e.key === 'Enter') {
+        const selectedCommand = filteredSlashCommandsRef.current[selectedSlashIndex];
+        if (selectedCommand) {
+          e.preventDefault();
+          applySlashCommandRef.current(selectedCommand);
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowSlashMenu(false);
+        setSlashQuery('');
+        slashCommandRangeRef.current = null;
+        return;
+      }
     }
     // Handle auto-completion navigation
     if (showCompletionPopup && autoCompletions.length > 0) {
@@ -1038,7 +2335,7 @@ export function CopilotDraftingCanvas({
         setShowCompletionPopup(false);
       }
     }
-  }, [showCompletionPopup, autoCompletions, selectedCompletionIndex, editor, fetchAutoCompletions]);
+  }, [showCompletionPopup, autoCompletions, selectedCompletionIndex, editor, fetchAutoCompletions, showSlashMenu, selectedSlashIndex]);
 
   const applyCompletion = useCallback((completion: AutoCompletion) => {
     if (!editor) return;
@@ -1050,6 +2347,14 @@ export function CopilotDraftingCanvas({
   const applySuggestion = useCallback((suggestion: CopilotSuggestion) => {
     if (!editor) return;
 
+    const sourceLabel = suggestion.source.type === 'clause_library'
+      ? 'Clause library'
+      : suggestion.source.type === 'historical'
+        ? 'Past language'
+        : suggestion.source.type === 'playbook'
+          ? 'Policy pack'
+          : 'AI suggestion';
+
     const docSize = editor.state.doc.content.size;
     let from = suggestion.position.startOffset;
     let to = suggestion.position.endOffset;
@@ -1057,42 +2362,97 @@ export function CopilotDraftingCanvas({
     // If positions are out of range (document changed since analysis), fall back
     // to searching for the original text in the document.
     if (from >= docSize || to > docSize || from < 0 || to < from) {
-      const docText = editor.state.doc.textContent;
       const original = suggestion.originalText;
       if (original) {
-        const idx = docText.indexOf(original);
-        if (idx !== -1) {
-          // Convert text offset to ProseMirror position (+1 for the doc node)
-          from = idx + 1;
-          to = from + original.length;
+        const located = locateTextRange(original);
+        if (located) {
+          from = located.from;
+          to = located.to;
         } else {
-          // Can't locate the text — insert at current cursor instead
           editor.chain().focus().insertContent(suggestion.suggestedText).run();
+          recordSourceTrail({
+            label: suggestion.explanation || suggestion.triggerText || 'AI suggestion',
+            sourceLabel,
+            action: 'inserted',
+            confidence: suggestion.source.confidence || suggestion.confidence,
+            detail: suggestion.category || suggestion.type,
+            sourceId: suggestion.source.clauseId,
+            sourceKind: suggestion.source.type,
+          });
           setSelectedSuggestion(null);
           setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
           return;
         }
       } else {
-        // No original text to search for — insert at cursor
         editor.chain().focus().insertContent(suggestion.suggestedText).run();
+        recordSourceTrail({
+          label: suggestion.explanation || suggestion.triggerText || 'AI suggestion',
+          sourceLabel,
+          action: 'inserted',
+          confidence: suggestion.source.confidence || suggestion.confidence,
+          detail: suggestion.category || suggestion.type,
+          sourceId: suggestion.source.clauseId,
+          sourceKind: suggestion.source.type,
+        });
         setSelectedSuggestion(null);
         setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
         return;
       }
     }
 
-    // Clamp to valid range as a final safety net
     from = Math.max(0, Math.min(from, docSize));
     to = Math.max(from, Math.min(to, docSize));
 
     editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, suggestion.suggestedText).run();
+    recordSourceTrail({
+      label: suggestion.explanation || suggestion.triggerText || 'AI suggestion',
+      sourceLabel,
+      action: suggestion.originalText ? 'replaced' : 'inserted',
+      confidence: suggestion.source.confidence || suggestion.confidence,
+      detail: suggestion.category || suggestion.type,
+      sourceId: suggestion.source.clauseId,
+      sourceKind: suggestion.source.type,
+    });
     setSelectedSuggestion(null);
     setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
-  }, [editor]);
+  }, [editor, locateTextRange, recordSourceTrail]);
+
+  const previewSuggestion = useCallback((suggestion: CopilotSuggestion) => {
+    const isOpen = selectedSuggestion === suggestion.id;
+    setSelectedSuggestion(isOpen ? null : suggestion.id);
+    if (isOpen) return;
+
+    const located = suggestion.originalText ? locateTextRange(suggestion.originalText) : null;
+    if (located) {
+      focusDraftRange(located.from, located.to);
+      return;
+    }
+
+    const fallbackFrom = suggestion.position.startOffset;
+    const fallbackTo = suggestion.position.endOffset;
+    if (fallbackFrom > 0) {
+      focusDraftRange(fallbackFrom, fallbackTo);
+    }
+  }, [focusDraftRange, locateTextRange, selectedSuggestion]);
 
 
 
-  const handleSave = useCallback(async () => {
+  const commitDraftTitle = useCallback(() => {
+    const nextTitle = resolveDraftTitle(draftTitle, `${contractType} Contract`);
+    setDraftTitle(nextTitle);
+
+    const hasDraftContent = !!editor && stripHtml(editor.getHTML()).length > 0;
+    if ((draftId || hasDraftContent) && nextTitle !== lastSavedTitleRef.current) {
+      void handleSaveRef.current(nextTitle);
+    }
+  }, [draftId, draftTitle, contractType, editor]);
+
+  const revertDraftTitle = useCallback(() => {
+    hasEditedTitleRef.current = false;
+    setDraftTitle(lastSavedTitleRef.current);
+  }, []);
+
+  const handleSave = useCallback(async (titleOverride?: string) => {
     if (!editor) return;
     if (!onSave && !draftId) return;
     
@@ -1105,8 +2465,10 @@ export function CopilotDraftingCanvas({
     setIsSaving(true);
     try {
       const html = editor.getHTML();
+      const nextTitle = resolveDraftTitle(titleOverride ?? draftTitle, `${contractType} Contract`);
+      const serializedSourceTrail = serializeSourceTrail(sourceTrail);
       if (onSave) {
-        await onSave(html);
+        await onSave({ content: html, title: nextTitle, clauses: serializedSourceTrail });
       } else if (draftId) {
         const res = await fetch(`/api/drafts/${draftId}`, {
           method: 'PATCH',
@@ -1114,11 +2476,14 @@ export function CopilotDraftingCanvas({
             'Content-Type': 'application/json',
             ...getCsrfHeaders(),
           },
-          body: JSON.stringify({ content: html }),
+          body: JSON.stringify({ content: html, title: nextTitle, clauses: serializedSourceTrail }),
         });
         if (!res.ok) throw new Error('Save failed');
       }
       lastSavedContentRef.current = html;
+      lastSavedTitleRef.current = nextTitle;
+      hasEditedTitleRef.current = false;
+      setDraftTitle(nextTitle);
       setLastSaved(new Date());
       toast.success('Document saved');
     } catch (error) {
@@ -1128,7 +2493,7 @@ export function CopilotDraftingCanvas({
       setIsSaving(false);
       saveLockRef.current = false;
     }
-  }, [editor, onSave, draftId]);
+  }, [editor, onSave, draftId, draftTitle, contractType, sourceTrail]);
 
   // Keep ref in sync so handleKeyDown (Ctrl+S) always calls latest handler
   handleSaveRef.current = handleSave;
@@ -1184,7 +2549,7 @@ export function CopilotDraftingCanvas({
     setIsExporting(true);
     try {
       await exportDraftAsPDF({
-        title: `${contractType} Contract`,
+        title: documentCanvasTitle,
         content: editor.getHTML(),
         contractType,
         author: session?.user?.name || 'Unknown',
@@ -1197,14 +2562,14 @@ export function CopilotDraftingCanvas({
       setIsExporting(false);
       setShowActionsMenu(false);
     }
-  }, [editor, contractType, session]);
+  }, [editor, documentCanvasTitle, contractType, session]);
 
   const handleExportDOCX = useCallback(async () => {
     if (!editor) return;
     setIsExporting(true);
     try {
       await exportDraftAsDOCX({
-        title: `${contractType} Contract`,
+        title: documentCanvasTitle,
         content: editor.getHTML(),
         contractType,
         author: session?.user?.name || 'Unknown',
@@ -1217,7 +2582,7 @@ export function CopilotDraftingCanvas({
       setIsExporting(false);
       setShowActionsMenu(false);
     }
-  }, [editor, contractType, session]);
+  }, [editor, documentCanvasTitle, contractType, session]);
 
   // ============================================================================
   // FINALIZATION HANDLERS
@@ -1312,6 +2677,390 @@ export function CopilotDraftingCanvas({
     };
   }, [risks]);
 
+  const priorityRiskCount = riskSummary.critical + riskSummary.high;
+  const unresolvedCommentsCount = useMemo(
+    () => comments.filter((comment) => !comment.resolved).length,
+    [comments],
+  );
+  const selectedSuggestionData = useMemo(
+    () => suggestions.find((suggestion) => suggestion.id === selectedSuggestion) || null,
+    [selectedSuggestion, suggestions],
+  );
+  const availableStructureBlocks = useMemo(
+    () => STRUCTURE_BLOCKS.filter(
+      (block) => !block.contractTypes || block.contractTypes.includes(contractType?.toUpperCase() || ''),
+    ),
+    [contractType],
+  );
+  const availableStructureBlockIds = useMemo(
+    () => new Set(availableStructureBlocks.map((block) => block.id)),
+    [availableStructureBlocks],
+  );
+  const isRenewalWorkflow = workflowContext?.kind === 'renewal';
+  const isAmendmentWorkflow = workflowContext?.kind === 'amendment';
+  const workflowQuickPrompts = useMemo(() => {
+    if (workflowContext?.kind === 'renewal') {
+      return workspaceMode === 'negotiate'
+        ? [
+            'Pressure-test this renewal against the source contract and suggest stronger fallback language for pricing, renewal notice, and termination rights.',
+            'Create a negotiation package for this renewal: preferred language, fallback language, and walk-away issues for the riskiest clauses.',
+            'Identify which clauses should be expressly carried forward, updated, or removed in this renewal and explain why.',
+          ]
+        : [
+            'Review this renewal draft for missing term, pricing, notice, and carry-forward language compared with the source contract.',
+            'Rewrite the riskiest renewal clauses so they are cleaner, more precise, and contract-ready.',
+            'Draft a short executive checklist of what still needs to be aligned before this renewal is finalized.',
+          ];
+    }
+
+    if (workflowContext?.kind === 'amendment') {
+      return workspaceMode === 'negotiate'
+        ? [
+            'Create stronger and fallback amendment language for the selected clause, preserving the commercial intent but improving leverage.',
+            'Identify amendment language that could create scope creep, pricing ambiguity, or downstream delivery risk.',
+            'Draft a negotiation-ready summary of the highest-stakes changes in this amendment.',
+          ]
+        : [
+            'Review this amendment for unclear deltas from the original contract and suggest cleaner drafting.',
+            'Rewrite the proposed amendment language so the before-and-after change is explicit and enforceable.',
+            'List any missing approval, timing, or change-control language this amendment still needs.',
+          ];
+    }
+
+    return [] as string[];
+  }, [workflowContext, workspaceMode]);
+  const assistantQuickPrompts = useMemo(
+    () => {
+      const basePrompts = workspaceMode === 'negotiate'
+        ? (NEGOTIATION_QUICK_PROMPTS[contractType?.toUpperCase() || ''] || NEGOTIATION_QUICK_PROMPTS.DEFAULT)
+        : (AI_QUICK_PROMPTS[contractType?.toUpperCase() || ''] || AI_QUICK_PROMPTS.DEFAULT);
+
+      return [...workflowQuickPrompts, ...basePrompts]
+        .filter((prompt, index, prompts) => prompts.indexOf(prompt) === index)
+        .slice(0, 3);
+    },
+    [contractType, workflowQuickPrompts, workspaceMode],
+  );
+  const filteredSlashCommands = useMemo(() => {
+    const query = slashQuery.trim().toLowerCase();
+    return SLASH_COMMANDS.filter((command) => {
+      if (command.kind === 'block' && command.blockId && !availableStructureBlockIds.has(command.blockId)) {
+        return false;
+      }
+
+      if (!query) return true;
+      return [command.label, command.description, ...(command.keywords || [])]
+        .join(' ')
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [availableStructureBlockIds, slashQuery]);
+  filteredSlashCommandsRef.current = filteredSlashCommands;
+  const outlineSections = useMemo<DraftOutlineSection[]>(() => {
+    if (!editor) return [];
+
+    const sections: Array<{ title: string; level: number; startPos: number }> = [];
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'heading') {
+        sections.push({
+          title: node.textContent.trim() || 'Untitled section',
+          level: typeof node.attrs.level === 'number' ? node.attrs.level : 1,
+          startPos: pos,
+        });
+      }
+    });
+
+    return sections.map((section, index) => ({
+      id: `${section.startPos}-${section.title}`,
+      title: section.title,
+      level: section.level,
+      startPos: section.startPos,
+      endPos: index + 1 < sections.length ? sections[index + 1].startPos : editor.state.doc.content.size,
+    }));
+  }, [editor, debouncedContentVersion]);
+  const documentWordCount = useMemo(() => {
+    if (!editor) return 0;
+
+    const text = editor.getText().trim();
+    return text ? text.split(/\s+/).length : 0;
+  }, [editor, debouncedContentVersion]);
+  const documentReadMinutes = useMemo(
+    () => (documentWordCount > 0 ? Math.max(1, Math.round(documentWordCount / 220)) : 0),
+    [documentWordCount],
+  );
+  const contractTypeKey = useMemo(
+    () => contractType?.toUpperCase() || 'DEFAULT',
+    [contractType],
+  );
+  const draftingBlueprint = useMemo(
+    () => DRAFTING_BLUEPRINTS[contractTypeKey] || DRAFTING_BLUEPRINTS.DEFAULT,
+    [contractTypeKey],
+  );
+  const blueprintProgress = useMemo(() => {
+    const normalizedOutlineTitles = outlineSections.map((section) => normalizeDraftHeading(section.title));
+    const completionState = draftingBlueprint.map((step) =>
+      normalizedOutlineTitles.some((title) => matchesDraftKeywords(title, step.keywords))
+    );
+    const firstMissingIndex = completionState.findIndex((isComplete) => !isComplete);
+
+    return draftingBlueprint.map((step, index) => ({
+      ...step,
+      completed: completionState[index],
+      state: completionState[index]
+        ? 'complete'
+        : firstMissingIndex === index
+          ? 'next'
+          : 'missing',
+    }));
+  }, [draftingBlueprint, outlineSections]);
+  const completedBlueprintCount = useMemo(
+    () => blueprintProgress.filter((step) => step.completed).length,
+    [blueprintProgress],
+  );
+  const missingBlueprintSteps = useMemo(
+    () => blueprintProgress.filter((step) => !step.completed),
+    [blueprintProgress],
+  );
+  const nextBlueprintStep = useMemo(
+    () => missingBlueprintSteps[0] || null,
+    [missingBlueprintSteps],
+  );
+  const draftingJourneyStatus = useMemo(() => {
+    if (documentWordCount < 80 && outlineSections.length === 0) {
+      return {
+        title: 'Kick off the first draft',
+        description: `Use AI to scaffold the core sections of this ${contractTypeKey} before refining clause language.`,
+      };
+    }
+
+    if (missingBlueprintSteps.length > 0) {
+      return {
+        title: `${completedBlueprintCount} of ${draftingBlueprint.length} core sections are in place`,
+        description: nextBlueprintStep
+          ? `${nextBlueprintStep.title} is the clearest next section to add before deeper review.`
+          : 'Keep closing the structural gaps before final review.',
+      };
+    }
+
+    if (priorityRiskCount > 0 || unresolvedCommentsCount > 0) {
+      return {
+        title: 'Structure is in place — now pressure-test it',
+        description: 'Use the assistant to tighten flagged issues and clear reviewer feedback before handoff.',
+      };
+    }
+
+    return {
+      title: 'This draft is ready for a final AI readiness check',
+      description: 'The next high-leverage move is to run a final review for legal, commercial, and negotiation gaps.',
+    };
+  }, [
+    completedBlueprintCount,
+    contractTypeKey,
+    documentWordCount,
+    draftingBlueprint.length,
+    missingBlueprintSteps.length,
+    nextBlueprintStep,
+    outlineSections.length,
+    priorityRiskCount,
+    unresolvedCommentsCount,
+  ]);
+  const assistantJourneyActions = useMemo<AssistantJourneyAction[]>(() => {
+    const actions: AssistantJourneyAction[] = [];
+    const selectedClauseText = selectionToolbar?.text?.trim() || '';
+    const workflowNotesContext = workflowContext?.notes?.trim()
+      ? `\n\nWorkflow notes to respect:\n${workflowContext.notes.trim()}`
+      : '';
+
+    if (workflowContext?.kind === 'renewal') {
+      actions.push({
+        id: 'renewal-alignment-review',
+        title: 'Pressure-test renewal deltas',
+        description: 'Check whether dates, commercial changes, and carry-forward terms line up cleanly with the source contract.',
+        badge: 'Renewal',
+        emphasis: 'violet',
+        mode: 'prompt',
+        prompt: `Review this renewal draft against its source contract context. Focus on renewal dates, pricing changes, notice mechanics, clauses that should be preserved, and clauses that need explicit updates. Return the top fixes with contract-ready language.${workflowNotesContext}`,
+      });
+    }
+
+    if (documentWordCount < 80 && outlineSections.length === 0) {
+      actions.push({
+        id: 'scaffold-first-pass',
+        title: 'Build a first-pass draft',
+        description: `Generate a realistic ${contractTypeKey} skeleton with headings, placeholders, and starter language.`,
+        badge: 'Launch',
+        emphasis: 'violet',
+        mode: 'prompt',
+        prompt: `Create a first-pass ${contractTypeKey} agreement structure with short contract-ready starter language for ${draftingBlueprint
+          .slice(0, Math.min(4, draftingBlueprint.length))
+          .map((step) => step.title.toLowerCase())
+          .join(', ')}. Use clear headings, explicit placeholders, and commercially realistic wording.`,
+      });
+    }
+
+    if (nextBlueprintStep) {
+      actions.push({
+        id: `draft-${nextBlueprintStep.id}`,
+        title: `Draft ${nextBlueprintStep.title}`,
+        description: nextBlueprintStep.description,
+        badge: 'Next section',
+        emphasis: 'emerald',
+        mode: 'prompt',
+        prompt: `Draft a ${nextBlueprintStep.title.toLowerCase()} section for this ${contractTypeKey} agreement. Use the current draft for context, write contract-ready language, and leave explicit placeholders where facts are missing.`,
+      });
+
+      if (nextBlueprintStep.blockId && availableStructureBlockIds.has(nextBlueprintStep.blockId)) {
+        actions.push({
+          id: `insert-${nextBlueprintStep.id}`,
+          title: `Insert ${nextBlueprintStep.title} scaffold`,
+          description: 'Drop in a structure block now, then refine it with AI or manual edits.',
+          badge: 'Structure',
+          emphasis: 'slate',
+          mode: 'block',
+          blockId: nextBlueprintStep.blockId,
+        });
+      }
+    }
+
+    if (selectedClauseText) {
+      actions.push({
+        id: workspaceMode === 'negotiate' ? 'selection-pushback' : 'selection-review',
+        title: workspaceMode === 'negotiate' ? 'Pressure-test the selected clause' : 'Improve the selected clause',
+        description: workspaceMode === 'negotiate'
+          ? 'Ask AI to anticipate pushback and offer fallback language against the current selection.'
+          : 'Ask AI to tighten the selected language and make it more contract-ready.',
+        badge: 'Selection',
+        emphasis: 'violet',
+        mode: 'prompt',
+        prompt: workspaceMode === 'negotiate'
+          ? `Review this selected ${contractTypeKey} clause for negotiation leverage, likely counterparty pushback, and fallback positions. Then draft a stronger alternative:\n\n${selectedClauseText}`
+          : `Review this selected ${contractTypeKey} clause for ambiguity, legal risk, and drafting quality. Then draft a clearer, tighter alternative:\n\n${selectedClauseText}`,
+      });
+    }
+
+    if (priorityRiskCount > 0) {
+      actions.push({
+        id: 'redline-plan',
+        title: 'Create a redline plan for flagged issues',
+        description: `Prioritize the ${priorityRiskCount} high-severity issue${priorityRiskCount === 1 ? '' : 's'} and propose fixes.`,
+        badge: 'Risk',
+        emphasis: 'amber',
+        mode: 'prompt',
+        prompt: `Summarize the top flagged risks in this ${contractTypeKey} draft and give me a redline plan in priority order with proposed clause fixes.`,
+      });
+    }
+
+    if (unresolvedCommentsCount > 0) {
+      actions.push({
+        id: 'resolve-comments',
+        title: 'Turn reviewer comments into a revision plan',
+        description: `Use AI to organize ${unresolvedCommentsCount} open comment${unresolvedCommentsCount === 1 ? '' : 's'} into concrete drafting work.`,
+        badge: 'Review',
+        emphasis: 'violet',
+        mode: 'prompt',
+        prompt: `Create a revision plan for the open reviewer comments in this ${contractTypeKey} draft. Group the work into must-fix items, optional changes, and follow-up questions.`,
+      });
+    }
+
+    if (actions.length < 3 && missingBlueprintSteps.length === 0 && priorityRiskCount === 0) {
+      actions.push({
+        id: 'final-readiness-check',
+        title: 'Run a final readiness check',
+        description: 'Ask AI for a final legal, commercial, and negotiation checklist before handoff.',
+        badge: 'Final pass',
+        emphasis: 'emerald',
+        mode: 'prompt',
+        prompt: `Assess whether this ${contractTypeKey} draft is ready for legal review. Identify any missing clauses, ambiguities, operational questions, or negotiation gaps and return a final checklist.`,
+      });
+    }
+
+    return actions.slice(0, 4);
+  }, [
+    availableStructureBlockIds,
+    contractTypeKey,
+    documentWordCount,
+    draftingBlueprint,
+    missingBlueprintSteps.length,
+    nextBlueprintStep,
+    outlineSections.length,
+    priorityRiskCount,
+    selectionToolbar?.text,
+    unresolvedCommentsCount,
+    workflowContext,
+    workspaceMode,
+  ]);
+  const documentCanvasSummary = useMemo(
+    () => {
+      if (isRenewalWorkflow) {
+        return isEditing
+          ? 'This renewal draft came from the renewal workflow. Use the studio for clause rewrites, negotiation-ready alternatives, and final drafting polish. The draft title still saves separately from the body.'
+          : 'This renewal draft stays connected to its workflow context while you review, export, and finalize it.';
+      }
+
+      if (isAmendmentWorkflow) {
+        return isEditing
+          ? 'This amendment draft is in the shared studio so you can rewrite change language with full AI support. The draft title still saves separately from the body.'
+          : 'This amendment draft stays connected to its source context while you review, export, and finalize it.';
+      }
+
+      return isEditing
+        ? 'Rename this draft here. The contract body begins below and saves separately from the draft title.'
+        : 'The draft title is saved separately from the contract body and is used for review, export, and finalization.';
+    },
+    [isAmendmentWorkflow, isEditing, isRenewalWorkflow],
+  );
+  const heatmapMarkers = useMemo<HeatmapMarker[]>(() => {
+    if (!editor) return [];
+
+    const docSize = Math.max(editor.state.doc.content.size, 1);
+    const markers: HeatmapMarker[] = [];
+
+    for (const risk of risks.slice(0, 24)) {
+      const from = typeof risk.position.startOffset === 'number' ? risk.position.startOffset : null;
+      if (!from || from < 1) continue;
+
+      markers.push({
+        id: `risk-${risk.id}`,
+        type: 'risk',
+        topPercent: Math.max(3, Math.min(97, (from / docSize) * 100)),
+        from,
+        to: typeof risk.position.endOffset === 'number' ? risk.position.endOffset : undefined,
+        label: risk.category || 'Risk',
+        detail: risk.explanation || risk.text,
+        tone: risk.riskLevel,
+      });
+    }
+
+    for (const comment of comments.filter((entry) => !entry.resolved)) {
+      const anchorFrom = typeof comment.anchorPos?.['from'] === 'number' ? comment.anchorPos['from'] : null;
+      const anchorTo = typeof comment.anchorPos?.['to'] === 'number' ? comment.anchorPos['to'] : undefined;
+      if (!anchorFrom || anchorFrom < 1) continue;
+
+      markers.push({
+        id: `comment-${comment.id}`,
+        type: 'comment',
+        topPercent: Math.max(3, Math.min(97, (anchorFrom / docSize) * 100)),
+        from: anchorFrom,
+        to: anchorTo,
+        label: 'Open comment',
+        detail: comment.content,
+        tone: 'comment',
+      });
+    }
+
+    return markers.sort((left, right) => left.topPercent - right.topPercent);
+  }, [comments, editor, risks]);
+  const latestInlineAiProposal = useMemo(
+    () => [...aiChatMessages].reverse().find(
+      (message) => message.role === 'assistant'
+        && message.applyMode === 'replace_selection'
+        && typeof message.draftHtml === 'string'
+        && typeof message.comparisonText === 'string'
+        && message.comparisonText.trim().length > 0,
+    ) || null,
+    [aiChatMessages],
+  );
+
   const getSuggestionIcon = (type: CopilotSuggestion['type']) => {
     switch (type) {
       case 'risk_warning': return <AlertTriangle className="h-4 w-4 text-red-500" />;
@@ -1333,6 +3082,32 @@ export function CopilotDraftingCanvas({
     }
   };
 
+  const getConfidenceColor = (confidence?: number) => {
+    switch (getConfidenceTone(confidence)) {
+      case 'high':
+        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
+      case 'medium':
+        return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+      case 'low':
+        return 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300';
+      default:
+        return 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300';
+    }
+  };
+
+  const getSuggestionSourceLabel = (sourceType: CopilotSuggestion['source']['type']) => {
+    switch (sourceType) {
+      case 'clause_library':
+        return 'Clause library';
+      case 'historical':
+        return 'Past language';
+      case 'playbook':
+        return 'Policy pack';
+      default:
+        return 'AI suggestion';
+    }
+  };
+
   const applyAiChatDraft = useCallback((message: AiChatMessage) => {
     if (!editor || !message.draftHtml) return;
 
@@ -1346,8 +3121,16 @@ export function CopilotDraftingCanvas({
       editor.chain().focus().insertContent(sanitized).run();
     }
 
+    recordSourceTrail({
+      label: message.title || 'AI drafting proposal',
+      sourceLabel: workspaceMode === 'negotiate' ? 'AI negotiation assistant' : 'AI assistant',
+      action: shouldReplace ? 'replaced' : 'inserted',
+      detail: message.applyMode === 'replace_selection' ? 'Targeted rewrite' : 'Draft insertion',
+      sourceKind: workspaceMode === 'negotiate' ? 'ai-negotiation' : 'ai-assistant',
+    });
+
     toast.success(shouldReplace ? 'AI rewrite applied' : 'AI draft inserted');
-  }, [editor]);
+  }, [editor, recordSourceTrail, workspaceMode]);
 
   const copyAiChatContent = useCallback(async (message: AiChatMessage) => {
     const text = message.draftHtml ? stripHtml(message.draftHtml) : message.content;
@@ -1357,6 +3140,11 @@ export function CopilotDraftingCanvas({
     toast.success('Copied to clipboard');
   }, []);
 
+  const stopAiChat = useCallback(() => {
+    aiChatAbortRef.current?.abort();
+    setIsAiChatStreaming(false);
+  }, []);
+
   // ============================================================================
   // AI CHAT IN SIDEBAR
   // ============================================================================
@@ -1364,6 +3152,10 @@ export function CopilotDraftingCanvas({
   const sendAiChatMessage = useCallback(async (message: string) => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage || isAiChatStreaming) return;
+
+    const selectedText = editor?.state?.selection
+      ? editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to, ' ')
+      : '';
 
     const assistantMessageId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
@@ -1384,6 +3176,7 @@ export function CopilotDraftingCanvas({
       content: '',
       timestamp: new Date(),
       isStreaming: true,
+      comparisonText: selectedText || undefined,
     };
 
     setAiChatMessages(prev => [...prev, userMsg, assistantMsg]);
@@ -1393,9 +3186,6 @@ export function CopilotDraftingCanvas({
     try {
       const controller = new AbortController();
       aiChatAbortRef.current = controller;
-
-      const selectedText = editor?.state?.selection ? 
-        editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to, ' ') : '';
 
       // Extract document headings for structural context
       const headings: string[] = [];
@@ -1548,6 +3338,127 @@ export function CopilotDraftingCanvas({
     }
   }, [isAiChatStreaming, editor, contractType, playbookId]);
 
+  const handleNegotiationAssistantAction = useCallback((mode: 'buyer' | 'balanced' | 'pushback' | 'fallback') => {
+    const selectedText = selectionToolbar?.text?.trim();
+    if (selectionToolbar && editor) {
+      editor.chain().focus().setTextSelection({ from: selectionToolbar.from, to: selectionToolbar.to }).run();
+    }
+
+    setActiveTab('assistant');
+    setShowDesktopSidebar(true);
+
+    const target = selectedText
+      ? `this selected clause:\n\n${selectedText}`
+      : `the current ${contractType} draft`;
+
+    const prompt = mode === 'buyer'
+      ? `Rewrite ${target} into a stronger buyer-friendly position while staying commercially credible.`
+      : mode === 'balanced'
+        ? `Rewrite ${target} into a more balanced negotiation position that both parties could plausibly accept.`
+        : mode === 'pushback'
+          ? `For ${target}, anticipate the most likely counterparty pushback and list the pressure points they will attack first.`
+          : `Create a fallback position for ${target}. Give me a preferred clause, a fallback clause, and a walk-away issue.`;
+
+    sendAiChatMessage(prompt);
+  }, [contractType, editor, selectionToolbar, sendAiChatMessage, setActiveTab]);
+
+  const handleSelectionAssistantAction = useCallback((prompt: string) => {
+    if (!selectionToolbar || !editor) return;
+
+    editor.chain().focus().setTextSelection({ from: selectionToolbar.from, to: selectionToolbar.to }).run();
+    setActiveTab('assistant');
+    setShowDesktopSidebar(true);
+    sendAiChatMessage(prompt);
+  }, [editor, selectionToolbar, sendAiChatMessage, setActiveTab]);
+
+  const handleApplySlashCommand = useCallback((command: SlashCommandConfig) => {
+    if (!editor) return;
+
+    const range = slashCommandRangeRef.current;
+    if (range) {
+      editor.chain().focus().deleteRange(range).run();
+    }
+
+    if (command.kind === 'block' && command.blockId) {
+      const block = findStructureBlock(command.blockId);
+      if (!block) {
+        toast.error('That block is not available for this draft type');
+        return;
+      }
+      handleInsertStructureBlock(block, range?.from);
+    }
+
+    if (command.kind === 'ai' && command.prompt) {
+      setActiveTab('assistant');
+      setShowDesktopSidebar(true);
+      sendAiChatMessage(command.prompt);
+    }
+
+    slashCommandRangeRef.current = null;
+    setShowSlashMenu(false);
+    setSlashQuery('');
+  }, [editor, findStructureBlock, handleInsertStructureBlock, sendAiChatMessage, setActiveTab]);
+
+  applySlashCommandRef.current = handleApplySlashCommand;
+
+  const handleAssistantJourneyAction = useCallback((action: AssistantJourneyAction) => {
+    if (action.mode === 'block' && action.blockId) {
+      const block = findStructureBlock(action.blockId);
+      if (!block) {
+        toast.error('That structure block is not available for this draft type');
+        return;
+      }
+
+      handleInsertStructureBlock(block);
+      return;
+    }
+
+    if (action.mode === 'prompt' && action.prompt) {
+      setActiveTab('assistant');
+      setShowDesktopSidebar(true);
+      sendAiChatMessage(action.prompt);
+    }
+  }, [findStructureBlock, handleInsertStructureBlock, sendAiChatMessage, setActiveTab]);
+
+  const sidebarPanelClass = 'h-full space-y-5 overflow-y-auto pr-1 pb-1';
+  const sidebarSectionClass = 'space-y-3 rounded-[24px] border border-slate-200/90 bg-white/95 p-5 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-slate-800/95';
+  const sidebarEyebrowClass = 'text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500';
+  const sidebarBodyClass = 'text-[13px] leading-6 text-slate-600 dark:text-slate-300';
+  const editorEyebrowClass = 'text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500';
+  const editorMetaPillClass = 'rounded-full border border-slate-200/80 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200';
+  const editorToolbarGroupClass = 'inline-flex items-center gap-0.5 rounded-[18px] border border-slate-200/80 bg-white/90 p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900/80';
+  const editorToolbarButtonClass = 'inline-flex h-9 w-9 items-center justify-center rounded-[12px] text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100';
+  const editorToolbarButtonActiveClass = 'bg-slate-950 text-white shadow-sm hover:bg-slate-900 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-slate-200';
+  const sidebarTabButtonBaseClass = 'flex min-h-[46px] min-w-fit shrink-0 items-center justify-center gap-2 rounded-[18px] border px-4 py-2.5 text-[12px] font-semibold transition-all duration-150 md:min-w-0 md:w-full';
+  const draftingButtonBaseClass = 'inline-flex items-center justify-center gap-1.5 rounded-[14px] px-3.5 py-2.5 text-[13px] font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:pointer-events-none disabled:opacity-50';
+  const draftingPrimaryButtonClass = `${draftingButtonBaseClass} bg-slate-950 text-white shadow-[0_16px_28px_-20px_rgba(15,23,42,0.55)] hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-slate-200`;
+  const draftingSecondaryButtonClass = `${draftingButtonBaseClass} border border-slate-200/90 bg-white/92 text-slate-700 shadow-[0_14px_24px_-22px_rgba(15,23,42,0.45)] hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/85 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800`;
+  const draftingVioletButtonClass = `${draftingButtonBaseClass} bg-violet-600 text-white shadow-[0_16px_28px_-20px_rgba(124,58,237,0.55)] hover:bg-violet-500 dark:bg-violet-500 dark:hover:bg-violet-400`;
+  const draftingEmeraldButtonClass = `${draftingButtonBaseClass} bg-emerald-600 text-white shadow-[0_16px_28px_-20px_rgba(5,150,105,0.55)] hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400`;
+  const draftingDangerButtonClass = `${draftingButtonBaseClass} bg-rose-600 text-white shadow-[0_16px_28px_-20px_rgba(225,29,72,0.55)] hover:bg-rose-500 dark:bg-rose-500 dark:hover:bg-rose-400`;
+  const draftingWarningButtonClass = `${draftingButtonBaseClass} border border-amber-200/80 bg-amber-50/90 text-amber-800 shadow-[0_14px_24px_-22px_rgba(180,83,9,0.35)] hover:bg-amber-100 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/45`;
+  const draftingInlineButtonClass = 'inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500';
+  const draftingChipButtonClass = 'shrink-0 rounded-full border border-slate-200/90 bg-white/92 px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700';
+  const draftingCardActionBaseClass = 'rounded-2xl border px-4 py-3.5 text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500';
+  const headerActionButtonClass = 'inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-slate-200/90 bg-white/90 px-3.5 text-[12px] font-semibold text-slate-700 shadow-sm transition-all duration-150 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/85 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800';
+  const headerAccentButtonClass = 'inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-violet-200/80 bg-violet-50 px-3.5 text-[12px] font-semibold text-violet-700 shadow-sm transition-all duration-150 hover:bg-violet-100 dark:border-violet-900/60 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-950/55';
+
+  const editorCanvasMaxWidthClass = useMemo(() => {
+    if (!showDesktopSidebar) {
+      return 'max-w-[70rem] xl:max-w-[78rem]';
+    }
+
+    if (desktopSidebarWidth >= 520) {
+      return 'max-w-[54rem] xl:max-w-[58rem]';
+    }
+
+    if (desktopSidebarWidth >= 460) {
+      return 'max-w-[58rem] xl:max-w-[62rem]';
+    }
+
+    return 'max-w-[60rem] xl:max-w-[64rem]';
+  }, [desktopSidebarWidth, showDesktopSidebar]);
+
   // ============================================================================
   // SIDEBAR CONTENT (shared between desktop and mobile)
   // ============================================================================
@@ -1555,12 +3466,12 @@ export function CopilotDraftingCanvas({
   const renderSidebarContent = () => (
     <div className="flex h-full min-h-0 flex-col">
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200 px-3 pt-3 dark:border-slate-700">
-        <div className="flex gap-2 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Sidebar panels">
+      <div className="border-b border-slate-200/80 px-4 pt-4 dark:border-slate-700/80">
+        <div className="flex gap-2 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 md:overflow-visible" role="tablist" aria-label="Sidebar panels">
           {[
-            { id: 'assistant', icon: Brain, label: 'Assistant', count: suggestions.length + aiChatMessages.length },
-            { id: 'review', icon: CheckCircle2, label: 'Review', count: comments.length + approvalHistory.length },
-            { id: 'clauses', icon: BookOpen, label: 'Clauses', count: clauses.length },
+            { id: 'assistant', icon: Brain, label: 'Assistant', count: suggestions.length + priorityRiskCount },
+            { id: 'review', icon: CheckCircle2, label: 'Review', count: unresolvedCommentsCount + approvalHistory.length },
+            { id: 'clauses', icon: BookOpen, label: 'Clauses', count: debouncedClauseSearch ? clauses.length : 0 },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -1569,10 +3480,10 @@ export function CopilotDraftingCanvas({
               aria-controls={`panel-${tab.id}`}
               id={`tab-${tab.id}`}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`${sidebarTabButtonBaseClass} ${
                 activeTab === tab.id
-                  ? 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-900/30 dark:text-violet-300'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-100'
+                  ? 'border-slate-900 bg-slate-900 text-white shadow-[0_16px_30px_-22px_rgba(15,23,42,0.65)] dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900'
+                  : 'border-gray-200/90 bg-white/88 text-gray-600 hover:border-gray-300 hover:bg-slate-50 hover:text-gray-900 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-700/80 dark:hover:text-slate-100'
               }`}
             >
               <tab.icon className="h-3.5 w-3.5" />
@@ -1580,7 +3491,7 @@ export function CopilotDraftingCanvas({
               {tab.count !== null && tab.count > 0 && (
                 <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${
                   activeTab === tab.id
-                    ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-200'
+                    ? 'bg-white/15 text-white dark:bg-slate-900/10 dark:text-slate-700'
                     : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'
                 }`}>
                   {tab.count}
@@ -1592,41 +3503,245 @@ export function CopilotDraftingCanvas({
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 min-h-0 overflow-hidden p-4">
+      <div className="flex-1 min-h-0 overflow-hidden p-5 pt-4">
         {activeTab === 'assistant' && (
           <div id="panel-assistant" role="tabpanel" aria-labelledby="tab-assistant" className="flex h-full min-h-0 flex-col">
-            <div ref={aiChatScrollRef} className="flex-1 space-y-4 overflow-y-auto pr-1 pb-3">
-              <div className="rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50 to-fuchsia-50 p-4 dark:border-violet-900/60 dark:from-violet-950/30 dark:to-fuchsia-950/20">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-sm">
-                    <Brain className="h-4 w-4" />
+            <div ref={aiChatScrollRef} className="flex-1 space-y-5 overflow-y-auto pr-1 pb-4">
+              <div className="rounded-[24px] border border-slate-200/90 bg-[linear-gradient(140deg,rgba(255,255,255,0.98),rgba(241,245,249,0.96))] p-5 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-[linear-gradient(140deg,rgba(30,41,59,0.96),rgba(15,23,42,0.98))]">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-2">
+                    <p className={sidebarEyebrowClass}>Copilot workspace</p>
+                    <div className="space-y-1.5">
+                      <p className="text-base font-semibold tracking-[-0.01em] text-slate-950 dark:text-slate-100">Assistant</p>
+                      <p className={sidebarBodyClass}>
+                      {workspaceMode === 'negotiate'
+                        ? 'Pressure-test language, prepare fallback positions, and shape a stronger negotiation posture.'
+                        : 'Rewrite language, add a clause, or pressure-test the section you are editing.'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">AI drafting assistant</p>
-                    <p className="mt-1 text-xs leading-5 text-gray-600 dark:text-slate-300">
-                      Ask for rewrites, insert a clause, or tighten risky sections without leaving the draft.
-                    </p>
+                  <div className="flex items-center gap-2">
+                    {latestInlineAiProposal && (
+                      <span className="shrink-0 rounded-full border border-violet-200/80 bg-white/85 px-2.5 py-1 text-[10px] font-semibold text-violet-700 shadow-sm dark:border-violet-800 dark:bg-slate-900/80 dark:text-violet-300">
+                        Rewrite ready
+                      </span>
+                    )}
+                    {priorityRiskCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('review')}
+                        className="shrink-0 rounded-full border border-amber-200/80 bg-white/85 px-2.5 py-1 text-[10px] font-semibold text-amber-700 shadow-sm transition-colors hover:bg-amber-50 dark:border-amber-900/70 dark:bg-slate-900/80 dark:text-amber-300 dark:hover:bg-amber-950/30"
+                      >
+                        {priorityRiskCount} flagged
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px]">
+                  <span className="rounded-full border border-white/70 bg-white/90 px-2.5 py-1 font-semibold text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200">
+                    {workspaceMode === 'negotiate' ? 'Negotiation workspace' : 'Drafting workspace'}
+                  </span>
+                  {suggestions.length > 0 && (
+                    <span className="rounded-full border border-slate-200 bg-slate-100/90 px-2.5 py-1 font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                      {suggestions.length} live suggestion{suggestions.length === 1 ? '' : 's'}
+                    </span>
+                  )}
+                  {priorityRiskCount > 0 && (
+                    <span className="rounded-full border border-amber-200/80 bg-amber-50/90 px-2.5 py-1 font-semibold text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/20 dark:text-amber-300">
+                      {priorityRiskCount} flagged item{priorityRiskCount === 1 ? '' : 's'}
+                    </span>
+                  )}
+                </div>
+
+                {aiChatMessages.length === 0 && (
+                  <div className="mt-4 border-t border-slate-200/80 pt-4 dark:border-slate-700/80">
+                    <p className={sidebarEyebrowClass}>Quick starts</p>
+                    <div className="mt-2 grid gap-2">
+                    {assistantQuickPrompts.map((prompt) => (
+                      <button
+                        key={prompt}
+                        onClick={() => sendAiChatMessage(prompt)}
+                        className={`${draftingCardActionBaseClass} border-slate-200/90 bg-white/92 text-[13px] font-semibold leading-5 text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800`}
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {(riskSummary.critical > 0 || riskSummary.high > 0) && (
-                <div className="rounded-2xl border border-red-100 bg-red-50/90 p-3 dark:border-red-900/60 dark:bg-red-950/30">
-                  <div className="flex items-center gap-2 text-sm font-medium text-red-800 dark:text-red-200">
-                    <Shield className="h-4 w-4" />
-                    Review flagged clauses before finalizing.
+              <div className="rounded-[24px] border border-slate-200/90 bg-white/95 p-5 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-slate-800/95">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-2">
+                    <p className={sidebarEyebrowClass}>Drafting path</p>
+                    <div className="space-y-1.5">
+                      <p className="text-base font-semibold tracking-[-0.01em] text-slate-950 dark:text-slate-100">
+                        {draftingJourneyStatus.title}
+                      </p>
+                      <p className={sidebarBodyClass}>{draftingJourneyStatus.description}</p>
+                    </div>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                    {riskSummary.critical > 0 && (
-                      <span className="rounded-full bg-red-100 px-2.5 py-1 font-medium text-red-700 dark:bg-red-900/60 dark:text-red-200">
-                        {riskSummary.critical} critical
-                      </span>
-                    )}
-                    {riskSummary.high > 0 && (
-                      <span className="rounded-full bg-orange-100 px-2.5 py-1 font-medium text-orange-700 dark:bg-orange-900/60 dark:text-orange-200">
-                        {riskSummary.high} high
-                      </span>
-                    )}
+                  <span className="shrink-0 rounded-full border border-slate-200 bg-slate-100/90 px-2.5 py-1 text-[10px] font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200">
+                    {completedBlueprintCount}/{draftingBlueprint.length}
+                  </span>
+                </div>
+
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700/80">
+                  <div
+                    className="h-full rounded-full bg-[linear-gradient(90deg,#7c3aed,#0ea5e9)] transition-[width] duration-300"
+                    style={{ width: `${draftingBlueprint.length > 0 ? (completedBlueprintCount / draftingBlueprint.length) * 100 : 0}%` }}
+                  />
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {blueprintProgress.map((step) => (
+                    <div
+                      key={step.id}
+                      className={`rounded-2xl border px-3.5 py-3 transition-colors ${
+                        step.state === 'complete'
+                          ? 'border-emerald-200/80 bg-emerald-50/70 dark:border-emerald-900/60 dark:bg-emerald-950/20'
+                          : step.state === 'next'
+                            ? 'border-violet-200/80 bg-violet-50/70 dark:border-violet-900/60 dark:bg-violet-950/20'
+                            : 'border-slate-200/80 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/40'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                          step.state === 'complete'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                            : step.state === 'next'
+                              ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
+                              : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-300'
+                        }`}>
+                          {step.state === 'complete' ? (
+                            <CheckCircle2 className="h-4 w-4" />
+                          ) : step.state === 'next' ? (
+                            <ArrowRight className="h-4 w-4" />
+                          ) : (
+                            <Clock className="h-4 w-4" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{step.title}</p>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                              step.state === 'complete'
+                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                : step.state === 'next'
+                                  ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
+                                  : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                            }`}>
+                              {step.state === 'complete' ? 'In place' : step.state === 'next' ? 'Next move' : 'Missing'}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-[12px] leading-5 text-slate-500 dark:text-slate-400">
+                            {step.description}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {assistantJourneyActions.length > 0 && (
+                  <div className="mt-5 border-t border-slate-200/80 pt-4 dark:border-slate-700/80">
+                    <p className={sidebarEyebrowClass}>Recommended moves</p>
+                    <div className="mt-2 grid gap-2">
+                      {assistantJourneyActions.map((action) => {
+                        const toneClasses = action.emphasis === 'violet'
+                          ? 'border-violet-200/80 bg-violet-50/75 hover:bg-violet-100/80 dark:border-violet-900/60 dark:bg-violet-950/20 dark:hover:bg-violet-950/35'
+                          : action.emphasis === 'emerald'
+                            ? 'border-emerald-200/80 bg-emerald-50/75 hover:bg-emerald-100/80 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/35'
+                            : action.emphasis === 'amber'
+                              ? 'border-amber-200/80 bg-amber-50/80 hover:bg-amber-100/85 dark:border-amber-900/60 dark:bg-amber-950/20 dark:hover:bg-amber-950/35'
+                              : 'border-slate-200/80 bg-slate-50/75 hover:bg-slate-100/85 dark:border-slate-700 dark:bg-slate-900/45 dark:hover:bg-slate-900/70';
+                        const badgeClasses = action.emphasis === 'violet'
+                          ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
+                          : action.emphasis === 'emerald'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                            : action.emphasis === 'amber'
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                              : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
+
+                        return (
+                          <button
+                            key={action.id}
+                            type="button"
+                            onClick={() => handleAssistantJourneyAction(action)}
+                            className={`${draftingCardActionBaseClass} ${toneClasses}`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badgeClasses}`}>
+                                    {action.badge}
+                                  </span>
+                                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{action.title}</p>
+                                </div>
+                                <p className="mt-1 text-[12px] leading-5 text-slate-500 dark:text-slate-400">
+                                  {action.description}
+                                </p>
+                              </div>
+                              <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {workspaceMode === 'negotiate' && (
+                <div className="rounded-[24px] border border-emerald-200/90 bg-[linear-gradient(140deg,rgba(236,253,245,0.94),rgba(255,255,255,0.9))] p-5 shadow-[0_18px_40px_-34px_rgba(5,150,105,0.45)] dark:border-emerald-900/50 dark:bg-[linear-gradient(140deg,rgba(6,78,59,0.18),rgba(15,23,42,0.4))]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700/70 dark:text-emerald-300/70">Commercial posture</p>
+                      <div className="space-y-1.5">
+                        <p className="text-base font-semibold tracking-[-0.01em] text-emerald-950 dark:text-emerald-200">Negotiation mode</p>
+                        <p className="text-[13px] leading-6 text-emerald-900/80 dark:text-emerald-200/80">
+                        {selectionToolbar?.text
+                          ? 'The assistant will work against the selected clause and propose stronger, balanced, or fallback positions.'
+                          : 'Select a clause to generate buyer-friendly, balanced, or fallback negotiation language.'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-emerald-700 shadow-sm dark:bg-slate-900 dark:text-emerald-300">
+                      {selectionToolbar?.text ? 'Selection-aware' : 'Draft-wide'}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleNegotiationAssistantAction('buyer')}
+                      className={`${draftingCardActionBaseClass} border-emerald-200/80 bg-white/92 text-sm font-semibold text-emerald-900 hover:bg-emerald-50 dark:border-emerald-900/70 dark:bg-slate-900/85 dark:text-emerald-200 dark:hover:bg-emerald-900/20`}
+                    >
+                      Stronger position
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleNegotiationAssistantAction('balanced')}
+                      className={`${draftingCardActionBaseClass} border-emerald-200/80 bg-white/92 text-sm font-semibold text-emerald-900 hover:bg-emerald-50 dark:border-emerald-900/70 dark:bg-slate-900/85 dark:text-emerald-200 dark:hover:bg-emerald-900/20`}
+                    >
+                      Balanced option
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleNegotiationAssistantAction('pushback')}
+                      className={`${draftingCardActionBaseClass} border-emerald-200/80 bg-white/92 text-sm font-semibold text-emerald-900 hover:bg-emerald-50 dark:border-emerald-900/70 dark:bg-slate-900/85 dark:text-emerald-200 dark:hover:bg-emerald-900/20`}
+                    >
+                      Anticipate pushback
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleNegotiationAssistantAction('fallback')}
+                      className={`${draftingCardActionBaseClass} border-emerald-200/80 bg-white/92 text-sm font-semibold text-emerald-900 hover:bg-emerald-50 dark:border-emerald-900/70 dark:bg-slate-900/85 dark:text-emerald-200 dark:hover:bg-emerald-900/20`}
+                    >
+                      Fallback package
+                    </button>
                   </div>
                 </div>
               )}
@@ -1634,13 +3749,19 @@ export function CopilotDraftingCanvas({
               {(suggestions.length > 0 || isLoadingSuggestions) && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-slate-100">Suggested edits</h4>
+                    <div>
+                      <p className={sidebarEyebrowClass}>Live guidance</p>
+                      <h4 className="mt-1 text-base font-semibold tracking-[-0.01em] text-gray-900 dark:text-slate-100">Suggested next steps</h4>
+                      <p className="mt-1 text-[13px] leading-6 text-gray-500 dark:text-slate-400">
+                        AI picks up risky or incomplete language as you draft.
+                      </p>
+                    </div>
                     <button
                       onClick={() => fetchSuggestions()}
                       aria-label="Refresh AI suggestions"
-                      className="flex items-center gap-1 text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300"
+                      className={`${draftingSecondaryButtonClass} rounded-full px-3 py-2 text-[11px]`}
                     >
-                      <RefreshCw className="h-3 w-3" />
+                      <RefreshCw className="h-3.5 w-3.5" />
                       Refresh
                     </button>
                   </div>
@@ -1659,30 +3780,40 @@ export function CopilotDraftingCanvas({
                           tabIndex={0}
                           role="button"
                           aria-expanded={selectedSuggestion === suggestion.id}
-                          className={`cursor-pointer rounded-2xl border p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 ${
+                          className={`cursor-pointer rounded-[24px] border p-4 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 ${
                             selectedSuggestion === suggestion.id
-                              ? 'border-violet-300 dark:border-violet-600 bg-violet-50 dark:bg-violet-900/30'
+                              ? 'border-slate-300 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,1))] shadow-[0_18px_32px_-34px_rgba(15,23,42,0.75)] dark:border-slate-600 dark:bg-slate-800'
                               : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800'
                           }`}
-                          onClick={() => setSelectedSuggestion(selectedSuggestion === suggestion.id ? null : suggestion.id)}
-                          onKeyDown={(e) => e.key === 'Enter' && setSelectedSuggestion(selectedSuggestion === suggestion.id ? null : suggestion.id)}
+                          onClick={() => previewSuggestion(suggestion)}
+                          onKeyDown={(e) => e.key === 'Enter' && previewSuggestion(suggestion)}
                         >
-                          <div className="flex items-start gap-2">
-                            {getSuggestionIcon(suggestion.type)}
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-700/70">
+                              {getSuggestionIcon(suggestion.type)}
+                            </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{suggestion.explanation}</p>
-                              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                  suggestion.source.type === 'playbook' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' :
-                                  suggestion.source.type === 'clause_library' ? 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300' :
-                                  suggestion.source.type === 'historical' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' :
-                                  'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300'
-                                }`}>
-                                  {suggestion.source.type}
-                                </span>
+                              <div className="flex items-center justify-between gap-3">
+                                <p className={sidebarEyebrowClass}>{suggestion.category || suggestion.type.replace(/_/g, ' ')}</p>
                                 {suggestion.riskLevel && (
-                                  <span className={`text-xs px-1.5 py-0.5 rounded ${getRiskColor(suggestion.riskLevel)}`}>
-                                    {suggestion.riskLevel}
+                                  <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${getRiskColor(suggestion.riskLevel)}`}>
+                                    {suggestion.riskLevel} risk
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-1 text-[15px] font-semibold leading-6 tracking-[-0.01em] text-gray-900 dark:text-slate-100">{suggestion.explanation}</p>
+                              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-gray-500 dark:text-slate-400">
+                                <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                                  {getSuggestionSourceLabel(suggestion.source.type)}
+                                </span>
+                                {formatConfidenceLabel(suggestion.source.confidence || suggestion.confidence) && (
+                                  <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${getConfidenceColor(suggestion.source.confidence || suggestion.confidence)}`}>
+                                    {formatConfidenceLabel(suggestion.source.confidence || suggestion.confidence)}
+                                  </span>
+                                )}
+                                {suggestion.category && (
+                                  <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+                                    {suggestion.category}
                                   </span>
                                 )}
                               </div>
@@ -1695,16 +3826,69 @@ export function CopilotDraftingCanvas({
                                     exit={{ opacity: 0, height: 0 }}
                                     className="mt-3 space-y-2"
                                   >
-                                    <div className="rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
-                                      {suggestion.suggestedText.length > 150 ? suggestion.suggestedText.slice(0, 150) + '...' : suggestion.suggestedText}
+                                    <div
+                                      draggable
+                                      onDragStart={(event) => handleSnippetDragStart(event, {
+                                        kind: 'suggestion',
+                                        label: suggestion.explanation || 'AI suggestion',
+                                        plainText: suggestion.suggestedText,
+                                        html: suggestion.suggestedText,
+                                        sourceLabel: getSuggestionSourceLabel(suggestion.source.type),
+                                        confidence: suggestion.source.confidence || suggestion.confidence,
+                                        detail: suggestion.category || suggestion.type,
+                                      })}
+                                      onDragEnd={handleSnippetDragEnd}
+                                      className="cursor-grab rounded-2xl border border-slate-200/80 bg-slate-50/95 p-3.5 text-[13px] leading-6 text-slate-600 active:cursor-grabbing dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300"
+                                    >
+                                      <div className="mb-2 flex items-center justify-between gap-2 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                        <span>Proposed language</span>
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">
+                                          <GripVertical className="h-3 w-3" />
+                                          Drag into draft
+                                        </span>
+                                      </div>
+                                      {suggestion.suggestedText.length > 220 ? suggestion.suggestedText.slice(0, 220) + '...' : suggestion.suggestedText}
                                     </div>
+                                    {(suggestion.originalText || suggestion.triggerText) && (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                            Proposed inline diff
+                                          </p>
+                                          <button
+                                            type="button"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              if (suggestion.riskLevel) {
+                                                handleFocusRisk({
+                                                  id: suggestion.id,
+                                                  text: suggestion.originalText || suggestion.triggerText,
+                                                  riskLevel: suggestion.riskLevel,
+                                                  category: suggestion.category || suggestion.type,
+                                                  explanation: suggestion.explanation,
+                                                  suggestedFix: suggestion.suggestedText,
+                                                  position: suggestion.position,
+                                                });
+                                              }
+                                            }}
+                                            className="text-[11px] font-medium text-violet-600 hover:underline dark:text-violet-400"
+                                          >
+                                            View in context
+                                          </button>
+                                        </div>
+                                        <InlineDiffPreview
+                                          before={suggestion.originalText || suggestion.triggerText}
+                                          after={suggestion.suggestedText}
+                                        />
+                                      </div>
+                                    )}
                                     <div className="flex items-center gap-2 mt-2">
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           applySuggestion(suggestion);
                                         }}
-                                        className="flex-1 px-3 py-1.5 bg-violet-600 text-white text-xs rounded-lg hover:bg-violet-700 transition-colors"
+                                        className={`${draftingPrimaryButtonClass} flex-1 text-xs`}
                                       >
                                         Apply
                                       </button>
@@ -1714,7 +3898,7 @@ export function CopilotDraftingCanvas({
                                           setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
                                           setSelectedSuggestion(null);
                                         }}
-                                        className="flex-1 px-3 py-1.5 border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 text-xs rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                                        className={`${draftingSecondaryButtonClass} flex-1 text-xs`}
                                       >
                                         Dismiss
                                       </button>
@@ -1722,9 +3906,6 @@ export function CopilotDraftingCanvas({
                                   </motion.div>
                                 )}
                               </AnimatePresence>
-                            </div>
-                            <div className="text-xs text-gray-400 dark:text-slate-500">
-                              {Math.round(suggestion.confidence * 100)}%
                             </div>
                           </div>
                         </motion.div>
@@ -1744,20 +3925,13 @@ export function CopilotDraftingCanvas({
               )}
 
               {aiChatMessages.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-white/80 px-4 py-6 text-center text-gray-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-                  <MessageSquare className="mx-auto mb-2 h-7 w-7 opacity-50" />
-                  <p className="text-sm font-medium">Ask AI to improve your draft</p>
-                  <div className="mt-3 flex flex-wrap justify-center gap-2">
-                    {(AI_QUICK_PROMPTS[contractType?.toUpperCase() || ''] || AI_QUICK_PROMPTS.DEFAULT).map((prompt) => (
-                      <button
-                        key={prompt}
-                        onClick={() => sendAiChatMessage(prompt)}
-                        className="rounded-full bg-violet-100 px-3 py-1.5 text-xs text-violet-700 transition-colors hover:bg-violet-200 dark:bg-violet-900/50 dark:text-violet-300 dark:hover:bg-violet-900/70"
-                      >
-                        {prompt}
-                      </button>
-                    ))}
-                  </div>
+                <div className="rounded-[24px] border border-dashed border-slate-200 bg-white/80 px-5 py-7 text-center text-gray-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                  <MessageSquare className="mx-auto mb-3 h-7 w-7 opacity-50" />
+                  <p className={sidebarEyebrowClass}>Assistant thread</p>
+                  <p className="mt-2 text-base font-semibold tracking-[-0.01em] text-slate-900 dark:text-slate-100">No active thread yet</p>
+                  <p className="mt-2 text-[13px] leading-6 text-gray-400 dark:text-slate-500">
+                    Ask for a rewrite, a new clause, or a quick review of the selected text.
+                  </p>
                 </div>
               ) : (
                 aiChatMessages.map((msg) => (
@@ -1765,30 +3939,26 @@ export function CopilotDraftingCanvas({
                     key={msg.id}
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className="max-w-[94%]">
+                    <div className="w-full">
                       {msg.role === 'user' ? (
-                        <div className="rounded-2xl rounded-tr-md bg-violet-600 px-4 py-2.5 text-sm leading-6 text-white shadow-sm">
+                        <div className="ml-auto max-w-[92%] rounded-[22px] rounded-tr-md bg-[linear-gradient(135deg,#6d28d9,#7c3aed)] px-4 py-3 text-sm leading-6 text-white shadow-sm">
                           {renderSimpleMarkdown(msg.content)}
                         </div>
                       ) : (
-                        <div className="rounded-2xl rounded-tl-md border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                        <div className="rounded-[24px] rounded-tl-md border border-gray-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.98))] p-4 shadow-[0_18px_38px_-34px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-slate-800">
                           <div className="flex items-start gap-2.5">
-                            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
+                            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-violet-700 dark:bg-slate-700/70 dark:text-violet-300">
                               <Brain className="h-4 w-4" />
                             </div>
                             <div className="min-w-0 flex-1 space-y-3">
                               <div>
-                                {msg.title && (
-                                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
-                                    {msg.title}
-                                  </p>
-                                )}
+                                <p className={sidebarEyebrowClass}>{msg.title || 'Assistant response'}</p>
                                 {msg.content ? (
-                                  <div className="text-sm leading-6 text-gray-900 dark:text-slate-100">
+                                  <div className="mt-2 text-[13px] leading-6 text-gray-900 dark:text-slate-100">
                                     {renderSimpleMarkdown(msg.content)}
                                   </div>
                                 ) : msg.isStreaming ? (
-                                  <div className="flex items-center gap-2 py-1 text-sm text-gray-500 dark:text-slate-400">
+                                  <div className="mt-2 flex items-center gap-2 py-1 text-sm text-gray-500 dark:text-slate-400">
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                     Drafting a response...
                                   </div>
@@ -1796,38 +3966,88 @@ export function CopilotDraftingCanvas({
                               </div>
 
                               {msg.followUpQuestion && (
-                                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+                                <div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-3 py-3 text-[13px] leading-6 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
                                   <span className="font-semibold">Need one detail:</span> {msg.followUpQuestion}
                                 </div>
                               )}
 
                               {msg.draftHtml && (
-                                <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-3 dark:border-violet-800 dark:bg-violet-950/30">
+                                <div className="rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.96),rgba(255,255,255,0.98))] p-4 dark:border-slate-700 dark:bg-[linear-gradient(180deg,rgba(30,41,59,0.85),rgba(15,23,42,0.92))]">
                                   <div className="flex items-center justify-between gap-2">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700 dark:text-violet-300">
-                                      Suggested Contract Language
-                                    </p>
-                                    {msg.applyMode && msg.applyMode !== 'none' && (
-                                      <span className="rounded-full bg-white px-2 py-1 text-[10px] font-medium text-violet-700 shadow-sm dark:bg-slate-800 dark:text-violet-300">
-                                        {msg.applyMode === 'replace_selection' ? 'Replace selection' : 'Insert at cursor'}
-                                      </span>
-                                    )}
+                                    <div>
+                                      <p className={sidebarEyebrowClass}>Prepared language</p>
+                                      <p className="mt-1 text-sm font-semibold tracking-[-0.01em] text-slate-900 dark:text-slate-100">Suggested contract language</p>
+                                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                        <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                                          {workspaceMode === 'negotiate' ? 'AI negotiation assist' : 'AI synthesis'}
+                                        </span>
+                                        {msg.comparisonText && msg.applyMode === 'replace_selection' && (
+                                          <span className="rounded-full border border-violet-200 bg-white px-2 py-1 text-[10px] font-semibold text-violet-700 shadow-sm dark:border-violet-800 dark:bg-slate-800 dark:text-violet-300">
+                                            Inline diff ready
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {msg.applyMode && msg.applyMode !== 'none' && (
+                                        <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                                          {msg.applyMode === 'replace_selection' ? 'Replace selection' : 'Insert at cursor'}
+                                        </span>
+                                      )}
+                                      <div
+                                        draggable
+                                        onDragStart={(event) => handleSnippetDragStart(event, {
+                                          kind: 'ai-draft',
+                                          label: msg.title || 'AI draft',
+                                          plainText: stripHtml(msg.draftHtml ?? ''),
+                                          html: msg.draftHtml ?? '',
+                                          sourceLabel: workspaceMode === 'negotiate' ? 'AI negotiation assistant' : 'AI assistant',
+                                          detail: msg.title || 'AI drafting proposal',
+                                          applyMode: msg.applyMode,
+                                        })}
+                                        onDragEnd={handleSnippetDragEnd}
+                                        className="inline-flex cursor-grab items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-semibold text-slate-600 shadow-sm active:cursor-grabbing dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                        title="Drag into draft"
+                                      >
+                                        <GripVertical className="h-3 w-3" />
+                                        Drag
+                                      </div>
+                                    </div>
                                   </div>
+                                  {msg.comparisonText && msg.applyMode === 'replace_selection' && (
+                                    <div className="mt-3 space-y-2">
+                                      <p className={sidebarEyebrowClass}>
+                                        Inline rewrite diff
+                                      </p>
+                                      <InlineDiffPreview before={msg.comparisonText} after={stripHtml(msg.draftHtml)} />
+                                    </div>
+                                  )}
                                   <div
-                                    className="prose prose-sm mt-3 max-h-64 overflow-y-auto rounded-lg bg-white px-3 py-3 text-gray-900 shadow-inner dark:prose-invert dark:bg-slate-900 dark:text-slate-100"
+                                    draggable
+                                    onDragStart={(event) => handleSnippetDragStart(event, {
+                                      kind: 'ai-draft',
+                                      label: msg.title || 'AI draft',
+                                      plainText: stripHtml(msg.draftHtml ?? ''),
+                                      html: msg.draftHtml ?? '',
+                                      sourceLabel: workspaceMode === 'negotiate' ? 'AI negotiation assistant' : 'AI assistant',
+                                      detail: msg.title || 'AI drafting proposal',
+                                      applyMode: msg.applyMode,
+                                    })}
+                                    onDragEnd={handleSnippetDragEnd}
+                                    className="prose prose-sm mt-3 max-h-72 overflow-y-auto rounded-2xl border border-white/80 bg-white px-3.5 py-3.5 text-gray-900 shadow-inner dark:prose-invert dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                                     dangerouslySetInnerHTML={{ __html: normalizeAiHtml(msg.draftHtml) }}
                                   />
                                   <div className="mt-3 flex flex-wrap gap-2">
                                     <button
                                       onClick={() => applyAiChatDraft(msg)}
-                                      className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-violet-700"
+                                      className={`${draftingPrimaryButtonClass} text-xs`}
                                     >
                                       <Check className="h-3.5 w-3.5" />
                                       {msg.applyMode === 'replace_selection' ? 'Replace selection' : 'Insert into draft'}
                                     </button>
                                     <button
                                       onClick={() => copyAiChatContent(msg)}
-                                      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                                      className={`${draftingSecondaryButtonClass} text-xs`}
                                     >
                                       Copy text
                                     </button>
@@ -1845,7 +4065,7 @@ export function CopilotDraftingCanvas({
                             <button
                               key={`${msg.id}-${suggestion.value}`}
                               onClick={() => sendAiChatMessage(suggestion.value)}
-                              className="shrink-0 rounded-full border border-violet-200 bg-white px-3 py-1.5 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-50 dark:border-violet-800 dark:bg-slate-800 dark:text-violet-300 dark:hover:bg-violet-950/30"
+                              className={draftingChipButtonClass}
                             >
                               {suggestion.label}
                             </button>
@@ -1859,55 +4079,242 @@ export function CopilotDraftingCanvas({
             </div>
 
             {/* Chat Input — always visible at bottom */}
-            <div className="border-t border-gray-200 dark:border-slate-700 pt-3 mt-auto">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={aiChatInput}
-                  onChange={(e) => setAiChatInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendAiChatMessage(aiChatInput)}
-                  placeholder="Ask AI to rewrite, add, or review..."
-                  disabled={isAiChatStreaming}
-                  className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50"
-                />
-                {isAiChatStreaming ? (
-                  <button
-                    onClick={() => aiChatAbortRef.current?.abort()}
-                    className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                    aria-label="Stop AI response"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => sendAiChatMessage(aiChatInput)}
-                    disabled={!aiChatInput.trim()}
-                    className="p-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50"
-                    aria-label="Send message"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
-                )}
+            <div className="mt-auto border-t border-gray-200/80 pt-4 dark:border-slate-700/80">
+              <div className="rounded-[22px] border border-slate-200/90 bg-white/92 p-2.5 shadow-[0_18px_30px_-26px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-slate-900/84">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={aiChatInput}
+                    onChange={(e) => setAiChatInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendAiChatMessage(aiChatInput)}
+                    placeholder="Ask the assistant to rewrite, add, or review..."
+                    disabled={isAiChatStreaming}
+                    className="flex-1 rounded-[16px] border border-transparent bg-transparent px-3.5 py-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50 dark:text-slate-100"
+                  />
+                  {isAiChatStreaming ? (
+                    <button
+                      onClick={stopAiChat}
+                      className={`${draftingDangerButtonClass} min-h-[46px] min-w-[46px] rounded-[16px] px-0`}
+                      aria-label="Stop AI response"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => sendAiChatMessage(aiChatInput)}
+                      disabled={!aiChatInput.trim()}
+                      className={`${draftingVioletButtonClass} min-h-[46px] min-w-[46px] rounded-[16px] px-0`}
+                      aria-label="Send message"
+                    >
+                      <Send className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="px-1 pt-2 text-[11px] text-slate-400 dark:text-slate-500">
+                  Use plain instructions. The assistant will respond in contract-ready language.
+                </p>
               </div>
             </div>
           </div>
         )}
 
         {activeTab === 'review' && (
-          <div id="panel-review" role="tabpanel" aria-labelledby="tab-review" className="h-full space-y-4 overflow-y-auto pr-1">
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-800">
-              <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">Review workspace</p>
-              <p className="mt-1 text-xs leading-5 text-gray-600 dark:text-slate-300">
-                Keep comments, version history, and approvals in one place while you draft.
-              </p>
-            </div>
+          <div id="panel-review" role="tabpanel" aria-labelledby="tab-review" className={sidebarPanelClass}>
+            {draftId && (
+              <section className={sidebarSectionClass}>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-slate-100">Workflow</h3>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                    Status: {draftStatus.replace('_', ' ').toLowerCase()} {unresolvedCommentsCount > 0 ? `· ${unresolvedCommentsCount} open comment${unresolvedCommentsCount === 1 ? '' : 's'}` : '· no open comments'}.
+                  </p>
+                </div>
 
-            <section className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {draftStatus === 'DRAFT' && (
+                    <button
+                      onClick={() => setShowApprovalModal('submit_review')}
+                      className={`${draftingVioletButtonClass} rounded-full text-xs`}
+                    >
+                      <ArrowRight className="h-3.5 w-3.5" />
+                      Submit for review
+                    </button>
+                  )}
+
+                  {(draftStatus === 'IN_REVIEW' || draftStatus === 'PENDING_APPROVAL') && ['admin', 'owner', 'manager'].includes(session?.user?.role || '') && (
+                    <>
+                      <button
+                        onClick={() => setShowApprovalModal('approve')}
+                        className={`${draftingEmeraldButtonClass} rounded-full text-xs`}
+                      >
+                        <ThumbsUp className="h-3.5 w-3.5" />
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => setShowApprovalModal('reject')}
+                        className={`${draftingDangerButtonClass} rounded-full text-xs`}
+                      >
+                        <ThumbsDown className="h-3.5 w-3.5" />
+                        Reject
+                      </button>
+                    </>
+                  )}
+
+                  {(draftStatus === 'APPROVED' || draftStatus === 'IN_REVIEW') && (
+                    <button
+                      onClick={handleFinalize}
+                      className={`${draftingPrimaryButtonClass} rounded-full text-xs`}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Finalize contract
+                    </button>
+                  )}
+
+                  {draftStatus === 'FINALIZED' && createdContractId && (
+                    <button
+                      onClick={() => router.push(`/contracts/${createdContractId}`)}
+                      className={`${draftingSecondaryButtonClass} rounded-full text-xs`}
+                    >
+                      <ArrowRight className="h-3.5 w-3.5" />
+                      View contract
+                    </button>
+                  )}
+
+                  {draftStatus === 'REJECTED' && (
+                    <button
+                      onClick={handleRevertToDraft}
+                      className={`${draftingWarningButtonClass} rounded-full text-xs`}
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                      Revise draft
+                    </button>
+                  )}
+                </div>
+              </section>
+            )}
+
+            <section className={sidebarSectionClass}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-slate-100">Document outline</h3>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                    Reorder sections by dragging them. Click a row to jump to that section.
+                  </p>
+                </div>
+                {outlineSections.length > 0 && (
+                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                    {outlineSections.length} section{outlineSections.length === 1 ? '' : 's'}
+                  </span>
+                )}
+              </div>
+
+              {outlineSections.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-gray-500 dark:border-slate-700 dark:text-slate-400">
+                  <p className="text-sm font-medium">No headings yet</p>
+                  <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">
+                    Add headings or use the block palette to build a draggable outline.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {outlineSections.map((section) => (
+                    <button
+                      key={section.id}
+                      type="button"
+                      draggable
+                      onClick={() => handleFocusOutlineSection(section)}
+                      onDragStart={(event) => handleOutlineDragStart(event, section.id)}
+                      onDragOver={(event) => handleOutlineDragOver(event, section.id)}
+                      onDrop={(event) => handleOutlineDrop(event, section.id)}
+                      onDragEnd={handleOutlineDragEnd}
+                      className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition-colors ${
+                        outlineDropTargetId === section.id
+                          ? 'border-violet-300 bg-violet-50 dark:border-violet-700 dark:bg-violet-900/30'
+                          : draggedOutlineId === section.id
+                            ? 'border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-slate-700/60'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-700/60'
+                      }`}
+                      style={{ paddingLeft: `${Math.min(24 + (section.level - 1) * 14, 52)}px` }}
+                    >
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                        <GripVertical className="h-3 w-3" />
+                        Move
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                        {section.title}
+                      </span>
+                      <span className="text-[10px] uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
+                        H{section.level}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className={sidebarSectionClass}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-slate-100">Source trail</h3>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                    Track where inserted drafting language came from during this session.
+                  </p>
+                </div>
+                {sourceTrail.length > 0 && (
+                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                    {sourceTrail.length} recent
+                  </span>
+                )}
+              </div>
+
+              {sourceTrail.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-gray-500 dark:border-slate-700 dark:text-slate-400">
+                  <p className="text-sm font-medium">No inserted language yet</p>
+                  <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">
+                    Insert from AI, structure blocks, or the clause library to build a provenance trail.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {sourceTrail.map((entry) => (
+                    <div key={entry.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/40">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{entry.label}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 shadow-sm dark:bg-slate-800 dark:text-slate-200">
+                              {entry.sourceLabel}
+                            </span>
+                            {formatConfidenceLabel(entry.confidence) && (
+                              <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${getConfidenceColor(entry.confidence)}`}>
+                                {formatConfidenceLabel(entry.confidence)}
+                              </span>
+                            )}
+                            <span className="rounded-full bg-slate-200 px-2 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                              {entry.action}
+                            </span>
+                          </div>
+                          {entry.detail && (
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{entry.detail}</p>
+                          )}
+                        </div>
+                        <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">
+                          {formatTimeSince(entry.timestamp)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className={sidebarSectionClass}>
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-sm font-medium text-gray-900 dark:text-slate-100">Comments</h3>
                 {comments.length > 0 && (
                   <span className="text-xs text-slate-400 dark:text-slate-500">
-                    {comments.length} thread{comments.length === 1 ? '' : 's'}
+                    {unresolvedCommentsCount > 0
+                      ? `${unresolvedCommentsCount} open`
+                      : 'All resolved'}
                   </span>
                 )}
               </div>
@@ -1926,7 +4333,7 @@ export function CopilotDraftingCanvas({
                   <button
                     onClick={handleAddComment}
                     disabled={!newComment.trim()}
-                    className="rounded-lg bg-violet-600 p-2 text-white transition-colors hover:bg-violet-700 disabled:opacity-50"
+                    className={`${draftingVioletButtonClass} min-h-[40px] min-w-[40px] rounded-lg px-0`}
                     aria-label="Submit comment"
                   >
                     <Send className="h-4 w-4" />
@@ -1941,95 +4348,132 @@ export function CopilotDraftingCanvas({
                   <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">Use comments for review notes and discussion.</p>
                 </div>
               ) : (
-                comments.map((comment) => (
-                  <div key={comment.id} className={`rounded-2xl border p-3 ${comment.resolved ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
-                    <div className="flex items-start gap-2">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500 text-sm font-medium text-white">
-                        {(comment.user?.firstName?.[0] || '') + (comment.user?.lastName?.[0] || '')}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
-                            {comment.user?.firstName} {comment.user?.lastName}
-                          </span>
-                          <span className="text-xs text-gray-400 dark:text-slate-500">
-                            {new Date(comment.createdAt).toLocaleString()}
-                          </span>
-                          {comment.resolved && (
-                            <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300">
-                              Resolved
+                comments.map((comment) => {
+                  const anchorTextValue = comment.anchorPos?.['text'];
+                  const anchorFrom = comment.anchorPos?.['from'];
+                  const anchorTo = comment.anchorPos?.['to'];
+                  const anchorText = typeof anchorTextValue === 'string' ? anchorTextValue.trim() : '';
+                  const hasAnchor = typeof anchorFrom === 'number' && typeof anchorTo === 'number';
+
+                  return (
+                    <div key={comment.id} className={`rounded-2xl border p-3 ${comment.resolved ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
+                      <div className="flex items-start gap-2">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500 text-sm font-medium text-white">
+                          {(comment.user?.firstName?.[0] || '') + (comment.user?.lastName?.[0] || '')}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                              {comment.user?.firstName} {comment.user?.lastName}
                             </span>
-                          )}
-                        </div>
-                        <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">{comment.content}</p>
-
-                        <div className="mt-2 flex items-center gap-2">
-                          <button
-                            onClick={() => setReplyTarget(replyTarget === comment.id ? null : comment.id)}
-                            className="text-xs text-violet-600 hover:underline dark:text-violet-400"
-                          >
-                            Reply
-                          </button>
-                          {!comment.resolved && (
-                            <button
-                              onClick={() => handleResolveComment(comment.id, true)}
-                              className="flex items-center gap-0.5 text-xs text-green-600 hover:underline dark:text-green-400"
-                            >
-                              <Check className="h-3 w-3" /> Resolve
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleDeleteComment(comment.id)}
-                            className="text-xs text-red-500 hover:underline"
-                          >
-                            Delete
-                          </button>
-                        </div>
-
-                        {replyTarget === comment.id && (
-                          <div className="mt-2 flex gap-2">
-                            <input
-                              type="text"
-                              value={replyContent}
-                              onChange={(e) => setReplyContent(e.target.value)}
-                              onKeyDown={(e) => e.key === 'Enter' && handleReply(comment.id)}
-                              placeholder="Write a reply..."
-                              className="flex-1 rounded border border-gray-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                            />
-                            <button
-                              onClick={() => handleReply(comment.id)}
-                              disabled={!replyContent.trim()}
-                              className="rounded bg-violet-600 px-2 py-1 text-xs text-white hover:bg-violet-700 disabled:opacity-50"
-                            >
-                              Send
-                            </button>
+                            <span className="text-xs text-gray-400 dark:text-slate-500">
+                              {new Date(comment.createdAt).toLocaleString()}
+                            </span>
+                            {comment.resolved && (
+                              <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                                Resolved
+                              </span>
+                            )}
                           </div>
-                        )}
+                          <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">{comment.content}</p>
 
-                        {comment.replies && comment.replies.length > 0 && (
-                          <div className="mt-3 space-y-2 border-l-2 border-gray-200 pl-3 dark:border-slate-600">
-                            {comment.replies.map((reply: ApiComment) => (
-                              <div key={reply.id} className="text-xs">
-                                <span className="font-medium text-gray-800 dark:text-slate-200">
-                                  {reply.user?.firstName} {reply.user?.lastName}
-                                </span>
-                                <span className="ml-2 text-gray-400 dark:text-slate-500">
-                                  {new Date(reply.createdAt).toLocaleString()}
-                                </span>
-                                <p className="mt-0.5 text-gray-600 dark:text-slate-300">{reply.content}</p>
+                          {anchorText && (
+                            <button
+                              type="button"
+                              onClick={() => handleJumpToCommentAnchor(comment.anchorPos)}
+                              className="mt-2 flex w-full items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition-colors hover:border-violet-200 hover:bg-violet-50/70 dark:border-slate-700 dark:bg-slate-900/50 dark:hover:border-violet-800 dark:hover:bg-violet-950/20"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                  Anchored text
+                                </p>
+                                <p className="mt-1 line-clamp-2 text-xs text-slate-600 dark:text-slate-300">
+                                  {anchorText}
+                                </p>
                               </div>
-                            ))}
+                              <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-violet-700 shadow-sm dark:bg-slate-800 dark:text-violet-300">
+                                Jump
+                              </span>
+                            </button>
+                          )}
+
+                          <div className="mt-2 flex items-center gap-2">
+                            <button
+                              onClick={() => setReplyTarget(replyTarget === comment.id ? null : comment.id)}
+                              className="text-xs text-violet-600 hover:underline dark:text-violet-400"
+                            >
+                              Reply
+                            </button>
+                            {hasAnchor && !anchorText && (
+                              <button
+                                type="button"
+                                onClick={() => handleJumpToCommentAnchor(comment.anchorPos)}
+                                className="text-xs text-slate-500 hover:underline dark:text-slate-400"
+                              >
+                                Jump to text
+                              </button>
+                            )}
+                            {!comment.resolved && (
+                              <button
+                                onClick={() => handleResolveComment(comment.id, true)}
+                                className="flex items-center gap-0.5 text-xs text-green-600 hover:underline dark:text-green-400"
+                              >
+                                <Check className="h-3 w-3" /> Resolve
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteComment(comment.id)}
+                              className="text-xs text-red-500 hover:underline"
+                            >
+                              Delete
+                            </button>
                           </div>
-                        )}
+
+                          {replyTarget === comment.id && (
+                            <div className="mt-2 flex gap-2">
+                              <input
+                                type="text"
+                                value={replyContent}
+                                onChange={(e) => setReplyContent(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleReply(comment.id)}
+                                placeholder="Write a reply..."
+                                className="flex-1 rounded border border-gray-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                              />
+                              <button
+                                onClick={() => handleReply(comment.id)}
+                                disabled={!replyContent.trim()}
+                                className="rounded bg-violet-600 px-2 py-1 text-xs text-white hover:bg-violet-700 disabled:opacity-50"
+                              >
+                                Send
+                              </button>
+                            </div>
+                          )}
+
+                          {comment.replies && comment.replies.length > 0 && (
+                            <div className="mt-3 space-y-2 border-l-2 border-gray-200 pl-3 dark:border-slate-600">
+                              {comment.replies.map((reply: ApiComment) => (
+                                <div key={reply.id} className="text-xs">
+                                  <span className="font-medium text-gray-800 dark:text-slate-200">
+                                    {reply.user?.firstName} {reply.user?.lastName}
+                                  </span>
+                                  <span className="ml-2 text-gray-400 dark:text-slate-500">
+                                    {new Date(reply.createdAt).toLocaleString()}
+                                  </span>
+                                  <p className="mt-0.5 text-gray-600 dark:text-slate-300">{reply.content}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </section>
 
-            <section className="border-t border-gray-200 pt-4 dark:border-slate-700">
-              <div className="mb-4 flex items-center justify-between">
+            <section className={sidebarSectionClass}>
+              <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-gray-900 dark:text-slate-100">Version history</h3>
                 <button
                   onClick={handleOpenDiff}
@@ -2087,8 +4531,8 @@ export function CopilotDraftingCanvas({
             </section>
 
             {approvalHistory.length > 0 && (
-              <section className="border-t border-gray-200 pt-4 dark:border-slate-700">
-                <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-slate-100">
+              <section className={sidebarSectionClass}>
+                <h4 className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-slate-100">
                   <CheckCircle2 className="h-4 w-4 text-violet-500" />
                   Approval history
                 </h4>
@@ -2132,8 +4576,80 @@ export function CopilotDraftingCanvas({
 
         {/* Clause Library Tab */}
         {activeTab === 'clauses' && (
-          <div id="panel-clauses" role="tabpanel" aria-labelledby="tab-clauses" className="h-full space-y-4 overflow-y-auto pr-1">
-            <div className="space-y-2">
+          <div id="panel-clauses" role="tabpanel" aria-labelledby="tab-clauses" className={sidebarPanelClass}>
+            <section className={sidebarSectionClass}>
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 dark:text-slate-100">Structure blocks</h3>
+                <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                  Drag or insert common contract sections without leaving the draft.
+                </p>
+              </div>
+
+              <div className="grid gap-2">
+                {availableStructureBlocks.map((block) => (
+                  <div
+                    key={block.id}
+                    draggable
+                    onDragStart={(event) => handleSnippetDragStart(event, {
+                      kind: 'clause',
+                      label: block.title,
+                      plainText: stripHtml(block.html),
+                      html: block.html,
+                      sourceLabel: 'Studio block',
+                      confidence: 0.96,
+                      detail: `${block.category} template`,
+                    })}
+                    onDragEnd={handleSnippetDragEnd}
+                    className="cursor-grab rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-colors hover:border-slate-300 active:cursor-grabbing dark:border-slate-700 dark:bg-slate-900/50 dark:hover:border-slate-600"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{block.title}</p>
+                          <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">
+                            {block.category}
+                          </span>
+                          <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            Studio block
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                          {block.description}
+                        </p>
+                        {block.contractTypes && block.contractTypes.length > 0 && (
+                          <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                            Built for {block.contractTypes.join(', ')}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-300">
+                          <GripVertical className="h-3 w-3" />
+                          Drag
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleInsertStructureBlock(block)}
+                          className={`${draftingSecondaryButtonClass} px-3 py-2 text-xs text-violet-700 dark:text-violet-300`}
+                        >
+                          Insert
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className={sidebarSectionClass}>
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 dark:text-slate-100">Find clauses</h3>
+                <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                  Search the library and narrow results before dragging or inserting language.
+                </p>
+              </div>
+
+              <div className="space-y-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-slate-500" />
                 <input
@@ -2160,6 +4676,7 @@ export function CopilotDraftingCanvas({
                 <option value="compliance">Compliance</option>
               </select>
             </div>
+            </section>
 
             {isLoadingClauses ? (
               <div className="flex items-center justify-center py-8">
@@ -2178,14 +4695,33 @@ export function CopilotDraftingCanvas({
                 {clauses.map((clause) => (
                   <div
                     key={clause.id}
-                    className="p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-violet-300 dark:hover:border-violet-600 transition-colors"
+                    draggable
+                    onDragStart={(event) => handleSnippetDragStart(event, {
+                      kind: 'clause',
+                      label: clause.title,
+                      plainText: stripHtml(clause.content),
+                      html: clause.content.startsWith('<') ? clause.content : `<p>${clause.content}</p>`,
+                      sourceLabel: clause.isStandard ? 'Standard clause library' : 'Clause library',
+                      detail: `${clause.category} · used ${clause.usageCount} times`,
+                    })}
+                    onDragEnd={handleSnippetDragEnd}
+                    className="cursor-grab rounded-2xl border border-gray-200 bg-white p-4 transition-colors hover:border-violet-300 active:cursor-grabbing dark:border-slate-700 dark:bg-slate-800 dark:hover:border-violet-600"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <h5 className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">{clause.title}</h5>
+                        <div className="flex items-start justify-between gap-2">
+                          <h5 className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">{clause.title}</h5>
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                            <GripVertical className="h-3 w-3" />
+                            Drag
+                          </span>
+                        </div>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300">
                             {clause.category}
+                          </span>
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                            {clause.isStandard ? 'Standard clause' : 'Library clause'}
                           </span>
                           {clause.riskLevel && (
                             <span className={`text-xs px-1.5 py-0.5 rounded ${getRiskColor(clause.riskLevel)}`}>
@@ -2193,13 +4729,16 @@ export function CopilotDraftingCanvas({
                             </span>
                           )}
                         </div>
+                        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                          Used {clause.usageCount} times
+                        </p>
                         <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 line-clamp-2">
                           {clause.content?.slice(0, 120)}...
                         </p>
                       </div>
                       <button
                         onClick={() => handleInsertClause(clause)}
-                        className="flex-shrink-0 p-1.5 bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-400 rounded hover:bg-violet-200 dark:hover:bg-violet-900 transition-colors"
+                        className={`${draftingSecondaryButtonClass} min-h-[40px] min-w-[40px] flex-shrink-0 rounded-xl px-0 text-violet-700 dark:text-violet-300`}
                         title="Insert clause into document"
                         aria-label={`Insert ${clause.title} clause`}
                       >
@@ -2226,9 +4765,9 @@ export function CopilotDraftingCanvas({
   // ============================================================================
 
   return (
-    <div className="min-h-screen bg-[#f6f4ef] dark:bg-slate-900">
+    <div className={`min-h-screen bg-[linear-gradient(180deg,#f7f5ef_0%,#f2eee4_100%)] dark:bg-slate-900 ${isResizingSidebar ? 'cursor-col-resize select-none' : ''}`}>
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
+      <div className="sticky top-0 z-30 border-b border-gray-200/80 bg-white/88 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-800/88">
         <div className="px-4 py-2">
           <div className="flex items-center justify-between gap-3">
             {/* Left: save status + risk badges */}
@@ -2256,20 +4795,23 @@ export function CopilotDraftingCanvas({
               {(riskSummary.critical > 0 || riskSummary.high > 0) && (
                 <>
                   <div className="h-4 w-px bg-gray-200 dark:bg-slate-600" />
-                  <div className="flex items-center gap-1.5">
-                    {riskSummary.critical > 0 && (
-                      <span className="flex items-center gap-1 px-1.5 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-full text-[11px] font-medium">
-                        <AlertCircle className="h-3 w-3" />
-                        {riskSummary.critical}
-                      </span>
-                    )}
-                    {riskSummary.high > 0 && (
-                      <span className="flex items-center gap-1 px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 rounded-full text-[11px] font-medium">
-                        <AlertTriangle className="h-3 w-3" />
-                        {riskSummary.high}
-                      </span>
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('review');
+                      setShowDesktopSidebar(true);
+                    }}
+                    className="flex items-center gap-1.5 rounded-full transition-colors hover:bg-slate-100/80 dark:hover:bg-slate-700/60"
+                  >
+                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                      riskSummary.critical > 0
+                        ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
+                        : 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300'
+                    }`}>
+                      {riskSummary.critical > 0 ? <AlertCircle className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                      {priorityRiskCount} flagged
+                    </span>
+                  </button>
                 </>
               )}
 
@@ -2288,16 +4830,23 @@ export function CopilotDraftingCanvas({
               {draftId && draftStatus !== 'DRAFT' && (
                 <>
                   <div className="h-4 w-px bg-gray-200 dark:bg-slate-600 hidden sm:block" />
-                  <span className={`hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
-                    draftStatus === 'FINALIZED' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' :
-                    draftStatus === 'IN_REVIEW' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' :
-                    draftStatus === 'APPROVED' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' :
-                    draftStatus === 'PENDING_APPROVAL' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300' :
-                    'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300'
-                  }`}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('review');
+                      setShowDesktopSidebar(true);
+                    }}
+                    className={`hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors hover:brightness-95 ${
+                      draftStatus === 'FINALIZED' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' :
+                      draftStatus === 'IN_REVIEW' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300' :
+                      draftStatus === 'APPROVED' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' :
+                      draftStatus === 'PENDING_APPROVAL' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300' :
+                      'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300'
+                    }`}
+                  >
                     {draftStatus === 'FINALIZED' && <CheckCircle2 className="h-3 w-3" />}
                     {draftStatus.replace('_', ' ')}
-                  </span>
+                  </button>
                 </>
               )}
             </div>
@@ -2307,20 +4856,67 @@ export function CopilotDraftingCanvas({
               {/* Mobile Sidebar Toggle */}
               <button
                 onClick={() => setShowMobileSidebar(true)}
-                className="lg:hidden flex items-center gap-1 px-2 py-1.5 text-xs text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 rounded-lg hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors"
+                className={`lg:hidden ${headerAccentButtonClass}`}
                 aria-label="Open assistant panel"
               >
                 <Brain className="h-3.5 w-3.5" />
               </button>
 
+              <button
+                onClick={() => {
+                  if (showDesktopSidebar) {
+                    setShowDesktopSidebar(false);
+                    return;
+                  }
+                  setActiveTab('assistant');
+                  setShowDesktopSidebar(true);
+                }}
+                className={`hidden lg:inline-flex ${headerActionButtonClass}`}
+                aria-label={showDesktopSidebar ? 'Hide side panel' : 'Open side panel'}
+              >
+                <Brain className="h-3.5 w-3.5" />
+                <span>{showDesktopSidebar ? 'Hide panel' : 'Assistant'}</span>
+              </button>
+
+              <div className="hidden min-h-[40px] items-center rounded-xl bg-gray-100/95 p-1 dark:bg-slate-700/95 md:flex" role="radiogroup" aria-label="Draft workspace mode">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={workspaceMode === 'draft'}
+                  onClick={() => setWorkspaceMode('draft')}
+                  className={`flex min-h-[32px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                    workspaceMode === 'draft'
+                      ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-100 shadow-sm'
+                      : 'text-gray-500 dark:text-slate-400'
+                  }`}
+                >
+                  <Edit3 className="h-3.5 w-3.5" />
+                  Draft
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={workspaceMode === 'negotiate'}
+                  onClick={() => setWorkspaceMode('negotiate')}
+                  className={`flex min-h-[32px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                    workspaceMode === 'negotiate'
+                      ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-100 shadow-sm'
+                      : 'text-gray-500 dark:text-slate-400'
+                  }`}
+                >
+                  <Scale className="h-3.5 w-3.5" />
+                  Negotiate
+                </button>
+              </div>
+
               {/* Mode Toggle */}
-              <div className="flex items-center bg-gray-100 dark:bg-slate-700 rounded-lg p-0.5" role="radiogroup" aria-label="Editor mode">
+              <div className="flex min-h-[40px] items-center rounded-xl bg-gray-100/95 p-1 dark:bg-slate-700/95" role="radiogroup" aria-label="Editor mode">
                 <button
                   onClick={() => { if (draftStatus !== 'FINALIZED') setIsEditing(true); }}
                   disabled={draftStatus === 'FINALIZED'}
                   role="radio"
                   aria-checked={isEditing}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs transition-colors ${
+                  className={`flex min-h-[32px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-colors ${
                     isEditing ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-500 dark:text-slate-400'
                   }`}
                 >
@@ -2331,7 +4927,7 @@ export function CopilotDraftingCanvas({
                   onClick={() => setIsEditing(false)}
                   role="radio"
                   aria-checked={!isEditing}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs transition-colors ${
+                  className={`flex min-h-[32px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-colors ${
                     !isEditing ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-500 dark:text-slate-400'
                   }`}
                 >
@@ -2340,33 +4936,11 @@ export function CopilotDraftingCanvas({
                 </button>
               </div>
 
-              {/* Approval Actions — only shown to users with approval roles */}
-              {draftId && (draftStatus === 'IN_REVIEW' || draftStatus === 'PENDING_APPROVAL') && ['admin', 'owner', 'manager'].includes(session?.user?.role || '') && (
-                <>
-                  <button
-                    onClick={() => setShowApprovalModal("approve")}
-                    className="flex items-center gap-1 px-2 py-1.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-xs hover:bg-green-200 dark:hover:bg-green-900 transition-colors"
-                    title="Approve this draft"
-                  >
-                    <ThumbsUp className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Approve</span>
-                  </button>
-                  <button
-                    onClick={() => setShowApprovalModal("reject")}
-                    className="flex items-center gap-1 px-2 py-1.5 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg text-xs hover:bg-red-200 dark:hover:bg-red-900 transition-colors"
-                    title="Reject this draft"
-                  >
-                    <ThumbsDown className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Reject</span>
-                  </button>
-                </>
-              )}
-
-              {/* Actions dropdown — save, export, workflow */}
+              {/* Actions dropdown — save, export, utilities */}
               <div className="relative">
                 <button
                   onClick={() => { setShowActionsMenu(v => !v); }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                  className={headerActionButtonClass}
                 >
                   <Zap className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">More</span>
@@ -2415,44 +4989,6 @@ export function CopilotDraftingCanvas({
                       </button>
                     )}
 
-                    {/* Workflow Actions */}
-                    {draftId && draftStatus === 'DRAFT' && (
-                      <button
-                        onClick={() => { setShowApprovalModal('submit_review'); setShowActionsMenu(false); }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                        Submit for Review
-                      </button>
-                    )}
-                    {draftId && (draftStatus === 'APPROVED' || draftStatus === 'IN_REVIEW') && (
-                      <button
-                        onClick={() => { handleFinalize(); setShowActionsMenu(false); }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                        Finalize as Contract
-                      </button>
-                    )}
-                    {draftId && draftStatus === 'FINALIZED' && createdContractId && (
-                      <button
-                        onClick={() => { router.push(`/contracts/${createdContractId}`); setShowActionsMenu(false); }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                        View Contract
-                      </button>
-                    )}
-                    {draftId && draftStatus === 'REJECTED' && (
-                      <button
-                        onClick={() => { handleRevertToDraft(); setShowActionsMenu(false); }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                        Revise Draft
-                      </button>
-                    )}
-
                   </div>
                 )}
               </div>
@@ -2461,88 +4997,509 @@ export function CopilotDraftingCanvas({
 
           {/* Toolbar */}
           {isEditing && (
-            <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-gray-100 pt-2 pb-2 dark:border-slate-700" role="toolbar" aria-label="Document formatting toolbar">
-              <div className="flex items-center gap-0.5" role="group" aria-label="Text formatting">
-                <button onClick={() => insertFormatting('bold')} className={`p-1.5 rounded transition-colors ${editor?.isActive('bold') ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Bold" aria-label="Bold">
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-[22px] border border-slate-200/80 bg-white/82 px-3 py-2.5 shadow-sm backdrop-blur dark:border-slate-700/80 dark:bg-slate-800/82" role="toolbar" aria-label="Document formatting toolbar">
+              <div className={editorToolbarGroupClass} role="group" aria-label="Text formatting">
+                <button onClick={() => insertFormatting('bold')} className={`${editorToolbarButtonClass} ${editor?.isActive('bold') ? editorToolbarButtonActiveClass : ''}`} title="Bold" aria-label="Bold">
                   <Bold className="h-4 w-4" />
                 </button>
-                <button onClick={() => insertFormatting('italic')} className={`p-1.5 rounded transition-colors ${editor?.isActive('italic') ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Italic" aria-label="Italic">
+                <button onClick={() => insertFormatting('italic')} className={`${editorToolbarButtonClass} ${editor?.isActive('italic') ? editorToolbarButtonActiveClass : ''}`} title="Italic" aria-label="Italic">
                   <Italic className="h-4 w-4" />
                 </button>
               </div>
-              <div className="h-4 w-px bg-gray-200 dark:bg-slate-700 mx-1" />
-              <div className="flex items-center gap-0.5" role="group" aria-label="Headings">
-                <button onClick={() => insertFormatting('h1')} className={`p-1.5 rounded transition-colors ${editor?.isActive('heading', { level: 1 }) ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="Heading 1" aria-label="Heading 1">
+              <div className={editorToolbarGroupClass} role="group" aria-label="Headings">
+                <button onClick={() => insertFormatting('h1')} className={`${editorToolbarButtonClass} ${editor?.isActive('heading', { level: 1 }) ? editorToolbarButtonActiveClass : ''}`} title="Heading 1" aria-label="Heading 1">
                   <Heading1 className="h-4 w-4" />
                 </button>
               </div>
-              <div className="h-4 w-px bg-gray-200 dark:bg-slate-700 mx-1" />
-              <div className="flex items-center gap-0.5" role="group" aria-label="Block elements">
-                <button onClick={() => insertFormatting('list')} className={`p-1.5 rounded transition-colors ${editor?.isActive('bulletList') ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400'}`} title="List" aria-label="List">
+              <div className={editorToolbarGroupClass} role="group" aria-label="Block elements">
+                <button onClick={() => insertFormatting('list')} className={`${editorToolbarButtonClass} ${editor?.isActive('bulletList') ? editorToolbarButtonActiveClass : ''}`} title="List" aria-label="List">
                   <List className="h-4 w-4" />
                 </button>
               </div>
 
               <div className="flex-1" />
 
-              {/* Assistant status + AI access */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
                 {isLoadingSuggestions && (
-                  <span className="flex items-center gap-1 text-[11px] text-violet-600 dark:text-violet-400">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-3 py-1.5 font-semibold text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">
                     <Loader2 className="h-3 w-3 animate-spin" />
+                    Checking draft
                   </span>
                 )}
-                {suggestions.length > 0 && (
-                  <span className="text-[11px] text-gray-400 dark:text-slate-500 hidden sm:inline tabular-nums">
+                {!isLoadingSuggestions && suggestions.length > 0 && (
+                  <span className="hidden rounded-full bg-slate-100/90 px-3 py-1.5 font-semibold tabular-nums text-slate-600 dark:bg-slate-900/80 dark:text-slate-200 sm:inline">
                     {suggestions.length} suggestions
                   </span>
                 )}
-                <button
-                  onClick={() => setActiveTab('assistant')}
-                  className="flex items-center gap-1.5 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-slate-800"
-                >
-                  <Wand2 className="h-3.5 w-3.5" />
-                  Ask AI
-                </button>
+                <span className="hidden rounded-full bg-slate-100/90 px-3 py-1.5 font-semibold text-slate-600 dark:bg-slate-900/80 dark:text-slate-200 md:inline">
+                  {workspaceMode === 'negotiate' ? 'Negotiation mode active' : 'Drafting mode active'}
+                </span>
+                <span className="hidden rounded-full bg-slate-100/90 px-3 py-1.5 font-medium text-slate-500 dark:bg-slate-900/80 dark:text-slate-300 xl:inline">
+                  Type / for blocks or AI actions
+                </span>
+                <span className="hidden rounded-full bg-slate-100/90 px-3 py-1.5 font-medium text-slate-500 dark:bg-slate-900/80 dark:text-slate-300 2xl:inline">
+                  Ctrl+/ opens Assistant
+                </span>
               </div>
-            </div>
-          )}
-
-          {/* AI Assist button in preview mode */}
-          {!isEditing && (
-            <div className="mt-2 flex justify-end pb-2 border-t border-gray-100 dark:border-slate-700 pt-2">
-              <button
-                onClick={() => setActiveTab('assistant')}
-                className="flex items-center gap-1.5 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-slate-800"
-              >
-                <Wand2 className="h-3.5 w-3.5" />
-                Ask AI
-              </button>
             </div>
           )}
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex relative">
+      <div className="relative mx-auto flex w-full max-w-[1820px] gap-4 px-3 pb-6 pt-4 md:gap-6 md:px-5 lg:px-6 xl:gap-8 xl:px-8">
         {/* Editor */}
-        <div className="flex-1 p-4 md:p-8">
-          <div className="max-w-3xl mx-auto">
+        <div className="min-w-0 flex-1">
+          <div className={`${editorCanvasMaxWidthClass} mx-auto`}>
+            {workflowContext && (
+              <div className="mb-4 rounded-[28px] border border-violet-200/80 bg-[linear-gradient(135deg,rgba(245,243,255,0.98),rgba(255,255,255,0.96))] p-5 shadow-[0_24px_60px_-42px_rgba(109,40,217,0.4)] dark:border-violet-900/60 dark:bg-[linear-gradient(135deg,rgba(76,29,149,0.16),rgba(15,23,42,0.94))]">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700/75 dark:text-violet-300/80">
+                      {isRenewalWorkflow ? <RefreshCw className="h-3.5 w-3.5" /> : <GitBranch className="h-3.5 w-3.5" />}
+                      <span>{workflowContext.label || (isRenewalWorkflow ? 'Renewal studio' : 'Amendment studio')}</span>
+                    </div>
+                    <h3 className="mt-2 text-lg font-semibold tracking-[-0.02em] text-slate-950 dark:text-slate-100">
+                      {workflowContext.sourceTitle
+                        ? `${isRenewalWorkflow ? 'Deep editing for' : 'Working from'} ${workflowContext.sourceTitle}`
+                        : isRenewalWorkflow
+                          ? 'Deep editing for this renewal'
+                          : 'Shared drafting context'}
+                    </h3>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300/85">
+                      {isRenewalWorkflow
+                        ? 'Keep the renewal wizard for dates, value changes, and approval routing. Use the shared drafting studio here for high-judgment clause rewrites, negotiation posture, and final document polish.'
+                        : 'This document is using the shared drafting studio so the highest-value editing and AI assistance stay consolidated in one place.'}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {workflowContext.returnPath && workflowContext.returnLabel && (
+                      <button
+                        type="button"
+                        onClick={() => router.push(workflowContext.returnPath || '/')}
+                        className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-violet-200 bg-white/95 px-3.5 py-2 text-sm font-semibold text-violet-700 shadow-sm transition-colors hover:bg-violet-50 dark:border-violet-900/60 dark:bg-slate-900/80 dark:text-violet-200 dark:hover:bg-violet-950/25"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                        {workflowContext.returnLabel}
+                      </button>
+                    )}
+                    {workflowContext.sourcePath && (
+                      <button
+                        type="button"
+                        onClick={() => router.push(workflowContext.sourcePath || '/')}
+                        className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-slate-200 bg-white/95 px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-800"
+                      >
+                        <FileText className="h-4 w-4" />
+                        {workflowContext.sourceLabel || 'Open source contract'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {((workflowContext.summaryItems?.length || 0) > 0 || workflowContext.notes) && (
+                  <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)]">
+                    {(workflowContext.summaryItems?.length || 0) > 0 && (
+                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                        {workflowContext.summaryItems?.map((item) => (
+                          <div
+                            key={`${item.label}-${item.value}`}
+                            className="rounded-2xl border border-white/80 bg-white/88 px-3.5 py-3 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/70"
+                          >
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{item.label}</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {workflowContext.notes && (
+                      <div className="rounded-2xl border border-violet-200/80 bg-violet-50/70 px-4 py-3 dark:border-violet-900/60 dark:bg-violet-950/20">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-700/75 dark:text-violet-300/75">Working note</p>
+                        <p className="mt-1 whitespace-pre-line text-sm leading-6 text-slate-700 dark:text-slate-200/85">{workflowContext.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Document Content */}
             <div className="relative">
               <div
-                className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4 md:p-8 min-h-[600px] md:min-h-[800px] ${
+                ref={editorSurfaceRef}
+                className={`relative overflow-hidden min-h-[600px] rounded-[30px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] shadow-[0_30px_80px_-50px_rgba(15,23,42,0.45)] dark:border-slate-700/80 dark:bg-[linear-gradient(180deg,rgba(30,41,59,0.96),rgba(15,23,42,0.98))] ${
                   isEditing ? 'focus-within:ring-2 focus-within:ring-violet-500 focus-within:border-transparent' : ''
                 }`}
                 onKeyDown={handleKeyDown}
+                onDragEnter={handleEditorDragEnter}
+                onDragOver={handleEditorDragOver}
+                onDragLeave={handleEditorDragLeave}
+                onDrop={handleEditorDrop}
               >
-                {editor ? (
-                  <EditorContent editor={editor} />
-                ) : (
-                  <div className="flex items-center justify-center min-h-[550px]">
-                    <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.12),transparent_34%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.1),transparent_30%),linear-gradient(180deg,rgba(248,250,252,0.85),rgba(255,255,255,0))] dark:bg-[radial-gradient(circle_at_top_left,rgba(167,139,250,0.14),transparent_34%),radial-gradient(circle_at_top_right,rgba(56,189,248,0.1),transparent_28%),linear-gradient(180deg,rgba(30,41,59,0.55),rgba(15,23,42,0))]" />
+                <div className="relative z-10 px-5 pb-5 pt-6 md:px-10 md:pb-10 md:pt-8 xl:px-12 xl:pb-12">
+                  <div className="mx-auto max-w-[48rem]">
+                    <div className="mb-8 border-b border-slate-200/80 pb-6 dark:border-slate-700/80 md:mb-10 md:pb-8">
+                      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0">
+                          <p className={editorEyebrowClass}>Document canvas</p>
+                          {isEditing && draftStatus !== 'FINALIZED' ? (
+                            <input
+                              type="text"
+                              value={draftTitle}
+                              onChange={(event) => {
+                                hasEditedTitleRef.current = true;
+                                setDraftTitle(event.target.value);
+                              }}
+                              onBlur={commitDraftTitle}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  event.preventDefault();
+                                  event.currentTarget.blur();
+                                }
+                                if (event.key === 'Escape') {
+                                  event.preventDefault();
+                                  revertDraftTitle();
+                                  event.currentTarget.blur();
+                                }
+                              }}
+                              placeholder={`${contractType} Contract`}
+                              aria-label="Draft title"
+                              className="mt-2 w-full bg-transparent text-[clamp(1.75rem,2.8vw,2.45rem)] font-semibold tracking-[-0.045em] text-slate-900 outline-none placeholder:text-slate-300 focus:text-slate-950 dark:text-slate-100 dark:placeholder:text-slate-600 dark:focus:text-white"
+                            />
+                          ) : (
+                            <h2 className="mt-2 text-[clamp(1.75rem,2.8vw,2.45rem)] font-semibold tracking-[-0.045em] text-slate-900 dark:text-slate-100">
+                              {documentCanvasTitle}
+                            </h2>
+                          )}
+                          <p className="mt-3 max-w-2xl text-[14px] leading-6 text-slate-500 dark:text-slate-400">
+                            {documentCanvasSummary}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 lg:max-w-[18rem] lg:justify-end">
+                          <span className={editorMetaPillClass}>{isEditing ? 'Editing live' : 'Preview mode'}</span>
+                          <span className={editorMetaPillClass}>{documentWordCount > 0 ? `${documentWordCount} words` : 'Blank draft'}</span>
+                          <span className={editorMetaPillClass}>{outlineSections.length > 0 ? `${outlineSections.length} sections` : 'No sections yet'}</span>
+                          {documentReadMinutes > 0 && (
+                            <span className={editorMetaPillClass}>{documentReadMinutes} min read</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {editor ? (
+                      <EditorContent editor={editor} />
+                    ) : (
+                      <div className="flex min-h-[550px] items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <AnimatePresence>
+                  {isEditing && selectionToolbar && (
+                    <motion.div
+                      key="selection-toolbar"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      transition={{ duration: 0.16 }}
+                      className="absolute z-20 w-[340px]"
+                      style={{ top: selectionToolbar.top, left: selectionToolbar.left }}
+                    >
+                      <div className="rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-xl backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+                        <div className="flex flex-wrap items-center gap-1">
+                          <button
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              setShowInlineCommentComposer((value) => !value);
+                              setShowSlashMenu(false);
+                            }}
+                            className={`${draftingInlineButtonClass} text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100`}
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            Comment
+                          </button>
+                          <button
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => handleSelectionAssistantAction(`Rewrite this selected text so it is clearer, more concise, and contract-ready:\n\n${selectionToolbar.text}`)}
+                            className={`${draftingInlineButtonClass} text-violet-700 hover:bg-violet-50 dark:text-violet-300 dark:hover:bg-violet-950/40`}
+                          >
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Rewrite
+                          </button>
+                          <button
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => handleSelectionAssistantAction(`Review this selected contract text for legal risk, ambiguity, and negotiation issues:\n\n${selectionToolbar.text}`)}
+                            className={`${draftingInlineButtonClass} text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/40`}
+                          >
+                            <Shield className="h-3.5 w-3.5" />
+                            Review
+                          </button>
+                          {workspaceMode === 'negotiate' && (
+                            <button
+                              type="button"
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => handleNegotiationAssistantAction('fallback')}
+                              className={`${draftingInlineButtonClass} text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40`}
+                            >
+                              <Scale className="h-3.5 w-3.5" />
+                              Counter
+                            </button>
+                          )}
+                        </div>
+
+                        {showInlineCommentComposer && (
+                          <div className="mt-2 border-t border-slate-200 pt-2 dark:border-slate-700">
+                            <p className="line-clamp-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                              {selectionToolbar.text}
+                            </p>
+                            <div className="mt-2 flex gap-2">
+                              <input
+                                type="text"
+                                value={inlineCommentDraft}
+                                onChange={(event) => setInlineCommentDraft(event.target.value)}
+                                onKeyDown={(event) => event.key === 'Enter' && void handleInlineCommentCreate()}
+                                placeholder="Add an anchored comment..."
+                                className="flex-1 rounded-lg border border-slate-200 px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => void handleInlineCommentCreate()}
+                                disabled={!inlineCommentDraft.trim()}
+                                className={`${draftingVioletButtonClass} rounded-lg px-3 text-xs`}
+                              >
+                                Add
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {isEditing && selectedSuggestionData && (selectedSuggestionData.originalText || selectedSuggestionData.triggerText) && (
+                    <motion.div
+                      key="inline-suggestion-diff"
+                      initial={{ opacity: 0, x: 12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 12 }}
+                      transition={{ duration: 0.16 }}
+                      className="absolute right-6 top-20 z-20 hidden w-[380px] 2xl:w-[420px] xl:block"
+                    >
+                      <div className="rounded-2xl border border-violet-200 bg-white/96 p-3 shadow-2xl backdrop-blur dark:border-violet-800 dark:bg-slate-900/96">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-600 dark:text-violet-300">
+                              Inline AI proposal
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
+                              {selectedSuggestionData.explanation}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSuggestion(null)}
+                            className="rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                            aria-label="Dismiss inline proposal"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            {getSuggestionSourceLabel(selectedSuggestionData.source.type)}
+                          </span>
+                          {formatConfidenceLabel(selectedSuggestionData.source.confidence || selectedSuggestionData.confidence) && (
+                            <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${getConfidenceColor(selectedSuggestionData.source.confidence || selectedSuggestionData.confidence)}`}>
+                              {formatConfidenceLabel(selectedSuggestionData.source.confidence || selectedSuggestionData.confidence)}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-3">
+                          <InlineDiffPreview
+                            before={selectedSuggestionData.originalText || selectedSuggestionData.triggerText}
+                            after={selectedSuggestionData.suggestedText}
+                          />
+                        </div>
+
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => applySuggestion(selectedSuggestionData)}
+                            className={`${draftingVioletButtonClass} flex-1 text-xs`}
+                          >
+                            Accept change
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSuggestion(null)}
+                            className={`${draftingSecondaryButtonClass} flex-1 text-xs`}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {heatmapMarkers.length > 0 && (
+                  <div className="pointer-events-none absolute bottom-8 right-3 top-24 z-10 hidden xl:flex flex-col items-center">
+                    <div className="pointer-events-auto mb-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 shadow-sm dark:bg-slate-900/90 dark:text-slate-300">
+                      Heatmap
+                    </div>
+                    <div className="pointer-events-auto relative h-full w-4 rounded-full bg-slate-100/90 shadow-inner dark:bg-slate-700/80">
+                      {heatmapMarkers.map((marker) => {
+                        const markerClasses = marker.tone === 'critical'
+                          ? 'bg-red-500'
+                          : marker.tone === 'high'
+                            ? 'bg-orange-500'
+                            : marker.tone === 'medium'
+                              ? 'bg-yellow-500'
+                              : marker.tone === 'low'
+                                ? 'bg-emerald-500'
+                                : 'bg-violet-500';
+
+                        return (
+                          <button
+                            key={marker.id}
+                            type="button"
+                            title={`${marker.label}: ${marker.detail}`}
+                            onClick={() => {
+                              focusDraftRange(marker.from, marker.to);
+                              setSelectedHeatmapMarkerId(marker.id);
+                              setActiveTab('review');
+                              setShowDesktopSidebar(true);
+                            }}
+                            className={`absolute left-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow transition-transform hover:scale-110 dark:border-slate-900 ${markerClasses} ${selectedHeatmapMarkerId === marker.id ? 'ring-2 ring-violet-300 dark:ring-violet-700' : ''}`}
+                            style={{ top: `${marker.topPercent}%` }}
+                            aria-label={`${marker.label}: ${marker.detail}`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="pointer-events-auto mt-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-medium text-slate-500 shadow-sm dark:bg-slate-900/90 dark:text-slate-300">
+                      {heatmapMarkers.length} markers
+                    </div>
                   </div>
                 )}
+
+                <AnimatePresence>
+                  {isEditorDropActive && (
+                    <motion.div
+                      key="editor-drop-overlay"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="pointer-events-none absolute inset-0 z-10 rounded-xl border-2 border-violet-300/80 bg-violet-50/35 dark:border-violet-600/80 dark:bg-violet-950/20"
+                    >
+                      {dropIndicator ? (
+                        <>
+                          <motion.div
+                            layout={false}
+                            className="absolute h-0.5 rounded-full bg-violet-500 shadow-[0_0_0_1px_rgba(255,255,255,0.9)] dark:bg-violet-300"
+                            style={{ top: dropIndicator.top, left: dropIndicator.left, width: dropIndicator.width }}
+                          />
+                          <div
+                            className="absolute rounded-full bg-white px-3 py-1.5 text-xs font-medium text-violet-700 shadow-lg dark:bg-slate-900 dark:text-violet-300"
+                            style={{ top: Math.max(12, dropIndicator.top - 34), left: dropIndicator.left }}
+                          >
+                            {draggedSnippetLabel ? `Drop ${draggedSnippetLabel} here` : 'Drop here'}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="absolute inset-x-0 top-6 flex justify-center">
+                          <div className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-violet-700 shadow-lg dark:bg-slate-900 dark:text-violet-300">
+                            {draggedSnippetLabel ? `Move ${draggedSnippetLabel} into the draft` : 'Drop to insert into the draft'}
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {isEditing && showSlashMenu && (
+                    <motion.div
+                      key="slash-command-menu"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 8 }}
+                      transition={{ duration: 0.16 }}
+                      className="absolute z-20 w-[280px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                      style={{ top: slashMenuPos.top, left: slashMenuPos.left }}
+                    >
+                      <div className="border-b border-slate-200 px-3 py-2 dark:border-slate-700">
+                        <div className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                          <Zap className="h-3.5 w-3.5 text-violet-500" />
+                          Slash commands
+                          {slashQuery && (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                              /{slashQuery}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                          Insert a structure block or send the selection to AI.
+                        </p>
+                      </div>
+
+                      {filteredSlashCommands.length === 0 ? (
+                        <div className="px-3 py-4 text-sm text-slate-500 dark:text-slate-400">
+                          No command matches that shortcut.
+                        </div>
+                      ) : (
+                        <div className="max-h-80 overflow-y-auto py-1">
+                          {filteredSlashCommands.map((command, index) => (
+                            <button
+                              key={command.id}
+                              type="button"
+                              onClick={() => handleApplySlashCommand(command)}
+                              onMouseEnter={() => setSelectedSlashIndex(index)}
+                              className={`flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors ${
+                                index === selectedSlashIndex
+                                  ? 'bg-violet-50 dark:bg-violet-950/40'
+                                  : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+                              }`}
+                            >
+                              <div className={`mt-0.5 rounded-lg px-1.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                                command.kind === 'block'
+                                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                  : 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'
+                              }`}>
+                                {command.kind === 'block' ? 'Block' : 'AI'}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{command.label}</span>
+                                  <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                                    {command.kind === 'block' ? 'Insert block' : 'Ask AI'}
+                                  </span>
+                                </div>
+                                <p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                                  {command.description}
+                                </p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="border-t border-slate-200 px-3 py-2 text-[11px] text-slate-400 dark:border-slate-700 dark:text-slate-500">
+                        Enter to apply. Esc to close.
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Auto-completion Popup */}
@@ -2606,9 +5563,34 @@ export function CopilotDraftingCanvas({
         </div>
 
         {/* Right Sidebar (Desktop) */}
-        <div className="hidden min-h-[calc(100vh-120px)] w-72 flex-col border-l border-gray-200 bg-white/92 dark:border-slate-700 dark:bg-slate-800 lg:flex xl:w-80">
-          {renderSidebarContent()}
-        </div>
+        {showDesktopSidebar && (
+          <div className="hidden h-[calc(100vh-112px)] shrink-0 self-start lg:sticky lg:top-[88px] lg:flex">
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize assistant panel"
+              aria-valuemin={DESKTOP_SIDEBAR_MIN_WIDTH}
+              aria-valuemax={DESKTOP_SIDEBAR_MAX_WIDTH}
+              aria-valuenow={desktopSidebarWidth}
+              tabIndex={0}
+              onPointerDown={handleDesktopSidebarResizeStart}
+              onKeyDown={handleDesktopSidebarResizeKeyDown}
+              onDoubleClick={() => setClampedDesktopSidebarWidth(DESKTOP_SIDEBAR_DEFAULT_WIDTH)}
+              className="group flex h-full w-4 cursor-col-resize touch-none items-center justify-center outline-none"
+              title="Drag to resize the assistant panel. Double-click to reset."
+            >
+              <div className={`flex h-24 w-2 items-center justify-center rounded-full border border-slate-200/80 bg-white/90 text-slate-400 shadow-sm transition-all duration-150 group-hover:border-violet-200 group-hover:text-violet-500 dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-500 dark:group-hover:border-violet-800 dark:group-hover:text-violet-300 ${isResizingSidebar ? 'border-violet-300 text-violet-600 dark:border-violet-700 dark:text-violet-300' : ''}`}>
+                <GripVertical className="h-4 w-4" />
+              </div>
+            </div>
+            <div
+              className="h-[calc(100vh-112px)] overflow-hidden rounded-[28px] border border-white/80 bg-white/84 shadow-[0_32px_90px_-56px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-800/88"
+              style={{ width: desktopSidebarWidth }}
+            >
+              {renderSidebarContent()}
+            </div>
+          </div>
+        )}
 
         {/* Mobile Sidebar Drawer */}
         <AnimatePresence>
@@ -2628,7 +5610,7 @@ export function CopilotDraftingCanvas({
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="fixed right-0 top-0 bottom-0 w-[85vw] max-w-[400px] bg-white dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 z-50 lg:hidden shadow-2xl"
+                className="fixed right-0 top-0 bottom-0 z-50 w-[85vw] max-w-[440px] border-l border-gray-200 bg-white/96 shadow-2xl backdrop-blur-xl dark:border-slate-700 dark:bg-slate-800/96 lg:hidden"
               >
                 <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-slate-700">
                   <h3 className="font-semibold text-gray-900 dark:text-slate-100">Assistant</h3>

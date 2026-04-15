@@ -1275,6 +1275,7 @@ model ContractDraft {
   id               String  @id @default(cuid())
   tenantId         String
   templateId       String?
+  playbookId       String? @map("playbook_id")
   title            String
   type             String  @default("MSA") // MSA, SOW, NDA, AMENDMENT, RENEWAL
   sourceType       String  @default("NEW") // NEW, TEMPLATE, RENEWAL, AMENDMENT
@@ -1320,6 +1321,7 @@ model ContractDraft {
   // Relations
   tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   template       ContractTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  playbook       Playbook?         @relation(fields: [playbookId], references: [id], onDelete: SetNull)
   sourceContract Contract?         @relation("DraftSourceContract", fields: [sourceContractId], references: [id], onDelete: SetNull)
   createdByUser  User?             @relation("DraftCreator", fields: [createdBy], references: [id], onDelete: SetNull)
 
@@ -1329,6 +1331,7 @@ model ContractDraft {
 
   @@index([tenantId])
   @@index([templateId])
+  @@index([playbookId])
   @@index([status])
   @@index([type])
   @@index([sourceType])
@@ -4636,6 +4639,7 @@ model Playbook {
   clauses           PlaybookClause[]
   redFlags          PlaybookRedFlag[]
   fallbackPositions PlaybookFallback[]
+  drafts            ContractDraft[]
   reviews           LegalReview[]
 
   @@unique([tenantId, name, version])

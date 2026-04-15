@@ -5,77 +5,140 @@
  * Fixed bottom navigation bar for mobile devices
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { 
   Home, 
   FolderOpen, 
   Upload, 
-  MessageSquare, 
-  Menu,
   Search,
   BarChart3,
   Plus,
   X,
-  Sparkles
+  Sparkles,
+  GitBranch,
+  Lightbulb,
+  PenTool,
+  Truck,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { canAccessNavigationAudience, getNavigationAudiences, type NavigationAudience } from '@/lib/navigation/visibility';
 
 interface NavItem {
   href: string;
   label: string;
   icon: React.ElementType;
+  audiences?: NavigationAudience[];
   activeMatch?: (pathname: string) => boolean;
 }
-
-const navItems: NavItem[] = [
-  { 
-    href: '/', 
-    label: 'Home', 
-    icon: Home,
-    activeMatch: (p) => p === '/'
-  },
-  { 
-    href: '/contracts', 
-    label: 'Contracts', 
-    icon: FolderOpen,
-    activeMatch: (p) => p.startsWith('/contracts')
-  },
-  { 
-    href: '/upload', 
-    label: 'Upload', 
-    icon: Upload,
-    activeMatch: (p) => p.startsWith('/upload')
-  },
-  { 
-    href: '/ai/chat', 
-    label: 'AI Chat', 
-    icon: MessageSquare,
-    activeMatch: (p) => p.startsWith('/ai')
-  },
-];
 
 interface QuickAction {
   label: string;
   icon: React.ElementType;
   href?: string;
   onClick?: () => void;
+  audiences?: NavigationAudience[];
   color: string;
 }
 
-const quickActions: QuickAction[] = [
-  { label: 'Upload Contract', icon: Upload, href: '/upload', color: 'bg-violet-500' },
-  { label: 'AI Assistant', icon: Sparkles, href: '/ai/chat', color: 'bg-violet-500' },
-  { label: 'Smart Search', icon: Search, href: '/search', color: 'bg-amber-500' },
-  { label: 'Analytics', icon: BarChart3, href: '/analytics', color: 'bg-violet-500' },
-];
-
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [showQuickActions, setShowQuickActions] = useState(false);
+
+  const userRole = session?.user?.role || 'member';
+  const activeAudiences = useMemo(() => getNavigationAudiences(userRole), [userRole]);
+
+  const openAIAssistant = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('openAIChatbot', {
+      detail: { autoMessage: 'Hi! How can I help you with your contracts today?' },
+    }));
+  }, []);
+
+  const navItems = useMemo<NavItem[]>(() => {
+    const primaryItems: NavItem[] = [
+      {
+        href: '/dashboard',
+        label: 'Home',
+        icon: Home,
+        audiences: ['all'],
+        activeMatch: (p) => p === '/dashboard',
+      },
+      {
+        href: '/contracts',
+        label: 'Contracts',
+        icon: FolderOpen,
+        audiences: ['all'],
+        activeMatch: (p) => p.startsWith('/contracts'),
+      },
+    ];
+
+    if (activeAudiences.has('commercial')) {
+      primaryItems.push({
+        href: '/suppliers',
+        label: 'Suppliers',
+        icon: Truck,
+        audiences: ['commercial'],
+        activeMatch: (p) => p.startsWith('/suppliers') || p.startsWith('/rate-cards') || p.startsWith('/spend') || p.startsWith('/forecast'),
+      });
+    } else if (activeAudiences.has('operator')) {
+      primaryItems.push({
+        href: '/workflows',
+        label: 'Workflows',
+        icon: GitBranch,
+        audiences: ['operator'],
+        activeMatch: (p) => p.startsWith('/workflows') || p.startsWith('/approvals') || p.startsWith('/requests') || p.startsWith('/self-service'),
+      });
+    } else {
+      primaryItems.push({
+        href: '/renewals',
+        label: 'Renewals',
+        icon: Calendar,
+        audiences: ['all'],
+        activeMatch: (p) => p.startsWith('/renewals') || p.startsWith('/obligations') || p.startsWith('/deadlines'),
+      });
+    }
+
+    if (activeAudiences.has('oversight')) {
+      primaryItems.push({
+        href: '/analytics',
+        label: 'Analytics',
+        icon: BarChart3,
+        audiences: ['oversight'],
+        activeMatch: (p) => p.startsWith('/analytics') || p.startsWith('/reports'),
+      });
+    } else if (activeAudiences.has('legal')) {
+      primaryItems.push({
+        href: '/drafting',
+        label: 'Drafting',
+        icon: PenTool,
+        audiences: ['legal'],
+        activeMatch: (p) => p.startsWith('/drafting') || p.startsWith('/playbooks') || p.startsWith('/clauses') || p.startsWith('/templates'),
+      });
+    } else {
+      primaryItems.push({
+        href: '/intelligence',
+        label: 'Insights',
+        icon: Lightbulb,
+        audiences: ['all'],
+        activeMatch: (p) => p.startsWith('/intelligence') || p.startsWith('/risk') || p.startsWith('/compliance') || p.startsWith('/knowledge-graph'),
+      });
+    }
+
+    return primaryItems.filter((item) => canAccessNavigationAudience(item.audiences, activeAudiences)).slice(0, 4);
+  }, [activeAudiences]);
+
+  const quickActions = useMemo<QuickAction[]>(() => [
+    { label: 'Upload Contract', icon: Upload, href: '/upload', audiences: ['operator'], color: 'bg-violet-500' },
+    { label: 'Start Draft', icon: PenTool, href: '/drafting/copilot', audiences: ['operator'], color: 'bg-violet-500' },
+    { label: 'AI Assistant', icon: Sparkles, onClick: openAIAssistant, audiences: ['all'], color: 'bg-violet-500' },
+    { label: 'Smart Search', icon: Search, href: '/search', audiences: ['all'], color: 'bg-amber-500' },
+    { label: 'Analytics', icon: BarChart3, href: '/analytics', audiences: ['oversight'], color: 'bg-violet-500' },
+  ].filter((action) => canAccessNavigationAudience(action.audiences, activeAudiences)), [activeAudiences, openAIAssistant]);
 
   const isActive = (item: NavItem) => {
     if (item.activeMatch) return item.activeMatch(pathname);
@@ -114,22 +177,41 @@ export function MobileBottomNav() {
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
                   {quickActions.map((action) => (
-                    <Link
-                      key={action.label}
-                      href={action.href || '#'}
-                      onClick={() => {
-                        setShowQuickActions(false);
-                        action.onClick?.();
-                      }}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                    >
-                      <div className={cn("p-2 rounded-lg text-white", action.color)}>
-                        <action.icon className="h-4 w-4" />
-                      </div>
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        {action.label}
-                      </span>
-                    </Link>
+                    action.href ? (
+                      <Link
+                        key={action.label}
+                        href={action.href}
+                        onClick={() => {
+                          setShowQuickActions(false);
+                          action.onClick?.();
+                        }}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <div className={cn("p-2 rounded-lg text-white", action.color)}>
+                          <action.icon className="h-4 w-4" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                          {action.label}
+                        </span>
+                      </Link>
+                    ) : (
+                      <button
+                        key={action.label}
+                        type="button"
+                        onClick={() => {
+                          setShowQuickActions(false);
+                          action.onClick?.();
+                        }}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left"
+                      >
+                        <div className={cn("p-2 rounded-lg text-white", action.color)}>
+                          <action.icon className="h-4 w-4" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                          {action.label}
+                        </span>
+                      </button>
+                    )
                   ))}
                 </div>
               </div>

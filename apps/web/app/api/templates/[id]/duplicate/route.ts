@@ -6,26 +6,7 @@ import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, creat
 import { contractService } from 'data-orchestration/services';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
-
-// Helper to transform Prisma template to UI-expected format
-function transformTemplate(template: Record<string, unknown>) {
-  const metadata = (template.metadata || {}) as Record<string, unknown>
-  const clauses = template.clauses as Array<Record<string, unknown>> || []
-  const variables = (metadata.variables || []) as Array<Record<string, unknown>>
-  
-  return {
-    ...template,
-    status: metadata.status || (template.isActive ? 'active' : 'draft'),
-    tags: metadata.tags || [],
-    content: metadata.content || '',
-    language: metadata.language || 'en-US',
-    variables: variables.length,
-    clauses: Array.isArray(clauses) ? clauses.length : (clauses || 0),
-    lastModified: template.updatedAt,
-    approvalStatus: metadata.approvalStatus || 'none',
-    createdBy: template.createdBy || 'System',
-  }
-}
+import { transformTemplateRecord } from '@/lib/templates/template-record';
 
 // POST /api/templates/[id]/duplicate - Duplicate a template
 export async function POST(
@@ -108,7 +89,7 @@ export async function POST(
 
     return createSuccessResponse(ctx, {
       success: true,
-      template: transformTemplate(duplicate as unknown as Record<string, unknown>),
+      template: transformTemplateRecord(duplicate as unknown as Record<string, unknown>),
     });
   } catch (error) {
     return handleApiError(ctx, error);

@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
 import { auditLog, AuditAction } from '@/lib/security/audit';
@@ -16,13 +17,17 @@ export async function GET(
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
+    const tenantId = await getApiTenantId(request);
 
     const { id: templateId } = await params;
 
     // Try to get variables from database
     try {
-      const template = await prisma.contractTemplate.findUnique({
-        where: { id: templateId },
+      const template = await prisma.contractTemplate.findFirst({
+        where: {
+          id: templateId,
+          tenantId,
+        },
         select: { 
           id: true, 
           metadata: true,
@@ -68,6 +73,7 @@ export async function PUT(
   if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
   try {
+    const tenantId = await getApiTenantId(request);
 
     const { id: templateId } = await params;
     const body = await request.json();
@@ -75,8 +81,11 @@ export async function PUT(
 
     // Try to update in database
     try {
-      const template = await prisma.contractTemplate.findUnique({
-        where: { id: templateId },
+      const template = await prisma.contractTemplate.findFirst({
+        where: {
+          id: templateId,
+          tenantId,
+        },
         select: { metadata: true },
       });
 
@@ -131,6 +140,7 @@ export async function POST(
   if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
   try {
+    const tenantId = await getApiTenantId(request);
 
     const { id: templateId } = await params;
     const body = await request.json();
@@ -149,8 +159,11 @@ export async function POST(
 
     // Try to add to database
     try {
-      const template = await prisma.contractTemplate.findUnique({
-        where: { id: templateId },
+      const template = await prisma.contractTemplate.findFirst({
+        where: {
+          id: templateId,
+          tenantId,
+        },
         select: { metadata: true },
       });
 

@@ -15,6 +15,7 @@ import {
   generatePDFDocument,
   type ContractTemplate,
 } from '@/lib/templates/document-service';
+import { normalizeTemplateClauses } from '@/lib/templates/template-record';
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
 import { auditLog, AuditAction } from '@/lib/security/audit';
@@ -55,15 +56,35 @@ export async function GET(
       return createErrorResponse(ctx, 'FORBIDDEN', 'Access denied', 403);
     }
 
-    // Parse clauses from JSON
-    const clausesData = template.clauses as unknown;
-    const parsedClauses = Array.isArray(clausesData) 
-      ? clausesData.map((c: { id?: string; title?: string; content?: string }) => ({
-          id: c.id || crypto.randomUUID(),
-          title: c.title,
-          content: c.content || '',
-        }))
-      : [];
+    const templateClauseRecords = normalizeTemplateClauses(template.clauses as unknown);
+    const referencedClauseIds = templateClauseRecords
+      .map((clause) => clause.clauseId)
+      .filter((clauseId): clauseId is string => typeof clauseId === 'string' && clauseId.length > 0);
+
+    const latestClauseIndex = referencedClauseIds.length > 0
+      ? new Map(
+          (await prisma.clauseLibrary.findMany({
+            where: {
+              tenantId: template.tenantId,
+              id: { in: referencedClauseIds },
+            },
+            select: {
+              id: true,
+              title: true,
+              content: true,
+            },
+          })).map((clause) => [clause.id, clause]),
+        )
+      : new Map<string, { id: string; title: string; content: string }>();
+
+    const parsedClauses = templateClauseRecords.map((clause) => {
+      const latestClause = clause.clauseId ? latestClauseIndex.get(clause.clauseId) : undefined;
+      return {
+        id: clause.id,
+        title: latestClause?.title || clause.title,
+        content: latestClause?.content || clause.content,
+      };
+    });
 
     // Parse metadata for additional fields
     const metadata = template.metadata as Record<string, unknown> || {};

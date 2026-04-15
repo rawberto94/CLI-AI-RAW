@@ -497,23 +497,21 @@ export default function DraftingPage() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid gap-4 lg:grid-cols-[1.3fr_0.9fr]"
+          className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]"
         >
           <Card className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
             <CardContent className="p-6 sm:p-8">
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <Badge className="rounded-full bg-violet-100 px-3 py-1 text-[11px] font-medium text-violet-700 hover:bg-violet-100">
-                    AI drafting studio
-                  </Badge>
-                  <div className="space-y-2">
-                    <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                      Start from a prompt, a template, or a blank page.
-                    </h1>
-                    <p className="max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
-                      Keep the workspace quiet, write in one place, and pull in AI help only when you need it.
-                    </p>
-                  </div>
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+                    Drafting studio
+                  </p>
+                  <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                    Draft in one calm workspace.
+                  </h1>
+                  <p className="max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
+                    Start from a prompt, an approved template, or a blank page, then bring AI in only when you need help.
+                  </p>
                 </div>
 
                 <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
@@ -577,13 +575,13 @@ export default function DraftingPage() {
 
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-500">
                   <span>
-                    <span className="font-semibold text-slate-900">{drafts.length}</span> drafts ready
+                    <span className="font-semibold text-slate-900">{drafts.length}</span> recent drafts
                   </span>
                   <span>
                     <span className="font-semibold text-slate-900">{templates.length}</span> approved templates
                   </span>
                   <span>
-                    Search, draft, review, and finalize from one workspace.
+                    AI stays in the drafting flow instead of taking over the page.
                   </span>
                 </div>
               </div>
@@ -591,15 +589,15 @@ export default function DraftingPage() {
           </Card>
 
           <Card className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
-            <CardContent className="flex h-full flex-col p-6 sm:p-8">
-              <div className="space-y-2">
-                <h2 className="text-xl font-semibold text-slate-950">Fast starts</h2>
+            <CardContent className="flex h-full flex-col p-6 sm:p-7">
+              <div className="space-y-1.5">
+                <h2 className="text-lg font-semibold text-slate-950">Popular starts</h2>
                 <p className="text-sm leading-6 text-slate-500">
-                  Use a familiar structure, then let AI reshape it as you draft.
+                  Jump into a common document and refine it in the editor.
                 </p>
               </div>
 
-              <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
                 {QUICK_STARTS.map((item) => (
                   <button
                     key={item.id}
@@ -616,30 +614,31 @@ export default function DraftingPage() {
                         router.push(`/drafting/copilot?mode=blank&type=${item.id}`)
                       }
                     }}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left transition-colors hover:border-slate-300 hover:bg-slate-100"
+                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition-colors hover:border-slate-300 hover:bg-slate-100"
                   >
-                    <div className="text-xl">{item.icon}</div>
-                    <div className="mt-3 text-sm font-semibold text-slate-900">{item.label}</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">{item.desc}</div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
+                      {item.icon}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-900">{item.label}</div>
+                      <div className="text-xs leading-5 text-slate-500">{item.desc}</div>
+                    </div>
                   </button>
                 ))}
               </div>
 
-              <div className="mt-6 rounded-[24px] bg-slate-950 p-5 text-white">
-                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
-                  Prefer proven language?
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-medium text-slate-900">Need a proven structure?</p>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  Start from your approved templates and use AI once the draft is open.
                 </p>
-                <p className="mt-2 text-sm leading-6 text-slate-200">
-                  Start from your approved templates and refine the draft with AI in the editor.
-                </p>
-                <Button
+                <button
                   type="button"
-                  variant="secondary"
-                  className="mt-4 rounded-full bg-white px-4 text-slate-950 hover:bg-slate-100"
                   onClick={() => setActiveTab('templates')}
+                  className="mt-3 text-sm font-medium text-violet-700 transition-colors hover:text-violet-900"
                 >
-                  Open template library
-                </Button>
+                  Browse template library
+                </button>
               </div>
             </CardContent>
           </Card>
@@ -652,12 +651,12 @@ export default function DraftingPage() {
           transition={{ delay: 0.25 }}
         >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-2">
                 <div>
-                  <p className="text-sm font-medium text-slate-900">Continue drafting</p>
+                  <p className="text-sm font-medium text-slate-900">Pick up where you left off</p>
                   <p className="text-sm text-slate-500">
-                    Recent work on the left, trusted starting points on the right.
+                    Switch between recent drafts and approved templates.
                   </p>
                 </div>
                 <TabsList className="rounded-full bg-white p-1 shadow-sm ring-1 ring-slate-200">
@@ -727,7 +726,7 @@ export default function DraftingPage() {
                   </div>
 
                   {/* Status Filter (drafts tab only) */}
-                  {activeTab === 'drafts' && (
+                  {activeTab === 'drafts' && drafts.length > 0 && (
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}

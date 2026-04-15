@@ -10,6 +10,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import {
   Command,
   Search,
@@ -18,19 +19,22 @@ import {
   BarChart3,
   MessageSquare,
   Settings,
-  Sun,
   Moon,
   Home,
-  FolderOpen,
   RefreshCw,
   HelpCircle,
   User,
-  LogOut,
   Plus,
-  Zap,
-  X,
+  GitBranch,
+  Calendar,
+  Lightbulb,
+  Truck,
+  Rocket,
+  PenTool,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { canAccessNavigationAudience, getNavigationAudiences, type NavigationAudience } from '@/lib/navigation/visibility';
 
 interface CommandItem {
   id: string;
@@ -38,6 +42,7 @@ interface CommandItem {
   description?: string;
   icon: React.ElementType;
   category: 'navigation' | 'actions' | 'settings' | 'help';
+  audiences?: NavigationAudience[];
   action: () => void;
   keywords?: string[];
 }
@@ -49,8 +54,22 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const userRole = session?.user?.role || 'member';
+  const activeAudiences = useMemo(() => getNavigationAudiences(userRole), [userRole]);
+
+  const openAIAssistant = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('openAIChatbot', {
+      detail: { autoMessage: 'Hi! How can I help you with your contracts today?' },
+    }));
+  }, []);
+
+  const openKeyboardShortcuts = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('openKeyboardShortcuts'));
+  }, []);
 
   // Define commands
   const commands = useMemo<CommandItem[]>(() => [
@@ -61,7 +80,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       description: 'View your contract overview',
       icon: Home,
       category: 'navigation',
-      action: () => router.push('/'),
+      audiences: ['all'],
+      action: () => router.push('/dashboard'),
       keywords: ['home', 'dashboard', 'overview'],
     },
     {
@@ -70,44 +90,89 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       description: 'Browse all contracts',
       icon: FileText,
       category: 'navigation',
+      audiences: ['all'],
       action: () => router.push('/contracts'),
       keywords: ['contracts', 'documents', 'list'],
     },
     {
-      id: 'upload',
-      title: 'Go to Upload',
-      description: 'Upload new contracts',
-      icon: Upload,
+      id: 'drafting',
+      title: 'Go to Drafting Studio',
+      description: 'Open the drafting and negotiation workspace',
+      icon: PenTool,
       category: 'navigation',
-      action: () => router.push('/upload'),
-      keywords: ['upload', 'new', 'add'],
+      audiences: ['operator'],
+      action: () => router.push('/drafting'),
+      keywords: ['drafting', 'copilot', 'negotiate', 'document'],
+    },
+    {
+      id: 'workflows',
+      title: 'Go to Workflows',
+      description: 'Manage requests, approvals, and tasks',
+      icon: GitBranch,
+      category: 'navigation',
+      audiences: ['operator'],
+      action: () => router.push('/workflows'),
+      keywords: ['workflow', 'approvals', 'requests', 'tasks'],
+    },
+    {
+      id: 'obligations',
+      title: 'Go to Obligations & Renewals',
+      description: 'Track deadlines, renewals, and commitments',
+      icon: Calendar,
+      category: 'navigation',
+      audiences: ['all'],
+      action: () => router.push('/obligations'),
+      keywords: ['renewals', 'obligations', 'deadlines', 'milestones'],
+    },
+    {
+      id: 'intelligence',
+      title: 'Go to Intelligence',
+      description: 'Review health, risk, and AI signals',
+      icon: Lightbulb,
+      category: 'navigation',
+      audiences: ['all'],
+      action: () => router.push('/intelligence'),
+      keywords: ['intelligence', 'risk', 'health', 'insights'],
     },
     {
       id: 'analytics',
       title: 'Go to Analytics',
-      description: 'View insights and reports',
+      description: 'View dashboards and portfolio reporting',
       icon: BarChart3,
       category: 'navigation',
+      audiences: ['oversight'],
       action: () => router.push('/analytics'),
       keywords: ['analytics', 'reports', 'insights', 'charts'],
     },
     {
-      id: 'search',
-      title: 'Go to Search',
-      description: 'Search all contracts',
-      icon: Search,
+      id: 'suppliers',
+      title: 'Go to Suppliers & Spend',
+      description: 'Review suppliers, rate cards, and spend',
+      icon: Truck,
       category: 'navigation',
-      action: () => router.push('/search'),
-      keywords: ['search', 'find', 'query'],
+      audiences: ['commercial'],
+      action: () => router.push('/suppliers'),
+      keywords: ['suppliers', 'vendors', 'spend', 'rate cards'],
     },
     {
-      id: 'ai-chat',
-      title: 'Open AI Assistant',
-      description: 'Chat with AI about contracts',
-      icon: MessageSquare,
+      id: 'ai-workspace',
+      title: 'Go to AI Workspace',
+      description: 'Open advanced AI operations and labs',
+      icon: Rocket,
       category: 'navigation',
-      action: () => router.push('/ai/chat'),
-      keywords: ['ai', 'chat', 'assistant', 'help'],
+      audiences: ['oversight'],
+      action: () => router.push('/contigo-labs'),
+      keywords: ['ai', 'labs', 'workspace', 'automation'],
+    },
+    {
+      id: 'search',
+      title: 'Go to Search',
+      description: 'Search all contracts and metadata',
+      icon: Search,
+      category: 'navigation',
+      audiences: ['all'],
+      action: () => router.push('/search'),
+      keywords: ['search', 'find', 'query'],
     },
     
     // Actions
@@ -117,8 +182,19 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       description: 'Add a new contract to your portfolio',
       icon: Plus,
       category: 'actions',
+      audiences: ['operator'],
       action: () => router.push('/upload'),
       keywords: ['new', 'create', 'upload', 'add'],
+    },
+    {
+      id: 'start-draft',
+      title: 'Start Draft in AI Copilot',
+      description: 'Jump directly into the deep drafting workspace',
+      icon: PenTool,
+      category: 'actions',
+      audiences: ['operator'],
+      action: () => router.push('/drafting/copilot'),
+      keywords: ['draft', 'copilot', 'redline', 'write'],
     },
     {
       id: 'refresh',
@@ -126,17 +202,19 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       description: 'Reload all data',
       icon: RefreshCw,
       category: 'actions',
+      audiences: ['all'],
       action: () => window.location.reload(),
       keywords: ['refresh', 'reload', 'update'],
     },
     {
-      id: 'quick-analyze',
-      title: 'Quick AI Analysis',
-      description: 'Analyze a contract with AI',
-      icon: Zap,
+      id: 'ai-assistant',
+      title: 'Open AI Assistant',
+      description: 'Open the in-app assistant without leaving your work',
+      icon: MessageSquare,
       category: 'actions',
-      action: () => router.push('/ai/chat'),
-      keywords: ['analyze', 'ai', 'quick'],
+      audiences: ['all'],
+      action: openAIAssistant,
+      keywords: ['ai', 'chat', 'assistant', 'help'],
     },
     
     // Settings
@@ -146,6 +224,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       description: 'Switch between light and dark theme',
       icon: Moon,
       category: 'settings',
+      audiences: ['all'],
       action: () => {
         const root = document.documentElement;
         const isDark = root.classList.contains('dark');
@@ -161,6 +240,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       description: 'Manage your preferences',
       icon: Settings,
       category: 'settings',
+      audiences: ['all'],
       action: () => router.push('/settings'),
       keywords: ['settings', 'preferences', 'config'],
     },
@@ -170,8 +250,19 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       description: 'Manage your account',
       icon: User,
       category: 'settings',
+      audiences: ['all'],
       action: () => router.push('/settings/profile'),
       keywords: ['profile', 'account', 'user'],
+    },
+    {
+      id: 'organization',
+      title: 'Open Organization Settings',
+      description: 'Manage tenant, system, and operational settings',
+      icon: Shield,
+      category: 'settings',
+      audiences: ['admin'],
+      action: () => router.push('/admin'),
+      keywords: ['organization', 'admin', 'tenant', 'system'],
     },
     
     // Help
@@ -181,6 +272,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       description: 'View help and guides',
       icon: HelpCircle,
       category: 'help',
+      audiences: ['all'],
       action: () => window.open('/docs', '_blank'),
       keywords: ['help', 'docs', 'documentation', 'guide'],
     },
@@ -190,26 +282,29 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       description: 'View all keyboard shortcuts',
       icon: Command,
       category: 'help',
-      action: () => {
-        // Dispatch event to open shortcuts overlay
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: '?' }));
-      },
+      audiences: ['all'],
+      action: openKeyboardShortcuts,
       keywords: ['keyboard', 'shortcuts', 'hotkeys'],
     },
-  ], [router]);
+  ], [openAIAssistant, openKeyboardShortcuts, router]);
+
+  const visibleCommands = useMemo(
+    () => commands.filter((command) => canAccessNavigationAudience(command.audiences, activeAudiences)),
+    [activeAudiences, commands]
+  );
 
   // Filter commands based on query
   const filteredCommands = useMemo(() => {
-    if (!query) return commands;
+    if (!query) return visibleCommands;
     
     const lowerQuery = query.toLowerCase();
-    return commands.filter((cmd) => {
+    return visibleCommands.filter((cmd) => {
       const titleMatch = cmd.title.toLowerCase().includes(lowerQuery);
       const descMatch = cmd.description?.toLowerCase().includes(lowerQuery);
       const keywordMatch = cmd.keywords?.some((k) => k.includes(lowerQuery));
       return titleMatch || descMatch || keywordMatch;
     });
-  }, [commands, query]);
+  }, [query, visibleCommands]);
 
   // Group commands by category
   const groupedCommands = useMemo(() => {
@@ -235,6 +330,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   useEffect(() => {
     setSelectedIndex(0);
   }, [query]);
+
+  useEffect(() => {
+    setSelectedIndex((current) => Math.min(current, Math.max(filteredCommands.length - 1, 0)));
+  }, [filteredCommands.length]);
 
   // Handle keyboard navigation
   useEffect(() => {

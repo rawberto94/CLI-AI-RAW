@@ -29,6 +29,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { getTenantId } from '@/lib/tenant'
+import type { TemplateClauseRecord } from '@/lib/templates/template-record'
 
 interface Clause {
   id: string
@@ -36,6 +37,8 @@ interface Clause {
   title: string
   content: string
   variables: string[]
+  sourceKind?: string
+  isStandard?: boolean
 }
 
 interface TemplateVariable {
@@ -75,6 +78,9 @@ export default function TemplateEditorPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [existingTemplateId, setExistingTemplateId] = useState<string | null>(null)
+  const [templateClauses, setTemplateClauses] = useState<TemplateClauseRecord[]>([])
+  const [libraryClauses, setLibraryClauses] = useState<Clause[]>([])
+  const [isLoadingClauseLibrary, setIsLoadingClauseLibrary] = useState(false)
 
   // AI State
   const [aiLoading, setAiLoading] = useState<string | null>(null) // tracks which AI action is running
@@ -92,6 +98,26 @@ export default function TemplateEditorPage() {
     }
     const json = await response.json()
     return json.data ?? json
+  }, [])
+
+  const loadClauseLibrary = useCallback(async () => {
+    setIsLoadingClauseLibrary(true)
+    try {
+      const response = await fetch('/api/clauses?limit=200')
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Failed to load clause library')
+      }
+
+      const clauses = data.data?.clauses || data.clauses || []
+      setLibraryClauses(Array.isArray(clauses) ? clauses : [])
+    } catch (err) {
+      console.error('Clause library load error:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to load clause library')
+    } finally {
+      setIsLoadingClauseLibrary(false)
+    }
   }, [])
 
   const handleGenerateClauses = useCallback(async () => {
@@ -190,64 +216,16 @@ export default function TemplateEditorPage() {
     }
   }, [templateContent, variables.length, callTemplateAI])
 
-  const defaultClauseLibrary: Clause[] = [
-    {
-      id: '1',
-      category: 'Payment Terms',
-      title: 'Standard Payment Terms',
-      content: 'Payment shall be due within {{paymentDays}} days of invoice date. Invoices will be sent to {{clientEmail}}. Late payments will incur a {{lateFeePercent}}% monthly fee.',
-      variables: ['paymentDays', 'clientEmail', 'lateFeePercent']
-    },
-    {
-      id: '2',
-      category: 'Termination',
-      title: 'Termination for Convenience',
-      content: 'Either party may terminate this Agreement for convenience by providing {{noticeDays}} days written notice to the other party.',
-      variables: ['noticeDays']
-    },
-    {
-      id: '3',
-      category: 'Liability',
-      title: 'Liability Limitation',
-      content: 'The maximum liability of either party under this Agreement shall not exceed {{maxLiability}}. This limitation applies to all claims arising from or related to this Agreement.',
-      variables: ['maxLiability']
-    },
-    {
-      id: '4',
-      category: 'Confidentiality',
-      title: 'Confidentiality Obligations',
-      content: 'Both parties agree to maintain confidentiality of all proprietary information shared during the term of this Agreement and for {{confidentialityYears}} years thereafter.',
-      variables: ['confidentialityYears']
-    },
-    {
-      id: '5',
-      category: 'Intellectual Property',
-      title: 'IP Ownership',
-      content: 'All intellectual property created under this Agreement shall be owned by {{ipOwner}}. The other party shall execute all documents necessary to perfect such ownership.',
-      variables: ['ipOwner']
-    },
-    {
-      id: '6',
-      category: 'Warranties',
-      title: 'Limited Warranty',
-      content: '{{warrantyProvider}} warrants that services will be performed in a professional manner for a period of {{warrantyDays}} days. This warranty is exclusive and replaces all other warranties.',
-      variables: ['warrantyProvider', 'warrantyDays']
-    },
-    {
-      id: '7',
-      category: 'Indemnification',
-      title: 'Mutual Indemnification',
-      content: 'Each party agrees to indemnify and hold harmless the other party from any claims, damages, or losses arising from its breach of this Agreement or its negligent acts.',
-      variables: []
-    },
-    {
-      id: '8',
-      category: 'Governing Law',
-      title: 'Jurisdiction and Venue',
-      content: 'This Agreement shall be governed by the laws of {{jurisdiction}} without regard to conflict of law principles. Any disputes shall be resolved in the courts of {{venue}}.',
-      variables: ['jurisdiction', 'venue']
-    },
-  ]
+  const buildTemplateClauseRecord = useCallback((clause: Clause): TemplateClauseRecord => ({
+    id: clause.id,
+    clauseId: clause.sourceKind === 'clause-library' ? clause.id : undefined,
+    title: clause.title,
+    content: clause.content,
+    category: clause.category,
+    variables: clause.variables,
+    sourceKind: clause.sourceKind || (clause.id.startsWith('ai-') ? 'ai-generated' : 'clause-library'),
+    isStandard: clause.isStandard,
+  }), [])
 
   // Load template data from API
   const loadTemplate = useCallback(async () => {
@@ -264,11 +242,12 @@ export default function TemplateEditorPage() {
         throw new Error(data.error || 'Failed to load template')
       }
       
-      const template = data.template
+      const template = data.data?.template || data.template
       setExistingTemplateId(template.id)
       setTemplateName(template.name || '')
       setTemplateDescription(template.description || '')
       setTemplateCategory(template.category || 'GENERAL')
+      setTemplateClauses(Array.isArray(template.clauses) ? template.clauses : [])
       
       // Load from metadata
       const meta = template.metadata || {}
@@ -287,9 +266,14 @@ export default function TemplateEditorPage() {
   }, [isNew, params.id])
 
   useEffect(() => {
+    void loadClauseLibrary()
+  }, [loadClauseLibrary])
+
+  useEffect(() => {
     if (!isNew) {
       loadTemplate()
     } else {
+      setTemplateClauses([])
       // Set default template structure for new templates
       setTemplateContent(
         '# {{contractTitle}}\n\n' +
@@ -326,6 +310,7 @@ export default function TemplateEditorPage() {
   const insertClause = (clause: Clause) => {
     const clauseText = `\n\n### ${clause.title}\n${clause.content}\n\n`
     setTemplateContent(templateContent + clauseText)
+    setTemplateClauses((previous) => [...previous, buildTemplateClauseRecord(clause)])
     
     // Add any new variables from the clause
     const newVariables = clause.variables.filter(
@@ -370,7 +355,7 @@ export default function TemplateEditorPage() {
         name: templateName.trim(),
         description: templateDescription.trim(),
         category: templateCategory,
-        clauses: [],
+        clauses: templateClauses,
         structure: {},
         metadata: {
           status: templateStatus,
@@ -428,7 +413,7 @@ export default function TemplateEditorPage() {
     return preview
   }
 
-  const clauseLibrary = aiClauses.length > 0 ? aiClauses : defaultClauseLibrary
+  const clauseLibrary = [...aiClauses, ...libraryClauses]
 
   if (loading) {
     return (

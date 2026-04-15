@@ -19,6 +19,7 @@ import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, creat
 import { contractService } from 'data-orchestration/services';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
+import { normalizeTemplateClauses } from '@/lib/templates/template-record';
 
 export async function POST(
   request: NextRequest,
@@ -79,15 +80,35 @@ export async function POST(
     // Parse metadata
     const metadata = template.metadata as Record<string, unknown> || {};
     
-    // Parse clauses from Json field
-    const clausesData = template.clauses as unknown;
-    const parsedClauses = Array.isArray(clausesData) 
-      ? clausesData.map((c: { id?: string; title?: string; content?: string }) => ({
-          id: c.id || crypto.randomUUID(),
-          title: c.title || undefined,
-          content: c.content || '',
-        }))
-      : [];
+    const templateClauseRecords = normalizeTemplateClauses(template.clauses as unknown);
+    const referencedClauseIds = templateClauseRecords
+      .map((clause) => clause.clauseId)
+      .filter((clauseId): clauseId is string => typeof clauseId === 'string' && clauseId.length > 0);
+
+    const latestClauseIndex = referencedClauseIds.length > 0
+      ? new Map(
+          (await prisma.clauseLibrary.findMany({
+            where: {
+              tenantId,
+              id: { in: referencedClauseIds },
+            },
+            select: {
+              id: true,
+              title: true,
+              content: true,
+            },
+          })).map((clause) => [clause.id, clause]),
+        )
+      : new Map<string, { id: string; title: string; content: string }>();
+
+    const parsedClauses = templateClauseRecords.map((clause) => {
+      const latestClause = clause.clauseId ? latestClauseIndex.get(clause.clauseId) : undefined;
+      return {
+        id: clause.id,
+        title: latestClause?.title || clause.title,
+        content: latestClause?.content || clause.content,
+      };
+    });
 
     // Convert to our template format
     const templateData: ContractTemplate = {

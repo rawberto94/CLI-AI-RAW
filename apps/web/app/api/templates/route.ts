@@ -6,35 +6,7 @@ import { getApiTenantId } from '@/lib/tenant-server'
 import { contractService } from 'data-orchestration/services';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
-
-// Helper to transform Prisma template to UI-expected format
-function transformTemplate(template: Record<string, unknown>) {
-  const metadata = (template.metadata || {}) as Record<string, unknown>
-  const clauses = template.clauses as Array<Record<string, unknown>> || []
-  const variables = (metadata.variables || []) as Array<Record<string, unknown>>
-  
-  return {
-    ...template,
-    // Map status from metadata or derive from isActive
-    status: metadata.status || (template.isActive ? 'active' : 'draft'),
-    // Map tags from metadata
-    tags: metadata.tags || [],
-    // Map content from metadata
-    content: metadata.content || '',
-    // Map language from metadata  
-    language: metadata.language || 'en-US',
-    // Calculate variables count
-    variables: variables.length,
-    // Calculate clauses count (if array) or keep as-is
-    clauses: Array.isArray(clauses) ? clauses.length : (clauses || 0),
-    // Add lastModified alias
-    lastModified: template.updatedAt,
-    // Approval status (from metadata or default)
-    approvalStatus: metadata.approvalStatus || 'none',
-    // Created by user name (if available)
-    createdBy: template.createdBy || 'System',
-  }
-}
+import { transformTemplateRecord } from '@/lib/templates/template-record';
 
 // GET /api/templates - List all templates
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
@@ -80,7 +52,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const total = await prisma.contractTemplate.count({ where })
 
   // Transform templates to match UI expectations
-  const transformedTemplates = templates.map(t => transformTemplate(t as unknown as Record<string, unknown>))
+  const transformedTemplates = templates.map(t => transformTemplateRecord(t as unknown as Record<string, unknown>))
 
   return createSuccessResponse(ctx, {
     success: true,
@@ -146,6 +118,6 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   return createSuccessResponse(ctx, {
     success: true,
-    template: transformTemplate(template as unknown as Record<string, unknown>),
+    template: transformTemplateRecord(template as unknown as Record<string, unknown>),
   })
 });

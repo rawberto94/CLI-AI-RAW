@@ -11,7 +11,7 @@
  * 5. Generate the renewal document
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, differenceInDays } from 'date-fns';
@@ -44,6 +44,7 @@ import {
   Zap,
   TrendingUp,
   AlertTriangle,
+  GripVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,7 +70,7 @@ import { cn } from '@/lib/utils';
 import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { getCopilotHandoffStorageKey } from '@/lib/drafting/copilot-handoff';
+import { getCopilotHandoffStorageKey, type CopilotWorkflowSummaryItem } from '@/lib/drafting/copilot-handoff';
 
 // Types
 interface OriginalContract {
@@ -183,6 +184,43 @@ const STEPS = [
   { id: 'preview', title: 'Preview', icon: Eye },
   { id: 'confirm', title: 'Confirm', icon: Check },
 ];
+
+const RENEWAL_CONTENT_SIDEBAR_DEFAULT_WIDTH = 380;
+const RENEWAL_CONTENT_SIDEBAR_MIN_WIDTH = 320;
+const RENEWAL_CONTENT_SIDEBAR_MAX_WIDTH = 520;
+const RENEWAL_CONTENT_SIDEBAR_STORAGE_KEY = 'renewal-content-sidebar-width';
+
+const renewalPrimaryButtonClass = 'h-10 rounded-xl bg-gradient-to-r from-violet-500 to-violet-600 text-white shadow-md shadow-violet-500/25 hover:from-violet-600 hover:to-violet-700';
+const renewalOutlineButtonClass = 'h-10 rounded-xl border-slate-200 bg-white/95 text-slate-700 shadow-sm hover:bg-slate-50';
+const renewalGhostButtonClass = 'rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900';
+const renewalInlineOutlineButtonClass = 'h-8 rounded-lg border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50';
+const renewalPanelCardClass = 'rounded-[24px] border border-slate-200/80 bg-white/95 shadow-[0_20px_40px_-34px_rgba(15,23,42,0.35)]';
+
+function clampRenewalContentSidebarWidth(width: number, viewportWidth?: number): number {
+  const widthToClamp = Number.isFinite(width) ? width : RENEWAL_CONTENT_SIDEBAR_DEFAULT_WIDTH;
+  const viewportBound = typeof viewportWidth === 'number' && Number.isFinite(viewportWidth)
+    ? Math.max(
+        RENEWAL_CONTENT_SIDEBAR_MIN_WIDTH,
+        Math.min(RENEWAL_CONTENT_SIDEBAR_MAX_WIDTH, viewportWidth - 560),
+      )
+    : RENEWAL_CONTENT_SIDEBAR_MAX_WIDTH;
+
+  return Math.min(viewportBound, Math.max(RENEWAL_CONTENT_SIDEBAR_MIN_WIDTH, Math.round(widthToClamp)));
+}
+
+function resolveInitialRenewalContentSidebarWidth(): number {
+  if (typeof window === 'undefined') {
+    return RENEWAL_CONTENT_SIDEBAR_DEFAULT_WIDTH;
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(RENEWAL_CONTENT_SIDEBAR_STORAGE_KEY);
+    const parsedWidth = rawValue ? Number(rawValue) : NaN;
+    return clampRenewalContentSidebarWidth(parsedWidth, window.innerWidth);
+  } catch {
+    return RENEWAL_CONTENT_SIDEBAR_DEFAULT_WIDTH;
+  }
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -641,6 +679,30 @@ export default function ContractRenewalPage() {
     if (!draft || !originalContract) return;
 
     const handoffId = `renewal-${contractId}-${Date.now()}`;
+    const renewalValue = draft.adjustForInflation
+      ? Math.round(draft.totalValue * (1 + draft.inflationRate / 100) * 100) / 100
+      : draft.totalValue;
+    const workflowSummaryItems: CopilotWorkflowSummaryItem[] = [
+      {
+        label: 'Renewal term',
+        value: `${format(draft.effectiveDate, 'PPP')} to ${format(draft.expirationDate, 'PPP')}`,
+      },
+      {
+        label: 'Renewal value',
+        value: `${draft.currency} ${renewalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      },
+      {
+        label: 'Clause set',
+        value: `${draft.clauses.length} clause${draft.clauses.length === 1 ? '' : 's'}`,
+      },
+    ];
+
+    if (selectedPlaybook?.name) {
+      workflowSummaryItems.push({
+        label: 'Policy pack',
+        value: selectedPlaybook.name,
+      });
+    }
 
     try {
       window.sessionStorage.setItem(
@@ -650,6 +712,17 @@ export default function ContractRenewalPage() {
           content: buildRenewalDraftHtml(draft, originalContract),
           sourceContractId: contractId,
           sourceMode: 'renewal',
+          workflow: {
+            kind: 'renewal',
+            label: 'Renewal studio',
+            sourceTitle: originalContract.title,
+            returnPath: `/contracts/${contractId}/renew`,
+            returnLabel: 'Back to renewal workflow',
+            sourcePath: `/contracts/${contractId}`,
+            sourceLabel: 'Open source contract',
+            notes: draft.notes.trim() || undefined,
+            summaryItems: workflowSummaryItems,
+          },
           createdAt: new Date().toISOString(),
         }),
       );
@@ -670,7 +743,7 @@ export default function ContractRenewalPage() {
     }
 
     router.push(`/drafting/copilot?${copilotParams.toString()}`);
-  }, [draft, originalContract, contractId, router, selectedPlaybookId]);
+  }, [draft, originalContract, contractId, router, selectedPlaybook, selectedPlaybookId]);
   
   // Update draft
   const updateDraft = (updates: Partial<RenewalDraft>) => {
@@ -839,13 +912,14 @@ export default function ContractRenewalPage() {
             variant="outline"
             onClick={handleBack}
             disabled={currentStep === 0}
+            className={renewalOutlineButtonClass}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
           
           {currentStep < STEPS.length - 1 ? (
-            <Button onClick={handleNext} disabled={!canProceed()}>
+            <Button onClick={handleNext} disabled={!canProceed()} className={renewalPrimaryButtonClass}>
               Next
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
@@ -853,7 +927,7 @@ export default function ContractRenewalPage() {
             <Button 
               onClick={handleCreateRenewal} 
               disabled={saving}
-              className="bg-gradient-to-r from-violet-500 to-violet-600"
+              className={renewalPrimaryButtonClass}
             >
               {saving ? (
                 <>
@@ -1232,7 +1306,7 @@ function ReviewStep({
               size="sm"
               onClick={onRunAiAnalysis}
               disabled={aiAnalysisLoading}
-              className="bg-gradient-to-r from-violet-500 to-violet-600"
+              className={renewalPrimaryButtonClass}
             >
               {aiAnalysisLoading ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</>
@@ -1262,7 +1336,7 @@ function ReviewStep({
               <Button
                 size="sm"
                 onClick={onRunAiAnalysis}
-                className="bg-gradient-to-r from-violet-500 to-violet-600"
+                className={renewalPrimaryButtonClass}
               >
                 <Sparkles className="h-4 w-4 mr-2" />
                 Analyze This Renewal
@@ -1732,6 +1806,12 @@ function ContentStep({
   const [libraryCategory, setLibraryCategory] = useState('all');
   const [addingClauseId, setAddingClauseId] = useState<string | null>(null);
   const [aiClauseLoading, setAiClauseLoading] = useState<string | null>(null); // clause ID being AI-generated
+  const [contentSidebarWidth, setContentSidebarWidth] = useState(resolveInitialRenewalContentSidebarWidth);
+  const [isResizingContentSidebar, setIsResizingContentSidebar] = useState(false);
+  const contentSidebarResizeRef = useRef({
+    startX: 0,
+    startWidth: RENEWAL_CONTENT_SIDEBAR_DEFAULT_WIDTH,
+  });
   
   // Derive AI suggestions from analysis, falling back to basic local hints
   const aiSuggestions: AISuggestion[] = (() => {
@@ -1855,6 +1935,94 @@ function ContentStep({
   });
   
   const categories = [...new Set(libraryClauses.map(c => c.category))];
+  const isRightPanelVisible = showClauseLibrary || showAiSuggestions;
+
+  const setClampedContentSidebarWidth = useCallback((nextWidth: number) => {
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : undefined;
+    setContentSidebarWidth(clampRenewalContentSidebarWidth(nextWidth, viewportWidth));
+  }, []);
+
+  const handleContentSidebarResizeStart = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    contentSidebarResizeRef.current = {
+      startX: event.clientX,
+      startWidth: contentSidebarWidth,
+    };
+    setIsResizingContentSidebar(true);
+  }, [contentSidebarWidth]);
+
+  const handleContentSidebarResizeKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      setClampedContentSidebarWidth(contentSidebarWidth + 24);
+      return;
+    }
+
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      setClampedContentSidebarWidth(contentSidebarWidth - 24);
+      return;
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault();
+      setClampedContentSidebarWidth(RENEWAL_CONTENT_SIDEBAR_MIN_WIDTH);
+      return;
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault();
+      setClampedContentSidebarWidth(RENEWAL_CONTENT_SIDEBAR_MAX_WIDTH);
+    }
+  }, [contentSidebarWidth, setClampedContentSidebarWidth]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(RENEWAL_CONTENT_SIDEBAR_STORAGE_KEY, String(contentSidebarWidth));
+    } catch {
+      // ignore storage failures
+    }
+  }, [contentSidebarWidth]);
+
+  useEffect(() => {
+    const handleWindowResize = () => {
+      setContentSidebarWidth((currentWidth) => clampRenewalContentSidebarWidth(currentWidth, window.innerWidth));
+    };
+
+    window.addEventListener('resize', handleWindowResize);
+    return () => window.removeEventListener('resize', handleWindowResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizingContentSidebar) {
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const deltaX = event.clientX - contentSidebarResizeRef.current.startX;
+      setClampedContentSidebarWidth(contentSidebarResizeRef.current.startWidth - deltaX);
+    };
+
+    const handlePointerUp = () => {
+      setIsResizingContentSidebar(false);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizingContentSidebar, setClampedContentSidebarWidth]);
   
   const updateClause = (id: string, content: string) => {
     const updated = draft.clauses.map(c => 
@@ -1939,7 +2107,7 @@ function ContentStep({
               Add and modify clauses for the renewed contract
             </p>
           </div>
-          <Button onClick={() => setShowClauseLibrary(true)}>
+          <Button onClick={() => setShowClauseLibrary(true)} className={renewalPrimaryButtonClass}>
             <BookOpen className="h-4 w-4 mr-2" />
             Open Clause Library
           </Button>
@@ -1953,11 +2121,11 @@ function ContentStep({
             Add clauses from the library or create custom ones.
           </p>
           <div className="flex items-center justify-center gap-3">
-            <Button variant="outline" onClick={() => addNewClause()}>
+            <Button variant="outline" onClick={() => addNewClause()} className={renewalOutlineButtonClass}>
               <Plus className="h-4 w-4 mr-2" />
               Add Custom Clause
             </Button>
-            <Button onClick={() => setShowClauseLibrary(true)}>
+            <Button onClick={() => setShowClauseLibrary(true)} className={renewalPrimaryButtonClass}>
               <BookOpen className="h-4 w-4 mr-2" />
               Browse Library
             </Button>
@@ -1989,6 +2157,7 @@ function ContentStep({
                   <Button 
                     size="sm" 
                     variant="ghost"
+                    className={renewalGhostButtonClass}
                     onClick={() => applySuggestion(s)}
                   >
                     Apply
@@ -2001,9 +2170,216 @@ function ContentStep({
       </div>
     );
   }
+
+  const renderAiSuggestionsPanel = (className?: string) => (
+    <Card className={cn(renewalPanelCardClass, className)}>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-yellow-500" />
+          AI Suggestions
+          {aiAnalysis && (
+            <Badge variant="secondary" className="text-[10px] bg-violet-100 text-violet-700">
+              AI-Powered
+            </Badge>
+          )}
+        </CardTitle>
+        <CardDescription>
+          {aiAnalysis ? 'Intelligent recommendations from AI analysis' : 'Smart recommendations for your renewal'}
+        </CardDescription>
+        {!aiAnalysis && !aiAnalysisLoading && (
+          <Button size="sm" variant="outline" className={cn(renewalInlineOutlineButtonClass, 'mt-2')} onClick={onRunAiAnalysis}>
+            <Brain className="h-3.5 w-3.5 mr-1.5" />
+            Get AI-powered suggestions
+          </Button>
+        )}
+        {aiAnalysisLoading && (
+          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Generating AI suggestions...
+          </div>
+        )}
+      </CardHeader>
+      <CardContent className="p-0">
+        <ScrollArea className="h-[400px] lg:h-[470px]">
+          {aiSuggestions.length === 0 ? (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              {aiAnalysisLoading ? 'AI is analyzing your clauses...' : 'No suggestions available. Run AI analysis to get started.'}
+            </div>
+          ) : (
+            <div className="space-y-2 p-4">
+              {aiSuggestions.map((suggestion) => (
+                <motion.div
+                  key={suggestion.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={cn(
+                    'p-4 rounded-xl border transition-colors cursor-pointer hover:shadow-sm',
+                    suggestion.priority === 'high'
+                      ? 'border-red-200 bg-red-50/60 hover:bg-red-50'
+                      : suggestion.priority === 'medium'
+                        ? 'border-amber-200 bg-amber-50/60 hover:bg-amber-50'
+                        : 'border-muted bg-muted/30 hover:bg-muted/50'
+                  )}
+                  onClick={() => applySuggestion(suggestion)}
+                >
+                  <div className="flex items-start gap-2">
+                    <div className="flex-shrink-0 mt-0.5">
+                      {suggestion.type === 'warning' && (
+                        <AlertCircle className="h-4 w-4 text-amber-600" />
+                      )}
+                      {suggestion.type === 'update' && (
+                        <Edit3 className="h-4 w-4 text-violet-600" />
+                      )}
+                      {suggestion.type === 'add' && (
+                        <Plus className="h-4 w-4 text-green-600" />
+                      )}
+                      {suggestion.type === 'tip' && (
+                        <Sparkles className="h-4 w-4 text-violet-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{suggestion.title}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {suggestion.description}
+                      </p>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'text-[10px]',
+                        suggestion.priority === 'high' && 'border-red-300 text-red-700',
+                        suggestion.priority === 'medium' && 'border-amber-300 text-amber-700',
+                        suggestion.priority === 'low' && 'border-gray-300 text-gray-600'
+                      )}
+                    >
+                      {suggestion.priority}
+                    </Badge>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+
+  const renderClauseLibraryPanel = (className?: string) => (
+    <Card className={cn(renewalPanelCardClass, className)}>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-violet-600" />
+          Clause Library
+        </CardTitle>
+        <div className="space-y-2 mt-2">
+          <Input
+            placeholder="Search clauses..."
+            value={librarySearch}
+            onChange={(e) => setLibrarySearch(e.target.value)}
+            className="h-9 rounded-xl text-sm"
+          />
+          <Select value={libraryCategory} onValueChange={setLibraryCategory}>
+            <SelectTrigger className="h-9 rounded-xl text-sm">
+              <SelectValue placeholder="All categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {categories.map(cat => (
+                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <ScrollArea className="h-[350px] lg:h-[470px]">
+          {libraryLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredLibrary.length === 0 ? (
+            <div className="p-4 text-center text-muted-foreground text-sm">
+              No clauses found
+            </div>
+          ) : (
+            <div className="space-y-2 p-3">
+              {filteredLibrary.map((clause) => (
+                <div
+                  key={clause.id}
+                  className="p-3 rounded-xl border bg-card hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm">{clause.title}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                        {clause.content.substring(0, 100)}...
+                      </p>
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        <Badge variant="outline" className="text-[10px]">
+                          {clause.category}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'text-[10px]',
+                            clause.riskLevel === 'high' && 'border-red-300 text-red-700',
+                            clause.riskLevel === 'medium' && 'border-amber-300 text-amber-700',
+                            clause.riskLevel === 'low' && 'border-green-300 text-green-700'
+                          )}
+                        >
+                          {clause.riskLevel} risk
+                        </Badge>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className={cn(renewalGhostButtonClass, 'h-8 w-8 flex-shrink-0')}
+                      onClick={() => addFromLibrary(clause)}
+                      disabled={addingClauseId === clause.id}
+                    >
+                      {addingClauseId === clause.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+
+  const renderContentSidebarHandle = () => (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize renewal side panel"
+      aria-valuemin={RENEWAL_CONTENT_SIDEBAR_MIN_WIDTH}
+      aria-valuemax={RENEWAL_CONTENT_SIDEBAR_MAX_WIDTH}
+      aria-valuenow={contentSidebarWidth}
+      tabIndex={0}
+      onPointerDown={handleContentSidebarResizeStart}
+      onKeyDown={handleContentSidebarResizeKeyDown}
+      onDoubleClick={() => setClampedContentSidebarWidth(RENEWAL_CONTENT_SIDEBAR_DEFAULT_WIDTH)}
+      className="group hidden lg:flex w-[14px] cursor-col-resize touch-none items-stretch justify-center outline-none"
+      title="Drag to resize the renewal side panel. Double-click to reset."
+    >
+      <div className={cn(
+        'flex w-2 items-center justify-center rounded-full border border-slate-200/80 bg-white/90 text-slate-400 shadow-sm transition-all duration-150 group-hover:border-violet-200 group-hover:text-violet-500',
+        isResizingContentSidebar && 'border-violet-300 text-violet-600'
+      )}>
+        <GripVertical className="h-4 w-4" />
+      </div>
+    </div>
+  );
   
   return (
-    <div className="space-y-6">
+    <div className={cn('space-y-6', isResizingContentSidebar && 'select-none')}>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Edit Contract Content</h2>
@@ -2017,7 +2393,7 @@ function ContentStep({
               size="sm"
               onClick={onRunAiAnalysis}
               disabled={aiAnalysisLoading}
-              className="bg-gradient-to-r from-violet-500 to-violet-600 text-white"
+              className={renewalPrimaryButtonClass}
             >
               {aiAnalysisLoading ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analyzing...</>
@@ -2027,9 +2403,13 @@ function ContentStep({
             </Button>
           )}
           <Button 
-            variant={showAiSuggestions ? "secondary" : "outline"}
+            variant="outline"
             size="sm"
             onClick={() => setShowAiSuggestions(!showAiSuggestions)}
+            className={cn(
+              renewalOutlineButtonClass,
+              showAiSuggestions && 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'
+            )}
           >
             <Sparkles className="h-4 w-4 mr-2" />
             AI Suggestions
@@ -2040,9 +2420,13 @@ function ContentStep({
             )}
           </Button>
           <Button 
-            variant={showClauseLibrary ? "secondary" : "outline"}
+            variant="outline"
             size="sm"
             onClick={() => setShowClauseLibrary(!showClauseLibrary)}
+            className={cn(
+              renewalOutlineButtonClass,
+              showClauseLibrary && 'border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100'
+            )}
           >
             <BookOpen className="h-4 w-4 mr-2" />
             Clause Library
@@ -2055,14 +2439,15 @@ function ContentStep({
           <div>
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
               <Sparkles className="h-4 w-4 text-violet-600" />
-              Need deeper AI drafting support?
+              Recommended for deep drafting work
+              <Badge variant="secondary" className="bg-violet-100 text-violet-700">Studio</Badge>
             </div>
             <p className="mt-1 text-sm text-slate-600">
-              Open this renewal in AI Copilot. Your current title, dates, notes, and clause edits will be carried into the drafting canvas.
+              Keep this wizard for structured renewal decisions. Use AI Copilot Studio for heavier clause rewrites, negotiation options, and final drafting polish. Your current title, dates, notes, clause edits, and policy pack move with you.
             </p>
           </div>
-          <Button onClick={onOpenCopilot} className="bg-gradient-to-r from-violet-500 to-violet-600">
-            Continue in AI Copilot
+          <Button onClick={onOpenCopilot} className={renewalPrimaryButtonClass}>
+            Open in AI Copilot Studio
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
@@ -2080,13 +2465,21 @@ function ContentStep({
         </div>
       )}
       
-      <div className="grid lg:grid-cols-12 gap-6">
+      <div
+        className={cn(
+          'grid gap-6 lg:items-start',
+          isRightPanelVisible
+            ? 'lg:[grid-template-columns:minmax(0,280px)_minmax(0,1fr)_14px_var(--renewal-content-sidebar-width)]'
+            : 'lg:[grid-template-columns:minmax(0,280px)_minmax(0,1fr)]'
+        )}
+        style={isRightPanelVisible ? ({ '--renewal-content-sidebar-width': `${contentSidebarWidth}px` } as React.CSSProperties) : undefined}
+      >
         {/* Clause List */}
-        <Card className="lg:col-span-3">
+        <Card className={renewalPanelCardClass}>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm">Clauses ({draft.clauses.length})</CardTitle>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => addNewClause()}>
+              <Button size="icon" variant="ghost" className={cn(renewalGhostButtonClass, 'h-8 w-8')} onClick={() => addNewClause()}>
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
@@ -2140,10 +2533,7 @@ function ContentStep({
         </Card>
         
         {/* Clause Editor */}
-        <Card className={cn(
-          "transition-all",
-          showClauseLibrary || showAiSuggestions ? "lg:col-span-5" : "lg:col-span-9"
-        )}>
+        <Card className={cn(renewalPanelCardClass, 'transition-all min-w-0')}>
           <CardHeader className="pb-3">
             {activeClause ? (
               <Input
@@ -2185,7 +2575,7 @@ function ContentStep({
                       key={action}
                       size="sm"
                       variant="outline"
-                      className="h-7 text-xs"
+                      className={renewalInlineOutlineButtonClass}
                       disabled={aiClauseLoading === activeClause.id}
                       onClick={() => generateAiClause(activeClause.id, action)}
                     >
@@ -2212,190 +2602,13 @@ function ContentStep({
           </CardContent>
         </Card>
         
-        {/* AI Suggestions Panel */}
-        {showAiSuggestions && !showClauseLibrary && (
-          <Card className="lg:col-span-4">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-yellow-500" />
-                AI Suggestions
-                {aiAnalysis && (
-                  <Badge variant="secondary" className="text-[10px] bg-violet-100 text-violet-700">
-                    AI-Powered
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription>
-                {aiAnalysis ? 'Intelligent recommendations from AI analysis' : 'Smart recommendations for your renewal'}
-              </CardDescription>
-              {!aiAnalysis && !aiAnalysisLoading && (
-                <Button size="sm" variant="outline" className="mt-2" onClick={onRunAiAnalysis}>
-                  <Brain className="h-3 w-3 mr-1" />
-                  Get AI-powered suggestions
-                </Button>
-              )}
-              {aiAnalysisLoading && (
-                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Generating AI suggestions...
-                </div>
-              )}
-            </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[400px]">
-                {aiSuggestions.length === 0 ? (
-                  <div className="p-4 text-center text-sm text-muted-foreground">
-                    {aiAnalysisLoading ? 'AI is analyzing your clauses...' : 'No suggestions available. Run AI analysis to get started.'}
-                  </div>
-                ) : (
-                <div className="space-y-2 p-4">
-                  {aiSuggestions.map((suggestion) => (
-                    <motion.div
-                      key={suggestion.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={cn(
-                        "p-3 rounded-lg border transition-colors cursor-pointer hover:shadow-sm",
-                        suggestion.priority === 'high' 
-                          ? "border-red-200 bg-red-50/50 hover:bg-red-50" 
-                          : suggestion.priority === 'medium'
-                          ? "border-amber-200 bg-amber-50/50 hover:bg-amber-50"
-                          : "border-muted bg-muted/30 hover:bg-muted/50"
-                      )}
-                      onClick={() => applySuggestion(suggestion)}
-                    >
-                      <div className="flex items-start gap-2">
-                        <div className="flex-shrink-0 mt-0.5">
-                          {suggestion.type === 'warning' && (
-                            <AlertCircle className="h-4 w-4 text-amber-600" />
-                          )}
-                          {suggestion.type === 'update' && (
-                            <Edit3 className="h-4 w-4 text-violet-600" />
-                          )}
-                          {suggestion.type === 'add' && (
-                            <Plus className="h-4 w-4 text-green-600" />
-                          )}
-                          {suggestion.type === 'tip' && (
-                            <Sparkles className="h-4 w-4 text-violet-600" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm">{suggestion.title}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {suggestion.description}
-                          </p>
-                        </div>
-                        <Badge 
-                          variant="outline" 
-                          className={cn(
-                            "text-[10px]",
-                            suggestion.priority === 'high' && "border-red-300 text-red-700",
-                            suggestion.priority === 'medium' && "border-amber-300 text-amber-700",
-                            suggestion.priority === 'low' && "border-gray-300 text-gray-600"
-                          )}
-                        >
-                          {suggestion.priority}
-                        </Badge>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-                )}
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        )}
-        
-        {/* Clause Library Panel */}
-        {showClauseLibrary && (
-          <Card className="lg:col-span-4">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-violet-600" />
-                Clause Library
-              </CardTitle>
-              <div className="space-y-2 mt-2">
-                <Input
-                  placeholder="Search clauses..."
-                  value={librarySearch}
-                  onChange={(e) => setLibrarySearch(e.target.value)}
-                  className="h-8 text-sm"
-                />
-                <Select value={libraryCategory} onValueChange={setLibraryCategory}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="All categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All categories</SelectItem>
-                    {categories.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[350px]">
-                {libraryLoading ? (
-                  <div className="flex items-center justify-center h-32">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : filteredLibrary.length === 0 ? (
-                  <div className="p-4 text-center text-muted-foreground text-sm">
-                    No clauses found
-                  </div>
-                ) : (
-                  <div className="space-y-1 p-2">
-                    {filteredLibrary.map((clause) => (
-                      <div
-                        key={clause.id}
-                        className="p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-sm">{clause.title}</p>
-                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                              {clause.content.substring(0, 100)}...
-                            </p>
-                            <div className="flex items-center gap-2 mt-2">
-                              <Badge variant="outline" className="text-[10px]">
-                                {clause.category}
-                              </Badge>
-                              <Badge 
-                                variant="outline" 
-                                className={cn(
-                                  "text-[10px]",
-                                  clause.riskLevel === 'high' && "border-red-300 text-red-700",
-                                  clause.riskLevel === 'medium' && "border-amber-300 text-amber-700",
-                                  clause.riskLevel === 'low' && "border-green-300 text-green-700"
-                                )}
-                              >
-                                {clause.riskLevel} risk
-                              </Badge>
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="flex-shrink-0"
-                            onClick={() => addFromLibrary(clause)}
-                            disabled={addingClauseId === clause.id}
-                          >
-                            {addingClauseId === clause.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Plus className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        )}
+        {isRightPanelVisible && renderContentSidebarHandle()}
+
+        {showAiSuggestions && !showClauseLibrary && renderAiSuggestionsPanel('hidden lg:block')}
+        {showClauseLibrary && renderClauseLibraryPanel('hidden lg:block')}
+
+        {showAiSuggestions && !showClauseLibrary && renderAiSuggestionsPanel('lg:hidden')}
+        {showClauseLibrary && renderClauseLibraryPanel('lg:hidden')}
       </div>
     </div>
   );

@@ -69,6 +69,13 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
           category: true,
         },
       },
+      playbook: {
+        select: {
+          id: true,
+          name: true,
+          isDefault: true,
+        },
+      },
       sourceContract: {
         select: {
           id: true,
@@ -132,6 +139,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     sourceType = 'NEW',
     templateId: templateIdDirect,
     sourceTemplateId,
+    playbookId,
     sourceContractId,
     content,
     clauses = [],
@@ -151,6 +159,24 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Title is required', 400);
   }
 
+  let resolvedPlaybookId: string | null = null;
+  if (playbookId !== undefined && playbookId !== null && playbookId !== '') {
+    const playbook = await prisma.playbook.findFirst({
+      where: {
+        id: playbookId,
+        tenantId,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+
+    if (!playbook) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Selected policy pack was not found', 400);
+    }
+
+    resolvedPlaybookId = playbook.id;
+  }
+
   const draft = await prisma.contractDraft.create({
     data: {
       tenantId,
@@ -158,6 +184,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       type,
       sourceType,
       templateId: templateIdDirect || sourceTemplateId || null,
+      playbookId: resolvedPlaybookId,
       sourceContractId: sourceContractId || null,
       content,
       clauses,
@@ -181,6 +208,13 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           id: true,
           name: true,
           category: true,
+        },
+      },
+      playbook: {
+        select: {
+          id: true,
+          name: true,
+          isDefault: true,
         },
       },
       createdByUser: {

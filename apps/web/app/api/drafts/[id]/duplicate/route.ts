@@ -49,6 +49,7 @@ export const POST = withAuthApiHandler(
         data: {
           tenantId,
           templateId: source.templateId,
+          playbookId: source.playbookId,
           title: newTitle,
           type: source.type,
           sourceType: source.sourceType,
