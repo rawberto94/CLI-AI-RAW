@@ -105,7 +105,7 @@ export const POST = withAuthApiHandler(
 
       return createSuccessResponse(
         ctx,
-        { draft: duplicate, editUrl: `/drafting?draftId=${duplicate.id}` },
+        { draft: duplicate, editUrl: `/drafting/copilot?draft=${duplicate.id}` },
         { status: 201 },
       );
     } catch (err: unknown) {

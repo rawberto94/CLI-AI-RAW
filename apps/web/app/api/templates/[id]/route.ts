@@ -142,6 +142,8 @@ export async function PUT(
   }
 }
 
+export const PATCH = PUT;
+
 // DELETE /api/templates/[id] - Delete a template
 export async function DELETE(
   request: NextRequest,

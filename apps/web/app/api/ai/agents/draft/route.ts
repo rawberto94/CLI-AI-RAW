@@ -715,7 +715,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           contentLength: html.length,
           steps: steps.map(s => ({ step: s.step, name: s.name, status: s.status, durationMs: s.durationMs })),
           totalDurationMs: Date.now() - step1Start,
-          editUrl: `/drafting?draftId=${draft.id}`,
+          editUrl: `/drafting/copilot?draft=${draft.id}`,
         });
       } catch (error: any) {
         logger.error('Agentic draft generation failed:', error);
@@ -894,7 +894,7 @@ async function executeNonStreaming(
         title: draft.title,
         status: draft.status,
         contractType,
-        editUrl: `/drafting?draftId=${draft.id}`,
+        editUrl: `/drafting/copilot?draft=${draft.id}`,
       },
       generation: {
         method: generationMethod,

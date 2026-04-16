@@ -29,6 +29,7 @@ import {
   CopilotWorkflowSummaryItem,
   getCopilotHandoffStorageKey,
 } from '@/lib/drafting/copilot-handoff';
+import { resolveDraftingQuickStart } from '@/lib/drafting/quick-starts';
 
 interface DraftingPlaybookOption {
   id: string;
@@ -150,12 +151,15 @@ export default function CopilotDraftPage() {
   const sourceContractId = searchParams?.get('from') || searchParams?.get('contractId');
   const handoffId = searchParams?.get('handoff');
   const requestedPlaybookId = searchParams?.get('playbook') || searchParams?.get('playbookId');
+  const requestedDraftType = searchParams?.get('type');
+  const quickStart = resolveDraftingQuickStart(requestedDraftType);
   
   // Track if we've created a draft already
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(draftId || null);
   const savedTitleRef = useRef<string | null>(null);
   const createdDraftLocallyRef = useRef(false);
   const [draftTitleSeed, setDraftTitleSeed] = useState<string | null>(null);
+  const [documentType, setDocumentType] = useState<string | null>(quickStart?.contractType || null);
 
   // Template variable injection flow
   const [templateContent, setTemplateContent] = useState<string | null>(null);
@@ -240,6 +244,11 @@ export default function CopilotDraftPage() {
   }, [draftId, requestedPlaybookId]);
 
   useEffect(() => {
+    if (draftId) return;
+    setDocumentType(quickStart?.contractType || null);
+  }, [draftId, quickStart?.contractType]);
+
+  useEffect(() => {
     if (!draftId) {
       setIsHydratingDraft(false);
       return;
@@ -268,6 +277,7 @@ export default function CopilotDraftPage() {
           setCurrentDraftId(draft.id);
           savedTitleRef.current = draft.title || null;
           setDraftTitleSeed(draft.title || null);
+          setDocumentType(typeof draft.type === 'string' && draft.type.trim().length > 0 ? draft.type : null);
           setHydratedContent(typeof draft.content === 'string' ? draft.content : null);
           setDraftSourceTrailSeed(Array.isArray(draft.clauses) ? draft.clauses : []);
 
@@ -452,11 +462,20 @@ export default function CopilotDraftPage() {
   }, [templateId, draftId, currentDraftId]);
 
   useEffect(() => {
-    if (draftId || currentDraftId || savedTitleRef.current) return;
+    if (draftId || currentDraftId) return;
     if (mode === 'blank') {
+      if (quickStart) {
+        setDocumentType(quickStart.contractType);
+        setDraftTitleSeed(quickStart.defaultTitle);
+        if (!handoffId) {
+          setHydratedContent(quickStart.starterContent);
+        }
+        return;
+      }
+
       setDraftTitleSeed('Untitled Contract');
     }
-  }, [mode, draftId, currentDraftId]);
+  }, [mode, draftId, currentDraftId, handoffId, quickStart]);
 
   // Save handler - persists to database
   const handleSave = useCallback(async ({ content, title, clauses }: { content: string; title: string; clauses?: unknown[] }) => {
@@ -467,6 +486,8 @@ export default function CopilotDraftPage() {
         ? savedTitleRef.current
         : templateName
         ? `Draft - ${decodeURIComponent(templateName)}`
+        : quickStart
+          ? quickStart.defaultTitle
         : mode === 'renewal' && sourceContract
           ? `Renewal - ${sourceContract.title}`
           : mode === 'amendment' && sourceContract
@@ -506,9 +527,9 @@ export default function CopilotDraftPage() {
             title: resolvedTitle,
             content,
             clauses,
-            type: 'contract',
+            type: documentType || quickStart?.contractType || 'MSA',
             status: 'DRAFT',
-            sourceType: isRenewal ? 'RENEWAL' : isAmendment ? 'AMENDMENT' : templateId ? 'template' : 'blank',
+            sourceType: isRenewal ? 'RENEWAL' : isAmendment ? 'AMENDMENT' : templateId ? 'TEMPLATE' : 'NEW',
             sourceTemplateId: templateId || undefined,
             playbookId: selectedPlaybookId || undefined,
             sourceContractId: sourceContractId || undefined,
@@ -550,7 +571,7 @@ export default function CopilotDraftPage() {
       toast.error('Failed to save draft');
       throw error;
     }
-  }, [activeDraftId, templateId, templateName, router, mode, sourceContract, sourceContractId, handoffId, selectedPlaybookId]);
+  }, [activeDraftId, templateId, templateName, router, mode, sourceContract, sourceContractId, handoffId, selectedPlaybookId, documentType, quickStart]);
 
   const handlePlaybookChange = useCallback(async (value: string) => {
     const nextPlaybookId = value === 'none' ? null : value;
@@ -633,6 +654,14 @@ export default function CopilotDraftPage() {
       };
     }
     if (mode === 'blank') {
+      if (quickStart) {
+        return {
+          title: `New ${quickStart.label}`,
+          description: `Start from a prepared ${quickStart.label} structure and refine it in the drafting studio.`,
+          icon: FileText,
+        };
+      }
+
       return {
         title: 'New Contract',
         description: 'Start drafting a new contract from scratch',
@@ -747,6 +776,7 @@ export default function CopilotDraftPage() {
             initialContent={hydratedContent || undefined}
             initialTitle={draftTitleSeed || undefined}
             initialSourceTrail={draftSourceTrailSeed}
+            contractType={documentType || quickStart?.contractType || undefined}
             playbookId={selectedPlaybookId || undefined}
             workflowContext={workflowContext || undefined}
           />

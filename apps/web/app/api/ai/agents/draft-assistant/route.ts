@@ -982,7 +982,7 @@ ${variableBlock || 'None specified — use standard placeholders'}${templateBloc
   emit('generation_complete', {
     draftId: draft.id,
     title: draft.title,
-    editUrl: `/drafting?draftId=${draft.id}`,
+    editUrl: `/drafting/copilot?draft=${draft.id}`,
   });
 }
 

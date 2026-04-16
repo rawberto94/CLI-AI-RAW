@@ -575,6 +575,9 @@ importers:
       '@repo/utils':
         specifier: workspace:*
         version: link:../utils
+      clients-db:
+        specifier: workspace:*
+        version: link:../clients/db
       jsonschema:
         specifier: ^1.4.1
         version: 1.5.0
@@ -630,7 +633,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^2.1.8
-        version: 2.1.9(@types/node@22.19.7)(jsdom@25.0.1)
+        version: 2.1.9(@types/node@20.19.30)
 
   packages/clients/openai:
     dependencies:

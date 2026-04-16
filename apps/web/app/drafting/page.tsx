@@ -15,6 +15,7 @@ import { useTemplates } from '@/hooks/use-queries'
 import { useDebounce } from '@/hooks/useDebounce'
 import { cn } from '@/lib/utils'
 import { sanitizeHtml } from '@/lib/security/sanitize'
+import { DRAFTING_QUICK_STARTS } from '@/lib/drafting/quick-starts'
 import { toast } from 'sonner'
 import {
   FileText,
@@ -87,13 +88,6 @@ interface Template {
 // ============================================================================
 // Constants
 // ============================================================================
-
-const QUICK_STARTS = [
-  { id: 'nda', label: 'NDA', icon: '🔒', desc: 'Non-Disclosure Agreement' },
-  { id: 'msa', label: 'MSA', icon: '📋', desc: 'Master Services Agreement' },
-  { id: 'sow', label: 'SOW', icon: '📝', desc: 'Statement of Work' },
-  { id: 'employment', label: 'Employment', icon: '👥', desc: 'Employment Contract' },
-]
 
 // ============================================================================
 // Sub-components
@@ -454,10 +448,17 @@ export default function DraftingPage() {
   }, [aiPrompt])
 
   const handleTemplateUse = useCallback(
-    (template: Template) => {
-      router.push(
-        `/drafting/copilot?template=${template.id}&name=${encodeURIComponent(template.name)}`,
-      )
+    (template: Template, quickStartType?: string) => {
+      const params = new URLSearchParams({
+        template: template.id,
+        name: template.name,
+      })
+
+      if (quickStartType) {
+        params.set('type', quickStartType)
+      }
+
+      router.push(`/drafting/copilot?${params.toString()}`)
     },
     [router],
   )
@@ -598,18 +599,19 @@ export default function DraftingPage() {
               </div>
 
               <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
-                {QUICK_STARTS.map((item) => (
+                {DRAFTING_QUICK_STARTS.map((item) => (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => {
                       const match = templates.find(
-                        (t) =>
-                          t.name.toLowerCase().includes(item.id) ||
-                          t.name.toLowerCase().includes(item.label.toLowerCase()),
+                        (t) => {
+                          const lowerName = t.name.toLowerCase()
+                          return item.searchTerms.some((term) => lowerName.includes(term))
+                        },
                       )
                       if (match) {
-                        handleTemplateUse(match)
+                        handleTemplateUse(match, item.id)
                       } else {
                         router.push(`/drafting/copilot?mode=blank&type=${item.id}`)
                       }
