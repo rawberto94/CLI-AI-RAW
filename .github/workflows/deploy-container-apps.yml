@@ -1,86 +1,224 @@
 name: Deploy to Azure Container Apps
 
-# ⛔ PRODUCTION DEPLOY — Manual only. Never auto-deploy on push.
-# All dev/test builds happen locally on Hetzner. See docs/LOCAL_E2E_TESTING.md
+# Production and staging releases are manual only.
 on:
+  workflow_call:
+    inputs:
+      environment:
+        description: Deployment environment.
+        required: false
+        default: production
+        type: string
+      version:
+        description: Optional image tag override.
+        required: false
+        default: ''
+        type: string
+      confirm_production:
+        description: Safety confirmation string.
+        required: false
+        default: ''
+        type: string
+    secrets:
+      AZURE_CREDENTIALS:
+        required: true
   workflow_dispatch:
     inputs:
+      environment:
+        description: Deployment environment
+        required: true
+        default: production
+        type: choice
+        options:
+          - staging
+          - production
       version:
-        description: "Image version tag (e.g., v1.0.5)"
+        description: Optional image tag override (e.g. v1.0.5)
         required: false
-        default: ""
+        default: ''
       confirm_production:
-        description: "Type 'deploy-production' to confirm"
+        description: Type 'deploy-production' to confirm
         required: true
 
-env:
-  AZURE_RESOURCE_GROUP: contigoContainerApps
-  ACR_NAME: contigoacr2026
-  CONTAINER_APP_NAME: contigo
+permissions:
+  contents: read
+
+concurrency:
+  group: azure-container-apps-${{ inputs.environment }}
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    if: github.event.inputs.confirm_production == 'deploy-production'
-    environment: production
+    timeout-minutes: 60
+    if: inputs.confirm_production == 'deploy-production'
+    environment: ${{ inputs.environment }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set version tag
-        id: version
+      - name: Resolve deployment settings
+        id: settings
+        shell: bash
+        env:
+          DEFAULT_PROD_RESOURCE_GROUP: contigoContainerApps
+          DEFAULT_PROD_ACR_NAME: contigoacr2026
+          DEFAULT_PROD_CONTAINER_APP_NAME: contigo
+          DEFAULT_IMAGE_REPOSITORY: contigo-web
+          DEFAULT_HEALTHCHECK_PATH: /api/health
         run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          set -euo pipefail
+
+          environment='${{ inputs.environment }}'
+          resource_group='${{ vars.AZURE_RESOURCE_GROUP }}'
+          acr_name='${{ vars.ACR_NAME }}'
+          container_app_name='${{ vars.CONTAINER_APP_NAME }}'
+          image_repository='${{ vars.IMAGE_REPOSITORY }}'
+          healthcheck_path='${{ vars.HEALTHCHECK_PATH }}'
+
+          if [[ "$environment" == 'production' ]]; then
+            : "${resource_group:=$DEFAULT_PROD_RESOURCE_GROUP}"
+            : "${acr_name:=$DEFAULT_PROD_ACR_NAME}"
+            : "${container_app_name:=$DEFAULT_PROD_CONTAINER_APP_NAME}"
           else
-            echo "tag=sha-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+            [[ -n "$resource_group" ]] || { echo 'AZURE_RESOURCE_GROUP environment variable is required for staging.' >&2; exit 1; }
+            [[ -n "$acr_name" ]] || { echo 'ACR_NAME environment variable is required for staging.' >&2; exit 1; }
+            [[ -n "$container_app_name" ]] || { echo 'CONTAINER_APP_NAME environment variable is required for staging.' >&2; exit 1; }
           fi
 
-      - name: Azure Login
+          : "${image_repository:=$DEFAULT_IMAGE_REPOSITORY}"
+          : "${healthcheck_path:=$DEFAULT_HEALTHCHECK_PATH}"
+
+          channel_tag='latest'
+          if [[ "$environment" == 'staging' ]]; then
+            channel_tag='staging-latest'
+          fi
+
+          echo "resource_group=$resource_group" >> "$GITHUB_OUTPUT"
+          echo "acr_name=$acr_name" >> "$GITHUB_OUTPUT"
+          echo "registry_server=${acr_name}.azurecr.io" >> "$GITHUB_OUTPUT"
+          echo "container_app_name=$container_app_name" >> "$GITHUB_OUTPUT"
+          echo "image_repository=$image_repository" >> "$GITHUB_OUTPUT"
+          echo "healthcheck_path=$healthcheck_path" >> "$GITHUB_OUTPUT"
+          echo "channel_tag=$channel_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare image tag
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          requested='${{ inputs.version }}'
+          if [[ -n "$requested" ]]; then
+            sanitized=$(printf '%s' "$requested" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//')
+            if [[ -z "$sanitized" ]]; then
+              echo 'Provided version produced an empty Docker tag after sanitization.' >&2
+              exit 1
+            fi
+            tag="$sanitized"
+          else
+            tag="sha-${GITHUB_SHA::8}"
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "image=${{ steps.settings.outputs.registry_server }}/${{ steps.settings.outputs.image_repository }}:$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Azure login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Login to ACR
+      - name: Prepare Azure CLI
+        shell: bash
         run: |
-          az acr login --name ${{ env.ACR_NAME }}
+          set -euo pipefail
+          az config set extension.use_dynamic_install=yes_without_prompt
+          az extension add --name containerapp --upgrade
 
-      - name: Build and push image
+      - name: Build image in Azure Container Registry
+        shell: bash
         run: |
+          set -euo pipefail
           az acr build \
-            --registry ${{ env.ACR_NAME }} \
-            --image contigo-web:${{ steps.version.outputs.tag }} \
-            --image contigo-web:latest \
+            --registry '${{ steps.settings.outputs.acr_name }}' \
+            --image '${{ steps.settings.outputs.image_repository }}:${{ steps.version.outputs.tag }}' \
+            --image '${{ steps.settings.outputs.image_repository }}:${{ steps.settings.outputs.channel_tag }}' \
             --file Dockerfile \
+            --build-arg CACHE_BUST='${{ github.sha }}' \
             .
 
-      - name: Deploy to Container Apps
+      - name: Deploy image to Azure Container Apps
+        shell: bash
         run: |
+          set -euo pipefail
           az containerapp update \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --image ${{ env.ACR_NAME }}.azurecr.io/contigo-web:${{ steps.version.outputs.tag }}
+            --name '${{ steps.settings.outputs.container_app_name }}' \
+            --resource-group '${{ steps.settings.outputs.resource_group }}' \
+            --image '${{ steps.version.outputs.image }}' \
+            --output none
 
-      - name: Verify deployment
+      - name: Verify deployed image
+        id: verify
+        shell: bash
         run: |
-          # Wait for deployment to stabilize
-          sleep 30
-          
-          # Check provisioning state
-          STATE=$(az containerapp show \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --query "properties.provisioningState" -o tsv)
-          
-          if [ "$STATE" != "Succeeded" ]; then
-            echo "Deployment failed with state: $STATE"
+          set -euo pipefail
+
+          deployed_image=$(az containerapp show \
+            --name '${{ steps.settings.outputs.container_app_name }}' \
+            --resource-group '${{ steps.settings.outputs.resource_group }}' \
+            --query 'properties.template.containers[0].image' \
+            -o tsv)
+
+          provisioning_state=$(az containerapp show \
+            --name '${{ steps.settings.outputs.container_app_name }}' \
+            --resource-group '${{ steps.settings.outputs.resource_group }}' \
+            --query 'properties.provisioningState' \
+            -o tsv)
+
+          fqdn=$(az containerapp show \
+            --name '${{ steps.settings.outputs.container_app_name }}' \
+            --resource-group '${{ steps.settings.outputs.resource_group }}' \
+            --query 'properties.configuration.ingress.fqdn' \
+            -o tsv)
+
+          [[ "$provisioning_state" == 'Succeeded' ]] || {
+            echo "Deployment finished with provisioning state: $provisioning_state" >&2
             exit 1
-          fi
-          
-          echo "Deployment successful!"
-          
-          # Get app URL
-          az containerapp show \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --query "properties.configuration.ingress.fqdn" -o tsv
+          }
+
+          [[ "$deployed_image" == '${{ steps.version.outputs.image }}' ]] || {
+            echo "Expected deployed image '${{ steps.version.outputs.image }}' but found '$deployed_image'." >&2
+            exit 1
+          }
+
+          [[ -n "$fqdn" ]] || {
+            echo 'Container App ingress FQDN is empty.' >&2
+            exit 1
+          }
+
+          echo "app_url=https://$fqdn" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test application health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --retry 12 \
+            --retry-all-errors \
+            --retry-delay 10 \
+            '${{ steps.verify.outputs.app_url }}${{ steps.settings.outputs.healthcheck_path }}' \
+            > /dev/null
+
+      - name: Publish deployment summary
+        shell: bash
+        run: |
+          {
+            echo '## Azure Container Apps Deployment'
+            echo ''
+            echo '- Environment: `${{ inputs.environment }}`'
+            echo '- Resource group: `${{ steps.settings.outputs.resource_group }}`'
+            echo '- Container app: `${{ steps.settings.outputs.container_app_name }}`'
+            echo '- Image: `${{ steps.version.outputs.image }}`'
+            echo '- App URL: ${{ steps.verify.outputs.app_url }}'
+          } >> "$GITHUB_STEP_SUMMARY"

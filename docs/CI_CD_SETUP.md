@@ -28,23 +28,25 @@ This document describes the automated deployment pipeline for the Contigo applic
 
 ## Workflow File
 
-Location: `.github/workflows/deploy-container-apps.yml`
+Canonical workflow: `.github/workflows/deploy-container-apps.yml`
+
+Compatibility alias: `.github/workflows/azure-deploy.yml`
 
 ### Triggers
 
 | Trigger | Description |
 |---------|-------------|
-| `push` to `main` | Automatic deployment on every merge to main |
-| `workflow_dispatch` | Manual trigger with optional version tag |
+| `workflow_dispatch` | Manual deployment with environment selection and optional version tag |
 
 ### Jobs
 
 **build-and-deploy:**
-1. Checkout code
+
+1. Resolve environment-specific Azure settings
 2. Login to Azure
 3. Build image in ACR (no local Docker required)
-4. Deploy to Container Apps
-5. Verify deployment status
+4. Deploy the selected image to Container Apps
+5. Verify the deployed image and smoke-test `/api/health`
 
 ## Setup Instructions
 
@@ -61,6 +63,7 @@ az ad sp create-for-rbac `
 ```
 
 This outputs JSON like:
+
 ```json
 {
   "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
@@ -80,12 +83,32 @@ This outputs JSON like:
 5. Value: Paste the entire JSON output from step 1
 6. Click **Add secret**
 
-### 3. Verify Setup
+### 3. Configure GitHub Environment Variables
 
-Push a commit to `main` or manually trigger the workflow:
+For the `production` environment you can rely on the workflow defaults, or set explicit environment variables:
+
+- `AZURE_RESOURCE_GROUP`
+- `ACR_NAME`
+- `CONTAINER_APP_NAME`
+- `IMAGE_REPOSITORY` (optional, defaults to `contigo-web`)
+- `HEALTHCHECK_PATH` (optional, defaults to `/api/health`)
+
+For the `staging` environment, set at least:
+
+- `AZURE_RESOURCE_GROUP`
+- `ACR_NAME`
+- `CONTAINER_APP_NAME`
+
+These should be configured under GitHub `Settings` → `Environments` so staging cannot accidentally deploy to production resources.
+
+### 4. Verify Setup
+
+Manually trigger the workflow:
+
 1. Go to **Actions** tab in GitHub
 2. Select **Deploy to Azure Container Apps**
-3. Click **Run workflow** (for manual trigger)
+3. Choose `staging` or `production`
+4. Click **Run workflow**
 
 ## Manual Deployment
 
@@ -110,11 +133,14 @@ az containerapp update --name contigo --resource-group contigoContainerApps --im
 
 ## Version Tagging
 
-### Automatic (default)
-When triggered by push, images are tagged with: `sha-<first-8-chars-of-commit-hash>`
+### Default
+
+If no explicit version is provided, images are tagged as: `sha-<first-8-chars-of-commit-hash>`
 
 ### Manual version
+
 When using workflow_dispatch, specify a version:
+
 1. Go to **Actions** → **Deploy to Azure Container Apps**
 2. Click **Run workflow**
 3. Enter version (e.g., `v1.0.5`)
@@ -123,16 +149,19 @@ When using workflow_dispatch, specify a version:
 ## Monitoring
 
 ### Application Insights
+
 - Resource: `contigo-insights`
 - View logs and metrics in Azure Portal
 - Connection string is automatically injected as `APPLICATIONINSIGHTS_CONNECTION_STRING`
 
 ### Container App Logs
+
 ```powershell
 az containerapp logs show --name contigo --resource-group contigoContainerApps --follow
 ```
 
 ### Check Deployment Status
+
 ```powershell
 az containerapp show --name contigo --resource-group contigoContainerApps --query "{state:properties.provisioningState, image:properties.template.containers[0].image, replicas:properties.runningStatus}" -o json
 ```
@@ -163,10 +192,12 @@ az containerapp update --name contigo --resource-group contigoContainerApps --im
 ## Troubleshooting
 
 ### Build fails
-- Check ACR build logs in Azure Portal → `contigoacr2026` → **Runs**
-- Common issues: TypeScript errors, missing dependencies
+
+- Check ACR build logs in Azure Portal → your ACR → **Runs**
+- Common issues: TypeScript errors, missing dependencies, or stale workflow environment variables
 
 ### Deployment stuck "InProgress"
+
 ```powershell
 # Check status
 az containerapp show --name contigo --resource-group contigoContainerApps --query "properties.provisioningState" -o tsv
@@ -176,6 +207,7 @@ az containerapp revision list --name contigo --resource-group contigoContainerAp
 ```
 
 ### Container crashes
+
 ```powershell
 # Check container logs
 az containerapp logs show --name contigo --resource-group contigoContainerApps --type console
@@ -188,9 +220,9 @@ az containerapp show --name contigo --resource-group contigoContainerApps --quer
 
 | Resource | Link |
 |----------|------|
-| Azure Portal | https://portal.azure.com |
+| Azure Portal | <https://portal.azure.com> |
 | Container Apps | `contigoContainerApps` → `contigo` |
 | Container Registry | `contigoacr2026` |
 | Application Insights | `contigo-insights` |
-| App URL | https://www.mycontigo.app |
-| Alt URL | https://contigo.mangoglacier-821a6329.switzerlandnorth.azurecontainerapps.io |
+| App URL | <https://www.mycontigo.app> |
+| Alt URL | <https://contigo.mangoglacier-821a6329.switzerlandnorth.azurecontainerapps.io> |

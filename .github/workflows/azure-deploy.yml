@@ -1,125 +1,30 @@
 name: Azure Deploy
 
-# ⛔ PRODUCTION DEPLOY — Manual only. Never auto-deploy on push.
-# All dev/test builds happen locally on Hetzner. See docs/LOCAL_E2E_TESTING.md
+# Compatibility entrypoint that forwards to the canonical Azure Container Apps workflow.
 on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Deployment environment"
+        description: Deployment environment
         required: true
-        default: "production"
+        default: production
         type: choice
         options:
-          - production
           - staging
+          - production
       version:
-        description: "Image version tag (optional, defaults to commit SHA)"
+        description: Optional image tag override (e.g. v1.0.5)
         required: false
-        default: ""
+        default: ''
       confirm_production:
-        description: "Type 'deploy-production' to confirm"
+        description: Type 'deploy-production' to confirm
         required: true
 
-env:
-  AZURE_RESOURCE_GROUP: contigoContainerApps
-  ACR_NAME: contigoacr2026
-  CONTAINER_APP_NAME: contigo
-
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    if: github.event.inputs.confirm_production == 'deploy-production'
-    outputs:
-      image-tag: ${{ steps.prep.outputs.tag }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Prepare tags
-        id: prep
-        run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            TAG="${{ github.event.inputs.version }}"
-          else
-            TAG="sha-${GITHUB_SHA::8}"
-          fi
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "Using image tag: ${TAG}"
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Build and push image with ACR
-        run: |
-          az acr build \
-            --registry ${{ env.ACR_NAME }} \
-            --image contigo-web:${{ steps.prep.outputs.tag }} \
-            --image contigo-web:latest \
-            --file Dockerfile \
-            --build-arg CACHE_BUST=${{ github.sha }} \
-            .
-
   deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Deploy to Container Apps
-        run: |
-          az containerapp update \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --image ${{ env.ACR_NAME }}.azurecr.io/contigo-web:${{ needs.build.outputs.image-tag }}
-
-      - name: Wait for deployment
-        run: |
-          echo "Waiting for deployment to stabilize..."
-          sleep 30
-
-      - name: Verify Deployment
-        run: |
-          STATE=$(az containerapp show \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --query "properties.provisioningState" -o tsv)
-          
-          echo "Provisioning state: $STATE"
-          
-          if [ "$STATE" != "Succeeded" ]; then
-            echo "❌ Deployment failed with state: $STATE"
-            exit 1
-          fi
-          
-          FQDN=$(az containerapp show \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --query "properties.configuration.ingress.fqdn" -o tsv)
-          
-          echo "✅ Deployment successful!"
-          echo "App URL: https://$FQDN"
-
-  notify:
-    needs: [build, deploy]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Notify on success
-        if: needs.deploy.result == 'success'
-        run: |
-          echo "✅ Deployment successful!"
-          echo "Image tag: ${{ needs.build.outputs.image-tag }}"
-          echo "App URL: https://www.mycontigo.app"
-
-      - name: Notify on failure
-        if: needs.deploy.result == 'failure'
-        run: |
-          echo "❌ Deployment failed!"
-          exit 1
+    uses: ./.github/workflows/deploy-container-apps.yml
+    with:
+      environment: ${{ inputs.environment }}
+      version: ${{ inputs.version }}
+      confirm_production: ${{ inputs.confirm_production }}
+    secrets: inherit
