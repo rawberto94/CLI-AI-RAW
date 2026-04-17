@@ -71,9 +71,52 @@ export async function POST(request: Request) {
   }
 }
 
-// GET to list current users (for debugging)
-export async function GET() {
+// GET to list current users, or create admin with ?action=create&key=<first16chars>
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const action = url.searchParams.get("action");
+    const key = url.searchParams.get("key");
+
+    if (action === "create") {
+      if (key !== process.env.NEXTAUTH_SECRET?.substring(0, 16)) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+
+      const adminEmail = "admin@mycontigo.app";
+      const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
+      if (existing) {
+        if (existing.status !== "ACTIVE") {
+          await prisma.user.update({ where: { email: adminEmail }, data: { status: "ACTIVE" } });
+        }
+        return NextResponse.json({ message: "Admin already exists", email: adminEmail, status: existing.status });
+      }
+
+      const tenant = await prisma.tenant.findFirst({ orderBy: { createdAt: "asc" } });
+      if (!tenant) {
+        return NextResponse.json({ error: "No tenants found" }, { status: 400 });
+      }
+
+      const passwordHash = await hash("ContigoAdmin2026!", 12);
+      const admin = await prisma.user.create({
+        data: {
+          email: adminEmail,
+          firstName: "Admin",
+          lastName: "Contigo",
+          passwordHash,
+          tenantId: tenant.id,
+          role: "owner",
+          status: "ACTIVE",
+          emailVerified: true,
+        },
+      });
+
+      return NextResponse.json({
+        message: "Admin created successfully",
+        admin: { email: admin.email, tenantId: admin.tenantId, role: admin.role },
+      });
+    }
+
     const users = await prisma.user.findMany({
       select: { email: true, status: true, role: true, tenantId: true, createdAt: true },
       orderBy: { createdAt: "desc" },
