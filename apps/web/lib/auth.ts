@@ -125,18 +125,24 @@ providers.push(
       const email = credentials.email as string;
 
       try {
-        // --- Account Lockout Check ---
-        const lockout = getAccountLockout();
-        const isLocked = await lockout.isLocked(email);
-        if (isLocked) {
-          await auditLog({
-            action: AuditAction.LOGIN_FAILED,
-            userEmail: email,
-            metadata: { reason: 'account_locked' },
-            success: false,
-            errorMessage: 'Account temporarily locked due to too many failed attempts',
-          });
-          return null;
+        // --- Account Lockout Check (graceful degradation if Redis is down) ---
+        let lockout: ReturnType<typeof getAccountLockout> | null = null;
+        try {
+          lockout = getAccountLockout();
+          const isLocked = await lockout.isLocked(email);
+          if (isLocked) {
+            await auditLog({
+              action: AuditAction.LOGIN_FAILED,
+              userEmail: email,
+              metadata: { reason: 'account_locked' },
+              success: false,
+              errorMessage: 'Account temporarily locked due to too many failed attempts',
+            });
+            return null;
+          }
+        } catch (lockoutError) {
+          console.warn('[Auth] Lockout check failed (Redis unavailable), proceeding without lockout:', lockoutError instanceof Error ? lockoutError.message : lockoutError);
+          lockout = null;
         }
 
         const user = await prisma.user.findUnique({
@@ -146,7 +152,7 @@ providers.push(
 
         if (!user || !user.passwordHash) {
           // Record failed attempt even for non-existent users (prevents user enumeration timing)
-          await lockout.recordFailedAttempt(email, 'unknown').catch(() => {});
+          await lockout?.recordFailedAttempt(email, 'unknown').catch(() => {});
           await auditLog({
             action: AuditAction.LOGIN_FAILED,
             userEmail: email,
@@ -187,7 +193,7 @@ providers.push(
         }
 
         if (!isPasswordValid) {
-          await lockout.recordFailedAttempt(email, 'unknown').catch(() => {});
+          await lockout?.recordFailedAttempt(email, 'unknown').catch(() => {});
           await auditLog({
             action: AuditAction.LOGIN_FAILED,
             userId: user.id,
@@ -213,7 +219,7 @@ providers.push(
         }
 
         // Successful login — reset lockout counter & audit log
-        await lockout.recordSuccessfulLogin(email, 'unknown').catch(() => {});
+        await lockout?.recordSuccessfulLogin(email, 'unknown').catch(() => {});
         await auditLog({
           action: AuditAction.LOGIN_SUCCESS,
           userId: user.id,
