@@ -1,0 +1,8 @@
+﻿{
+    "password":  "TestPass123!",
+    "organizationName":  "Test Org 456",
+    "lastName":  "User",
+    "email":  "testnewuser456@example.com",
+    "firstName":  "Test",
+    "organizationSlug":  "test-org-456"
+}

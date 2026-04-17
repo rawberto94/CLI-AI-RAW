@@ -1,0 +1,19 @@
+FROM node:22-alpine
+WORKDIR /app
+RUN apk add --no-cache openssl libc6-compat
+RUN npm install -g pnpm@8.9.0
+
+# Copy only what's needed for prisma
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/clients/db/package.json ./packages/clients/db/
+COPY packages/clients/db/schema.prisma ./packages/clients/db/
+
+# Install dependencies
+RUN pnpm install --filter clients-db
+
+# Copy full db package
+COPY packages/clients/db/ ./packages/clients/db/
+
+# Run db push during build (ARG available at build time)
+ARG DATABASE_URL
+RUN cd packages/clients/db && DATABASE_URL="${DATABASE_URL}" pnpm exec prisma db push --skip-generate --accept-data-loss
