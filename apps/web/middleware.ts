@@ -305,6 +305,7 @@ const publicApiPaths = [
   "/api/csrf", // CSRF token must be obtainable before/during login
   "/api/taxonomy/presets", // Industry preset templates (read-only, public)
   "/api/portal/validate-token", // Portal token validation
+  "/api/debug", // Debug endpoints (temporary, remove in production)
 ];
 
 // Static/public assets that bypass auth
