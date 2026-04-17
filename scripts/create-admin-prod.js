@@ -1,4 +1,5 @@
 // Create admin user script - run inside the container
+// Must be copied to /app/ before running so node_modules resolve correctly
 const bcrypt = require('bcryptjs');
 const { PrismaClient } = require('@prisma/client');
 const p = new PrismaClient();
