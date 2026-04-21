@@ -182,7 +182,7 @@ export function SessionManagement() {
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
-          <Button onClick={fetchSessions} className="mt-4" variant="outline">
+          <Button onClick={() => fetchSessions()} className="mt-4" variant="outline">
             <RefreshCcw className="h-4 w-4 mr-2" />
             Try Again
           </Button>
@@ -204,7 +204,7 @@ export function SessionManagement() {
           </CardDescription>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchSessions}>
+          <Button variant="outline" size="sm" onClick={() => fetchSessions()}>
             <RefreshCcw className="h-4 w-4 mr-2" />
             Refresh
           </Button>

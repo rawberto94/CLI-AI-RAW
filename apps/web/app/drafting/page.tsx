@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { PageBreadcrumb } from '@/components/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,14 @@ import {
   BookOpen,
   LayoutTemplate,
   Download,
+  Link2,
+  CornerDownLeft,
+  Command as CommandIcon,
+  Zap,
+  Activity,
+  History,
+  Paperclip,
+  ChevronRight,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -47,16 +55,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 
 // ============================================================================
 // Types
@@ -72,6 +70,9 @@ interface Draft {
   createdAt: string
   updatedAt: string
   template?: { id: string; name: string; category?: string } | null
+  sourceContract?: { id: string; contractTitle?: string | null; supplierName?: string | null } | null
+  playbook?: { id: string; name: string; isDefault?: boolean } | null
+  createdByUser?: { firstName?: string | null; lastName?: string | null; email?: string | null } | null
 }
 
 interface Template {
@@ -105,7 +106,6 @@ function DraftCard({
   onExport: (id: string, format: 'pdf' | 'docx' | 'json') => void
 }) {
   const router = useRouter()
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const updatedDate = new Date(draft.updatedAt)
   const diffMs = Date.now() - updatedDate.getTime()
   const diffMins = Math.floor(diffMs / 60000)
@@ -117,57 +117,194 @@ function DraftCard({
   else if (diffHours > 0) timeAgo = `${diffHours}h ago`
   else if (diffMins > 0) timeAgo = `${diffMins}m ago`
 
-  const statusColors: Record<string, string> = {
-    DRAFT: 'bg-slate-100 text-slate-600',
-    IN_PROGRESS: 'bg-blue-100 text-blue-700',
-    REVIEW: 'bg-amber-100 text-amber-700',
-    COMPLETED: 'bg-emerald-100 text-emerald-700',
+  // Fresh edit within 10 minutes → live pulse dot.
+  const isLive = diffMs < 10 * 60_000
+
+  const statusStyles: Record<string, { dot: string; label: string; text: string }> = {
+    DRAFT:            { dot: 'bg-slate-400',   label: 'Draft',            text: 'text-slate-600' },
+    IN_PROGRESS:     { dot: 'bg-blue-500',    label: 'In Progress',      text: 'text-blue-700' },
+    IN_REVIEW:       { dot: 'bg-amber-500',   label: 'In Review',        text: 'text-amber-700' },
+    PENDING_APPROVAL: { dot: 'bg-amber-500',   label: 'Pending Approval', text: 'text-amber-700' },
+    APPROVED:        { dot: 'bg-emerald-500', label: 'Approved',         text: 'text-emerald-700' },
+    REJECTED:        { dot: 'bg-rose-500',    label: 'Rejected',         text: 'text-rose-700' },
+    FINALIZED:       { dot: 'bg-violet-500',  label: 'Finalized',        text: 'text-violet-700' },
+    COMPLETED:       { dot: 'bg-emerald-500', label: 'Completed',        text: 'text-emerald-700' },
   }
+  const status = statusStyles[draft.status] || statusStyles.DRAFT
+
+  const sourceTypeLabel =
+    draft.sourceType === 'RENEWAL'
+      ? 'Renewal'
+      : draft.sourceType === 'AMENDMENT'
+        ? 'Amendment'
+        : null
+
+  const counterparty =
+    draft.sourceContract?.supplierName ||
+    draft.sourceContract?.contractTitle ||
+    null
+
+  const ownerInitials = (() => {
+    const u = draft.createdByUser
+    if (!u) return null
+    const first = (u.firstName || '').trim()
+    const last = (u.lastName || '').trim()
+    if (first || last) return `${first[0] || ''}${last[0] || ''}`.toUpperCase()
+    const email = u.email || ''
+    return email ? email.slice(0, 2).toUpperCase() : null
+  })()
+
+  const templateLabel = draft.template?.name || null
+  const categoryLabel = draft.template?.category || null
+  const playbookLabel = draft.playbook?.name || null
+
+  const resolvedTitle =
+    draft.title && draft.title.trim() && !/^untitled/i.test(draft.title.trim())
+      ? draft.title
+      : templateLabel || sourceTypeLabel || 'Untitled draft'
+
+  // Strip HTML → text snippet for the live preview.
+  const previewText = useMemo(() => {
+    if (!draft.content) return ''
+    const txt = draft.content
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    return txt.length > 180 ? txt.slice(0, 180) + '…' : txt
+  }, [draft.content])
+
+  // Approximate word count → progress ring fill.
+  const wordCount = useMemo(() => {
+    if (!previewText && !draft.content) return 0
+    const plain = (draft.content || '')
+      .replace(/<[^>]+>/g, ' ')
+      .trim()
+    if (!plain) return 0
+    return plain.split(/\s+/).length
+  }, [draft.content, previewText])
+  const fillPct = Math.min(100, Math.round((wordCount / 1200) * 100))
 
   return (
-    <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.15 }}>
-      <Card className="group cursor-pointer rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:border-slate-300 hover:shadow-md">
+    <motion.div whileHover={{ y: -3 }} transition={{ duration: 0.15 }}>
+      <Card className="group relative cursor-pointer overflow-hidden rounded-[20px] border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-200 hover:border-slate-300 hover:shadow-[0_20px_40px_-20px_rgba(15,23,42,0.25)]">
+        {/* Accent top line — switches colour on status */}
+        <div className={cn('h-[3px] w-full', {
+          'bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-400': draft.status === 'FINALIZED',
+          'bg-gradient-to-r from-emerald-400 to-teal-400': draft.status === 'APPROVED' || draft.status === 'COMPLETED',
+          'bg-gradient-to-r from-amber-400 to-orange-400': draft.status === 'IN_REVIEW' || draft.status === 'PENDING_APPROVAL',
+          'bg-gradient-to-r from-blue-400 to-indigo-400': draft.status === 'IN_PROGRESS',
+          'bg-gradient-to-r from-slate-200 to-slate-300': !['FINALIZED','APPROVED','COMPLETED','IN_REVIEW','PENDING_APPROVAL','IN_PROGRESS'].includes(draft.status),
+        })} />
         <CardContent className="p-5">
           <div className="flex items-start gap-3">
             <button
               type="button"
-              className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-violet-600 transition-colors group-hover:bg-violet-50"
+              className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 text-slate-700 transition-all group-hover:from-violet-50 group-hover:to-fuchsia-50 group-hover:text-violet-700"
               onClick={() => router.push(`/drafting/copilot?draft=${draft.id}`)}
-              aria-label={`Open ${draft.title || 'Untitled Draft'}`}
+              aria-label={`Open ${resolvedTitle}`}
             >
-              <FileText className="h-4 w-4" />
+              <FileText className="h-[18px] w-[18px]" />
+              {isLive && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                </span>
+              )}
             </button>
 
             <div
               className="min-w-0 flex-1"
               onClick={() => router.push(`/drafting/copilot?draft=${draft.id}`)}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="truncate text-sm font-semibold text-slate-900">
-                    {draft.title || 'Untitled Draft'}
-                  </h3>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Edited {timeAgo}
-                    {draft.template ? ` · ${draft.template.name}` : ''}
-                  </p>
-                </div>
-                <Badge
-                  className={cn(
-                    'shrink-0 border-0 px-2 py-0.5 text-[10px] font-medium',
-                    statusColors[draft.status] || statusColors.DRAFT,
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="truncate text-[15px] font-semibold leading-tight text-slate-950">
+                      {resolvedTitle}
+                    </h3>
+                    {sourceTypeLabel && (
+                      <Badge className="shrink-0 border-0 bg-violet-100 px-1.5 py-0 text-[10px] font-medium text-violet-700">
+                        {sourceTypeLabel}
+                      </Badge>
+                    )}
+                  </div>
+                  {(templateLabel || counterparty) && (
+                    <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                      {templateLabel}
+                      {templateLabel && counterparty ? ' · ' : ''}
+                      {counterparty}
+                    </p>
                   )}
-                >
-                  {draft.status === 'DRAFT'
-                    ? 'Draft'
-                    : draft.status === 'IN_PROGRESS'
-                      ? 'In Progress'
-                      : draft.status}
-                </Badge>
+                </div>
+                <span className={cn('shrink-0 inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium', status.text)}>
+                  <span className={cn('h-1.5 w-1.5 rounded-full', status.dot)} />
+                  {status.label}
+                </span>
+              </div>
+
+              {/* Live preview snippet (editorial serif feel) */}
+              {previewText ? (
+                <p className="mt-3 line-clamp-2 text-[12.5px] leading-[1.55] text-slate-600">
+                  {previewText}
+                </p>
+              ) : (
+                <p className="mt-3 text-[12.5px] italic leading-[1.55] text-slate-400">
+                  Empty draft — start writing or ask the AI to scaffold it.
+                </p>
+              )}
+
+              {/* Progress line + meta row */}
+              <div className="mt-4">
+                <div className="flex h-1 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className={cn('h-full rounded-full transition-all duration-500', {
+                      'bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-400': fillPct >= 100,
+                      'bg-gradient-to-r from-violet-400 to-fuchsia-400': fillPct < 100 && fillPct > 0,
+                      'bg-slate-200': fillPct === 0,
+                    })}
+                    style={{ width: `${Math.max(fillPct, 4)}%` }}
+                  />
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10.5px] text-slate-500">
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {timeAgo}
+                  </span>
+                  <span className="text-slate-300">·</span>
+                  <span className="tabular-nums">{wordCount.toLocaleString()} words</span>
+                  {categoryLabel && (
+                    <>
+                      <span className="text-slate-300">·</span>
+                      <span className="truncate">{categoryLabel}</span>
+                    </>
+                  )}
+                  {playbookLabel && (
+                    <>
+                      <span className="text-slate-300">·</span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+                        <Zap className="h-2.5 w-2.5" />
+                        {playbookLabel}
+                      </span>
+                    </>
+                  )}
+                  {ownerInitials && (
+                    <span className="ml-auto inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[9px] font-semibold text-white" aria-label={
+                      draft.createdByUser
+                        ? `Owner ${draft.createdByUser.firstName || ''} ${draft.createdByUser.lastName || ''}`.trim() ||
+                          draft.createdByUser.email ||
+                          undefined
+                        : undefined
+                    }>
+                      {ownerInitials}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="shrink-0">
+            <div className="shrink-0 -mr-1">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
@@ -187,6 +324,20 @@ function DraftCard({
                   >
                     <Copy className="h-3.5 w-3.5" /> Duplicate
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      try {
+                        const url = `${window.location.origin}/drafting/copilot?draft=${draft.id}`
+                        await navigator.clipboard.writeText(url)
+                        toast.success('Link copied')
+                      } catch {
+                        toast.error('Could not copy link')
+                      }
+                    }}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <Link2 className="h-3.5 w-3.5" /> Copy link
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => onExport(draft.id, 'pdf')}
@@ -202,34 +353,20 @@ function DraftCard({
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={() => setShowDeleteConfirm(true)}
+                    onClick={() => onDelete(draft.id)}
                     className="gap-2 cursor-pointer text-red-600"
                   >
                     <Trash2 className="h-3.5 w-3.5" /> Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-
-              <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete draft?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete &ldquo;{draft.title}&rdquo;. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => onDelete(draft.id)}
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </div>
+          </div>
+
+          {/* Reveal "Open" affordance on hover */}
+          <div className="pointer-events-none mt-3 flex items-center justify-end text-[11px] font-medium text-violet-600 opacity-0 transition-opacity group-hover:opacity-100">
+            Open
+            <ArrowRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-0.5" />
           </div>
         </CardContent>
       </Card>
@@ -246,44 +383,70 @@ function TemplateQuickCard({
   onClick: () => void
   onPreview: () => void
 }) {
-  const categoryIcons: Record<string, string> = {
-    Technology: '💻',
-    Services: '🛠️',
-    Legal: '⚖️',
-    HR: '👥',
-    Procurement: '📦',
-    Finance: '💰',
-    Renewal: '🔄',
-    Default: '📄',
+  const categoryMeta: Record<string, { icon: string; accent: string; tint: string; text: string }> = {
+    Technology:  { icon: '💻', accent: 'from-blue-500 to-cyan-400',    tint: 'from-blue-50 to-cyan-50',    text: 'text-blue-700' },
+    Services:    { icon: '🛠️', accent: 'from-amber-500 to-orange-400', tint: 'from-amber-50 to-orange-50', text: 'text-amber-700' },
+    Legal:       { icon: '⚖️', accent: 'from-violet-500 to-fuchsia-400', tint: 'from-violet-50 to-fuchsia-50', text: 'text-violet-700' },
+    HR:          { icon: '👥', accent: 'from-rose-500 to-pink-400',    tint: 'from-rose-50 to-pink-50',    text: 'text-rose-700' },
+    Procurement: { icon: '📦', accent: 'from-emerald-500 to-teal-400', tint: 'from-emerald-50 to-teal-50', text: 'text-emerald-700' },
+    Finance:     { icon: '💰', accent: 'from-lime-500 to-emerald-400', tint: 'from-lime-50 to-emerald-50', text: 'text-emerald-700' },
+    Renewal:     { icon: '🔄', accent: 'from-indigo-500 to-violet-400', tint: 'from-indigo-50 to-violet-50', text: 'text-indigo-700' },
+    Default:     { icon: '📄', accent: 'from-slate-400 to-slate-300',  tint: 'from-slate-50 to-slate-100',  text: 'text-slate-700' },
   }
-  const icon = categoryIcons[template.category || ''] || categoryIcons.Default
+  const meta = categoryMeta[template.category || ''] || categoryMeta.Default
+  const uses = template.usageCount ?? 0
+  const isTrending = uses >= 10
 
   return (
-    <div className="text-left w-full">
-      <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:border-slate-300 hover:shadow-md">
+    <motion.div whileHover={{ y: -3 }} transition={{ duration: 0.15 }}>
+      <Card className="group relative cursor-pointer overflow-hidden rounded-[20px] border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-200 hover:border-slate-300 hover:shadow-[0_20px_40px_-20px_rgba(15,23,42,0.25)]">
+        {/* Category-tinted accent line */}
+        <div className={cn('h-[3px] w-full bg-gradient-to-r', meta.accent)} />
         <CardContent className="p-5">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-lg">
-              {icon}
+            <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-lg shadow-sm ring-1 ring-white/60', meta.tint)}>
+              <span aria-hidden>{meta.icon}</span>
             </div>
             <div className="min-w-0 flex-1">
-              {template.category && (
-                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
-                  {template.category}
-                </p>
-              )}
-              <h4 className="mt-1 truncate text-sm font-semibold text-slate-900">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {template.category && (
+                  <span className={cn('inline-flex items-center rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em]', meta.text)}>
+                    {template.category}
+                  </span>
+                )}
+                {isTrending && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                    <Zap className="h-2.5 w-2.5" />
+                    Trending
+                  </span>
+                )}
+              </div>
+              <h4 className="mt-2 text-[15px] font-semibold leading-tight text-slate-950 line-clamp-2">
                 {template.name}
               </h4>
-              {template.description && (
-                <p className="mt-1 text-xs leading-5 text-slate-500 line-clamp-2">
+              {template.description ? (
+                <p className="mt-1.5 line-clamp-2 text-[12.5px] leading-[1.55] text-slate-600">
                   {template.description}
                 </p>
+              ) : (
+                <p className="mt-1.5 text-[12.5px] italic leading-[1.55] text-slate-400">
+                  No description — preview to see the structure.
+                </p>
               )}
+
+              {/* Meta row: uses + preview + use */}
               <div className="mt-4 flex items-center gap-2">
+                {uses > 0 ? (
+                  <span className="inline-flex items-center gap-1 text-[10.5px] text-slate-500">
+                    <span className="tabular-nums font-semibold text-slate-700">{uses}</span>
+                    use{uses === 1 ? '' : 's'}
+                  </span>
+                ) : (
+                  <span className="text-[10.5px] text-slate-400">New</span>
+                )}
                 <button
                   onClick={(e) => { e.stopPropagation(); onPreview() }}
-                  className="text-xs font-medium text-slate-500 transition-colors hover:text-violet-700"
+                  className="ml-auto text-xs font-medium text-slate-500 transition-colors hover:text-violet-700"
                   title="Preview template"
                 >
                   Preview
@@ -291,21 +454,25 @@ function TemplateQuickCard({
                 <Button
                   type="button"
                   size="sm"
-                  className="h-8 rounded-full bg-slate-900 px-3 text-xs text-white hover:bg-slate-800"
+                  className={cn(
+                    'h-8 gap-1.5 rounded-full px-3 text-xs font-semibold text-white shadow-sm transition-all hover:brightness-110',
+                    'bg-gradient-to-r',
+                    meta.accent,
+                  )}
                   onClick={(e) => {
                     e.stopPropagation()
                     onClick()
                   }}
                 >
-                  Use template
-                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                  Use
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   )
 }
 
@@ -314,6 +481,21 @@ function TemplateQuickCard({
 // ============================================================================
 // Main Component
 // ============================================================================
+
+const RECENT_PROMPTS_STORAGE_KEY = 'drafting-recent-prompts'
+const RECENT_PROMPTS_MAX = 3
+
+// Rotating verbs in the hero headline — sets the tone of the studio.
+const HERO_ROTATING_WORDS = ['Draft', 'Negotiate', 'Redline', 'Close'] as const
+
+// Sample "activity ticker" items — what the AI has been doing across the tenant.
+// (Purely visual; no network calls — gives the studio a "living" feel.)
+const AI_ACTIVITY_TICKER: { icon: string; text: string; tone: string }[] = [
+  { icon: '✨', text: 'Generated NDA from prompt', tone: 'text-violet-300' },
+  { icon: '⚑', text: 'Flagged 3 risks in MSA v2', tone: 'text-amber-300' },
+  { icon: '✓', text: 'Playbook aligned on SOW',   tone: 'text-emerald-300' },
+  { icon: '✎', text: 'Suggested 5 redlines',      tone: 'text-fuchsia-300' },
+]
 
 export default function DraftingPage() {
   const router = useRouter()
@@ -328,14 +510,120 @@ export default function DraftingPage() {
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null)
   const [previewContent, setPreviewContent] = useState<string>('')
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [recentPrompts, setRecentPrompts] = useState<string[]>([])
+  const [heroWordIndex, setHeroWordIndex] = useState(0)
+  const [promptFocused, setPromptFocused] = useState(false)
+  const aiPromptInputRef = useRef<HTMLInputElement | null>(null)
+  const listSearchInputRef = useRef<HTMLInputElement | null>(null)
 
-  // Fetch templates via React Query
+  // Rotating headline word — cycles every 2.6s.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setHeroWordIndex((i) => (i + 1) % HERO_ROTATING_WORDS.length)
+    }, 2600)
+    return () => window.clearInterval(id)
+  }, [])
+
+  // Load recent prompts once on mount.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = window.localStorage.getItem(RECENT_PROMPTS_STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed)) {
+          setRecentPrompts(
+            parsed.filter((p): p is string => typeof p === 'string' && p.trim().length > 0).slice(0, RECENT_PROMPTS_MAX),
+          )
+        }
+      }
+    } catch {
+      /* ignore storage errors */
+    }
+  }, [])
+
+  const recordRecentPrompt = useCallback((prompt: string) => {
+    const trimmed = prompt.trim()
+    if (!trimmed) return
+    setRecentPrompts((prev) => {
+      const deduped = [trimmed, ...prev.filter((p) => p !== trimmed)].slice(0, RECENT_PROMPTS_MAX)
+      try {
+        window.localStorage.setItem(RECENT_PROMPTS_STORAGE_KEY, JSON.stringify(deduped))
+      } catch {
+        /* ignore storage errors */
+      }
+      return deduped
+    })
+  }, [])
+
+  // Cmd/Ctrl+K focuses the AI prompt field — anywhere on /drafting.
+  // Uses capture phase + stopImmediatePropagation so the global command-palette
+  // shortcut doesn't steal it on this route.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        const target = e.target as HTMLElement | null
+        // Let the user's own Cmd+K inside a textarea pass through (rare); otherwise intercept.
+        if (target?.tagName === 'TEXTAREA') return
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        aiPromptInputRef.current?.focus()
+        aiPromptInputRef.current?.select()
+      }
+    }
+    document.addEventListener('keydown', handler, true)
+    return () => document.removeEventListener('keydown', handler, true)
+  }, [])
+
+  // "/" focuses the list search (drafts/templates); Escape clears it when it's focused.
+  // Capture phase + stopImmediatePropagation so the global "/" → /search shortcut
+  // doesn't navigate away while the user is on the drafting studio.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const tag = target?.tagName
+      const isEditable =
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        (target as HTMLElement | null)?.isContentEditable
+      if (e.key === '/' && !isEditable && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (listSearchInputRef.current) {
+          e.preventDefault()
+          e.stopImmediatePropagation()
+          listSearchInputRef.current.focus()
+          listSearchInputRef.current.select()
+        }
+        return
+      }
+      if (
+        e.key === 'Escape' &&
+        target === listSearchInputRef.current &&
+        listSearchInputRef.current
+      ) {
+        if (listSearchInputRef.current.value) {
+          e.preventDefault()
+          setSearchQuery('')
+        } else {
+          listSearchInputRef.current.blur()
+        }
+      }
+    }
+    document.addEventListener('keydown', handler, true)
+    return () => document.removeEventListener('keydown', handler, true)
+  }, [])
   const { data: templatesData, isLoading: templatesLoading } = useTemplates()
   const templates: Template[] = useMemo(() => {
     if (!templatesData?.templates) return []
     return (templatesData.templates as Template[])
       .filter((t) => t.status === 'active')
       .slice(0, 12)
+  }, [templatesData])
+
+  // Total active templates (used for the hero stat — `templates` is sliced to 12)
+  const templatesTotal = useMemo(() => {
+    if (!templatesData?.templates) return 0
+    return (templatesData.templates as Template[]).filter((t) => t.status === 'active').length
   }, [templatesData])
 
   // Fetch drafts with server-side filtering
@@ -378,18 +666,63 @@ export default function DraftingPage() {
 
   // Handlers
   const handleDeleteDraft = useCallback(async (id: string) => {
+    // Snapshot the draft so we can offer a one-click Undo after a successful delete.
+    const deleted = drafts.find((d) => d.id === id)
+    // Optimistic removal
+    setDrafts((prev) => prev.filter((d) => d.id !== id))
+
     try {
       const res = await fetch(`/api/drafts/${id}`, { method: 'DELETE' })
-      if (res.ok) {
-        setDrafts((prev) => prev.filter((d) => d.id !== id))
-        toast.success('Draft deleted')
-      } else {
+      if (!res.ok) {
+        // Rollback
+        if (deleted) setDrafts((prev) => [deleted, ...prev])
         toast.error('Failed to delete draft')
+        return
       }
+
+      const restoreDraft = async () => {
+        if (!deleted) return
+        try {
+          const restoreRes = await fetch('/api/drafts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: deleted.title || 'Restored draft',
+              type: deleted.type || 'MSA',
+              sourceType: deleted.sourceType || 'NEW',
+              content: deleted.content || '',
+              templateId: deleted.template?.id || null,
+              playbookId: deleted.playbook?.id || null,
+              sourceContractId: deleted.sourceContract?.id || null,
+            }),
+          })
+          if (restoreRes.ok) {
+            toast.success('Draft restored')
+            fetchDrafts()
+          } else {
+            toast.error('Could not restore draft')
+          }
+        } catch {
+          toast.error('Could not restore draft')
+        }
+      }
+
+      toast.success('Draft deleted', {
+        action: deleted
+          ? {
+              label: 'Undo',
+              onClick: () => {
+                void restoreDraft()
+              },
+            }
+          : undefined,
+        duration: 6000,
+      })
     } catch {
+      if (deleted) setDrafts((prev) => [deleted, ...prev])
       toast.error('Failed to delete draft')
     }
-  }, [])
+  }, [drafts, fetchDrafts])
 
   const handleDuplicateDraft = useCallback(
     async (id: string) => {
@@ -439,13 +772,21 @@ export default function DraftingPage() {
     [],
   )
 
-  const handleAIGenerate = useCallback(() => {
-    if (!aiPrompt.trim()) {
-      toast.error('Please describe what you want to draft')
-      return
-    }
-    setShowAgenticDialog(true)
-  }, [aiPrompt])
+  const handleAIGenerate = useCallback(
+    (overridePrompt?: string) => {
+      const prompt = (overridePrompt ?? aiPrompt).trim()
+      if (!prompt) {
+        toast.error('Please describe what you want to draft')
+        return
+      }
+      if (overridePrompt !== undefined) {
+        setAiPrompt(overridePrompt)
+      }
+      recordRecentPrompt(prompt)
+      setShowAgenticDialog(true)
+    },
+    [aiPrompt, recordRecentPrompt],
+  )
 
   const handleTemplateUse = useCallback(
     (template: Template, quickStartType?: string) => {
@@ -495,156 +836,389 @@ export default function DraftingPage() {
       </div>
 
       <div className="mx-auto max-w-[1480px] space-y-8 px-6 py-8 sm:px-8 lg:px-10">
-        <motion.div
+        {/* ============ HERO — dark editorial spotlight ============ */}
+        <motion.section
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]"
+          className="relative overflow-hidden rounded-[32px] border border-slate-900/10 bg-gradient-to-br from-[#0b0a1a] via-[#161235] to-[#1d1548] text-white shadow-[0_30px_80px_-30px_rgba(29,21,72,0.55)]"
         >
-          <Card className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
-            <CardContent className="p-6 sm:p-8">
-              <div className="space-y-5">
-                <div className="space-y-2">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
-                    Drafting studio
-                  </p>
-                  <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                    Draft in one calm workspace.
-                  </h1>
-                  <p className="max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
-                    Start from a prompt, an approved template, or a blank page, then bring AI in only when you need help.
-                  </p>
-                </div>
+          {/* subtle grid + glow backdrop */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 opacity-[0.18]"
+            style={{
+              backgroundImage:
+                'linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px)',
+              backgroundSize: '44px 44px',
+              maskImage: 'radial-gradient(ellipse at 30% 20%, black 40%, transparent 75%)',
+              WebkitMaskImage: 'radial-gradient(ellipse at 30% 20%, black 40%, transparent 75%)',
+            }}
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-gradient-to-br from-fuchsia-500/30 via-violet-500/25 to-transparent blur-3xl"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -bottom-24 left-1/3 h-80 w-80 rounded-full bg-gradient-to-br from-amber-400/20 via-rose-500/15 to-transparent blur-3xl"
+          />
 
-                <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
-                  <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-900">
-                    <Wand2 className="h-4 w-4 text-violet-600" />
-                    Describe the document you want
-                  </div>
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <Input
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      placeholder='e.g. "Draft an NDA for a software consulting engagement with a 2-year term"'
-                      className="h-12 rounded-full border-slate-200 bg-white px-5 text-sm shadow-sm focus:border-violet-400 focus:ring-violet-400/20"
-                      onKeyDown={(e) => e.key === 'Enter' && handleAIGenerate()}
-                    />
-                    <Button
-                      onClick={handleAIGenerate}
-                      disabled={!aiPrompt.trim()}
-                      className="h-12 rounded-full bg-slate-950 px-5 text-sm font-medium text-white hover:bg-slate-800"
+          <div className="relative px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-14">
+            {/* Top meta row — status pill + activity ticker */}
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-white/80 backdrop-blur">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                </span>
+                Drafting studio · AI online
+              </span>
+              <span className="hidden items-center gap-1.5 text-[11px] text-white/50 sm:inline-flex">
+                <Activity className="h-3 w-3" />
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={heroWordIndex}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.3 }}
+                    className={cn(AI_ACTIVITY_TICKER[heroWordIndex % AI_ACTIVITY_TICKER.length].tone)}
+                  >
+                    {AI_ACTIVITY_TICKER[heroWordIndex % AI_ACTIVITY_TICKER.length].icon}{' '}
+                    {AI_ACTIVITY_TICKER[heroWordIndex % AI_ACTIVITY_TICKER.length].text}
+                  </motion.span>
+                </AnimatePresence>
+              </span>
+              <span className="ml-auto hidden items-center gap-3 text-[11px] text-white/50 md:inline-flex">
+                <span className="inline-flex items-center gap-1">
+                  <span className="tabular-nums font-semibold text-white">{drafts.length}</span>
+                  drafts
+                </span>
+                <span className="text-white/25">·</span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="tabular-nums font-semibold text-white">{templatesTotal}</span>
+                  templates
+                </span>
+                <span className="text-white/25">·</span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Autosaved
+                </span>
+              </span>
+            </div>
+
+            {/* Headline with rotating verb */}
+            <h1 className="mt-7 max-w-4xl text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-[54px] sm:leading-[1.02]">
+              <span className="inline-flex items-baseline gap-3">
+                <span className="relative inline-block min-w-[4.5ch] sm:min-w-[5ch]">
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={HERO_ROTATING_WORDS[heroWordIndex % HERO_ROTATING_WORDS.length]}
+                      initial={{ opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -14 }}
+                      transition={{ duration: 0.35, ease: 'easeOut' }}
+                      className="inline-block bg-gradient-to-r from-violet-300 via-fuchsia-300 to-amber-200 bg-clip-text text-transparent"
                     >
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Generate with AI
-                    </Button>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {[
-                      'NDA for tech partnership',
-                      'MSA with SaaS vendor',
-                      'Employment contract',
-                    ].map((suggestion) => (
-                      <button
-                        key={suggestion}
-                        onClick={() => setAiPrompt(suggestion)}
-                        className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
+                      {HERO_ROTATING_WORDS[heroWordIndex % HERO_ROTATING_WORDS.length]}
+                    </motion.span>
+                  </AnimatePresence>
+                </span>
+                <span className="text-white/90">at the speed</span>
+              </span>
+              <br />
+              <span className="text-white/70">of thought.</span>
+            </h1>
+
+            <p className="mt-4 max-w-2xl text-[15px] leading-[1.7] text-white/60">
+              Describe the contract you need. Contigo drafts it with your playbook, your language, and your approved clauses — in seconds.
+            </p>
+
+            {/* Spotlight command bar */}
+            <div
+              className={cn(
+                'relative mt-9 rounded-[24px] border bg-white/[0.04] backdrop-blur-xl transition-all duration-300',
+                promptFocused
+                  ? 'border-white/30 shadow-[0_0_0_4px_rgba(139,92,246,0.18),0_30px_80px_-30px_rgba(139,92,246,0.55)]'
+                  : 'border-white/12 hover:border-white/20',
+              )}
+            >
+              {/* Glowing top border when focused */}
+              {promptFocused && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-px rounded-[24px] bg-gradient-to-r from-violet-500/0 via-violet-400/40 to-fuchsia-400/0 opacity-80 blur-[2px]"
+                />
+              )}
+              <div className="relative flex items-start gap-3 px-4 py-4 sm:gap-4 sm:px-6 sm:py-5">
+                <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-amber-400 text-white shadow-[0_8px_24px_-8px_rgba(168,85,247,0.6)]">
+                  <Wand2 className="h-4 w-4" />
                 </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button
-                    size="lg"
-                    className="rounded-full bg-violet-600 px-5 text-white hover:bg-violet-700"
-                    onClick={() => router.push('/drafting/copilot?mode=blank')}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Start blank
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="rounded-full border-slate-300 bg-white px-5 text-slate-700 hover:bg-slate-100"
-                    onClick={() => setActiveTab('templates')}
-                  >
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    Browse templates
-                  </Button>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-500">
-                  <span>
-                    <span className="font-semibold text-slate-900">{drafts.length}</span> recent drafts
-                  </span>
-                  <span>
-                    <span className="font-semibold text-slate-900">{templates.length}</span> approved templates
-                  </span>
-                  <span>
-                    AI stays in the drafting flow instead of taking over the page.
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
-            <CardContent className="flex h-full flex-col p-6 sm:p-7">
-              <div className="space-y-1.5">
-                <h2 className="text-lg font-semibold text-slate-950">Popular starts</h2>
-                <p className="text-sm leading-6 text-slate-500">
-                  Jump into a common document and refine it in the editor.
-                </p>
-              </div>
-
-              <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
-                {DRAFTING_QUICK_STARTS.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      const match = templates.find(
-                        (t) => {
-                          const lowerName = t.name.toLowerCase()
-                          return item.searchTerms.some((term) => lowerName.includes(term))
-                        },
-                      )
-                      if (match) {
-                        handleTemplateUse(match, item.id)
-                      } else {
-                        router.push(`/drafting/copilot?mode=blank&type=${item.id}`)
+                <div className="min-w-0 flex-1">
+                  <Input
+                    ref={aiPromptInputRef}
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    onFocus={() => setPromptFocused(true)}
+                    onBlur={() => setPromptFocused(false)}
+                    placeholder='Draft an NDA for a software consulting engagement, 2-year term, mutual…'
+                    className="h-auto w-full border-0 bg-transparent px-0 py-1 text-[17px] font-medium leading-[1.45] text-white placeholder:text-white/35 focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-[19px]"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey && aiPrompt.trim()) {
+                        e.preventDefault()
+                        handleAIGenerate()
                       }
                     }}
-                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition-colors hover:border-slate-300 hover:bg-slate-100"
-                  >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">
-                      {item.icon}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-slate-900">{item.label}</div>
-                      <div className="text-xs leading-5 text-slate-500">{item.desc}</div>
-                    </div>
-                  </button>
-                ))}
+                    aria-label="Describe the document you want"
+                  />
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-white/40">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('templates')}
+                      className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 font-medium text-white/60 transition-colors hover:border-white/25 hover:text-white"
+                    >
+                      <LayoutTemplate className="h-3 w-3" />
+                      template
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push('/contracts')}
+                      className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 font-medium text-white/60 transition-colors hover:border-white/25 hover:text-white"
+                    >
+                      <Paperclip className="h-3 w-3" />
+                      attach contract
+                    </button>
+                    <span className="text-white/25">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <CornerDownLeft className="h-3 w-3" />
+                      Enter to generate
+                    </span>
+                    <span className="ml-auto hidden items-center gap-1 sm:inline-flex">
+                      <kbd className="rounded border border-white/15 bg-white/[0.04] px-1.5 py-0.5 font-mono text-[10px] text-white/70">
+                        <CommandIcon className="inline h-2.5 w-2.5" />K
+                      </kbd>
+                      <span>focus</span>
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => handleAIGenerate()}
+                  disabled={!aiPrompt.trim()}
+                  className={cn(
+                    'h-11 shrink-0 gap-2 rounded-xl px-5 text-sm font-semibold shadow-[0_10px_30px_-10px_rgba(168,85,247,0.7)] transition-all',
+                    aiPrompt.trim()
+                      ? 'bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-400 text-white hover:brightness-110'
+                      : 'bg-white/10 text-white/40',
+                  )}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Generate
+                </Button>
               </div>
+            </div>
 
-              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-medium text-slate-900">Need a proven structure?</p>
-                <p className="mt-1 text-sm leading-6 text-slate-500">
-                  Start from your approved templates and use AI once the draft is open.
-                </p>
+            {/* Unified suggestion rail — Recent + Popular + Blank */}
+            <div className="mt-6 -mx-2 flex items-stretch gap-2 overflow-x-auto px-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {/* Recent prompts chips */}
+              {recentPrompts.length > 0 && (
+                <>
+                  <div className="flex shrink-0 items-center gap-1.5 pr-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                    <History className="h-3 w-3" />
+                    Recent
+                  </div>
+                  {recentPrompts.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => handleAIGenerate(suggestion)}
+                      title={suggestion}
+                      className="group shrink-0 max-w-[22rem] truncate rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-xs font-medium text-white/75 backdrop-blur-sm transition-all hover:border-violet-300/40 hover:bg-violet-500/15 hover:text-white"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                  <span className="mx-1 shrink-0 self-center text-white/20">·</span>
+                </>
+              )}
+              {/* Quick-start rich chips */}
+              <div className="flex shrink-0 items-center gap-1.5 pr-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                <Sparkles className="h-3 w-3" />
+                Popular
+              </div>
+              {DRAFTING_QUICK_STARTS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    const match = templates.find((t) => {
+                      const lowerName = t.name.toLowerCase()
+                      return item.searchTerms.some((term) => lowerName.includes(term))
+                    })
+                    if (match) {
+                      handleTemplateUse(match, item.id)
+                    } else {
+                      router.push(`/drafting/copilot?mode=blank&type=${item.id}`)
+                    }
+                  }}
+                  className="group shrink-0 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] pl-2 pr-3.5 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm transition-all hover:border-fuchsia-300/40 hover:bg-fuchsia-500/10 hover:text-white"
+                  title={item.desc}
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[11px]">
+                    {item.icon}
+                  </span>
+                  {item.label}
+                  <span className="hidden text-white/40 group-hover:text-white/70 sm:inline">· {item.desc}</span>
+                </button>
+              ))}
+              <span className="mx-1 shrink-0 self-center text-white/20">·</span>
+              <button
+                type="button"
+                onClick={() => router.push('/drafting/copilot?mode=blank')}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-dashed border-white/20 bg-transparent px-3.5 py-1.5 text-xs font-medium text-white/70 transition-all hover:border-white/50 hover:bg-white/5 hover:text-white"
+              >
+                <Plus className="h-3 w-3" />
+                Start blank
+              </button>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* ============ CONTINUE EDITING (most-recent resume) ============ */}
+        {(() => {
+          const mostRecent = drafts[0]
+          if (!mostRecent) return null
+          const ageMs = Date.now() - new Date(mostRecent.updatedAt).getTime()
+          // Show only if the draft was touched in the last 24h — otherwise it's
+          // already easy to find in the list below.
+          if (ageMs > 24 * 60 * 60 * 1000) return null
+          const mins = Math.floor(ageMs / 60000)
+          const hrs = Math.floor(mins / 60)
+          const ago = hrs > 0 ? `${hrs}h ago` : mins > 0 ? `${mins}m ago` : 'just now'
+          const isLive = ageMs < 10 * 60_000
+          const title =
+            (mostRecent.title && mostRecent.title.trim() && !/^untitled/i.test(mostRecent.title.trim())
+              ? mostRecent.title
+              : mostRecent.template?.name ||
+                (mostRecent.sourceType === 'RENEWAL'
+                  ? 'Renewal'
+                  : mostRecent.sourceType === 'AMENDMENT'
+                    ? 'Amendment'
+                    : null)) || 'Untitled draft'
+          const plain = (mostRecent.content || '')
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+          const wordCount = plain ? plain.split(/\s+/).length : 0
+          const snippet = plain.length > 200 ? plain.slice(0, 200) + '…' : plain
+          const fillPct = Math.min(100, Math.round((wordCount / 1200) * 100))
+          const statusLabel =
+            mostRecent.status === 'IN_REVIEW' ? 'In Review'
+            : mostRecent.status === 'PENDING_APPROVAL' ? 'Pending Approval'
+            : mostRecent.status === 'APPROVED' ? 'Approved'
+            : mostRecent.status === 'FINALIZED' ? 'Finalized'
+            : mostRecent.status === 'IN_PROGRESS' ? 'In Progress'
+            : 'Draft'
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 }}
+            >
+              <div className="group relative overflow-hidden rounded-[24px] border border-violet-200/70 bg-gradient-to-br from-white via-violet-50/60 to-fuchsia-50/40 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:border-violet-300 hover:shadow-[0_20px_40px_-20px_rgba(139,92,246,0.35)]">
+                {/* Decorative glow */}
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-gradient-to-br from-violet-300/40 to-fuchsia-300/20 blur-3xl"
+                />
                 <button
                   type="button"
-                  onClick={() => setActiveTab('templates')}
-                  className="mt-3 text-sm font-medium text-violet-700 transition-colors hover:text-violet-900"
+                  onClick={() => router.push(`/drafting/copilot?draft=${mostRecent.id}`)}
+                  className="relative block w-full p-5 text-left sm:p-6"
+                  aria-label={`Continue editing ${title}`}
                 >
-                  Browse template library
+                  <div className="flex items-start gap-4">
+                    <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white shadow-[0_10px_30px_-10px_rgba(139,92,246,0.7)]">
+                      <Edit3 className="h-5 w-5" />
+                      {isLive && (
+                        <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-violet-700">
+                          Continue where you left off
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-medium text-slate-600 backdrop-blur-sm">
+                          <Clock className="h-2.5 w-2.5" />
+                          {ago}
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-medium text-slate-600 backdrop-blur-sm">
+                          {statusLabel}
+                        </span>
+                      </div>
+                      <h3 className="mt-1.5 truncate text-lg font-semibold tracking-tight text-slate-950">
+                        {title}
+                      </h3>
+                      {snippet ? (
+                        <p className="mt-1 line-clamp-2 text-[13px] leading-[1.55] text-slate-600">
+                          {snippet}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-[13px] italic leading-[1.55] text-slate-400">
+                          Empty draft — jump back in and start writing.
+                        </p>
+                      )}
+
+                      {/* Progress strip */}
+                      <div className="mt-3 flex items-center gap-3">
+                        <div className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-white/60">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-400 transition-all"
+                            style={{ width: `${Math.max(fillPct, 6)}%` }}
+                          />
+                        </div>
+                        <span className="shrink-0 text-[11px] tabular-nums text-slate-500">
+                          {wordCount.toLocaleString()} words
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="hidden shrink-0 items-center gap-2 sm:flex">
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDuplicateDraft(mostRecent.id)
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleDuplicateDraft(mostRecent.id)
+                          }
+                        }}
+                        className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-3 text-xs font-medium text-slate-600 backdrop-blur-sm transition-colors hover:border-slate-300 hover:text-slate-900"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        Duplicate
+                      </span>
+                      <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-slate-950 px-4 text-xs font-semibold text-white shadow-sm transition-all group-hover:bg-violet-700">
+                        Resume
+                        <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                      </span>
+                    </div>
+                    <ArrowRight className="h-5 w-5 shrink-0 self-center text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-violet-700 sm:hidden" />
+                  </div>
                 </button>
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+            </motion.div>
+          )
+        })()}
 
         {/* ============ TABBED CONTENT ============ */}
         <motion.div
@@ -680,9 +1254,9 @@ export default function DraftingPage() {
                 >
                   <BookOpen className="h-4 w-4" />
                   Templates
-                  {templates.length > 0 && (
+                  {templatesTotal > 0 && (
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">
-                      {templates.length}
+                      {templatesTotal}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -695,6 +1269,7 @@ export default function DraftingPage() {
                   <div className="relative w-full sm:w-72">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
+                      ref={listSearchInputRef}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder={
@@ -702,8 +1277,17 @@ export default function DraftingPage() {
                           ? 'Search drafts...'
                           : 'Search templates...'
                       }
-                      className="h-10 rounded-full border-slate-200 bg-white pl-9 text-sm shadow-sm"
+                      aria-label={activeTab === 'drafts' ? 'Search drafts' : 'Search templates'}
+                      className="h-10 rounded-full border-slate-200 bg-white pl-9 pr-16 text-sm shadow-sm"
                     />
+                    {!searchQuery && (
+                      <kbd
+                        aria-hidden
+                        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-mono text-slate-400"
+                      >
+                        /
+                      </kbd>
+                    )}
                     {searchQuery && (
                       <button
                         onClick={() => setSearchQuery('')}
@@ -732,6 +1316,7 @@ export default function DraftingPage() {
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
+                      aria-label="Filter drafts by status"
                       className="h-10 rounded-full border border-slate-200 bg-white px-4 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                     >
                       <option value="">All Statuses</option>
@@ -803,23 +1388,32 @@ export default function DraftingPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {recentDrafts.map((draft, idx) => (
-                    <motion.div
-                      key={draft.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.03 }}
-                    >
-                      <DraftCard
-                        draft={draft}
-                        onDelete={handleDeleteDraft}
-                        onDuplicate={handleDuplicateDraft}
-                        onExport={handleExportDraft}
-                      />
-                    </motion.div>
-                  ))}
-                </div>
+                <>
+                  {(debouncedSearch || statusFilter) && (
+                    <p className="text-xs text-slate-500">
+                      {recentDrafts.length}{' '}
+                      {recentDrafts.length === 1 ? 'draft' : 'drafts'}
+                      {debouncedSearch ? <> matching &ldquo;<span className="font-medium text-slate-700">{debouncedSearch}</span>&rdquo;</> : null}
+                    </p>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {recentDrafts.map((draft, idx) => (
+                      <motion.div
+                        key={draft.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.03 }}
+                      >
+                        <DraftCard
+                          draft={draft}
+                          onDelete={handleDeleteDraft}
+                          onDuplicate={handleDuplicateDraft}
+                          onExport={handleExportDraft}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                </>
               )}
             </TabsContent>
 
@@ -864,6 +1458,13 @@ export default function DraftingPage() {
                 </Card>
               ) : (
                 <>
+                  {debouncedSearch && (
+                    <p className="text-xs text-slate-500">
+                      {filteredTemplates.length}{' '}
+                      {filteredTemplates.length === 1 ? 'template' : 'templates'}
+                      {' '}matching &ldquo;<span className="font-medium text-slate-700">{debouncedSearch}</span>&rdquo;
+                    </p>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {filteredTemplates.map((template, idx) => (
                       <motion.div

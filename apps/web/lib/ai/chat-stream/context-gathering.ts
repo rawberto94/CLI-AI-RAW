@@ -284,7 +284,8 @@ async function buildScopedFallbackResults(
 
     const queryTerms = extractQueryTerms(message);
     const contractName = contract.contractTitle || contract.fileName || 'Active Contract';
-    const candidates: Array<{ heading: string; text: string; weight: number; section?: string }> = [];
+    const rawText = contract.searchableText || contract.rawText || '';
+    const candidates: Array<{ heading: string; text: string; weight: number; section?: string; startChar?: number; endChar?: number }> = [];
 
     for (const artifact of artifacts) {
       const serialized = serializeArtifactData(artifact.type, artifact.data);
@@ -298,21 +299,26 @@ async function buildScopedFallbackResults(
     }
 
     for (const clause of clauses) {
+      const clauseRange = locateTextRangeInSource(rawText, clause.text);
       candidates.push({
         heading: `${clause.category} clause`,
         section: clause.category,
         text: clause.text,
         weight: clause.riskLevel === 'high' ? 0.14 : 0.1,
+        startChar: clauseRange?.startChar,
+        endChar: clauseRange?.endChar,
       });
     }
 
-    const rawText = contract.searchableText || contract.rawText || '';
     for (const paragraph of splitIntoSearchParagraphs(rawText)) {
+      const paragraphRange = locateTextRangeInSource(rawText, paragraph);
       candidates.push({
         heading: 'Document text',
         section: 'rawText',
         text: paragraph,
         weight: 0.06,
+        startChar: paragraphRange?.startChar,
+        endChar: paragraphRange?.endChar,
       });
     }
 
@@ -330,6 +336,8 @@ async function buildScopedFallbackResults(
             heading: candidate.heading,
             section: candidate.section,
             retrievalMode: 'same-contract-fallback',
+            startChar: candidate.startChar,
+            endChar: candidate.endChar,
           },
         };
       })
@@ -345,6 +353,26 @@ async function buildScopedFallbackResults(
     });
     return [];
   }
+}
+
+function locateTextRangeInSource(source: string, text: string): { startChar: number; endChar: number } | null {
+  if (!source || !text) return null;
+
+  const normalized = text.trim();
+  if (!normalized) return null;
+
+  const candidates = [normalized, normalized.replace(/\s+/g, ' '), normalized.slice(0, 160)].filter(Boolean);
+  for (const candidate of candidates) {
+    const index = source.indexOf(candidate);
+    if (index !== -1) {
+      return {
+        startChar: index,
+        endChar: index + candidate.length,
+      };
+    }
+  }
+
+  return null;
 }
 
 function extractQueryTerms(message: string): string[] {

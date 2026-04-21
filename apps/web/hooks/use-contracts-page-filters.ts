@@ -92,10 +92,12 @@ export function useContractsPageFilters() {
   // Debounce search query for server requests (300ms) to avoid firing
   // an API call on every keystroke.
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     searchTimerRef.current = setTimeout(() => setDebouncedSearch(searchQuery), 300);
-    return () => clearTimeout(searchTimerRef.current);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
   }, [searchQuery]);
   const [valueRangeFilter, setValueRangeFilter] = useState<string | null>(null);
   const [dateRangeFilter, setDateRangeFilter] = useState<string | null>(null);

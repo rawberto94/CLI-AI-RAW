@@ -33,6 +33,7 @@ interface ContractMetadata {
 interface ContractData {
   id: string
   filename?: string
+  contractTitle?: string | null
   status?: string
   uploadDate?: string
   fileSize?: number

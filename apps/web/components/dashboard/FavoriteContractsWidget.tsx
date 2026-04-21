@@ -244,7 +244,7 @@ function FavoriteItem({ contract, onRemove, showQuickActions, isDragging, varian
       <Link 
         href={`/contracts/${contract.id}`}
         className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-        aria-label={`Open contract ${contract.title || contract.originalName}`}
+        aria-label={`Open contract ${contract.name}`}
       >
         <ExternalLink className="h-4 w-4 text-slate-400 hover:text-violet-500" />
       </Link>

@@ -82,6 +82,7 @@ export interface ContractData {
   totalValue?: number | string | null
   currency?: string | null
   contractType?: string | null
+  contractTitle?: string | null
   effectiveDate?: string | null
   expirationDate?: string | null
   clientName?: string | null

@@ -107,6 +107,40 @@ function buildInitialSuggestedActions(
   return actions.slice(0, 3);
 }
 
+function buildCitationSources(
+  searchResults: Array<{ contractId: string; contractName: string; score: number; text: string; matchType?: string; metadata?: Record<string, unknown> }>,
+) {
+  return searchResults.slice(0, 5).map((result) => {
+    const metadata = result.metadata && typeof result.metadata === 'object'
+      ? result.metadata as Record<string, unknown>
+      : {};
+
+    return {
+      contractId: result.contractId,
+      contractName: result.contractName,
+      score: result.score,
+      snippet: result.text.slice(0, 320).trim(),
+      heading: typeof metadata.heading === 'string' ? metadata.heading : undefined,
+      section: typeof metadata.section === 'string'
+        ? metadata.section
+        : typeof metadata.chunkType === 'string'
+          ? metadata.chunkType
+          : undefined,
+      startOffset: typeof metadata.startChar === 'number'
+        ? metadata.startChar
+        : typeof metadata.startOffset === 'number'
+          ? metadata.startOffset
+          : undefined,
+      endOffset: typeof metadata.endChar === 'number'
+        ? metadata.endChar
+        : typeof metadata.endOffset === 'number'
+          ? metadata.endOffset
+          : undefined,
+      matchType: result.matchType,
+    };
+  });
+}
+
 // ─── Main Handler ───────────────────────────────────────────────────────
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
@@ -237,10 +271,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'metadata',
           sources: cached.sources,
-          ragSources: (cached.ragResults || []).map((r: { contractId: string; contractName: string; score: number }) => ({
+          ragSources: (cached.ragResults || []).map((r: { contractId: string; contractName: string; score: number; text: string }) => ({
             contractId: r.contractId,
             contractName: r.contractName,
             score: r.score,
+            snippet: r.text.slice(0, 320).trim(),
           })),
           cached: true,
           confidence: cached.metadata.confidence,
@@ -287,7 +322,24 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
     conversationSummary,
   });
 
-  const { systemPrompt: finalSystemPrompt, message: finalMessage } = await applyAgentPersona(baseSystemPrompt, message);
+  const { systemPrompt: baseFinalSystemPrompt, message: finalMessage } = await applyAgentPersona(baseSystemPrompt, message);
+
+  // ── User-selected persona + perspective overlay (from client context) ──
+  // context.persona: 'analyst' | 'counsel' | 'executive' | undefined
+  // context.perspective: 'self' | 'counterparty' | undefined
+  const clientPersona = typeof context?.persona === 'string' ? context.persona : undefined;
+  const clientPerspective = typeof context?.perspective === 'string' ? context.perspective : undefined;
+  const personaOverlay: Record<string, string> = {
+    analyst: '\n\n[PERSONA: Contract Analyst]\nUse precise, data-oriented language. Lead with numbers, dates, and clause references. Keep answers structured (tables/bullets) and flag data quality issues.',
+    counsel: '\n\n[PERSONA: In-House Counsel]\nUse precise legal phrasing. Always cite clause numbers/sections. Flag ambiguity, enforceability risk, deviation from playbook, and jurisdiction concerns.',
+    executive: '\n\n[PERSONA: Executive]\nLead with the bottom line in 1-2 sentences. Summarise financial impact, risk exposure, and the decision to take. Keep jargon minimal.',
+  };
+  const perspectiveOverlay: Record<string, string> = {
+    counterparty: '\n\n[PERSPECTIVE: Opposing Party Lens]\nAnalyze this contract from the COUNTERPARTY viewpoint. Identify clauses advantageous to them, weaknesses in our position, and likely negotiation leverage they would use. Be direct about where we are exposed.',
+  };
+  const finalSystemPrompt = baseFinalSystemPrompt
+    + (clientPersona && personaOverlay[clientPersona] ? personaOverlay[clientPersona] : '')
+    + (clientPerspective && perspectiveOverlay[clientPerspective] ? perspectiveOverlay[clientPerspective] : '');
 
   // ═══════════════════════════════════════════════════════════════════════
   // STEP 3.5 — AGENT DECISION & TOKEN BUDGET
@@ -331,11 +383,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'metadata',
             sources: ragSources,
-            ragSources: searchResults.slice(0, 5).map(r => ({
-              contractId: r.contractId,
-              contractName: r.contractName,
-              score: r.score,
-            })),
+            ragSources: buildCitationSources(searchResults),
             agentUsed: true,
             agentSteps: agentResponse.steps,
             toolsUsed: agentResponse.toolsUsed,
@@ -431,11 +479,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'metadata',
           sources: ragSources,
-          ragSources: searchResults.slice(0, 5).map(r => ({
-            contractId: r.contractId,
-            contractName: r.contractName,
-            score: r.score,
-          })),
+          ragSources: buildCitationSources(searchResults),
           confidence: initialConfidence.confidence,
           confidenceTier: initialConfidence.tier,
           queryVariations: ragResults.queryVariations?.slice(0, 3),
@@ -455,7 +499,16 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         }
 
         // ── Smart model routing based on query complexity ──────────
-        const queryComplexity = detectQueryComplexity(message);
+        // Client may override via context.mode: 'fast' | 'balanced' | 'deep'
+        const autoComplexity = detectQueryComplexity(message);
+        const clientMode = typeof context?.mode === 'string' ? context.mode : undefined;
+        const queryComplexity = clientMode === 'fast'
+          ? 'simple'
+          : clientMode === 'deep'
+            ? 'complex'
+            : clientMode === 'balanced'
+              ? 'moderate'
+              : autoComplexity;
         const modelChain = buildModelChain(queryComplexity, message);
 
         // ── Agentic loop with tool calling ────────────────────────────

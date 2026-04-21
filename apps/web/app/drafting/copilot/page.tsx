@@ -461,6 +461,23 @@ export default function CopilotDraftPage() {
     return () => { cancelled = true; };
   }, [templateId, draftId, currentDraftId]);
 
+  // Listen for "re-edit variables" event dispatched from the canvas
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { content?: string } | undefined;
+      const content = detail?.content;
+      if (!content) return;
+      if (!/\{\{[^}]+\}\}/.test(content)) {
+        toast.info('No variables left to fill in this draft');
+        return;
+      }
+      setTemplateContent(content);
+      setShowVariableForm(true);
+    };
+    window.addEventListener('contigo:re-edit-variables', handler as EventListener);
+    return () => window.removeEventListener('contigo:re-edit-variables', handler as EventListener);
+  }, []);
+
   useEffect(() => {
     if (draftId || currentDraftId) return;
     if (mode === 'blank') {

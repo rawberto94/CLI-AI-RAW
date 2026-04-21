@@ -26,40 +26,72 @@ interface TemplateVariableFormProps {
   onSkip: () => void;
 }
 
-/** Extract all unique {{variable_name}} tokens from HTML/text */
+/**
+ * Extract all unique {{variable_name}} tokens from HTML/text.
+ *
+ * Optional syntax (all map to required=false):
+ *   {{name?}}           — trailing `?`
+ *   {{name|optional}}   — `|optional` suffix
+ *   {{Optional: name}}  — `Optional:` prefix
+ */
 function extractVariables(content: string): TemplateVariable[] {
-  const regex = /\{\{([a-zA-Z0-9_\- ]+)\}\}/g;
+  const regex = /\{\{([^}]+)\}\}/g;
   const seen = new Set<string>();
   const vars: TemplateVariable[] = [];
 
   let match: RegExpExecArray | null;
   while ((match = regex.exec(content)) !== null) {
     const raw = match[1].trim();
-    if (seen.has(raw)) continue;
-    seen.add(raw);
+    if (!raw) continue;
 
-    const label = raw
+    let required = true;
+    let name = raw;
+    if (/^optional\s*:/i.test(name)) {
+      required = false;
+      name = name.replace(/^optional\s*:\s*/i, '').trim();
+    }
+    if (/\|\s*optional\s*$/i.test(name)) {
+      required = false;
+      name = name.replace(/\|\s*optional\s*$/i, '').trim();
+    }
+    if (name.endsWith('?')) {
+      required = false;
+      name = name.slice(0, -1).trim();
+    }
+    if (!name || !/^[a-zA-Z0-9_\- ]+$/.test(name)) continue;
+    if (seen.has(name)) continue;
+    seen.add(name);
+
+    const label = name
       .replace(/_/g, ' ')
       .replace(/-/g, ' ')
       .replace(/\b\w/g, (c) => c.toUpperCase());
 
     vars.push({
-      name: raw,
+      name,
       label,
-      placeholder: `Enter ${label.toLowerCase()}...`,
-      required: true,
+      placeholder: required
+        ? `Enter ${label.toLowerCase()}...`
+        : `Enter ${label.toLowerCase()} (optional)...`,
+      required,
     });
   }
   return vars;
 }
 
-/** Inject values back into template content */
+/** Inject values back into template content, handling optional-marker variants. */
 function hydrateContent(content: string, values: Record<string, string>): string {
   let result = content;
-  for (const [key, value] of Object.entries(values)) {
-    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    result = result.replace(new RegExp(`\\{\\{\\s*${escapedKey}\\s*\\}\\}`, 'g'), value || `{{${key}}}`);
-  }
+  // Replace any variant of the token ({{name}}, {{name?}}, {{Optional: name}}, {{name|optional}})
+  result = result.replace(/\{\{([^}]+)\}\}/g, (full, inner: string) => {
+    let key = inner.trim();
+    if (/^optional\s*:/i.test(key)) key = key.replace(/^optional\s*:\s*/i, '').trim();
+    if (/\|\s*optional\s*$/i.test(key)) key = key.replace(/\|\s*optional\s*$/i, '').trim();
+    if (key.endsWith('?')) key = key.slice(0, -1).trim();
+    const val = values[key];
+    if (val && val.trim().length > 0) return val;
+    return full; // leave unfilled token as-is
+  });
   return result;
 }
 
@@ -76,12 +108,18 @@ export function TemplateVariableForm({
     return init;
   });
 
+  const requiredVars = useMemo(() => variables.filter((v) => v.required), [variables]);
   const filledCount = useMemo(
     () => Object.values(values).filter((v) => v.trim().length > 0).length,
     [values],
   );
+  const requiredFilledCount = useMemo(
+    () => requiredVars.filter((v) => (values[v.name] || '').trim().length > 0).length,
+    [requiredVars, values],
+  );
 
   const allFilled = filledCount === variables.length;
+  const allRequiredFilled = requiredFilledCount === requiredVars.length;
 
   const handleChange = useCallback((name: string, value: string) => {
     setValues((prev) => ({ ...prev, [name]: value }));
@@ -131,7 +169,14 @@ export function TemplateVariableForm({
                 <span className="text-xs text-violet-500 font-mono bg-violet-50 dark:bg-violet-900/30 px-1.5 py-0.5 rounded">
                   {idx + 1}
                 </span>
-                {v.label}
+                <span className="flex items-center gap-1">
+                  {v.label}
+                  {v.required ? (
+                    <span className="text-rose-500 dark:text-rose-400" aria-label="required" title="Required">*</span>
+                  ) : (
+                    <span className="text-[10px] font-normal uppercase tracking-wider text-gray-400 dark:text-slate-500">optional</span>
+                  )}
+                </span>
               </label>
               <input
                 id={`var-${v.name}`}
@@ -157,20 +202,27 @@ export function TemplateVariableForm({
           <span className="font-medium">{filledCount}/{variables.length} filled</span>
         </div>
 
-        {!allFilled && (
+        {!allRequiredFilled && (
+          <div className="flex items-center gap-2 text-xs text-rose-600 dark:text-rose-400">
+            <AlertCircle className="h-4 w-4" />
+            <span>{requiredVars.length - requiredFilledCount} required field{requiredVars.length - requiredFilledCount === 1 ? '' : 's'} still empty.</span>
+          </div>
+        )}
+        {allRequiredFilled && !allFilled && (
           <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
             <AlertCircle className="h-4 w-4" />
-            <span>Unfilled variables will remain as placeholders in the document.</span>
+            <span>Optional fields will remain as placeholders — that's OK.</span>
           </div>
         )}
 
         <div className="flex items-center gap-3 pt-2">
           <button
             type="submit"
-            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl hover:from-violet-700 hover:to-purple-700 transition-colors font-medium shadow-lg shadow-violet-500/25"
+            disabled={!allRequiredFilled}
+            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl hover:from-violet-700 hover:to-purple-700 transition-colors font-medium shadow-lg shadow-violet-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:from-slate-400 disabled:to-slate-500 disabled:shadow-none"
           >
             <Sparkles className="h-4 w-4" />
-            {allFilled ? 'Start Editing' : 'Continue with Placeholders'}
+            {allFilled ? 'Start Editing' : allRequiredFilled ? 'Continue with Placeholders' : `Fill ${requiredVars.length - requiredFilledCount} required field${requiredVars.length - requiredFilledCount === 1 ? '' : 's'}`}
             <ArrowRight className="h-4 w-4" />
           </button>
           <button

@@ -16,6 +16,9 @@ interface ConditionalLayoutProps {
 // Marketing pages that should not show the app navigation
 const MARKETING_PAGES = ['/', '/home', '/features', '/pricing', '/about', '/contact', '/privacy', '/terms', '/security'];
 
+// Focused-work surfaces where global onboarding overlays would cover the primary UI.
+const ONBOARDING_SUPPRESSED_PREFIXES = ['/drafting'];
+
 export function ConditionalLayout({ children }: ConditionalLayoutProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -24,6 +27,9 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
   const isAuthPage = pathname?.startsWith('/auth');
   const isMarketingPage = MARKETING_PAGES.includes(pathname || '');
   const hideFloatingAssistant = pathname === '/contigo-labs' && searchParams?.get('tab') === 'chat';
+  const suppressOnboardingOverlay = ONBOARDING_SUPPRESSED_PREFIXES.some((prefix) =>
+    pathname?.startsWith(prefix),
+  );
   
   // Move focus to main content after navigation when it was triggered from nav.
   // Use a longer delay to avoid racing with Next.js soft navigation transitions.
@@ -87,10 +93,12 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
       </Suspense>
       {/* Mobile bottom navigation */}
       <MobileBottomNav />
-      {/* Onboarding checklist for new users */}
-      <Suspense fallback={null}>
-        <OnboardingChecklist />
-      </Suspense>
+      {/* Onboarding checklist for new users — hidden on focused-work surfaces */}
+      {!suppressOnboardingOverlay && (
+        <Suspense fallback={null}>
+          <OnboardingChecklist />
+        </Suspense>
+      )}
     </>
   );
 }

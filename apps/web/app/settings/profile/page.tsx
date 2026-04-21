@@ -48,6 +48,20 @@ import { PersonalActivityFeed } from "@/components/security/personal-activity-fe
 
 
 // User profile interface
+type EmailPreferences = {
+  renewals: boolean;
+  risks: boolean;
+  savings: boolean;
+  weekly: boolean;
+};
+
+const DEFAULT_EMAIL_PREFERENCES: EmailPreferences = {
+  renewals: true,
+  risks: true,
+  savings: true,
+  weekly: true,
+};
+
 interface UserProfile {
   id: string;
   name: string;
@@ -64,6 +78,7 @@ interface UserProfile {
   bio: string | null;
   company: string | null;
   twoFactorEnabled: boolean;
+  emailPreferences: EmailPreferences;
   lastLogin: string | null;
   createdAt: string;
 }
@@ -127,7 +142,17 @@ export default function ProfileSettingsPage() {
   const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' });
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [emailPrefs, setEmailPrefs] = useState({ renewals: true, risks: true, savings: true, weekly: true });
+  const [emailPrefs, setEmailPrefs] = useState<EmailPreferences>(DEFAULT_EMAIL_PREFERENCES);
+
+  useEffect(() => {
+    if (!user?.emailPreferences) return;
+    setEmailPrefs({
+      renewals: user.emailPreferences.renewals,
+      risks: user.emailPreferences.risks,
+      savings: user.emailPreferences.savings,
+      weekly: user.emailPreferences.weekly,
+    });
+  }, [user?.emailPreferences]);
 
   // Track dirty state for beforeunload
   useEffect(() => {

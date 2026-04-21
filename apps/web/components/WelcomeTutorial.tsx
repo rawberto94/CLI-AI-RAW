@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -147,15 +147,20 @@ export function WelcomeTutorial() {
   const [dontShowAgain, _setDontShowAgain] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  // Do not auto-open the tour on focused-work surfaces (drafting studio, etc.)
+  // where the overlay would cover the primary editor UI.
+  const suppressAutoOpen = pathname?.startsWith('/drafting') ?? false;
 
   useEffect(() => {
+    if (suppressAutoOpen) return;
     const hasCompletedTutorial = localStorage.getItem("contigo-tutorial-completed");
     if (!hasCompletedTutorial) {
       // Small delay for smoother entrance
       const timer = setTimeout(() => setIsOpen(true), 500);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [suppressAutoOpen]);
 
   const openTutorial = useCallback(() => {
     setDirection('next');

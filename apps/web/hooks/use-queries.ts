@@ -11,6 +11,7 @@ import type { SignatureStatus, DocumentClassification } from '@/lib/types/contra
 export interface Contract {
   id: string;
   title: string;
+  contractTitle?: string | null;
   filename?: string;
   originalName?: string;
   status: string;

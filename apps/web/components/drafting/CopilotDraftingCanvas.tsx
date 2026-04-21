@@ -10,13 +10,16 @@ import {
   RefreshCw, Loader2, Brain, AlertCircle,
   FileDown, CheckCircle2, ArrowRight,
   BookOpen, Search, Lock, Unlock, ThumbsUp, ThumbsDown,
-  Check, GripVertical,
+  Check, GripVertical, Undo2, Redo2,
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEditor, EditorContent } from '@tiptap/react';
+import { TextSelection } from 'prosemirror-state';
 import StarterKit from '@tiptap/starter-kit';
-import UnderlineExt from '@tiptap/extension-underline';
+// Note: StarterKit v3 already bundles the Underline extension; importing
+// @tiptap/extension-underline separately causes a "Duplicate extension names"
+// warning at runtime.
 import Highlight from '@tiptap/extension-highlight';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -366,6 +369,16 @@ function getConfidenceTone(confidence?: number): 'high' | 'medium' | 'low' | 'un
   if (normalized >= 0.85) return 'high';
   if (normalized >= 0.65) return 'medium';
   return 'low';
+}
+
+function getRiskSeverityRank(level: RiskHighlight['riskLevel']): number {
+  switch (level) {
+    case 'critical': return 4;
+    case 'high': return 3;
+    case 'medium': return 2;
+    case 'low': return 1;
+    default: return 0;
+  }
 }
 
 // ============================================================================
@@ -948,6 +961,13 @@ interface HeatmapMarker {
   tone: 'critical' | 'high' | 'medium' | 'low' | 'comment';
 }
 
+interface InlineRiskChip {
+  id: string;
+  top: number;
+  risk: RiskHighlight;
+  extraCount: number;
+}
+
 interface DraftOutlineSection {
   id: string;
   title: string;
@@ -1063,6 +1083,24 @@ export function CopilotDraftingCanvas({
     });
   }, []);
   const [aiChatMessages, _setAiChatMessages] = useState<AiChatMessage[]>([]);
+  const [rejectedDraftIds, setRejectedDraftIds] = useState<Set<string>>(() => new Set());
+  const [appliedDraftIds, setAppliedDraftIds] = useState<Set<string>>(() => new Set());
+  const toggleDraftRejected = useCallback((id: string) => {
+    setRejectedDraftIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const markDraftApplied = useCallback((id: string) => {
+    setAppliedDraftIds(prev => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, []);
   const aiChatMessagesRef = useRef<AiChatMessage[]>([]);
   // Keep ref in sync so sendAiChatMessage reads latest without re-creating
   const setAiChatMessages = useCallback((update: AiChatMessage[] | ((prev: AiChatMessage[]) => AiChatMessage[])) => {
@@ -1073,12 +1111,77 @@ export function CopilotDraftingCanvas({
     });
   }, []);
   const [aiChatInput, setAiChatInput] = useState('');
+
+  const [showShortcutCoachmark, setShowShortcutCoachmark] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('drafting-shortcut-coachmark-dismissed') !== '1';
+  });
+  const dismissShortcutCoachmark = useCallback(() => {
+    setShowShortcutCoachmark(false);
+    try { localStorage.setItem('drafting-shortcut-coachmark-dismissed', '1'); } catch { /* ignore */ }
+  }, []);
+  const [showHelpCheatsheet, setShowHelpCheatsheet] = useState(false);
+  const [showSectionJump, setShowSectionJump] = useState(false);
+  const [sectionJumpQuery, setSectionJumpQuery] = useState('');
+  const [sectionJumpIndex, setSectionJumpIndex] = useState(0);
+  const [showFindReplace, setShowFindReplace] = useState(false);
+  const [findQuery, setFindQuery] = useState('');
+  const [replaceQuery, setReplaceQuery] = useState('');
+  const [findCaseSensitive, setFindCaseSensitive] = useState(false);
+  // Focus mode: hides sidebars for distraction-free writing; persists to localStorage
+  const [focusMode, setFocusMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('drafting-focus-mode') === '1';
+  });
+  const toggleFocusMode = useCallback(() => {
+    setFocusMode(prev => {
+      const next = !prev;
+      try { localStorage.setItem('drafting-focus-mode', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+  // Word count goal: user-defined target to track drafting progress
+  const [wordGoal, setWordGoal] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    const raw = localStorage.getItem('drafting-word-goal');
+    const n = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  });
+  const setWordGoalPersistent = useCallback((n: number) => {
+    setWordGoal(n);
+    try {
+      if (n > 0) localStorage.setItem('drafting-word-goal', String(n));
+      else localStorage.removeItem('drafting-word-goal');
+    } catch { /* ignore */ }
+  }, []);
   const [isAiChatStreaming, setIsAiChatStreaming] = useState(false);
   const aiChatAbortRef = useRef<AbortController | null>(null);
   const aiChatScrollRef = useRef<HTMLDivElement | null>(null);
   const [isEditing, setIsEditing] = useState(true);
   const [workspaceMode, setWorkspaceMode] = useState<'draft' | 'negotiate'>('draft');
-  const [showDesktopSidebar, setShowDesktopSidebar] = useState(false);
+  // Default the assistant sidebar open on large viewports and remember the user's
+  // explicit preference in localStorage so manual toggles persist across reloads.
+  const SIDEBAR_VISIBILITY_STORAGE_KEY = 'drafting-desktop-sidebar-visible';
+  const [showDesktopSidebar, setShowDesktopSidebar] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const stored = window.localStorage.getItem(SIDEBAR_VISIBILITY_STORAGE_KEY);
+      if (stored === 'true') return true;
+      if (stored === 'false') return false;
+    } catch { /* localStorage unavailable */ }
+    // No saved preference yet → open by default on lg+ (Tailwind's lg breakpoint)
+    return typeof window.matchMedia === 'function'
+      ? window.matchMedia('(min-width: 1024px)').matches
+      : false;
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        SIDEBAR_VISIBILITY_STORAGE_KEY,
+        showDesktopSidebar ? 'true' : 'false',
+      );
+    } catch { /* ignore storage failures */ }
+  }, [showDesktopSidebar]);
   const [desktopSidebarWidth, setDesktopSidebarWidth] = useState(resolveInitialDesktopSidebarWidth);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const [isEditorDropActive, setIsEditorDropActive] = useState(false);
@@ -1092,8 +1195,10 @@ export function CopilotDraftingCanvas({
 
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [autosaveFailed, setAutosaveFailed] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const [selectedHeatmapMarkerId, setSelectedHeatmapMarkerId] = useState<string | null>(null);
+  const [inlineRiskChips, setInlineRiskChips] = useState<InlineRiskChip[]>([]);
   const [sourceTrail, setSourceTrail] = useState<SourceTrailEntry[]>(() => normalizeSourceTrail(initialSourceTrail));
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
@@ -1276,7 +1381,6 @@ export function CopilotDraftingCanvas({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({}),
-      UnderlineExt,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({
@@ -1291,6 +1395,34 @@ export function CopilotDraftingCanvas({
       attributes: {
         class: 'tiptap-editor prose prose-lg max-w-none focus:outline-none min-h-[620px] md:min-h-[780px] font-serif text-[17px] leading-[1.95] tracking-[0.003em] text-slate-800 prose-headings:font-semibold prose-headings:tracking-[-0.03em] prose-h1:mb-6 prose-h1:text-[2.25rem] prose-h2:mt-12 prose-h2:mb-4 prose-h2:text-[1.45rem] prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-[1.12rem] prose-p:my-5 prose-p:text-slate-700 prose-li:my-1 prose-li:text-slate-700 prose-strong:text-slate-900 prose-a:text-violet-700 prose-blockquote:border-l-slate-300 prose-blockquote:text-slate-600 dark:prose-invert dark:text-slate-100 dark:prose-p:text-slate-300 dark:prose-li:text-slate-300 dark:prose-strong:text-slate-50 dark:prose-a:text-violet-300 dark:prose-blockquote:border-l-slate-600 dark:prose-blockquote:text-slate-300 md:text-[18px]',
         style: "font-family: Charter, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif",
+      },
+      handleTextInput: (view, from, to, text) => {
+        // Smart bracket/quote pairing: insert matching closer when user types an opener
+        if (from !== to) return false;
+        const pairs: Record<string, string> = { '(': ')', '[': ']', '{': '}', '"': '"', '\u201c': '\u201d' };
+        const closers = new Set([')', ']', '}', '"', '\u201d']);
+        const nextChar = view.state.doc.textBetween(from, Math.min(from + 1, view.state.doc.content.size));
+        // Skip-over: if user types a closer that already sits at cursor, just move past it
+        if (closers.has(text) && nextChar === text) {
+          const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, from + 1));
+          view.dispatch(tr);
+          return true;
+        }
+        const closer = pairs[text];
+        if (!closer) return false;
+        // don't pair when immediately before a word char (likely editing existing content)
+        if (nextChar && /\w/.test(nextChar)) return false;
+        // don't pair when next char is already a closer (prevents nested `(("text"))` bugs)
+        if (nextChar && closers.has(nextChar)) return false;
+        // for quotes, also skip when previous char is a letter (contractions like don"t)
+        if ((text === '"' || text === '\u201c') && from > 0) {
+          const prevChar = view.state.doc.textBetween(from - 1, from);
+          if (/\w/.test(prevChar)) return false;
+        }
+        let tr = view.state.tr.insertText(text + closer, from, to);
+        tr = tr.setSelection(TextSelection.create(tr.doc, from + 1));
+        view.dispatch(tr);
+        return true;
       },
     },
     onUpdate: ({ editor: ed }) => {
@@ -1500,6 +1632,20 @@ export function CopilotDraftingCanvas({
   // Lock to prevent concurrent auto-save and manual save
   const saveLockRef = useRef(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // After the editor mounts, TipTap normalises the HTML (e.g. wrapping raw text in <p>),
+  // so the HTML that flows through onUpdate differs from the raw `initialContent` prop
+  // we seeded the saved-ref with. Re-sync both refs once on mount so the beforeunload
+  // "unsaved changes" guard doesn't fire on drafts the user hasn't touched.
+  const didSyncInitialSavedRef = useRef(false);
+  useEffect(() => {
+    if (didSyncInitialSavedRef.current) return;
+    if (!editor) return;
+    const normalized = editor.getHTML();
+    contentRef.current = normalized;
+    lastSavedContentRef.current = normalized;
+    didSyncInitialSavedRef.current = true;
+  }, [editor]);
   const editorDragCounterRef = useRef(0);
   const editorSurfaceRef = useRef<HTMLDivElement | null>(null);
   const slashCommandRangeRef = useRef<{ from: number; to: number } | null>(null);
@@ -1530,13 +1676,14 @@ export function CopilotDraftingCanvas({
       if (saveLockRef.current) return;
       saveLockRef.current = true;
       // Content changed — save via onSave callback or direct API
+      const savingStartedAt = Date.now();
       setIsSaving(true);
       try {
         const serializedSourceTrail = serializeSourceTrail(sourceTrail);
         if (onSave) {
           await onSave({ content: html, title: nextTitle, clauses: serializedSourceTrail });
         } else if (draftId) {
-          await fetch(`/api/drafts/${draftId}`, {
+          const res = await fetch(`/api/drafts/${draftId}`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
@@ -1544,16 +1691,28 @@ export function CopilotDraftingCanvas({
             },
             body: JSON.stringify({ content: html, title: nextTitle, clauses: serializedSourceTrail }),
           });
+          if (res.status === 401) {
+            toast.error('Session expired. Your changes are not being saved — please sign in again.');
+            throw new Error('Session expired');
+          }
+          if (!res.ok) throw new Error('Autosave failed');
         }
         lastSavedContentRef.current = html;
         lastSavedTitleRef.current = nextTitle;
         hasEditedTitleRef.current = false;
         setLastSaved(new Date());
+        setAutosaveFailed(false);
       } catch (error) {
         console.error('Auto-save failed:', error);
+        setAutosaveFailed(true);
       } finally {
-        setIsSaving(false);
-        saveLockRef.current = false;
+        // Ensure "Saving…" is visible for at least 600ms so users feel the system alive
+        const elapsed = Date.now() - savingStartedAt;
+        const remaining = Math.max(0, 600 - elapsed);
+        setTimeout(() => {
+          setIsSaving(false);
+          saveLockRef.current = false;
+        }, remaining);
       }
     }, 5000); // 5s after last debounced content change
 
@@ -1849,6 +2008,75 @@ export function CopilotDraftingCanvas({
     setShowDesktopSidebar(true);
   }, [editor, focusDraftRange, locateTextRange, setActiveTab]);
 
+  useEffect(() => {
+    if (!editor || !editorSurfaceRef.current || risks.length === 0) {
+      setInlineRiskChips([]);
+      return;
+    }
+
+    const computeInlineRiskChips = () => {
+      if (!editor || !editorSurfaceRef.current) return;
+
+      const editorRect = editorSurfaceRef.current.getBoundingClientRect();
+      const docSize = editor.state.doc.content.size;
+      const grouped: Array<{ top: number; risks: RiskHighlight[] }> = [];
+
+      for (const risk of risks.slice(0, 16)) {
+        let from = risk.position.startOffset;
+        let to = risk.position.endOffset;
+        const isUsableRange = from > 0 && to >= from && to <= docSize;
+
+        if (!isUsableRange) {
+          const located = locateTextRange(risk.text);
+          if (located) {
+            from = located.from;
+            to = located.to;
+          }
+        }
+
+        if (!(from > 0)) continue;
+
+        try {
+          const coords = editor.view.coordsAtPos(from);
+          const top = Math.max(96, Math.min(editorRect.height - 44, coords.top - editorRect.top - 10));
+          const bucket = grouped.find((entry) => Math.abs(entry.top - top) < 34);
+          if (bucket) {
+            bucket.top = Math.min(bucket.top, top);
+            bucket.risks.push(risk);
+          } else {
+            grouped.push({ top, risks: [risk] });
+          }
+        } catch {
+          // Ignore coords lookup errors for stale positions.
+        }
+      }
+
+      const nextChips = grouped
+        .map((group, index) => {
+          const sortedRisks = [...group.risks].sort((left, right) => getRiskSeverityRank(right.riskLevel) - getRiskSeverityRank(left.riskLevel));
+          return {
+            id: `inline-risk-${index}-${sortedRisks[0]?.id || 'risk'}`,
+            top: group.top,
+            risk: sortedRisks[0],
+            extraCount: Math.max(0, group.risks.length - 1),
+          } satisfies InlineRiskChip;
+        })
+        .sort((left, right) => left.top - right.top)
+        .slice(0, 10);
+
+      setInlineRiskChips(nextChips);
+    };
+
+    const frame = window.requestAnimationFrame(computeInlineRiskChips);
+    const handleResize = () => computeInlineRiskChips();
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [editor, risks, debouncedContentVersion, locateTextRange]);
+
   // ====================================================================
   // VERSION DIFF HANDLERS
   // ====================================================================
@@ -2111,6 +2339,58 @@ export function CopilotDraftingCanvas({
     toast.success(`Moved ${sourceSection.title}`);
   }, [editor]);
 
+  const duplicateOutlineSection = useCallback((sectionId: string) => {
+    if (!editor) return;
+    const headings: Array<{ title: string; level: number; startPos: number }> = [];
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'heading') {
+        headings.push({
+          title: node.textContent.trim() || 'Untitled section',
+          level: typeof node.attrs.level === 'number' ? node.attrs.level : 1,
+          startPos: pos,
+        });
+      }
+    });
+    const sections = headings.map((h, i) => ({
+      id: `${h.startPos}-${h.title}`,
+      startPos: h.startPos,
+      endPos: i + 1 < headings.length ? headings[i + 1].startPos : editor.state.doc.content.size,
+      title: h.title,
+    }));
+    const section = sections.find(s => s.id === sectionId);
+    if (!section) return;
+    const slice = editor.state.doc.slice(section.startPos, section.endPos);
+    const tr = editor.state.tr.insert(section.endPos, slice.content).scrollIntoView();
+    editor.view.dispatch(tr);
+    toast.success(`Duplicated ${section.title}`);
+  }, [editor]);
+
+  const deleteOutlineSection = useCallback((sectionId: string) => {
+    if (!editor) return;
+    const headings: Array<{ title: string; level: number; startPos: number }> = [];
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'heading') {
+        headings.push({
+          title: node.textContent.trim() || 'Untitled section',
+          level: typeof node.attrs.level === 'number' ? node.attrs.level : 1,
+          startPos: pos,
+        });
+      }
+    });
+    const sections = headings.map((h, i) => ({
+      id: `${h.startPos}-${h.title}`,
+      startPos: h.startPos,
+      endPos: i + 1 < headings.length ? headings[i + 1].startPos : editor.state.doc.content.size,
+      title: h.title,
+    }));
+    const section = sections.find(s => s.id === sectionId);
+    if (!section) return;
+    if (!window.confirm(`Delete section "${section.title}"? This cannot be undone.`)) return;
+    const tr = editor.state.tr.delete(section.startPos, section.endPos).scrollIntoView();
+    editor.view.dispatch(tr);
+    toast.success(`Deleted ${section.title}`);
+  }, [editor]);
+
   const handleOutlineDragStart = useCallback((event: React.DragEvent<HTMLButtonElement>, sectionId: string) => {
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData(OUTLINE_REORDER_MIME, sectionId);
@@ -2274,6 +2554,18 @@ export function CopilotDraftingCanvas({
       e.preventDefault();
       setActiveTab('assistant');
       setShowDesktopSidebar(true);
+      return;
+    }
+    // Ctrl+K — Quick-jump to outline section
+    if (isMod && e.key === 'k') {
+      e.preventDefault();
+      setShowSectionJump(true);
+      return;
+    }
+    // Ctrl+H — Find & Replace
+    if (isMod && e.key === 'h') {
+      e.preventDefault();
+      setShowFindReplace(true);
       return;
     }
     // Ctrl+Space — Manual auto-complete trigger
@@ -2462,6 +2754,7 @@ export function CopilotDraftingCanvas({
       autoSaveTimerRef.current = null;
     }
     saveLockRef.current = true;
+    const savingStartedAt = Date.now();
     setIsSaving(true);
     try {
       const html = editor.getHTML();
@@ -2485,13 +2778,19 @@ export function CopilotDraftingCanvas({
       hasEditedTitleRef.current = false;
       setDraftTitle(nextTitle);
       setLastSaved(new Date());
+      setAutosaveFailed(false);
       toast.success('Document saved');
     } catch (error) {
       console.error('Save failed:', error);
+      setAutosaveFailed(true);
       toast.error('Save failed');
     } finally {
-      setIsSaving(false);
-      saveLockRef.current = false;
+      const elapsed = Date.now() - savingStartedAt;
+      const remaining = Math.max(0, 600 - elapsed);
+      setTimeout(() => {
+        setIsSaving(false);
+        saveLockRef.current = false;
+      }, remaining);
     }
   }, [editor, onSave, draftId, draftTitle, contractType, sourceTrail]);
 
@@ -2540,6 +2839,62 @@ export function CopilotDraftingCanvas({
     editor.chain().focus().redo().run();
   }, [editor]);
 
+  // Find & Replace helpers
+  const findNext = useCallback(() => {
+    if (!editor || !findQuery) return;
+    const text = editor.state.doc.textBetween(0, editor.state.doc.content.size, '\n');
+    const haystack = findCaseSensitive ? text : text.toLowerCase();
+    const needle = findCaseSensitive ? findQuery : findQuery.toLowerCase();
+    const start = editor.state.selection.to;
+    let idx = haystack.indexOf(needle, start);
+    if (idx === -1) idx = haystack.indexOf(needle, 0); // wrap
+    if (idx === -1) { toast.error('No match'); return; }
+    editor.chain().focus().setTextSelection({ from: idx + 1, to: idx + 1 + needle.length }).scrollIntoView().run();
+  }, [editor, findQuery, findCaseSensitive]);
+
+  const replaceOne = useCallback(() => {
+    if (!editor || !findQuery) return;
+    const { from, to } = editor.state.selection;
+    const selected = editor.state.doc.textBetween(from, to, '\n');
+    const matches = findCaseSensitive ? selected === findQuery : selected.toLowerCase() === findQuery.toLowerCase();
+    if (matches) {
+      editor.chain().focus().insertContentAt({ from, to }, replaceQuery).run();
+    }
+    findNext();
+  }, [editor, findQuery, replaceQuery, findCaseSensitive, findNext]);
+
+  const replaceAll = useCallback(() => {
+    if (!editor || !findQuery) return;
+    const text = editor.state.doc.textBetween(0, editor.state.doc.content.size, '\n');
+    const flags = findCaseSensitive ? 'g' : 'gi';
+    const escaped = findQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(escaped, flags);
+    const matches = text.match(re);
+    if (!matches || matches.length === 0) { toast.error('No matches'); return; }
+    // Walk the doc backwards to preserve positions
+    const positions: Array<{ from: number; to: number }> = [];
+    let searchFrom = 0;
+    const searchText = findCaseSensitive ? text : text.toLowerCase();
+    const needle = findCaseSensitive ? findQuery : findQuery.toLowerCase();
+    while (true) {
+      const idx = searchText.indexOf(needle, searchFrom);
+      if (idx === -1) break;
+      positions.push({ from: idx + 1, to: idx + 1 + needle.length });
+      searchFrom = idx + needle.length;
+    }
+    let chain = editor.chain().focus();
+    for (let i = positions.length - 1; i >= 0; i--) {
+      chain = chain.insertContentAt(positions[i], replaceQuery);
+    }
+    chain.run();
+    toast.success(`Replaced ${positions.length} occurrence${positions.length === 1 ? '' : 's'}`);
+  }, [editor, findQuery, replaceQuery, findCaseSensitive]);
+
+  const handleClearFormatting = useCallback(() => {
+    if (!editor) return;
+    editor.chain().focus().clearNodes().unsetAllMarks().run();
+  }, [editor]);
+
   // ============================================================================
   // EXPORT HANDLERS
   // ============================================================================
@@ -2547,6 +2902,8 @@ export function CopilotDraftingCanvas({
   const handleExportPDF = useCallback(async () => {
     if (!editor) return;
     setIsExporting(true);
+    const toastId = `export-pdf-${Date.now()}`;
+    toast.loading('Preparing PDF…', { id: toastId });
     try {
       await exportDraftAsPDF({
         title: documentCanvasTitle,
@@ -2554,10 +2911,10 @@ export function CopilotDraftingCanvas({
         contractType,
         author: session?.user?.name || 'Unknown',
       });
-      toast.success('PDF exported successfully');
+      toast.success('PDF exported successfully', { id: toastId });
     } catch (error) {
       console.error('PDF export failed:', error);
-      toast.error('PDF export failed');
+      toast.error('PDF export failed', { id: toastId });
     } finally {
       setIsExporting(false);
       setShowActionsMenu(false);
@@ -2567,6 +2924,8 @@ export function CopilotDraftingCanvas({
   const handleExportDOCX = useCallback(async () => {
     if (!editor) return;
     setIsExporting(true);
+    const toastId = `export-docx-${Date.now()}`;
+    toast.loading('Preparing DOCX…', { id: toastId });
     try {
       await exportDraftAsDOCX({
         title: documentCanvasTitle,
@@ -2574,10 +2933,10 @@ export function CopilotDraftingCanvas({
         contractType,
         author: session?.user?.name || 'Unknown',
       });
-      toast.success('DOCX exported successfully');
+      toast.success('DOCX exported successfully', { id: toastId });
     } catch (error) {
       console.error('DOCX export failed:', error);
-      toast.error('DOCX export failed');
+      toast.error('DOCX export failed', { id: toastId });
     } finally {
       setIsExporting(false);
       setShowActionsMenu(false);
@@ -2594,6 +2953,17 @@ export function CopilotDraftingCanvas({
       return;
     }
 
+    // Warn on status-skip (e.g., DRAFT → FINALIZED)
+    const order = ['DRAFT', 'IN_REVIEW', 'PENDING_APPROVAL', 'APPROVED', 'FINALIZED'] as const;
+    const curIdx = order.indexOf(draftStatus as typeof order[number]);
+    const nextIdx = order.indexOf(newStatus as typeof order[number]);
+    if (curIdx >= 0 && nextIdx > curIdx + 1) {
+      const skipped = order.slice(curIdx + 1, nextIdx).join(' → ');
+      if (!window.confirm(`This skips normal review steps (${skipped}). Continue?`)) {
+        return;
+      }
+    }
+
     try {
       const response = await fetch(`/api/drafts/${draftId}`, {
         method: 'PATCH',
@@ -2601,6 +2971,11 @@ export function CopilotDraftingCanvas({
         body: JSON.stringify({ status: newStatus }),
       });
 
+      if (response.status === 401) {
+        toast.error('Your session has expired. Please sign in again.');
+        setTimeout(() => { window.location.href = '/login'; }, 1500);
+        return;
+      }
       if (!response.ok) throw new Error('Status update failed');
 
       setDraftStatus(newStatus);
@@ -2609,7 +2984,7 @@ export function CopilotDraftingCanvas({
       console.error('Status change failed:', error);
       toast.error('Failed to update draft status');
     }
-  }, [draftId]);
+  }, [draftId, draftStatus]);
 
   const handleFinalize = useCallback(async () => {
     if (!draftId) return;
@@ -2788,6 +3163,118 @@ export function CopilotDraftingCanvas({
     () => (documentWordCount > 0 ? Math.max(1, Math.round(documentWordCount / 220)) : 0),
     [documentWordCount],
   );
+  // Selection word/char count — updates on each editor transaction
+  const [selectionStats, setSelectionStats] = useState<{ words: number; chars: number }>({ words: 0, chars: 0 });
+  useEffect(() => {
+    if (!editor) return;
+    const update = () => {
+      const { from, to } = editor.state.selection;
+      if (from === to) { setSelectionStats({ words: 0, chars: 0 }); return; }
+      const text = editor.state.doc.textBetween(from, to, '\n').trim();
+      setSelectionStats({
+        words: text ? text.split(/\s+/).length : 0,
+        chars: text.length,
+      });
+    };
+    editor.on('selectionUpdate', update);
+    editor.on('update', update);
+    return () => {
+      editor.off('selectionUpdate', update);
+      editor.off('update', update);
+    };
+  }, [editor]);
+  const clauseConflicts = useMemo<string[]>(() => {
+    if (!editor) return [];
+    const text = editor.getText().toLowerCase();
+    if (!text || text.length < 200) return [];
+    const conflicts: string[] = [];
+    // Termination-for-convenience vs only-for-cause
+    const hasForConvenience = /terminat\w*\s+(?:this agreement\s+)?for\s+convenience/i.test(text);
+    const hasOnlyForCause = /terminat\w*\s+only\s+for\s+cause|solely\s+for\s+cause/i.test(text);
+    if (hasForConvenience && hasOnlyForCause) {
+      conflicts.push('Termination: "for convenience" conflicts with "only for cause"');
+    }
+    // Governing law duplication
+    const govMatches = text.match(/governed by the laws of ([^.,;]+)/gi) || [];
+    if (govMatches.length >= 2) {
+      const normalized = Array.from(new Set(govMatches.map((m) => m.trim().toLowerCase())));
+      if (normalized.length > 1) {
+        conflicts.push('Governing law: multiple jurisdictions referenced');
+      }
+    }
+    // Auto-renewal vs no-renewal
+    const hasAutoRenew = /auto(?:matic)?\s*(?:ally)?\s*renew/i.test(text);
+    const hasNoRenew = /shall not (?:auto(?:matically)?\s*)?renew|no\s+automatic\s+renewal/i.test(text);
+    if (hasAutoRenew && hasNoRenew) {
+      conflicts.push('Renewal: auto-renewal conflicts with no-renewal clause');
+    }
+    // Exclusivity vs non-exclusivity
+    const hasExclusive = /\bexclusive\s+(?:rights?|license|agreement)\b/i.test(text);
+    const hasNonExclusive = /\bnon[- ]exclusive\b/i.test(text);
+    if (hasExclusive && hasNonExclusive) {
+      conflicts.push('Exclusivity: exclusive vs. non-exclusive language both present');
+    }
+    return conflicts;
+  }, [editor, debouncedContentVersion]);
+  const [dismissedConflictBanner, setDismissedConflictBanner] = useState(false);
+  useEffect(() => {
+    if (clauseConflicts.length > 0) setDismissedConflictBanner(false);
+  }, [clauseConflicts.length]);
+
+  // Per-draft "reviewed" set for clause conflicts (persisted to localStorage).
+  const conflictReviewKey = useMemo(
+    () => (draftId ? `contigo.draft.${draftId}.reviewedConflicts` : null),
+    [draftId],
+  );
+  const [reviewedConflicts, setReviewedConflicts] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!conflictReviewKey) return;
+    try {
+      const raw = window.localStorage.getItem(conflictReviewKey);
+      if (raw) setReviewedConflicts(new Set(JSON.parse(raw)));
+    } catch { /* ignore */ }
+  }, [conflictReviewKey]);
+  const toggleConflictReviewed = useCallback((conflict: string) => {
+    setReviewedConflicts((prev) => {
+      const next = new Set(prev);
+      if (next.has(conflict)) next.delete(conflict); else next.add(conflict);
+      if (conflictReviewKey) {
+        try { window.localStorage.setItem(conflictReviewKey, JSON.stringify([...next])); } catch { /* ignore */ }
+      }
+      return next;
+    });
+  }, [conflictReviewKey]);
+  const unreviewedConflicts = useMemo(
+    () => clauseConflicts.filter((c) => !reviewedConflicts.has(c)),
+    [clauseConflicts, reviewedConflicts],
+  );
+
+  // Transient next-action pill (dismissible per-session), derived from live state.
+  const [dismissedNextAction, setDismissedNextAction] = useState<string | null>(null);
+
+  // Negotiation rationale cache — "why did we accept this wording?" keyed by selected-text hash,
+  // persisted per-draft to localStorage so it survives reloads and handoffs.
+  const rationaleStorageKey = useMemo(
+    () => (draftId ? `contigo.draft.${draftId}.rationales` : null),
+    [draftId],
+  );
+  const [rationales, setRationales] = useState<Array<{ id: string; quote: string; note: string; at: number }>>([]);
+  useEffect(() => {
+    if (!rationaleStorageKey) return;
+    try {
+      const raw = window.localStorage.getItem(rationaleStorageKey);
+      if (raw) setRationales(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, [rationaleStorageKey]);
+  const persistRationales = useCallback((next: Array<{ id: string; quote: string; note: string; at: number }>) => {
+    setRationales(next);
+    if (rationaleStorageKey) {
+      try { window.localStorage.setItem(rationaleStorageKey, JSON.stringify(next)); } catch { /* ignore */ }
+    }
+  }, [rationaleStorageKey]);
+  const [showRationaleComposer, setShowRationaleComposer] = useState(false);
+  const [rationaleDraft, setRationaleDraft] = useState('');
+  const [showRationalePanel, setShowRationalePanel] = useState(false);
   const contractTypeKey = useMemo(
     () => contractType?.toUpperCase() || 'DEFAULT',
     [contractType],
@@ -2825,6 +3312,69 @@ export function CopilotDraftingCanvas({
     () => missingBlueprintSteps[0] || null,
     [missingBlueprintSteps],
   );
+  // Compute the single highest-priority next action to nudge the user toward.
+  // Ordering: blocking issues (conflicts, high-risk) → structural gaps → polish.
+  const nextActionPill = useMemo(() => {
+    if (draftStatus === 'FINALIZED') return null;
+    if (documentWordCount < 20) return null; // let the empty-state overlay handle it
+    if (unreviewedConflicts.length > 0) {
+      return {
+        id: `conflict:${unreviewedConflicts[0]}`,
+        tone: 'rose' as const,
+        icon: 'alert' as const,
+        label: unreviewedConflicts.length === 1 ? 'Clause conflict detected' : `${unreviewedConflicts.length} clause conflicts detected`,
+        hint: 'Resolving these before review prevents rework.',
+        cta: 'Resolve with AI',
+        prompt: `Review this draft and propose concrete wording fixes for the following conflict${unreviewedConflicts.length > 1 ? 's' : ''}:\n\n${unreviewedConflicts.map((c, i) => `${i + 1}. ${c}`).join('\n')}`,
+      };
+    }
+    if (priorityRiskCount > 0) {
+      return {
+        id: `risk:${priorityRiskCount}`,
+        tone: 'amber' as const,
+        icon: 'shield' as const,
+        label: `${priorityRiskCount} high-priority risk${priorityRiskCount === 1 ? '' : 's'} to address`,
+        hint: 'Fix these before approval to avoid reviewer back-and-forth.',
+        cta: 'Draft fixes',
+        prompt: `This ${contractTypeKey.toLowerCase()} draft has ${priorityRiskCount} critical/high-severity risk${priorityRiskCount === 1 ? '' : 's'}. Quote each flagged clause verbatim and propose redline wording that neutralises the risk while preserving commercial intent.`,
+      };
+    }
+    if (unresolvedCommentsCount > 0) {
+      return {
+        id: `comments:${unresolvedCommentsCount}`,
+        tone: 'blue' as const,
+        icon: 'chat' as const,
+        label: `${unresolvedCommentsCount} open reviewer comment${unresolvedCommentsCount === 1 ? '' : 's'}`,
+        hint: 'Group into must-fix, optional, and follow-ups.',
+        cta: 'Organize with AI',
+        prompt: `Create a revision plan for the open reviewer comments in this ${contractTypeKey.toLowerCase()} draft. Group the work into must-fix items, optional changes, and follow-up questions.`,
+      };
+    }
+    if (missingBlueprintSteps.length > 0 && nextBlueprintStep) {
+      return {
+        id: `blueprint:${nextBlueprintStep.title}`,
+        tone: 'violet' as const,
+        icon: 'sparkle' as const,
+        label: `Missing: ${nextBlueprintStep.title}`,
+        hint: 'Add the next core section to keep the structure complete.',
+        cta: 'Draft section',
+        prompt: `Draft the "${nextBlueprintStep.title}" section for this ${contractTypeKey.toLowerCase()}. Match the tone, numbering, and cross-references already established in the document.`,
+      };
+    }
+    if (documentWordCount > 400) {
+      return {
+        id: 'polish:readiness',
+        tone: 'emerald' as const,
+        icon: 'sparkle' as const,
+        label: 'Structure looks complete',
+        hint: 'Run a final AI readiness check before sending to review.',
+        cta: 'Run readiness check',
+        prompt: `Run a final AI readiness check on this ${contractTypeKey.toLowerCase()} draft. Check legal gaps, commercial consistency, defined-term usage, cross-reference integrity, and negotiation leverage. Return a prioritized checklist.`,
+      };
+    }
+    return null;
+  }, [draftStatus, documentWordCount, unreviewedConflicts, priorityRiskCount, unresolvedCommentsCount, missingBlueprintSteps.length, nextBlueprintStep, contractTypeKey]);
+  const visibleNextActionPill = nextActionPill && dismissedNextAction !== nextActionPill.id ? nextActionPill : null;
   const draftingJourneyStatus = useMemo(() => {
     if (documentWordCount < 80 && outlineSections.length === 0) {
       return {
@@ -3130,7 +3680,8 @@ export function CopilotDraftingCanvas({
     });
 
     toast.success(shouldReplace ? 'AI rewrite applied' : 'AI draft inserted');
-  }, [editor, recordSourceTrail, workspaceMode]);
+    markDraftApplied(message.id);
+  }, [editor, recordSourceTrail, workspaceMode, markDraftApplied]);
 
   const copyAiChatContent = useCallback(async (message: AiChatMessage) => {
     const text = message.draftHtml ? stripHtml(message.draftHtml) : message.content;
@@ -3506,6 +4057,63 @@ export function CopilotDraftingCanvas({
       <div className="flex-1 min-h-0 overflow-hidden p-5 pt-4">
         {activeTab === 'assistant' && (
           <div id="panel-assistant" role="tabpanel" aria-labelledby="tab-assistant" className="flex h-full min-h-0 flex-col">
+            {/* Sticky 'Next section' CTA — always visible while on assistant tab */}
+            {nextBlueprintStep && (
+              <div className="sticky top-0 z-10 mb-3 -mx-1 rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50 to-white px-4 py-3 shadow-sm dark:border-emerald-900/60 dark:from-emerald-950/30 dark:to-slate-900/80">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    <ArrowRight className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700/80 dark:text-emerald-300/80">
+                      Next section
+                    </p>
+                    <p className="truncate text-[13px] font-semibold text-slate-900 dark:text-slate-100">
+                      {nextBlueprintStep.title}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAssistantJourneyAction({
+                      id: `draft-${nextBlueprintStep.id}`,
+                      title: `Draft ${nextBlueprintStep.title}`,
+                      description: nextBlueprintStep.description,
+                      badge: 'Next section',
+                      emphasis: 'emerald',
+                      mode: 'prompt',
+                      prompt: `Draft a ${nextBlueprintStep.title.toLowerCase()} section for this ${contractTypeKey} agreement. Use the current draft for context, write contract-ready language, and leave explicit placeholders where facts are missing.`,
+                    })}
+                    className="shrink-0 rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  >
+                    Draft this →
+                  </button>
+                </div>
+              </div>
+            )}
+            {/* First-run coachmark: discoverability of / and Ctrl+/ */}
+            {showShortcutCoachmark && (
+              <div className="mb-3 rounded-2xl border border-violet-200/80 bg-violet-50/85 px-4 py-3 shadow-sm dark:border-violet-900/60 dark:bg-violet-950/25">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="mt-0.5 h-4 w-4 text-violet-600 dark:text-violet-300" />
+                  <div className="min-w-0 flex-1 text-[12px] leading-5 text-violet-900 dark:text-violet-200">
+                    <p className="font-semibold">Pro tips for faster drafting</p>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                      <li>Type <kbd className="rounded bg-white/70 px-1 font-mono text-[10px] text-violet-800 dark:bg-slate-900/60 dark:text-violet-200">/</kbd> anywhere in the editor to insert blocks or ask AI.</li>
+                      <li>Press <kbd className="rounded bg-white/70 px-1 font-mono text-[10px] text-violet-800 dark:bg-slate-900/60 dark:text-violet-200">Ctrl+/</kbd> to jump to the assistant.</li>
+                      <li>Select text, then use the toolbar to Rewrite or Review with AI.</li>
+                    </ul>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={dismissShortcutCoachmark}
+                    className="shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold text-violet-700 hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-violet-300 dark:hover:bg-slate-900/60"
+                    aria-label="Dismiss tips"
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
+            )}
             <div ref={aiChatScrollRef} className="flex-1 space-y-5 overflow-y-auto pr-1 pb-4">
               <div className="rounded-[24px] border border-slate-200/90 bg-[linear-gradient(140deg,rgba(255,255,255,0.98),rgba(241,245,249,0.96))] p-5 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-[linear-gradient(140deg,rgba(30,41,59,0.96),rgba(15,23,42,0.98))]">
                 <div className="flex items-start justify-between gap-3">
@@ -3892,6 +4500,24 @@ export function CopilotDraftingCanvas({
                                       >
                                         Apply
                                       </button>
+                                      {suggestions.length > 1 && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const idx = suggestions.findIndex(s => s.id === suggestion.id);
+                                            const nextSuggestion = suggestions[idx + 1] || suggestions[0];
+                                            applySuggestion(suggestion);
+                                            if (nextSuggestion && nextSuggestion.id !== suggestion.id) {
+                                              // Defer so state update from applySuggestion settles
+                                              setTimeout(() => setSelectedSuggestion(nextSuggestion.id), 80);
+                                            }
+                                          }}
+                                          className={`${draftingSecondaryButtonClass} flex-1 text-xs`}
+                                          title="Apply this suggestion, then open the next one"
+                                        >
+                                          Apply &amp; next
+                                        </button>
+                                      )}
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -4038,19 +4664,64 @@ export function CopilotDraftingCanvas({
                                     dangerouslySetInnerHTML={{ __html: normalizeAiHtml(msg.draftHtml) }}
                                   />
                                   <div className="mt-3 flex flex-wrap gap-2">
-                                    <button
-                                      onClick={() => applyAiChatDraft(msg)}
-                                      className={`${draftingPrimaryButtonClass} text-xs`}
-                                    >
-                                      <Check className="h-3.5 w-3.5" />
-                                      {msg.applyMode === 'replace_selection' ? 'Replace selection' : 'Insert into draft'}
-                                    </button>
-                                    <button
-                                      onClick={() => copyAiChatContent(msg)}
-                                      className={`${draftingSecondaryButtonClass} text-xs`}
-                                    >
-                                      Copy text
-                                    </button>
+                                    {rejectedDraftIds.has(msg.id) ? (
+                                      <>
+                                        <span className="inline-flex items-center gap-1.5 rounded-md bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-600 dark:bg-rose-900/30 dark:text-rose-300">
+                                          <X className="h-3.5 w-3.5" />
+                                          Rejected
+                                        </span>
+                                        <button
+                                          onClick={() => toggleDraftRejected(msg.id)}
+                                          className={`${draftingSecondaryButtonClass} text-xs`}
+                                        >
+                                          Undo
+                                        </button>
+                                      </>
+                                    ) : appliedDraftIds.has(msg.id) ? (
+                                      <>
+                                        <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                          <Check className="h-3.5 w-3.5" />
+                                          Applied
+                                        </span>
+                                        <button
+                                          onClick={() => applyAiChatDraft(msg)}
+                                          className={`${draftingSecondaryButtonClass} text-xs`}
+                                          title="Insert this proposal again"
+                                        >
+                                          Re-apply
+                                        </button>
+                                        <button
+                                          onClick={() => copyAiChatContent(msg)}
+                                          className={`${draftingSecondaryButtonClass} text-xs`}
+                                        >
+                                          Copy text
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <button
+                                          onClick={() => applyAiChatDraft(msg)}
+                                          className={`${draftingPrimaryButtonClass} text-xs`}
+                                        >
+                                          <Check className="h-3.5 w-3.5" />
+                                          {msg.applyMode === 'replace_selection' ? 'Replace selection' : 'Insert into draft'}
+                                        </button>
+                                        <button
+                                          onClick={() => copyAiChatContent(msg)}
+                                          className={`${draftingSecondaryButtonClass} text-xs`}
+                                        >
+                                          Copy text
+                                        </button>
+                                        <button
+                                          onClick={() => toggleDraftRejected(msg.id)}
+                                          className={`${draftingSecondaryButtonClass} text-xs`}
+                                          title="Reject this proposal"
+                                        >
+                                          <X className="h-3.5 w-3.5" />
+                                          Reject
+                                        </button>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                               )}
@@ -4159,15 +4830,27 @@ export function CopilotDraftingCanvas({
                     </>
                   )}
 
-                  {(draftStatus === 'APPROVED' || draftStatus === 'IN_REVIEW') && (
-                    <button
-                      onClick={handleFinalize}
-                      className={`${draftingPrimaryButtonClass} rounded-full text-xs`}
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Finalize contract
-                    </button>
-                  )}
+                  {(draftStatus === 'APPROVED' || draftStatus === 'IN_REVIEW') && (() => {
+                    const canFinalize = ['admin', 'owner', 'manager'].includes(session?.user?.role || '');
+                    const needsApproval = draftStatus === 'IN_REVIEW';
+                    const disabled = !canFinalize || needsApproval;
+                    const reason = !canFinalize
+                      ? 'Only admin, owner, or manager roles can finalize'
+                      : needsApproval
+                        ? 'Draft must be approved before finalizing'
+                        : 'Create the signed contract from this draft';
+                    return (
+                      <button
+                        onClick={handleFinalize}
+                        disabled={disabled}
+                        className={`${draftingPrimaryButtonClass} rounded-full text-xs disabled:opacity-50 disabled:cursor-not-allowed`}
+                        title={reason}
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Finalize contract
+                      </button>
+                    );
+                  })()}
 
                   {draftStatus === 'FINALIZED' && createdContractId && (
                     <button
@@ -4216,12 +4899,21 @@ export function CopilotDraftingCanvas({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {outlineSections.map((section) => (
+                  {outlineSections.map((section, idx) => (
+                    <div key={section.id} className="group relative">
                     <button
-                      key={section.id}
                       type="button"
                       draggable
                       onClick={() => handleFocusOutlineSection(section)}
+                      onKeyDown={(event) => {
+                        if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+                          event.preventDefault();
+                          const neighborIdx = event.key === 'ArrowUp' ? idx - 1 : idx + 1;
+                          const neighbor = outlineSections[neighborIdx];
+                          if (neighbor) moveOutlineSection(section.id, neighbor.id);
+                        }
+                      }}
+                      aria-label={`Outline section ${section.title}. Press Alt+Up or Alt+Down to reorder.`}
                       onDragStart={(event) => handleOutlineDragStart(event, section.id)}
                       onDragOver={(event) => handleOutlineDragOver(event, section.id)}
                       onDrop={(event) => handleOutlineDrop(event, section.id)}
@@ -4233,7 +4925,7 @@ export function CopilotDraftingCanvas({
                             ? 'border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-slate-700/60'
                             : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-700/60'
                       }`}
-                      style={{ paddingLeft: `${Math.min(24 + (section.level - 1) * 14, 52)}px` }}
+                      style={{ paddingLeft: `${Math.min(24 + (section.level - 1) * 14, 52)}px`, paddingRight: '60px' }}
                     >
                       <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-300">
                         <GripVertical className="h-3 w-3" />
@@ -4246,6 +4938,27 @@ export function CopilotDraftingCanvas({
                         H{section.level}
                       </span>
                     </button>
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); duplicateOutlineSection(section.id); }}
+                        className="rounded-md p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
+                        title="Duplicate section"
+                        aria-label={`Duplicate ${section.title}`}
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); deleteOutlineSection(section.id); }}
+                        className="rounded-md p-1 text-slate-500 hover:bg-rose-100 hover:text-rose-700 dark:text-slate-400 dark:hover:bg-rose-900/40 dark:hover:text-rose-300"
+                        title="Delete section"
+                        aria-label={`Delete ${section.title}`}
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z" /></svg>
+                      </button>
+                    </div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -4355,8 +5068,39 @@ export function CopilotDraftingCanvas({
                   const anchorText = typeof anchorTextValue === 'string' ? anchorTextValue.trim() : '';
                   const hasAnchor = typeof anchorFrom === 'number' && typeof anchorTo === 'number';
 
+                  // Drift detection: compare saved anchor text to live editor text at that range
+                  let isStale = false;
+                  if (hasAnchor && anchorText && editor && !comment.resolved) {
+                    try {
+                      const docSize = editor.state.doc.content.size;
+                      const from = Math.max(0, Math.min(anchorFrom as number, docSize));
+                      const to = Math.max(from, Math.min(anchorTo as number, docSize));
+                      const liveText = editor.state.doc.textBetween(from, to, ' ').trim();
+                      if (!liveText) {
+                        isStale = true;
+                      } else {
+                        // Levenshtein-lite: normalized length delta + containment check
+                        const a = anchorText.toLowerCase();
+                        const b = liveText.toLowerCase();
+                        if (b !== a && !b.includes(a) && !a.includes(b)) {
+                          const maxLen = Math.max(a.length, b.length);
+                          // Quick char-overlap ratio
+                          let common = 0;
+                          const aChars = new Map<string, number>();
+                          for (const ch of a) aChars.set(ch, (aChars.get(ch) || 0) + 1);
+                          for (const ch of b) {
+                            const n = aChars.get(ch) || 0;
+                            if (n > 0) { common++; aChars.set(ch, n - 1); }
+                          }
+                          const similarity = maxLen > 0 ? common / maxLen : 1;
+                          if (similarity < 0.7) isStale = true;
+                        }
+                      }
+                    } catch { /* ignore drift detection errors */ }
+                  }
+
                   return (
-                    <div key={comment.id} className={`rounded-2xl border p-3 ${comment.resolved ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
+                    <div key={comment.id} className={`rounded-2xl border p-3 ${comment.resolved ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20' : isStale ? 'border-amber-300 dark:border-amber-700 bg-amber-50/40 dark:bg-amber-900/20' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
                       <div className="flex items-start gap-2">
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500 text-sm font-medium text-white">
                           {(comment.user?.firstName?.[0] || '') + (comment.user?.lastName?.[0] || '')}
@@ -4372,6 +5116,14 @@ export function CopilotDraftingCanvas({
                             {comment.resolved && (
                               <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300">
                                 Resolved
+                              </span>
+                            )}
+                            {isStale && !comment.resolved && (
+                              <span
+                                className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/50 dark:text-amber-200"
+                                title="The anchored text has changed since this comment was written"
+                              >
+                                Stale · text changed
                               </span>
                             )}
                           </div>
@@ -4419,6 +5171,20 @@ export function CopilotDraftingCanvas({
                                 className="flex items-center gap-0.5 text-xs text-green-600 hover:underline dark:text-green-400"
                               >
                                 <Check className="h-3 w-3" /> Resolve
+                              </button>
+                            )}
+                            {!comment.resolved && (
+                              <button
+                                onClick={() => {
+                                  setActiveTab('assistant');
+                                  setShowDesktopSidebar(true);
+                                  const quotedText = anchorText ? `\n\nAnchored text:\n"""\n${anchorText}\n"""` : '';
+                                  sendAiChatMessage(`A reviewer left this comment on a ${contractTypeKey.toLowerCase()} draft:\n\n"${comment.content}"${quotedText}\n\nPropose concrete redline wording that addresses the comment. Quote the current clause and show the revised version side-by-side.`);
+                                }}
+                                className="flex items-center gap-0.5 text-xs text-violet-600 hover:underline dark:text-violet-400"
+                                title="Ask AI to draft a fix for this comment"
+                              >
+                                <Sparkles className="h-3 w-3" /> Draft fix
                               </button>
                             )}
                             <button
@@ -4778,6 +5544,16 @@ export function CopilotDraftingCanvas({
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     <span>Saving...</span>
                   </>
+                ) : autosaveFailed ? (
+                  <button
+                    type="button"
+                    onClick={() => handleSave()}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-rose-50 px-2 py-0.5 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-800"
+                    title="Auto-save failed. Click to retry."
+                  >
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span>Save failed — retry</span>
+                  </button>
                 ) : lastSaved ? (
                   <>
                     <Clock className="h-3.5 w-3.5" />
@@ -4790,6 +5566,25 @@ export function CopilotDraftingCanvas({
                   </>
                 )}
               </div>
+
+              {/* Draft status badge */}
+              <div className="h-4 w-px bg-gray-200 dark:bg-slate-600" />
+              <span
+                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                  draftStatus === 'FINALIZED'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800'
+                    : draftStatus === 'APPROVED'
+                      ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800'
+                      : draftStatus === 'REJECTED'
+                        ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800'
+                        : draftStatus === 'IN_REVIEW' || draftStatus === 'PENDING_APPROVAL'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600'
+                }`}
+                title={`Draft status: ${draftStatus.replace('_', ' ').toLowerCase()}`}
+              >
+                {draftStatus.replace('_', ' ')}
+              </span>
 
               {/* Risk Summary Badges */}
               {(riskSummary.critical > 0 || riskSummary.high > 0) && (
@@ -4878,6 +5673,34 @@ export function CopilotDraftingCanvas({
                 <span>{showDesktopSidebar ? 'Hide panel' : 'Assistant'}</span>
               </button>
 
+              <button
+                type="button"
+                onClick={() => setShowSectionJump(true)}
+                className={`hidden md:inline-flex ${headerActionButtonClass}`}
+                aria-label="Jump to section"
+                title="Jump to section (Ctrl+K)"
+              >
+                <Search className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline">Jump</span>
+                <kbd className="hidden lg:inline ml-1 rounded bg-slate-200/70 dark:bg-slate-700/70 px-1 py-px text-[9px] font-mono text-slate-500 dark:text-slate-400">⌘K</kbd>
+              </button>
+
+              {rationales.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowRationalePanel(true)}
+                  className={`hidden md:inline-flex ${headerActionButtonClass}`}
+                  aria-label="Negotiation rationales"
+                  title="Saved negotiation rationales"
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  <span className="hidden lg:inline">Rationales</span>
+                  <span className="ml-0.5 rounded-full bg-sky-100 text-sky-700 text-[10px] font-semibold px-1.5 py-px dark:bg-sky-900/50 dark:text-sky-300">
+                    {rationales.length}
+                  </span>
+                </button>
+              )}
+
               <div className="hidden min-h-[40px] items-center rounded-xl bg-gray-100/95 p-1 dark:bg-slate-700/95 md:flex" role="radiogroup" aria-label="Draft workspace mode">
                 <button
                   type="button"
@@ -4936,6 +5759,17 @@ export function CopilotDraftingCanvas({
                 </button>
               </div>
 
+              {/* Export quick-access (was only in Ctrl+Shift+E menu) */}
+              <button
+                onClick={() => handleExportDOCX()}
+                disabled={isExporting || !editor}
+                className={`${headerActionButtonClass} disabled:opacity-50`}
+                title="Export as DOCX"
+              >
+                <FileDown className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+
               {/* Actions dropdown — save, export, utilities */}
               <div className="relative">
                 <button
@@ -4975,6 +5809,21 @@ export function CopilotDraftingCanvas({
                       Export as DOCX
                     </button>
 
+                    {/* Re-edit template variables (only when {{vars}} remain in content) */}
+                    {editor && /\{\{[^}]+\}\}/.test(editor.getText()) && (
+                      <button
+                        onClick={() => {
+                          const content = editor.getHTML();
+                          window.dispatchEvent(new CustomEvent('contigo:re-edit-variables', { detail: { content } }));
+                          setShowActionsMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <Sparkles className="h-4 w-4 text-violet-500" />
+                        Re-edit variables
+                      </button>
+                    )}
+
                     <div className="my-1 border-t border-gray-100 dark:border-slate-700" />
 
                     {/* Lock */}
@@ -4998,6 +5847,26 @@ export function CopilotDraftingCanvas({
           {/* Toolbar */}
           {isEditing && (
             <div className="mt-3 flex flex-wrap items-center gap-2 rounded-[22px] border border-slate-200/80 bg-white/82 px-3 py-2.5 shadow-sm backdrop-blur dark:border-slate-700/80 dark:bg-slate-800/82" role="toolbar" aria-label="Document formatting toolbar">
+              <div className={editorToolbarGroupClass} role="group" aria-label="History">
+                <button
+                  onClick={handleUndo}
+                  disabled={!editor?.can().undo()}
+                  className={`${editorToolbarButtonClass} disabled:opacity-40 disabled:cursor-not-allowed`}
+                  title={editor?.can().undo() ? 'Undo (Ctrl+Z) — history available' : 'Nothing to undo'}
+                  aria-label="Undo"
+                >
+                  <Undo2 className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleRedo}
+                  disabled={!editor?.can().redo()}
+                  className={`${editorToolbarButtonClass} disabled:opacity-40 disabled:cursor-not-allowed`}
+                  title={editor?.can().redo() ? 'Redo (Ctrl+Shift+Z) — redo available' : 'Nothing to redo'}
+                  aria-label="Redo"
+                >
+                  <Redo2 className="h-4 w-4" />
+                </button>
+              </div>
               <div className={editorToolbarGroupClass} role="group" aria-label="Text formatting">
                 <button onClick={() => insertFormatting('bold')} className={`${editorToolbarButtonClass} ${editor?.isActive('bold') ? editorToolbarButtonActiveClass : ''}`} title="Bold" aria-label="Bold">
                   <Bold className="h-4 w-4" />
@@ -5014,6 +5883,38 @@ export function CopilotDraftingCanvas({
               <div className={editorToolbarGroupClass} role="group" aria-label="Block elements">
                 <button onClick={() => insertFormatting('list')} className={`${editorToolbarButtonClass} ${editor?.isActive('bulletList') ? editorToolbarButtonActiveClass : ''}`} title="List" aria-label="List">
                   <List className="h-4 w-4" />
+                </button>
+                <button onClick={handleClearFormatting} className={editorToolbarButtonClass} title="Clear formatting" aria-label="Clear formatting">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 7V4h16v3M5 20h6M13 4L8 20M16 15l5 5m0-5l-5 5" /></svg>
+                </button>
+                <button onClick={() => setShowFindReplace(true)} className={editorToolbarButtonClass} title="Find & Replace (Ctrl+H)" aria-label="Find and replace">
+                  <Search className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className={editorToolbarGroupClass} role="group" aria-label="Help">
+                <button
+                  type="button"
+                  onClick={() => setShowHelpCheatsheet(true)}
+                  className={editorToolbarButtonClass}
+                  title="Drafting cheatsheet (shortcuts & tips)"
+                  aria-label="Open drafting help cheatsheet"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleFocusMode}
+                  className={`${editorToolbarButtonClass} ${focusMode ? editorToolbarButtonActiveClass : ''}`}
+                  title={focusMode ? 'Exit focus mode' : 'Enter focus mode (hides sidebar)'}
+                  aria-label="Toggle focus mode"
+                  aria-pressed={focusMode}
+                >
+                  {focusMode ? (
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 9V3H3m18 6V3h-6M9 15v6H3m18-6v6h-6" /></svg>
+                  ) : (
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4" /></svg>
+                  )}
                 </button>
               </div>
 
@@ -5178,17 +6079,243 @@ export function CopilotDraftingCanvas({
                         </div>
                         <div className="flex flex-wrap items-center gap-2 lg:max-w-[18rem] lg:justify-end">
                           <span className={editorMetaPillClass}>{isEditing ? 'Editing live' : 'Preview mode'}</span>
-                          <span className={editorMetaPillClass}>{documentWordCount > 0 ? `${documentWordCount} words` : 'Blank draft'}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const input = window.prompt('Set a word-count goal (0 to clear):', wordGoal > 0 ? String(wordGoal) : '');
+                              if (input === null) return;
+                              const n = parseInt(input.trim(), 10);
+                              if (input.trim() === '' || n === 0) setWordGoalPersistent(0);
+                              else if (Number.isFinite(n) && n > 0) setWordGoalPersistent(n);
+                              else toast.error('Enter a positive number');
+                            }}
+                            className={`${editorMetaPillClass} hover:bg-white/90 dark:hover:bg-slate-800 cursor-pointer`}
+                            title={wordGoal > 0 ? `Goal: ${wordGoal} words · click to change` : 'Click to set a word-count goal'}
+                          >
+                            {wordGoal > 0 ? (
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="tabular-nums">{documentWordCount}/{wordGoal}</span>
+                                <span className="inline-block h-1.5 w-10 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                                  <span
+                                    className={`block h-full transition-all ${documentWordCount >= wordGoal ? 'bg-emerald-500' : 'bg-violet-500'}`}
+                                    style={{ width: `${Math.min(100, Math.round((documentWordCount / wordGoal) * 100))}%` }}
+                                  />
+                                </span>
+                                {documentWordCount >= wordGoal && <span className="text-emerald-600 dark:text-emerald-400">✓</span>}
+                              </span>
+                            ) : (
+                              documentWordCount > 0 ? `${documentWordCount} words` : 'Blank draft'
+                            )}
+                          </button>
                           <span className={editorMetaPillClass}>{outlineSections.length > 0 ? `${outlineSections.length} sections` : 'No sections yet'}</span>
                           {documentReadMinutes > 0 && (
                             <span className={editorMetaPillClass}>{documentReadMinutes} min read</span>
+                          )}
+                          {selectionStats.words > 0 && (
+                            <span className={`${editorMetaPillClass} bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-800`}>
+                              Selection: {selectionStats.words} word{selectionStats.words === 1 ? '' : 's'} · {selectionStats.chars} char{selectionStats.chars === 1 ? '' : 's'}
+                            </span>
                           )}
                         </div>
                       </div>
                     </div>
 
                     {editor ? (
-                      <EditorContent editor={editor} />
+                      <div className="relative">
+                        {draftStatus === 'FINALIZED' && (
+                          <div className="mb-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-950/40">
+                            <div className="flex items-start gap-3">
+                              <Lock className="h-4 w-4 text-emerald-700 dark:text-emerald-300 mt-0.5 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                                  This draft is finalized — read-only
+                                </div>
+                                <div className="mt-0.5 text-xs text-emerald-800 dark:text-emerald-300">
+                                  A signed contract was created from this draft. To make further changes, create an amendment.
+                                </div>
+                              </div>
+                              {createdContractId && (
+                                <button
+                                  onClick={() => router.push(`/contracts/${createdContractId}`)}
+                                  className="shrink-0 inline-flex items-center gap-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-2.5 py-1"
+                                >
+                                  View contract <ArrowRight className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {visibleNextActionPill && (
+                          <div className={`mb-3 rounded-xl border px-4 py-2.5 ${
+                            visibleNextActionPill.tone === 'rose' ? 'border-rose-200 bg-rose-50 dark:border-rose-800 dark:bg-rose-950/40' :
+                            visibleNextActionPill.tone === 'amber' ? 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40' :
+                            visibleNextActionPill.tone === 'blue' ? 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40' :
+                            visibleNextActionPill.tone === 'emerald' ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40' :
+                            'border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/40'
+                          }`}>
+                            <div className="flex items-center gap-3">
+                              {visibleNextActionPill.icon === 'alert' ? <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0" /> :
+                               visibleNextActionPill.icon === 'shield' ? <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" /> :
+                               visibleNextActionPill.icon === 'chat' ? <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" /> :
+                               <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0" />}
+                              <div className="flex-1 min-w-0">
+                                <div className={`text-xs font-semibold ${
+                                  visibleNextActionPill.tone === 'rose' ? 'text-rose-900 dark:text-rose-200' :
+                                  visibleNextActionPill.tone === 'amber' ? 'text-amber-900 dark:text-amber-200' :
+                                  visibleNextActionPill.tone === 'blue' ? 'text-blue-900 dark:text-blue-200' :
+                                  visibleNextActionPill.tone === 'emerald' ? 'text-emerald-900 dark:text-emerald-200' :
+                                  'text-violet-900 dark:text-violet-200'
+                                }`}>
+                                  Next best move · {visibleNextActionPill.label}
+                                </div>
+                                <div className={`text-[11px] mt-0.5 ${
+                                  visibleNextActionPill.tone === 'rose' ? 'text-rose-700 dark:text-rose-300' :
+                                  visibleNextActionPill.tone === 'amber' ? 'text-amber-700 dark:text-amber-300' :
+                                  visibleNextActionPill.tone === 'blue' ? 'text-blue-700 dark:text-blue-300' :
+                                  visibleNextActionPill.tone === 'emerald' ? 'text-emerald-700 dark:text-emerald-300' :
+                                  'text-violet-700 dark:text-violet-300'
+                                }`}>
+                                  {visibleNextActionPill.hint}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveTab('assistant');
+                                  setShowDesktopSidebar(true);
+                                  sendAiChatMessage(visibleNextActionPill.prompt);
+                                }}
+                                className={`shrink-0 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium ${
+                                  visibleNextActionPill.tone === 'rose' ? 'bg-rose-600 text-white hover:bg-rose-700' :
+                                  visibleNextActionPill.tone === 'amber' ? 'bg-amber-600 text-white hover:bg-amber-700' :
+                                  visibleNextActionPill.tone === 'blue' ? 'bg-blue-600 text-white hover:bg-blue-700' :
+                                  visibleNextActionPill.tone === 'emerald' ? 'bg-emerald-600 text-white hover:bg-emerald-700' :
+                                  'bg-violet-600 text-white hover:bg-violet-700'
+                                }`}
+                              >
+                                <Sparkles className="h-3 w-3" />
+                                {visibleNextActionPill.cta}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDismissedNextAction(visibleNextActionPill.id)}
+                                className="shrink-0 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-xs"
+                                title="Dismiss this suggestion"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        {unreviewedConflicts.length > 0 && !dismissedConflictBanner && (
+                          <div className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/40">
+                            <div className="flex items-start gap-3">
+                              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                                  Possible clause conflicts detected
+                                </div>
+                                <ul className="mt-1 space-y-1 text-xs text-amber-800 dark:text-amber-300">
+                                  {unreviewedConflicts.map((c, i) => (
+                                    <li key={i} className="flex items-start gap-2">
+                                      <span className="mt-0.5 h-1 w-1 rounded-full bg-amber-500 shrink-0" />
+                                      <span className="flex-1">{c}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveTab('assistant');
+                                          setShowDesktopSidebar(true);
+                                          sendAiChatMessage(`A ${contractTypeKey.toLowerCase()} draft has this conflict: "${c}". Review the document, quote the exact conflicting clauses, and propose a concrete resolution with suggested wording that removes the conflict while preserving intent.`);
+                                        }}
+                                        className="shrink-0 inline-flex items-center gap-1 rounded-md border border-amber-300 bg-white px-1.5 py-0.5 text-[10px] font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200 dark:hover:bg-amber-900"
+                                        title="Ask AI to propose a fix"
+                                      >
+                                        <Sparkles className="h-2.5 w-2.5" /> Resolve
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleConflictReviewed(c)}
+                                        className="shrink-0 inline-flex items-center gap-1 rounded-md border border-transparent px-1.5 py-0.5 text-[10px] font-medium text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900"
+                                        title="Mark as reviewed (saved per draft)"
+                                      >
+                                        <CheckCircle2 className="h-2.5 w-2.5" /> Reviewed
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setDismissedConflictBanner(true)}
+                                className="text-amber-700 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-200 text-xs"
+                                title="Dismiss for this session"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        <EditorContent editor={editor} />
+                        {/* Empty-state action overlay: visible only on blank draft */}
+                        {documentWordCount === 0 && isEditing && (
+                          <div className="mt-6 flex justify-center">
+                            <div className="w-full max-w-xl rounded-2xl border border-violet-200/70 bg-gradient-to-br from-white to-violet-50/60 p-5 shadow-sm dark:border-violet-800/50 dark:from-slate-900 dark:to-violet-950/30">
+                              <div className="flex items-start gap-3">
+                                <div className="rounded-xl bg-violet-100 p-2 dark:bg-violet-900/50">
+                                  <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-300" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Start your draft</p>
+                                  <p className="mt-1 text-[12px] text-slate-600 dark:text-slate-400">
+                                    Pick a starting point — or just begin typing. Type <kbd className="rounded bg-white px-1 font-mono text-[10px] text-slate-700 dark:bg-slate-800 dark:text-slate-200">/</kbd> anywhere to insert a block.
+                                  </p>
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        editor.chain().focus().insertContent('<h1>Contract Title</h1><p></p>').run();
+                                      }}
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-violet-300 hover:bg-violet-50 dark:border-violet-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-violet-950/40"
+                                    >
+                                      <FileText className="h-3.5 w-3.5 text-violet-600" /> Start blank
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveTab('assistant');
+                                        setShowDesktopSidebar(true);
+                                        const prompt = `Draft a standard ${contractTypeKey.toLowerCase()} for me — include parties, scope/services, commercial terms, term & termination, confidentiality, liability, governing law, and signature blocks. Use clear headings and numbered sections.`;
+                                        sendAiChatMessage(prompt);
+                                      }}
+                                      className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-violet-700"
+                                    >
+                                      <Sparkles className="h-3.5 w-3.5" /> Ask AI to draft
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveTab('assistant');
+                                        setShowDesktopSidebar(true);
+                                        sendAiChatMessage(`Produce a concise outline (as a numbered list of section headings only, no body copy) for a standard ${contractTypeKey.toLowerCase()}. I will fill in each section myself.`);
+                                      }}
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-violet-300 hover:bg-violet-50 dark:border-violet-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-violet-950/40"
+                                    >
+                                      <BookOpen className="h-3.5 w-3.5 text-violet-600" /> Outline only
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowHelpCheatsheet(true)}
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                    >
+                                      Show shortcuts
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div className="flex min-h-[550px] items-center justify-center">
                         <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
@@ -5251,7 +6378,71 @@ export function CopilotDraftingCanvas({
                               Counter
                             </button>
                           )}
+                          <button
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => { setShowRationaleComposer(true); setRationaleDraft(''); }}
+                            className={`${draftingInlineButtonClass} text-sky-700 hover:bg-sky-50 dark:text-sky-300 dark:hover:bg-sky-950/40`}
+                            title="Record why this wording was accepted"
+                          >
+                            <BookOpen className="h-3.5 w-3.5" />
+                            Rationale
+                          </button>
                         </div>
+
+                        {showRationaleComposer && (
+                          <div className="mt-2 border-t border-slate-200 pt-2 dark:border-slate-700">
+                            <p className="line-clamp-2 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
+                              {selectionToolbar.text}
+                            </p>
+                            <div className="mt-2 flex gap-2">
+                              <input
+                                type="text"
+                                value={rationaleDraft}
+                                onChange={(e) => setRationaleDraft(e.target.value)}
+                                placeholder="Why did we accept this wording?"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && rationaleDraft.trim()) {
+                                    const quote = selectionToolbar.text.slice(0, 240);
+                                    const next = [
+                                      { id: `${Date.now()}`, quote, note: rationaleDraft.trim(), at: Date.now() },
+                                      ...rationales,
+                                    ].slice(0, 100);
+                                    persistRationales(next);
+                                    setShowRationaleComposer(false);
+                                    setRationaleDraft('');
+                                    toast.success('Rationale saved for this draft');
+                                  } else if (e.key === 'Escape') {
+                                    setShowRationaleComposer(false);
+                                    setRationaleDraft('');
+                                  }
+                                }}
+                                className="flex-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[12px] text-slate-800 focus:border-sky-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                              />
+                              <button
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  if (!rationaleDraft.trim()) return;
+                                  const quote = selectionToolbar.text.slice(0, 240);
+                                  const next = [
+                                    { id: `${Date.now()}`, quote, note: rationaleDraft.trim(), at: Date.now() },
+                                    ...rationales,
+                                  ].slice(0, 100);
+                                  persistRationales(next);
+                                  setShowRationaleComposer(false);
+                                  setRationaleDraft('');
+                                  toast.success('Rationale saved for this draft');
+                                }}
+                                className="rounded-md bg-sky-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+                                disabled={!rationaleDraft.trim()}
+                              >
+                                Save
+                              </button>
+                            </div>
+                          </div>
+                        )}
 
                         {showInlineCommentComposer && (
                           <div className="mt-2 border-t border-slate-200 pt-2 dark:border-slate-700">
@@ -5390,6 +6581,39 @@ export function CopilotDraftingCanvas({
                     <div className="pointer-events-auto mt-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-medium text-slate-500 shadow-sm dark:bg-slate-900/90 dark:text-slate-300">
                       {heatmapMarkers.length} markers
                     </div>
+                  </div>
+                )}
+
+                {inlineRiskChips.length > 0 && (
+                  <div className="pointer-events-none absolute inset-y-0 right-4 top-24 z-10 hidden lg:block xl:right-10">
+                    {inlineRiskChips.map((chip) => {
+                      const toneClasses = chip.risk.riskLevel === 'critical'
+                        ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300'
+                        : chip.risk.riskLevel === 'high'
+                          ? 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300'
+                          : chip.risk.riskLevel === 'medium'
+                            ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+                            : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300';
+
+                      return (
+                        <button
+                          key={chip.id}
+                          type="button"
+                          onClick={() => handleFocusRisk(chip.risk)}
+                          title={`${chip.risk.category}: ${chip.risk.explanation}`}
+                          className={`pointer-events-auto absolute right-0 flex max-w-[12rem] -translate-y-1/2 items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-medium shadow-sm transition-transform hover:-translate-x-0.5 ${toneClasses} ${selectedHeatmapMarkerId === `risk-${chip.risk.id}` ? 'ring-2 ring-violet-300 dark:ring-violet-700' : ''}`}
+                          style={{ top: chip.top }}
+                        >
+                          {chip.risk.riskLevel === 'critical' ? <AlertCircle className="h-3.5 w-3.5 shrink-0" /> : <Shield className="h-3.5 w-3.5 shrink-0" />}
+                          <span className="truncate">{chip.risk.category || 'Risk'}</span>
+                          {chip.extraCount > 0 && (
+                            <span className="rounded-full bg-white/80 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-900/80 dark:text-slate-300">
+                              +{chip.extraCount}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -5563,7 +6787,7 @@ export function CopilotDraftingCanvas({
         </div>
 
         {/* Right Sidebar (Desktop) */}
-        {showDesktopSidebar && (
+        {showDesktopSidebar && !focusMode && (
           <div className="hidden h-[calc(100vh-112px)] shrink-0 self-start lg:sticky lg:top-[88px] lg:flex">
             <div
               role="separator"
@@ -5726,6 +6950,359 @@ export function CopilotDraftingCanvas({
                 versions={diffVersions}
                 onClose={() => setShowDiffView(false)}
               />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Negotiation Rationales Modal ── */}
+      <AnimatePresence>
+        {showRationalePanel && (
+          <motion.div
+            key="rationale-panel-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={() => setShowRationalePanel(false)}
+            className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[8vh]"
+          >
+            <motion.div
+              key="rationale-panel"
+              initial={{ opacity: 0, y: -12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -12, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+            >
+              <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+                <BookOpen className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Negotiation rationales</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Why each accepted clause was chosen — saved per draft. {rationales.length} recorded.
+                  </div>
+                </div>
+                <button onClick={() => setShowRationalePanel(false)} className="rounded p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="max-h-[60vh] overflow-y-auto px-4 py-3">
+                {rationales.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                    No rationales yet. Select text in the draft and click &ldquo;Rationale&rdquo; to record why the wording was accepted.
+                  </div>
+                ) : (
+                  <ul className="space-y-3">
+                    {rationales.map((r) => (
+                      <li key={r.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+                        <blockquote className="border-l-2 border-sky-400 pl-2 text-[12px] italic text-slate-600 dark:text-slate-300">
+                          {r.quote}{r.quote.length >= 240 ? '…' : ''}
+                        </blockquote>
+                        <p className="mt-2 text-sm text-slate-800 dark:text-slate-100">{r.note}</p>
+                        <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500">
+                          <span>{new Date(r.at).toLocaleString()}</span>
+                          <button
+                            type="button"
+                            onClick={() => persistRationales(rationales.filter((x) => x.id !== r.id))}
+                            className="text-rose-500 hover:text-rose-700 dark:text-rose-400"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {rationales.length > 0 && (
+                <div className="flex justify-end border-t border-slate-200 px-4 py-2 dark:border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(`Delete all ${rationales.length} rationales for this draft?`)) {
+                        persistRationales([]);
+                      }
+                    }}
+                    className="text-[11px] font-medium text-rose-600 hover:text-rose-800 dark:text-rose-400"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Section Jump (Ctrl+K) Modal ── */}
+      <AnimatePresence>
+        {showSectionJump && (
+          <motion.div
+            key="section-jump-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-start justify-center bg-black/60 backdrop-blur-sm pt-24 px-4"
+            onClick={() => { setShowSectionJump(false); setSectionJumpQuery(''); }}
+          >
+            <motion.div
+              key="section-jump-card"
+              initial={{ opacity: 0, scale: 0.96, y: -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="w-full max-w-xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-3 border-b border-slate-200 dark:border-slate-700">
+                <input
+                  autoFocus
+                  value={sectionJumpQuery}
+                  onChange={(e) => { setSectionJumpQuery(e.target.value); setSectionJumpIndex(0); }}
+                  onKeyDown={(e) => {
+                    const q = sectionJumpQuery.trim().toLowerCase();
+                    const filtered = q ? outlineSections.filter(s => s.title.toLowerCase().includes(q)) : outlineSections;
+                    if (e.key === 'Escape') { setShowSectionJump(false); setSectionJumpQuery(''); setSectionJumpIndex(0); }
+                    else if (e.key === 'ArrowDown') { e.preventDefault(); setSectionJumpIndex(i => Math.min(filtered.length - 1, i + 1)); }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); setSectionJumpIndex(i => Math.max(0, i - 1)); }
+                    else if (e.key === 'Enter') {
+                      const match = filtered[sectionJumpIndex] || filtered[0];
+                      if (match) {
+                        handleFocusOutlineSection(match);
+                        setShowSectionJump(false);
+                        setSectionJumpQuery('');
+                        setSectionJumpIndex(0);
+                      }
+                    }
+                  }}
+                  placeholder="Jump to section… (↑↓ navigate, ↵ jump, Esc close)"
+                  className="w-full bg-transparent text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none px-2 py-1.5"
+                />
+              </div>
+              <div className="max-h-80 overflow-y-auto p-2">
+                {(() => {
+                  const q = sectionJumpQuery.trim().toLowerCase();
+                  const filtered = q ? outlineSections.filter(s => s.title.toLowerCase().includes(q)) : outlineSections;
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="p-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                        {outlineSections.length === 0 ? 'No sections yet. Add a heading to get started.' : 'No sections match.'}
+                      </div>
+                    );
+                  }
+                  return filtered.map((s, idx) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onMouseEnter={() => setSectionJumpIndex(idx)}
+                      onClick={() => { handleFocusOutlineSection(s); setShowSectionJump(false); setSectionJumpQuery(''); setSectionJumpIndex(0); }}
+                      className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-800 dark:text-slate-100 ${idx === sectionJumpIndex ? 'bg-violet-100 dark:bg-violet-900/50' : 'hover:bg-violet-50 dark:hover:bg-violet-900/30'}`}
+                    >
+                      <span className="text-[10px] uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500 w-6">H{s.level}</span>
+                      <span className="truncate">{s.title}</span>
+                    </button>
+                  ));
+                })()}
+              </div>
+              <div className="px-4 py-2 bg-slate-50 dark:bg-slate-950/40 border-t border-slate-200 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400">
+                <kbd className="rounded bg-white dark:bg-slate-800 px-1 py-0.5 border border-slate-300 dark:border-slate-600 font-mono text-[10px]">↑↓</kbd> nav · <kbd className="rounded bg-white dark:bg-slate-800 px-1 py-0.5 border border-slate-300 dark:border-slate-600 font-mono text-[10px]">↵</kbd> jump · <kbd className="rounded bg-white dark:bg-slate-800 px-1 py-0.5 border border-slate-300 dark:border-slate-600 font-mono text-[10px]">Esc</kbd> close
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Find & Replace (Ctrl+H) Modal ── */}
+      <AnimatePresence>
+        {showFindReplace && (
+          <motion.div
+            key="find-replace-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed top-20 right-6 z-[100] w-[380px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Find & Replace</span>
+                <button
+                  type="button"
+                  onClick={() => setShowFindReplace(false)}
+                  className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm"
+                  title="Close"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-3 space-y-2">
+                <input
+                  autoFocus
+                  value={findQuery}
+                  onChange={(e) => setFindQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); findNext(); }
+                    else if (e.key === 'Escape') setShowFindReplace(false);
+                  }}
+                  placeholder="Find…"
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-violet-400"
+                />
+                <input
+                  value={replaceQuery}
+                  onChange={(e) => setReplaceQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); replaceOne(); }
+                    else if (e.key === 'Escape') setShowFindReplace(false);
+                  }}
+                  placeholder="Replace with…"
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-violet-400"
+                />
+                <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={findCaseSensitive}
+                    onChange={(e) => setFindCaseSensitive(e.target.checked)}
+                    className="rounded border-slate-300"
+                  />
+                  Case sensitive
+                </label>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={findNext}
+                    disabled={!findQuery}
+                    className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200"
+                  >
+                    Find next
+                  </button>
+                  <button
+                    type="button"
+                    onClick={replaceOne}
+                    disabled={!findQuery}
+                    className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200"
+                  >
+                    Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={replaceAll}
+                    disabled={!findQuery}
+                    className="flex-1 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 px-2 py-1.5 text-xs font-medium text-white"
+                  >
+                    Replace all
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Drafting Cheatsheet Modal ── */}
+      <AnimatePresence>
+        {showHelpCheatsheet && (
+          <motion.div
+            key="help-cheatsheet-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setShowHelpCheatsheet(false)}
+          >
+            <motion.div
+              key="help-cheatsheet-card"
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.18 }}
+              className="w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3 p-5 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                    Drafting cheatsheet
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Shortcuts, slash commands, and tips to draft faster
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowHelpCheatsheet(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl leading-none"
+                  aria-label="Close cheatsheet"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="p-5 max-h-[70vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+                <section>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">Keyboard shortcuts</h4>
+                  <ul className="space-y-1.5 text-sm">
+                    {[
+                      ['/', 'Open slash menu for blocks & AI'],
+                      ['Ctrl + K', 'Jump to section'],
+                      ['Ctrl + H', 'Find & replace'],
+                      ['Ctrl + /', 'Jump to AI assistant'],
+                      ['Alt + ↑ / ↓', 'Reorder outline sections'],
+                      ['Ctrl + B / I', 'Bold / italic'],
+                      ['Ctrl + Z', 'Undo'],
+                      ['Ctrl + Shift + Z', 'Redo'],
+                      ['Tab', 'Indent / accept autocomplete'],
+                      ['Esc', 'Close menus and popovers'],
+                    ].map(([key, desc]) => (
+                      <li key={key} className="flex items-start gap-2">
+                        <kbd className="shrink-0 rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-mono text-[11px] text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700">{key}</kbd>
+                        <span className="text-slate-700 dark:text-slate-300">{desc}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+                <section>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">Slash commands</h4>
+                  <ul className="space-y-1.5 text-sm">
+                    {[
+                      ['/parties', 'Insert a parties & purpose section'],
+                      ['/definitions', 'Insert a definitions section'],
+                      ['/fallback', 'Ask AI for a fallback clause package'],
+                      ['/summary', 'Ask AI what is missing in the draft'],
+                    ].map(([cmd, desc]) => (
+                      <li key={cmd} className="flex items-start gap-2">
+                        <code className="shrink-0 rounded bg-violet-50 dark:bg-violet-900/30 px-1.5 py-0.5 font-mono text-[11px] text-violet-700 dark:text-violet-300">{cmd}</code>
+                        <span className="text-slate-700 dark:text-slate-300">{desc}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+                <section className="md:col-span-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">Workflow tips</h4>
+                  <ul className="space-y-1.5 text-sm text-slate-700 dark:text-slate-300">
+                    <li>• Select text before clicking an AI action to rewrite just that selection.</li>
+                    <li>• Hover any outline section to duplicate or delete it.</li>
+                    <li>• AI proposals show an <strong>Applied</strong> badge after you insert them — re-apply anytime.</li>
+                    <li>• <strong>Reject</strong> preserves the proposal in the chat so you can review it later.</li>
+                    <li>• Switch between <strong>Draft</strong> and <strong>Negotiate</strong> modes in the header to change AI posture.</li>
+                  </ul>
+                </section>
+              </div>
+              <div className="flex justify-end p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/40">
+                <button
+                  type="button"
+                  onClick={() => setShowHelpCheatsheet(false)}
+                  className={`${draftingPrimaryButtonClass} text-sm`}
+                >
+                  Got it
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

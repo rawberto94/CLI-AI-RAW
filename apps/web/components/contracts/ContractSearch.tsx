@@ -40,7 +40,7 @@ export function ContractSearch({
   const [showDropdown, setShowDropdown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cleanup blur timeout on unmount
   useEffect(() => {

@@ -11,6 +11,33 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 import { auditTrailService } from 'data-orchestration/services';
 export const dynamic = 'force-dynamic';
 
+type EmailPreferences = {
+  renewals: boolean;
+  risks: boolean;
+  savings: boolean;
+  weekly: boolean;
+};
+
+const DEFAULT_EMAIL_PREFERENCES: EmailPreferences = {
+  renewals: true,
+  risks: true,
+  savings: true,
+  weekly: true,
+};
+
+function normalizeEmailPreferences(raw: unknown): EmailPreferences {
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw)
+    ? (((raw as Record<string, unknown>).email as Record<string, unknown> | undefined) ?? raw as Record<string, unknown>)
+    : {};
+
+  return {
+    renewals: typeof source.renewals === 'boolean' ? source.renewals : DEFAULT_EMAIL_PREFERENCES.renewals,
+    risks: typeof source.risks === 'boolean' ? source.risks : DEFAULT_EMAIL_PREFERENCES.risks,
+    savings: typeof source.savings === 'boolean' ? source.savings : DEFAULT_EMAIL_PREFERENCES.savings,
+    weekly: typeof source.weekly === 'boolean' ? source.weekly : DEFAULT_EMAIL_PREFERENCES.weekly,
+  };
+}
+
 // GET /api/user/profile - Get current user's profile
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const tenantId = await ctx.tenantId;
@@ -33,6 +60,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
           name: true,
         },
       },
+      preferences: {
+        select: {
+          notifications: true,
+        },
+      },
     },
   });
 
@@ -50,6 +82,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     .join('')
     .toUpperCase()
     .slice(0, 2);
+  const emailPreferences = normalizeEmailPreferences(user.preferences?.notifications);
 
   return createSuccessResponse(ctx, {
     success: true,
@@ -66,6 +99,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         company: user.tenant?.name,
         lastLoginAt: user.lastLoginAt,
         createdAt: user.createdAt,
+        emailPreferences,
       },
     },
   });
@@ -79,6 +113,13 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
   // Verify user exists
   const existingUser = await prisma.user.findFirst({
     where: { id: ctx.userId, tenantId },
+    include: {
+      preferences: {
+        select: {
+          notifications: true,
+        },
+      },
+    },
   });
 
   if (!existingUser) {
@@ -90,6 +131,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     firstName,
     lastName,
     avatar,
+    emailPreferences,
   } = body;
 
   const updateData: Record<string, unknown> = {};
@@ -98,19 +140,42 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
   if (lastName !== undefined) updateData.lastName = lastName;
   if (avatar !== undefined) updateData.avatar = avatar;
 
-  const user = await prisma.user.update({
-    where: { id: ctx.userId },
-    data: updateData,
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      role: true,
-      avatar: true,
-      updatedAt: true,
-    },
-  });
+  const nextEmailPreferences = emailPreferences !== undefined
+    ? normalizeEmailPreferences(emailPreferences)
+    : normalizeEmailPreferences(existingUser.preferences?.notifications);
+  const existingNotifications = existingUser.preferences?.notifications && typeof existingUser.preferences.notifications === 'object' && !Array.isArray(existingUser.preferences.notifications)
+    ? existingUser.preferences.notifications as Record<string, unknown>
+    : {};
+  const mergedNotifications = {
+    ...existingNotifications,
+    email: nextEmailPreferences,
+  };
+
+  const [user] = await prisma.$transaction([
+    prisma.user.update({
+      where: { id: ctx.userId },
+      data: updateData,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+        avatar: true,
+        updatedAt: true,
+      },
+    }),
+    prisma.userPreferences.upsert({
+      where: { userId: ctx.userId },
+      update: {
+        notifications: mergedNotifications,
+      },
+      create: {
+        userId: ctx.userId,
+        notifications: mergedNotifications,
+      },
+    }),
+  ]);
 
   const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || 
                user.email?.split('@')[0] || 'Unknown';
@@ -122,6 +187,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
         ...user,
         name,
         initials: name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
+        emailPreferences: nextEmailPreferences,
       },
     },
     message: 'Profile updated successfully',

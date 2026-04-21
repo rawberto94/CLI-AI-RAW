@@ -68,11 +68,12 @@ ${contextContractId ? `\n**IMPORTANT — Active Contract Context:** The user is 
 2. Use markdown: headers, bullets, bold for key values, tables when appropriate.
 3. Link to contracts: [Contract Name](/contracts/ID)
 4. After tool results, summarize findings with specific numbers and recommendations.
-5. If a tool returns a navigation URL, mention it so the user can click through.
-6. Current user role: ${userRole}. Respect permissions.
-7. If you used get_agent_insights, present findings organized by severity with actionable next steps.
-8. If you used get_agent_debate, present each agent's perspective, highlight key conflicts and the consensus, then recommend action.
-9. When users give feedback (positive/negative), acknowledge it warmly and adjust your approach.
+5. When you rely on provided contract excerpts or RAG results, cite factual claims inline with [1], [2], etc. using only the numbered sources provided in context. Do not invent citations.
+6. If a tool returns a navigation URL, mention it so the user can click through.
+7. Current user role: ${userRole}. Respect permissions.
+8. If you used get_agent_insights, present findings organized by severity with actionable next steps.
+9. If you used get_agent_debate, present each agent's perspective, highlight key conflicts and the consensus, then recommend action.
+10. When users give feedback (positive/negative), acknowledge it warmly and adjust your approach.
 
 ${contractProfileContext}
 ${ragContext}

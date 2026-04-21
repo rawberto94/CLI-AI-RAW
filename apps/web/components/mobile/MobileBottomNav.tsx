@@ -132,13 +132,16 @@ export function MobileBottomNav() {
     return primaryItems.filter((item) => canAccessNavigationAudience(item.audiences, activeAudiences)).slice(0, 4);
   }, [activeAudiences]);
 
-  const quickActions = useMemo<QuickAction[]>(() => [
-    { label: 'Upload Contract', icon: Upload, href: '/upload', audiences: ['operator'], color: 'bg-violet-500' },
-    { label: 'Start Draft', icon: PenTool, href: '/drafting/copilot', audiences: ['operator'], color: 'bg-violet-500' },
-    { label: 'AI Assistant', icon: Sparkles, onClick: openAIAssistant, audiences: ['all'], color: 'bg-violet-500' },
-    { label: 'Smart Search', icon: Search, href: '/search', audiences: ['all'], color: 'bg-amber-500' },
-    { label: 'Analytics', icon: BarChart3, href: '/analytics', audiences: ['oversight'], color: 'bg-violet-500' },
-  ].filter((action) => canAccessNavigationAudience(action.audiences, activeAudiences)), [activeAudiences, openAIAssistant]);
+  const quickActions = useMemo<QuickAction[]>(() => {
+    const actions: QuickAction[] = [
+      { label: 'Upload Contract', icon: Upload, href: '/upload', audiences: ['operator'], color: 'bg-violet-500' },
+      { label: 'Start Draft', icon: PenTool, href: '/drafting/copilot', audiences: ['operator'], color: 'bg-violet-500' },
+      { label: 'AI Assistant', icon: Sparkles, onClick: openAIAssistant, audiences: ['all'], color: 'bg-violet-500' },
+      { label: 'Smart Search', icon: Search, href: '/search', audiences: ['all'], color: 'bg-amber-500' },
+      { label: 'Analytics', icon: BarChart3, href: '/analytics', audiences: ['oversight'], color: 'bg-violet-500' },
+    ];
+    return actions.filter((action) => canAccessNavigationAudience(action.audiences, activeAudiences));
+  }, [activeAudiences, openAIAssistant]);
 
   const isActive = (item: NavItem) => {
     if (item.activeMatch) return item.activeMatch(pathname);

@@ -1413,7 +1413,7 @@ export default function ContractsPage() {
         description={(() => {
           const names = Array.from(selectedContracts)
             .slice(0, 5)
-            .map(id => contracts.find(c => c.id === id)?.contractTitle || contracts.find(c => c.id === id)?.filename || id)
+            .map(id => contracts.find(c => c.id === id)?.title || contracts.find(c => c.id === id)?.filename || id)
           const extra = selectedContracts.size > 5 ? ` and ${selectedContracts.size - 5} more` : ''
           return `Delete ${selectedContracts.size} contract${selectedContracts.size !== 1 ? 's' : ''}? ${names.join(', ')}${extra}. This cannot be undone.`
         })()}

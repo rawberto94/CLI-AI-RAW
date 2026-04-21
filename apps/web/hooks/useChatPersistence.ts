@@ -102,6 +102,8 @@ export interface UseChatPersistenceReturn {
   togglePin: (conversationId: string) => Promise<void>;
   /** Archive conversation */
   archiveConversation: (conversationId: string) => Promise<void>;
+  /** Rename a conversation title */
+  renameConversation: (conversationId: string, title: string) => Promise<void>;
   /** Link a server-created conversationId without loading messages (prevents orphans) */
   linkConversationId: (id: string) => void;
 }
@@ -424,6 +426,26 @@ export function useChatPersistence(
     }
   }, [isAuthenticated, refreshConversations]);
 
+  const renameConversation = useCallback(async (id: string, title: string) => {
+    if (!isAuthenticated || !id || id.startsWith('local-')) {
+      // Local-only: just bump the conversation list optimistically
+      setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)));
+      return;
+    }
+    // Optimistic update
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)));
+    try {
+      await fetch(`/api/chat/conversations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+      await refreshConversations();
+    } catch {
+      // ignore — optimistic state will reconcile on next refresh
+    }
+  }, [isAuthenticated, refreshConversations]);
+
   // ============================================================================
   // Initialization
   // ============================================================================
@@ -546,6 +568,7 @@ export function useChatPersistence(
     refreshConversations,
     togglePin,
     archiveConversation,
+    renameConversation,
     linkConversationId,
   };
 }

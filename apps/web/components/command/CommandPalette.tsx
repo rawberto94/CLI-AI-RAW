@@ -101,14 +101,21 @@ export function CommandPalette({ isOpen, onClose, customCommands = [] }: Command
     // Navigation
     { id: 'nav-home', label: 'Go to Dashboard', icon: Home, category: 'navigation', action: () => router.push('/dashboard'), keywords: ['home', 'main'] },
     { id: 'nav-contracts', label: 'Go to Contracts', icon: FileText, category: 'navigation', action: () => router.push('/contracts'), keywords: ['documents', 'files'] },
+    { id: 'nav-drafting', label: 'Go to Drafting Studio', icon: FileText, category: 'navigation', action: () => router.push('/drafting'), keywords: ['draft', 'author', 'write', 'editor'] },
+    { id: 'nav-renewals', label: 'Go to Renewals', icon: Clock, category: 'navigation', action: () => router.push('/renewals'), keywords: ['expiring', 'auto-renew'] },
+    { id: 'nav-obligations', label: 'Go to Obligations', icon: Star, category: 'navigation', action: () => router.push('/obligations'), keywords: ['deadlines', 'tasks'] },
+    { id: 'nav-analytics', label: 'Go to Analytics', icon: Hash, category: 'navigation', action: () => router.push('/analytics'), keywords: ['reports', 'insights', 'metrics'] },
     { id: 'nav-upload', label: 'Go to Upload', icon: Upload, category: 'navigation', action: () => router.push('/upload'), keywords: ['new', 'add'] },
     { id: 'nav-settings', label: 'Go to Settings', icon: Settings, category: 'navigation', action: () => router.push('/settings'), shortcut: ['G', 'S'] },
     { id: 'nav-notifications', label: 'Go to Notifications', icon: Bell, category: 'navigation', action: () => router.push('/notifications') },
     { id: 'nav-profile', label: 'Go to Profile', icon: User, category: 'navigation', action: () => router.push('/profile') },
-    
+
     // Actions
     { id: 'action-new-contract', label: 'Upload New Contract', icon: Plus, category: 'actions', action: () => router.push('/upload'), shortcut: ['⌘', 'N'], keywords: ['create', 'add'] },
-    { id: 'action-ai-assistant', label: 'Open AI Assistant', icon: Sparkles, category: 'actions', action: () => router.push('/assistant'), keywords: ['chat', 'help', 'ai'] },
+    { id: 'action-new-draft', label: 'New Draft from Template', icon: Plus, category: 'actions', action: () => router.push('/drafting?new=1'), keywords: ['template', 'draft', 'blueprint'] },
+    { id: 'action-ai-assistant', label: 'Open AI Assistant', icon: Sparkles, category: 'actions', action: () => {
+      window.dispatchEvent(new CustomEvent('openAIChatbot'));
+    }, keywords: ['chat', 'help', 'ai', 'copilot'] },
     { id: 'action-search', label: 'Search Contracts', icon: Search, category: 'actions', action: () => router.push('/search'), shortcut: ['⌘', 'F'] },
     
     // Settings

@@ -56,11 +56,16 @@ import {
   RefreshCw,
   Building2,
   History,
+  Bookmark,
+  BookmarkCheck,
+  ChevronDown,
+  User,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { useChatPersistence } from "@/hooks/useChatPersistence";
+import { toast } from "sonner";
 
 // Enhanced AI Features - Round 2 Integration
 import { AIErrorBoundary } from "@/components/ai/AIErrorBoundary";
@@ -148,6 +153,11 @@ interface RAGSource {
   contractName: string;
   score: number;
   snippet?: string;
+  heading?: string;
+  section?: string;
+  startOffset?: number;
+  endOffset?: number;
+  matchType?: string;
 }
 
 interface ActionButton {
@@ -243,6 +253,18 @@ const INITIAL_MESSAGE: Message = {
   },
 };
 
+// Slash commands: typed as "/cmd " expand to a templated prompt.
+const SLASH_COMMANDS: Array<{ cmd: string; label: string; prompt: string }> = [
+  { cmd: "/summarize", label: "Summarize", prompt: "Summarize this contract in 5 concise bullet points covering parties, scope, term, value, and key risks." },
+  { cmd: "/risks", label: "Top risks", prompt: "Identify the top 5 risks in this contract, ranked by severity, with a one-line explanation and suggested mitigation for each." },
+  { cmd: "/clauses", label: "Clause list", prompt: "List every material clause in this contract grouped by category (commercial, legal, IP, data, termination, other)." },
+  { cmd: "/obligations", label: "Obligations", prompt: "List every obligation for each party, including deadlines, deliverables, and penalties for non-performance." },
+  { cmd: "/dates", label: "Key dates", prompt: "Extract all key dates and deadlines (effective date, term, renewal, milestones, payment due, termination notice)." },
+  { cmd: "/parties", label: "Parties", prompt: "Who are the parties to this contract, their legal entities, roles, and any affiliates referenced?" },
+  { cmd: "/financial", label: "Financial terms", prompt: "Summarize all financial terms: total value, payment schedule, invoicing, price escalation, penalties, and any caps or credits." },
+  { cmd: "/compare", label: "Benchmark", prompt: "Compare this contract's key terms to market standards for its category and flag any terms that deviate significantly." },
+];
+
 // Utility to format markdown-like content with XSS protection
 const sanitizeHtml = (str: string): string => {
   return str
@@ -334,6 +356,25 @@ function formatTimeAgo(date: Date): string {
   
   return `${Math.floor(hours / 24)}d ago`;
 }
+const SUPERSCRIPT_DIGITS: Record<string, string> = {
+  '0': '⁰',
+  '1': '¹',
+  '2': '²',
+  '3': '³',
+  '4': '⁴',
+  '5': '⁵',
+  '6': '⁶',
+  '7': '⁷',
+  '8': '⁸',
+  '9': '⁹',
+};
+
+function toSuperscriptNumber(value: number): string {
+  return String(value)
+    .split("")
+    .map((digit) => SUPERSCRIPT_DIGITS[digit] ?? digit)
+    .join("");
+}
 
 interface FloatingAIBubbleProps {
   mode?: 'floating' | 'embedded';
@@ -386,6 +427,8 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasNewMessage, setHasNewMessage] = useState(false);
+  // Slash commands (Round 7): expand /cmd into templated prompts
+  const [slashIndex, setSlashIndex] = useState(0);
   // Conversation history panel - implemented in Round 3
   
   // Draggable position state
@@ -409,11 +452,207 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
   // Enhanced features - Round 2
   const [showSearchDialog, setShowSearchDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [activeCitationPreview, setActiveCitationPreview] = useState<{ source: RAGSource; index: number } | null>(null);
+
+  const buildCitationHref = useCallback((citation: { source: RAGSource; index: number }) => {
+    const isCurrentContractPage = pathname === `/contracts/${citation.source.contractId}`;
+    const next = new URLSearchParams(isCurrentContractPage ? (searchParams?.toString() || "") : "");
+
+    next.set("tab", "details");
+    next.set("cite", "1");
+    next.set("citeIndex", String(citation.index));
+
+    if (citation.source.heading) next.set("citeHeading", citation.source.heading);
+    else next.delete("citeHeading");
+
+    if (citation.source.section) next.set("citeSection", citation.source.section);
+    else next.delete("citeSection");
+
+    if (typeof citation.source.startOffset === "number") next.set("citeStart", String(citation.source.startOffset));
+    else next.delete("citeStart");
+
+    if (typeof citation.source.endOffset === "number") next.set("citeEnd", String(citation.source.endOffset));
+    else next.delete("citeEnd");
+
+    if (citation.source.snippet) next.set("citeSnippet", citation.source.snippet.slice(0, 320));
+    else next.delete("citeSnippet");
+
+    return `/contracts/${citation.source.contractId}?${next.toString()}`;
+  }, [pathname, searchParams]);
+
+  const openCitationInContract = useCallback((citation: { source: RAGSource; index: number }) => {
+    router.push(buildCitationHref(citation));
+    setActiveCitationPreview(null);
+    if (!isEmbedded) setIsOpen(false);
+  }, [buildCitationHref, isEmbedded, router]);
+
+  const handleInlineCitationClick = useCallback((
+    href: string,
+    sources: RAGSource[] | undefined,
+    event: React.MouseEvent<HTMLAnchorElement>,
+  ) => {
+    if (!sources?.length) return false;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
+
+    const url = new URL(href, window.location.origin);
+    if (url.searchParams.get('cite') !== '1') return false;
+
+    const index = Number.parseInt(url.searchParams.get('citeIndex') ?? '', 10);
+    if (!Number.isFinite(index) || index < 1 || index > sources.length) return false;
+
+    setActiveCitationPreview({ source: sources[index - 1], index });
+    return true;
+  }, []);
   
   // Round 3 Enhancements - New State
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedbackMessageId, setFeedbackMessageId] = useState<string | null>(null);
+  // Round 4 Enhancements - Model picker, title rename
+  const [chatMode, setChatMode] = useState<'fast' | 'balanced' | 'deep'>(() => {
+    if (typeof window === 'undefined') return 'balanced';
+    const saved = window.localStorage.getItem('contigo-chat-mode');
+    return (saved === 'fast' || saved === 'deep' || saved === 'balanced') ? saved : 'balanced';
+  });
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('contigo-chat-mode', chatMode);
+    }
+  }, [chatMode]);
+  const [persona, setPersona] = useState<'default' | 'analyst' | 'counsel' | 'executive'>(() => {
+    if (typeof window === 'undefined') return 'default';
+    const saved = window.localStorage.getItem('contigo-chat-persona');
+    return (saved === 'analyst' || saved === 'counsel' || saved === 'executive') ? saved : 'default';
+  });
+  useEffect(() => {
+    if (typeof window !== 'undefined') window.localStorage.setItem('contigo-chat-persona', persona);
+  }, [persona]);
+  const [perspective, setPerspective] = useState<'self' | 'counterparty'>(() => {
+    if (typeof window === 'undefined') return 'self';
+    const saved = window.localStorage.getItem('contigo-chat-perspective');
+    return saved === 'counterparty' ? 'counterparty' : 'self';
+  });
+  useEffect(() => {
+    if (typeof window !== 'undefined') window.localStorage.setItem('contigo-chat-perspective', perspective);
+  }, [perspective]);
+  const [isRenamingTitle, setIsRenamingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [showPromptLibrary, setShowPromptLibrary] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const [expandedMessageIds, setExpandedMessageIds] = useState<Set<string>>(new Set());
+  const [showBookmarksPanel, setShowBookmarksPanel] = useState(false);
+  const LONG_MESSAGE_THRESHOLD = 1200;
+  const toggleMessageExpanded = useCallback((messageId: string) => {
+    setExpandedMessageIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(messageId)) next.delete(messageId);
+      else next.add(messageId);
+      return next;
+    });
+  }, []);
+  const scrollToMessage = useCallback((messageId: string) => {
+    const el = document.getElementById(`chat-msg-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-violet-400');
+      setTimeout(() => el.classList.remove('ring-2', 'ring-violet-400'), 1800);
+    }
+  }, []);
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const raw = window.localStorage.getItem('contigo-chat-bookmarks');
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch {
+      return new Set();
+    }
+  });
+  const toggleBookmark = useCallback((messageId: string) => {
+    setBookmarkedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(messageId)) {
+        next.delete(messageId);
+        toast.success('Bookmark removed');
+      } else {
+        next.add(messageId);
+        toast.success('Message bookmarked');
+      }
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem('contigo-chat-bookmarks', JSON.stringify(Array.from(next)));
+        } catch { /* quota exceeded */ }
+      }
+      return next;
+    });
+  }, []);
+
+  // Safety appeal: captured when server returns 400 with guardrail: true
+  const [safetyAppeal, setSafetyAppeal] = useState<{
+    reason: string;
+    category?: string;
+    originalMessage: string;
+  } | null>(null);
+  const [appealSubmitting, setAppealSubmitting] = useState(false);
+  const submitSafetyAppeal = useCallback(async (notes: string) => {
+    if (!safetyAppeal) return;
+    setAppealSubmitting(true);
+    try {
+      await fetch('/api/ai/safety-appeal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          originalMessage: safetyAppeal.originalMessage,
+          reason: safetyAppeal.reason,
+          category: safetyAppeal.category,
+          userNotes: notes,
+        }),
+      }).catch(() => {
+        // Endpoint may not exist yet; fall back to console
+        console.warn('[SafetyAppeal] /api/ai/safety-appeal not reachable');
+      });
+      toast.success('Appeal submitted — our team will review it.');
+      setSafetyAppeal(null);
+    } catch (err) {
+      toast.error('Failed to submit appeal');
+    } finally {
+      setAppealSubmitting(false);
+    }
+  }, [safetyAppeal]);
+  const toggleReadAloud = useCallback((messageId: string, text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      toast.error('Speech not supported in this browser');
+      return;
+    }
+    const synth = window.speechSynthesis;
+    if (speakingMessageId === messageId) {
+      synth.cancel();
+      setSpeakingMessageId(null);
+      return;
+    }
+    synth.cancel();
+    // Strip markdown for cleaner TTS
+    const clean = text
+      .replace(/```[\s\S]*?```/g, '')
+      .replace(/[*_#>`[\]()]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 4000);
+    if (!clean) return;
+    const u = new SpeechSynthesisUtterance(clean);
+    u.rate = 1.0;
+    u.pitch = 1.0;
+    u.onend = () => setSpeakingMessageId((cur) => (cur === messageId ? null : cur));
+    u.onerror = () => setSpeakingMessageId((cur) => (cur === messageId ? null : cur));
+    setSpeakingMessageId(messageId);
+    synth.speak(u);
+  }, [speakingMessageId]);
+  useEffect(() => () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+  }, []);
   const [currentTokenUsage, setCurrentTokenUsage] = useState<{
     promptTokens: number;
     completionTokens: number;
@@ -628,12 +867,29 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
     };
   }, [currentContractId]);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new messages — but respect user scroll-up
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && !isScrolledUp) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isScrolledUp]);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setIsScrolledUp(distFromBottom > 120);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [isOpen]);
+  const jumpToLatest = useCallback(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+      setIsScrolledUp(false);
+    }
+  }, []);
 
   // Focus input when opened
   useEffect(() => {
@@ -1048,6 +1304,9 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
               currentPage: pathname,
               artifactVersion,
               forceRefresh: artifactVersion > 0,
+              mode: chatMode,
+              persona: persona === 'default' ? undefined : persona,
+              perspective: perspective === 'self' ? undefined : perspective,
             },
             useRAG: true,
           }),
@@ -1055,10 +1314,23 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
 
         if (!response.ok) {
           // Try to parse error body for specific error types
-          let errorBody: { error?: string; message?: string } | null = null;
+          let errorBody: { error?: string; message?: string; guardrail?: boolean; category?: string } | null = null;
           try {
             errorBody = await response.clone().json();
           } catch { /* ignore parse errors */ }
+
+          // Guardrail (safety filter) — surface the appeal modal
+          if (errorBody?.guardrail) {
+            setSafetyAppeal({
+              reason: errorBody.error || errorBody.message || 'Message blocked by safety filter.',
+              category: errorBody.category,
+              originalMessage: messageContent,
+            });
+            // Reset loading state without throwing
+            setIsLoading(false);
+            setIsTyping(false);
+            return;
+          }
 
           // Don't retry non-transient errors (AI not configured, bad request, etc.)
           const isNonTransient = response.status === 503 || response.status === 400 ||
@@ -1324,6 +1596,9 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
               currentPage: pathname,
               artifactVersion,
               forceRefresh: artifactVersion > 0,
+              mode: chatMode,
+              persona: persona === 'default' ? undefined : persona,
+              perspective: perspective === 'self' ? undefined : perspective,
             },
             conversationId: persistence.conversationId || undefined,
             useRAG: true,
@@ -1360,7 +1635,12 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
           contractId: r.contractId,
           contractName: r.contractName,
           score: r.score,
-          snippet: r.text?.slice(0, 150),
+          snippet: r.snippet || r.text?.slice(0, 320),
+          heading: r.heading,
+          section: r.section,
+          startOffset: r.startOffset,
+          endOffset: r.endOffset,
+          matchType: r.matchType,
         })) || [];
 
         // Parse contract previews from API response
@@ -1518,6 +1798,64 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
 
   // Keep forward ref in sync for handleAction
   sendMsgRef.current = handleSendMessage;
+
+  // Regenerate: drop the last assistant message and re-send the preceding user message
+  const handleRegenerate = useCallback(() => {
+    if (isLoading) return;
+    // Find last assistant msg and the user msg that preceded it
+    let lastAssistantIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'assistant' && messages[i].id !== 'welcome') {
+        lastAssistantIdx = i;
+        break;
+      }
+    }
+    if (lastAssistantIdx === -1) return;
+    let precedingUser: Message | undefined;
+    for (let i = lastAssistantIdx - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        precedingUser = messages[i];
+        break;
+      }
+    }
+    if (!precedingUser) return;
+    // Drop the last assistant message optimistically, then re-send
+    setMessages((prev) => prev.filter((m) => m.id !== messages[lastAssistantIdx].id));
+    // Use a microtask to ensure state is applied before send picks up `messages`
+    setTimeout(() => handleSendMessage(precedingUser!.content), 0);
+  }, [isLoading, messages, handleSendMessage]);
+
+  // Edit last user message: load it into input, remove it and its assistant reply
+  const handleEditLastUser = useCallback(() => {
+    if (isLoading) return;
+    let lastUserIdx = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') { lastUserIdx = i; break; }
+    }
+    if (lastUserIdx === -1) return;
+    const userMsg = messages[lastUserIdx];
+    setInput(userMsg.content);
+    // Drop the user msg + anything after (their replies)
+    setMessages((prev) => prev.slice(0, lastUserIdx));
+    inputRef.current?.focus();
+  }, [isLoading, messages]);
+
+  // Rename the current conversation title
+  const handleRenameSave = useCallback(async () => {
+    const next = titleDraft.trim();
+    setIsRenamingTitle(false);
+    if (!next) return;
+    if (persistence.conversationId) {
+      await persistence.renameConversation(persistence.conversationId, next);
+    }
+  }, [persistence, titleDraft]);
+
+  const conversationTitle = useMemo(() => {
+    const id = persistence.conversationId;
+    if (!id) return null;
+    const match = persistence.conversations.find((c) => c.id === id);
+    return match?.title || null;
+  }, [persistence.conversationId, persistence.conversations]);
 
   // Update conversation context
   const updateContext = (query: string) => {
@@ -1792,11 +2130,65 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                       </div>
                       <div>
                         <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                          ConTigo AI
+                          {isRenamingTitle ? (
+                            <input
+                              autoFocus
+                              value={titleDraft}
+                              onChange={(e) => setTitleDraft(e.target.value)}
+                              onBlur={handleRenameSave}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') { e.preventDefault(); handleRenameSave(); }
+                                if (e.key === 'Escape') { e.preventDefault(); setIsRenamingTitle(false); }
+                              }}
+                              className="bg-white border border-violet-300 rounded-md px-2 py-0.5 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 max-w-[220px] pointer-events-auto"
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              className="text-left truncate max-w-[180px] hover:underline focus:outline-none focus-visible:underline pointer-events-auto"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!persistence.conversationId) return;
+                                setTitleDraft(conversationTitle || 'ConTigo AI');
+                                setIsRenamingTitle(true);
+                              }}
+                              title={persistence.conversationId ? 'Click to rename conversation' : undefined}
+                            >
+                              {conversationTitle || 'ConTigo AI'}
+                            </button>
+                          )}
                           <Badge className="bg-violet-50 text-violet-700 text-[10px] border-violet-200/50 px-2 py-0.5 font-medium">
                             <Zap className="w-2.5 h-2.5 mr-1" />
                             RAG
                           </Badge>
+                          <Badge
+                            className={`text-[10px] px-2 py-0.5 font-medium border cursor-default ${
+                              chatMode === 'fast'
+                                ? 'bg-sky-50 text-sky-700 border-sky-200/60'
+                                : chatMode === 'deep'
+                                  ? 'bg-purple-50 text-purple-700 border-purple-200/60'
+                                  : 'bg-slate-50 text-slate-700 border-slate-200/70'
+                            }`}
+                            title={`Response mode: ${chatMode}`}
+                          >
+                            {chatMode === 'fast' ? 'Fast' : chatMode === 'deep' ? 'Deep' : 'Balanced'}
+                          </Badge>
+                          {perspective === 'counterparty' && (
+                            <Badge
+                              className="bg-amber-50 text-amber-800 text-[10px] border-amber-200/60 px-2 py-0.5 font-medium cursor-default"
+                              title="Opposing-party lens is ON — analyzing from counterparty view"
+                            >
+                              Counterparty view
+                            </Badge>
+                          )}
+                          {persona !== 'default' && (
+                            <Badge
+                              className="bg-indigo-50 text-indigo-700 text-[10px] border-indigo-200/60 px-2 py-0.5 font-medium cursor-default"
+                              title={`Persona: ${persona}`}
+                            >
+                              {persona.charAt(0).toUpperCase() + persona.slice(1)}
+                            </Badge>
+                          )}
                           {/* Usage Quota Indicator */}
                           <InlineUsageIndicator />
                           {lastArtifactUpdate && (
@@ -1867,7 +2259,72 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                             <Settings className="w-5 h-5" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-white border-gray-200 text-gray-900 min-w-[200px] shadow-lg">
+                        <DropdownMenuContent align="end" className="bg-white border-gray-200 text-gray-900 min-w-[220px] shadow-lg">
+                          <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                            Response mode
+                          </div>
+                          <DropdownMenuItem onClick={() => setChatMode('fast')} className={`hover:bg-gray-100 cursor-pointer py-2.5 ${chatMode === 'fast' ? 'bg-violet-50 text-violet-700' : ''}`}>
+                            <Zap className="w-4 h-4 mr-3" />
+                            <div className="flex-1">
+                              <div className="text-sm font-medium">Fast</div>
+                              <div className="text-[11px] text-gray-500">Quick answers · gpt-4o-mini</div>
+                            </div>
+                            {chatMode === 'fast' && <Check className="w-4 h-4 ml-2" />}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setChatMode('balanced')} className={`hover:bg-gray-100 cursor-pointer py-2.5 ${chatMode === 'balanced' ? 'bg-violet-50 text-violet-700' : ''}`}>
+                            <Sparkles className="w-4 h-4 mr-3" />
+                            <div className="flex-1">
+                              <div className="text-sm font-medium">Balanced</div>
+                              <div className="text-[11px] text-gray-500">Auto-routed default</div>
+                            </div>
+                            {chatMode === 'balanced' && <Check className="w-4 h-4 ml-2" />}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setChatMode('deep')} className={`hover:bg-gray-100 cursor-pointer py-2.5 ${chatMode === 'deep' ? 'bg-violet-50 text-violet-700' : ''}`}>
+                            <Bot className="w-4 h-4 mr-3" />
+                            <div className="flex-1">
+                              <div className="text-sm font-medium">Deep</div>
+                              <div className="text-[11px] text-gray-500">Thorough reasoning · gpt-4o</div>
+                            </div>
+                            {chatMode === 'deep' && <Check className="w-4 h-4 ml-2" />}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-gray-200" />
+                          <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                            Persona
+                          </div>
+                          {([
+                            { id: 'default', label: 'Default', desc: 'General assistant' },
+                            { id: 'analyst', label: 'Analyst', desc: 'Data-oriented, numbers first' },
+                            { id: 'counsel', label: 'Counsel', desc: 'Legal precision, clause refs' },
+                            { id: 'executive', label: 'Executive', desc: 'Bottom line + decision' },
+                          ] as const).map((p) => (
+                            <DropdownMenuItem
+                              key={p.id}
+                              onClick={() => setPersona(p.id)}
+                              className={`hover:bg-gray-100 cursor-pointer py-2 ${persona === p.id ? 'bg-violet-50 text-violet-700' : ''}`}
+                            >
+                              <User className="w-4 h-4 mr-3" />
+                              <div className="flex-1">
+                                <div className="text-sm font-medium">{p.label}</div>
+                                <div className="text-[11px] text-gray-500">{p.desc}</div>
+                              </div>
+                              {persona === p.id && <Check className="w-4 h-4 ml-2" />}
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator className="bg-gray-200" />
+                          <DropdownMenuItem
+                            onClick={() => setPerspective(perspective === 'counterparty' ? 'self' : 'counterparty')}
+                            className={`hover:bg-gray-100 cursor-pointer py-2.5 ${perspective === 'counterparty' ? 'bg-amber-50 text-amber-800' : ''}`}
+                          >
+                            <Search className="w-4 h-4 mr-3" />
+                            <div className="flex-1">
+                              <div className="text-sm font-medium">Opposing-party lens</div>
+                              <div className="text-[11px] text-gray-500">
+                                {perspective === 'counterparty' ? 'ON — viewing from counterparty' : 'View contracts from the other side'}
+                              </div>
+                            </div>
+                            {perspective === 'counterparty' && <Check className="w-4 h-4 ml-2" />}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-gray-200" />
                           <DropdownMenuItem onClick={() => setShowHistoryPanel(true)} className="hover:bg-gray-100 cursor-pointer py-3">
                             <History className="w-4 h-4 mr-3" />
                             Conversation history
@@ -1892,7 +2349,72 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                             <Sparkles className="w-4 h-4 mr-3" />
                             Example prompts
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setShowBookmarksPanel(true)}
+                            disabled={bookmarkedIds.size === 0}
+                            className="hover:bg-gray-100 cursor-pointer py-3 disabled:opacity-40"
+                          >
+                            <BookmarkCheck className="w-4 h-4 mr-3" />
+                            Bookmarks ({bookmarkedIds.size})
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-gray-200" />
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const md = messages
+                                .filter((m) => m.id !== 'welcome')
+                                .map((m) => `**${m.role === 'user' ? 'You' : 'ConTigo AI'}** · ${m.timestamp.toLocaleString()}\n\n${m.content}\n`)
+                                .join('\n---\n\n');
+                              const header = `# ConTigo AI Conversation\n\n_Exported ${new Date().toLocaleString()}_\n\n---\n\n`;
+                              navigator.clipboard.writeText(header + md).then(
+                                () => toast.success('Conversation copied as Markdown'),
+                                () => toast.error('Clipboard copy failed'),
+                              );
+                            }}
+                            className="hover:bg-gray-100 cursor-pointer py-3"
+                          >
+                            <Copy className="w-4 h-4 mr-3" />
+                            Copy as Markdown
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const payload = {
+                                exportedAt: new Date().toISOString(),
+                                messages: messages
+                                  .filter((m) => m.id !== 'welcome')
+                                  .map((m) => ({
+                                    id: m.id,
+                                    role: m.role,
+                                    content: m.content,
+                                    timestamp: m.timestamp.toISOString(),
+                                  })),
+                              };
+                              navigator.clipboard.writeText(JSON.stringify(payload, null, 2)).then(
+                                () => toast.success('Conversation copied as JSON'),
+                                () => toast.error('Clipboard copy failed'),
+                              );
+                            }}
+                            className="hover:bg-gray-100 cursor-pointer py-3"
+                          >
+                            <Copy className="w-4 h-4 mr-3" />
+                            Copy as JSON
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              try {
+                                window.open(
+                                  `${window.location.pathname}?chat=popout`,
+                                  'contigo-chat-popout',
+                                  'width=520,height=820,resizable=yes,scrollbars=yes',
+                                );
+                              } catch {
+                                toast.error('Could not open pop-out window');
+                              }
+                            }}
+                            className="hover:bg-gray-100 cursor-pointer py-3"
+                          >
+                            <Maximize2 className="w-4 h-4 mr-3" />
+                            Open in new window
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setShowExportDialog(true)} className="hover:bg-gray-100 cursor-pointer py-3">
                             <Download className="w-4 h-4 mr-3" />
                             Export chat
@@ -1992,12 +2514,13 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                   </AnimatePresence>
 
                   {/* Messages - Enhanced with better visual hierarchy */}
-                  <div className="flex-1 overflow-hidden bg-gray-50/50">
+                  <div className="relative flex-1 overflow-hidden bg-gray-50/50">
                     <ScrollArea className="h-full">
                       <div ref={scrollRef} className="p-6 space-y-5">
                         {messages.map((message, msgIndex) => (
                           <motion.div
                             key={message.id}
+                            id={`chat-msg-${message.id}`}
                             role="article"
                             aria-label={`Message from ${message.role === "user" ? "you" : "ConTigo AI"}`}
                             tabIndex={message.role === "assistant" ? 0 : -1}
@@ -2129,10 +2652,56 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                                     </div>
                                   )}
 
-                                  <MarkdownContent
-                                    content={message.content}
-                                    className={`text-[15px] leading-relaxed ${message.role === "user" ? "prose-invert text-white" : ""}`}
-                                  />
+                                  <div className="relative">
+                                    <div
+                                      className={
+                                        message.role === 'assistant' &&
+                                        message.content.length > LONG_MESSAGE_THRESHOLD &&
+                                        !expandedMessageIds.has(message.id) &&
+                                        !(isLoading && msgIndex === messages.length - 1)
+                                          ? 'max-h-[420px] overflow-hidden [mask-image:linear-gradient(to_bottom,black_85%,transparent)]'
+                                          : ''
+                                      }
+                                    >
+                                      <MarkdownContent
+                                        content={(() => {
+                                          // Inline citations: transform [N] tokens into visible superscripts
+                                          // when the message has ragSources. Keeps markdown rendering simple.
+                                          const sources = message.metadata?.ragSources;
+                                          if (!sources || sources.length === 0 || message.role === 'user') {
+                                            return message.content;
+                                          }
+                                          return message.content.replace(/\[(\d+)\]/g, (_m, digits) => {
+                                            const idx = parseInt(digits, 10);
+                                            if (idx < 1 || idx > sources.length) return `[${digits}]`;
+                                            return `[${toSuperscriptNumber(idx)}](${buildCitationHref({ source: sources[idx - 1], index: idx })})`;
+                                          });
+                                        })()}
+                                        className={`text-[15px] leading-relaxed ${message.role === "user" ? "prose-invert text-white" : ""}`}
+                                        onInternalLinkClick={(href, event) => handleInlineCitationClick(href, message.metadata?.ragSources, event)}
+                                      />
+                                      {/* Streaming cursor: visible only on the last assistant message while still loading */}
+                                      {isLoading && message.role === 'assistant' && msgIndex === messages.length - 1 && (
+                                        <span
+                                          aria-hidden="true"
+                                          className="inline-block w-[2px] h-[1.1em] -mb-[0.2em] ml-0.5 bg-violet-500 animate-pulse align-middle"
+                                        />
+                                      )}
+                                    </div>
+                                    {message.role === 'assistant' &&
+                                      message.content.length > LONG_MESSAGE_THRESHOLD &&
+                                      !(isLoading && msgIndex === messages.length - 1) && (
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleMessageExpanded(message.id)}
+                                          className="mt-2 text-xs font-medium text-violet-600 hover:text-violet-800 underline-offset-2 hover:underline"
+                                        >
+                                          {expandedMessageIds.has(message.id)
+                                            ? 'Show less ▲'
+                                            : `Show full response (${Math.ceil(message.content.length / 100) / 10}k chars) ▼`}
+                                        </button>
+                                      )}
+                                  </div>
                                   
                                   {/* Metadata footer - Enhanced */}
                                   <div className={`flex items-center justify-between mt-3 pt-3 border-t ${message.role === "user" ? "border-white/20" : "border-gray-100"}`}>
@@ -2197,16 +2766,45 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                                               initial={{ opacity: 0, x: -10 }}
                                               animate={{ opacity: 1, x: 0 }}
                                               transition={{ delay: i * 0.1 }}
-                                              className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200 hover:border-violet-300 transition-colors cursor-pointer"
-                                              onClick={() => window.open(`/contracts/${src.contractId}`, '_blank')}
+                                              className="bg-gray-50 rounded-lg border border-gray-200 hover:border-violet-300 transition-colors"
                                             >
-                                              <div className="flex items-center gap-2 min-w-0">
-                                                <FileText className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" />
-                                                <span className="truncate font-medium">{src.contractName}</span>
-                                              </div>
-                                              <span className="text-xs font-bold text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded flex-shrink-0">
-                                                {Math.round(src.score * 100)}%
-                                              </span>
+                                              <button
+                                                type="button"
+                                                onClick={() => setActiveCitationPreview({ source: src, index: i + 1 })}
+                                                className="flex w-full items-start justify-between gap-3 px-3 py-2 text-left"
+                                              >
+                                                <div className="min-w-0 flex-1">
+                                                  <div className="flex items-center gap-2 min-w-0">
+                                                    <span className="text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded flex-shrink-0" aria-label={`Citation ${i + 1}`}>
+                                                      [{i + 1}]
+                                                    </span>
+                                                    <FileText className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" />
+                                                    <span className="truncate font-medium">{src.contractName}</span>
+                                                    {(src.heading || src.section) && (
+                                                      <span className="hidden sm:inline rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 border border-gray-200">
+                                                        {src.heading || src.section}
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  {src.snippet && (
+                                                    <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-gray-500">
+                                                      {src.snippet}
+                                                    </p>
+                                                  )}
+                                                  {(typeof src.startOffset === 'number' || typeof src.endOffset === 'number') && (
+                                                    <p className="mt-1 text-[10px] font-medium text-slate-400">
+                                                      Span {typeof src.startOffset === 'number' ? src.startOffset : '?'}
+                                                      {typeof src.endOffset === 'number' ? `-${src.endOffset}` : ''}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                                <div className="flex shrink-0 items-center gap-2">
+                                                  <span className="text-xs font-bold text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded flex-shrink-0">
+                                                    {Math.round(src.score * 100)}%
+                                                  </span>
+                                                  <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                                                </div>
+                                              </button>
                                             </motion.li>
                                           ))}
                                         </ul>
@@ -2331,6 +2929,46 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                                         </motion.button>
                                       </TooltipTrigger>
                                       <TooltipContent side="left" className="text-xs bg-gray-900 text-white border-gray-700">Copy</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <motion.button
+                                          whileHover={{ scale: 1.1 }}
+                                          whileTap={{ scale: 0.9 }}
+                                          onClick={() => toggleReadAloud(message.id, message.content)}
+                                          className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all shadow-lg border backdrop-blur-sm ${
+                                            speakingMessageId === message.id
+                                              ? "bg-violet-50 text-violet-600 border-violet-300"
+                                              : "bg-white/95 hover:bg-gray-50 text-gray-400 hover:text-violet-600 border-gray-200/80 hover:border-violet-300"
+                                          }`}
+                                          aria-label={speakingMessageId === message.id ? 'Stop reading' : 'Read aloud'}
+                                        >
+                                          {speakingMessageId === message.id ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                                        </motion.button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="left" className="text-xs bg-gray-900 text-white border-gray-700">
+                                        {speakingMessageId === message.id ? 'Stop' : 'Read aloud'}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <motion.button
+                                          whileHover={{ scale: 1.1 }}
+                                          whileTap={{ scale: 0.9 }}
+                                          onClick={() => toggleBookmark(message.id)}
+                                          className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all shadow-lg border backdrop-blur-sm ${
+                                            bookmarkedIds.has(message.id)
+                                              ? "bg-amber-50 text-amber-600 border-amber-300"
+                                              : "bg-white/95 hover:bg-gray-50 text-gray-400 hover:text-amber-600 border-gray-200/80 hover:border-amber-300"
+                                          }`}
+                                          aria-label={bookmarkedIds.has(message.id) ? 'Remove bookmark' : 'Bookmark message'}
+                                        >
+                                          {bookmarkedIds.has(message.id) ? <BookmarkCheck className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
+                                        </motion.button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="left" className="text-xs bg-gray-900 text-white border-gray-700">
+                                        {bookmarkedIds.has(message.id) ? 'Unbookmark' : 'Bookmark'}
+                                      </TooltipContent>
                                     </Tooltip>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
@@ -2542,6 +3180,19 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                         )}
                       </div>
                     </ScrollArea>
+                    {isScrolledUp && messages.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={jumpToLatest}
+                        className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3.5 py-1.5 text-xs font-medium text-white shadow-lg hover:bg-slate-800 transition-all"
+                        aria-label="Jump to latest message"
+                      >
+                        <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M10 3a1 1 0 01.77.363l5 6a1 1 0 01-1.54 1.274L11 6.747V16a1 1 0 11-2 0V6.747l-3.23 3.89a1 1 0 01-1.54-1.274l5-6A1 1 0 0110 3z" clipRule="evenodd" transform="rotate(180 10 10)" />
+                        </svg>
+                        Jump to latest
+                      </button>
+                    )}
                   </div>
 
                   {/* Quick Actions - Enhanced with better visual hierarchy */}
@@ -2587,6 +3238,109 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
 
                   {/* Input area - Enhanced with better visual design */}
                   <div className="p-6 border-t border-gray-200 bg-white">
+                    {/* Regenerate / Edit last-message controls + Prompt library */}
+                    {!isLoading && (
+                      <div className="flex items-center gap-2 mb-3 relative">
+                        <button
+                          type="button"
+                          onClick={() => setShowPromptLibrary((v) => !v)}
+                          aria-expanded={showPromptLibrary}
+                          aria-haspopup="menu"
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-violet-700 bg-gray-50 hover:bg-violet-50 border border-gray-200 hover:border-violet-300 rounded-full px-3 py-1.5 transition-colors"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          Prompts
+                        </button>
+                        {showPromptLibrary && (
+                          <div
+                            role="menu"
+                            aria-label="Prompt library"
+                            className="absolute bottom-full left-0 mb-2 w-[320px] max-h-[320px] overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-2"
+                          >
+                            <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                              Quick prompts
+                            </div>
+                            {[
+                              { label: 'Summarize this contract', text: 'Give me a concise executive summary of this contract covering parties, term, value, key obligations, and notable risks.' },
+                              { label: 'Find renewal terms', text: 'What are the renewal terms, auto-renewal clauses, and notice periods? When must we act?' },
+                              { label: 'List key obligations', text: 'List all obligations for each party with deadlines and owners. Flag anything overdue or ambiguous.' },
+                              { label: 'Identify top risks', text: 'Identify the top 5 commercial and legal risks in this contract, ranked by severity, with a short mitigation for each.' },
+                              { label: 'Extract financial terms', text: 'Extract all financial terms: fees, payment schedule, caps, penalties, indexation, and currency.' },
+                              { label: 'Compare to playbook', text: 'Flag clauses that deviate from our standard playbook positions and suggest fallback language.' },
+                              { label: 'Termination + exit', text: 'Explain termination rights, notice periods, cure rights, transition obligations, and fees on exit.' },
+                              { label: 'What changed vs prior version?', text: 'If a prior version exists, summarize material changes and their impact. Otherwise say no prior version is available.' },
+                            ].map((p) => (
+                              <button
+                                key={p.label}
+                                type="button"
+                                role="menuitem"
+                                onClick={() => {
+                                  setInput(p.text);
+                                  setShowPromptLibrary(false);
+                                  setTimeout(() => inputRef.current?.focus(), 50);
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-violet-50 rounded-lg transition-colors"
+                              >
+                                <div className="text-sm font-medium text-gray-800">{p.label}</div>
+                                <div className="text-[11px] text-gray-500 truncate">{p.text}</div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {messages.some((m) => m.role === 'assistant' && m.id !== 'welcome') && (
+                          <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 text-xs font-medium text-gray-600 overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={handleRegenerate}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 hover:text-violet-700 hover:bg-violet-50 transition-colors"
+                              title="Regenerate with current mode"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              Regenerate
+                            </button>
+                            <div className="w-px bg-gray-200" />
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center px-2 py-1.5 hover:text-violet-700 hover:bg-violet-50 transition-colors"
+                                  title="Regenerate with different mode"
+                                >
+                                  <ChevronDown className="w-3.5 h-3.5" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-white border-gray-200 rounded-xl shadow-lg w-44">
+                                {(['fast', 'balanced', 'deep'] as const).map((mode) => (
+                                  <DropdownMenuItem
+                                    key={mode}
+                                    onClick={() => { setChatMode(mode); setTimeout(() => handleRegenerate(), 0); }}
+                                    className="hover:bg-gray-100 cursor-pointer py-2 text-sm capitalize"
+                                  >
+                                    <span className={`inline-block w-2 h-2 rounded-full mr-2 ${mode === chatMode ? 'bg-violet-500' : 'bg-gray-300'}`} />
+                                    Regenerate · {mode}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        )}
+                        {messages.some((m) => m.role === 'user') && (
+                          <button
+                            type="button"
+                            onClick={handleEditLastUser}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-violet-700 bg-gray-50 hover:bg-violet-50 border border-gray-200 hover:border-violet-300 rounded-full px-3 py-1.5 transition-colors"
+                          >
+                            <Keyboard className="w-3.5 h-3.5" />
+                            Edit last message
+                          </button>
+                        )}
+                        {!offlineQueue.isOnline && (
+                          <span className="ml-auto text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
+                            Offline · messages will queue
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -2595,10 +3349,59 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                       className="flex gap-3"
                     >
                       <div className="relative flex-1 group">
+                        {/* Slash command popover */}
+                        {input.startsWith('/') && !input.includes(' ') && (() => {
+                          const q = input.slice(1).toLowerCase();
+                          const matches = SLASH_COMMANDS.filter(c => c.cmd.slice(1).startsWith(q)).slice(0, 6);
+                          if (matches.length === 0) return null;
+                          const active = slashIndex % matches.length;
+                          return (
+                            <div className="absolute bottom-full left-0 right-0 mb-2 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden z-10 dark:bg-slate-900 dark:border-slate-700">
+                              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 bg-gray-50 dark:bg-slate-800 dark:text-slate-400">
+                                Slash commands · Tab or Enter to use
+                              </div>
+                              {matches.map((c, i) => (
+                                <button
+                                  key={c.cmd}
+                                  type="button"
+                                  onMouseEnter={() => setSlashIndex(i)}
+                                  onClick={() => {
+                                    setInput(c.prompt);
+                                    setSlashIndex(0);
+                                    setTimeout(() => inputRef.current?.focus(), 0);
+                                  }}
+                                  className={`w-full text-left px-3 py-2 text-sm flex items-start gap-3 transition-colors ${i === active ? 'bg-violet-50 dark:bg-violet-900/30' : 'hover:bg-gray-50 dark:hover:bg-slate-800'}`}
+                                >
+                                  <span className="font-mono text-[11px] font-semibold text-violet-600 dark:text-violet-400 mt-0.5 w-20 shrink-0">{c.cmd}</span>
+                                  <span className="flex-1 min-w-0">
+                                    <span className="block text-gray-900 dark:text-slate-100 font-medium">{c.label}</span>
+                                    <span className="block text-[11px] text-gray-500 dark:text-slate-400 line-clamp-1">{c.prompt}</span>
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()}
                         <Input
                           ref={inputRef}
                           value={input}
-                          onChange={(e) => setInput(e.target.value)}
+                          onChange={(e) => { setInput(e.target.value); setSlashIndex(0); }}
+                          onKeyDown={(e) => {
+                            if (!input.startsWith('/') || input.includes(' ')) return;
+                            const q = input.slice(1).toLowerCase();
+                            const matches = SLASH_COMMANDS.filter(c => c.cmd.slice(1).startsWith(q));
+                            if (matches.length === 0) return;
+                            if (e.key === 'ArrowDown') { e.preventDefault(); setSlashIndex(i => i + 1); }
+                            else if (e.key === 'ArrowUp') { e.preventDefault(); setSlashIndex(i => i - 1 + matches.length); }
+                            else if (e.key === 'Tab' || (e.key === 'Enter' && matches.length > 0)) {
+                              e.preventDefault();
+                              const picked = matches[slashIndex % matches.length];
+                              setInput(picked.prompt);
+                              setSlashIndex(0);
+                            } else if (e.key === 'Escape') {
+                              setInput('');
+                            }
+                          }}
                           aria-label="Chat message input"
                           autoComplete="off"
                           placeholder={currentContractId 
@@ -2644,22 +3447,28 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                         </div>
                       </div>
                       <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                        <Button
-                          type="submit"
-                          size="icon"
-                          disabled={!input.trim() || isLoading}
-                          aria-label={isLoading ? "Sending message" : !input.trim() ? "Type a message to send" : "Send message"}
-                          className="h-14 w-14 rounded-2xl bg-violet-500 hover:bg-violet-600 shadow-md hover:shadow-lg disabled:opacity-50 disabled:brightness-75 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
-                        >
-                          {isLoading ? (
-                            <>
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                              <span className="sr-only">Sending message...</span>
-                            </>
-                          ) : (
+                        {isLoading ? (
+                          <Button
+                            type="button"
+                            size="icon"
+                            aria-label="Stop generating"
+                            onClick={cancelCurrentRequest}
+                            className="h-14 w-14 rounded-2xl bg-red-500 hover:bg-red-600 shadow-md hover:shadow-lg transition-all duration-200"
+                          >
+                            <X className="w-5 h-5" />
+                            <span className="sr-only">Stop generating</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            type="submit"
+                            size="icon"
+                            disabled={!input.trim()}
+                            aria-label={!input.trim() ? "Type a message to send" : "Send message"}
+                            className="h-14 w-14 rounded-2xl bg-violet-500 hover:bg-violet-600 shadow-md hover:shadow-lg disabled:opacity-50 disabled:brightness-75 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
+                          >
                             <Send className="w-5 h-5" />
-                          )}
-                        </Button>
+                          </Button>
+                        )}
                       </motion.div>
                     </form>
                     <div className="flex items-center justify-between mt-3">
@@ -2672,6 +3481,11 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                           <span className="text-xs text-gray-500 flex items-center gap-1.5">
                             <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs text-gray-600 font-mono shadow-sm">⌘/</kbd>
                             <span>toggle</span>
+                          </span>
+                        )}
+                        {input.length > 0 && (
+                          <span className={`text-xs font-medium tabular-nums ${input.length > 4000 ? 'text-rose-600' : input.length > 2000 ? 'text-amber-600' : 'text-gray-400'}`}>
+                            {input.length.toLocaleString()} chars · ~{Math.ceil(input.length / 4).toLocaleString()} tokens
                           </span>
                         )}
                       </div>
@@ -2688,6 +3502,80 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                   </div>
                 </div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Bookmarks panel */}
+        <AnimatePresence>
+          {showBookmarksPanel && (
+            <motion.div
+              key="bookmarks"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-md flex items-center justify-center p-4"
+              onClick={() => setShowBookmarksPanel(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                className="bg-white border border-gray-200/80 rounded-3xl w-full max-w-md shadow-2xl max-h-[70vh] flex flex-col overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between p-5 border-b border-gray-100">
+                  <h3 className="text-gray-900 font-bold flex items-center gap-2.5 text-lg">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-100 to-purple-100 flex items-center justify-center">
+                      <BookmarkCheck className="w-4 h-4 text-violet-600" />
+                    </div>
+                    Bookmarks
+                  </h3>
+                  <button
+                    onClick={() => setShowBookmarksPanel(false)}
+                    className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  {messages.filter((m) => bookmarkedIds.has(m.id)).length === 0 ? (
+                    <div className="text-center text-sm text-gray-500 py-12">No bookmarks yet</div>
+                  ) : (
+                    messages
+                      .filter((m) => bookmarkedIds.has(m.id))
+                      .map((m) => (
+                        <button
+                          key={m.id}
+                          onClick={() => {
+                            setShowBookmarksPanel(false);
+                            setTimeout(() => scrollToMessage(m.id), 100);
+                          }}
+                          className="w-full text-left p-3 rounded-xl border border-gray-200 hover:border-violet-300 hover:bg-violet-50 transition-colors group"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-violet-600 mb-1">
+                                {m.role === 'user' ? 'You' : 'ConTigo AI'} · {m.timestamp.toLocaleString()}
+                              </div>
+                              <div className="text-sm text-gray-700 line-clamp-3">
+                                {m.content.slice(0, 240)}{m.content.length > 240 ? '…' : ''}
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleBookmark(m.id); }}
+                              className="text-gray-400 hover:text-rose-500 transition-colors p-1"
+                              title="Remove bookmark"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </button>
+                      ))
+                  )}
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -2830,6 +3718,100 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
           )}
         </AnimatePresence>
 
+        {/* Citation Source Preview */}
+        <AnimatePresence>
+          {activeCitationPreview && (
+            <motion.div
+              key="citation-preview"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-md flex items-center justify-center p-4"
+              onClick={() => setActiveCitationPreview(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.96, opacity: 0, y: 18 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.96, opacity: 0, y: 18 }}
+                className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-gray-200"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600">
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5">[{activeCitationPreview.index}] Grounded source</span>
+                      {activeCitationPreview.source.matchType && (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">
+                          {activeCitationPreview.source.matchType}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="mt-2 text-lg font-semibold text-gray-900">
+                      {activeCitationPreview.source.contractName}
+                    </h3>
+                    {(activeCitationPreview.source.heading || activeCitationPreview.source.section) && (
+                      <p className="mt-1 text-sm text-gray-500">
+                        {activeCitationPreview.source.heading || activeCitationPreview.source.section}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setActiveCitationPreview(null)}
+                    className="h-9 w-9 rounded-xl"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="px-5 py-4 space-y-4">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="rounded-full bg-violet-50 px-2 py-1 font-semibold text-violet-700 border border-violet-200/70">
+                      {Math.round(activeCitationPreview.source.score * 100)}% relevance
+                    </span>
+                    {(typeof activeCitationPreview.source.startOffset === 'number' || typeof activeCitationPreview.source.endOffset === 'number') && (
+                      <span className="rounded-full bg-slate-50 px-2 py-1 font-medium text-slate-600 border border-slate-200">
+                        Span {typeof activeCitationPreview.source.startOffset === 'number' ? activeCitationPreview.source.startOffset : '?'}
+                        {typeof activeCitationPreview.source.endOffset === 'number' ? `-${activeCitationPreview.source.endOffset}` : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-50 to-white px-4 py-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">Quoted excerpt</p>
+                    <blockquote className="mt-2 text-sm leading-6 text-gray-700 whitespace-pre-wrap border-l-2 border-violet-300 pl-3">
+                      {activeCitationPreview.source.snippet || 'No excerpt available for this source.'}
+                    </blockquote>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={async () => {
+                        await copy(activeCitationPreview.source.snippet || activeCitationPreview.source.contractName);
+                      }}
+                      className="rounded-xl"
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy excerpt
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => openCitationInContract(activeCitationPreview)}
+                      className="rounded-xl bg-violet-500 hover:bg-violet-600"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Open contract
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Chat History Search Dialog */}
         <AnimatePresence>
           {showSearchDialog && (
@@ -2901,6 +3883,14 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
           }}
         />
 
+        {/* Safety Appeal Modal */}
+        {safetyAppeal && <SafetyAppealModal
+          appeal={safetyAppeal}
+          submitting={appealSubmitting}
+          onSubmit={submitSafetyAppeal}
+          onClose={() => setSafetyAppeal(null)}
+        />}
+
         {/* AI Feedback Dialog - Round 3 Enhancement */}
         <AIFeedbackDialog
           open={showFeedbackDialog}
@@ -2926,6 +3916,107 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
         />
       </>
     </TooltipProvider>
+  );
+}
+
+/**
+ * Safety Appeal Modal - shown when a user message is blocked by input guardrails.
+ * Allows the user to review the block reason and optionally submit an appeal.
+ */
+function SafetyAppealModal({
+  appeal,
+  submitting,
+  onSubmit,
+  onClose,
+}: {
+  appeal: { reason: string; category?: string; originalMessage: string };
+  submitting: boolean;
+  onSubmit: (notes: string) => void;
+  onClose: () => void;
+}) {
+  const [notes, setNotes] = useState("");
+  return (
+    <AnimatePresence>
+      <motion.div
+        key="safety-appeal-backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          key="safety-appeal-card"
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          transition={{ duration: 0.18 }}
+          className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-start gap-3 p-5 border-b border-slate-200 dark:border-slate-800">
+            <div className="rounded-lg bg-amber-100 dark:bg-amber-900/40 p-2">
+              <Shield className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Message blocked by safety filter
+              </h3>
+              {appeal.category && (
+                <Badge variant="outline" className="mt-1 text-xs">
+                  {appeal.category}
+                </Badge>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-5 space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              {appeal.reason || "Your message couldn\u2019t be processed by the AI due to a safety policy."}
+            </p>
+            <div>
+              <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1.5">
+                Appeal (optional)
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Explain why this should be allowed (e.g., legitimate contract clause, quoted third-party text, etc.)"
+                rows={4}
+                className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={submitting}
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 p-4 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-200 dark:border-slate-800">
+            <Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => onSubmit(notes)}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  Submitting
+                </>
+              ) : (
+                "Submit appeal"
+              )}
+            </Button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 

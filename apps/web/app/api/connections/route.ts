@@ -80,6 +80,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       return performCleanup(ctx);
 
     case 'disconnect':
+      if (!connectionId) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'connectionId is required for disconnect', 400);
+      }
       return disconnectConnection(ctx, connectionId);
 
     case 'broadcast':

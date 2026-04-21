@@ -32,19 +32,18 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   };
 
   if (cursor) {
-    where.timestamp = { lt: new Date(cursor) };
+    where.createdAt = { lt: new Date(cursor) };
   }
 
   const logs = await prisma.auditLog.findMany({
     where,
-    orderBy: { timestamp: 'desc' },
+    orderBy: { createdAt: 'desc' },
     take: limit + 1, // Fetch one extra to detect next page
     select: {
       id: true,
       action: true,
-      timestamp: true,
+      createdAt: true,
       ipAddress: true,
-      success: true,
       resourceType: true,
       resourceId: true,
       metadata: true,
@@ -53,15 +52,15 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
 
   const hasMore = logs.length > limit;
   const entries = hasMore ? logs.slice(0, limit) : logs;
-  const nextCursor = hasMore ? entries[entries.length - 1]?.timestamp?.toISOString() : null;
+  const nextCursor = hasMore ? entries[entries.length - 1]?.createdAt?.toISOString() : null;
 
   return createSuccessResponse(ctx, {
     activities: entries.map((log) => ({
       id: log.id,
       action: log.action,
-      timestamp: log.timestamp,
+      timestamp: log.createdAt,
       ipAddress: log.ipAddress ? maskIp(log.ipAddress) : null,
-      success: log.success,
+      success: true,
       resourceType: log.resourceType,
       resourceId: log.resourceId,
       description: describeAction(log.action, log.resourceType, log.metadata),

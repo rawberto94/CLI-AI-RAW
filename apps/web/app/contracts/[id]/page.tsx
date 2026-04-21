@@ -120,6 +120,61 @@ function TabFallback() {
 // Valid tabs for URL deep-linking
 // ============================================================================
 const VALID_TABS = new Set<TabValue>(['overview', 'details', 'ai', 'activity'])
+const CITATION_QUERY_KEYS = ['cite', 'citeIndex', 'citeHeading', 'citeSection', 'citeSnippet', 'citeStart', 'citeEnd'] as const
+const CITATION_CONTEXT_WINDOW = 220
+
+function parseOptionalInt(value: string | null): number | undefined {
+  if (!value) return undefined
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function deriveCitationEvidence(
+  rawText: string | null | undefined,
+  startOffset: number | undefined,
+  endOffset: number | undefined,
+  fallbackSnippet: string | undefined,
+) {
+  const sourceText = rawText || ''
+  const snippet = fallbackSnippet?.trim()
+
+  const buildWindow = (focusStart: number, focusEnd: number, strategy: 'offset' | 'snippet') => {
+    const safeStart = Math.max(0, Math.min(focusStart, sourceText.length))
+    const safeEnd = Math.max(safeStart, Math.min(focusEnd, sourceText.length))
+    const contextStart = Math.max(0, safeStart - CITATION_CONTEXT_WINDOW)
+    const contextEnd = Math.min(sourceText.length, safeEnd + CITATION_CONTEXT_WINDOW)
+
+    return {
+      strategy,
+      leadingText: sourceText.slice(contextStart, safeStart),
+      focusText: sourceText.slice(safeStart, safeEnd),
+      trailingText: sourceText.slice(safeEnd, contextEnd),
+      clippedStart: contextStart > 0,
+      clippedEnd: contextEnd < sourceText.length,
+    }
+  }
+
+  if (sourceText && typeof startOffset === 'number' && typeof endOffset === 'number' && endOffset > startOffset) {
+    return buildWindow(startOffset, endOffset, 'offset')
+  }
+
+  if (sourceText && snippet) {
+    const snippetIndex = sourceText.indexOf(snippet)
+    if (snippetIndex >= 0) {
+      return buildWindow(snippetIndex, snippetIndex + snippet.length, 'snippet')
+    }
+  }
+
+  const fallbackText = snippet || sourceText.slice(0, Math.min(sourceText.length, CITATION_CONTEXT_WINDOW * 2))
+  return {
+    strategy: 'fallback' as const,
+    leadingText: '',
+    focusText: fallbackText,
+    trailingText: '',
+    clippedStart: false,
+    clippedEnd: sourceText.length > fallbackText.length,
+  }
+}
 
 // ============================================================================
 // Main Component
@@ -162,6 +217,7 @@ export default function ContractDetailPage() {
   const currentVersionNumber = versionsData?.currentVersionNumber ?? 1
   const notes = notesData ?? []
   const error = queryError?.message ?? null
+  const contractData = contract as ContractData | undefined
 
   // ── Derived metadata ──────────────────────────────────────────────────────
   const { metadata, riskInfo, complianceInfo, isProcessing, overviewData, financialData } =
@@ -187,6 +243,47 @@ export default function ContractDetailPage() {
   const lastAIActionRef = React.useRef<number>(0)
   const AI_COOLDOWN_MS = 5000
   const [isDownloadingReport, setIsDownloadingReport] = React.useState(false)
+  const lastCitationAutoOpenKeyRef = React.useRef<string | null>(null)
+
+  const citationRequest = React.useMemo(() => {
+    if (searchParams?.get?.('cite') !== '1') return null
+
+    const snippet = searchParams.get('citeSnippet') || undefined
+    const startOffset = parseOptionalInt(searchParams.get('citeStart'))
+    const endOffset = parseOptionalInt(searchParams.get('citeEnd'))
+
+    if (!snippet && typeof startOffset !== 'number' && typeof endOffset !== 'number') {
+      return null
+    }
+
+    return {
+      index: parseOptionalInt(searchParams.get('citeIndex')) ?? 1,
+      heading: searchParams.get('citeHeading') || undefined,
+      section: searchParams.get('citeSection') || undefined,
+      snippet,
+      startOffset,
+      endOffset,
+    }
+  }, [searchParams])
+
+  const citationEvidence = React.useMemo(() => {
+    if (!citationRequest) return null
+    return deriveCitationEvidence(
+      contractData?.rawText,
+      citationRequest.startOffset,
+      citationRequest.endOffset,
+      citationRequest.snippet,
+    )
+  }, [citationRequest, contractData?.rawText])
+
+  const clearCitationParams = useCallback(() => {
+    const next = new URLSearchParams(searchParams?.toString?.() || '')
+    for (const key of CITATION_QUERY_KEYS) {
+      next.delete(key)
+    }
+    const query = next.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [pathname, router, searchParams])
 
   // ── Split pane for PDF viewer ─────────────────────────────────────────────
   const isMobile = useMediaQuery('(max-width: 768px)')
@@ -239,12 +336,39 @@ export default function ContractDetailPage() {
 
   // ── Dynamic browser tab title ─────────────────────────────────────────────
   useEffect(() => {
-    const name = contract?.contractTitle || contract?.filename
+    const name = contractData?.contractTitle || contract?.filename
     if (name) {
       document.title = `${name} | ConTigo`
     }
     return () => { document.title = 'Contracts | ConTigo' }
-  }, [contract?.contractTitle, contract?.filename])
+  }, [contractData?.contractTitle, contract?.filename])
+
+  useEffect(() => {
+    if (citationRequest && activeTab !== 'details') {
+      setActiveTab('details')
+    }
+  }, [activeTab, citationRequest, setActiveTab])
+
+  useEffect(() => {
+    if (!citationRequest) {
+      lastCitationAutoOpenKeyRef.current = null
+      return
+    }
+
+    const citationAutoOpenKey = [
+      citationRequest.index,
+      citationRequest.startOffset ?? '',
+      citationRequest.endOffset ?? '',
+      citationRequest.snippet ?? '',
+    ].join(':')
+
+    if (showPdfViewer || lastCitationAutoOpenKeyRef.current === citationAutoOpenKey) {
+      return
+    }
+
+    lastCitationAutoOpenKeyRef.current = citationAutoOpenKey
+    setPdfViewerOpen(true)
+  }, [citationRequest, setPdfViewerOpen, showPdfViewer])
 
   // ── Auto-refresh while processing ─────────────────────────────────────────
   useEffect(() => {
@@ -1283,6 +1407,71 @@ export default function ContractDetailPage() {
       />
 
       {/* Dialogs */}
+      {citationRequest && (
+        <Dialog open={Boolean(citationRequest)} onOpenChange={(open) => { if (!open) clearCitationParams() }}>
+          <DialogContent className="sm:max-w-3xl">
+            <DialogHeader>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600">
+                <span className="rounded-full bg-violet-100 px-2 py-0.5">[{citationRequest.index}] Evidence focus</span>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">
+                  {citationEvidence?.strategy === 'offset'
+                    ? 'Exact span'
+                    : citationEvidence?.strategy === 'snippet'
+                      ? 'Matched excerpt'
+                      : 'Fallback excerpt'}
+                </span>
+              </div>
+              <DialogTitle className="mt-2 text-left">
+                {citationRequest.heading || citationRequest.section || contractData?.contractTitle || contract?.filename || 'Contract evidence'}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 font-medium text-slate-600">
+                  {contractData?.contractTitle || contract?.filename || 'Contract'}
+                </span>
+                {(typeof citationRequest.startOffset === 'number' || typeof citationRequest.endOffset === 'number') && (
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 font-medium text-slate-600">
+                    Span {typeof citationRequest.startOffset === 'number' ? citationRequest.startOffset : '?'}
+                    {typeof citationRequest.endOffset === 'number' ? `-${citationRequest.endOffset}` : ''}
+                  </span>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Source context</p>
+                <div className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
+                  {citationEvidence?.clippedStart && <span className="text-slate-400">...</span>}
+                  <span>{citationEvidence?.leadingText}</span>
+                  <mark className="rounded bg-amber-200 px-1 py-0.5 text-slate-900">
+                    {citationEvidence?.focusText || citationRequest.snippet || 'No excerpt available for this citation.'}
+                  </mark>
+                  <span>{citationEvidence?.trailingText}</span>
+                  {citationEvidence?.clippedEnd && <span className="text-slate-400">...</span>}
+                </div>
+              </div>
+
+              {!contractData?.rawText && citationRequest.snippet && (
+                <p className="text-xs text-slate-500">
+                  Full contract text is not available on this record, so this preview is using the citation excerpt only.
+                </p>
+              )}
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Button type="button" variant="outline" onClick={handleCopyLink}>
+                  <Link2 className="mr-2 h-4 w-4" />
+                  Copy evidence link
+                </Button>
+                <Button type="button" variant="outline" onClick={clearCitationParams}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {showShareDialog && (
         <ShareDialog
           isOpen={showShareDialog}

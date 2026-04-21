@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
+import type { Prisma } from '@repo/db';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { monitoringService } from 'data-orchestration/services';
@@ -89,6 +90,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid request body', 400);
     }
     const { action, integrationId, config, name, type, provider, description } = parsed.data;
+    const jsonConfig = config as Prisma.InputJsonValue | undefined;
 
     if (action === 'create') {
       try {
@@ -100,7 +102,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
             type: type || 'OTHER',
             provider: provider || 'Custom',
             status: 'DISCONNECTED',
-            config: config || {},
+            config: jsonConfig || {},
             capabilities: [],
           },
         });
@@ -128,7 +130,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           data: {
             status: 'CONNECTED',
             lastSyncAt: new Date(),
-            config: config || undefined,
+            config: jsonConfig,
           },
         });
 
@@ -168,6 +170,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     if (action === 'sync') {
+      if (!integrationId) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'integrationId is required for sync', 400);
+      }
       try {
         const existing = await prisma.integration.findFirst({
           where: { id: integrationId, tenantId },
@@ -182,7 +187,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
             tenantId,
             direction: 'BIDIRECTIONAL',
             status: 'IN_PROGRESS',
-            syncType: config?.syncType || 'INCREMENTAL',
+            syncType: typeof config?.syncType === 'string' ? config.syncType : 'INCREMENTAL',
           },
         });
 
@@ -252,11 +257,14 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     if (action === 'configure') {
+      if (!integrationId) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'integrationId is required for configure', 400);
+      }
       try {
         const integration = await prisma.integration.update({
           where: { id: integrationId },
           data: {
-            config,
+            config: jsonConfig,
           },
         });
 

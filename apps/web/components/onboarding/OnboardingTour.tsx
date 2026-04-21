@@ -522,6 +522,10 @@ export function useOnboardingTour(storageKey = 'onboarding-completed') {
   const [hasCompleted, setHasCompleted] = useState(true);
 
   useEffect(() => {
+    // Do not auto-open on focused-work surfaces where the overlay would cover
+    // the primary UI (e.g. the drafting editor).
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+    if (pathname.startsWith('/drafting')) return;
     const completed = localStorage.getItem(storageKey);
     if (!completed) {
       setHasCompleted(false);

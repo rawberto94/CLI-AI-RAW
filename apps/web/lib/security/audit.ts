@@ -110,6 +110,7 @@ export enum AuditAction {
   
   // AI / Chat
   CHAT_MESSAGE_CREATED = 'CHAT_MESSAGE_CREATED',
+  AI_SAFETY_APPEAL = 'AI_SAFETY_APPEAL',
   
   // Security
   RATE_LIMITED = 'RATE_LIMITED',
