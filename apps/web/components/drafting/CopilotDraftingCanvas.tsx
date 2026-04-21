@@ -1626,8 +1626,16 @@ export function CopilotDraftingCanvas({
         const json = await response.json();
         const data = json.data || json;
         setSuggestions(data.suggestions || []);
-        setRisks(data.risks || []);
-        hasRealtimeRisksRef.current = true;
+        // Only replace risks when the realtime copilot actually returned some.
+        // The realtime endpoint often returns an empty array (e.g. when the
+        // selection is too small or OpenAI throttles) — without this guard
+        // the pre-hydrated risks from ContractDraft.structure.risks would be
+        // wiped out on every copilot call.
+        const nextRisks = Array.isArray(data.risks) ? data.risks : [];
+        if (nextRisks.length > 0) {
+          setRisks(nextRisks);
+          hasRealtimeRisksRef.current = true;
+        }
       } else {
         const errorBody = await response.json().catch(() => null);
         console.warn('Copilot suggestions non-OK:', response.status, errorBody?.error || response.statusText);
@@ -4081,7 +4089,7 @@ export function CopilotDraftingCanvas({
         <div className="flex gap-2 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 md:overflow-visible" role="tablist" aria-label="Sidebar panels">
           {[
             { id: 'assistant', icon: Brain, label: 'Assistant', count: suggestions.length + priorityRiskCount },
-            { id: 'review', icon: CheckCircle2, label: 'Review', count: unresolvedCommentsCount + approvalHistory.length },
+            { id: 'review', icon: CheckCircle2, label: 'Review', count: unresolvedCommentsCount + approvalHistory.length + risks.length },
             { id: 'clauses', icon: BookOpen, label: 'Clauses', count: debouncedClauseSearch ? clauses.length : 0 },
           ].map((tab) => (
             <button
@@ -4932,6 +4940,82 @@ export function CopilotDraftingCanvas({
                     </button>
                   )}
                 </div>
+              </section>
+            )}
+
+            {risks.length > 0 && (
+              <section className={sidebarSectionClass}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                      Risks to review
+                    </h3>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+                      {risks.length} item{risks.length === 1 ? '' : 's'} flagged by AI — click any to jump to the clause.
+                    </p>
+                  </div>
+                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-amber-100 px-2 text-[11px] font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                    {risks.length}
+                  </span>
+                </div>
+                <ul className="space-y-2">
+                  {[...risks]
+                    .sort((a, b) => getRiskSeverityRank(b.riskLevel) - getRiskSeverityRank(a.riskLevel))
+                    .slice(0, 25)
+                    .map((risk) => {
+                      const toneClass =
+                        risk.riskLevel === 'critical'
+                          ? 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300'
+                          : risk.riskLevel === 'high'
+                            ? 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300'
+                            : risk.riskLevel === 'medium'
+                              ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
+                              : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-600 dark:bg-slate-700/30 dark:text-slate-300';
+                      const snippet = risk.text && risk.text.length > 180 ? `${risk.text.slice(0, 180)}…` : risk.text;
+                      return (
+                        <li
+                          key={risk.id}
+                          className="rounded-2xl border border-slate-200/90 bg-white/90 p-3 shadow-[0_6px_18px_-18px_rgba(15,23,42,0.6)] transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/80"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${toneClass}`}>
+                              {risk.riskLevel === 'critical' ? (
+                                <AlertCircle className="h-3 w-3" />
+                              ) : (
+                                <Shield className="h-3 w-3" />
+                              )}
+                              {risk.riskLevel}
+                            </span>
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                              {risk.category}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-relaxed text-gray-700 dark:text-slate-200">
+                            {risk.explanation}
+                          </p>
+                          {snippet && (
+                            <blockquote className="mt-2 border-l-2 border-slate-300 pl-2 text-[11px] italic text-slate-500 dark:border-slate-600 dark:text-slate-400">
+                              {snippet}
+                            </blockquote>
+                          )}
+                          {risk.suggestedFix && (
+                            <p className="mt-2 rounded-md bg-emerald-50 px-2 py-1.5 text-[11px] text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300">
+                              <strong className="mr-1 font-semibold">Suggested fix:</strong>
+                              {risk.suggestedFix}
+                            </p>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleFocusRisk(risk)}
+                            className="mt-2 inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700/60 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-700"
+                          >
+                            <ArrowRight className="h-3 w-3" />
+                            Jump to clause
+                          </button>
+                        </li>
+                      );
+                    })}
+                </ul>
               </section>
             )}
 
