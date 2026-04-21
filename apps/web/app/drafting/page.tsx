@@ -49,6 +49,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { AgenticDraftDialog } from '@/components/drafting/AgenticDraftDialog'
+import { DraftClarifyDialog } from '@/components/drafting/DraftClarifyDialog'
 import {
   Dialog,
   DialogContent,
@@ -616,6 +617,8 @@ export default function DraftingPage() {
   const [aiPrompt, setAiPrompt] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [showAgenticDialog, setShowAgenticDialog] = useState(false)
+  const [clarifyOpen, setClarifyOpen] = useState(false)
+  const [enrichedPrompt, setEnrichedPrompt] = useState<string | null>(null)
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null)
   const [previewContent, setPreviewContent] = useState<string>('')
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -898,7 +901,11 @@ export default function DraftingPage() {
         setAiPrompt(overridePrompt)
       }
       recordRecentPrompt(prompt)
-      setShowAgenticDialog(true)
+      // Open the clarifying-questions dialog first. The user can answer 4–7
+      // smart questions targeting whatever the prompt analyzer did NOT detect,
+      // and we then forward an enriched brief to the agentic generator.
+      setEnrichedPrompt(null)
+      setClarifyOpen(true)
     },
     [aiPrompt, recordRecentPrompt],
   )
@@ -1819,6 +1826,19 @@ export default function DraftingPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Clarifying questions — shown BEFORE generation so the AI gets a precise brief */}
+      <DraftClarifyDialog
+        open={clarifyOpen}
+        onOpenChange={setClarifyOpen}
+        prompt={aiPrompt}
+        detected={promptInsights}
+        onComplete={(enriched) => {
+          setEnrichedPrompt(enriched)
+          setClarifyOpen(false)
+          setShowAgenticDialog(true)
+        }}
+      />
+
       {/* Agentic Draft Dialog */}
       <AgenticDraftDialog
         open={showAgenticDialog}
@@ -1827,9 +1847,10 @@ export default function DraftingPage() {
           if (!open) {
             fetchDrafts()
             setAiPrompt('')
+            setEnrichedPrompt(null)
           }
         }}
-        initialPrompt={aiPrompt}
+        initialPrompt={enrichedPrompt || aiPrompt}
       />
 
     </div>
