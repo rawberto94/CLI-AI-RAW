@@ -29,6 +29,7 @@ import {
   formatPlaybookPromptContext,
   resolveRequestedPlaybook,
 } from '@/lib/playbooks/copilot-playbook';
+import type { Playbook } from 'data-orchestration/services';
 
 export const maxDuration = 120;
 
@@ -66,6 +67,15 @@ interface GenerationStep {
   durationMs?: number;
 }
 
+type EditorAssistOperation =
+  | 'add_clause'
+  | 'replace_clause'
+  | 'remove_clause'
+  | 'rewrite'
+  | 'fill_variables'
+  | 'tighten_risk'
+  | 'other';
+
 interface EditorAssistResponse {
   title: string;
   assistantMessage: string;
@@ -73,6 +83,10 @@ interface EditorAssistResponse {
   applyMode: 'replace_selection' | 'insert_at_cursor' | 'none';
   quickReplies: Array<{ label: string; value: string }>;
   followUpQuestion?: string;
+  operation?: EditorAssistOperation;
+  detectedCategory?: string | null;
+  detectedParameters?: Record<string, string>;
+  playbookSourceCategory?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,27 +107,55 @@ const CONTRACT_TYPES = [
   { label: 'Amendment', value: 'I need a Contract Amendment' },
 ];
 
-const EDITOR_ASSIST_SYSTEM_PROMPT = `You are ConTigo's in-editor contract copilot. The user already has a live contract draft open in the editor.
+const EDITOR_ASSIST_SYSTEM_PROMPT = `You are ConTigo's in-editor contract copilot. The user already has a live contract draft open in the editor and may also have an active policy pack (playbook).
 
-Your job is to help them improve the current draft quickly and cleanly.
+PRIMARY GOAL
+Translate the user's natural-language request into a precise drafting OPERATION against the live draft. Never produce generic boilerplate when the user has supplied specific values, terms, or clause categories — and never ignore the active playbook.
 
-Return valid JSON with exactly these fields:
-- title: short label for the response card (2-5 words)
-- assistantMessage: brief explanation of what you drafted or changed (max 2 short sentences)
-- draftHtml: directly usable HTML fragment for the editor. Use tags p, ul, ol, li, strong, em, h2, and h3 only. Return an empty string if there is nothing to insert.
-- applyMode: one of "replace_selection", "insert_at_cursor", or "none"
-- quickReplies: up to 4 objects with {"label":"...","value":"..."}
-- followUpQuestion: optional single short question if one critical detail is truly needed
+OPERATIONS (pick exactly one)
+- "add_clause" — insert a brand-new clause section at the cursor (or after the appropriate heading)
+- "replace_clause" — replace the selected text (or the matching clause in the draft) with redrafted language
+- "remove_clause" — produce empty draftHtml + applyMode "replace_selection" and explain the deletion in assistantMessage
+- "rewrite" — rewrite the selected text (tone, clarity, structure) without changing intent
+- "fill_variables" — keep the selected text shape but substitute concrete values supplied by the user
+- "tighten_risk" — produce risk-mitigated language for the selected/identified clause (caps, carve-outs, cure periods, etc.)
+- "other" — fallback for general questions
 
-Behavior rules:
-- Act like an editor assistant, not an intake bot.
-- Prefer drafting a sensible default instead of asking broad clarifying questions.
-- If the user asks to add a clause, draft the clause.
-- If the user asks to rewrite or improve text and selectedText is provided, draft replacement language for that text.
-- Use the contract type, section headings, selected text, and document excerpt to stay consistent with the draft.
-- If you make an assumption, state it briefly in assistantMessage and still provide useful draftHtml.
-- Do not output markdown or code fences.
-- Keep the drafting business-ready and concise.`;
+EXTRACT FROM THE USER MESSAGE
+- Contract parameters: term/duration ("12 months", "3 years"), effective date, governing law / jurisdiction, fee/value/cap, currency, payment cadence, notice periods, renewal type
+- Party names, roles, entity types
+- Clause category being discussed: PAYMENT, TERMINATION, CONFIDENTIALITY, LIABILITY, INDEMNIFICATION, IP, GOVERNING_LAW, DATA_PRIVACY, FORCE_MAJEURE, ASSIGNMENT, WARRANTIES, DISPUTE_RESOLUTION, INSURANCE, SLA, NON_COMPETE, AUDIT, etc.
+- Action verb: add / insert / remove / delete / replace / rewrite / tighten / soften / simplify / harmonize
+
+PLAYBOOK CONTRACT
+- If the active playbook contains a "Preferred clause language" entry for the inferred category, USE IT VERBATIM as the basis for new or replaced clauses. Only adapt placeholders to fit the user's supplied values.
+- If a "Red flag" pattern matches the selected/inferred clause, prefer "remove_clause" or rewrite to neutralize the flagged language.
+- If a "Fallback position" applies, default to the "initial" position unless the user explicitly asks for the fallback or walkaway.
+- Always state in assistantMessage which playbook position was applied (e.g. "Applied preferred LIABILITY clause from policy pack" or "Used fallback1 for TERMINATION").
+
+VALUE POLICY (most important)
+- Substitute ALL placeholders ("[___]", "{{...}}", "[Party A]", "[X] days") with the concrete values the user supplied or that the playbook provides.
+- If a value is missing AND not in the playbook AND not inferable from contract type, leave a clearly-marked placeholder like "[Insert governing law]" — never use "[___]" or invented sample values.
+- Do NOT invent example numbers (e.g. "$100,000", "Net 30") unless the user or playbook supplied them.
+
+OUTPUT JSON SHAPE (strict)
+{
+  "operation": "<one of the operations above>",
+  "title": "<2-5 word card label>",
+  "assistantMessage": "<1-2 sentences: what you drafted/changed AND which playbook position you applied>",
+  "draftHtml": "<HTML fragment using only <p>, <ul>, <ol>, <li>, <strong>, <em>, <h2>, <h3>; empty string when removing>",
+  "applyMode": "replace_selection" | "insert_at_cursor" | "none",
+  "quickReplies": [{"label":"...","value":"..."}, ...up to 4],
+  "followUpQuestion": "<single short question only when a critical value is missing AND no reasonable default exists>",
+  "detectedCategory": "<inferred clause category or null>",
+  "detectedParameters": {"<paramKey>": "<value>", ...}
+}
+
+BEHAVIOUR
+- Act like an editor, not an intake bot.
+- Prefer drafting over asking. Only ask if a critical value is missing AND not in the playbook AND not inferable.
+- No markdown, no code fences.
+- Stay concise but complete.`;
 
 // ---------------------------------------------------------------------------
 // SSE Helpers
@@ -616,10 +658,141 @@ function runEditorAssistFallback(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Editor-assist helpers: extract user parameters + structured playbook views
+// ---------------------------------------------------------------------------
+
+function compactPlaybookText(value: string | undefined, max = 600): string {
+  if (!value) return '';
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  return normalized.length > max ? `${normalized.slice(0, max - 3).trimEnd()}...` : normalized;
+}
+
+/**
+ * Extract concrete contract parameters from a free-form user message so the
+ * AI is forced to use them verbatim instead of falling back to placeholders.
+ * Patterns are deliberately conservative — false positives are worse than
+ * a missing extraction (the model will still pick them up from the prompt).
+ */
+function extractMessageParameters(message: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const text = message.trim();
+  if (!text) return out;
+
+  // Term / duration: "12 months", "3 years", "for two (2) years"
+  const termMatch = text.match(/(\d{1,3}|two|three|four|five|six|seven|eight|nine|ten|twelve|twenty[- ]?four|thirty[- ]?six)\s*(?:\(\d+\)\s*)?(month|months|year|years|week|weeks|day|days)/i);
+  if (termMatch) out.term = `${termMatch[1]} ${termMatch[2].toLowerCase()}`;
+
+  // Notice period: "30 days notice", "60-day notice"
+  const noticeMatch = text.match(/(\d{1,3})[- ]?day(?:s)?\s+(?:prior\s+)?(?:written\s+)?notice/i);
+  if (noticeMatch) out.noticePeriod = `${noticeMatch[1]} days`;
+
+  // Net payment terms: "net 30", "net-15"
+  const netMatch = text.match(/net[- ]?(\d{1,3})/i);
+  if (netMatch) out.paymentTerms = `Net ${netMatch[1]}`;
+
+  // Monetary cap: "$50,000", "USD 100k", "EUR 250 000"
+  const moneyMatch = text.match(/(?:cap(?:ped)?(?:\s+at)?|liability(?:\s+cap)?|fee(?:s)?|value|worth|amount)[^\d$€£CHF]{0,20}((?:\$|€|£|CHF|USD|EUR|GBP)\s?\d[\d,. ]*\s?(?:k|m|million|thousand)?)/i);
+  if (moneyMatch) out.cap = moneyMatch[1].replace(/\s+/g, ' ').trim();
+
+  // Standalone currency amounts when no anchor word: "$100,000"
+  if (!out.cap) {
+    const standaloneMoney = text.match(/((?:\$|€|£|CHF)\s?\d[\d,. ]{2,})/);
+    if (standaloneMoney) out.amount = standaloneMoney[1].replace(/\s+/g, ' ').trim();
+  }
+
+  // Governing law / jurisdiction
+  const govMatch = text.match(/(?:governing law|jurisdiction|governed by(?:\s+the\s+laws\s+of)?|laws of)[:\s]+([A-Z][A-Za-z .,&-]{2,60}?)(?:[.,;\n]|$)/i);
+  if (govMatch) out.governingLaw = govMatch[1].trim().replace(/\.$/, '');
+
+  // Single-word jurisdictions when explicitly mentioned with "law"/"jurisdiction"
+  if (!out.governingLaw) {
+    const jurisdictions = ['Delaware', 'New York', 'California', 'Texas', 'England', 'Wales', 'Scotland', 'Switzerland', 'Germany', 'France', 'Singapore', 'Hong Kong', 'Australia', 'Canada', 'Ireland', 'Netherlands', 'Spain', 'Italy', 'Japan'];
+    for (const jur of jurisdictions) {
+      const re = new RegExp(`\\b${jur}\\b\\s*(?:law|jurisdiction|courts|governed)`, 'i');
+      if (re.test(text)) {
+        out.governingLaw = jur;
+        break;
+      }
+    }
+  }
+
+  // Effective date
+  const dateMatch = text.match(/(?:effective(?:\s+date)?|starting|commencing)[:\s]+([A-Za-z0-9 ,/.-]{4,40}?)(?:[.,;\n]|$)/i);
+  if (dateMatch) out.effectiveDate = dateMatch[1].trim();
+
+  // Renewal: "auto-renew", "annual renewal", "automatically renew for one-year terms"
+  if (/auto[- ]?renew|automatic(ally)?\s+renew/i.test(text)) out.renewal = 'auto-renew';
+  else if (/no\s+(auto|automatic)\s+renew|do\s+not\s+renew/i.test(text)) out.renewal = 'no auto-renew';
+
+  // Confidentiality survival period
+  const survMatch = text.match(/(?:confidentiality|surviv\w*)[^\n]{0,30}?(\d{1,2})\s*(year|years|month|months)/i);
+  if (survMatch) out.confidentialitySurvival = `${survMatch[1]} ${survMatch[2].toLowerCase()}`;
+
+  // Parties: "between Acme Corp and Beta GmbH", "Acme as Buyer"
+  const betweenMatch = text.match(/between\s+([A-Z][A-Za-z0-9 .,&-]{2,60}?)\s+and\s+([A-Z][A-Za-z0-9 .,&-]{2,60}?)(?:[.,;\n]|$)/);
+  if (betweenMatch) {
+    out.partyA = betweenMatch[1].trim();
+    out.partyB = betweenMatch[2].trim();
+  }
+
+  // Contract type hints inside the message
+  const typeHint = text.match(/\b(NDA|MSA|SOW|SLA|SaaS|MNDA|DPA|services agreement|employment|license|lease|amendment|order form)\b/i);
+  if (typeHint) out.contractTypeHint = typeHint[1].toUpperCase();
+
+  return out;
+}
+
+function buildPlaybookClauseLanguageMap(playbook: Playbook): string {
+  const clauses = playbook.clauses || [];
+  if (clauses.length === 0) return '';
+  return clauses
+    .slice(0, 12)
+    .map((clause) => {
+      const lines = [`[${clause.category}] preferred:\n${compactPlaybookText(clause.preferredText, 700)}`];
+      if (clause.minimumAcceptable) {
+        lines.push(`  minimum acceptable: ${compactPlaybookText(clause.minimumAcceptable, 280)}`);
+      }
+      if (clause.negotiationGuidance) {
+        lines.push(`  guidance: ${compactPlaybookText(clause.negotiationGuidance, 220)}`);
+      }
+      return lines.join('\n');
+    })
+    .join('\n\n');
+}
+
+function buildPlaybookFallbackTable(playbook: Playbook): string {
+  const entries = Object.entries(playbook.fallbackPositions || {});
+  if (entries.length === 0) return '';
+  return entries
+    .slice(0, 8)
+    .map(([category, position]) => {
+      const parts = [`[${category}] initial: ${compactPlaybookText(position.initial, 220)}`];
+      if (position.fallback1) parts.push(`  fallback1: ${compactPlaybookText(position.fallback1, 200)}`);
+      if (position.fallback2) parts.push(`  fallback2: ${compactPlaybookText(position.fallback2, 200)}`);
+      if (position.walkaway) parts.push(`  walkaway: ${compactPlaybookText(position.walkaway, 200)}`);
+      return parts.join('\n');
+    })
+    .join('\n\n');
+}
+
+function buildPlaybookRedFlagList(playbook: Playbook): string {
+  const flags = playbook.redFlags || [];
+  if (flags.length === 0) return '';
+  return flags
+    .slice(0, 10)
+    .map(
+      (flag) =>
+        `[${flag.category} / ${flag.severity}] avoid: ${compactPlaybookText(flag.pattern, 160)} \u2014 ${compactPlaybookText(flag.explanation, 200)}`,
+    )
+    .join('\n');
+}
+
 async function runEditorAssist(
   message: string,
   context: DraftAssistantRequest['context'],
   playbookPromptContext?: string,
+  playbook?: Playbook,
 ): Promise<EditorAssistResponse> {
   if (!hasAIClientConfig()) {
     return runEditorAssistFallback(message, context);
@@ -631,6 +804,35 @@ async function runEditorAssist(
     const excerpt = (context.currentContent || '').slice(0, 6000);
     const selectedText = (context.selectedText || '').slice(0, 2000);
     const headings = (context.documentSections || []).slice(0, 20);
+    const extractedParameters = extractMessageParameters(message);
+    const playbookClauseMap = playbook ? buildPlaybookClauseLanguageMap(playbook) : '';
+    const playbookRedFlagList = playbook ? buildPlaybookRedFlagList(playbook) : '';
+    const playbookFallbackTable = playbook ? buildPlaybookFallbackTable(playbook) : '';
+    const extractedParamLines = Object.entries(extractedParameters)
+      .map(([k, v]) => `- ${k}: ${v}`)
+      .join('\n');
+
+    const userPromptParts = [
+      `User request:\n${message}`,
+      `Contract type: ${context.contractType || 'Unknown'}`,
+      `Tone: ${context.tone || 'standard'}`,
+      `Selected text:\n${selectedText || 'None'}`,
+      `Document sections:\n${headings.length > 0 ? headings.join(' | ') : 'None provided'}`,
+      `Current draft excerpt:\n${excerpt || 'No draft content yet.'}`,
+      extractedParamLines
+        ? `Parameters extracted from this request (use these EXACT values when drafting; do not output placeholders for them):\n${extractedParamLines}`
+        : 'Parameters extracted from this request: none — only invent values if the playbook provides them.',
+      playbookPromptContext ? `Active policy pack guidance:\n${playbookPromptContext}` : '',
+      playbookClauseMap
+        ? `Full playbook clause language (USE VERBATIM where the inferred category matches; substitute extracted parameters into placeholders):\n${playbookClauseMap}`
+        : '',
+      playbookFallbackTable
+        ? `Playbook fallback positions (default to 'initial' unless the user asks for fallback or walkaway):\n${playbookFallbackTable}`
+        : '',
+      playbookRedFlagList
+        ? `Playbook red-flag patterns (treat selected text matching these as candidates for remove_clause or rewrite to neutralise):\n${playbookRedFlagList}`
+        : '',
+    ].filter(Boolean);
 
     const response = await openai.chat.completions.create({
       model,
@@ -641,7 +843,7 @@ async function runEditorAssist(
         { role: 'system', content: EDITOR_ASSIST_SYSTEM_PROMPT },
         {
           role: 'user',
-          content: `User request:\n${message}\n\nContract type: ${context.contractType || 'Unknown'}\nTone: ${context.tone || 'standard'}\nSelected text:\n${selectedText || 'None'}\n\nDocument sections:\n${headings.length > 0 ? headings.join(' | ') : 'None provided'}\n\nCurrent draft excerpt:\n${excerpt || 'No draft content yet.'}${playbookPromptContext ? `\n\nActive policy pack guidance:\n${playbookPromptContext}` : ''}`,
+          content: userPromptParts.join('\n\n'),
         },
       ],
     });
@@ -649,6 +851,7 @@ async function runEditorAssist(
     const raw = response.choices[0]?.message?.content || '{}';
     const parsed = JSON.parse(raw) as Partial<EditorAssistResponse> & {
       quickReplies?: Array<{ label?: string; value?: string }>;
+      detectedParameters?: Record<string, unknown>;
     };
     const quickReplies = Array.isArray(parsed.quickReplies)
       ? parsed.quickReplies
@@ -665,6 +868,33 @@ async function runEditorAssist(
         ? 'replace_selection'
         : 'insert_at_cursor';
 
+    const operation: EditorAssistOperation | undefined =
+      typeof parsed.operation === 'string' && [
+        'add_clause',
+        'replace_clause',
+        'remove_clause',
+        'rewrite',
+        'fill_variables',
+        'tighten_risk',
+        'other',
+      ].includes(parsed.operation)
+        ? (parsed.operation as EditorAssistOperation)
+        : undefined;
+
+    const detectedParameters: Record<string, string> = {};
+    if (parsed.detectedParameters && typeof parsed.detectedParameters === 'object') {
+      for (const [key, value] of Object.entries(parsed.detectedParameters)) {
+        if (typeof value === 'string' && value.trim()) {
+          detectedParameters[key] = value.trim();
+        } else if (typeof value === 'number') {
+          detectedParameters[key] = String(value);
+        }
+      }
+    }
+    for (const [k, v] of Object.entries(extractedParameters)) {
+      if (!detectedParameters[k]) detectedParameters[k] = v;
+    }
+
     return {
       title: typeof parsed.title === 'string' && parsed.title.trim() ? parsed.title.trim() : 'Suggested Language',
       assistantMessage:
@@ -678,6 +908,12 @@ async function runEditorAssist(
         typeof parsed.followUpQuestion === 'string' && parsed.followUpQuestion.trim()
           ? parsed.followUpQuestion.trim()
           : undefined,
+      operation,
+      detectedCategory:
+        typeof parsed.detectedCategory === 'string' && parsed.detectedCategory.trim()
+          ? parsed.detectedCategory.trim()
+          : null,
+      detectedParameters,
     };
   } catch (error) {
     logger.warn('Editor assist fell back to deterministic response', {
@@ -1107,6 +1343,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
             body.message,
             body.context,
             resolvedPlaybook ? formatPlaybookPromptContext(resolvedPlaybook) : undefined,
+            resolvedPlaybook,
           );
 
           emit('assistant_message', {
@@ -1115,6 +1352,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
             draftHtml: result.draftHtml,
             applyMode: result.applyMode,
             followUpQuestion: result.followUpQuestion || '',
+            operation: result.operation || 'other',
+            detectedCategory: result.detectedCategory ?? null,
+            detectedParameters: result.detectedParameters ?? {},
+            playbookApplied: resolvedPlaybook ? { id: resolvedPlaybook.id, name: resolvedPlaybook.name } : null,
           });
 
           if (result.quickReplies.length > 0) {

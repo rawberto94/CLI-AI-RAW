@@ -964,6 +964,10 @@ interface AiChatMessage {
   suggestions?: ChatQuickReply[];
   followUpQuestion?: string;
   comparisonText?: string;
+  operation?: 'add_clause' | 'replace_clause' | 'remove_clause' | 'rewrite' | 'fill_variables' | 'tighten_risk' | 'other';
+  detectedCategory?: string | null;
+  detectedParameters?: Record<string, string>;
+  playbookApplied?: { id: string; name: string } | null;
 }
 
 interface EditorDropPayload {
@@ -3882,6 +3886,32 @@ export function CopilotDraftingCanvas({
                             typeof parsed.followUpQuestion === 'string' && parsed.followUpQuestion.trim()
                               ? parsed.followUpQuestion
                               : chatMessage.followUpQuestion,
+                          operation:
+                            typeof parsed.operation === 'string' &&
+                            ['add_clause','replace_clause','remove_clause','rewrite','fill_variables','tighten_risk','other'].includes(parsed.operation)
+                              ? (parsed.operation as AiChatMessage['operation'])
+                              : chatMessage.operation,
+                          detectedCategory:
+                            typeof parsed.detectedCategory === 'string' && parsed.detectedCategory.trim()
+                              ? parsed.detectedCategory
+                              : (parsed.detectedCategory === null ? null : chatMessage.detectedCategory),
+                          detectedParameters:
+                            parsed.detectedParameters && typeof parsed.detectedParameters === 'object' && !Array.isArray(parsed.detectedParameters)
+                              ? Object.fromEntries(
+                                  Object.entries(parsed.detectedParameters as Record<string, unknown>)
+                                    .filter(([, v]) => typeof v === 'string' && (v as string).trim())
+                                    .map(([k, v]) => [k, (v as string).trim()])
+                                )
+                              : chatMessage.detectedParameters,
+                          playbookApplied:
+                            parsed.playbookApplied && typeof parsed.playbookApplied === 'object' && typeof (parsed.playbookApplied as Record<string, unknown>).id === 'string'
+                              ? {
+                                  id: String((parsed.playbookApplied as Record<string, unknown>).id),
+                                  name: typeof (parsed.playbookApplied as Record<string, unknown>).name === 'string'
+                                    ? String((parsed.playbookApplied as Record<string, unknown>).name)
+                                    : 'Playbook',
+                                }
+                              : (parsed.playbookApplied === null ? null : chatMessage.playbookApplied),
                           isStreaming: false,
                         }
                       : chatMessage
@@ -4658,6 +4688,43 @@ export function CopilotDraftingCanvas({
                                   </div>
                                 ) : null}
                               </div>
+
+                              {(msg.operation || msg.detectedCategory || msg.playbookApplied || (msg.detectedParameters && Object.keys(msg.detectedParameters).length > 0)) && (
+                                <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold">
+                                  {msg.operation && msg.operation !== 'other' && (
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-violet-700 dark:border-violet-800/60 dark:bg-violet-950/40 dark:text-violet-300">
+                                      {msg.operation === 'add_clause' && 'Add clause'}
+                                      {msg.operation === 'replace_clause' && 'Replace clause'}
+                                      {msg.operation === 'remove_clause' && 'Remove clause'}
+                                      {msg.operation === 'rewrite' && 'Rewrite'}
+                                      {msg.operation === 'fill_variables' && 'Fill values'}
+                                      {msg.operation === 'tighten_risk' && 'Tighten risk'}
+                                    </span>
+                                  )}
+                                  {msg.detectedCategory && (
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                                      {msg.detectedCategory.replace(/_/g, ' ')}
+                                    </span>
+                                  )}
+                                  {msg.playbookApplied && (
+                                    <span
+                                      className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                      title={`Playbook: ${msg.playbookApplied.name}`}
+                                    >
+                                      Playbook · {msg.playbookApplied.name}
+                                    </span>
+                                  )}
+                                  {msg.detectedParameters && Object.entries(msg.detectedParameters).slice(0, 6).map(([k, v]) => (
+                                    <span
+                                      key={k}
+                                      className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
+                                      title={`${k}: ${v}`}
+                                    >
+                                      {k}: {v.length > 24 ? `${v.slice(0, 24)}…` : v}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
 
                               {msg.followUpQuestion && (
                                 <div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-3 py-3 text-[13px] leading-6 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
