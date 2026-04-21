@@ -17,6 +17,48 @@ import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Extract a reasonable title from draft HTML content.
+ *
+ * Strategy:
+ *   1. First <h1> text, else <h2>, else first non-empty paragraph.
+ *   2. Strip tags, collapse whitespace, truncate to 80 chars.
+ *   3. Return null when nothing usable is found so the caller keeps the
+ *      existing placeholder.
+ */
+function extractTitleFromHtml(html: string): string | null {
+  if (!html || typeof html !== 'string') return null;
+
+  const pick = (pattern: RegExp): string | null => {
+    const match = html.match(pattern);
+    if (!match) return null;
+    const inner = match[1]
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\s+/g, ' ')
+      .trim();
+    return inner.length > 0 ? inner : null;
+  };
+
+  const candidate =
+    pick(/<h1[^>]*>([\s\S]*?)<\/h1>/i) ||
+    pick(/<h2[^>]*>([\s\S]*?)<\/h2>/i) ||
+    pick(/<p[^>]*>([\s\S]*?)<\/p>/i);
+
+  if (!candidate) return null;
+
+  const trimmed = candidate.length > 80 ? candidate.slice(0, 77).trimEnd() + '…' : candidate;
+  // Reject trivial strings like single punctuation or "Untitled"
+  if (trimmed.length < 3) return null;
+  if (/^untitled/i.test(trimmed)) return null;
+  return trimmed;
+}
+
 // GET /api/drafts/[id] - Get a single draft
 export async function GET(
   request: NextRequest,
@@ -146,6 +188,21 @@ export async function PATCH(
     
     if (title !== undefined) updateData.title = title;
     if (content !== undefined) updateData.content = content;
+
+    // Auto-title: when content is saved but no explicit title was provided
+    // AND the existing title is a placeholder (empty, "Untitled ..."), extract
+    // the first heading / meaningful line from the HTML content so the draft
+    // has a useful label in lists. Users can rename at any time.
+    if (title === undefined && content !== undefined && typeof content === 'string') {
+      const currentTitle = typeof existing.title === 'string' ? existing.title.trim() : '';
+      const isPlaceholder = !currentTitle || /^untitled/i.test(currentTitle);
+      if (isPlaceholder) {
+        const extracted = extractTitleFromHtml(content);
+        if (extracted) {
+          updateData.title = extracted;
+        }
+      }
+    }
     if (clauses !== undefined) updateData.clauses = clauses;
     if (variables !== undefined) updateData.variables = variables;
     if (structure !== undefined) updateData.structure = structure;

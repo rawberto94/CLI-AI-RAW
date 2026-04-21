@@ -158,10 +158,24 @@ function DraftCard({
   const categoryLabel = draft.template?.category || null
   const playbookLabel = draft.playbook?.name || null
 
+  // Normalize the doc type for fallback labels. `draft.type` is typically
+  // an uppercase token (NDA, MSA, SOW) but can also be freeform like
+  // "contract" — only surface it when it looks like a real contract code.
+  const docTypeLabel = (() => {
+    const t = typeof draft.type === 'string' ? draft.type.trim() : ''
+    if (!t) return null
+    if (t.length <= 5 && /^[A-Z]+$/.test(t)) return t
+    return null
+  })()
+
   const resolvedTitle =
     draft.title && draft.title.trim() && !/^untitled/i.test(draft.title.trim())
       ? draft.title
-      : templateLabel || sourceTypeLabel || 'Untitled draft'
+      : templateLabel
+        || sourceTypeLabel
+        || (docTypeLabel ? `${docTypeLabel} draft` : null)
+        || (counterparty ? `Draft — ${counterparty}` : null)
+        || 'Untitled draft'
 
   // Strip HTML → text snippet for the live preview.
   const previewText = useMemo(() => {
@@ -1094,6 +1108,14 @@ export default function DraftingPage() {
           const hrs = Math.floor(mins / 60)
           const ago = hrs > 0 ? `${hrs}h ago` : mins > 0 ? `${mins}m ago` : 'just now'
           const isLive = ageMs < 10 * 60_000
+          const mrDocType = (() => {
+            const t = typeof mostRecent.type === 'string' ? mostRecent.type.trim() : ''
+            return t && t.length <= 5 && /^[A-Z]+$/.test(t) ? t : null
+          })()
+          const mrCounterparty =
+            mostRecent.sourceContract?.supplierName ||
+            mostRecent.sourceContract?.contractTitle ||
+            null
           const title =
             (mostRecent.title && mostRecent.title.trim() && !/^untitled/i.test(mostRecent.title.trim())
               ? mostRecent.title
@@ -1102,7 +1124,9 @@ export default function DraftingPage() {
                   ? 'Renewal'
                   : mostRecent.sourceType === 'AMENDMENT'
                     ? 'Amendment'
-                    : null)) || 'Untitled draft'
+                    : null) ||
+                (mrDocType ? `${mrDocType} draft` : null) ||
+                (mrCounterparty ? `Draft — ${mrCounterparty}` : null)) || 'Untitled draft'
           const plain = (mostRecent.content || '')
             .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
             .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
