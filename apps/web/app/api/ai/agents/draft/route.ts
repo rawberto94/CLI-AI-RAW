@@ -260,7 +260,7 @@ async function generateDraftContent(
     .join('\n');
 
   const templateBlock = params.template
-    ? `\n\nBase Template (${params.template.name}):\n${params.template.content.slice(0, 8000)}`
+    ? `\n\nBase Template — STYLE REFERENCE ONLY (${params.template.name}):\n[Use this only for structural inspiration and boilerplate fallbacks. Do NOT copy values, names, dates, or variable placeholders from this template if they conflict with the USER REQUEST above. The USER REQUEST takes priority over anything in this template.]\n${params.template.content.slice(0, 6000)}`
     : '';
 
   const clauseBlock =
@@ -280,7 +280,7 @@ async function generateDraftContent(
     : '';
 
   const userPromptBlock = params.prompt
-    ? `\n\nUser Request:\n${params.prompt}`
+    ? `\n\n=== USER REQUEST — HIGHEST PRIORITY — READ FIRST ===\n${params.prompt}\n=== END USER REQUEST ===\n\nEvery specific value, party name, term, jurisdiction, cap, payment term, renewal behavior, tone and special requirement mentioned in the USER REQUEST above MUST appear VERBATIM in the generated contract. Do NOT leave [___] placeholders, [Name], [Date], or generic template variable names for any value the user specified. If the user said "Swiss law", the governing-law clause must say "Switzerland", not "[Governing Law]". If the user said "CHF 250,000", the cap must be "CHF 250,000", not "[Amount]". When a detail is NOT specified, use a sensible default and mark it with [TBD] so a reviewer can spot it.`
     : '';
 
   const response = await openai.chat.completions.create({
@@ -347,11 +347,11 @@ Return ONLY the HTML document.`,
         content: `Generate a complete ${params.contractType} contract governed by ${params.jurisdiction}.${userPromptBlock}
 
 Variables:
-${variableBlock || 'None specified — use standard bracketed placeholders.'}${templateBlock}${playbookBlock}${clauseBlock}${
+${variableBlock || 'None specified — use standard bracketed placeholders.'}${playbookBlock}${clauseBlock}${templateBlock}${
           params.instructions ? `\n\nAdditional Instructions:\n${params.instructions}` : ''
         }
 
-Produce the full contract now. Include every applicable section from the required list. Do not truncate.`,
+Produce the full contract now. Honour the USER REQUEST verbatim, then fill every applicable section from the required list. Do not truncate.`,
       },
     ],
   });

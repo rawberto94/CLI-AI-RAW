@@ -49,7 +49,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { AgenticDraftDialog } from '@/components/drafting/AgenticDraftDialog'
-import { DraftClarifyDialog } from '@/components/drafting/DraftClarifyDialog'
+import { DraftInterviewChat } from '@/components/drafting/DraftInterviewChat'
 import {
   Dialog,
   DialogContent,
@@ -1827,7 +1827,7 @@ export default function DraftingPage() {
       </Dialog>
 
       {/* Clarifying questions — shown BEFORE generation so the AI gets a precise brief */}
-      <DraftClarifyDialog
+      <DraftInterviewChat
         open={clarifyOpen}
         onOpenChange={setClarifyOpen}
         prompt={aiPrompt}
