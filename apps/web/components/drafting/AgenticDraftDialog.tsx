@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Brain, FileSearch, BookOpen, Wand2, Shield, Save,
   Loader2, CheckCircle2, SkipForward, AlertCircle,
-  ArrowRight, Sparkles, X,
+  ArrowRight, Sparkles, X, ShieldCheck, AlertTriangle,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -101,7 +101,14 @@ function StepResultSummary({ step }: { step: AgentStep }) {
     case 2:
       return <div className="text-xs text-gray-500">{r.templateName ? `Template: ${r.templateName}` : 'No template — generating from scratch'}</div>;
     case 3:
-      return <div className="text-xs text-gray-500">{Number(r.clauseCount || 0)} clauses selected</div>;
+      return (
+        <div className="text-xs text-gray-500">
+          {Number(r.clauseCount || 0)} clauses selected
+          {r.playbook && typeof r.playbook === 'object' && (r.playbook as { name?: string }).name
+            ? ` • Policy pack: ${(r.playbook as { name: string }).name}`
+            : ''}
+        </div>
+      );
     case 4:
       return <div className="text-xs text-gray-500">{Number(r.contentLength || 0).toLocaleString()} characters generated</div>;
     case 5:
@@ -125,7 +132,7 @@ interface AgenticDraftDialogProps {
 
 export function AgenticDraftDialog({ open, onOpenChange, initialPrompt }: AgenticDraftDialogProps) {
   const router = useRouter();
-  const { isRunning, steps, progress, result, error, generate, abort, reset } = useAgenticDraft();
+  const { isRunning, steps, progress, result, error, riskWarning, generate, abort, reset } = useAgenticDraft();
 
   // Form state
   const [mode, setMode] = useState<'prompt' | 'type'>('prompt');
@@ -133,6 +140,49 @@ export function AgenticDraftDialog({ open, onOpenChange, initialPrompt }: Agenti
   const [selectedType, setSelectedType] = useState('');
   const [tone, setTone] = useState<'formal' | 'standard' | 'plain-english'>('formal');
   const [jurisdiction, setJurisdiction] = useState('United States');
+
+  // Playbooks (policy packs)
+  type PlaybookSummary = {
+    id: string;
+    name: string;
+    description?: string | null;
+    isDefault?: boolean;
+    contractTypes?: string[];
+  };
+  const [playbooks, setPlaybooks] = useState<PlaybookSummary[]>([]);
+  const [selectedPlaybookId, setSelectedPlaybookId] = useState<string>('');
+  const [playbooksLoaded, setPlaybooksLoaded] = useState(false);
+
+  // Load playbooks when the dialog first opens
+  useEffect(() => {
+    if (!open || playbooksLoaded) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/playbooks', { credentials: 'same-origin' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (cancelled) return;
+        // API wraps payload as { success, data: { playbooks: [...] }, meta }
+        const payload = data?.data ?? data;
+        const list: PlaybookSummary[] = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.playbooks)
+          ? payload.playbooks
+          : [];
+        setPlaybooks(list);
+        const def = list.find(p => p.isDefault);
+        if (def) setSelectedPlaybookId(def.id);
+        setPlaybooksLoaded(true);
+      } catch {
+        // Silent — selector will show empty-state, generation still works without a policy pack.
+        setPlaybooksLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, playbooksLoaded]);
 
   // Sync initialPrompt when dialog opens
   useEffect(() => {
@@ -146,6 +196,9 @@ export function AgenticDraftDialog({ open, onOpenChange, initialPrompt }: Agenti
       tone,
       jurisdiction,
     };
+    if (selectedPlaybookId) {
+      request.playbookId = selectedPlaybookId;
+    }
 
     if (mode === 'prompt' && prompt.trim()) {
       request.prompt = prompt.trim();
@@ -296,6 +349,41 @@ export function AgenticDraftDialog({ open, onOpenChange, initialPrompt }: Agenti
                 </div>
               </div>
 
+              {/* Policy pack (playbook) selector */}
+              <div>
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                  Company Policy Pack
+                  <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                {playbooks.length > 0 ? (
+                  <select
+                    value={selectedPlaybookId}
+                    onChange={e => setSelectedPlaybookId(e.target.value)}
+                    className="w-full mt-1 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                  >
+                    <option value="">— No policy pack (use defaults) —</option>
+                    {playbooks.map(pb => (
+                      <option key={pb.id} value={pb.id}>
+                        {pb.name}
+                        {pb.isDefault ? ' (default)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="mt-1 px-3 py-2 rounded border border-dashed border-gray-200 dark:border-gray-700 text-xs text-gray-400">
+                    {playbooksLoaded
+                      ? 'No policy packs yet. Create one under Playbooks to enforce your preferred clauses.'
+                      : 'Loading policy packs…'}
+                  </div>
+                )}
+                {selectedPlaybookId && (
+                  <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+                    Draft will follow your selected policy pack's preferred clauses.
+                  </p>
+                )}
+              </div>
+
               <button
                 onClick={handleGenerate}
                 disabled={mode === 'prompt' ? !prompt.trim() : !selectedType}
@@ -316,6 +404,25 @@ export function AgenticDraftDialog({ open, onOpenChange, initialPrompt }: Agenti
               exit={{ opacity: 0 }}
               className="space-y-3"
             >
+              {/* Non-fatal risk warning banner (emitted during Risk Analysis) */}
+              {riskWarning && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800"
+                >
+                  <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium text-amber-900 dark:text-amber-200">
+                      {riskWarning.message || 'Risks detected'}
+                    </div>
+                    <div className="text-[11px] text-amber-700 dark:text-amber-300">
+                      The draft will still be saved — review the flagged items in the editor.
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
               {/* Progress bar */}
               <div className="relative h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                 <motion.div
@@ -376,6 +483,15 @@ export function AgenticDraftDialog({ open, onOpenChange, initialPrompt }: Agenti
                   <div className="text-xs text-gray-500">Duration</div>
                 </div>
               </div>
+
+              {riskWarning && (riskWarning.critical > 0 || riskWarning.high > 0) && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-amber-900 dark:text-amber-200">
+                    {riskWarning.message} — review in the editor before finalising.
+                  </div>
+                </div>
+              )}
 
               {/* Steps summary */}
               <div className="space-y-1">

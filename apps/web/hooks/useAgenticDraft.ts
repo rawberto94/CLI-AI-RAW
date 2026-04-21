@@ -41,6 +41,8 @@ export interface AgenticDraftRequest {
   prompt?: string;
   contractType?: string;
   templateId?: string;
+  /** Playbook (policy pack) to align the draft with. */
+  playbookId?: string;
   variables?: Record<string, string>;
   clauseIds?: string[];
   tone?: 'formal' | 'standard' | 'plain-english';
@@ -57,6 +59,13 @@ export interface AgenticDraftState {
   result: AgenticDraftResult | null;
   error: string | null;
   progress: number; // 0-100
+  /** Non-fatal risk warning emitted during the Risk Analysis step. */
+  riskWarning: {
+    critical: number;
+    high: number;
+    message: string;
+    risks?: Array<{ category: string; severity: string; description: string }>;
+  } | null;
 }
 
 const STEP_NAMES = [
@@ -79,6 +88,7 @@ const INITIAL_STATE: AgenticDraftState = {
   result: null,
   error: null,
   progress: 0,
+  riskWarning: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -141,6 +151,8 @@ export function useAgenticDraft() {
       const decoder = new TextDecoder();
       let result: AgenticDraftResult | null = null;
       let buffer = '';
+      // Track the current SSE event name across `event:` / `data:` line pairs.
+      let currentEvent: string | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -152,10 +164,14 @@ export function useAgenticDraft() {
         buffer = lines.pop() || '';
 
         for (const line of lines) {
-          if (!line.trim()) continue;
+          // Blank line separates SSE messages — reset the current event name.
+          if (!line.trim()) {
+            currentEvent = null;
+            continue;
+          }
 
           if (line.startsWith('event: ')) {
-            // SSE event type — handled via data line
+            currentEvent = line.slice(7).trim();
             continue;
           }
 
@@ -168,59 +184,80 @@ export function useAgenticDraft() {
               continue;
             }
 
-            // Determine event type from the data shape
-            if ('totalSteps' in parsed) {
-              // metadata event — pipeline started
-              continue;
-            }
+            const evt = currentEvent || '';
 
-            if ('step' in parsed && 'name' in parsed && 'status' in parsed) {
-              // step event
-              const stepData = parsed as unknown as AgentStep;
-              setState(prev => {
-                const steps = [...prev.steps];
-                const idx = stepData.step - 1;
-                if (idx >= 0 && idx < steps.length) {
-                  steps[idx] = {
-                    ...steps[idx],
-                    status: stepData.status as AgentStep['status'],
-                    result: stepData.result as Record<string, unknown> | undefined,
-                    error: stepData.error as string | undefined,
-                    durationMs: stepData.durationMs as number | undefined,
+            switch (evt) {
+              case 'metadata':
+                // pipeline started — nothing to do
+                break;
+
+              case 'step': {
+                const stepData = parsed as unknown as AgentStep;
+                setState(prev => {
+                  const steps = [...prev.steps];
+                  const idx = stepData.step - 1;
+                  if (idx >= 0 && idx < steps.length) {
+                    steps[idx] = {
+                      ...steps[idx],
+                      status: stepData.status as AgentStep['status'],
+                      result: stepData.result as Record<string, unknown> | undefined,
+                      error: stepData.error as string | undefined,
+                      durationMs: stepData.durationMs as number | undefined,
+                    };
+                  }
+                  const completedCount = steps.filter(
+                    s => s.status === 'completed' || s.status === 'skipped'
+                  ).length;
+                  return {
+                    ...prev,
+                    steps,
+                    currentStep: stepData.step,
+                    progress: Math.round((completedCount / 6) * 100),
                   };
-                }
-                const completedCount = steps.filter(
-                  s => s.status === 'completed' || s.status === 'skipped'
-                ).length;
-                return {
+                });
+                break;
+              }
+
+              case 'risk_warning': {
+                // Non-fatal — surface as a warning, but DO NOT stop the stream.
+                setState(prev => ({
                   ...prev,
-                  steps,
-                  currentStep: stepData.step,
-                  progress: Math.round((completedCount / 6) * 100),
-                };
-              });
-            }
+                  riskWarning: {
+                    critical: Number(parsed.critical) || 0,
+                    high: Number(parsed.high) || 0,
+                    message: String(parsed.message || ''),
+                    risks: Array.isArray(parsed.risks)
+                      ? (parsed.risks as Array<{ category: string; severity: string; description: string }>)
+                      : undefined,
+                  },
+                }));
+                break;
+              }
 
-            if ('draftId' in parsed && 'editUrl' in parsed) {
-              // done event
-              result = parsed as unknown as AgenticDraftResult;
-              setState(prev => ({
-                ...prev,
-                isRunning: false,
-                result,
-                progress: 100,
-              }));
-            }
+              case 'done': {
+                result = parsed as unknown as AgenticDraftResult;
+                setState(prev => ({
+                  ...prev,
+                  isRunning: false,
+                  result,
+                  progress: 100,
+                }));
+                break;
+              }
 
-            if ('message' in parsed && !('draftId' in parsed) && !('step' in parsed)) {
-              // error event
-              const errMsg = parsed.message as string;
-              setState(prev => ({
-                ...prev,
-                isRunning: false,
-                error: errMsg,
-              }));
-              throw new Error(errMsg);
+              case 'error': {
+                const errMsg = String(parsed.message || 'Draft generation failed');
+                setState(prev => ({
+                  ...prev,
+                  isRunning: false,
+                  error: errMsg,
+                }));
+                throw new Error(errMsg);
+              }
+
+              default:
+                // Unknown event — ignore.
+                break;
             }
           }
         }

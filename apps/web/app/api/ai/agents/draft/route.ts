@@ -40,6 +40,8 @@ interface AgentDraftRequest {
   contractType?: string;
   /** Template ID to use (skips template selection step) */
   templateId?: string;
+  /** Playbook (policy pack) ID — aligns clauses and guidance with a company policy pack */
+  playbookId?: string;
   /** Variables to fill into the template */
   variables?: Record<string, string>;
   /** Specific clause IDs to include */
@@ -190,10 +192,47 @@ async function recommendClauses(
     },
     select: { id: true, title: true, category: true, content: true, riskLevel: true },
     orderBy: [{ isMandatory: 'desc' }, { isStandard: 'desc' }, { usageCount: 'desc' }],
-    take: 10,
+    take: 25,
   });
 
   return clauses;
+}
+
+/**
+ * Step 3b: Load a playbook (policy pack) and return its preferred-clause list
+ * plus high-level guidance. Merged into the draft generation prompt so the
+ * output follows company policy.
+ */
+async function loadPlaybook(
+  tenantId: string,
+  playbookId: string | undefined
+): Promise<{
+  playbook: { id: string; name: string; description: string | null } | null;
+  clauses: Array<{ id: string; title: string; category: string; content: string; riskLevel: string; notes?: string | null; guidance?: string | null }>;
+} | null> {
+  if (!playbookId) return null;
+  const pb = await prisma.playbook.findFirst({
+    where: { id: playbookId, tenantId, isActive: true },
+    include: {
+      clauses: {
+        where: { isActive: true },
+        orderBy: { sortOrder: 'asc' },
+      },
+    },
+  });
+  if (!pb) return null;
+  return {
+    playbook: { id: pb.id, name: pb.name, description: pb.description },
+    clauses: pb.clauses.map(c => ({
+      id: `playbook:${c.id}`,
+      title: c.name,
+      category: c.category,
+      content: c.preferredText,
+      riskLevel: (c.riskLevel || 'medium').toUpperCase(),
+      notes: c.notes,
+      guidance: c.negotiationGuidance,
+    })),
+  };
 }
 
 /** Step 4: Generate draft content via AI */
@@ -208,6 +247,11 @@ async function generateDraftContent(
     tone: string;
     jurisdiction: string;
     instructions: string;
+    playbook?: {
+      playbook: { id: string; name: string; description: string | null } | null;
+      clauses: Array<{ title: string; category: string; content: string; notes?: string | null; guidance?: string | null }>;
+    } | null;
+    prompt?: string;
   }
 ): Promise<{ html: string; plainText: string }> {
   const variableBlock = Object.entries(params.variables)
@@ -216,43 +260,98 @@ async function generateDraftContent(
     .join('\n');
 
   const templateBlock = params.template
-    ? `\n\nBase Template (${params.template.name}):\n${params.template.content.slice(0, 6000)}`
+    ? `\n\nBase Template (${params.template.name}):\n${params.template.content.slice(0, 8000)}`
     : '';
 
   const clauseBlock =
     params.clauses.length > 0
-      ? `\n\nApproved Clauses to incorporate:\n${params.clauses.map(c => `[${c.category}] ${c.title}\n${c.content}`).join('\n\n')}`
+      ? `\n\nApproved Clauses to incorporate verbatim (or adapt minimally):\n${params.clauses
+          .map(c => `[${c.category}] ${c.title}\n${c.content}`)
+          .join('\n\n')}`
       : '';
+
+  const playbookBlock = params.playbook?.playbook
+    ? `\n\n=== COMPANY POLICY PACK: ${params.playbook.playbook.name} ===\n${params.playbook.playbook.description ? params.playbook.playbook.description + '\n' : ''}The following clauses are the COMPANY-PREFERRED positions. Use them as the baseline language wherever applicable. Do NOT weaken them without a clear commercial reason.\n\n${params.playbook.clauses
+        .map(
+          c =>
+            `[${c.category}] ${c.title} (preferred language)\n${c.content}${c.notes ? `\nNotes: ${c.notes}` : ''}${c.guidance ? `\nNegotiation guidance: ${c.guidance}` : ''}`
+        )
+        .join('\n\n')}\n=== END POLICY PACK ===`
+    : '';
+
+  const userPromptBlock = params.prompt
+    ? `\n\nUser Request:\n${params.prompt}`
+    : '';
 
   const response = await openai.chat.completions.create({
     model,
     temperature: 0.3,
-    max_tokens: 4096,
+    max_tokens: 8192,
     messages: [
       {
         role: 'system',
-        content: `You are an expert contract attorney generating a complete, professional contract draft.
+        content: `You are a senior contract attorney producing a COMPLETE, COMPREHENSIVE, and EXHAUSTIVE contract draft ready for legal review.
 
-Output Requirements:
-- Return the contract as clean HTML suitable for a WYSIWYG editor
-- Use proper heading tags (h1, h2, h3) for sections
-- Use <p> tags for paragraphs, <ol>/<ul> for lists
-- Use <strong> for defined terms on first use
-- Include proper contract structure: title, preamble/recitals, definitions, operative clauses, general provisions, signature blocks
+=== OUTPUT FORMAT ===
+- Return clean HTML for a WYSIWYG editor (no markdown, no code fences).
+- Use <h1> for the title, <h2> for top-level sections, <h3> for sub-sections, <h4> for sub-sub-sections.
+- Use <p> for paragraphs and <ol>/<ul> for lists; number clauses hierarchically (1, 1.1, 1.1.1).
+- Use <strong> for defined terms on first use, then reuse them consistently.
+- Include a title block, parties block, recitals/background, definitions, operative clauses, general provisions, and signature blocks.
+- Replace template variables ({{name}}) with provided values; use [___] placeholders only when a value is NOT provided.
+
+=== REQUIRED SECTIONS (include every applicable one; omit only when clearly N/A for the contract type) ===
+1. Parties and Effective Date
+2. Recitals / Background
+3. Definitions (define every capitalised term used)
+4. Scope of Services / Subject Matter
+5. Deliverables and Acceptance (for SOW/MSA)
+6. Term and Renewal
+7. Fees, Invoicing and Payment Terms
+8. Taxes
+9. Intellectual Property Rights (ownership, licences, background/foreground IP)
+10. Confidentiality and Non-Disclosure
+11. Data Protection & Privacy (GDPR/CCPA as applicable to jurisdiction)
+12. Information Security
+13. Representations and Warranties
+14. Disclaimers
+15. Limitation of Liability (direct, indirect, cap formula)
+16. Indemnification (mutual where appropriate)
+17. Insurance
+18. Termination (for convenience, for cause, effects of termination, survival)
+19. Force Majeure
+20. Compliance with Laws, Anti-Bribery, Sanctions, Export Controls
+21. Assignment and Subcontracting
+22. Independent Contractor / No Partnership
+23. Non-Solicitation / Non-Compete (where appropriate)
+24. Dispute Resolution (negotiation, mediation, arbitration or courts)
+25. Governing Law and Jurisdiction
+26. Notices
+27. Entire Agreement, Severability, Waiver, Amendments, Counterparts
+28. Signature Blocks for every party
+29. Schedules / Exhibits / Annexes (reference by letter, include placeholder schedule structure)
+
+=== QUALITY BAR ===
+- Aim for 3,000–6,000 words of actual contract language. Be thorough, not terse.
+- Every clause must be drafted in full sentences with operative language ("shall", "will", "must"), not bullet summaries.
+- Draft protective provisions from the perspective of the party issuing the contract unless the prompt says otherwise.
+- Use the provided Policy Pack language as the preferred position wherever it applies.
+- Incorporate all Approved Clauses; integrate them into the correct sections with proper numbering.
 - Tone: ${params.tone}
-- Jurisdiction: ${params.jurisdiction}
-- Replace template variables ({{variableName}}) with provided values
-- Use placeholder brackets [___] only for values NOT provided
-- Be thorough and complete — this should be ready for legal review
+- Governing jurisdiction: ${params.jurisdiction}
 
-Do NOT include any markdown. Return ONLY HTML content.`,
+Return ONLY the HTML document.`,
       },
       {
         role: 'user',
-        content: `Generate a complete ${params.contractType} contract.
+        content: `Generate a complete ${params.contractType} contract governed by ${params.jurisdiction}.${userPromptBlock}
 
 Variables:
-${variableBlock || 'None specified — use standard placeholders'}${templateBlock}${clauseBlock}${params.instructions ? `\n\nAdditional Instructions:\n${params.instructions}` : ''}`,
+${variableBlock || 'None specified — use standard bracketed placeholders.'}${templateBlock}${playbookBlock}${clauseBlock}${
+          params.instructions ? `\n\nAdditional Instructions:\n${params.instructions}` : ''
+        }
+
+Produce the full contract now. Include every applicable section from the required list. Do not truncate.`,
       },
     ],
   });
@@ -333,6 +432,7 @@ async function saveDraft(
     title: string;
     contractType: string;
     templateId: string | null;
+    playbookId?: string | null;
     content: string;
     clauses: Array<{ id: string; title: string; category: string }>;
     variables: Record<string, string>;
@@ -346,6 +446,7 @@ async function saveDraft(
       type: params.contractType,
       sourceType: params.templateId ? 'TEMPLATE' : 'NEW',
       templateId: params.templateId,
+      playbookId: params.playbookId || null,
       content: params.content,
       clauses: params.clauses.map(c => ({ id: c.id, title: c.title, category: c.category })),
       variables: params.variables,
@@ -549,6 +650,31 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           logger.warn('Clause recommendation failed, continuing without clauses', e);
         }
 
+        // Load selected playbook (policy pack) and merge its preferred clauses
+        let playbookData: Awaited<ReturnType<typeof loadPlaybook>> = null;
+        try {
+          playbookData = await loadPlaybook(tenantId, body.playbookId);
+        } catch (e) {
+          logger.warn('Playbook load failed, continuing without policy pack', e);
+        }
+
+        // Merge playbook-preferred clauses into the clause list (dedupe by category+title).
+        const seenKeys = new Set(clauses.map(c => `${c.category}::${c.title}`));
+        if (playbookData?.clauses) {
+          for (const pc of playbookData.clauses) {
+            const key = `${pc.category}::${pc.title}`;
+            if (seenKeys.has(key)) continue;
+            seenKeys.add(key);
+            clauses.push({
+              id: pc.id,
+              title: pc.title,
+              category: pc.category,
+              content: pc.content,
+              riskLevel: pc.riskLevel,
+            });
+          }
+        }
+
         addStep({
           step: 3,
           name: 'Clause Recommendation',
@@ -556,6 +682,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           durationMs: Date.now() - step3Start,
           result: {
             clauseCount: clauses.length,
+            playbook: playbookData?.playbook
+              ? { id: playbookData.playbook.id, name: playbookData.playbook.name, clauseCount: playbookData.clauses.length }
+              : null,
             clauses: clauses.map(c => ({ id: c.id, title: c.title, category: c.category, riskLevel: c.riskLevel })),
           },
         });
@@ -601,6 +730,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
               tone: body.tone || 'formal',
               jurisdiction: body.jurisdiction || 'United States',
               instructions,
+              playbook: playbookData,
+              prompt: body.prompt,
             });
             html = generated.html;
             plainText = generated.plainText;
@@ -684,6 +815,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           title,
           contractType,
           templateId,
+          playbookId: body.playbookId || null,
           content: html,
           clauses: clauses.map(c => ({ id: c.id, title: c.title, category: c.category })),
           variables,
