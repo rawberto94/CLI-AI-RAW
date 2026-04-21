@@ -511,6 +511,101 @@ const AI_ACTIVITY_TICKER: { icon: string; text: string; tone: string }[] = [
   { icon: '✎', text: 'Suggested 5 redlines',      tone: 'text-fuchsia-300' },
 ]
 
+// ---------------------------------------------------------------------------
+// Client-side prompt analyzer — mirrors the server-side extractMessageParameters
+// helper in /api/ai/agents/draft-assistant so the hero can show the user what
+// the AI has understood *before* they hit Generate. Purely cosmetic: all real
+// extraction still happens on the server.
+// ---------------------------------------------------------------------------
+interface HeroPromptInsights {
+  contractType?: string
+  term?: string
+  notice?: string
+  paymentTerms?: string
+  cap?: string
+  governingLaw?: string
+  renewal?: string
+  partyA?: string
+  partyB?: string
+  clauses: string[]
+}
+
+function analyzeHeroPrompt(message: string): HeroPromptInsights {
+  const out: HeroPromptInsights = { clauses: [] }
+  const text = (message || '').trim()
+  if (!text) return out
+
+  const typeHit = text.match(/\b(NDA|MSA|SOW|SLA|SaaS|MNDA|DPA|services agreement|employment|license|lease|amendment|order form|consulting|partnership)\b/i)
+  if (typeHit) out.contractType = typeHit[1].toUpperCase()
+
+  const termMatch = text.match(/(\d{1,3}|two|three|four|five|six|seven|eight|nine|ten|twelve)[\s-]*(?:\(\d+\)\s*)?(month|months|year|years|week|weeks|day|days)/i)
+  if (termMatch) out.term = `${termMatch[1]} ${termMatch[2].toLowerCase()}`
+
+  const noticeMatch = text.match(/(\d{1,3})[- ]?day(?:s)?\s+(?:prior\s+)?(?:written\s+)?notice/i)
+  if (noticeMatch) out.notice = `${noticeMatch[1]} days`
+
+  const netMatch = text.match(/net[- ]?(\d{1,3})/i)
+  if (netMatch) out.paymentTerms = `Net ${netMatch[1]}`
+
+  const capMatch = text.match(/(?:cap(?:ped)?(?:\s+at)?|liability(?:\s+cap)?|up\s+to|maximum)[^\d$€£CHF]{0,20}((?:\$|€|£|CHF|USD|EUR|GBP)\s?\d[\d,. ]*\s?(?:k|m|million|thousand)?)/i)
+  if (capMatch) out.cap = capMatch[1].replace(/\s+/g, ' ').trim()
+
+  const govMatch = text.match(/(?:governing law|jurisdiction|governed by(?:\s+the\s+laws\s+of)?|laws of|under)\s+([A-Z][A-Za-z .,&-]{2,40}?)(?:\s+law)?(?:[.,;\n]|$)/i)
+  if (govMatch) out.governingLaw = govMatch[1].trim().replace(/\.$/, '')
+  if (!out.governingLaw) {
+    const juris = ['Delaware', 'New York', 'California', 'England', 'Switzerland', 'Germany', 'France', 'Singapore', 'Hong Kong', 'Australia', 'Canada', 'Ireland']
+    for (const jur of juris) {
+      if (new RegExp(`\\b${jur}\\b`, 'i').test(text)) {
+        out.governingLaw = jur
+        break
+      }
+    }
+  }
+
+  if (/auto[- ]?renew|automatic(?:ally)?\s+renew/i.test(text)) out.renewal = 'auto-renew'
+  else if (/no\s+(?:auto|automatic)\s+renew|do\s+not\s+renew/i.test(text)) out.renewal = 'no auto-renew'
+
+  const between = text.match(/between\s+([A-Z][A-Za-z0-9 .,&-]{2,40}?)\s+and\s+([A-Z][A-Za-z0-9 .&-]{2,40}?)(?:\s+(?:for|with|to|regarding|concerning|governed|dated)\b|[.,;\n]|$)/)
+  if (between) {
+    out.partyA = between[1].trim()
+    out.partyB = between[2].trim()
+  }
+
+  const clauseHits: Array<[RegExp, string]> = [
+    [/\bmutual\b/i, 'Mutual'],
+    [/\bconfidential|non[- ]disclosure\b/i, 'Confidentiality'],
+    [/\btermination|terminate\b/i, 'Termination'],
+    [/\bindemnif/i, 'Indemnification'],
+    [/\bpayment|invoice|fee\b/i, 'Payment'],
+    [/\bliability|damages\b/i, 'Liability'],
+    [/\bGDPR|data protection|personal data\b/i, 'Data Protection'],
+    [/\bIP|intellectual property\b/i, 'IP'],
+    [/\bforce majeure\b/i, 'Force Majeure'],
+    [/\bSLA|service level\b/i, 'SLA'],
+    [/\bnon[- ]compete|non[- ]solicit\b/i, 'Non-Compete'],
+  ]
+  for (const [re, label] of clauseHits) {
+    if (re.test(text) && !out.clauses.includes(label)) out.clauses.push(label)
+  }
+
+  return out
+}
+
+function countInsights(insights: HeroPromptInsights): number {
+  let n = insights.clauses.length
+  if (insights.contractType) n++
+  if (insights.term) n++
+  if (insights.notice) n++
+  if (insights.paymentTerms) n++
+  if (insights.cap) n++
+  if (insights.governingLaw) n++
+  if (insights.renewal) n++
+  if (insights.partyA) n++
+  if (insights.partyB) n++
+  return n
+}
+
+
 export default function DraftingPage() {
   const router = useRouter()
   const [drafts, setDrafts] = useState<Draft[]>([])
@@ -529,6 +624,12 @@ export default function DraftingPage() {
   const [promptFocused, setPromptFocused] = useState(false)
   const aiPromptInputRef = useRef<HTMLInputElement | null>(null)
   const listSearchInputRef = useRef<HTMLInputElement | null>(null)
+  const heroRef = useRef<HTMLDivElement | null>(null)
+  const [heroPointer, setHeroPointer] = useState<{ x: number; y: number } | null>(null)
+
+  // Live client-side analyzer — previews what the AI will understand from the prompt.
+  const promptInsights = useMemo(() => analyzeHeroPrompt(aiPrompt), [aiPrompt])
+  const promptInsightsCount = useMemo(() => countInsights(promptInsights), [promptInsights])
 
   // Rotating headline word — cycles every 2.6s.
   useEffect(() => {
@@ -852,8 +953,16 @@ export default function DraftingPage() {
       <div className="mx-auto max-w-[1480px] space-y-8 px-6 py-8 sm:px-8 lg:px-10">
         {/* ============ HERO — dark editorial spotlight ============ */}
         <motion.section
+          ref={heroRef}
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
+          onMouseMove={(e) => {
+            const el = heroRef.current
+            if (!el) return
+            const rect = el.getBoundingClientRect()
+            setHeroPointer({ x: e.clientX - rect.left, y: e.clientY - rect.top })
+          }}
+          onMouseLeave={() => setHeroPointer(null)}
           className="relative overflow-hidden rounded-[32px] border border-slate-900/10 bg-gradient-to-br from-[#0b0a1a] via-[#161235] to-[#1d1548] text-white shadow-[0_30px_80px_-30px_rgba(29,21,72,0.55)]"
         >
           {/* subtle grid + glow backdrop */}
@@ -876,6 +985,29 @@ export default function DraftingPage() {
             aria-hidden
             className="pointer-events-none absolute -bottom-24 left-1/3 h-80 w-80 rounded-full bg-gradient-to-br from-amber-400/20 via-rose-500/15 to-transparent blur-3xl"
           />
+
+          {/* Cursor-following spotlight — reacts to mouse position */}
+          {heroPointer && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 transition-opacity duration-300"
+              style={{
+                background: `radial-gradient(360px circle at ${heroPointer.x}px ${heroPointer.y}px, rgba(168,85,247,0.20), rgba(236,72,153,0.10) 25%, transparent 55%)`,
+              }}
+            />
+          )}
+
+          {/* Constellation dots — subtle, only visible at 10% opacity */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 opacity-30">
+            <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="dots" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+                  <circle cx="1" cy="1" r="1" fill="rgba(255,255,255,0.35)" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#dots)" />
+            </svg>
+          </div>
 
           <div className="relative px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-14">
             {/* Top meta row — status pill + activity ticker */}
@@ -1019,17 +1151,101 @@ export default function DraftingPage() {
                   onClick={() => handleAIGenerate()}
                   disabled={!aiPrompt.trim()}
                   className={cn(
-                    'h-11 shrink-0 gap-2 rounded-xl px-5 text-sm font-semibold shadow-[0_10px_30px_-10px_rgba(168,85,247,0.7)] transition-all',
+                    'relative h-11 shrink-0 gap-2 rounded-xl px-5 text-sm font-semibold shadow-[0_10px_30px_-10px_rgba(168,85,247,0.7)] transition-all',
                     aiPrompt.trim()
                       ? 'bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-400 text-white hover:brightness-110'
                       : 'bg-white/10 text-white/40',
                   )}
                 >
-                  <Sparkles className="h-4 w-4" />
-                  Generate
+                  {aiPrompt.trim() && (
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute -inset-[3px] -z-0 rounded-[14px] bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-300 opacity-60 blur-md animate-pulse"
+                    />
+                  )}
+                  <Sparkles className="relative z-10 h-4 w-4" />
+                  <span className="relative z-10">Generate</span>
                 </Button>
               </div>
             </div>
+
+            {/* Live prompt insights — what the AI has detected so far */}
+            <AnimatePresence>
+              {promptInsightsCount > 0 && (
+                <motion.div
+                  key="insights"
+                  initial={{ opacity: 0, y: -6, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: 'auto' }}
+                  exit={{ opacity: 0, y: -6, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-4 flex flex-wrap items-center gap-1.5 rounded-2xl border border-violet-300/15 bg-gradient-to-r from-violet-500/10 via-fuchsia-500/5 to-transparent px-3.5 py-2.5 backdrop-blur-sm">
+                    <span className="inline-flex items-center gap-1.5 pr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-200/90">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-300 opacity-75" />
+                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-violet-300" />
+                      </span>
+                      AI understands
+                    </span>
+                    {promptInsights.contractType && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-violet-300/30 bg-violet-500/15 px-2 py-0.5 text-[11px] font-medium text-violet-100">
+                        <FileText className="h-3 w-3" />
+                        {promptInsights.contractType}
+                      </span>
+                    )}
+                    {promptInsights.term && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-100">
+                        <Clock className="h-3 w-3" />
+                        {promptInsights.term}
+                      </span>
+                    )}
+                    {promptInsights.notice && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-100">
+                        notice · {promptInsights.notice}
+                      </span>
+                    )}
+                    {promptInsights.paymentTerms && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-100">
+                        {promptInsights.paymentTerms}
+                      </span>
+                    )}
+                    {promptInsights.cap && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-rose-300/30 bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-100">
+                        cap · {promptInsights.cap}
+                      </span>
+                    )}
+                    {promptInsights.governingLaw && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-sky-300/30 bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-100">
+                        law · {promptInsights.governingLaw}
+                      </span>
+                    )}
+                    {promptInsights.renewal && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-fuchsia-300/30 bg-fuchsia-500/10 px-2 py-0.5 text-[11px] font-medium text-fuchsia-100">
+                        {promptInsights.renewal}
+                      </span>
+                    )}
+                    {(promptInsights.partyA || promptInsights.partyB) && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[11px] font-medium text-white/85">
+                        {[promptInsights.partyA, promptInsights.partyB].filter(Boolean).join(' ⇄ ')}
+                      </span>
+                    )}
+                    {promptInsights.clauses.map((clause) => (
+                      <span
+                        key={clause}
+                        className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[11px] font-medium text-white/80"
+                      >
+                        {clause}
+                      </span>
+                    ))}
+                    <span className="ml-auto hidden items-center gap-1 text-[10px] text-white/40 sm:inline-flex">
+                      <Zap className="h-3 w-3" />
+                      {promptInsightsCount} signal{promptInsightsCount === 1 ? '' : 's'} parsed
+                    </span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Unified suggestion rail — Recent + Popular + Blank */}
             <div className="mt-6 -mx-2 flex items-stretch gap-2 overflow-x-auto px-2 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -1092,6 +1308,37 @@ export default function DraftingPage() {
                 <Plus className="h-3 w-3" />
                 Start blank
               </button>
+            </div>
+
+            {/* Trust rail — enterprise signals: playbook, model, latency, SOC2 */}
+            <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-white/5 pt-4 text-[11px] text-white/45">
+              <span className="inline-flex items-center gap-1.5">
+                <BookOpen className="h-3 w-3 text-violet-300/80" />
+                <span className="text-white/60">Playbook</span>
+                <span className="font-medium text-white/85">Acme Buy-Side</span>
+              </span>
+              <span className="text-white/15">·</span>
+              <span className="inline-flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3 text-fuchsia-300/80" />
+                <span className="text-white/60">Model</span>
+                <span className="font-medium text-white/85">gpt-4o</span>
+              </span>
+              <span className="text-white/15">·</span>
+              <span className="inline-flex items-center gap-1.5">
+                <Zap className="h-3 w-3 text-amber-300/80" />
+                <span className="text-white/60">Avg</span>
+                <span className="font-medium text-white/85">6.8s</span>
+              </span>
+              <span className="text-white/15">·</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span className="text-white/60">EU Swiss North</span>
+                <span className="font-medium text-white/85">· GDPR</span>
+              </span>
+              <span className="ml-auto hidden items-center gap-1.5 sm:inline-flex">
+                <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5 font-mono text-[10px] text-white/55">SOC 2</span>
+                <span className="rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5 font-mono text-[10px] text-white/55">ISO 27001</span>
+              </span>
             </div>
           </div>
         </motion.section>
