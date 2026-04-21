@@ -851,6 +851,45 @@ interface RiskHighlight {
   position: { startOffset: number; endOffset: number };
 }
 
+/**
+ * Normalize risks produced by the agentic draft pipeline
+ * ({ category, severity, description, clause, suggestion, remediation })
+ * — or already-canonical RiskHighlight rows — into RiskHighlight shape.
+ */
+function normalizeInitialRisks(raw: unknown): RiskHighlight[] {
+  if (!Array.isArray(raw)) return [];
+  const valid: RiskHighlight[] = [];
+  raw.forEach((item, i) => {
+    if (!item || typeof item !== 'object') return;
+    const r = item as Record<string, unknown>;
+    const severity = String(r.severity ?? r.riskLevel ?? 'medium').toLowerCase();
+    const level: RiskHighlight['riskLevel'] = severity === 'critical'
+      ? 'critical'
+      : severity === 'high'
+      ? 'high'
+      : severity === 'low'
+      ? 'low'
+      : 'medium';
+    const text = String(r.clause ?? r.text ?? '').trim();
+    const explanation = String(r.description ?? r.explanation ?? '').trim();
+    if (!text && !explanation) return;
+    const remediationStr = typeof r.remediation === 'string' ? r.remediation.trim() : '';
+    const suggestedFixStr = typeof r.suggestedFix === 'string' ? r.suggestedFix.trim() : '';
+    const suggestionStr = typeof r.suggestion === 'string' ? r.suggestion.trim() : '';
+    const suggestedFix = remediationStr || suggestedFixStr || suggestionStr || undefined;
+    valid.push({
+      id: String(r.id ?? `agent-risk-${i}`),
+      text,
+      riskLevel: level,
+      category: String(r.category ?? 'GENERAL'),
+      explanation: explanation || text,
+      suggestedFix,
+      position: (r.position as RiskHighlight['position']) ?? { startOffset: 0, endOffset: 0 },
+    });
+  });
+  return valid;
+}
+
 interface AutoCompletion {
   id: string;
   text: string;
@@ -999,6 +1038,13 @@ interface CopilotDraftingCanvasProps {
   initialContent?: string;
   initialTitle?: string;
   initialSourceTrail?: unknown;
+  /**
+   * Pre-identified risks from an earlier analysis (e.g. the agentic draft
+   * pipeline). Seeded into the risks panel so reviewers can see them
+   * immediately when the editor opens — they will be replaced the next
+   * time the realtime copilot call returns fresh risks.
+   */
+  initialRisks?: unknown;
   contractType?: string;
   playbookId?: string;
   templateId?: string;
@@ -1018,6 +1064,7 @@ export function CopilotDraftingCanvas({
   initialContent = '',
   initialTitle,
   initialSourceTrail,
+  initialRisks,
   contractType = 'MSA',
   playbookId,
   templateId,
@@ -1053,7 +1100,7 @@ export function CopilotDraftingCanvas({
 
   // Copilot state
   const [suggestions, setSuggestions] = useState<CopilotSuggestion[]>([]);
-  const [risks, setRisks] = useState<RiskHighlight[]>([]);
+  const [risks, setRisks] = useState<RiskHighlight[]>(() => normalizeInitialRisks(initialRisks));
   const [autoCompletions, setAutoCompletions] = useState<AutoCompletion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [showCompletionPopup, setShowCompletionPopup] = useState(false);
@@ -1241,6 +1288,18 @@ export function CopilotDraftingCanvas({
   const sessionUserIdRef = useRef(session?.user?.id);
   const sidebarResizeRef = useRef({ startX: 0, startWidth: DESKTOP_SIDEBAR_DEFAULT_WIDTH });
   useEffect(() => { draftIdRef.current = draftId; }, [draftId]);
+
+  // Seed risks from the prop whenever it changes (e.g. draft hydrates
+  // asynchronously after the canvas has mounted). We only overwrite if
+  // the realtime copilot hasn't produced a fresher set yet.
+  const hasRealtimeRisksRef = useRef(false);
+  useEffect(() => {
+    if (hasRealtimeRisksRef.current) return;
+    const normalized = normalizeInitialRisks(initialRisks);
+    if (normalized.length > 0) {
+      setRisks(normalized);
+    }
+  }, [initialRisks]);
   useEffect(() => { lockInfoRef.current = lockInfo; }, [lockInfo]);
   useEffect(() => { sessionUserIdRef.current = session?.user?.id; }, [session?.user?.id]);
 
@@ -1568,6 +1627,7 @@ export function CopilotDraftingCanvas({
         const data = json.data || json;
         setSuggestions(data.suggestions || []);
         setRisks(data.risks || []);
+        hasRealtimeRisksRef.current = true;
       } else {
         const errorBody = await response.json().catch(() => null);
         console.warn('Copilot suggestions non-OK:', response.status, errorBody?.error || response.statusText);

@@ -166,6 +166,7 @@ export default function CopilotDraftPage() {
   const [showVariableForm, setShowVariableForm] = useState(false);
   const [hydratedContent, setHydratedContent] = useState<string | null>(null);
   const [draftSourceTrailSeed, setDraftSourceTrailSeed] = useState<unknown>([]);
+  const [hydratedRisks, setHydratedRisks] = useState<unknown[] | null>(null);
   const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
   const [isHydratingDraft, setIsHydratingDraft] = useState(Boolean(draftId));
   const [availablePlaybooks, setAvailablePlaybooks] = useState<DraftingPlaybookOption[]>([]);
@@ -280,6 +281,12 @@ export default function CopilotDraftPage() {
           setDocumentType(typeof draft.type === 'string' && draft.type.trim().length > 0 ? draft.type : null);
           setHydratedContent(typeof draft.content === 'string' ? draft.content : null);
           setDraftSourceTrailSeed(Array.isArray(draft.clauses) ? draft.clauses : []);
+
+          const structure = draft.structure && typeof draft.structure === 'object' ? draft.structure as Record<string, unknown> : null;
+          const structureRisks = structure && Array.isArray(structure.risks) ? structure.risks as unknown[] : null;
+          if (structureRisks && structureRisks.length > 0) {
+            setHydratedRisks(structureRisks);
+          }
 
           const persistedPlaybookId = typeof draft.playbookId === 'string' && draft.playbookId.trim().length > 0
             ? draft.playbookId
@@ -793,6 +800,7 @@ export default function CopilotDraftPage() {
             initialContent={hydratedContent || undefined}
             initialTitle={draftTitleSeed || undefined}
             initialSourceTrail={draftSourceTrailSeed}
+            initialRisks={hydratedRisks || undefined}
             contractType={documentType || quickStart?.contractType || undefined}
             playbookId={selectedPlaybookId || undefined}
             workflowContext={workflowContext || undefined}
