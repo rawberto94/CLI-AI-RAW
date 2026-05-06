@@ -1160,3 +1160,24 @@
   background-color: #854d0e;
   color: #fef08a;
 }
+
+/* Find & Replace match highlights */
+.tiptap-editor .ProseMirror .find-match {
+  background-color: rgba(250, 204, 21, 0.45); /* amber-400 @ 45% */
+  border-radius: 0.125rem;
+}
+.tiptap-editor .ProseMirror .find-match-current {
+  background-color: rgba(249, 115, 22, 0.6); /* orange-500 @ 60% */
+  outline: 2px solid rgba(234, 88, 12, 0.9);
+  outline-offset: 0;
+  border-radius: 0.125rem;
+}
+.dark .tiptap-editor .ProseMirror .find-match {
+  background-color: rgba(202, 138, 4, 0.55); /* yellow-600 */
+  color: #fef9c3;
+}
+.dark .tiptap-editor .ProseMirror .find-match-current {
+  background-color: rgba(234, 88, 12, 0.75);
+  outline-color: rgba(249, 115, 22, 0.95);
+  color: #fff7ed;
+}

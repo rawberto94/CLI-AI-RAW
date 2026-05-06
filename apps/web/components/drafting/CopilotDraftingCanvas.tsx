@@ -15,7 +15,9 @@ import {
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEditor, EditorContent } from '@tiptap/react';
-import { TextSelection } from 'prosemirror-state';
+import { Extension } from '@tiptap/core';
+import { Plugin, PluginKey, TextSelection } from 'prosemirror-state';
+import { Decoration, DecorationSet } from 'prosemirror-view';
 import StarterKit from '@tiptap/starter-kit';
 // Note: StarterKit v3 already bundles the Underline extension; importing
 // @tiptap/extension-underline separately causes a "Duplicate extension names"
@@ -1063,6 +1065,61 @@ interface CopilotDraftingCanvasProps {
 }
 
 // ============================================================================
+// FIND HIGHLIGHT EXTENSION
+// Decorates all matches of the active find regex; the "current" match gets
+// a stronger highlight. Options are mutated in-place from the host component
+// and a no-op transaction is dispatched to refresh the decorations.
+// ============================================================================
+
+const findHighlightPluginKey = new PluginKey('contigoFindHighlight');
+
+interface FindHighlightOptions {
+  regex: RegExp | null;
+  currentIndex: number;
+}
+
+const FindHighlight = Extension.create<FindHighlightOptions>({
+  name: 'contigoFindHighlight',
+  addOptions() {
+    return { regex: null, currentIndex: -1 };
+  },
+  addProseMirrorPlugins() {
+    const getOptions = () => this.options;
+    return [
+      new Plugin({
+        key: findHighlightPluginKey,
+        props: {
+          decorations(state) {
+            const { regex, currentIndex } = getOptions();
+            if (!regex) return DecorationSet.empty;
+            const text = state.doc.textBetween(0, state.doc.content.size, '\n');
+            const decos: Decoration[] = [];
+            regex.lastIndex = 0;
+            let m: RegExpExecArray | null;
+            let i = 0;
+            while ((m = regex.exec(text)) !== null) {
+              if (m[0].length === 0) {
+                regex.lastIndex += 1;
+                continue;
+              }
+              const from = m.index + 1;
+              const to = from + m[0].length;
+              decos.push(
+                Decoration.inline(from, to, {
+                  class: i === currentIndex ? 'find-match find-match-current' : 'find-match',
+                }),
+              );
+              i++;
+            }
+            return DecorationSet.create(state.doc, decos);
+          },
+        },
+      }),
+    ];
+  },
+});
+
+// ============================================================================
 // COMPONENT
 // ============================================================================
 
@@ -1600,6 +1657,7 @@ export function CopilotDraftingCanvas({
           ? 'Start drafting your contract here. Press Ctrl+/ or open Assistant when you need clauses, rewrites, or review help.'
           : 'Start drafting your contract…',
       }),
+      FindHighlight,
     ],
     content: initialContent || '',
     editable: isEditing,
@@ -3142,6 +3200,20 @@ export function CopilotDraftingCanvas({
     return next === -1 ? findMatches.length - 1 : next;
     // docTick is referenced so the index recomputes after selection changes
   }, [editor, findMatches, docTick]);
+
+  // Push the active find regex/index into the FindHighlight extension and
+  // dispatch a no-op transaction so its decorations refresh.
+  useEffect(() => {
+    if (!editor) return;
+    const ext = editor.extensionManager.extensions.find(
+      (e) => e.name === 'contigoFindHighlight',
+    );
+    if (!ext) return;
+    (ext.options as FindHighlightOptions).regex = showFindReplace ? findRegex : null;
+    (ext.options as FindHighlightOptions).currentIndex = currentMatchIndex;
+    // Dispatch a metadata-only tr so ProseMirror re-renders decorations.
+    editor.view.dispatch(editor.view.state.tr.setMeta(findHighlightPluginKey, true));
+  }, [editor, findRegex, currentMatchIndex, showFindReplace]);
 
   const findNext = useCallback(() => {
     if (!editor || findMatches.length === 0) {
