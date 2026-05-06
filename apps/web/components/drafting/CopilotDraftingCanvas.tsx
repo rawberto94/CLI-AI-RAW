@@ -1318,6 +1318,7 @@ export function CopilotDraftingCanvas({
   const [findQuery, setFindQuery] = useState('');
   const [replaceQuery, setReplaceQuery] = useState('');
   const [findCaseSensitive, setFindCaseSensitive] = useState(false);
+  const [findWholeWord, setFindWholeWord] = useState(false);
   // Focus mode: hides sidebars for distraction-free writing; persists to localStorage
   const [focusMode, setFocusMode] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -3089,55 +3090,110 @@ export function CopilotDraftingCanvas({
   }, [editor]);
 
   // Find & Replace helpers
-  const findNext = useCallback(() => {
-    if (!editor || !findQuery) return;
+  // Build a regex matching the current find options; null when query is empty.
+  const findRegex = useMemo(() => {
+    if (!findQuery) return null;
+    const escaped = findQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = findWholeWord ? `\\b${escaped}\\b` : escaped;
+    const flags = findCaseSensitive ? 'g' : 'gi';
+    try {
+      return new RegExp(pattern, flags);
+    } catch {
+      return null;
+    }
+  }, [findQuery, findCaseSensitive, findWholeWord]);
+
+  // Cheap reactive trigger so the match counter updates as the user edits.
+  const [docTick, setDocTick] = useState(0);
+  useEffect(() => {
+    if (!editor) return;
+    const handler = () => setDocTick((t) => (t + 1) % 1_000_000);
+    editor.on('update', handler);
+    editor.on('selectionUpdate', handler);
+    return () => {
+      editor.off('update', handler);
+      editor.off('selectionUpdate', handler);
+    };
+  }, [editor]);
+
+  const findMatches = useMemo(() => {
+    if (!editor || !findRegex || !showFindReplace) return [] as Array<{ from: number; to: number }>;
     const text = editor.state.doc.textBetween(0, editor.state.doc.content.size, '\n');
-    const haystack = findCaseSensitive ? text : text.toLowerCase();
-    const needle = findCaseSensitive ? findQuery : findQuery.toLowerCase();
-    const start = editor.state.selection.to;
-    let idx = haystack.indexOf(needle, start);
-    if (idx === -1) idx = haystack.indexOf(needle, 0); // wrap
-    if (idx === -1) { toast.error('No match'); return; }
-    editor.chain().focus().setTextSelection({ from: idx + 1, to: idx + 1 + needle.length }).scrollIntoView().run();
-  }, [editor, findQuery, findCaseSensitive]);
+    const result: Array<{ from: number; to: number }> = [];
+    findRegex.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = findRegex.exec(text)) !== null) {
+      if (m[0].length === 0) {
+        findRegex.lastIndex += 1;
+        continue;
+      }
+      result.push({ from: m.index + 1, to: m.index + 1 + m[0].length });
+    }
+    return result;
+    // docTick is referenced so the memo recomputes after document edits
+  }, [editor, findRegex, showFindReplace, docTick]);
+
+  const currentMatchIndex = useMemo(() => {
+    if (!editor || findMatches.length === 0) return -1;
+    const caret = editor.state.selection.from;
+    const idx = findMatches.findIndex((m) => caret >= m.from && caret <= m.to);
+    if (idx >= 0) return idx;
+    const next = findMatches.findIndex((m) => m.from >= caret);
+    return next === -1 ? findMatches.length - 1 : next;
+    // docTick is referenced so the index recomputes after selection changes
+  }, [editor, findMatches, docTick]);
+
+  const findNext = useCallback(() => {
+    if (!editor || findMatches.length === 0) {
+      if (findQuery) toast.error('No match');
+      return;
+    }
+    const caret = editor.state.selection.to;
+    let target = findMatches.findIndex((m) => m.from >= caret);
+    if (target === -1) target = 0; // wrap
+    const m = findMatches[target];
+    editor.chain().focus().setTextSelection({ from: m.from, to: m.to }).scrollIntoView().run();
+  }, [editor, findMatches, findQuery]);
+
+  const findPrevious = useCallback(() => {
+    if (!editor || findMatches.length === 0) {
+      if (findQuery) toast.error('No match');
+      return;
+    }
+    const caret = editor.state.selection.from;
+    let target = -1;
+    for (let i = findMatches.length - 1; i >= 0; i--) {
+      if (findMatches[i].to <= caret) { target = i; break; }
+    }
+    if (target === -1) target = findMatches.length - 1; // wrap
+    const m = findMatches[target];
+    editor.chain().focus().setTextSelection({ from: m.from, to: m.to }).scrollIntoView().run();
+  }, [editor, findMatches, findQuery]);
 
   const replaceOne = useCallback(() => {
-    if (!editor || !findQuery) return;
+    if (!editor || !findQuery || !findRegex) return;
     const { from, to } = editor.state.selection;
     const selected = editor.state.doc.textBetween(from, to, '\n');
-    const matches = findCaseSensitive ? selected === findQuery : selected.toLowerCase() === findQuery.toLowerCase();
+    findRegex.lastIndex = 0;
+    const matches = findRegex.test(selected) && findRegex.lastIndex === selected.length && selected.length > 0;
     if (matches) {
       editor.chain().focus().insertContentAt({ from, to }, replaceQuery).run();
     }
     findNext();
-  }, [editor, findQuery, replaceQuery, findCaseSensitive, findNext]);
+  }, [editor, findQuery, findRegex, replaceQuery, findNext]);
 
   const replaceAll = useCallback(() => {
-    if (!editor || !findQuery) return;
-    const text = editor.state.doc.textBetween(0, editor.state.doc.content.size, '\n');
-    const flags = findCaseSensitive ? 'g' : 'gi';
-    const escaped = findQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp(escaped, flags);
-    const matches = text.match(re);
-    if (!matches || matches.length === 0) { toast.error('No matches'); return; }
-    // Walk the doc backwards to preserve positions
-    const positions: Array<{ from: number; to: number }> = [];
-    let searchFrom = 0;
-    const searchText = findCaseSensitive ? text : text.toLowerCase();
-    const needle = findCaseSensitive ? findQuery : findQuery.toLowerCase();
-    while (true) {
-      const idx = searchText.indexOf(needle, searchFrom);
-      if (idx === -1) break;
-      positions.push({ from: idx + 1, to: idx + 1 + needle.length });
-      searchFrom = idx + needle.length;
+    if (!editor || !findQuery || findMatches.length === 0) {
+      toast.error('No matches');
+      return;
     }
     let chain = editor.chain().focus();
-    for (let i = positions.length - 1; i >= 0; i--) {
-      chain = chain.insertContentAt(positions[i], replaceQuery);
+    for (let i = findMatches.length - 1; i >= 0; i--) {
+      chain = chain.insertContentAt(findMatches[i], replaceQuery);
     }
     chain.run();
-    toast.success(`Replaced ${positions.length} occurrence${positions.length === 1 ? '' : 's'}`);
-  }, [editor, findQuery, replaceQuery, findCaseSensitive]);
+    toast.success(`Replaced ${findMatches.length} occurrence${findMatches.length === 1 ? '' : 's'}`);
+  }, [editor, findQuery, findMatches, replaceQuery]);
 
   const handleClearFormatting = useCallback(() => {
     if (!editor) return;
@@ -6036,7 +6092,11 @@ export function CopilotDraftingCanvas({
           <div className="flex items-center justify-between gap-3">
             {/* Left: save status + risk badges */}
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-400">
+              <div
+                className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-400"
+                role="status"
+                aria-live="polite"
+              >
                 {isSaving ? (
                   <>
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -7658,6 +7718,9 @@ export function CopilotDraftingCanvas({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.15 }}
+              role="dialog"
+              aria-modal="false"
+              aria-label="Find and replace"
               className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden"
             >
               <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
@@ -7665,24 +7728,40 @@ export function CopilotDraftingCanvas({
                 <button
                   type="button"
                   onClick={() => setShowFindReplace(false)}
-                  className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm"
+                  className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded"
                   title="Close"
+                  aria-label="Close find and replace"
                 >
                   ✕
                 </button>
               </div>
               <div className="p-3 space-y-2">
-                <input
-                  autoFocus
-                  value={findQuery}
-                  onChange={(e) => setFindQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') { e.preventDefault(); findNext(); }
-                    else if (e.key === 'Escape') setShowFindReplace(false);
-                  }}
-                  placeholder="Find…"
-                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-violet-400"
-                />
+                <div className="relative">
+                  <input
+                    autoFocus
+                    value={findQuery}
+                    onChange={(e) => setFindQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (e.shiftKey) findPrevious(); else findNext();
+                      } else if (e.key === 'Escape') setShowFindReplace(false);
+                    }}
+                    placeholder="Find…"
+                    aria-label="Find"
+                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 pr-16 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-violet-400"
+                  />
+                  {findQuery && (
+                    <span
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] tabular-nums text-slate-500 dark:text-slate-400"
+                      aria-live="polite"
+                    >
+                      {findMatches.length === 0
+                        ? 'No matches'
+                        : `${currentMatchIndex + 1} / ${findMatches.length}`}
+                    </span>
+                  )}
+                </div>
                 <input
                   value={replaceQuery}
                   onChange={(e) => setReplaceQuery(e.target.value)}
@@ -7691,30 +7770,53 @@ export function CopilotDraftingCanvas({
                     else if (e.key === 'Escape') setShowFindReplace(false);
                   }}
                   placeholder="Replace with…"
+                  aria-label="Replace with"
                   className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-violet-400"
                 />
-                <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={findCaseSensitive}
-                    onChange={(e) => setFindCaseSensitive(e.target.checked)}
-                    className="rounded border-slate-300"
-                  />
-                  Case sensitive
-                </label>
+                <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-300">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={findCaseSensitive}
+                      onChange={(e) => setFindCaseSensitive(e.target.checked)}
+                      className="rounded border-slate-300"
+                    />
+                    Match case
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={findWholeWord}
+                      onChange={(e) => setFindWholeWord(e.target.checked)}
+                      className="rounded border-slate-300"
+                    />
+                    Whole word
+                  </label>
+                </div>
                 <div className="flex gap-2 pt-1">
                   <button
                     type="button"
+                    onClick={findPrevious}
+                    disabled={!findQuery || findMatches.length === 0}
+                    className="rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200"
+                    title="Previous match (Shift+Enter)"
+                    aria-label="Find previous"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
                     onClick={findNext}
-                    disabled={!findQuery}
+                    disabled={!findQuery || findMatches.length === 0}
                     className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200"
+                    title="Next match (Enter)"
                   >
                     Find next
                   </button>
                   <button
                     type="button"
                     onClick={replaceOne}
-                    disabled={!findQuery}
+                    disabled={!findQuery || findMatches.length === 0}
                     className="flex-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200"
                   >
                     Replace
@@ -7722,7 +7824,7 @@ export function CopilotDraftingCanvas({
                   <button
                     type="button"
                     onClick={replaceAll}
-                    disabled={!findQuery}
+                    disabled={!findQuery || findMatches.length === 0}
                     className="flex-1 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 px-2 py-1.5 text-xs font-medium text-white"
                   >
                     Replace all
