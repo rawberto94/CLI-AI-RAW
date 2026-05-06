@@ -10,7 +10,7 @@ import {
   RefreshCw, Loader2, Brain, AlertCircle,
   FileDown, CheckCircle2, ArrowRight,
   BookOpen, Search, Lock, Unlock, ThumbsUp, ThumbsDown,
-  Check, GripVertical, Undo2, Redo2,
+  Check, GripVertical, Undo2, Redo2, Braces,
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -31,6 +31,7 @@ import { exportDraftAsPDF, exportDraftAsDOCX } from '@/lib/drafting/draft-export
 import type { CopilotWorkflowContext } from '@/lib/drafting/copilot-handoff';
 import { VersionDiffView } from './VersionDiffView';
 import { DraftShapeAssist } from './DraftShapeAssist';
+import { VariableManager } from './VariableManager';
 
 // ============================================================================
 // HELPERS
@@ -1122,12 +1123,13 @@ export function CopilotDraftingCanvas({
   const [slashQuery, setSlashQuery] = useState('');
 
   // UI state
-  const [activeTab, setActiveTabRaw] = useState<'assistant' | 'review' | 'clauses'>(() => {
+  const [activeTab, setActiveTabRaw] = useState<'assistant' | 'review' | 'clauses' | 'variables'>(() => {
     if (typeof window === 'undefined') return 'assistant';
     const saved = localStorage.getItem('drafting-sidebar-tab');
     if (saved === 'assistant') return saved;
     if (saved === 'review') return saved;
     if (saved === 'clauses') return saved;
+    if (saved === 'variables') return saved;
     if (saved === 'copilot') return 'assistant';
     if (saved === 'comments' || saved === 'versions') return 'review';
     return 'assistant';
@@ -3299,6 +3301,27 @@ export function CopilotDraftingCanvas({
     () => comments.filter((comment) => !comment.resolved).length,
     [comments],
   );
+  // Lightweight scan of the doc text for placeholder tokens — drives the Variables tab badge.
+  const variableTokenCount = useMemo(() => {
+    if (!editor) return 0;
+    const text = editor.state.doc.textBetween(0, editor.state.doc.content.size, '\n');
+    if (!text) return 0;
+    // Same shapes as VariableManager.detectVariables but only counting unique tokens.
+    const tokens = new Set<string>();
+    const patterns = [
+      /\{\{\s*([^{}\n]{1,80}?)\s*\}\}/g,
+      /\[\[\s*([^\[\]\n]{1,80}?)\s*\]\]/g,
+      /<<\s*([^<>\n]{1,80}?)\s*>>/g,
+      /\[((?:[A-Z][^\[\]\n]{0,80})|(?:[A-Za-z_]+\s+[^\[\]\n]{0,80}))\]/g,
+    ];
+    for (const re of patterns) {
+      re.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(text)) !== null) tokens.add(m[0]);
+    }
+    return tokens.size;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, debouncedContentVersion]);
   const selectedSuggestionData = useMemo(
     () => suggestions.find((suggestion) => suggestion.id === selectedSuggestion) || null,
     [selectedSuggestion, suggestions],
@@ -4308,11 +4331,12 @@ export function CopilotDraftingCanvas({
     <div className="flex h-full min-h-0 flex-col">
       {/* Tab Navigation */}
       <div className="border-b border-slate-200/80 px-4 pt-4 dark:border-slate-700/80">
-        <div className="flex gap-2 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 md:overflow-visible" role="tablist" aria-label="Sidebar panels">
+        <div className="flex gap-2 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-4 md:overflow-visible" role="tablist" aria-label="Sidebar panels">
           {[
             { id: 'assistant', icon: Brain, label: 'Assistant', count: suggestions.length + priorityRiskCount },
             { id: 'review', icon: CheckCircle2, label: 'Review', count: unresolvedCommentsCount + approvalHistory.length + risks.length },
             { id: 'clauses', icon: BookOpen, label: 'Clauses', count: debouncedClauseSearch ? clauses.length : 0 },
+            { id: 'variables', icon: Braces, label: 'Variables', count: variableTokenCount },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -5973,6 +5997,18 @@ export function CopilotDraftingCanvas({
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Variables Tab */}
+        {activeTab === 'variables' && (
+          <div id="panel-variables" role="tabpanel" aria-labelledby="tab-variables" className="flex h-full min-h-0 flex-col">
+            <VariableManager
+              editor={editor}
+              contentVersion={debouncedContentVersion}
+              readOnly={!isEditing || (lockInfo.isLocked && lockInfo.lockedBy !== session?.user?.id)}
+              onAfterReplace={() => { try { handleSaveRef.current?.(); } catch { /* ignore */ } }}
+            />
           </div>
         )}
       </div>
