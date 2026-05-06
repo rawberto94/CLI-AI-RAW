@@ -35,6 +35,7 @@ import { VersionDiffView } from './VersionDiffView';
 import { DraftShapeAssist } from './DraftShapeAssist';
 import { VariableManager } from './VariableManager';
 import { CommentMentionInput, formatCommentBody, type MentionMember } from './CommentMentionInput';
+import { SuggestionMark } from './SuggestionMark';
 
 // ============================================================================
 // HELPERS
@@ -50,8 +51,8 @@ function formatTimeSince(date: Date): string {
 }
 
 const AI_HTML_SANITIZE_OPTIONS = {
-  ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'a', 'span', 'div', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'mark', 'sub', 'sup'],
-  ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style', 'data-*'],
+  ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'a', 'span', 'div', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'mark', 'sub', 'sup', 'ins', 'del'],
+  ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style', 'data-*', 'data-suggestion-id', 'data-author', 'data-kind'],
 };
 
 function escapeHtml(text: string): string {
@@ -1661,6 +1662,7 @@ export function CopilotDraftingCanvas({
           : 'Start drafting your contract…',
       }),
       FindHighlight,
+      SuggestionMark,
     ],
     content: initialContent || '',
     editable: isEditing,
@@ -4394,6 +4396,12 @@ export function CopilotDraftingCanvas({
   const aiInPlaceAbortRef = useRef<AbortController | null>(null);
   useEffect(() => () => { aiInPlaceAbortRef.current?.abort(); }, []);
 
+  // Suggesting mode — when on, AI rewrites are inserted as paired
+  // <del>+<ins> suggestion marks instead of replacing the selection. The
+  // reviewer can then accept or reject each suggestion individually.
+  const [suggestingMode, setSuggestingMode] = useState(false);
+  const [suggestionsRefreshTick, setSuggestionsRefreshTick] = useState(0);
+
   const applyAiToSelection = useCallback(
     async (label: string, instruction: string) => {
       if (!selectionToolbar || !editor || !isEditing) return;
@@ -4486,7 +4494,31 @@ export function CopilotDraftingCanvas({
         });
 
         if (applyMode === 'replace_selection') {
-          editor.chain().focus().setTextSelection({ from, to }).deleteSelection().insertContent(safeHtml).run();
+          if (suggestingMode) {
+            // Track-changes style: keep the original text marked as a
+            // deletion and insert the new HTML wrapped as an insertion. We
+            // do this by serialising the original selection's text content
+            // into a <del> mark and the new content into an <ins> mark, so
+            // both halves render together and can be accepted or rejected.
+            const sid = `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+            const escapeHtml = (s: string) =>
+              s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const delHtml = `<del data-suggestion-id="${sid}" data-author="You">${escapeHtml(selectedText)}</del>`;
+            // Strip outer block wrapper so the ins mark applies inline; the
+            // editor will normalise structure for us.
+            const insInnerHtml = safeHtml.replace(/^\s*<p>/i, '').replace(/<\/p>\s*$/i, '');
+            const insHtml = `<ins data-suggestion-id="${sid}" data-author="You">${insInnerHtml}</ins>`;
+            editor
+              .chain()
+              .focus()
+              .setTextSelection({ from, to })
+              .deleteSelection()
+              .insertContent(`${delHtml} ${insHtml}`)
+              .run();
+            setSuggestionsRefreshTick((t) => t + 1);
+          } else {
+            editor.chain().focus().setTextSelection({ from, to }).deleteSelection().insertContent(safeHtml).run();
+          }
         } else if (applyMode === 'insert_at_cursor') {
           editor.chain().focus().setTextSelection({ from: to, to }).insertContent(safeHtml).run();
         } else {
@@ -4506,7 +4538,7 @@ export function CopilotDraftingCanvas({
         setAiInPlaceBusy(null);
       }
     },
-    [selectionToolbar, editor, isEditing, contractType, playbookId, setActiveTab],
+    [selectionToolbar, editor, isEditing, contractType, playbookId, setActiveTab, suggestingMode],
   );
 
   const handleSelectionAssistantAction = useCallback((prompt: string) => {
@@ -4517,6 +4549,160 @@ export function CopilotDraftingCanvas({
     setShowDesktopSidebar(true);
     sendAiChatMessage(prompt);
   }, [editor, selectionToolbar, sendAiChatMessage, setActiveTab]);
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Track-changes suggestion handlers.
+  // Walks the doc to find ins/del marks, groups by suggestionId, and
+  // exposes accept/reject ops that mutate the doc atomically.
+  // ──────────────────────────────────────────────────────────────────────
+  type PendingSuggestion = {
+    id: string;
+    insRanges: Array<{ from: number; to: number; text: string }>;
+    delRanges: Array<{ from: number; to: number; text: string }>;
+    author: string | null;
+  };
+
+  const pendingSuggestions = useMemo<PendingSuggestion[]>(() => {
+    if (!editor) return [];
+    const groups = new Map<string, PendingSuggestion>();
+    editor.state.doc.descendants((node, pos) => {
+      if (!node.isText) return;
+      for (const m of node.marks) {
+        if (m.type.name !== 'suggestionMark') continue;
+        const sid = (m.attrs.suggestionId as string | null) || '__no_id__';
+        const kind = (m.attrs.kind as 'ins' | 'del') || 'ins';
+        const author = (m.attrs.author as string | null) ?? null;
+        let entry = groups.get(sid);
+        if (!entry) {
+          entry = { id: sid, insRanges: [], delRanges: [], author };
+          groups.set(sid, entry);
+        }
+        const range = { from: pos, to: pos + node.nodeSize, text: node.text || '' };
+        if (kind === 'del') entry.delRanges.push(range);
+        else entry.insRanges.push(range);
+      }
+    });
+    // Sort by document order using first range start.
+    return Array.from(groups.values()).sort((a, b) => {
+      const aStart = Math.min(
+        a.insRanges[0]?.from ?? Number.POSITIVE_INFINITY,
+        a.delRanges[0]?.from ?? Number.POSITIVE_INFINITY,
+      );
+      const bStart = Math.min(
+        b.insRanges[0]?.from ?? Number.POSITIVE_INFINITY,
+        b.delRanges[0]?.from ?? Number.POSITIVE_INFINITY,
+      );
+      return aStart - bStart;
+    });
+    // Re-run when content or suggestion tick changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, debouncedContentVersion, suggestionsRefreshTick]);
+
+  const acceptSuggestion = useCallback(
+    (id: string) => {
+      if (!editor) return;
+      // Strategy: walk doc once, build descending range lists, then apply.
+      const delRanges: Array<{ from: number; to: number }> = [];
+      const insRanges: Array<{ from: number; to: number }> = [];
+      editor.state.doc.descendants((node, pos) => {
+        if (!node.isText) return;
+        for (const m of node.marks) {
+          if (m.type.name !== 'suggestionMark') continue;
+          if (m.attrs.suggestionId !== id) continue;
+          const range = { from: pos, to: pos + node.nodeSize };
+          if (m.attrs.kind === 'del') delRanges.push(range);
+          else insRanges.push(range);
+        }
+      });
+      const chain = editor.chain().focus();
+      // Apply deletions in descending order so positions stay valid.
+      delRanges.sort((a, b) => b.from - a.from);
+      for (const r of delRanges) chain.deleteRange(r);
+      // Unwrap remaining ins marks for this suggestion id.
+      // After deletes, we have to recompute ins positions; cheaper to scan again.
+      chain.run();
+      const remaining: Array<{ from: number; to: number }> = [];
+      editor.state.doc.descendants((node, pos) => {
+        if (!node.isText) return;
+        for (const m of node.marks) {
+          if (m.type.name !== 'suggestionMark' && m.attrs?.suggestionId !== id) continue;
+          if (m.type.name === 'suggestionMark' && m.attrs.suggestionId === id && m.attrs.kind === 'ins') {
+            remaining.push({ from: pos, to: pos + node.nodeSize });
+          }
+        }
+      });
+      const stripChain = editor.chain().focus();
+      remaining.sort((a, b) => b.from - a.from);
+      for (const r of remaining) {
+        stripChain.setTextSelection(r).unsetMark('suggestionMark');
+      }
+      stripChain.run();
+      setSuggestionsRefreshTick((t) => t + 1);
+      toast.success('Accepted suggestion');
+    },
+    [editor],
+  );
+
+  const rejectSuggestion = useCallback(
+    (id: string) => {
+      if (!editor) return;
+      const delToKeep: Array<{ from: number; to: number }> = [];
+      const insToRemove: Array<{ from: number; to: number }> = [];
+      editor.state.doc.descendants((node, pos) => {
+        if (!node.isText) return;
+        for (const m of node.marks) {
+          if (m.type.name !== 'suggestionMark') continue;
+          if (m.attrs.suggestionId !== id) continue;
+          const range = { from: pos, to: pos + node.nodeSize };
+          if (m.attrs.kind === 'ins') insToRemove.push(range);
+          else delToKeep.push(range);
+        }
+      });
+      const chain = editor.chain().focus();
+      // Remove insertions (descending order).
+      insToRemove.sort((a, b) => b.from - a.from);
+      for (const r of insToRemove) chain.deleteRange(r);
+      chain.run();
+      // Strip the del mark from kept ranges so the original text stays.
+      const stripChain = editor.chain().focus();
+      const remainingDel: Array<{ from: number; to: number }> = [];
+      editor.state.doc.descendants((node, pos) => {
+        if (!node.isText) return;
+        for (const m of node.marks) {
+          if (m.type.name !== 'suggestionMark') continue;
+          if (m.attrs.suggestionId === id && m.attrs.kind === 'del') {
+            remainingDel.push({ from: pos, to: pos + node.nodeSize });
+          }
+        }
+      });
+      remainingDel.sort((a, b) => b.from - a.from);
+      for (const r of remainingDel) {
+        stripChain.setTextSelection(r).unsetMark('suggestionMark');
+      }
+      stripChain.run();
+      setSuggestionsRefreshTick((t) => t + 1);
+      toast.success('Rejected suggestion');
+    },
+    [editor],
+  );
+
+  const acceptAllSuggestions = useCallback(() => {
+    pendingSuggestions.forEach((s) => acceptSuggestion(s.id));
+  }, [pendingSuggestions, acceptSuggestion]);
+
+  const rejectAllSuggestions = useCallback(() => {
+    pendingSuggestions.forEach((s) => rejectSuggestion(s.id));
+  }, [pendingSuggestions, rejectSuggestion]);
+
+  const jumpToSuggestion = useCallback(
+    (s: PendingSuggestion) => {
+      if (!editor) return;
+      const first = s.insRanges[0] ?? s.delRanges[0];
+      if (!first) return;
+      editor.chain().focus().setTextSelection({ from: first.from, to: first.to }).scrollIntoView().run();
+    },
+    [editor],
+  );
 
   const handleApplySlashCommand = useCallback((command: SlashCommandConfig) => {
     if (!editor) return;
@@ -5782,6 +5968,103 @@ export function CopilotDraftingCanvas({
 
             <section className={sidebarSectionClass}>
               <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-slate-100">Suggestions</h3>
+                  {suggestingMode && (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                      Suggesting mode on
+                    </span>
+                  )}
+                </div>
+                {pendingSuggestions.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={acceptAllSuggestions}
+                      className="text-xs font-medium text-emerald-700 hover:underline dark:text-emerald-300"
+                      disabled={!isEditing}
+                    >
+                      Accept all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={rejectAllSuggestions}
+                      className="text-xs font-medium text-rose-600 hover:underline dark:text-rose-300"
+                      disabled={!isEditing}
+                    >
+                      Reject all
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {pendingSuggestions.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-xs text-gray-500 dark:border-slate-700 dark:text-slate-400">
+                  <GitBranch className="mx-auto mb-1 h-5 w-5 opacity-60" />
+                  <p>No pending suggestions.</p>
+                  <p className="mt-1 text-[11px] text-gray-400 dark:text-slate-500">
+                    Turn on suggesting mode and run an AI rewrite to track changes.
+                  </p>
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {pendingSuggestions.map((s) => {
+                    const beforeText = s.delRanges.map((r) => r.text).join('');
+                    const afterText = s.insRanges.map((r) => r.text).join('');
+                    return (
+                      <li
+                        key={s.id}
+                        className="rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-sm dark:border-slate-700 dark:bg-slate-800/40"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => jumpToSuggestion(s)}
+                            className="text-[11px] font-semibold uppercase tracking-wide text-violet-700 hover:underline dark:text-violet-300"
+                          >
+                            Jump to change
+                          </button>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                            {s.author || 'You'}
+                          </span>
+                        </div>
+                        {beforeText && (
+                          <p className="mt-2 line-clamp-3 text-rose-700 line-through decoration-rose-400 dark:text-rose-300">
+                            {beforeText}
+                          </p>
+                        )}
+                        {afterText && (
+                          <p className="mt-1 line-clamp-3 text-emerald-700 dark:text-emerald-300">
+                            {afterText}
+                          </p>
+                        )}
+                        <div className="mt-2 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => acceptSuggestion(s.id)}
+                            disabled={!isEditing}
+                            className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            <Check className="h-3 w-3" /> Accept
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => rejectSuggestion(s.id)}
+                            disabled={!isEditing}
+                            className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                          >
+                            <X className="h-3 w-3" /> Reject
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+
+            <section className={sidebarSectionClass}>
+              <div className="flex items-center justify-between gap-3">
                 <h3 className="text-sm font-medium text-gray-900 dark:text-slate-100">Comments</h3>
                 {comments.length > 0 && (
                   <span className="text-xs text-slate-400 dark:text-slate-500">
@@ -6664,6 +6947,16 @@ export function CopilotDraftingCanvas({
                 </button>
                 <button onClick={() => setShowFindReplace(true)} className={editorToolbarButtonClass} title="Find & Replace (Ctrl+H)" aria-label="Find and replace">
                   <Search className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSuggestingMode((m) => !m)}
+                  className={`${editorToolbarButtonClass} ${suggestingMode ? editorToolbarButtonActiveClass : ''}`}
+                  title={suggestingMode ? 'Suggesting mode is ON — AI rewrites are tracked as suggestions' : 'Turn on Suggesting mode (track AI rewrites as suggestions)'}
+                  aria-label="Toggle suggesting mode"
+                  aria-pressed={suggestingMode}
+                >
+                  <GitBranch className="h-4 w-4" />
                 </button>
               </div>
 

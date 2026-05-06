@@ -1181,3 +1181,35 @@
   outline-color: rgba(249, 115, 22, 0.95);
   color: #fff7ed;
 }
+
+/* Track-changes suggestion marks */
+.tiptap-editor .ProseMirror .contigo-suggestion-ins,
+.tiptap-editor .ProseMirror ins.contigo-suggestion-ins {
+  background-color: rgba(16, 185, 129, 0.16);
+  color: #065f46;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.55);
+  padding: 0 1px;
+  border-radius: 2px;
+}
+.tiptap-editor .ProseMirror .contigo-suggestion-del,
+.tiptap-editor .ProseMirror del.contigo-suggestion-del {
+  background-color: rgba(244, 63, 94, 0.12);
+  color: #9f1239;
+  text-decoration: line-through;
+  text-decoration-color: rgba(244, 63, 94, 0.7);
+  padding: 0 1px;
+  border-radius: 2px;
+}
+.dark .tiptap-editor .ProseMirror .contigo-suggestion-ins,
+.dark .tiptap-editor .ProseMirror ins.contigo-suggestion-ins {
+  background-color: rgba(16, 185, 129, 0.22);
+  color: #6ee7b7;
+  border-bottom-color: rgba(16, 185, 129, 0.7);
+}
+.dark .tiptap-editor .ProseMirror .contigo-suggestion-del,
+.dark .tiptap-editor .ProseMirror del.contigo-suggestion-del {
+  background-color: rgba(244, 63, 94, 0.18);
+  color: #fda4af;
+  text-decoration-color: rgba(244, 63, 94, 0.85);
+}
