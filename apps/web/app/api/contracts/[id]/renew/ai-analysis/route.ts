@@ -215,5 +215,5 @@ For clause IDs in suggestions, use the actual clause IDs provided (e.g., the id 
     }
 
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to generate analysis', 500, { retryable: true });
-    })
-}
+  }
+});

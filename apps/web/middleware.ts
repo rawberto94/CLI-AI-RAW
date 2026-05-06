@@ -15,7 +15,6 @@ import NextAuth from "next-auth";
 import { authConfig } from "@/lib/auth.config";
 import { BLANK_DRAFTING_PATH, buildTemplateLibraryPath } from "@/lib/drafting/template-routing";
 import { isTenantSessionExpired } from "@/lib/security/tenant-session-policy";
-import { Redis } from "@upstash/redis";
 
 // Edge-compatible auth wrapper (no Prisma/DB dependencies)
 const { auth } = NextAuth(authConfig);
@@ -158,23 +157,56 @@ function cleanupRateLimitStore() {
   }
 }
 
-// Upstash Redis REST client — Edge Runtime compatible (HTTP-based, no TCP)
-// For non-Upstash Redis (e.g. local Docker), the in-memory store is used automatically.
-let rateLimitRedis: Redis | null = null;
-try {
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    rateLimitRedis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  } else if (process.env.REDIS_URL && process.env.REDIS_TOKEN) {
-    rateLimitRedis = new Redis({
-      url: process.env.REDIS_URL,
-      token: process.env.REDIS_TOKEN,
-    });
+type RateLimitRedisConfig = {
+  url: string;
+  token: string;
+};
+
+function resolveRateLimitRedisConfig(): RateLimitRedisConfig | null {
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (upstashUrl && upstashToken) {
+    return { url: upstashUrl.replace(/\/$/, ''), token: upstashToken };
   }
-} catch {
-  // Redis init failed — will fall back to in-memory
+
+  const redisUrl = process.env.REDIS_URL;
+  const redisToken = process.env.REDIS_TOKEN;
+  if (redisUrl && redisToken && /^https?:\/\//i.test(redisUrl)) {
+    return { url: redisUrl.replace(/\/$/, ''), token: redisToken };
+  }
+
+  return null;
+}
+
+// Edge-safe REST config for Upstash. Local redis:// deployments continue to use
+// the in-memory limiter because middleware cannot open TCP connections.
+const rateLimitRedis = resolveRateLimitRedisConfig();
+
+async function executeRateLimitRedisCommand<T>(parts: Array<string | number>): Promise<T> {
+  if (!rateLimitRedis) {
+    throw new Error('Rate limit Redis is not configured');
+  }
+
+  const path = parts.map((part) => encodeURIComponent(String(part))).join('/');
+  const response = await fetch(`${rateLimitRedis.url}/${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${rateLimitRedis.token}`,
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Rate limit Redis request failed: ${response.status}`);
+  }
+
+  const payload = await response.json() as { result?: T; error?: string };
+  if (payload.error) {
+    throw new Error(payload.error);
+  }
+
+  return payload.result as T;
 }
 
 async function checkRateLimitRedis(
@@ -184,10 +216,10 @@ async function checkRateLimitRedis(
   if (!rateLimitRedis) return null;
   try {
     const key = `rl:${identifier}`;
-    const count = await rateLimitRedis.incr(key);
+    const count = await executeRateLimitRedisCommand<number>(['INCR', key]);
     if (count === 1) {
       // First request in window — set TTL
-      await rateLimitRedis.expire(key, RATE_LIMIT_WINDOW);
+      await executeRateLimitRedisCommand<number>(['EXPIRE', key, RATE_LIMIT_WINDOW]);
     }
     const remaining = Math.max(0, maxRequests - count);
     return { allowed: count <= maxRequests, remaining };
