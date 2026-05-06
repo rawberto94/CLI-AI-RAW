@@ -89,5 +89,25 @@ nohup.out
 *.tsbuildinfo
 *.bak
 *.old
+*.old-bloated
 uploads-persist/
 .gitnexus
+
+# Local auth / API scratch files (must never be committed)
+cookies.txt
+*_cookies.txt
+*_info.env
+*_info_*.env
+audit.env
+audit.sh
+temp.env
+login.sh
+test_script.sh
+csrf.json
+csrf_*.txt
+csrf_json*.txt
+csrf_response.txt
+signup_payload*.json
+signup_response*.txt
+signup_stderr*.txt
+
