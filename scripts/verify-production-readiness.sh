@@ -25,8 +25,8 @@ pnpm --filter web build
 
 log "3/3 Running security/session test suite"
 pnpm --filter web exec vitest run \
-  apps/web/lib/security/__tests__/tenant-session-policy.test.ts \
-  apps/web/app/api/auth/sessions/__tests__/route.test.ts \
-  apps/web/app/api/admin/security/ip-allowlist/__tests__/route.test.ts
+  lib/security/__tests__/tenant-session-policy.test.ts \
+  app/api/auth/sessions/__tests__/route.test.ts \
+  app/api/admin/security/ip-allowlist/__tests__/route.test.ts
 
 log "Production readiness checks passed."
