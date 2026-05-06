@@ -4363,6 +4363,131 @@ export function CopilotDraftingCanvas({
     sendAiChatMessage(prompt);
   }, [contractType, editor, selectionToolbar, sendAiChatMessage, setActiveTab]);
 
+  // ──────────────────────────────────────────────────────────────────────
+  // In-place AI rewrite from the selection toolbar.
+  // Streams `editor_assist` and replaces the selection with the resulting
+  // HTML when applyMode === 'replace_selection'. Falls back to chat routing
+  // when the model returns nothing usable.
+  // ──────────────────────────────────────────────────────────────────────
+  const [aiInPlaceBusy, setAiInPlaceBusy] = useState<null | string>(null);
+  const aiInPlaceAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => { aiInPlaceAbortRef.current?.abort(); }, []);
+
+  const applyAiToSelection = useCallback(
+    async (label: string, instruction: string) => {
+      if (!selectionToolbar || !editor || !isEditing) return;
+      const selectedText = selectionToolbar.text;
+      if (!selectedText.trim()) return;
+      const { from, to } = selectionToolbar;
+
+      // Cancel any prior call.
+      aiInPlaceAbortRef.current?.abort();
+      const controller = new AbortController();
+      aiInPlaceAbortRef.current = controller;
+      setAiInPlaceBusy(label);
+
+      try {
+        const response = await fetch('/api/ai/agents/draft-assistant', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            ...getCsrfHeaders(),
+          },
+          body: JSON.stringify({
+            message: instruction,
+            conversationHistory: [],
+            context: {
+              contractType: contractType || undefined,
+              currentContent: editor.getHTML(),
+              selectedText,
+              tone: 'standard',
+              playbookId: playbookId || undefined,
+            },
+            action: 'editor_assist',
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok || !response.body) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        // Parse SSE looking for the assistant_message event.
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        let resultHtml = '';
+        let applyMode: 'replace_selection' | 'insert_at_cursor' | 'none' = 'replace_selection';
+        outer: while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const events = buf.split('\n\n');
+          buf = events.pop() || '';
+          for (const block of events) {
+            const lines = block.split('\n');
+            let eventName = '';
+            let dataLine = '';
+            for (const ln of lines) {
+              if (ln.startsWith('event:')) eventName = ln.slice(6).trim();
+              else if (ln.startsWith('data:')) dataLine += ln.slice(5).trim();
+            }
+            if (!eventName) continue;
+            if (eventName === 'assistant_message') {
+              try {
+                const payload = JSON.parse(dataLine);
+                resultHtml = String(payload.draftHtml || '').trim();
+                if (payload.applyMode) applyMode = payload.applyMode;
+              } catch { /* ignore */ }
+            } else if (eventName === 'done') {
+              break outer;
+            } else if (eventName === 'error') {
+              try {
+                const payload = JSON.parse(dataLine);
+                throw new Error(payload.message || 'AI request failed');
+              } catch (e) {
+                throw e instanceof Error ? e : new Error('AI request failed');
+              }
+            }
+          }
+        }
+
+        if (!resultHtml) {
+          toast.error('AI returned no rewrite. Try again or open Assistant for more context.');
+          return;
+        }
+
+        // Sanitize before inserting; mirrors the patterns used elsewhere.
+        const safeHtml = DOMPurify.sanitize(resultHtml, {
+          ALLOWED_TAGS: ['p', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'strong', 'em', 'u', 'br', 'blockquote', 'a', 'mark', 'span'],
+          ALLOWED_ATTR: ['href', 'class', 'style'],
+        });
+
+        if (applyMode === 'replace_selection') {
+          editor.chain().focus().setTextSelection({ from, to }).deleteSelection().insertContent(safeHtml).run();
+        } else if (applyMode === 'insert_at_cursor') {
+          editor.chain().focus().setTextSelection({ from: to, to }).insertContent(safeHtml).run();
+        } else {
+          toast.message('Open the assistant to see the suggestion');
+          setActiveTab('assistant');
+          return;
+        }
+        setSelectionToolbar(null);
+        toast.success(`Applied ${label}`);
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return;
+        toast.error(`AI ${label} failed`, {
+          description: err instanceof Error ? err.message : 'Try again',
+        });
+      } finally {
+        if (aiInPlaceAbortRef.current === controller) aiInPlaceAbortRef.current = null;
+        setAiInPlaceBusy(null);
+      }
+    },
+    [selectionToolbar, editor, isEditing, contractType, playbookId, setActiveTab],
+  );
+
   const handleSelectionAssistantAction = useCallback((prompt: string) => {
     if (!selectionToolbar || !editor) return;
 
@@ -6988,6 +7113,54 @@ export function CopilotDraftingCanvas({
                             <Sparkles className="h-3.5 w-3.5" />
                             Rewrite
                           </button>
+                          {isEditing && (
+                            <>
+                              <button
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => applyAiToSelection('rewrite', `Rewrite the selected clause so it is clearer, more concise, and contract-ready. Preserve legal intent. Return only the revised clause as HTML, no commentary.\n\nSelected clause:\n${selectionToolbar.text}`)}
+                                disabled={aiInPlaceBusy !== null}
+                                className={`${draftingInlineButtonClass} text-violet-700 hover:bg-violet-50 disabled:opacity-50 dark:text-violet-300 dark:hover:bg-violet-950/40`}
+                                title="Apply an AI rewrite directly to the selected text"
+                              >
+                                {aiInPlaceBusy === 'rewrite' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                                {aiInPlaceBusy === 'rewrite' ? 'Rewriting…' : 'AI rewrite'}
+                              </button>
+                              <button
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => applyAiToSelection('shorten', `Shorten the selected clause without losing legal meaning. Return only the revised clause as HTML, no commentary.\n\nSelected clause:\n${selectionToolbar.text}`)}
+                                disabled={aiInPlaceBusy !== null}
+                                className={`${draftingInlineButtonClass} text-slate-600 hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800`}
+                                title="Make the selected clause shorter"
+                              >
+                                {aiInPlaceBusy === 'shorten' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRight className="h-3.5 w-3.5" />}
+                                Shorten
+                              </button>
+                              <button
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => applyAiToSelection('formal', `Rewrite the selected clause in a more formal, traditional contract register. Return only the revised clause as HTML, no commentary.\n\nSelected clause:\n${selectionToolbar.text}`)}
+                                disabled={aiInPlaceBusy !== null}
+                                className={`${draftingInlineButtonClass} text-slate-600 hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800`}
+                                title="Make the selected clause more formal"
+                              >
+                                {aiInPlaceBusy === 'formal' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Scale className="h-3.5 w-3.5" />}
+                                Formal
+                              </button>
+                              <button
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => applyAiToSelection('plain', `Rewrite the selected clause in plain English so a non-lawyer can understand it. Keep all legal obligations intact. Return only the revised clause as HTML, no commentary.\n\nSelected clause:\n${selectionToolbar.text}`)}
+                                disabled={aiInPlaceBusy !== null}
+                                className={`${draftingInlineButtonClass} text-slate-600 hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800`}
+                                title="Rewrite the selected clause in plain English"
+                              >
+                                {aiInPlaceBusy === 'plain' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookOpen className="h-3.5 w-3.5" />}
+                                Plain English
+                              </button>
+                            </>
+                          )}
                           <button
                             type="button"
                             onMouseDown={(event) => event.preventDefault()}
