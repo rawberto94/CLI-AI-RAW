@@ -1391,6 +1391,15 @@ export function CopilotDraftingCanvas({
   const [inlineRiskChips, setInlineRiskChips] = useState<InlineRiskChip[]>([]);
   const [sourceTrail, setSourceTrail] = useState<SourceTrailEntry[]>(() => normalizeSourceTrail(initialSourceTrail));
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  // Close mobile drawer on Escape for keyboard parity with other modals
+  useEffect(() => {
+    if (!showMobileSidebar) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowMobileSidebar(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showMobileSidebar]);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [draftStatus, setDraftStatus] = useState<'DRAFT' | 'IN_REVIEW' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'FINALIZED'>('DRAFT');
@@ -6357,20 +6366,20 @@ export function CopilotDraftingCanvas({
                 </button>
               </div>
               <div className={editorToolbarGroupClass} role="group" aria-label="Text formatting">
-                <button onClick={() => insertFormatting('bold')} className={`${editorToolbarButtonClass} ${editor?.isActive('bold') ? editorToolbarButtonActiveClass : ''}`} title="Bold" aria-label="Bold">
+                <button onClick={() => insertFormatting('bold')} className={`${editorToolbarButtonClass} ${editor?.isActive('bold') ? editorToolbarButtonActiveClass : ''}`} title="Bold (Ctrl+B)" aria-label="Bold" aria-pressed={!!editor?.isActive('bold')}>
                   <Bold className="h-4 w-4" />
                 </button>
-                <button onClick={() => insertFormatting('italic')} className={`${editorToolbarButtonClass} ${editor?.isActive('italic') ? editorToolbarButtonActiveClass : ''}`} title="Italic" aria-label="Italic">
+                <button onClick={() => insertFormatting('italic')} className={`${editorToolbarButtonClass} ${editor?.isActive('italic') ? editorToolbarButtonActiveClass : ''}`} title="Italic (Ctrl+I)" aria-label="Italic" aria-pressed={!!editor?.isActive('italic')}>
                   <Italic className="h-4 w-4" />
                 </button>
               </div>
               <div className={editorToolbarGroupClass} role="group" aria-label="Headings">
-                <button onClick={() => insertFormatting('h1')} className={`${editorToolbarButtonClass} ${editor?.isActive('heading', { level: 1 }) ? editorToolbarButtonActiveClass : ''}`} title="Heading 1" aria-label="Heading 1">
+                <button onClick={() => insertFormatting('h1')} className={`${editorToolbarButtonClass} ${editor?.isActive('heading', { level: 1 }) ? editorToolbarButtonActiveClass : ''}`} title="Heading 1" aria-label="Heading 1" aria-pressed={!!editor?.isActive('heading', { level: 1 })}>
                   <Heading1 className="h-4 w-4" />
                 </button>
               </div>
               <div className={editorToolbarGroupClass} role="group" aria-label="Block elements">
-                <button onClick={() => insertFormatting('list')} className={`${editorToolbarButtonClass} ${editor?.isActive('bulletList') ? editorToolbarButtonActiveClass : ''}`} title="List" aria-label="List">
+                <button onClick={() => insertFormatting('list')} className={`${editorToolbarButtonClass} ${editor?.isActive('bulletList') ? editorToolbarButtonActiveClass : ''}`} title="Bullet list" aria-label="Bullet list" aria-pressed={!!editor?.isActive('bulletList')}>
                   <List className="h-4 w-4" />
                 </button>
                 <button onClick={handleClearFormatting} className={editorToolbarButtonClass} title="Clear formatting" aria-label="Clear formatting">
@@ -7323,13 +7332,16 @@ export function CopilotDraftingCanvas({
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Drafting sidebar"
                 className="fixed right-0 top-0 bottom-0 z-50 w-[85vw] max-w-[440px] border-l border-gray-200 bg-white/96 shadow-2xl backdrop-blur-xl dark:border-slate-700 dark:bg-slate-800/96 lg:hidden"
               >
                 <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-slate-700">
-                  <h3 className="font-semibold text-gray-900 dark:text-slate-100">Assistant</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-slate-100 capitalize">{activeTab}</h3>
                   <button
                     onClick={() => setShowMobileSidebar(false)}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                     aria-label="Close sidebar"
                   >
                     <X className="h-5 w-5 text-gray-500 dark:text-slate-400" />
