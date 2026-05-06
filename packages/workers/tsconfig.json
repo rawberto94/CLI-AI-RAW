@@ -1,9 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": ".",
     "outDir": "./dist",
-    "noEmit": false,
+    "noEmit": true,
     "composite": false,
     "module": "ESNext",
     "moduleResolution": "node",
@@ -11,6 +10,7 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
+    "noUncheckedIndexedAccess": false,
     "paths": {
       "utils": ["../utils/src"],
       "utils/*": ["../utils/src/*"],

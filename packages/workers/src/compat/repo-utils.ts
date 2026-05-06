@@ -7,14 +7,17 @@ import * as semanticChunker from '@repo/utils/rag/semantic-chunker';
 import * as adaptiveChunker from '@repo/utils/rag/adaptive-chunker';
 import * as distributedCache from '@repo/utils/cache/distributed-cache';
 
-const queueServiceModule = (queueService as any).default ?? queueService;
-const contractQueueModule = (contractQueue as any).default ?? contractQueue;
-const circuitBreakerModule = (circuitBreaker as any).default ?? circuitBreaker;
-const retryModule = (retryHelpers as any).default ?? retryHelpers;
-const redisEventBusModule = (redisEventBusExports as any).default ?? redisEventBusExports;
-const semanticChunkerModule = (semanticChunker as any).default ?? semanticChunker;
-const adaptiveChunkerModule = (adaptiveChunker as any).default ?? adaptiveChunker;
-const distributedCacheModule = (distributedCache as any).default ?? distributedCache;
+// Preserve the source-module types when picking either the namespace export
+// or the runtime CJS-style `default` shape. Casting to the namespace type
+// keeps TypeScript happy with strongly-typed function/class re-exports below.
+const queueServiceModule = ((queueService as any).default ?? queueService) as typeof queueService;
+const contractQueueModule = ((contractQueue as any).default ?? contractQueue) as typeof contractQueue;
+const circuitBreakerModule = ((circuitBreaker as any).default ?? circuitBreaker) as typeof circuitBreaker;
+const retryModule = ((retryHelpers as any).default ?? retryHelpers) as typeof retryHelpers;
+const redisEventBusModule = ((redisEventBusExports as any).default ?? redisEventBusExports) as typeof redisEventBusExports;
+const semanticChunkerModule = ((semanticChunker as any).default ?? semanticChunker) as typeof semanticChunker;
+const adaptiveChunkerModule = ((adaptiveChunker as any).default ?? adaptiveChunker) as typeof adaptiveChunker;
+const distributedCacheModule = ((distributedCache as any).default ?? distributedCache) as typeof distributedCache;
 
 export const getQueueService = queueServiceModule.getQueueService;
 export const QUEUE_NAMES = contractQueueModule.QUEUE_NAMES;

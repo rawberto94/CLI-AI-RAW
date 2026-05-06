@@ -100,21 +100,21 @@ class EventBus extends EventEmitter {
   /**
    * Listen to an event
    */
-  public override on(event: Events | string, listener: (...args: unknown[]) => void): this {
+  public override on(event: Events | string, listener: (...args: any[]) => void): this {
     return super.on(event, listener);
   }
 
   /**
    * Listen to an event once
    */
-  public override once(event: Events | string, listener: (...args: unknown[]) => void): this {
+  public override once(event: Events | string, listener: (...args: any[]) => void): this {
     return super.once(event, listener);
   }
 
   /**
    * Remove a listener
    */
-  public override off(event: Events | string, listener: (...args: unknown[]) => void): this {
+  public override off(event: Events | string, listener: (...args: any[]) => void): this {
     return super.off(event, listener);
   }
 

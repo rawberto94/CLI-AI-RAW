@@ -3,7 +3,8 @@
  * Comprehensive system health monitoring for production readiness
  */
 
-import { getDatabaseManager } from 'clients-db';
+import * as clientsDb from 'clients-db';
+const getDatabaseManager: () => any = (clientsDb as any).getDatabaseManager;
 import { multiLevelCache } from './multi-level-cache.service';
 import { eventBus, Events } from '../events/event-bus';
 

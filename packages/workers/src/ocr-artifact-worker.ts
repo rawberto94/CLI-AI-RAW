@@ -21,7 +21,7 @@ import {
   type JobType,
   type ProcessContractJobData,
 } from './compat/repo-utils';
-import * as circuitBreakerExports from '../../utils/src/patterns/circuit-breaker.ts';
+import * as circuitBreakerExports from '../../utils/src/patterns/circuit-breaker';
 import pino from 'pino';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
@@ -1452,7 +1452,7 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
       lastError = error instanceof Error ? error : new Error(String(error));
       
       if (error instanceof getCircuitBreakerErrorCtor()) {
-        logger.warn({ mode, state: error.state }, 'Circuit breaker prevented OCR call, trying next');
+        logger.warn({ mode, state: (error as Error & { state?: unknown }).state }, 'Circuit breaker prevented OCR call, trying next');
       } else {
         logger.warn({ mode, error: lastError.message }, 'OCR mode failed, trying next');
       }

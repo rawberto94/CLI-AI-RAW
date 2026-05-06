@@ -113,7 +113,7 @@ export class SavingsOpportunityService {
     }
 
     if (maxRisk) {
-      const riskOrder = { LOW: 1, MEDIUM: 2, HIGH: 3 };
+      const riskOrder: Record<string, number> = { LOW: 1, MEDIUM: 2, HIGH: 3 };
       filtered = filtered.filter(
         (opp) => riskOrder[opp.risk] <= riskOrder[maxRisk]
       );

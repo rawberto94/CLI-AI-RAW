@@ -484,15 +484,15 @@ Return JSON with values only.`,
 
     // Select based on complexity
     if (context.complexity === 'complex') {
-      return this.templates.get('general-comprehensive') || this.templates.values().next().value;
+      return (this.templates.get('general-comprehensive') || this.templates.values().next().value) as PromptTemplate;
     }
 
     if (context.documentLength === 'short' || context.complexity === 'simple') {
-      return this.templates.get('general-fast') || this.templates.values().next().value;
+      return (this.templates.get('general-fast') || this.templates.values().next().value) as PromptTemplate;
     }
 
     // Default to precise
-    return this.templates.get('general-precise') || this.templates.values().next().value;
+    return (this.templates.get('general-precise') || this.templates.values().next().value) as PromptTemplate;
   }
 
   /**

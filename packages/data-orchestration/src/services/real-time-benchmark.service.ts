@@ -244,7 +244,9 @@ export class RealTimeBenchmarkService {
     // Clean up old statuses (keep last 1000)
     if (this.calculationStatuses.size > 1000) {
       const firstKey = this.calculationStatuses.keys().next().value;
-      this.calculationStatuses.delete(firstKey);
+      if (firstKey !== undefined) {
+        this.calculationStatuses.delete(firstKey);
+      }
     }
   }
 

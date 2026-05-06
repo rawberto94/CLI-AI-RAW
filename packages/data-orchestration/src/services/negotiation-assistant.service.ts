@@ -263,7 +263,7 @@ export class NegotiationAssistantService {
       take: 5,
     });
 
-    return alternatives.map((alt) => {
+    return alternatives.map((alt: any) => {
       const savingsAmount = rateCard.dailyRateUSD - alt.dailyRateUSD;
       const savingsPercent = (savingsAmount / rateCard.dailyRateUSD) * 100;
 

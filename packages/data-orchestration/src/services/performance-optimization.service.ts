@@ -261,8 +261,8 @@ export class PerformanceOptimizationService {
     const metrics = await (this.prisma as any).$metrics?.json() || { counters: [] };
     
     return {
-      poolSize: metrics.counters.find(c => c.key === 'prisma_pool_connections_open')?.value || 0,
-      activeConnections: metrics.counters.find(c => c.key === 'prisma_client_queries_active')?.value || 0,
+      poolSize: metrics.counters.find((c: any) => c.key === 'prisma_pool_connections_open')?.value || 0,
+      activeConnections: metrics.counters.find((c: any) => c.key === 'prisma_client_queries_active')?.value || 0,
       recommendations: this.getPoolRecommendations(metrics),
     };
   }
