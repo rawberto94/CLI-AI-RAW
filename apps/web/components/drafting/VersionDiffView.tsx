@@ -9,7 +9,7 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowLeftRight, Columns, AlignJustify, ChevronDown } from 'lucide-react';
+import { X, ArrowLeftRight, Columns, AlignJustify, ChevronDown, RotateCcw, Loader2 } from 'lucide-react';
 
 interface DiffVersion {
   version: number;
@@ -22,6 +22,12 @@ interface DiffVersion {
 interface VersionDiffViewProps {
   versions: DiffVersion[];
   onClose: () => void;
+  /**
+   * Optional: when provided, renders a "Restore this version" button
+   * for the currently-selected non-current version. Caller is
+   * responsible for confirming, replacing editor content, and saving.
+   */
+  onRestore?: (version: DiffVersion) => Promise<void> | void;
 }
 
 type DiffMode = 'side-by-side' | 'inline';
@@ -169,13 +175,35 @@ function DiffSegmentView({ segment }: { segment: DiffSegment }) {
   );
 }
 
-export function VersionDiffView({ versions, onClose }: VersionDiffViewProps) {
+export function VersionDiffView({ versions, onClose, onRestore }: VersionDiffViewProps) {
   const [leftIdx, setLeftIdx] = useState(versions.length >= 2 ? versions.length - 2 : 0);
   const [rightIdx, setRightIdx] = useState(versions.length - 1);
   const [mode, setMode] = useState<DiffMode>('inline');
+  const [restoring, setRestoring] = useState(false);
 
   const left = versions[leftIdx];
   const right = versions[rightIdx];
+
+  // "Current" is the last version, synthesized by the canvas. We only
+  // allow restoring older snapshots, never "Current" itself.
+  const isLeftCurrent = left?.label === 'Current' || left?.author === 'Current';
+  const canRestoreLeft = Boolean(onRestore && left && !isLeftCurrent);
+
+  const handleRestore = useCallback(async () => {
+    if (!onRestore || !left || isLeftCurrent) return;
+    const ok = typeof window !== 'undefined'
+      ? window.confirm(
+          `Restore v${left.version}?\n\nThis will replace the current draft content with the contents of version ${left.version} (${left.label || 'Save'} by ${left.author}). The current draft will be saved as a new version first so nothing is lost.`,
+        )
+      : true;
+    if (!ok) return;
+    try {
+      setRestoring(true);
+      await onRestore(left);
+    } finally {
+      setRestoring(false);
+    }
+  }, [onRestore, left, isLeftCurrent]);
 
   const diffSegments = useMemo(() => {
     if (!left || !right) return [];
@@ -236,7 +264,24 @@ export function VersionDiffView({ versions, onClose }: VersionDiffViewProps) {
               <Columns className="h-3.5 w-3.5" />
             </button>
           </div>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200">
+          {canRestoreLeft && (
+            <button
+              type="button"
+              onClick={handleRestore}
+              disabled={restoring}
+              className="inline-flex items-center gap-1.5 rounded-md border border-violet-200 dark:border-violet-700 bg-violet-50 dark:bg-violet-900/30 px-2.5 py-1 text-xs font-medium text-violet-700 dark:text-violet-200 hover:bg-violet-100 dark:hover:bg-violet-900/50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              title={`Restore v${left?.version} as the current draft content`}
+              aria-label={`Restore version ${left?.version}`}
+            >
+              {restoring ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RotateCcw className="h-3.5 w-3.5" />
+              )}
+              <span>{restoring ? 'Restoring…' : `Restore v${left?.version}`}</span>
+            </button>
+          )}
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200" aria-label="Close diff view">
             <X className="h-4 w-4" />
           </button>
         </div>

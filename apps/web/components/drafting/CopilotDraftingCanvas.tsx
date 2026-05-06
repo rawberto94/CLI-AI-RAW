@@ -7402,6 +7402,28 @@ export function CopilotDraftingCanvas({
               <VersionDiffView
                 versions={diffVersions}
                 onClose={() => setShowDiffView(false)}
+                onRestore={async (version) => {
+                  if (!editor) return;
+                  try {
+                    // Save current state first as a new version so nothing is lost
+                    await handleSaveRef.current();
+                    // Replace editor content with the restored version
+                    editor.commands.setContent(version.content || '<p></p>');
+                    setContentVersion((v) => v + 1);
+                    // Persist as a new version (the restore itself becomes a save event)
+                    await handleSaveRef.current();
+                    // Refresh version list and close
+                    await fetchVersions();
+                    setShowDiffView(false);
+                    toast.success(`Restored v${version.version}`, {
+                      description: 'A new version was created from the restore.',
+                    });
+                  } catch (err) {
+                    toast.error('Failed to restore version', {
+                      description: err instanceof Error ? err.message : 'Please try again.',
+                    });
+                  }
+                }}
               />
             </motion.div>
           </motion.div>
