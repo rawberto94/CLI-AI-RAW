@@ -2865,6 +2865,10 @@ export function CopilotDraftingCanvas({
   const handleSaveRef = useRef<(titleOverride?: string) => Promise<void> | void>(() => {});
   const applySlashCommandRef = useRef<(command: SlashCommandConfig) => void>(() => {});
   const filteredSlashCommandsRef = useRef<SlashCommandConfig[]>([]);
+  // Forward-refs for suggestion shortcut handlers (defined further down the file)
+  const getSuggestionIdAtCursorRef = useRef<() => string | null>(() => null);
+  const acceptSuggestionRef = useRef<(id: string) => void>(() => {});
+  const rejectSuggestionRef = useRef<(id: string) => void>(() => {});
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // ── Global keyboard shortcuts ──
@@ -2907,6 +2911,24 @@ export function CopilotDraftingCanvas({
     if (isMod && e.key === 'h') {
       e.preventDefault();
       setShowFindReplace(true);
+      return;
+    }
+    // Ctrl+Shift+Enter — Accept the suggestion at the cursor
+    if (isMod && e.shiftKey && (e.key === 'Enter' || e.key === 'Return')) {
+      const sid = getSuggestionIdAtCursorRef.current?.();
+      if (sid) {
+        e.preventDefault();
+        acceptSuggestionRef.current?.(sid);
+      }
+      return;
+    }
+    // Ctrl+Shift+Backspace — Reject the suggestion at the cursor
+    if (isMod && e.shiftKey && (e.key === 'Backspace' || e.key === 'Delete')) {
+      const sid = getSuggestionIdAtCursorRef.current?.();
+      if (sid) {
+        e.preventDefault();
+        rejectSuggestionRef.current?.(sid);
+      }
       return;
     }
     // Ctrl+Space — Manual auto-complete trigger
@@ -4706,6 +4728,14 @@ export function CopilotDraftingCanvas({
     pendingSuggestions.forEach((s) => rejectSuggestion(s.id));
   }, [pendingSuggestions, rejectSuggestion]);
 
+  // Keep refs in sync so the global keyboard handler (defined earlier) can
+  // call the latest accept/reject without stale closures.
+  useEffect(() => {
+    getSuggestionIdAtCursorRef.current = getSuggestionIdAtCursor;
+    acceptSuggestionRef.current = acceptSuggestion;
+    rejectSuggestionRef.current = rejectSuggestion;
+  }, [getSuggestionIdAtCursor, acceptSuggestion, rejectSuggestion]);
+
   const jumpToSuggestion = useCallback(
     (s: PendingSuggestion) => {
       if (!editor) return;
@@ -4715,6 +4745,28 @@ export function CopilotDraftingCanvas({
     },
     [editor],
   );
+
+  // Resolve the suggestion id at (or immediately around) the current
+  // selection — used by keyboard shortcuts that act on "the suggestion at
+  // the cursor". Returns null when the cursor isn't on a suggestion.
+  const getSuggestionIdAtCursor = useCallback((): string | null => {
+    if (!editor) return null;
+    const { from, to } = editor.state.selection;
+    let found: string | null = null;
+    const probeFrom = Math.max(0, from === to ? from - 1 : from);
+    const probeTo = to;
+    editor.state.doc.nodesBetween(probeFrom, probeTo, (node) => {
+      if (found) return false;
+      if (!node.isText) return true;
+      const sm = node.marks.find((m) => m.type.name === 'suggestionMark');
+      if (sm && typeof sm.attrs.suggestionId === 'string') {
+        found = sm.attrs.suggestionId as string;
+        return false;
+      }
+      return true;
+    });
+    return found;
+  }, [editor]);
 
   // Manual "mark selection as ins/del" — used from the selection toolbar
   // while suggesting mode is on. Useful for flagging existing text without
@@ -6983,12 +7035,22 @@ export function CopilotDraftingCanvas({
                 <button
                   type="button"
                   onClick={() => setSuggestingMode((m) => !m)}
-                  className={`${editorToolbarButtonClass} ${suggestingMode ? editorToolbarButtonActiveClass : ''}`}
-                  title={suggestingMode ? 'Suggesting mode is ON — AI rewrites are tracked as suggestions' : 'Turn on Suggesting mode (track AI rewrites as suggestions)'}
+                  className={`${editorToolbarButtonClass} ${suggestingMode ? editorToolbarButtonActiveClass : ''} relative`}
+                  title={suggestingMode
+                    ? `Suggesting mode is ON — your edits are tracked as suggestions${pendingSuggestions.length > 0 ? ` (${pendingSuggestions.length} pending)` : ''}`
+                    : 'Turn on Suggesting mode (track edits as suggestions)'}
                   aria-label="Toggle suggesting mode"
                   aria-pressed={suggestingMode}
                 >
                   <GitBranch className="h-4 w-4" />
+                  {pendingSuggestions.length > 0 && (
+                    <span
+                      className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-violet-600 px-1 text-[10px] font-bold leading-none text-white shadow-sm dark:bg-violet-500"
+                      aria-label={`${pendingSuggestions.length} pending suggestions`}
+                    >
+                      {pendingSuggestions.length > 99 ? '99+' : pendingSuggestions.length}
+                    </span>
+                  )}
                 </button>
               </div>
 
@@ -7353,6 +7415,25 @@ export function CopilotDraftingCanvas({
                                 ✕
                               </button>
                             </div>
+                          </div>
+                        )}
+                        {suggestingMode && (
+                          <div
+                            role="status"
+                            className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-violet-200 bg-violet-50/80 px-3 py-2 text-[12px] text-violet-900 dark:border-violet-800/60 dark:bg-violet-950/40 dark:text-violet-100"
+                          >
+                            <div className="flex items-center gap-2">
+                              <GitBranch className="h-3.5 w-3.5" />
+                              <span className="font-medium">Suggesting mode is on</span>
+                              <span className="opacity-80">— your edits become tracked suggestions ({pendingSuggestions.length} pending). <kbd className="rounded bg-white/70 px-1 font-mono text-[10px] dark:bg-slate-800/60">Ctrl+Shift+Enter</kbd> accept, <kbd className="rounded bg-white/70 px-1 font-mono text-[10px] dark:bg-slate-800/60">Ctrl+Shift+⌫</kbd> reject at cursor</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSuggestingMode(false)}
+                              className="shrink-0 rounded border border-violet-300 bg-white/70 px-2 py-0.5 text-[11px] font-medium text-violet-800 hover:bg-white dark:border-violet-700 dark:bg-slate-900/40 dark:text-violet-100 dark:hover:bg-slate-900/70"
+                            >
+                              Turn off
+                            </button>
                           </div>
                         )}
                         <EditorContent editor={editor} />
