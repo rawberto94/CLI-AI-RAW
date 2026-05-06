@@ -14,7 +14,7 @@ import { NextRequest } from 'next/server';
 import { getSemanticCache } from '@/lib/rag/semantic-cache.service';
 import { getChunkGraph } from '@/lib/rag/chunk-graph.service';
 import { prisma } from '@/lib/prisma';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -22,12 +22,14 @@ export const dynamic = 'force-dynamic';
 // Simple in-memory rate limiter (1 req/s per IP)
 const lastRequestByIp = new Map<string, number>();
 
-export async function GET(request: NextRequest) {
-  const ctx = getApiContext(request);
-  // Auth check (defense-in-depth)
-  const authCtx = getAuthenticatedApiContext(request);
-  if (!authCtx) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
+const ADMIN_ROLES = new Set(['admin', 'owner']);
+
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+
+  // Admin gate: this endpoint exposes cross-tenant aggregates (totalContracts, model distribution).
+  const caller = await prisma.user.findUnique({ where: { id: ctx.userId }, select: { role: true } });
+  if (!caller || !ADMIN_ROLES.has(caller.role)) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin role required', 403);
   }
 
   // Rate limit
@@ -35,7 +37,7 @@ export async function GET(request: NextRequest) {
   const now = Date.now();
   const last = lastRequestByIp.get(ip) || 0;
   if (now - last < 1000) {
-    return createErrorResponse(authCtx, 'RATE_LIMITED', 'Rate limited', 429);
+    return createErrorResponse(ctx, 'RATE_LIMITED', 'Rate limited', 429);
   }
   lastRequestByIp.set(ip, now);
   // Evict stale entries (>10 min) and cap size
@@ -131,6 +133,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     logger.error('[RAG Observability] Error:', error);
-    return createErrorResponse(authCtx, 'INTERNAL_ERROR', 'Internal error gathering RAG stats', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Internal error gathering RAG stats', 500);
   }
-}
+})

@@ -44,10 +44,25 @@ export function HealthBanner() {
     setTenant(localStorage.getItem('tenantId') || '—')
     // Small delay on first check to let Next.js compile routes on-demand
     const initial = setTimeout(checkHealth, 1000)
-    const interval = setInterval(checkHealth, 15000)
+    let interval: ReturnType<typeof setInterval> | null = setInterval(checkHealth, 15000)
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        if (!interval) {
+          checkHealth()
+          interval = setInterval(checkHealth, 15000)
+        }
+      } else if (interval) {
+        clearInterval(interval)
+        interval = null
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
     return () => {
       clearTimeout(initial)
-      clearInterval(interval)
+      if (interval) clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [checkHealth])
 

@@ -46,6 +46,7 @@ interface ArtifactMetrics {
 export default function ArtifactsAnalyticsPage() {
   const [metrics, setMetrics] = useState<ArtifactMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     loadMetrics();
@@ -53,13 +54,14 @@ export default function ArtifactsAnalyticsPage() {
 
   const loadMetrics = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const tenantId = process.env['NEXT_PUBLIC_TENANT_ID'] || '';
       
       const response = await fetch(`/api/analytics/artifacts?tenantId=${tenantId}`);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch artifact metrics');
+        throw new Error(`Failed to fetch artifact metrics (HTTP ${response.status})`);
       }
       
       const result = await response.json();
@@ -67,43 +69,14 @@ export default function ArtifactsAnalyticsPage() {
       if (result.success && result.data) {
         setMetrics(result.data);
       } else {
-        // Fallback to empty state
-        setMetrics({
-          totalArtifacts: 0,
-          avgConfidence: 0,
-          avgCompleteness: 0,
-          validationIssues: 0,
-          costSavingsTotal: 0,
-          byType: {
-            OVERVIEW: { count: 0, avgConfidence: 0, avgCompleteness: 0, issues: 0 },
-            FINANCIAL: { count: 0, avgConfidence: 0, avgCompleteness: 0, issues: 0 },
-            CLAUSES: { count: 0, avgConfidence: 0, avgCompleteness: 0, issues: 0 },
-            RATES: { count: 0, avgConfidence: 0, avgCompleteness: 0, issues: 0 },
-            COMPLIANCE: { count: 0, avgConfidence: 0, avgCompleteness: 0, issues: 0 },
-            RISK: { count: 0, avgConfidence: 0, avgCompleteness: 0, issues: 0 }
-          },
-          recentActivity: []
-        });
+        // API returned success=false — treat as an error so user sees a retry, not a fake empty state.
+        throw new Error(result.error?.message || 'Artifact analytics service returned no data');
       }
-    } catch {
-      // Set empty state on error
-      toast.error('Failed to load artifact analytics');
-      setMetrics({
-        totalArtifacts: 0,
-        avgConfidence: 0,
-        avgCompleteness: 0,
-        validationIssues: 0,
-        costSavingsTotal: 0,
-        byType: {
-          OVERVIEW: { count: 0, avgConfidence: 0, avgCompleteness: 0, issues: 0 },
-          FINANCIAL: { count: 0, avgConfidence: 0, avgCompleteness: 0, issues: 0 },
-          CLAUSES: { count: 0, avgConfidence: 0, avgCompleteness: 0, issues: 0 },
-          RATES: { count: 0, avgConfidence: 0, avgCompleteness: 0, issues: 0 },
-          COMPLIANCE: { count: 0, avgConfidence: 0, avgCompleteness: 0, issues: 0 },
-          RISK: { count: 0, avgConfidence: 0, avgCompleteness: 0, issues: 0 }
-        },
-        recentActivity: []
-      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load artifact analytics';
+      setLoadError(message);
+      toast.error(message);
+      setMetrics(null);
     } finally {
       setLoading(false);
     }
@@ -127,6 +100,31 @@ export default function ArtifactsAnalyticsPage() {
               </div>
               <p className="text-slate-600">Loading artifact analytics...</p>
             </motion.div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError && !metrics) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
+        <div className="max-w-[1600px] mx-auto py-8">
+          <div className="mb-2"><PageBreadcrumb /></div>
+          <div className="mt-8 p-8 bg-white rounded-2xl border border-rose-200 shadow-sm max-w-2xl mx-auto">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-rose-50 rounded-xl">
+                <AlertTriangle className="h-6 w-6 text-rose-600" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-slate-900">Couldn't load artifact analytics</h2>
+                <p className="text-sm text-slate-600 mt-1">{loadError}</p>
+                <Button onClick={loadMetrics} className="mt-4" variant="outline">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

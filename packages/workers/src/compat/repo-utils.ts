@@ -7,27 +7,36 @@ import * as semanticChunker from '@repo/utils/rag/semantic-chunker';
 import * as adaptiveChunker from '@repo/utils/rag/adaptive-chunker';
 import * as distributedCache from '@repo/utils/cache/distributed-cache';
 
-export const getQueueService = queueService.getQueueService;
-export const QUEUE_NAMES = contractQueue.QUEUE_NAMES;
-export const JOB_NAMES = contractQueue.JOB_NAMES;
-export const QUEUE_PRIORITY = contractQueue.QUEUE_PRIORITY;
+const queueServiceModule = (queueService as any).default ?? queueService;
+const contractQueueModule = (contractQueue as any).default ?? contractQueue;
+const circuitBreakerModule = (circuitBreaker as any).default ?? circuitBreaker;
+const retryModule = (retryHelpers as any).default ?? retryHelpers;
+const redisEventBusModule = (redisEventBusExports as any).default ?? redisEventBusExports;
+const semanticChunkerModule = (semanticChunker as any).default ?? semanticChunker;
+const adaptiveChunkerModule = (adaptiveChunker as any).default ?? adaptiveChunker;
+const distributedCacheModule = (distributedCache as any).default ?? distributedCache;
 
-export const CircuitBreaker = circuitBreaker.CircuitBreaker;
-export const CircuitState = circuitBreaker.CircuitState;
-export const CircuitBreakerError = circuitBreaker.CircuitBreakerError;
+export const getQueueService = queueServiceModule.getQueueService;
+export const QUEUE_NAMES = contractQueueModule.QUEUE_NAMES;
+export const JOB_NAMES = contractQueueModule.JOB_NAMES;
+export const QUEUE_PRIORITY = contractQueueModule.QUEUE_PRIORITY;
 
-export const retry = retryHelpers.retry;
-export const retryOpenAI = retryHelpers.retryOpenAI;
-export const retryStorage = retryHelpers.retryStorage;
+export const CircuitBreaker = circuitBreakerModule.CircuitBreaker;
+export const CircuitState = circuitBreakerModule.CircuitState;
+export const CircuitBreakerError = circuitBreakerModule.CircuitBreakerError;
 
-export const redisEventBus = redisEventBusExports.redisEventBus;
-export const RedisEvents = redisEventBusExports.RedisEvents;
-export const publishJobProgress = redisEventBusExports.publishJobProgress;
+export const retry = retryModule.retry;
+export const retryOpenAI = retryModule.retryOpenAI;
+export const retryStorage = retryModule.retryStorage;
 
-export const semanticChunk = semanticChunker.semanticChunk;
-export const adaptiveChunk = adaptiveChunker.adaptiveChunk;
+export const redisEventBus = redisEventBusModule.redisEventBus;
+export const RedisEvents = redisEventBusModule.RedisEvents;
+export const publishJobProgress = redisEventBusModule.publishJobProgress;
 
-export const ocrCache = distributedCache.ocrCache;
+export const semanticChunk = semanticChunkerModule.semanticChunk;
+export const adaptiveChunk = adaptiveChunkerModule.adaptiveChunk;
+
+export const ocrCache = distributedCacheModule.ocrCache;
 
 export type { JobType } from '@repo/utils/queue/queue-service';
 export type {

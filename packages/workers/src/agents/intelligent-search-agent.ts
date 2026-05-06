@@ -14,7 +14,7 @@ import type {
 import { logger } from '../utils/logger';
 import { openai } from '../lib/openai';
 import clientsDb from 'clients-db';
-import { Prisma } from 'clients-db';
+import { Prisma } from '@prisma/client';
 
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 const prisma = getClient();

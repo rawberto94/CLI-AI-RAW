@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import getDb from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
-import { getAuthenticatedApiContext, getApiContext, parseQueryParams, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, parseQueryParams, createSuccessResponse, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware';
 import { z } from 'zod';
 
 const deadlinesQuerySchema = z.object({
@@ -15,23 +14,18 @@ export const dynamic = 'force-dynamic';
  * GET /api/deadlines
  * Get all contract deadlines and obligations
  */
-export async function GET(request: NextRequest) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const validated = parseQueryParams(request, deadlinesQuerySchema);
+  if (!validated.success) {
+    return createValidationErrorResponse(ctx, validated.error);
   }
-  try {
-    const validated = parseQueryParams(request, deadlinesQuerySchema);
-    if (!validated.success) {
-      return createValidationErrorResponse(ctx, validated.error);
-    }
-    const queryParams = validated.data;
-    const tenantId = await getApiTenantId(request);
-    const client = queryParams.client || null;
-    const type = queryParams.type || null;
+  const queryParams = validated.data;
+  const tenantId = ctx.tenantId;
+  const client = queryParams.client || null;
+  const type = queryParams.type || null;
 
-    try {
-      const db = await getDb();
+  try {
+    const db = await getDb();
 
       // Fetch all contracts with date fields
       const contracts = await db.contract.findMany({
@@ -197,11 +191,7 @@ export async function GET(request: NextRequest) {
         }
       });
 
-    } catch {
-      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'Database temporarily unavailable. Please retry.', 503);
-    }
-
-  } catch (error: unknown) {
-    return handleApiError(ctx, error);
+  } catch {
+    return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'Database temporarily unavailable. Please retry.', 503);
   }
-}
+});

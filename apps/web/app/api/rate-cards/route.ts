@@ -125,14 +125,14 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     
     // Get authenticated user from session
-    const tenantId = ctx.tenantId || ctx.tenantId;
+  const tenantId = ctx.tenantId;
     
     // Require tenant ID for data isolation
     if (!tenantId) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required. Please authenticate or provide x-tenant-id header.', 400);
     }
     
-    const userId = ctx.userId || body.userId || 'system';
+    const userId = ctx.userId;
 
     // Convert date strings to Date objects
     if (body.effectiveDate) {

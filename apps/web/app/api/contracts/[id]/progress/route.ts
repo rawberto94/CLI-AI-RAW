@@ -5,28 +5,21 @@
 
 import { NextRequest } from 'next/server'
 import { progressTracker } from '@/lib/progress-tracker'
-import { auth } from '@/lib/auth';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContextWithSessionFallback, getApiContext, createErrorResponse } from '@/lib/api-middleware';
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
+  const ctx = await getAuthenticatedApiContextWithSessionFallback(request);
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   const contractId = params.id;
 
-  // Authenticate — reject unauthenticated access
-  const session = await auth();
-  if (!session?.user?.id) {
-    return new Response(
-      JSON.stringify({ error: 'Unauthorized' }),
-      { status: 401, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
+  // Note: SSE handlers return Response (not NextResponse) so they keep the imperative
+  // auth pattern, but now share the same session fallback as withContractSessionApiHandler.
 
   // Create SSE response
   const encoder = new TextEncoder()

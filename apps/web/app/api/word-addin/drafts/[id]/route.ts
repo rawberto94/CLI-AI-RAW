@@ -6,8 +6,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withAuthApiHandler,
   createSuccessResponse,
   createErrorResponse,
 } from '@/lib/api-middleware';
@@ -24,13 +23,9 @@ const updateDraftSchema = z.object({
 type RouteParams = { params: Promise<{ id: string }> };
 
 /** Fetch a single draft with its template and content */
-export async function GET(req: NextRequest, { params }: RouteParams) {
-  const apiCtx = getApiContext(req);
+export const GET = withAuthApiHandler(async (_req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
-
-    const { id } = await params;
+    const { id } = await (ctx as any).params as { id: string };
 
     const draft = await prisma.contractDraft.findFirst({
       where: { id, tenantId: ctx.tenantId },
@@ -77,18 +72,14 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     });
   } catch (error) {
     logger.error('Word Add-in get draft error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch draft', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to fetch draft', 500);
   }
-}
+});
 
 /** Update a draft */
-export async function PUT(req: NextRequest, { params }: RouteParams) {
-  const apiCtx = getApiContext(req);
+export const PUT = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
-
-    const { id } = await params;
+    const { id } = await (ctx as any).params as { id: string };
     const body = await req.json();
     const parsed = updateDraftSchema.safeParse(body);
     if (!parsed.success) {
@@ -127,18 +118,14 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     });
   } catch (error) {
     logger.error('Word Add-in update draft error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to update draft', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to update draft', 500);
   }
-}
+});
 
 /** Delete a draft (soft-delete by setting status) */
-export async function DELETE(req: NextRequest, { params }: RouteParams) {
-  const apiCtx = getApiContext(req);
+export const DELETE = withAuthApiHandler(async (_req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
-
-    const { id } = await params;
+    const { id } = await (ctx as any).params as { id: string };
 
     const existing = await prisma.contractDraft.findFirst({
       where: { id, tenantId: ctx.tenantId },
@@ -156,6 +143,6 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     return createSuccessResponse(ctx, { deleted: true });
   } catch (error) {
     logger.error('Word Add-in delete draft error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to delete draft', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to delete draft', 500);
   }
-}
+});

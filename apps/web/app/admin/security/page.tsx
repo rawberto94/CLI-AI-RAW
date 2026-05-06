@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { unwrapApiResponseData } from '@/lib/api-fetch';
 import { useSession } from 'next-auth/react';
+import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import {
   Shield,
   Key,
@@ -91,13 +93,14 @@ interface SecuritySettings {
 
 export default function SecurityPage() {
   const { data: _session } = useSession();
+  const confirm = useConfirm();
   const [_loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [mfaStatus, setMfaStatus] = useState<MFAStatus>({ enabled: false, method: null, enrolledAt: null });
   const [ipAllowlist, setIpAllowlist] = useState<IPAllowlistEntry[]>([]);
   const [settings, setSettings] = useState<SecuritySettings>({
     mfaRequired: false,
-    sessionTimeout: 24,
+    sessionTimeout: 8,
     ipAllowlistEnabled: false,
     passwordPolicy: {
       minLength: 8,
@@ -113,6 +116,11 @@ export default function SecurityPage() {
   const [mfaQRCode, setMfaQRCode] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [isEnrolling, setIsEnrolling] = useState(false);
+  const [setupPassword, setSetupPassword] = useState('');
+  const [showDisableMFADialog, setShowDisableMFADialog] = useState(false);
+  const [disableMFAToken, setDisableMFAToken] = useState('');
+  const [disableMFAPassword, setDisableMFAPassword] = useState('');
+  const [savingSecuritySettings, setSavingSecuritySettings] = useState(false);
 
   // IP Allowlist
   const [showAddIP, setShowAddIP] = useState(false);
@@ -129,23 +137,30 @@ export default function SecurityPage() {
       ]);
 
       if (sessionsRes.ok) {
-        const data = await sessionsRes.json();
+        const data = unwrapApiResponseData<{ sessions?: Session[] }>(await sessionsRes.json());
         setSessions(data.sessions || []);
       }
 
       if (mfaRes.ok) {
-        const data = await mfaRes.json();
-        setMfaStatus(data);
+        const data = unwrapApiResponseData<{ mfaEnabled?: boolean }>(await mfaRes.json());
+        setMfaStatus({
+          enabled: Boolean(data.mfaEnabled),
+          method: data.mfaEnabled ? 'TOTP' : null,
+          enrolledAt: null,
+        });
       }
 
       if (ipRes.ok) {
-        const data = await ipRes.json();
+        const data = unwrapApiResponseData<{ enabled?: boolean; entries?: IPAllowlistEntry[] }>(await ipRes.json());
         setIpAllowlist(data.entries || []);
+        setSettings(prev => ({ ...prev, ipAllowlistEnabled: Boolean(data.enabled) }));
       }
 
       if (settingsRes.ok) {
-        const data = await settingsRes.json();
-        setSettings(data.settings || settings);
+        const data = unwrapApiResponseData<{ settings?: SecuritySettings }>(await settingsRes.json());
+        if (data.settings) {
+          setSettings(prev => ({ ...prev, ...data.settings }));
+        }
       }
     } catch (_error) {
       console.error('Failed to fetch security data');
@@ -159,16 +174,23 @@ export default function SecurityPage() {
   }, []);
 
   const handleStartMFASetup = async () => {
+    if (!setupPassword.trim()) {
+      toast.error('Enter your current password to start MFA setup');
+      return;
+    }
+
     try {
-      const response = await fetch('/api/auth/mfa/setup', {
+      const response = await fetch('/api/auth/mfa', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setup', password: setupPassword }),
       });
 
       if (!response.ok) throw new Error();
 
-      const data = await response.json();
+      const data = unwrapApiResponseData<{ secret: string; qrCodeUri: string }>(await response.json());
       setMfaSecret(data.secret);
-      setMfaQRCode(data.qrCode);
+      setMfaQRCode(data.qrCodeUri);
       setShowMFASetup(true);
     } catch {
       toast.error('Failed to start MFA setup');
@@ -183,10 +205,10 @@ export default function SecurityPage() {
 
     setIsEnrolling(true);
     try {
-      const response = await fetch('/api/auth/mfa/verify', {
+      const response = await fetch('/api/auth/mfa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: verificationCode, secret: mfaSecret }),
+        body: JSON.stringify({ action: 'verify-setup', token: verificationCode }),
       });
 
       if (!response.ok) throw new Error();
@@ -194,6 +216,7 @@ export default function SecurityPage() {
       toast.success('MFA enabled successfully');
       setShowMFASetup(false);
       setVerificationCode('');
+      setSetupPassword('');
       fetchSecurityData();
     } catch {
       toast.error('Invalid verification code');
@@ -203,16 +226,32 @@ export default function SecurityPage() {
   };
 
   const handleDisableMFA = async () => {
-    if (!confirm('Are you sure you want to disable MFA?')) return;
+    setShowDisableMFADialog(true);
+  };
+
+  const submitDisableMFA = async () => {
+    if (!disableMFAToken && !disableMFAPassword) {
+      toast.error('Enter your current MFA code or password');
+      return;
+    }
 
     try {
-      const response = await fetch('/api/auth/mfa/disable', {
+      const response = await fetch('/api/auth/mfa', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'disable',
+          token: disableMFAToken || undefined,
+          password: disableMFAPassword || undefined,
+        }),
       });
 
       if (!response.ok) throw new Error();
 
       toast.success('MFA disabled');
+      setShowDisableMFADialog(false);
+      setDisableMFAToken('');
+      setDisableMFAPassword('');
       fetchSecurityData();
     } catch {
       toast.error('Failed to disable MFA');
@@ -235,7 +274,14 @@ export default function SecurityPage() {
   };
 
   const handleRevokeAllSessions = async () => {
-    if (!confirm('This will log out all users except you. Continue?')) return;
+    const ok = await confirm({
+      title: 'Sign out all other users?',
+      description: 'Every active session except yours will be terminated. Users will need to sign in again.',
+      confirmText: 'Sign out all',
+      variant: 'warning',
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
       const response = await fetch('/api/admin/sessions', {
@@ -277,8 +323,10 @@ export default function SecurityPage() {
 
   const handleRemoveIP = async (id: string) => {
     try {
-      const response = await fetch(`/api/admin/security/ip-allowlist/${id}`, {
+      const response = await fetch('/api/admin/security/ip-allowlist', {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entryId: id }),
       });
 
       if (!response.ok) throw new Error();
@@ -292,7 +340,7 @@ export default function SecurityPage() {
 
   const handleExportAuditLogs = async () => {
     try {
-      const response = await fetch('/api/admin/audit-logs/export?format=csv');
+      const response = await fetch('/api/admin/audit/export?format=csv');
       if (!response.ok) throw new Error();
 
       const blob = await response.blob();
@@ -306,6 +354,38 @@ export default function SecurityPage() {
       toast.success('Audit logs exported');
     } catch {
       toast.error('Failed to export audit logs');
+    }
+  };
+
+  const handleSaveSecuritySettings = async () => {
+    setSavingSecuritySettings(true);
+    try {
+      const [settingsResponse, ipSettingsResponse] = await Promise.all([
+        fetch('/api/admin/security-settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ settings }),
+        }),
+        fetch('/api/admin/security/ip-allowlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'updateSettings', enabled: settings.ipAllowlistEnabled }),
+        }),
+      ]);
+
+      if (!settingsResponse.ok || !ipSettingsResponse.ok) {
+        throw new Error('Failed to save security settings');
+      }
+
+      const data = unwrapApiResponseData<{ settings?: SecuritySettings }>(await settingsResponse.json());
+      if (data.settings) {
+        setSettings(prev => ({ ...prev, ...data.settings, ipAllowlistEnabled: settings.ipAllowlistEnabled }));
+      }
+      toast.success('Security settings saved');
+    } catch {
+      toast.error('Failed to save security settings');
+    } finally {
+      setSavingSecuritySettings(false);
     }
   };
 
@@ -396,10 +476,22 @@ export default function SecurityPage() {
                     Disable MFA
                   </Button>
                 ) : (
-                  <Button onClick={handleStartMFASetup}>
-                    <Smartphone className="h-4 w-4 mr-2" />
-                    Enable MFA
-                  </Button>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="mfa-setup-password">Current Password</Label>
+                      <Input
+                        id="mfa-setup-password"
+                        type="password"
+                        value={setupPassword}
+                        onChange={(e) => setSetupPassword(e.target.value)}
+                        placeholder="Required to start MFA setup"
+                      />
+                    </div>
+                    <Button onClick={handleStartMFASetup} disabled={!setupPassword.trim()}>
+                      <Smartphone className="h-4 w-4 mr-2" />
+                      Enable MFA
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -446,15 +538,18 @@ export default function SecurityPage() {
               <DialogHeader>
                 <DialogTitle>Set Up Two-Factor Authentication</DialogTitle>
                 <DialogDescription>
-                  Scan the QR code with your authenticator app
+                  Add the manual key below to your authenticator app, then confirm with a 6-digit code.
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4">
                 {mfaQRCode && (
-                  <div className="flex justify-center">
-                    <img src={mfaQRCode} alt="MFA QR Code" className="w-48 h-48" />
-                  </div>
+                  <Alert>
+                    <AlertTitle>Authenticator Setup URI</AlertTitle>
+                    <AlertDescription className="break-all font-mono text-xs">
+                      {mfaQRCode}
+                    </AlertDescription>
+                  </Alert>
                 )}
 
                 <div className="space-y-2">
@@ -492,6 +587,57 @@ export default function SecurityPage() {
                 </Button>
                 <Button onClick={handleVerifyMFA} disabled={isEnrolling}>
                   {isEnrolling ? 'Verifying...' : 'Verify & Enable'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog
+            open={showDisableMFADialog}
+            onOpenChange={(open) => {
+              setShowDisableMFADialog(open);
+              if (!open) {
+                setDisableMFAToken('');
+                setDisableMFAPassword('');
+              }
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Disable Two-Factor Authentication</DialogTitle>
+                <DialogDescription>
+                  Confirm this change with your current MFA code or your password.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Current MFA Code</Label>
+                  <Input
+                    placeholder="123456"
+                    value={disableMFAToken}
+                    onChange={(e) => setDisableMFAToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    maxLength={6}
+                    className="text-center text-2xl tracking-widest"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Or Current Password</Label>
+                  <Input
+                    type="password"
+                    value={disableMFAPassword}
+                    onChange={(e) => setDisableMFAPassword(e.target.value)}
+                    placeholder="Current password"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowDisableMFADialog(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={submitDisableMFA}>
+                  Disable MFA
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -779,7 +925,7 @@ export default function SecurityPage() {
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Users will be logged out after this period of inactivity
+                    Users will be prompted to sign in again after this session duration
                   </p>
                 </div>
               </CardContent>
@@ -787,7 +933,9 @@ export default function SecurityPage() {
           </div>
 
           <div className="flex justify-end mt-6">
-            <Button>Save Security Settings</Button>
+            <Button onClick={handleSaveSecuritySettings} disabled={savingSecuritySettings}>
+              {savingSecuritySettings ? 'Saving...' : 'Save Security Settings'}
+            </Button>
           </div>
         </TabsContent>
       </Tabs>

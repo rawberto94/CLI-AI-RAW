@@ -6,8 +6,8 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
-import { rateCardExtractionService } from 'data-orchestration/services';
+import { realTimeBenchmarkService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 interface SaveRateCardRequest {
   rates: Array<{
@@ -41,15 +41,12 @@ interface SaveRateCardRequest {
   };
 }
 
-export async function POST(request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {    const tenantId = ctx.tenantId;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { contractId } = await (ctx as any).params as { contractId: string };
+
+  try {
+    const tenantId = ctx.tenantId;
     const userId = ctx.userId;
-    const { contractId } = params;
 
     const body: SaveRateCardRequest = await request.json();
 
@@ -195,17 +192,11 @@ try {    const tenantId = ctx.tenantId;
       }
     }
 
-    // Trigger benchmark calculations in background (fire and forget)
+    // Trigger benchmark recalculation in-process so extracted rates don't depend on a missing HTTP endpoint.
     if (savedRateCards.length > 0) {
-      Promise.all(
-        savedRateCards.map((rc) =>
-          fetch(`${request.nextUrl.origin}/api/rate-cards/${rc.id}/benchmark`, {
-            method: 'POST',
-            headers: {
-              'x-tenant-id': tenantId,
-            },
-          }).catch(() => { /* Benchmark calculation failed silently */ })
-        )
+      const benchmarkService = new realTimeBenchmarkService(prisma);
+      void Promise.allSettled(
+        savedRateCards.map((rateCard) => benchmarkService.recalculateBenchmark(rateCard.id))
       );
     }
 
@@ -223,4 +214,4 @@ try {    const tenantId = ctx.tenantId;
     const message = error instanceof Error ? error.message : 'Unknown error';
     return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to save rate cards: ${message}`, 500);
   }
-}
+});

@@ -6,6 +6,7 @@
  */
 
 import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query';
+import { unwrapApiResponseData } from '@/lib/api-fetch';
 import { toast } from 'sonner';
 import { getTenantId } from '@/lib/tenant';
 import { queryKeys } from './use-queries';
@@ -28,12 +29,22 @@ interface OptimisticMutationOptions<TData, TVariables> {
 interface ApiKeyData {
   id: string;
   name: string;
-  key?: string;
-  prefix?: string;
+  keyPreview: string;
   permissions: string[];
   createdAt: string;
   isActive: boolean;
-  lastUsed?: string;
+  lastUsedAt?: string;
+  expiresAt?: string | null;
+}
+
+interface CreatedApiKeyResponse {
+  apiKey: {
+    key: string;
+    keyPrefix: string;
+    name: string;
+    scopes: string[];
+    expiresAt?: string | null;
+  };
 }
 
 interface WebhookData {
@@ -91,7 +102,7 @@ async function fetchWithTenant<T>(url: string, options?: RequestInit): Promise<T
     throw new Error(error.message || `HTTP ${response.status}`);
   }
   
-  return response.json();
+  return unwrapApiResponseData<T>(await response.json());
 }
 
 /**
@@ -174,7 +185,7 @@ export function useDeleteApiKey() {
 
   return useMutation({
     mutationFn: (keyId: string) => 
-      fetchWithTenant(`/api/settings/api-keys/${keyId}`, { method: 'DELETE' }),
+      fetchWithTenant(`/api/admin/api-keys?id=${encodeURIComponent(keyId)}`, { method: 'DELETE' }),
     onMutate: async (keyId) => {
       await queryClient.cancelQueries({ queryKey: ['api-keys'] });
       const previous = queryClient.getQueryData<ApiKeyData[]>(['api-keys']);
@@ -201,9 +212,9 @@ export function useToggleApiKey() {
 
   return useMutation({
     mutationFn: ({ keyId, isActive }: { keyId: string; isActive: boolean }) => 
-      fetchWithTenant(`/api/settings/api-keys/${keyId}`, {
+      fetchWithTenant(`/api/admin/api-keys`, {
         method: 'PATCH',
-        body: JSON.stringify({ isActive }),
+        body: JSON.stringify({ id: keyId, isActive }),
       }),
     onMutate: async ({ keyId, isActive }) => {
       await queryClient.cancelQueries({ queryKey: ['api-keys'] });
@@ -229,10 +240,14 @@ export function useCreateApiKey() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { name: string; permissions: string[] }) => 
-      fetchWithTenant<{ apiKey: ApiKeyData }>('/api/settings/api-keys', {
+    mutationFn: (data: { name: string; permissions: string[]; expiresInDays?: number }) => 
+      fetchWithTenant<CreatedApiKeyResponse>('/api/admin/api-keys', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          name: data.name,
+          scopes: data.permissions,
+          expiresInDays: data.expiresInDays,
+        }),
       }),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['api-keys'] });
@@ -263,7 +278,7 @@ export function useDeleteWebhook() {
 
   return useMutation({
     mutationFn: (webhookId: string) => 
-      fetchWithTenant(`/api/settings/webhooks/${webhookId}`, { method: 'DELETE' }),
+      fetchWithTenant(`/api/webhooks/${webhookId}`, { method: 'DELETE' }),
     onMutate: async (webhookId) => {
       await queryClient.cancelQueries({ queryKey: ['webhooks'] });
       const previous = queryClient.getQueryData<WebhookData[]>(['webhooks']);
@@ -290,7 +305,7 @@ export function useToggleWebhook() {
 
   return useMutation({
     mutationFn: ({ webhookId, isActive }: { webhookId: string; isActive: boolean }) => 
-      fetchWithTenant(`/api/settings/webhooks/${webhookId}`, {
+      fetchWithTenant(`/api/webhooks/${webhookId}`, {
         method: 'PATCH',
         body: JSON.stringify({ isActive }),
       }),
@@ -319,7 +334,7 @@ export function useCreateWebhook() {
 
   return useMutation({
     mutationFn: (data: Partial<WebhookData>) => 
-      fetchWithTenant<{ webhook: WebhookData }>('/api/settings/webhooks', {
+      fetchWithTenant<WebhookData>('/api/webhooks', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
@@ -338,8 +353,8 @@ export function useUpdateWebhook() {
 
   return useMutation({
     mutationFn: ({ webhookId, ...data }: { webhookId: string } & Partial<WebhookData>) => 
-      fetchWithTenant<{ webhook: WebhookData }>(`/api/settings/webhooks/${webhookId}`, {
-        method: 'PUT',
+      fetchWithTenant<WebhookData>(`/api/webhooks/${webhookId}`, {
+        method: 'PATCH',
         body: JSON.stringify(data),
       }),
     onMutate: async ({ webhookId, ...data }) => {
@@ -365,7 +380,7 @@ export function useUpdateWebhook() {
 export function useTestWebhook() {
   return useMutation({
     mutationFn: (webhookId: string) => 
-      fetchWithTenant(`/api/settings/webhooks/${webhookId}/test`, { method: 'POST' }),
+      fetchWithTenant(`/api/webhooks/${webhookId}/test`, { method: 'POST' }),
     onSuccess: () => {
       toast.success('Test webhook sent');
     },

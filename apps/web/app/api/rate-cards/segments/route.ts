@@ -12,14 +12,12 @@ const segmentService = new segmentManagementService(prisma);
 export const GET = withAuthApiHandler(async (request, ctx) => {
     const searchParams = request.nextUrl.searchParams;
     
-    // Get authenticated user from session
-    const tenantId = ctx.tenantId || ctx.tenantId;
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
     
-    if (!tenantId) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
+    if (!tenantId || !userId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
-    
-    const userId = ctx.userId || 'system';
     
     const includeShared = searchParams.get('includeShared') === 'true';
     const skip = searchParams.get('skip') ? Math.max(0, parseInt(searchParams.get('skip')!) || 0) : undefined;
@@ -41,14 +39,12 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
 export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     
-    // Get authenticated user from session
-    const tenantId = ctx.tenantId || ctx.tenantId;
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
     
-    if (!tenantId) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
+    if (!tenantId || !userId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
-    
-    const userId = ctx.userId || 'system';
 
     const segment = await segmentService.createSegment(tenantId, userId, {
       name: body.name,

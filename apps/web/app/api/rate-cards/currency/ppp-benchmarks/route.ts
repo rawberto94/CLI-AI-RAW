@@ -1,11 +1,10 @@
 import { NextRequest } from 'next/server';
 import { pppAdjustmentService } from 'data-orchestration/services';
-import { getApiTenantId } from '@/lib/security/tenant';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const GET = withAuthApiHandler(async (request, ctx) => {
     const searchParams = request.nextUrl.searchParams;
-    const tenantId = await getApiTenantId(request);
+  const tenantId = ctx.tenantId;
     const roleStandardized = searchParams.get('role');
     const seniority = searchParams.get('seniority');
     const targetCountry = searchParams.get('targetCountry') || 'USA';

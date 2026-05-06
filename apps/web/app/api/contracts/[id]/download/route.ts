@@ -14,10 +14,9 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
 import { initializeStorage } from '@/lib/storage-service';
 import {
-  getAuthenticatedApiContext,
+  getAuthenticatedApiContextWithSessionFallback,
   getApiContext,
   createErrorResponse,
   handleApiError,
@@ -29,7 +28,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getAuthenticatedApiContext(request);
+  const ctx = await getAuthenticatedApiContextWithSessionFallback(request);
   if (!ctx) {
     return createErrorResponse(
       getApiContext(request),
@@ -41,7 +40,7 @@ export async function GET(
   }
 
   try {
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     const { id } = await params;
 
     const contract = await prisma.contract.findFirst({

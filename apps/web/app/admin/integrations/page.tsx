@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import {
   Database,
   Plus,
@@ -33,6 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { ApiError, apiDelete, apiFetch, apiPost } from '@/lib/api-fetch';
 
 // Types for database connections
 interface DatabaseConnection {
@@ -112,6 +114,7 @@ const CONNECTION_TYPES = [
 ];
 
 export default function DataConnectionsPage() {
+  const confirm = useConfirm();
   const [connections, setConnections] = useState<DatabaseConnection[]>([]);
   const [showNewConnection, setShowNewConnection] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
@@ -152,11 +155,8 @@ export default function DataConnectionsPage() {
   useEffect(() => {
     async function loadConnections() {
       try {
-        const response = await fetch('/api/admin/data-connections');
-        if (response.ok) {
-          const data = await response.json();
-          setConnections(data.connections || []);
-        }
+        const data = await apiFetch<{ connections?: DatabaseConnection[] }>('/api/admin/data-connections');
+        setConnections(data.connections || []);
       } catch {
         // Error handled silently
       } finally {
@@ -205,24 +205,18 @@ export default function DataConnectionsPage() {
     setTestResult(null);
     
     try {
-      const response = await fetch('/api/admin/data-connections/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await apiPost<{ success?: boolean; message?: string }>('/api/admin/data-connections/test', {
           type: selectedType,
           ...formData,
-        }),
-      });
-      
-      const data = await response.json();
+        });
       setTestResult({
-        success: data.success,
+        success: Boolean(data.success),
         message: data.message || (data.success ? 'Connection successful!' : 'Connection failed'),
       });
-    } catch (_err) {
+    } catch (error) {
       setTestResult({
         success: false,
-        message: 'Failed to test connection',
+        message: error instanceof ApiError ? error.message : 'Failed to test connection',
       });
     } finally {
       setIsTesting(false);
@@ -236,21 +230,15 @@ export default function DataConnectionsPage() {
     setIsSaving(true);
     
     try {
-      const response = await fetch('/api/admin/data-connections', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await apiPost<{ connection: DatabaseConnection }>('/api/admin/data-connections', {
           type: selectedType,
           name: formData.name,
           config: formData,
           syncMode,
           autoSync,
           syncFrequency,
-        }),
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
+        });
+      if (data.connection) {
         setConnections(prev => [...prev, data.connection]);
         resetForm();
       }
@@ -268,12 +256,8 @@ export default function DataConnectionsPage() {
         c.id === connectionId ? { ...c, status: 'syncing' } : c
       ));
       
-      const response = await fetch(`/api/admin/data-connections/${connectionId}/sync`, {
-        method: 'POST',
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
+      const data = await apiPost<{ contractCount?: number }>(`/api/admin/data-connections/${connectionId}/sync`, {});
+      if (typeof data.contractCount === 'number') {
         setConnections(prev => prev.map(c => 
           c.id === connectionId ? { ...c, status: 'connected', lastSync: new Date().toISOString(), contractCount: data.contractCount } : c
         ));
@@ -287,17 +271,20 @@ export default function DataConnectionsPage() {
 
   // Delete connection
   const deleteConnection = useCallback(async (connectionId: string) => {
-    if (!confirm('Are you sure you want to delete this connection?')) return;
+    const ok = await confirm({
+      ...confirmPresets.delete(),
+      title: 'Delete data connection?',
+      description: 'This connection will stop syncing immediately and all linked sync history will be removed. This cannot be undone.',
+    });
+    if (!ok) return;
     
     try {
-      await fetch(`/api/admin/data-connections/${connectionId}`, {
-        method: 'DELETE',
-      });
+      await apiDelete(`/api/admin/data-connections/${connectionId}`);
       setConnections(prev => prev.filter(c => c.id !== connectionId));
     } catch {
       // Error handled silently
     }
-  }, []);
+  }, [confirm]);
 
   const selectedTypeConfig = CONNECTION_TYPES.find(t => t.id === selectedType);
 

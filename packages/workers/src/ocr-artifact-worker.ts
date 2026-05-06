@@ -6,10 +6,8 @@ dotenv.config();
 type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any };
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
+import { buildPersistedContractTextFields } from '@repo/utils';
 import {
-  CircuitBreaker,
-  CircuitBreakerError,
-  CircuitState,
   getQueueService,
   ocrCache,
   publishJobProgress,
@@ -23,6 +21,7 @@ import {
   type JobType,
   type ProcessContractJobData,
 } from './compat/repo-utils';
+import * as circuitBreakerExports from '../../utils/src/patterns/circuit-breaker.ts';
 import pino from 'pino';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
@@ -640,8 +639,59 @@ function logQualityMetrics(metrics: ExtractionQualityMetrics): void {
   }
 }
 
+type CircuitBreakerLike = {
+  execute<T>(fn: () => Promise<T>): Promise<T>;
+  getState(): unknown;
+  getMetrics(): unknown;
+  reset(): void;
+};
+
+type CircuitBreakerOptionsLike = {
+  failureThreshold: number;
+  successThreshold: number;
+  resetTimeout: number;
+  requestTimeout: number;
+  onStateChange?: (from: unknown, to: unknown, metrics: unknown) => void;
+  onFailure?: (error: Error, metrics: unknown) => void;
+};
+
+function getCircuitBreakerCtor(): new (name: string, options: CircuitBreakerOptionsLike) => CircuitBreakerLike {
+  const ctor = (circuitBreakerExports as any).CircuitBreaker ?? (circuitBreakerExports as any).default?.CircuitBreaker;
+  if (typeof ctor !== 'function') {
+    throw new TypeError('CircuitBreaker constructor unavailable');
+  }
+  return ctor;
+}
+
+function getCircuitBreakerErrorCtor(): new (...args: any[]) => Error {
+  const errorCtor = (circuitBreakerExports as any).CircuitBreakerError ?? (circuitBreakerExports as any).default?.CircuitBreakerError;
+  if (typeof errorCtor !== 'function') {
+    throw new TypeError('CircuitBreakerError constructor unavailable');
+  }
+  return errorCtor;
+}
+
+function getCircuitState() {
+  const state = (circuitBreakerExports as any).CircuitState ?? (circuitBreakerExports as any).default?.CircuitState;
+  if (!state) {
+    throw new TypeError('CircuitState enum unavailable');
+  }
+  return state as { OPEN: unknown; CLOSED: unknown; HALF_OPEN: unknown };
+}
+
+function createLazyCircuitBreaker(name: string, options: CircuitBreakerOptionsLike) {
+  let instance: CircuitBreakerLike | null = null;
+  return () => {
+    if (!instance) {
+      const CircuitBreaker = getCircuitBreakerCtor();
+      instance = new CircuitBreaker(name, options);
+    }
+    return instance;
+  };
+}
+
 // Circuit breakers for external services (Swiss-compliant only)
-const mistralCircuitBreaker = new CircuitBreaker('mistral-ocr', {
+const getMistralCircuitBreaker = createLazyCircuitBreaker('mistral-ocr', {
   failureThreshold: 7,                    // Increased tolerance
   successThreshold: 2,                    // Faster recovery
   resetTimeout: 45000,                    // 45 seconds - faster reset
@@ -654,7 +704,7 @@ const mistralCircuitBreaker = new CircuitBreaker('mistral-ocr', {
   },
 });
 
-const azureCircuitBreaker = new CircuitBreaker('azure-ch-ocr', {
+const getAzureCircuitBreaker = createLazyCircuitBreaker('azure-ch-ocr', {
   failureThreshold: 7,                    // Increased tolerance
   successThreshold: 2,                    // Faster recovery
   resetTimeout: 45000,                    // 45 seconds
@@ -667,7 +717,7 @@ const azureCircuitBreaker = new CircuitBreaker('azure-ch-ocr', {
   },
 });
 
-const storageCircuitBreaker = new CircuitBreaker('storage', {
+const getStorageCircuitBreaker = createLazyCircuitBreaker('storage', {
   failureThreshold: 3,
   successThreshold: 2,
   resetTimeout: 10000,
@@ -1113,7 +1163,7 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
   if (DI_MODES.includes(ocrMode as OCRMode)) {
     try {
       const { isDIConfigured, isDIEnabled } = await import('./azure-document-intelligence');
-      if (isDIConfigured() && isDIEnabled() && azureCircuitBreaker.getState() !== CircuitState.OPEN) {
+      if (isDIConfigured() && isDIEnabled() && getAzureCircuitBreaker().getState() !== getCircuitState().OPEN) {
         onProgress?.(15); // DI submission starting
 
         // Page-range limiting for large documents (cost optimization)
@@ -1127,7 +1177,7 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
           logger.info({ estimatedPages, pageRange, DI_MAX_PAGES }, 'Large document detected — limiting DI to page range for cost savings');
         }
 
-        const structuredResult = await azureCircuitBreaker.execute(() =>
+        const structuredResult = await getAzureCircuitBreaker().execute(() =>
           retry(async (): Promise<StructuredOCRResult> => {
             const { analyzeLayout, analyzeContract, analyzeInvoice } = await import('./azure-document-intelligence');
             const fileBuffer = await fs.readFile(filePath);
@@ -1340,11 +1390,11 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
   
   for (const mode of fallbackOrder) {
     // Check circuit breaker state before attempting
-    if (mode === 'mistral' && mistralCircuitBreaker.getState() === CircuitState.OPEN) {
+    if (mode === 'mistral' && getMistralCircuitBreaker().getState() === getCircuitState().OPEN) {
       logger.warn('Mistral circuit breaker is open, skipping');
       continue;
     }
-    if (mode === 'azure-ch' && azureCircuitBreaker.getState() === CircuitState.OPEN) {
+    if (mode === 'azure-ch' && getAzureCircuitBreaker().getState() === getCircuitState().OPEN) {
       logger.warn('Azure Switzerland circuit breaker is open, skipping');
       continue;
     }
@@ -1363,7 +1413,7 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
           },
         });
       } else if (mode === 'mistral') {
-        result = await mistralCircuitBreaker.execute(() => 
+        result = await getMistralCircuitBreaker().execute(() => 
           retry(() => performMistralOCR(filePath), {
             maxAttempts: 3,
             initialDelay: 1000,
@@ -1374,7 +1424,7 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
           })
         );
       } else if (mode === 'azure-ch') {
-        result = await azureCircuitBreaker.execute(() => 
+        result = await getAzureCircuitBreaker().execute(() => 
           retry(() => performAzureSwitzerlandOCR(filePath), {
             maxAttempts: 3,
             initialDelay: 1000,
@@ -1401,7 +1451,7 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       
-      if (error instanceof CircuitBreakerError) {
+      if (error instanceof getCircuitBreakerErrorCtor()) {
         logger.warn({ mode, state: error.state }, 'Circuit breaker prevented OCR call, trying next');
       } else {
         logger.warn({ mode, error: lastError.message }, 'OCR mode failed, trying next');
@@ -1460,7 +1510,7 @@ async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
     const diEndpoint = process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
     const diKey = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
 
-    if (diEndpoint && diKey && azureCircuitBreaker.getState() !== CircuitState.OPEN) {
+    if (diEndpoint && diKey && getAzureCircuitBreaker().getState() !== getCircuitState().OPEN) {
       try {
         const { analyzeLayout } = await import('./azure-document-intelligence');
         const result = await analyzeLayout(fileBuffer, { extractKeyValuePairs: true });
@@ -2043,7 +2093,7 @@ export async function processOCRArtifactJob(
       jobLogger.info({ storagePath }, 'Downloading from S3/MinIO');
       
       // Use circuit breaker and retry for storage operations
-      const fileBuffer = await storageCircuitBreaker.execute(() => 
+      const fileBuffer = await getStorageCircuitBreaker().execute(() => 
         retryStorage(async () => {
           const getObjectCommand = new GetObjectCommand({
             Bucket: process.env.S3_BUCKET || process.env.MINIO_BUCKET || 'contracts',
@@ -2399,7 +2449,7 @@ export async function processOCRArtifactJob(
     if (extractedText && extractedText.length > 0) {
       try {
         const ocrUpdateData: Record<string, any> = {
-          rawText: extractedText,
+          ...buildPersistedContractTextFields(extractedText),
           ocrProvider: ocrMode,
           ocrModel: ocrMode.startsWith('azure-di-') ? `prebuilt-${ocrMode.replace('azure-di-', '')}` : undefined,
           ocrProcessedAt: new Date(),
@@ -4659,9 +4709,9 @@ if (isMainModule) {
  */
 export function getCircuitBreakerMetrics() {
   return {
-    mistral: mistralCircuitBreaker.getMetrics(),
-    azure: azureCircuitBreaker.getMetrics(),
-    storage: storageCircuitBreaker.getMetrics(),
+    mistral: getMistralCircuitBreaker().getMetrics(),
+    azure: getAzureCircuitBreaker().getMetrics(),
+    storage: getStorageCircuitBreaker().getMetrics(),
   };
 }
 
@@ -4669,8 +4719,8 @@ export function getCircuitBreakerMetrics() {
  * Reset circuit breakers (for testing or manual intervention)
  */
 export function resetCircuitBreakers() {
-  mistralCircuitBreaker.reset();
-  azureCircuitBreaker.reset();
-  storageCircuitBreaker.reset();
+  getMistralCircuitBreaker().reset();
+  getAzureCircuitBreaker().reset();
+  getStorageCircuitBreaker().reset();
   logger.info('All circuit breakers reset');
 }

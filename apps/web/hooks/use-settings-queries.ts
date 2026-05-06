@@ -6,6 +6,7 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { unwrapApiResponseData } from '@/lib/api-fetch';
 import { getTenantId } from '@/lib/tenant';
 
 // =====================
@@ -34,6 +35,55 @@ export interface ApiKeyConfig {
   createdAt: string;
   isActive: boolean;
   lastUsed?: string;
+}
+
+interface WebhookApiRecord {
+  id: string;
+  name: string;
+  url: string;
+  events: string[];
+  isActive: boolean;
+  secret?: string;
+  createdAt: string;
+  lastDeliveryAt?: string | null;
+  failureCount: number;
+}
+
+interface ApiKeyApiRecord {
+  id: string;
+  name: string;
+  key_prefix: string;
+  scopes: string[];
+  is_active: boolean;
+  last_used_at?: string | null;
+  created_at: string;
+}
+
+function mapWebhook(record: WebhookApiRecord): WebhookConfig {
+  return {
+    id: record.id,
+    name: record.name,
+    url: record.url,
+    events: record.events,
+    isActive: record.isActive,
+    secret: record.secret,
+    createdAt: record.createdAt,
+    lastTriggeredAt: record.lastDeliveryAt || undefined,
+    lastStatus: record.lastDeliveryAt ? (record.failureCount > 0 ? 'failed' : 'success') : undefined,
+    failureCount: record.failureCount,
+  };
+}
+
+function mapApiKey(record: ApiKeyApiRecord): ApiKeyConfig {
+  return {
+    id: record.id,
+    name: record.name,
+    prefix: record.key_prefix,
+    permissions: record.scopes,
+    createdAt: record.created_at,
+    isActive: record.is_active,
+    lastUsed: record.last_used_at || undefined,
+  };
 }
 
 // =====================
@@ -67,7 +117,7 @@ async function fetchWithTenant<T>(url: string, options?: RequestInit): Promise<T
     throw new Error(error.message || `HTTP ${response.status}`);
   }
   
-  return response.json();
+  return unwrapApiResponseData<T>(await response.json());
 }
 
 // =====================
@@ -87,8 +137,8 @@ export function useWebhooksQuery(options: UseWebhooksQueryOptions = {}) {
   return useQuery({
     queryKey: ['webhooks'],
     queryFn: async () => {
-      const response = await fetchWithTenant<{ webhooks: WebhookConfig[] }>('/api/settings/webhooks');
-      return response.webhooks;
+      const response = await fetchWithTenant<WebhookApiRecord[]>('/api/webhooks');
+      return response.map(mapWebhook);
     },
     enabled,
     staleTime: 30 * 1000, // 30 seconds
@@ -114,8 +164,8 @@ export function useApiKeysQuery(options: UseApiKeysQueryOptions = {}) {
   return useQuery({
     queryKey: ['api-keys'],
     queryFn: async () => {
-      const response = await fetchWithTenant<{ apiKeys: ApiKeyConfig[] }>('/api/settings/api-keys');
-      return response.apiKeys;
+      const response = await fetchWithTenant<{ apiKeys: ApiKeyApiRecord[] }>('/api/admin/api-keys');
+      return (response.apiKeys || []).map(mapApiKey);
     },
     enabled,
     staleTime: 30 * 1000,
@@ -135,8 +185,8 @@ export function usePrefetchSettings() {
       queryClient.prefetchQuery({
         queryKey: ['webhooks'],
         queryFn: async () => {
-          const response = await fetchWithTenant<{ webhooks: WebhookConfig[] }>('/api/settings/webhooks');
-          return response.webhooks;
+          const response = await fetchWithTenant<WebhookApiRecord[]>('/api/webhooks');
+          return response.map(mapWebhook);
         },
         staleTime: 30 * 1000,
       });
@@ -145,8 +195,8 @@ export function usePrefetchSettings() {
       queryClient.prefetchQuery({
         queryKey: ['api-keys'],
         queryFn: async () => {
-          const response = await fetchWithTenant<{ apiKeys: ApiKeyConfig[] }>('/api/settings/api-keys');
-          return response.apiKeys;
+          const response = await fetchWithTenant<{ apiKeys: ApiKeyApiRecord[] }>('/api/admin/api-keys');
+          return (response.apiKeys || []).map(mapApiKey);
         },
         staleTime: 30 * 1000,
       });

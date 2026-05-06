@@ -20,10 +20,13 @@ import {
   BarChart3,
   Target,
   AlertCircle,
+  AlertTriangle,
+  RefreshCw,
   LineChart
 } from 'lucide-react';
 
 export default function ProcurementAnalyticsHub() {
+  const [statsError, setStatsError] = useState<string | null>(null);
   const [quickStats, setQuickStats] = useState<{
     label: string;
     value: string;
@@ -38,10 +41,10 @@ export default function ProcurementAnalyticsHub() {
   const [loading, setLoading] = useState(true);
 
   // Fetch real procurement stats
-  useEffect(() => {
-    async function fetchStats() {
+  const fetchStats = React.useCallback(async () => {
       try {
         setLoading(true);
+        setStatsError(null);
         
         // Fetch stats from multiple endpoints in parallel
         const [suppliersRes, savingsRes, renewalsRes] = await Promise.allSettled([
@@ -49,6 +52,14 @@ export default function ProcurementAnalyticsHub() {
           fetch('/api/analytics/savings?mode=real'),
           fetch('/api/renewals?mode=real'),
         ]);
+
+        // If every upstream call failed, surface the error instead of rendering zeros.
+        const allFailed = [suppliersRes, savingsRes, renewalsRes].every(
+          r => r.status === 'rejected' || !('value' in r) || !r.value.ok,
+        );
+        if (allFailed) {
+          throw new Error('Procurement analytics services are unreachable');
+        }
 
         const suppliersData = suppliersRes.status === 'fulfilled' && suppliersRes.value.ok 
           ? await suppliersRes.value.json() : null;
@@ -92,14 +103,17 @@ export default function ProcurementAnalyticsHub() {
         ]);
       } catch (error) {
         console.error('Failed to fetch procurement stats:', error);
-        toast.error('Failed to load procurement statistics');
+        const message = error instanceof Error ? error.message : 'Failed to load procurement statistics';
+        setStatsError(message);
+        toast.error(message);
       } finally {
         setLoading(false);
       }
-    }
+    }, []);
 
+  useEffect(() => {
     fetchStats();
-  }, []);
+  }, [fetchStats]);
   const getModuleIcon = (id: string) => {
     const icons: Record<string, any> = {
       'suppliers': Users,
@@ -212,6 +226,19 @@ export default function ProcurementAnalyticsHub() {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {statsError && !loading && quickStats.length === 0 ? (
+            <div className="col-span-full p-4 bg-white border border-rose-200 rounded-xl flex items-start gap-3 shadow-sm">
+              <AlertTriangle className="h-5 w-5 text-rose-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-900">Couldn't load procurement stats</p>
+                <p className="text-xs text-slate-600 mt-0.5">{statsError}</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={fetchStats}>
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                Retry
+              </Button>
+            </div>
+          ) : null}
           {quickStats.map((stat, index) => (
             <motion.div
               key={index}

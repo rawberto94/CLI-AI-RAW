@@ -12,16 +12,25 @@ import { validateToolArgs } from '@/lib/ai/tool-validation';
 describe('Tool Args Validation', () => {
 
   describe('update_contract validation', () => {
-    it('rejects invalid contractId (not UUID)', () => {
+    it('rejects invalid contractId (contains disallowed chars)', () => {
       const result = validateToolArgs('update_contract', {
-        contractId: 'not-a-uuid',
+        contractId: "bad id'; DROP TABLE--",
         field: 'status',
         value: 'ACTIVE',
       });
       expect(result.valid).toBe(false);
       if (!result.valid) {
-        expect(result.error).toContain('UUID');
+        expect(result.error.toLowerCase()).toMatch(/id|slug/);
       }
+    });
+
+    it('accepts slug-style contractId (e.g. seeded test IDs)', () => {
+      const result = validateToolArgs('update_contract', {
+        contractId: 'test-contract-1',
+        field: 'status',
+        value: 'ACTIVE',
+      });
+      expect(result.valid).toBe(true);
     });
 
     it('rejects disallowed field names', () => {
@@ -133,9 +142,14 @@ describe('Tool Args Validation', () => {
   });
 
   describe('get_contract_details validation', () => {
-    it('rejects non-UUID contractId', () => {
-      const result = validateToolArgs('get_contract_details', { contractId: 'abc' });
+    it('rejects contractId with disallowed chars', () => {
+      const result = validateToolArgs('get_contract_details', { contractId: 'abc def' });
       expect(result.valid).toBe(false);
+    });
+
+    it('accepts slug-style contractId (e.g. seeded IDs)', () => {
+      const result = validateToolArgs('get_contract_details', { contractId: 'test-contract-1' });
+      expect(result.valid).toBe(true);
     });
 
     it('accepts valid UUID', () => {
@@ -157,10 +171,10 @@ describe('Tool Args Validation', () => {
       expect(result.valid).toBe(false);
     });
 
-    it('rejects invalid optional contractId', () => {
+    it('rejects invalid optional contractId (disallowed chars)', () => {
       const result = validateToolArgs('navigate_to_page', {
         page: 'contracts',
-        contractId: 'not-uuid',
+        contractId: 'bad id with spaces',
       });
       expect(result.valid).toBe(false);
     });
@@ -207,9 +221,9 @@ describe('Tool Args Validation', () => {
   });
 
   describe('approve_or_reject_step validation', () => {
-    it('rejects non-UUID executionId', () => {
+    it('rejects executionId with disallowed chars', () => {
       const result = validateToolArgs('approve_or_reject_step', {
-        executionId: 'invalid',
+        executionId: 'bad id;DROP',
         decision: 'approve',
       });
       expect(result.valid).toBe(false);
@@ -259,8 +273,8 @@ describe('Tool Args Validation', () => {
       expect(result.valid).toBe(true);
     });
 
-    it('rejects escalate_workflow with invalid UUID', () => {
-      const result = validateToolArgs('escalate_workflow', { executionId: 'bad' });
+    it('rejects escalate_workflow with disallowed-chars executionId', () => {
+      const result = validateToolArgs('escalate_workflow', { executionId: 'bad id' });
       expect(result.valid).toBe(false);
     });
 

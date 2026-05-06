@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { negotiationAssistantService } from 'data-orchestration/services';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createErrorResponse } from '@/lib/api-middleware';
 
 type NegotiationBrief = Awaited<ReturnType<negotiationAssistantService['generateNegotiationBrief']>>;
 
@@ -36,14 +36,21 @@ interface NegotiationRisk {
 
 const negotiationService = new negotiationAssistantService(prisma);
 
-export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  const { id: rateCardId } = await (ctx as any).params as { id: string };
+
+  try {
+    const existingRateCard = await prisma.rateCardEntry.findFirst({
+      where: {
+        id: rateCardId,
+        tenantId: ctx.tenantId,
+      },
+      select: { id: true },
+    });
+
+    if (!existingRateCard) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card not found', 404);
     }
-try {
-    const rateCardId = params.id;
 
     // Generate comprehensive negotiation brief
     const brief = await negotiationService.generateNegotiationBrief(rateCardId);
@@ -62,9 +69,9 @@ try {
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to export negotiation brief';
 
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', errorMessage, 500)
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', errorMessage, 500);
   }
-}
+});
 
 function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
   const currentDate = new Date().toLocaleDateString('en-US', {

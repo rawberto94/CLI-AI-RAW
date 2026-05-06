@@ -19,6 +19,18 @@ const logger = pino({ name: 'goal-execution-worker' });
 
 let workerInstance: any = null;
 
+function getRedisConnectionFromUrl(redisUrl: string) {
+  const parsed = new URL(redisUrl);
+
+  return {
+    host: parsed.hostname,
+    port: parsed.port ? parseInt(parsed.port, 10) : 6379,
+    password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
+    maxRetriesPerRequest: null,
+    ...(parsed.protocol === 'rediss:' ? { tls: {} } : {}),
+  };
+}
+
 /**
  * Start the BullMQ worker that processes approved agent goals.
  */
@@ -152,7 +164,7 @@ export async function startGoalWorker(): Promise<void> {
       return { status: 'triggered', goalId };
     },
     {
-      connection: { url: redisUrl },
+      connection: getRedisConnectionFromUrl(redisUrl),
       concurrency: 3,
       removeOnComplete: { age: 86400 * 7 },  // Keep completed jobs 7 days
       removeOnFail: { age: 86400 * 30 },      // Keep failed jobs 30 days

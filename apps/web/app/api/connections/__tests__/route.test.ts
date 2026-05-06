@@ -4,8 +4,8 @@ import { NextRequest } from 'next/server';
 const {
   mockGetMetrics, mockGetMetricsHistory, mockGetConnectionsByTenant,
   mockGetConnectionsByUser, mockFindStaleConnections, mockFindTimedOutConnections,
-  mockCleanupConnections, mockGetConnection, mockUnregisterConnection,
-  mockGetDegradationStatus, mockGetQueueStatus, mockBroadcast,
+  mockGetConnection, mockUnregisterConnection,
+  mockBroadcast,
   mockBroadcastToTenant, mockBroadcastToUser,
 } = vi.hoisted(() => ({
   mockGetMetrics: vi.fn(),
@@ -14,11 +14,8 @@ const {
   mockGetConnectionsByUser: vi.fn(),
   mockFindStaleConnections: vi.fn(),
   mockFindTimedOutConnections: vi.fn(),
-  mockCleanupConnections: vi.fn(),
   mockGetConnection: vi.fn(),
   mockUnregisterConnection: vi.fn(),
-  mockGetDegradationStatus: vi.fn(),
-  mockGetQueueStatus: vi.fn(),
   mockBroadcast: vi.fn(),
   mockBroadcastToTenant: vi.fn(),
   mockBroadcastToUser: vi.fn(),
@@ -32,11 +29,8 @@ vi.mock('data-orchestration/services', () => ({
     getConnectionsByUser: mockGetConnectionsByUser,
     findStaleConnections: mockFindStaleConnections,
     findTimedOutConnections: mockFindTimedOutConnections,
-    cleanupConnections: mockCleanupConnections,
     getConnection: mockGetConnection,
     unregisterConnection: mockUnregisterConnection,
-    getDegradationStatus: mockGetDegradationStatus,
-    getQueueStatus: mockGetQueueStatus,
     broadcast: mockBroadcast,
     broadcastToTenant: mockBroadcastToTenant,
     broadcastToUser: mockBroadcastToUser,
@@ -98,7 +92,33 @@ describe('GET /api/connections', () => {
   });
 
   it('returns metrics by default', async () => {
-    mockGetMetrics.mockReturnValue({ totalConnections: 5, activeConnections: 3 });
+    mockGetConnectionsByTenant.mockReturnValue([
+      {
+        id: 'conn-1',
+        tenantId: 'test-tenant',
+        state: 'connected',
+        createdAt: new Date(Date.now() - 10000),
+        lastActivity: new Date(),
+        reconnectAttempts: 1,
+      },
+      {
+        id: 'conn-2',
+        tenantId: 'test-tenant',
+        state: 'connected',
+        createdAt: new Date(Date.now() - 20000),
+        lastActivity: new Date(),
+        reconnectAttempts: 2,
+      },
+      {
+        id: 'conn-3',
+        tenantId: 'test-tenant',
+        state: 'error',
+        createdAt: new Date(Date.now() - 30000),
+        lastActivity: new Date(),
+        reconnectAttempts: 0,
+      },
+    ]);
+    mockFindStaleConnections.mockReturnValue([{ id: 'stale-1', tenantId: 'test-tenant' }]);
 
     const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/connections');
     const response = await GET(request);
@@ -106,12 +126,20 @@ describe('GET /api/connections', () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.data.totalConnections).toBe(5);
+    expect(data.data.totalConnections).toBe(3);
+    expect(data.data.activeConnections).toBe(2);
     expect(data.data.timestamp).toBeDefined();
   });
 
   it('returns metrics history when action=history', async () => {
-    mockGetMetricsHistory.mockReturnValue({ history: [] });
+    mockGetMetricsHistory.mockReturnValue([
+      {
+        timestamp: new Date('2026-04-28T10:00:00.000Z'),
+        metrics: {
+          connectionsByTenant: { 'test-tenant': 4 },
+        },
+      },
+    ]);
 
     const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/connections', {
       searchParams: { action: 'history' },
@@ -122,6 +150,7 @@ describe('GET /api/connections', () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(mockGetMetricsHistory).toHaveBeenCalled();
+    expect(data.data.history).toHaveLength(1);
   });
 
   it('returns stale connections when action=stale', async () => {
@@ -138,6 +167,30 @@ describe('GET /api/connections', () => {
     expect(data.success).toBe(true);
     expect(data.data.stale).toBeDefined();
     expect(data.data.timedOut).toBeDefined();
+  });
+
+  it('returns 403 for global degradation status action', async () => {
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/connections', {
+      searchParams: { action: 'degradation' },
+    });
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('FORBIDDEN');
+  });
+
+  it('returns 403 for global queue status action', async () => {
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/connections', {
+      searchParams: { action: 'queue' },
+    });
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('FORBIDDEN');
   });
 });
 
@@ -156,7 +209,33 @@ describe('POST /api/connections', () => {
   });
 
   it('performs cleanup', async () => {
-    mockCleanupConnections.mockReturnValue(2);
+    const staleConnection = {
+      id: 'stale-1',
+      tenantId: 'test-tenant',
+      controller: { close: vi.fn() },
+      lastActivity: new Date(Date.now() - 120000),
+      createdAt: new Date(),
+      state: 'connected',
+      reconnectAttempts: 0,
+    };
+    const timedOutConnection = {
+      id: 'timeout-1',
+      tenantId: 'test-tenant',
+      controller: { close: vi.fn() },
+      lastActivity: new Date(),
+      createdAt: new Date(Date.now() - 400000),
+      state: 'connected',
+      reconnectAttempts: 0,
+    };
+
+    mockFindStaleConnections.mockReturnValue([staleConnection]);
+    mockFindTimedOutConnections.mockReturnValue([timedOutConnection]);
+    mockGetConnection.mockImplementation((id: string) => {
+      if (id === 'stale-1') return staleConnection;
+      if (id === 'timeout-1') return timedOutConnection;
+      return undefined;
+    });
+    mockUnregisterConnection.mockReturnValue(true);
 
     const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/connections', {
       body: { action: 'cleanup' },
@@ -167,6 +246,7 @@ describe('POST /api/connections', () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.data.cleanedCount).toBe(2);
+    expect(mockUnregisterConnection).toHaveBeenCalledTimes(2);
   });
 
   it('returns 400 for invalid action', async () => {

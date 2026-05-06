@@ -10,6 +10,7 @@
 import { NextRequest } from 'next/server';
 import { withCronHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 import { optionalImport } from '@/lib/server/optional-module';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,17 @@ export const GET = withCronHandler(async (request, ctx) => {
     const { searchParams } = new URL(request.url);
     const tenantId = searchParams.get('tenantId') || undefined;
     const daysAhead = parseInt(searchParams.get('daysAhead') || '90');
+
+    if (tenantId) {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { id: true },
+      });
+
+      if (!tenant) {
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
+      }
+    }
 
     const workerModule = await optionalImport<{ triggerRenewalCheck: (args: any) => Promise<any> }>(
       '@workspace/workers/renewal-alert-worker'

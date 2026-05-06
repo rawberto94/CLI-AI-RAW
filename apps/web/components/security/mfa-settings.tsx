@@ -57,6 +57,11 @@ export function MFASettings() {
   const [showBackupCodes, setShowBackupCodes] = useState(false);
   const [newBackupCodes, setNewBackupCodes] = useState<string[] | null>(null);
   const [disablePassword, setDisablePassword] = useState('');
+  // Server requires password re-auth before issuing a TOTP secret so that a
+  // compromised session cannot enroll MFA under an attacker-controlled secret
+  // and lock out the real user.
+  const [showSetupPasswordDialog, setShowSetupPasswordDialog] = useState(false);
+  const [setupPassword, setSetupPassword] = useState('');
   const [copied, setCopied] = useState(false);
 
   const fetchStatus = async () => {
@@ -79,23 +84,37 @@ export function MFASettings() {
   }, []);
 
   const initSetup = async () => {
+    // Step 1: collect the user's password via a small dialog. Step 2 (below)
+    // actually fetches the TOTP secret from the server with that password.
+    setSetupPassword('');
+    setShowSetupPasswordDialog(true);
+  };
+
+  const confirmInitSetup = async () => {
+    if (!setupPassword) {
+      toast.error('Enter your password to continue');
+      return;
+    }
     try {
       setIsSettingUp(true);
       const response = await fetch('/api/auth/mfa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'setup' }),
+        body: JSON.stringify({ action: 'setup', password: setupPassword }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to initialize MFA setup');
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to initialize MFA setup');
       }
 
       const data = await response.json();
       setSetupData(data);
+      setShowSetupPasswordDialog(false);
+      setSetupPassword('');
       setShowSetupDialog(true);
     } catch (err) {
-      toast.error('Failed to start MFA setup');
+      toast.error(err instanceof Error ? err.message : 'Failed to start MFA setup');
     } finally {
       setIsSettingUp(false);
     }
@@ -368,6 +387,48 @@ Store these codes in a secure location.`;
           </div>
         </CardContent>
       </Card>
+
+      {/* Password confirm dialog — gate MFA setup on password re-auth */}
+      <Dialog open={showSetupPasswordDialog} onOpenChange={setShowSetupPasswordDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm your password</DialogTitle>
+            <DialogDescription>
+              To protect your account, enter your password before we generate a
+              new two-factor secret.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="mfa-setup-password">Password</Label>
+            <Input
+              id="mfa-setup-password"
+              type="password"
+              autoFocus
+              value={setupPassword}
+              onChange={(e) => setSetupPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmInitSetup();
+              }}
+              placeholder="Enter your password"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSetupPasswordDialog(false)} disabled={isSettingUp}>
+              Cancel
+            </Button>
+            <Button onClick={confirmInitSetup} disabled={isSettingUp || !setupPassword}>
+              {isSettingUp ? (
+                <>
+                  <RefreshCcw className="h-4 w-4 mr-2 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                'Continue'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Setup Dialog */}
       <Dialog open={showSetupDialog} onOpenChange={setShowSetupDialog}>

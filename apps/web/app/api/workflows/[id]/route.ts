@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { workflowService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
@@ -9,17 +8,10 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/workflows/:id - Get specific workflow
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
-    const { id: workflowId } = await params;
-    const tenantId = await getApiTenantId(request);
+    const { id: workflowId } = await (ctx as any).params as { id: string };
+    const tenantId = ctx.tenantId;
     
     if (!tenantId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
@@ -58,24 +50,17 @@ export async function GET(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 /**
  * PUT /api/workflows/:id - Update workflow
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
-    const { id: workflowId } = await params;
+    const { id: workflowId } = await (ctx as any).params as { id: string };
     const body = await request.json();
     const { name, description, type, steps, isActive, triggerType, config, metadata } = body;
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     
     if (!tenantId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
@@ -149,23 +134,16 @@ export async function PUT(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 /**
  * PATCH /api/workflows/:id - Partially update workflow (e.g., toggle active status)
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
-    const { id: workflowId } = await params;
+    const { id: workflowId } = await (ctx as any).params as { id: string };
     const body = await request.json();
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     
     if (!tenantId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
@@ -208,22 +186,15 @@ export async function PATCH(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 /**
  * DELETE /api/workflows/:id - Delete workflow
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const DELETE = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
-    const { id: workflowId } = await params;
-    const tenantId = await getApiTenantId(request);
+    const { id: workflowId } = await (ctx as any).params as { id: string };
+    const tenantId = ctx.tenantId;
     
     if (!tenantId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
@@ -261,4 +232,4 @@ export async function DELETE(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})

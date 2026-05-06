@@ -5,27 +5,22 @@
 
 import { NextRequest } from "next/server";
 import { contractService } from "@/lib/data-orchestration";
-import { getServerTenantId } from "@/lib/tenant-server";
 import { triggerArtifactGeneration, PROCESSING_PRIORITY } from "@/lib/artifact-trigger";
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
-export async function POST(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-  const params = await context.params;
-  const contractId = params?.id;
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
 
   if (!contractId) {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
   }
 
   try {
-    const tenantId = await getServerTenantId();
+    const tenantId = ctx.tenantId;
+
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
+    }
     
     // Get contract using real service
     const result = await contractService.getContract(contractId, tenantId);
@@ -59,4 +54,4 @@ export async function POST(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

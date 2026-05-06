@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { contractService } from 'data-orchestration/services'
 import { getTenantIdFromRequest } from '@/lib/tenant-server'
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic'
 
@@ -10,16 +9,10 @@ export const dynamic = 'force-dynamic'
  * GET /api/contracts/[id]/family-health
  * Returns health assessment for a contract and its family
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
   try {
-    const { id: contractId } = await params
     let tenantId: string
     
     try {
@@ -334,4 +327,4 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

@@ -317,6 +317,156 @@ export const CONTRACT_TEMPLATES: ContractTypeTemplate[] = [
     },
     validationRules: [],
   },
+
+  // -------------------------------------------------------------------------
+  // Data Processing Agreement (DPA / GDPR Art. 28)
+  // -------------------------------------------------------------------------
+  {
+    id: 'dpa',
+    name: 'Data Processing Agreement',
+    description: 'GDPR / data protection processor agreement',
+    category: 'legal',
+    detectionPatterns: [
+      'data processing agreement',
+      'data processing addendum',
+      'data protection agreement',
+      'gdpr addendum',
+      'article 28',
+      'controller-processor agreement',
+    ],
+    detectionKeywords: ['DPA', 'controller', 'processor', 'sub-processor', 'GDPR', 'personal data', 'data subject', 'CCPA'],
+    expectedFields: [
+      { name: 'controller_name', label: 'Data Controller', type: 'text', required: true, extractionHint: 'Party determining purposes/means of processing' },
+      { name: 'processor_name', label: 'Data Processor', type: 'text', required: true, extractionHint: 'Party processing data on behalf of the controller' },
+      { name: 'effective_date', label: 'Effective Date', type: 'date', required: true, extractionHint: 'When the DPA becomes effective' },
+      { name: 'subject_matter', label: 'Subject Matter', type: 'textarea', required: false, extractionHint: 'Description of processing activities' },
+      { name: 'data_categories', label: 'Categories of Personal Data', type: 'textarea', required: false, extractionHint: 'Types of personal data processed' },
+      { name: 'data_subjects', label: 'Categories of Data Subjects', type: 'textarea', required: false, extractionHint: 'Whose data is being processed' },
+      { name: 'subprocessors_allowed', label: 'Sub-processors Allowed', type: 'boolean', required: false, extractionHint: 'Whether sub-processing is permitted' },
+      { name: 'transfer_mechanism', label: 'International Transfer Mechanism', type: 'text', required: false, extractionHint: 'SCCs, BCRs, adequacy decision, etc.' },
+      { name: 'breach_notification_hours', label: 'Breach Notification Window', type: 'duration', required: false, extractionHint: 'Hours within which breaches must be reported' },
+      { name: 'audit_rights', label: 'Audit Rights', type: 'textarea', required: false, extractionHint: 'Frequency and scope of audits' },
+    ],
+    criticalFields: ['controller_name', 'processor_name', 'effective_date'],
+    extractionHints: {
+      parties: 'DPAs identify a controller and a processor; sub-processor lists are often in an Annex/Schedule',
+      transfers: 'International transfer mechanism is typically Standard Contractual Clauses (SCCs) or BCRs',
+      breach: 'Breach notification timeline is usually expressed in hours (e.g., 24h, 72h)',
+    },
+    validationRules: [
+      { field: 'breach_notification_hours', rule: 'max:72', message: 'GDPR breach notification windows are typically ≤72h' },
+    ],
+  },
+
+  // -------------------------------------------------------------------------
+  // Service Level Agreement (SLA)
+  // -------------------------------------------------------------------------
+  {
+    id: 'sla',
+    name: 'Service Level Agreement',
+    description: 'Service performance levels and remedies',
+    category: 'services',
+    detectionPatterns: [
+      'service level agreement',
+      'service levels schedule',
+      'sla schedule',
+      'performance levels',
+    ],
+    detectionKeywords: ['SLA', 'uptime', 'availability', 'service credits', 'response time', 'resolution time', 'severity'],
+    expectedFields: [
+      { name: 'service_name', label: 'Service / Product', type: 'text', required: false, extractionHint: 'Service the SLA covers' },
+      { name: 'effective_date', label: 'Effective Date', type: 'date', required: true, extractionHint: 'When the SLA becomes effective' },
+      { name: 'uptime_target', label: 'Uptime Target', type: 'percentage', required: false, extractionHint: 'Guaranteed availability (e.g. 99.9%)' },
+      { name: 'measurement_window', label: 'Measurement Window', type: 'text', required: false, extractionHint: 'Monthly / quarterly / rolling 30 days' },
+      { name: 'response_time_p1', label: 'Response Time (P1/Critical)', type: 'duration', required: false, extractionHint: 'Initial response for critical incidents' },
+      { name: 'resolution_time_p1', label: 'Resolution Time (P1/Critical)', type: 'duration', required: false, extractionHint: 'Resolution target for critical incidents' },
+      { name: 'service_credits', label: 'Service Credits', type: 'textarea', required: false, extractionHint: 'Credit / refund schedule when SLAs are missed' },
+      { name: 'maintenance_window', label: 'Maintenance Window', type: 'text', required: false, extractionHint: 'Planned downtime exclusions' },
+      { name: 'exclusions', label: 'Exclusions', type: 'textarea', required: false, extractionHint: 'Force majeure, customer-caused outages, etc.' },
+    ],
+    criticalFields: ['effective_date'],
+    extractionHints: {
+      uptime: 'Uptime is usually expressed as a percentage (99%, 99.9%, 99.99%)',
+      remedies: 'Remedies are typically service credits proportional to missed uptime',
+      severities: 'Look for P1/P2/P3/P4 or Severity 1..4 ladders with separate response/resolution targets',
+    },
+    validationRules: [
+      { field: 'uptime_target', rule: 'min:99', message: 'SLA uptime is typically 99% or higher' },
+    ],
+  },
+
+  // -------------------------------------------------------------------------
+  // Partnership / Joint Venture Agreement
+  // -------------------------------------------------------------------------
+  {
+    id: 'partnership',
+    name: 'Partnership Agreement',
+    description: 'Two or more parties agreeing to a business partnership or joint venture',
+    category: 'commercial',
+    detectionPatterns: [
+      'partnership agreement',
+      'joint venture agreement',
+      'jv agreement',
+      'collaboration agreement',
+      'strategic partnership',
+    ],
+    detectionKeywords: ['partner', 'partnership', 'joint venture', 'JV', 'collaboration', 'profit share', 'capital contribution'],
+    expectedFields: [
+      { name: 'partner_a', label: 'Partner A', type: 'text', required: true, extractionHint: 'First partner / contributing party' },
+      { name: 'partner_b', label: 'Partner B', type: 'text', required: true, extractionHint: 'Second partner / contributing party' },
+      { name: 'effective_date', label: 'Effective Date', type: 'date', required: true, extractionHint: 'When the partnership begins' },
+      { name: 'purpose', label: 'Purpose / Business Activity', type: 'textarea', required: false, extractionHint: 'What the partnership is formed to do' },
+      { name: 'profit_split', label: 'Profit Split', type: 'text', required: false, extractionHint: 'How profits are allocated' },
+      { name: 'loss_split', label: 'Loss Split', type: 'text', required: false, extractionHint: 'How losses are allocated' },
+      { name: 'capital_contributions', label: 'Capital Contributions', type: 'textarea', required: false, extractionHint: 'Initial cash/IP/equipment contributed by each partner' },
+      { name: 'governance', label: 'Governance', type: 'textarea', required: false, extractionHint: 'Decision-making, board/manager composition' },
+      { name: 'exit_provisions', label: 'Exit / Wind-up Provisions', type: 'textarea', required: false, extractionHint: 'How partners exit and the partnership is dissolved' },
+    ],
+    criticalFields: ['partner_a', 'partner_b', 'effective_date'],
+    extractionHints: {
+      contributions: 'Capital contributions are often listed in a Schedule with cash, IP, and in-kind components',
+      governance: 'Look for unanimous-vote vs. majority-vote provisions on reserved matters',
+      exit: 'Exit clauses include drag-along, tag-along, ROFR, and buyout formulas',
+    },
+    validationRules: [],
+  },
+
+  // -------------------------------------------------------------------------
+  // Distribution / Reseller Agreement
+  // -------------------------------------------------------------------------
+  {
+    id: 'distribution',
+    name: 'Distribution Agreement',
+    description: 'Authorises a distributor or reseller to sell goods or services',
+    category: 'commercial',
+    detectionPatterns: [
+      'distribution agreement',
+      'distributor agreement',
+      'reseller agreement',
+      'channel partner agreement',
+      'authorised dealer agreement',
+    ],
+    detectionKeywords: ['distributor', 'reseller', 'channel partner', 'territory', 'exclusive', 'non-exclusive', 'minimum purchase'],
+    expectedFields: [
+      { name: 'principal_name', label: 'Principal / Manufacturer', type: 'text', required: true, extractionHint: 'Owner of the products/services' },
+      { name: 'distributor_name', label: 'Distributor / Reseller', type: 'text', required: true, extractionHint: 'Authorised channel partner' },
+      { name: 'effective_date', label: 'Effective Date', type: 'date', required: true, extractionHint: 'When the agreement begins' },
+      { name: 'territory', label: 'Territory', type: 'text', required: false, extractionHint: 'Geographic scope of distribution rights' },
+      { name: 'exclusivity', label: 'Exclusivity', type: 'select', required: false, extractionHint: 'Exclusive / non-exclusive / sole' },
+      { name: 'products_covered', label: 'Products Covered', type: 'textarea', required: false, extractionHint: 'List of products/services in scope' },
+      { name: 'minimum_purchase', label: 'Minimum Purchase Commitment', type: 'currency', required: false, extractionHint: 'Annual or quarterly purchase minimums' },
+      { name: 'discount_or_margin', label: 'Discount / Margin', type: 'percentage', required: false, extractionHint: 'Reseller discount off list price' },
+      { name: 'term_length', label: 'Initial Term', type: 'duration', required: false, extractionHint: 'How long the agreement runs' },
+      { name: 'termination_for_convenience', label: 'Termination for Convenience', type: 'duration', required: false, extractionHint: 'Notice required for at-will termination' },
+    ],
+    criticalFields: ['principal_name', 'distributor_name', 'effective_date'],
+    extractionHints: {
+      territory: 'Territory may be a country list, region (EMEA, APAC), or a defined customer segment',
+      exclusivity: 'Look for "exclusive", "non-exclusive", or "sole" — sole differs from exclusive',
+      pricing: 'Margins/discounts may sit in a price-list Schedule that\'s updated annually',
+    },
+    validationRules: [],
+  },
 ];
 
 // ============================================================================

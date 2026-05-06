@@ -6,21 +6,20 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
-import { rateCardManagementService } from 'data-orchestration/services';
+import {
+  withAuthApiHandler,
+  createSuccessResponse,
+  createErrorResponse,
+} from '@/lib/api-middleware';
 
 /**
  * DELETE /api/rate-cards/filters/[id]
  * Delete a saved filter
  */
-export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
-    const filterId = params.id;
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id: filterId } = await (ctx as any).params as { id: string };
+
+  try {
 
     // Verify ownership
     const filter = await prisma.$queryRaw<any[]>`
@@ -41,20 +40,16 @@ try {
   } catch {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to delete saved filter', 500);
   }
-}
+});
 
 /**
  * PATCH /api/rate-cards/filters/[id]
  * Update a saved filter
  */
-export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
-    const filterId = params.id;
+export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id: filterId } = await (ctx as any).params as { id: string };
+
+  try {
     const body = await request.json();
     const { name, description, filters } = body;
 
@@ -83,4 +78,4 @@ try {
   } catch {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update saved filter', 500);
   }
-}
+});

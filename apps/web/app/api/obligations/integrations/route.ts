@@ -174,19 +174,47 @@ function formatTeamsObligation(obligation: Record<string, unknown>): TeamsMessag
 
 /**
  * Validate webhook URL to prevent SSRF attacks.
- * Only HTTPS URLs to non-private hosts are allowed.
+ * Only HTTPS URLs to known provider hosts are allowed.
+ *
+ * Defense in depth:
+ *   1. Require HTTPS.
+ *   2. Block private/reserved IP ranges and metadata endpoints.
+ *   3. Enforce provider-specific hostname allowlist (Slack, Teams).
  */
-function isAllowedWebhookUrl(url: string): boolean {
+function isAllowedWebhookUrl(url: string, provider?: 'slack' | 'teams'): boolean {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== 'https:') return false;
     const host = parsed.hostname.toLowerCase();
+
     // Block private/reserved ranges and metadata endpoints
     if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '[::1]') return false;
     if (host.startsWith('169.254.') || host.startsWith('10.') || host.startsWith('192.168.')) return false;
-    if (host.startsWith('172.') && parseInt(host.split('.')[1], 10) >= 16 && parseInt(host.split('.')[1], 10) <= 31) return false;
+    const octets = host.split('.');
+    if (octets.length === 4 && octets[0] === '172') {
+      const second = parseInt(octets[1]!, 10);
+      if (Number.isFinite(second) && second >= 16 && second <= 31) return false;
+    }
     if (host.endsWith('.internal') || host.endsWith('.local')) return false;
-    return true;
+    // Block bare IPv6 hosts wholesale (webhook providers use DNS names)
+    if (host.includes(':')) return false;
+
+    // Provider allowlist
+    if (provider === 'slack') {
+      return host === 'hooks.slack.com';
+    }
+    if (provider === 'teams') {
+      return (
+        host.endsWith('.webhook.office.com') ||
+        host.endsWith('.logic.azure.com') // Workflows URL format
+      );
+    }
+    // If no provider specified, require a trusted provider domain
+    return (
+      host === 'hooks.slack.com' ||
+      host.endsWith('.webhook.office.com') ||
+      host.endsWith('.logic.azure.com')
+    );
   } catch {
     return false;
   }
@@ -194,7 +222,7 @@ function isAllowedWebhookUrl(url: string): boolean {
 
 // Send Slack notification
 async function sendSlackNotification(webhookUrl: string, message: SlackMessage): Promise<boolean> {
-  if (!isAllowedWebhookUrl(webhookUrl)) {
+  if (!isAllowedWebhookUrl(webhookUrl, 'slack')) {
     logger.error('Slack webhook URL rejected by SSRF validation:', webhookUrl);
     return false;
   }
@@ -213,7 +241,7 @@ async function sendSlackNotification(webhookUrl: string, message: SlackMessage):
 
 // Send Teams notification
 async function sendTeamsNotification(webhookUrl: string, message: TeamsMessage): Promise<boolean> {
-  if (!isAllowedWebhookUrl(webhookUrl)) {
+  if (!isAllowedWebhookUrl(webhookUrl, 'teams')) {
     logger.error('Teams webhook URL rejected by SSRF validation:', webhookUrl);
     return false;
   }
@@ -433,6 +461,14 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   if (action === 'configure') {
     // Save webhook configuration
     const { slackWebhookUrl, teamsWebhookUrl, slackChannel, teamsChannel, enabled } = body;
+
+    // SSRF defense: validate both URLs on save so bad values never land in the DB.
+    if (slackWebhookUrl && !isAllowedWebhookUrl(slackWebhookUrl, 'slack')) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid Slack webhook URL. Must be an HTTPS URL on hooks.slack.com.', 400);
+    }
+    if (teamsWebhookUrl && !isAllowedWebhookUrl(teamsWebhookUrl, 'teams')) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid Teams webhook URL. Must be an HTTPS URL on *.webhook.office.com or *.logic.azure.com.', 400);
+    }
 
     await prisma.tenantConfig.upsert({
       where: { tenantId: ctx.tenantId },

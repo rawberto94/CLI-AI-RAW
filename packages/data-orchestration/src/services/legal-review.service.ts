@@ -565,6 +565,16 @@ export class LegalReviewService {
       updatedBy: string;
     }>
   ): Promise<Playbook> {
+    // Scope update to tenant to prevent cross-tenant IDOR: PATCH /api/playbooks/[id]
+    // forwards the id straight to this method, and Prisma's `update` with
+    // `where: { id }` alone would let tenant-A silently mutate tenant-B's playbook.
+    const owned = await this.prisma.playbook.findFirst({
+      where: { id: playbookId, tenantId },
+      select: { id: true },
+    });
+    if (!owned) {
+      throw new Error('Playbook not found');
+    }
     const dbPlaybook = await this.prisma.playbook.update({
       where: { id: playbookId },
       data: {
@@ -593,9 +603,14 @@ export class LegalReviewService {
    * Delete playbook
    */
   async deletePlaybook(playbookId: string, tenantId: string): Promise<void> {
-    await this.prisma.playbook.delete({
-      where: { id: playbookId },
+    // Scope delete to tenant to prevent cross-tenant IDOR via any future caller.
+    // (The HTTP DELETE handler already guards, but defense-in-depth at the service.)
+    const result = await this.prisma.playbook.deleteMany({
+      where: { id: playbookId, tenantId },
     });
+    if (result.count === 0) {
+      throw new Error('Playbook not found');
+    }
     this.playbookCache.delete(playbookId);
   }
 
@@ -939,12 +954,18 @@ Return JSON: { "suggestedText": "revised clause text", "explanation": "why this 
   private findRedFlags(content: string, redFlags: RedFlag[]): FoundRedFlag[] {
     const found: FoundRedFlag[] = [];
     const lowerContent = content.toLowerCase();
+    // ReDoS guard: red-flag regex patterns come from user-supplied playbook imports.
+    // A malicious (or accidental) catastrophic-backtracking pattern like `(a+)+b`
+    // against long OCR content can hang the request thread for many seconds.
+    // Bail out of any single pattern's scan once it has consumed > 100ms.
+    const PATTERN_BUDGET_MS = 100;
 
     for (const flag of redFlags) {
       try {
         if (flag.isRegex) {
           const regex = new RegExp(flag.pattern, 'gi');
           let match;
+          const scanStart = Date.now();
           while ((match = regex.exec(content)) !== null) {
             found.push({
               flag,
@@ -954,6 +975,12 @@ Return JSON: { "suggestedText": "revised clause text", "explanation": "why this 
                 endOffset: match.index + match[0].length,
               },
             });
+            if (Date.now() - scanStart > PATTERN_BUDGET_MS) {
+              console.warn('[LegalReview] Red-flag regex time budget exceeded, aborting scan', {
+                patternSample: flag.pattern.slice(0, 80),
+              });
+              break;
+            }
           }
         } else {
           const index = lowerContent.indexOf(flag.pattern.toLowerCase());

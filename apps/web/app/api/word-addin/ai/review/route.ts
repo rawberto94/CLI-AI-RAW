@@ -13,8 +13,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withAuthApiHandler,
   createSuccessResponse,
   createErrorResponse,
 } from '@/lib/api-middleware';
@@ -31,14 +30,8 @@ const reviewSchema = z.object({
   wordCount: z.number().int().min(0).optional().default(0),
 });
 
-export async function POST(req: NextRequest) {
-  const apiCtx = getApiContext(req);
+export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) {
-      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
-    }
-
     const body = await req.json();
     const validation = reviewSchema.safeParse(body);
     if (!validation.success) {
@@ -166,7 +159,7 @@ ${truncatedText}`;
     const isAuth = errMsg.includes('401') || errMsg.includes('Unauthorized');
 
     return createErrorResponse(
-      apiCtx,
+      ctx,
       'SERVER_ERROR',
       isQuota
         ? 'AI quota exhausted — please check your API key or billing'
@@ -176,4 +169,4 @@ ${truncatedText}`;
       500,
     );
   }
-}
+});

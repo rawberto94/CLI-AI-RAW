@@ -19,19 +19,15 @@ import {
   supplierRecommenderService,
   supplierTrendAnalyzerService
 } from 'data-orchestration/services';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 // Get trend analyzer instance (lazy-initialized with prisma)
 const getTrendAnalyzer = () => supplierTrendAnalyzerService.getInstance(prisma);
 
-export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
-    const supplierId = params.id;
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id: supplierId } = await (ctx as any).params as { id: string };
+
+  try {
     const { searchParams } = new URL(request.url);
     const monthsBack = parseInt(searchParams.get('monthsBack') || '12');
     const includeRecommendations = searchParams.get('includeRecommendations') !== 'false';
@@ -95,4 +91,4 @@ try {
   } catch {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch supplier intelligence', 500);
   }
-}
+});

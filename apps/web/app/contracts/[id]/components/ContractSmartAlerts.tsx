@@ -38,6 +38,15 @@ interface SmartAlert {
   }
 }
 
+interface PersistedContractAlert {
+  id: string
+  alertType?: string
+  severity?: string
+  title: string
+  message: string
+  daysBeforeExpiry?: number
+}
+
 interface ContractSmartAlertsProps {
   // Contract data for automatic alert generation
   expirationDate?: Date | string | null
@@ -51,6 +60,7 @@ interface ContractSmartAlertsProps {
   overdueObligations?: number
   hasParties?: boolean
   extractionComplete?: boolean
+  persistedAlerts?: PersistedContractAlert[]
   
   // Custom alerts
   customAlerts?: SmartAlert[]
@@ -106,6 +116,7 @@ export const ContractSmartAlerts = memo(function ContractSmartAlerts({
   overdueObligations,
   hasParties,
   extractionComplete,
+  persistedAlerts = [],
   customAlerts = [],
   onDismissAlert,
   onRequestSignature,
@@ -117,6 +128,43 @@ export const ContractSmartAlerts = memo(function ContractSmartAlerts({
   maxAlerts = 5,
   className,
 }: ContractSmartAlertsProps) {
+  const backendAlerts = useMemo<SmartAlert[]>(() => {
+    return persistedAlerts.map((alert) => {
+      const normalizedType = alert.alertType?.toUpperCase() || ''
+      const normalizedSeverity = alert.severity?.toUpperCase() || 'MEDIUM'
+
+      const category: SmartAlert['category'] = normalizedType.includes('RENEWAL') || normalizedType.includes('NOTICE')
+        ? 'renewal'
+        : 'expiration'
+
+      const type: SmartAlert['type'] = normalizedSeverity === 'CRITICAL'
+        ? 'critical'
+        : normalizedSeverity === 'HIGH'
+          ? 'warning'
+          : normalizedSeverity === 'LOW'
+            ? 'info'
+            : 'warning'
+
+      return {
+        id: alert.id,
+        type,
+        category,
+        title: alert.title,
+        message: alert.message,
+        dismissible: true,
+        priority: normalizedSeverity === 'CRITICAL'
+          ? 96
+          : normalizedSeverity === 'HIGH'
+            ? 84
+            : normalizedSeverity === 'LOW'
+              ? 48
+              : 72,
+        metadata: {
+          daysRemaining: alert.daysBeforeExpiry,
+        },
+      }
+    })
+  }, [persistedAlerts])
   
   // Generate automatic alerts based on contract state
   const generatedAlerts = useMemo<SmartAlert[]>(() => {
@@ -336,14 +384,18 @@ export const ContractSmartAlerts = memo(function ContractSmartAlerts({
     onReviewRisks, onRunExtraction, onViewObligations, onInitiateRenewal,
   ])
   
-  // Combine and sort alerts by priority
-  const allAlerts = useMemo(() => {
-    return [...generatedAlerts, ...customAlerts]
+  const combinedAlerts = useMemo(() => {
+    const authoritativeAlerts = [...backendAlerts, ...customAlerts]
+    const overriddenCategories = new Set(authoritativeAlerts.map((alert) => alert.category))
+    const visibleGeneratedAlerts = generatedAlerts.filter((alert) => !overriddenCategories.has(alert.category))
+
+    return [...visibleGeneratedAlerts, ...authoritativeAlerts]
       .sort((a, b) => b.priority - a.priority)
-      .slice(0, maxAlerts)
-  }, [generatedAlerts, customAlerts, maxAlerts])
+  }, [backendAlerts, customAlerts, generatedAlerts])
+
+  const visibleAlerts = useMemo(() => combinedAlerts.slice(0, maxAlerts), [combinedAlerts, maxAlerts])
   
-  if (allAlerts.length === 0) return null
+  if (visibleAlerts.length === 0) return null
   
   const getAlertStyles = (type: SmartAlert['type']) => {
     switch (type) {
@@ -393,7 +445,7 @@ export const ContractSmartAlerts = memo(function ContractSmartAlerts({
   return (
     <div className={cn("space-y-2", className)}>
       <AnimatePresence mode="popLayout">
-        {allAlerts.map((alert, idx) => {
+        {visibleAlerts.map((alert, idx) => {
           const styles = getAlertStyles(alert.type)
           
           return (
@@ -467,10 +519,10 @@ export const ContractSmartAlerts = memo(function ContractSmartAlerts({
       </AnimatePresence>
       
       {/* Summary badge if more alerts */}
-      {generatedAlerts.length + customAlerts.length > maxAlerts && (
+      {combinedAlerts.length > maxAlerts && (
         <div className="text-center">
           <Badge variant="outline" className="text-xs text-slate-500">
-            +{generatedAlerts.length + customAlerts.length - maxAlerts} more alert{generatedAlerts.length + customAlerts.length - maxAlerts > 1 ? 's' : ''}
+            +{combinedAlerts.length - maxAlerts} more alert{combinedAlerts.length - maxAlerts > 1 ? 's' : ''}
           </Badge>
         </div>
       )}

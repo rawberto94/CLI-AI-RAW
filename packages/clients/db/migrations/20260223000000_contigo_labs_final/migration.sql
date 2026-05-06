@@ -45,6 +45,14 @@ CREATE INDEX IF NOT EXISTS "agent_conversations_timestamp_idx" ON "agent_convers
 CREATE INDEX IF NOT EXISTS "agent_conversations_agent_id_idx" ON "agent_conversations"("agent_id");
 
 -- Create RFxOpportunity table
+-- Create OpportunityUrgency enum if it doesn't exist (must precede table using it)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'OpportunityUrgency') THEN
+        CREATE TYPE "OpportunityUrgency" AS ENUM ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW');
+    END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS "rfx_opportunities" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "tenant_id" TEXT NOT NULL,

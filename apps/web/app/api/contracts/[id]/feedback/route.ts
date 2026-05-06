@@ -9,11 +9,10 @@
  * 3. Enabling AI prompt improvements based on patterns
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { contractService } from 'data-orchestration/services'
 import type { Prisma } from '@prisma/client'
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // ============================================================================
 // TYPES
@@ -44,16 +43,10 @@ interface FeedbackRequest {
 // POST - Record feedback
 // ============================================================================
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse> {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
   try {
-    const { id: contractId } = await params
     const tenantId = ctx.tenantId
     
     const body: FeedbackRequest = await request.json()
@@ -162,22 +155,16 @@ export async function POST(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // ============================================================================
 // GET - Retrieve feedback history
 // ============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse> {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
   try {
-    const { id: contractId } = await params
     const tenantId = ctx.tenantId
     const { searchParams } = new URL(request.url)
     const view = searchParams.get('view') || 'history'
@@ -270,7 +257,7 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // ============================================================================
 // HELPER FUNCTIONS

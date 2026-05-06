@@ -1,7 +1,11 @@
 import { NextRequest } from 'next/server';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { randomUUID } from 'crypto';
+import {
+  encryptDataConnectionConfig,
+  sanitizeDataConnectionForClient,
+} from '@/lib/admin/data-connection-config';
 
 /** Data connection configuration stored in tenant settings */
 interface DataConnection {
@@ -16,7 +20,7 @@ interface DataConnection {
   syncFrequency?: string;
   contractTableName?: string;
   createdAt: string;
-  encryptedConfig?: string;
+  encryptedConfig?: unknown;
 }
 
 /**
@@ -24,6 +28,10 @@ interface DataConnection {
  * List all data connections for the tenant
  */
 export const GET = withAuthApiHandler(async (_request, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   const connections = await prisma.tenantSettings.findFirst({
     where: { tenantId: ctx.tenantId },
     select: {
@@ -45,7 +53,9 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
     }
   }
 
-  return createSuccessResponse(ctx, { connections: dataConnections });
+  return createSuccessResponse(ctx, {
+    connections: dataConnections.map((connection) => sanitizeDataConnectionForClient(connection)),
+  });
 });
 
 /**
@@ -53,6 +63,10 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
  * Create a new data connection
  */
 export const POST = withAuthApiHandler(async (request, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   const body = await request.json();
   const { type, name, config, syncMode, autoSync, syncFrequency } = body;
 
@@ -72,8 +86,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     syncFrequency: syncFrequency || 'daily',
     contractTableName: config.contractTableName,
     createdAt: new Date().toISOString(),
-    // WARNING: Base64 is encoding, NOT encryption. In production, use AES-256 with a KMS-managed key.
-    encryptedConfig: Buffer.from(JSON.stringify(config)).toString('base64'),
+    encryptedConfig: encryptDataConnectionConfig(config),
   };
 
   const settings = await prisma.tenantSettings.findFirst({
@@ -121,9 +134,6 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
   }
 
   return createSuccessResponse(ctx, {
-    connection: {
-      ...newConnection,
-      encryptedConfig: undefined,
-    },
+    connection: sanitizeDataConnectionForClient(newConnection),
   });
 });

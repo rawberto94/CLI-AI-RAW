@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContextWithSessionFallback, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
 
 // Bulletproof constants
@@ -118,7 +118,7 @@ function inferProcessingStage(contractStatus: string, artifactCount: number, com
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   ensureConnectionCleanup();
   const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
+  const ctx = await getAuthenticatedApiContextWithSessionFallback(request);
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }

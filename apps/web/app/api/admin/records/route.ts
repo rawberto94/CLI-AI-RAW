@@ -5,6 +5,10 @@ export const dynamic = 'force-dynamic';
 
 // Records Management — Archive, Restore, Defensible Deletion
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'archived';
@@ -36,6 +40,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 });
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   try {
     const body = await request.json();
     const { prisma } = await import('@/lib/prisma');

@@ -13,8 +13,7 @@ import { generateObject } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withContractApiHandler,
   createSuccessResponse,
   createErrorResponse,
 } from '@/lib/api-middleware';
@@ -41,20 +40,17 @@ const GeneratedClauseSchema = z.object({
   legalNotes: z.array(z.string()).describe('Important legal considerations for this clause'),
 });
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
+  if (!ctx.tenantId) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID required', 401);
   }
 
   const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/contracts/renew/ai-clause', AI_RATE_LIMITS.standard);
   if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
   try {
-    const { id: contractId } = await params;
     const body = await request.json();
     const input = RequestSchema.parse(body);
 
@@ -120,4 +116,4 @@ Generate production-ready clause text. Be specific with timelines, obligations, 
 
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to generate clause', 500, { retryable: true });
   }
-}
+})

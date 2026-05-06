@@ -1,45 +1,12 @@
 import { NextRequest } from 'next/server';
-import { metadataEditorService } from 'data-orchestration/services';
-import { getApiTenantId } from '@/lib/security/tenant';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractApiHandler } from '@/lib/contracts/server/context';
+import { deleteContractTag } from '@/lib/contracts/server/metadata';
 
 /**
  * DELETE /api/contracts/[id]/metadata/tags/[tagName]
  * Remove a tag from a contract
  */
-export async function DELETE(
-  request: NextRequest,
-  props: { params: Promise<{ id: string; tagName: string }> }
-) {
-  const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-  try {
-    const { searchParams } = new URL(request.url);
-    const tenantId = await getApiTenantId(request);
-    const userId = searchParams.get('userId');
-
-    if (!tenantId) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID required', 400);
-    }
-
-    if (!userId) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'userId is required', 400);
-    }
-
-    await metadataEditorService.removeTag(
-      params.id,
-      tenantId,
-      decodeURIComponent(params.tagName),
-      userId
-    );
-
-    return createSuccessResponse(ctx, {
-      message: 'Tag removed successfully',
-    });
-  } catch (error: unknown) {
-    return handleApiError(ctx, error);
-  }
-}
+export const DELETE = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const params = await (ctx as any).params as { id: string; tagName: string };
+  return deleteContractTag(ctx, params.id, params.tagName);
+})

@@ -3,6 +3,8 @@
 import { SessionProvider } from 'next-auth/react';
 import { ReactNode } from 'react';
 
+import { SessionActivityHeartbeat } from '@/components/providers/SessionActivityHeartbeat';
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -17,6 +19,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Don't attempt fetches when the browser is offline
       refetchWhenOffline={false}
     >
+      <SessionActivityHeartbeat />
       {children}
     </SessionProvider>
   );

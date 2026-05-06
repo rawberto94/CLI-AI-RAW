@@ -117,20 +117,14 @@ function broadcastToConnections(payload: {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export const GET = withAuthApiHandler(async (request: NextRequest, _ctx) => {
-  const searchParams = request.nextUrl.searchParams;
-  // EventSource cannot reliably set custom headers, so support tenantId via query param.
-  // Priority: x-tenant-id header > tenantId query param > demo (dev only)
-  const tenantId =
-    request.headers.get('x-tenant-id') ||
-    searchParams.get('tenantId') ||
-    (process.env.NODE_ENV === 'production' ? null : 'demo');
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = ctx.tenantId;
 
   if (!tenantId) {
     return new NextResponse('Tenant ID is required', { status: 400 });
   }
 
-  const userId = searchParams.get('userId') || undefined;
+  const userId = ctx.userId || undefined;
 
   // Ensure Redis subscriber is running
   try {
@@ -192,7 +186,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, _ctx) => {
   return new NextResponse(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
     },

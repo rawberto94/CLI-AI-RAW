@@ -63,6 +63,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/dialogs/ConfirmDialog';
 import { formatDistanceToNow, format as _format, addDays } from 'date-fns';
 
 interface Collaborator {
@@ -134,6 +135,7 @@ export function ExternalCollaborators() {
     },
   });
   const [isInviting, setIsInviting] = useState(false);
+  const confirm = useConfirm();
 
   const fetchCollaborators = async () => {
     try {
@@ -217,7 +219,14 @@ export function ExternalCollaborators() {
   };
 
   const handleRevoke = async (id: string) => {
-    if (!confirm('Are you sure you want to revoke this collaborator\'s access?')) return;
+    const ok = await confirm({
+      title: 'Revoke access?',
+      description: "This will immediately revoke the collaborator's access. They will no longer be able to view or interact with shared contracts.",
+      confirmText: 'Revoke access',
+      variant: 'danger',
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
       const response = await fetch('/api/collaborators', {

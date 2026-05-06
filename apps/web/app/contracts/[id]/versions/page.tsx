@@ -104,7 +104,7 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
   };
   
   const handleTimelineCompare = (versionA: number, versionB: number) => {
-    router.push(`/contracts/${id}/versions/compare?a=${versionA}&b=${versionB}`);
+    router.push(`/contracts/${id}/versions/compare?v1=${versionA}&v2=${versionB}`);
   };
 
   const latestVersion = timelineVersions.length > 0 

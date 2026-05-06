@@ -7,7 +7,17 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hash } from "bcryptjs";
 
+// SECURITY: This endpoint can create admin users and lists existing users.
+// The "setup key" is derived from NEXTAUTH_SECRET—if that leaks, attackers
+// escalate to admin. Gate behind NODE_ENV in production unless explicitly
+// opted in via ENABLE_DEBUG_ENDPOINTS.
+const isProductionLocked =
+  process.env.NODE_ENV === 'production' && process.env.ENABLE_DEBUG_ENDPOINTS !== 'true';
+
 export async function POST(request: Request) {
+  if (isProductionLocked) {
+    return new NextResponse(null, { status: 404 });
+  }
   try {
     const body = await request.json();
     const setupKey = body.setupKey;
@@ -73,6 +83,9 @@ export async function POST(request: Request) {
 
 // GET to list current users, or create admin with ?action=create&key=<first16chars>
 export async function GET(request: Request) {
+  if (isProductionLocked) {
+    return new NextResponse(null, { status: 404 });
+  }
   try {
     const url = new URL(request.url);
     const action = url.searchParams.get("action");

@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { DashboardLayout } from '@/components/layout/AppLayout'
 import { PageBreadcrumb } from '@/components/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -44,27 +44,29 @@ export default function PortfolioPage() {
   const [year, setYear] = useState<number>(new Date().getFullYear())
   const [contracts, setContracts] = useState<ContractExpiry[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Fetch contracts
-  useEffect(() => {
-    let cancelled = false
-    async function fetchData() {
-      setLoading(true)
-      try {
-        const res = await fetch(`/api/contracts?limit=500`)
-        if (!res.ok) throw new Error('Failed to fetch')
-        const json = await res.json()
-        const list = json.data?.contracts || json.contracts || []
-        if (!cancelled) setContracts(list)
-      } catch {
-        toast.error('Failed to load contract data')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    setLoadError(null)
+    try {
+      const res = await fetch(`/api/contracts?limit=500`)
+      if (!res.ok) throw new Error(`Server returned ${res.status}`)
+      const json = await res.json()
+      const list = json.data?.contracts || json.contracts || []
+      setContracts(list)
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to load contract data')
+      toast.error('Failed to load contract data')
+    } finally {
+      setLoading(false)
     }
-    fetchData()
-    return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   // Build heatmap data: contract types × months
   const expirationHeatMap = useMemo(() => {
@@ -201,6 +203,15 @@ export default function PortfolioPage() {
           <div className="space-y-4">
             <Skeleton className="h-64 w-full rounded-lg" />
             <Skeleton className="h-64 w-full rounded-lg" />
+          </div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl border border-rose-200 bg-rose-50/60">
+            <AlertTriangle className="h-10 w-10 text-rose-400 mb-3" />
+            <h3 className="font-medium text-lg mb-1 text-rose-900">Couldn&apos;t load portfolio data</h3>
+            <p className="text-rose-700/80 text-sm max-w-sm mb-4">{loadError}</p>
+            <Button variant="outline" size="sm" onClick={() => fetchData()} className="gap-2">
+              <RefreshCcw className="h-3.5 w-3.5" /> Retry
+            </Button>
           </div>
         ) : (
           <div className="space-y-6">

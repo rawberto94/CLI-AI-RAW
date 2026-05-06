@@ -6,10 +6,9 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardBenchmarkingService } from 'data-orchestration/services';
-import { getApiTenantId } from '@/lib/security/tenant';
 import { getErrorMessage } from '@/lib/types/common';
 import { OpportunityStatus, type Prisma } from '@prisma/client';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 const benchmarkingEngine = new rateCardBenchmarkingService(prisma);
 
@@ -17,15 +16,18 @@ const benchmarkingEngine = new rateCardBenchmarkingService(prisma);
  * POST /api/benchmarking/opportunities/:rateCardId
  * Detect savings opportunities for a specific rate card
  */
-export async function POST(request: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
-  const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
+    const { rateCardId } = await (ctx as any).params as { rateCardId: string };
+    const tenantId = ctx.tenantId;
 
-    const { rateCardId } = params;
+    const rateCard = await prisma.rateCardEntry.findUnique({
+      where: { id: rateCardId, tenantId },
+    });
+
+    if (!rateCard) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card not found', 404);
+    }
 
     const opportunities = await benchmarkingEngine.detectSavingsOpportunities(rateCardId);
 
@@ -36,22 +38,18 @@ export async function POST(request: NextRequest, props: { params: Promise<{ rate
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 /**
  * GET /api/benchmarking/opportunities
  * List all savings opportunities
  * Query params: tenantId, status, minSavings
  */
-export async function GET(request: NextRequest) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
 
     const searchParams = request.nextUrl.searchParams;
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     const status = searchParams.get('status');
     const minSavings = searchParams.get('minSavings');
 
@@ -93,4 +91,4 @@ export async function GET(request: NextRequest) {
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})

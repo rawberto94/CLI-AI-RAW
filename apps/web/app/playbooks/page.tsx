@@ -45,6 +45,7 @@ import {
   FileText,
   Scale,
   Upload,
+  RefreshCw,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -206,7 +207,7 @@ const RISK_COLORS: Record<string, string> = {
 export default function PlaybooksPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { data: playbooks = [], isLoading } = usePlaybooks()
+  const { data: playbooks = [], isLoading, error: loadError, refetch } = usePlaybooks()
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
@@ -406,6 +407,19 @@ export default function PlaybooksPage() {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
           </div>
+        ) : loadError ? (
+          <Card className="border-rose-200 bg-rose-50/50">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <AlertTriangle className="h-12 w-12 text-rose-400 mb-4" />
+              <h3 className="font-semibold text-rose-900 mb-1">Couldn&apos;t load playbooks</h3>
+              <p className="text-sm text-rose-700/80 mb-4 max-w-md text-center">
+                {loadError instanceof Error ? loadError.message : 'The server returned an error. Please try again.'}
+              </p>
+              <Button variant="outline" onClick={() => refetch()} className="gap-2">
+                <RefreshCw className="h-4 w-4" /> Retry
+              </Button>
+            </CardContent>
+          </Card>
         ) : filtered.length === 0 ? (
           <Card className="border-dashed border-slate-300">
             <CardContent className="flex flex-col items-center justify-center py-16">

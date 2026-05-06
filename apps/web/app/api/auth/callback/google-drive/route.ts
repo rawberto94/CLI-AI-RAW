@@ -9,27 +9,40 @@ import {
   exchangeCodeForTokens,
   getGoogleUserInfo,
   storeGoogleDriveConnection,
+  validateGoogleDriveOAuthState,
 } from '@/lib/integrations/google-drive';
 import { getTenantContext } from '@/lib/tenant-server';
 import { withApiHandler } from '@/lib/api-middleware';
+import { logger } from '@/lib/logger';
+
+function buildCallbackRedirectUrl(request: NextRequest, path: string): URL {
+  const publicAppUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+  if (publicAppUrl) {
+    return new URL(path, publicAppUrl);
+  }
+
+  const protocol = request.headers.get('x-forwarded-proto') || request.nextUrl.protocol.replace(':', '') || 'http';
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || request.nextUrl.host;
+  return new URL(path, `${protocol}://${host}`);
+}
 
 export const GET = withApiHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
-  const _state = searchParams.get('state');
+  const state = searchParams.get('state');
 
   // Handle error from Google
   if (error) {
     return NextResponse.redirect(
-      new URL(`/integrations?error=${encodeURIComponent(error)}`, request.url)
+      buildCallbackRedirectUrl(request, `/integrations?error=${encodeURIComponent(error)}`)
     );
   }
 
   // Validate code
   if (!code) {
     return NextResponse.redirect(
-      new URL('/integrations?error=no_code', request.url)
+      buildCallbackRedirectUrl(request, '/integrations?error=no_code')
     );
   }
 
@@ -39,7 +52,18 @@ export const GET = withApiHandler(async (request: NextRequest) => {
 
     if (!tenantId || !userId) {
       return NextResponse.redirect(
-        new URL('/login?error=session_expired&redirect=/integrations', request.url)
+        buildCallbackRedirectUrl(request, '/login?error=session_expired&redirect=/integrations')
+      );
+    }
+
+    if (!state || !validateGoogleDriveOAuthState(state, tenantId, userId)) {
+      logger.warn('[Google Drive OAuth] Invalid or missing callback state', {
+        hasState: Boolean(state),
+        tenantId,
+        userId,
+      });
+      return NextResponse.redirect(
+        buildCallbackRedirectUrl(request, '/integrations?error=invalid_state')
       );
     }
 
@@ -54,12 +78,12 @@ export const GET = withApiHandler(async (request: NextRequest) => {
 
     // Redirect back to integrations page with success
     return NextResponse.redirect(
-      new URL('/integrations?connected=google-drive', request.url)
+      buildCallbackRedirectUrl(request, '/integrations?connected=google-drive')
     );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.redirect(
-      new URL(`/integrations?error=${encodeURIComponent(message)}`, request.url)
+      buildCallbackRedirectUrl(request, `/integrations?error=${encodeURIComponent(message)}`)
     );
   }
 });

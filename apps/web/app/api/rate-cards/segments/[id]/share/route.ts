@@ -1,7 +1,11 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { segmentManagementService } from 'data-orchestration/services';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import {
+  withAuthApiHandler,
+  createSuccessResponse,
+  createErrorResponse,
+} from '@/lib/api-middleware';
 
 const segmentService = new segmentManagementService(prisma);
 
@@ -9,56 +13,46 @@ const segmentService = new segmentManagementService(prisma);
  * POST /api/rate-cards/segments/[id]/share
  * Share a segment with team members
  */
-export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params as { id: string };
+
+  try {
     const _body = await request.json();
     
-    // Get authenticated user from session
-    const tenantId = ctx.tenantId || ctx.tenantId;
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
     
-    if (!tenantId) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
+    if (!tenantId || !userId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
-    
-    const userId = ctx.userId || 'system';
 
-    const segment = await segmentService.shareSegment(params.id, tenantId, userId);
+    const segment = await segmentService.shareSegment(id, tenantId, userId);
 
     return createSuccessResponse(ctx, segment);
   } catch (error: unknown) {
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to share segment. Please try again.', 400);
   }
-}
+});
 
 /**
  * DELETE /api/rate-cards/segments/[id]/share
  * Unshare a segment
  */
-export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
-    // Get authenticated user from session
-    const tenantId = ctx.tenantId || ctx.tenantId;
-    
-    if (!tenantId) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
-    }
-    
-    const userId = ctx.userId || 'system';
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params as { id: string };
 
-    const segment = await segmentService.unshareSegment(params.id, tenantId, userId);
+  try {
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
+    
+    if (!tenantId || !userId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+    }
+
+    const segment = await segmentService.unshareSegment(id, tenantId, userId);
 
     return createSuccessResponse(ctx, segment);
   } catch (error: unknown) {
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to unshare segment. Please try again.', 400);
   }
-}
+});

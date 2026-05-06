@@ -50,6 +50,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import { format, formatDistanceToNow } from 'date-fns';
 
 interface Backup {
@@ -143,6 +144,7 @@ export const BackupRestore = memo(function BackupRestore({
     includeArtifacts: true,
     encryptBackups: true,
   });
+  const confirm = useConfirm();
 
   useEffect(() => {
     loadBackups();
@@ -201,9 +203,14 @@ export const BackupRestore = memo(function BackupRestore({
   };
 
   const handleRestore = async (backupId: string) => {
-    if (!confirm('Are you sure you want to restore from this backup? This will overwrite current data.')) {
-      return;
-    }
+    const ok = await confirm({
+      title: 'Restore from backup?',
+      description: 'This will overwrite current data with the contents of the selected backup. This action cannot be undone.',
+      confirmText: 'Restore',
+      variant: 'danger',
+      destructive: true,
+    });
+    if (!ok) return;
 
     setRestoring(backupId);
     try {
@@ -218,7 +225,8 @@ export const BackupRestore = memo(function BackupRestore({
   };
 
   const handleDelete = async (backupId: string) => {
-    if (!confirm('Are you sure you want to delete this backup?')) return;
+    const ok = await confirm(confirmPresets.delete('this backup'));
+    if (!ok) return;
 
     setBackups(prev => prev.filter(b => b.id !== backupId));
     toast.success('Backup deleted');

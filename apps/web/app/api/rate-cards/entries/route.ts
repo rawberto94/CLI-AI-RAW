@@ -1,12 +1,11 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
-import { getApiTenantId } from '@/lib/tenant-server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { rateCardEntryService } from 'data-orchestration/services';
 
 export const GET = withAuthApiHandler(async (request, ctx) => {
-  const tenantId = await getApiTenantId(request);
+  const tenantId = ctx.tenantId;
   const { searchParams } = new URL(request.url);
   
   const roles = searchParams.get('roles')?.split(',').filter(Boolean) || [];

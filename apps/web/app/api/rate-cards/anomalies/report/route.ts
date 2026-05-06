@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { anomalyExplainerService } from 'data-orchestration/services';
-import { getApiTenantId } from '@/lib/security/tenant';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
@@ -12,7 +11,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
  */
 export const GET = withAuthApiHandler(async (request, ctx) => {
     // Get tenant ID from secure session
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }

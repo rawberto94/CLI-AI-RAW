@@ -67,6 +67,11 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
  * GET /api/admin/departments/assign - Get user's department assignments
  */
 export const GET = withAuthApiHandler(async (request, ctx) => {
+  const canManage = await hasPermission(ctx.userId, 'users:manage');
+  if (!canManage) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const userId = searchParams.get('userId');
 

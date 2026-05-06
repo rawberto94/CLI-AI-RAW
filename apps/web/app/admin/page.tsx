@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback as _useCallback } from "react";
+import { unwrapApiResponseData } from '@/lib/api-fetch';
 import { toast } from 'sonner';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -325,6 +326,7 @@ function AIAccuracyDashboard() {
 
 export default function TenantAdminPage() {
   const { data: session } = useSession();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState("team");
   const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -334,8 +336,6 @@ export default function TenantAdminPage() {
 
   // Invite dialog state
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-  const [showDeleteOrgConfirm, setShowDeleteOrgConfirm] = useState(false);
-  const [isDeletingOrg, setIsDeletingOrg] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
   const [inviting, setInviting] = useState(false);
@@ -363,18 +363,18 @@ export default function TenantAdminPage() {
       ]);
 
       if (tenantRes.ok) {
-        const tenantData = await tenantRes.json();
-        setTenantInfo(tenantData.tenant);
+        const tenantData = unwrapApiResponseData<{ tenant?: TenantInfo }>(await tenantRes.json());
+        setTenantInfo(tenantData.tenant || null);
         setOrgName(tenantData.tenant?.name || "");
       }
 
       if (membersRes.ok) {
-        const membersData = await membersRes.json();
+        const membersData = unwrapApiResponseData<{ members?: TeamMember[] }>(await membersRes.json());
         setMembers(membersData.members || []);
       }
 
       if (invitationsRes.ok) {
-        const invitationsData = await invitationsRes.json();
+        const invitationsData = unwrapApiResponseData<{ invitations?: Invitation[] }>(await invitationsRes.json());
         setInvitations(invitationsData.invitations || []);
       }
     } catch {
@@ -428,7 +428,13 @@ export default function TenantAdminPage() {
   };
 
   const handleRemoveMember = async (memberId: string) => {
-    if (!confirm("Are you sure you want to remove this team member?")) return;
+    const ok = await confirm({
+      ...confirmPresets.delete(),
+      title: 'Remove team member?',
+      description: 'They will lose access to this workspace immediately. Their contribution history will be preserved.',
+      confirmText: 'Remove',
+    });
+    if (!ok) return;
     
     try {
       const res = await fetch(`/api/admin/team/members/${memberId}`, {
@@ -948,10 +954,13 @@ export default function TenantAdminPage() {
                 <Button
                   variant="destructive"
                   className="shadow-lg shadow-red-500/20"
-                  onClick={() => setShowDeleteOrgConfirm(true)}
+                  disabled
                 >
-                  Delete Organization
+                  Deletion Unavailable In-App
                 </Button>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Tenant removal is intentionally disabled here because there is no matching self-service backend route.
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -963,29 +972,6 @@ export default function TenantAdminPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Delete Organization Confirmation */}
-      <ConfirmDialog
-        open={showDeleteOrgConfirm}
-        onOpenChange={setShowDeleteOrgConfirm}
-        title="Delete Organization"
-        description="Are you sure you want to permanently delete this organization? This will remove all contracts, users, and data. This action is irreversible."
-        confirmLabel="Delete Organization"
-        variant="destructive"
-        isLoading={isDeletingOrg}
-        onConfirm={async () => {
-          try {
-            setIsDeletingOrg(true);
-            const res = await fetch('/api/admin/organization', { method: 'DELETE' });
-            if (!res.ok) throw new Error('Failed to delete');
-            window.location.href = '/';
-          } catch {
-            toast.error('Failed to delete organization');
-          } finally {
-            setIsDeletingOrg(false);
-            setShowDeleteOrgConfirm(false);
-          }
-        }}
-      />
     </motion.div>
     </div>
     </div>

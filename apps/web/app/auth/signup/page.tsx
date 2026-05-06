@@ -36,7 +36,6 @@ function SignUpForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [inviteInfo, setInviteInfo] = useState<{
     tenantName: string;
-    tenantId: string;
     email: string;
   } | null>(null);
 

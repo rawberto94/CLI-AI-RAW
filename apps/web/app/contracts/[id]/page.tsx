@@ -377,13 +377,29 @@ export default function ContractDetailPage() {
     let emptyCompletedPolls = 0
     const MAX_EMPTY_COMPLETED_POLLS = 12
     const abortController = new AbortController()
+    let stopped = false
 
     const pollInterval = setInterval(async () => {
+      if (stopped) return
+      // Don't hammer the API while the tab is in the background — the user
+      // can't see any UI update until they return, so polling is pure waste
+      // (extra DB hits, battery drain on mobile). Resume on next tick when
+      // the tab becomes visible again.
+      if (typeof document !== 'undefined' && document.hidden) return
       try {
         const response = await fetch(`/api/contracts/${contractId}`, {
           headers: { 'x-data-mode': dataMode },
           signal: abortController.signal,
         })
+        // Auth failures are terminal — keep retrying silently and the user
+        // thinks processing is stuck when in fact their session expired.
+        // Stop the poll so higher-level guards (TanStack Query retry / route
+        // redirect) can surface the state.
+        if (response.status === 401 || response.status === 403) {
+          stopped = true
+          clearInterval(pollInterval)
+          return
+        }
         if (!response.ok) return
         const raw = await response.json()
         const data = raw.data ?? raw
@@ -1129,7 +1145,7 @@ export default function ContractDetailPage() {
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setTab} className="space-y-4 sm:space-y-6">
-              <TabsList className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-white/80 backdrop-blur-sm border border-slate-200/60 p-1 rounded-xl shadow-sm h-auto">
+              <TabsList className="sticky top-0 z-20 grid grid-cols-2 sm:grid-cols-4 gap-1 bg-white/95 backdrop-blur-sm border border-slate-200/60 p-1 rounded-xl shadow-sm h-auto">
                 <TabsTrigger value="overview" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-lg transition-all">
                   <FileText className="h-3.5 w-3.5" />
                   <span>Summary</span>
@@ -1187,18 +1203,6 @@ export default function ContractDetailPage() {
 
               {/* Details Tab */}
               <TabsContent value="details" className="space-y-4 sm:space-y-6 mt-0">
-                <ContractScoresCard
-                    riskInfo={riskInfo}
-                    complianceInfo={complianceInfo}
-                    healthInfo={{
-                      score: healthData?.healthScore ?? 100,
-                      completeness: healthData?.completeness ?? 0,
-                      issues: healthData?.issues || [],
-                    }}
-                    extractionConfidence={extractionConfidence}
-                    isProcessing={isProcessing}
-                    onRefresh={handleRefresh}
-                  />
                 <EnhancedContractMetadataSection
                     contractId={contractId}
                     tenantId={getTenantId()}
@@ -1222,6 +1226,18 @@ export default function ContractDetailPage() {
                     isEditing={isEditing}
                   />
                 <ExtractionAccuracyCard contractId={contractId} />
+                <ContractScoresCard
+                    riskInfo={riskInfo}
+                    complianceInfo={complianceInfo}
+                    healthInfo={{
+                      score: healthData?.healthScore ?? 100,
+                      completeness: healthData?.completeness ?? 0,
+                      issues: healthData?.issues || [],
+                    }}
+                    extractionConfidence={extractionConfidence}
+                    isProcessing={isProcessing}
+                    onRefresh={handleRefresh}
+                  />
               </TabsContent>
 
               {/* Activity Tab — lazy-loaded */}

@@ -17,8 +17,7 @@ import { generateObject } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withContractApiHandler,
   createSuccessResponse,
   createErrorResponse,
 } from '@/lib/api-middleware';
@@ -96,19 +95,11 @@ export type RenewalAnalysis = z.infer<typeof RenewalAnalysisSchema>;
 
 // ── POST handler ───────────────────────────────────────────────────────
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(
-      getApiContext(request),
-      'UNAUTHORIZED',
-      'Authentication required',
-      401,
-      { retryable: false },
-    );
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
+  if (!ctx.tenantId) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID required', 401);
   }
 
   // Rate-limit: standard AI tier (30 req/min)
@@ -116,7 +107,6 @@ export async function POST(
   if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
   try {
-    const { id: contractId } = await params;
     const body = await request.json();
     const input = RequestSchema.parse(body);
 
@@ -225,5 +215,5 @@ For clause IDs in suggestions, use the actual clause IDs provided (e.g., the id 
     }
 
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to generate analysis', 500, { retryable: true });
-  }
+    })
 }

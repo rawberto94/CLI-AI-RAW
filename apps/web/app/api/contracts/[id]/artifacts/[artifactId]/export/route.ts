@@ -7,8 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
-import { getApiTenantId } from "@/lib/tenant-server";
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContextWithSessionFallback, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { generateArtifactPDF, generateArtifactDOCX } from '@/lib/artifacts/artifact-export';
 
 /**
@@ -20,14 +19,14 @@ export async function GET(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
+  const ctx = await getAuthenticatedApiContextWithSessionFallback(request);
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
   try {
     const contractId = params.id;
     const artifactId = params.artifactId;
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     const format = (searchParams.get('format') || 'json').toLowerCase();
 

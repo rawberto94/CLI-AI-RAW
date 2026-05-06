@@ -8,8 +8,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
 import { logger } from '@/lib/logger';
 import { auditLog, AuditAction } from '@/lib/security/audit';
@@ -60,18 +59,10 @@ function extractTitleFromHtml(html: string): string | null {
 }
 
 // GET /api/drafts/[id] - Get a single draft
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
-
-    const tenantId = await getApiTenantId(request);
-    const { id } = await params;
+    const tenantId = ctx.tenantId;
+    const { id } = await (ctx as any).params as { id: string };
 
     const draft = await prisma.contractDraft.findFirst({
       where: { id, tenantId },
@@ -124,23 +115,16 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // PATCH /api/drafts/[id] - Update a draft
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     const rl = checkRateLimit(tenantId, ctx.userId, '/api/drafts/[id]', AI_RATE_LIMITS.standard);
     if (!rl.allowed) return rateLimitResponse(rl);
 
-    const { id } = await params;
+    const { id } = await (ctx as any).params as { id: string };
     const body = await request.json();
 
     // Check if draft exists and belongs to tenant
@@ -381,23 +365,16 @@ export async function PATCH(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // DELETE /api/drafts/[id] - Delete a draft
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const DELETE = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     const rl = checkRateLimit(tenantId, ctx.userId, '/api/drafts/[id]', AI_RATE_LIMITS.standard);
     if (!rl.allowed) return rateLimitResponse(rl);
 
-    const { id } = await params;
+    const { id } = await (ctx as any).params as { id: string };
 
     // Check if draft exists and belongs to tenant
     const existing = await prisma.contractDraft.findFirst({
@@ -440,4 +417,4 @@ export async function DELETE(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

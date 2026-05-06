@@ -4,6 +4,8 @@
 -- At query time, SET hnsw.ef_search = 100 for high recall.
 -- Drop the old IVFFlat index
 DROP INDEX IF EXISTS "ContractEmbedding_embedding_idx";
+-- Ensure the embedding column has explicit dimensions (required for HNSW index)
+ALTER TABLE "ContractEmbedding" ALTER COLUMN "embedding" TYPE vector(1024);
 -- Create HNSW index (this may take a few minutes on large datasets)
 CREATE INDEX "ContractEmbedding_embedding_hnsw_idx" ON "ContractEmbedding" USING hnsw ("embedding" vector_cosine_ops) WITH (m = 16, ef_construction = 200);
 -- Add composite index for chunk-level pre-filtering + vector search

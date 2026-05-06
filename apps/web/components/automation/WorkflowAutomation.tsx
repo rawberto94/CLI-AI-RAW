@@ -63,6 +63,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import { formatDistanceToNow } from 'date-fns';
 
 // Types
@@ -140,6 +141,7 @@ export const WorkflowAutomation = memo(function WorkflowAutomation({
     triggerType: 'upload',
     actions: ['extract_metadata'],
   });
+  const confirm = useConfirm();
 
   useEffect(() => {
     loadWorkflows();
@@ -231,8 +233,9 @@ export const WorkflowAutomation = memo(function WorkflowAutomation({
     toast.success('Workflow duplicated');
   };
 
-  const deleteWorkflow = (workflowId: string) => {
-    if (!confirm('Are you sure you want to delete this workflow?')) return;
+  const deleteWorkflow = async (workflowId: string) => {
+    const ok = await confirm(confirmPresets.delete('this workflow'));
+    if (!ok) return;
     setWorkflows(prev => prev.filter(w => w.id !== workflowId));
     toast.success('Workflow deleted');
   };

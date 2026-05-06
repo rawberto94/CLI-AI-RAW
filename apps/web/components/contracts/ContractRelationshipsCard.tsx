@@ -674,7 +674,38 @@ export function ContractRelationshipsCard({
   const hasSuggestions = (familyHealth?.suggestedParents?.length || 0) > 0
   const healthScore = familyHealth?.healthScore ?? 100
   const displayedChildren = showAllChildren ? childContracts : childContracts.slice(0, 3)
-  
+
+  // Compact empty state: no hierarchy, no AI suggestions → render a single-line CTA card
+  if (!hasHierarchy && !hasSuggestions && !isLoadingHealth) {
+    return (
+      <Card className={cn("border-slate-200", className)}>
+        <CardContent className="flex items-center justify-between gap-3 px-4 py-2.5">
+          <div className="flex items-center gap-2 text-sm text-slate-600 min-w-0">
+            <GitBranch className="h-4 w-4 text-slate-400 flex-shrink-0" />
+            <span className="truncate">No related contracts</span>
+          </div>
+          {onLinkParent && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowLinkDialog(true)}
+              className="h-7 text-violet-700 hover:bg-violet-50"
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Link parent
+            </Button>
+          )}
+          <LinkParentDialog
+            open={showLinkDialog}
+            onOpenChange={setShowLinkDialog}
+            contractId={contractId}
+            onLink={handleLink}
+          />
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className={cn("overflow-hidden", className)}>
       <CardHeader className="pb-4 bg-gradient-to-r from-slate-50 to-purple-50/30 border-b">

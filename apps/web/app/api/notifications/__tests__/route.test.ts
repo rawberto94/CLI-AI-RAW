@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const { mockFindMany, mockCount, mockCreateMany, mockUpdateMany,
+  mockUserFindMany,
   mockGetServerSession, mockPublishRealtimeEvent, mockGetRecent, mockGetUnreadCount,
 } = vi.hoisted(() => ({
   mockFindMany: vi.fn(),
   mockCount: vi.fn(),
   mockCreateMany: vi.fn(),
   mockUpdateMany: vi.fn(),
+  mockUserFindMany: vi.fn(),
   mockGetServerSession: vi.fn(),
   mockPublishRealtimeEvent: vi.fn(),
   mockGetRecent: vi.fn(),
@@ -23,6 +25,9 @@ vi.mock('@/lib/prisma', () => ({
       updateMany: mockUpdateMany,
       delete: vi.fn(),
       deleteMany: vi.fn(),
+    },
+    user: {
+      findMany: mockUserFindMany,
     },
   },
 }));
@@ -172,6 +177,7 @@ describe('POST /api/notifications', () => {
   });
 
   it('creates notification', async () => {
+    mockUserFindMany.mockResolvedValue([{ id: 'user-1' }]);
     mockCreateMany.mockResolvedValue({ count: 1 });
 
     const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/notifications', {
@@ -188,6 +194,24 @@ describe('POST /api/notifications', () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.data.count).toBe(1);
+  });
+
+  it('returns 404 when a recipient is outside the tenant', async () => {
+    mockUserFindMany.mockResolvedValue([]);
+
+    const request = createAuthenticatedRequest('POST', 'http://localhost:3000/api/notifications', {
+      body: {
+        userId: 'user-1',
+        title: 'New notification',
+        message: 'Something happened',
+      },
+    });
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('NOT_FOUND');
   });
 
   it('returns 400 when title missing', async () => {

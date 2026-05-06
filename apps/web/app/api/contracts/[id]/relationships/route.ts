@@ -14,7 +14,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 import { relationshipDetectionService, RelationshipType } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
@@ -58,7 +58,7 @@ const updateRelationshipSchema = z.object({
  * - maxDepth: number (for graph, default: 2)
  * - minConfidence: number (default: 0.7)
  */
-export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+export const GET = withContractApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const { searchParams } = new URL(request.url);
   const include = searchParams.get('include') || 'all';
   const maxDepth = parseInt(searchParams.get('maxDepth') || '2', 10);
@@ -182,7 +182,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
  * - detect: Run AI detection to find relationships
  * - create: Manually create a relationship
  */
-export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+export const POST = withContractApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const body = await request.json();
   const { action = 'detect' } = body;
 
@@ -301,7 +301,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
  * PATCH /api/contracts/[id]/relationships
  * Update relationship status (confirm or reject)
  */
-export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+export const PATCH = withContractApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const body = await request.json();
   
   const validated = updateRelationshipSchema.safeParse(body);
@@ -347,7 +347,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx: Authen
  * DELETE /api/contracts/[id]/relationships
  * Delete a relationship
  */
-export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+export const DELETE = withContractApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const { searchParams } = new URL(request.url);
   const relationshipId = searchParams.get('relationshipId');
 

@@ -6,16 +6,10 @@
  * to intelligently categorize contracts into the tenant's taxonomy.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { categorizeContract } from "@/lib/categorization-service";
 import { prisma } from "@/lib/prisma";
-import { contractService } from 'data-orchestration/services';
-import { getApiTenantId } from "@/lib/tenant-server";
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * Validate that a taxonomy category belongs to the tenant
@@ -31,16 +25,10 @@ async function _validateCategoryOwnership(
   return !!category;
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: RouteParams
-): Promise<NextResponse> {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
   try {
-    const { id: contractId } = await params;
     const tenantId = ctx.tenantId;
     if (!tenantId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
@@ -91,20 +79,17 @@ export async function POST(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // GET - Get current category and suggestions
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-): Promise<NextResponse> {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
   try {
-    const { id: contractId } = await params;
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
+    }
 
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
@@ -152,4 +137,4 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

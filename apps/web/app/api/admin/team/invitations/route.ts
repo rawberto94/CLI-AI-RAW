@@ -9,7 +9,15 @@ import { prisma } from '@/lib/prisma';
 import { auditTrailService } from 'data-orchestration/services';
 import { randomBytes } from 'crypto';
 
+function canManageTeam(userRole: string | undefined): boolean {
+  return userRole === 'owner' || userRole === 'admin' || userRole === 'superadmin';
+}
+
 export const GET = withAuthApiHandler(async (_request, ctx) => {
+  if (!canManageTeam(ctx.userRole)) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403, { retryable: false });
+  }
+
   const invitations = await prisma.teamInvitation.findMany({
     where: { tenantId: ctx.tenantId },
     select: {
@@ -29,6 +37,10 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
 });
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
+  if (!canManageTeam(ctx.userRole)) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403, { retryable: false });
+  }
+
   const body = await request.json();
   const { email, role = 'member' } = body;
 

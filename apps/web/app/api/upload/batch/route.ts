@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { getErrorMessage, isUploadedFile } from "@/lib/types/common"
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware'
+import { withAuthApiHandler, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware'
 import { logger } from '@/lib/logger'
 import { uploadRequestSchema } from 'schemas'
 import { UPLOAD } from '@/lib/constants'
@@ -11,11 +11,7 @@ export const dynamic = "force-dynamic"
 export const revalidate = 0
 export const maxDuration = 300
 
-export async function POST(req: NextRequest) {
-  const ctx = getAuthenticatedApiContext(req);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
     const form = await req.formData()
 
@@ -84,18 +80,7 @@ export async function POST(req: NextRequest) {
       items.push({ name, blob: one as Blob, filename: name })
     }
 
-    // Resolve tenant id from header, cookie, or query param
-    const url = new URL(req.url)
-    let tenant = req.headers.get('x-tenant-id') || url.searchParams.get('tenant') || undefined
-    if (!tenant) {
-      try {
-        const cookie = req.headers.get('cookie') || ''
-        const m = /(?:^|;\s*)x-tenant-id=([^;]+)/i.exec(cookie)
-        if (m && m[1]) tenant = decodeURIComponent(m[1])
-      } catch { logger.warn('Failed to parse tenant from cookie'); }
-    }
-    
-    // Require tenant ID - no fallback to demo
+    const tenant = ctx.tenantId
     if (!tenant) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400)
     }
@@ -164,4 +149,4 @@ export async function POST(req: NextRequest) {
   } catch (e: unknown) {
     return handleApiError(ctx, e);
   }
-}
+});

@@ -11,10 +11,24 @@ import { SharePointConnector } from '@/lib/integrations/connectors/sharepoint.co
 import { SharePointCredentials } from '@/lib/integrations/connectors/types';
 import { auditTrailService } from 'data-orchestration/services';
 import { withApiHandler } from '@/lib/api-middleware';
+import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 
 export const GET = withApiHandler(async (request: NextRequest) => {
   try {
+    // Validate that this callback is being driven by a logged-in user.
+    // Without this, an attacker can trigger OAuth at their own IDP and then
+    // replay the resulting code+state against this endpoint to attach their
+    // tokens to another tenant's ContractSource (cross-tenant credential
+    // injection — an attacker's SharePoint would be used as the sync source
+    // for a victim tenant, allowing arbitrary PDF ingestion).
+    const session = await auth();
+    if (!session?.user?.id || !session.user.tenantId) {
+      return NextResponse.redirect(
+        new URL('/auth/signin?error=session_expired&redirect=/settings/integrations/sources', request.url)
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
@@ -32,19 +46,31 @@ export const GET = withApiHandler(async (request: NextRequest) => {
 
     // Parse state to get sourceId
     let sourceId: string;
-    let tenantId: string;
-    
+    let stateTenantId: string;
+
     try {
       const stateData = JSON.parse(Buffer.from(state || '', 'base64').toString());
       sourceId = stateData.sourceId;
-      tenantId = stateData.tenantId;
+      stateTenantId = stateData.tenantId;
     } catch {
       return redirectWithError('Invalid state parameter');
     }
 
-    // Get the source
+    // Verify the state's tenantId matches the logged-in session. Prevents
+    // an attacker from driving the callback with a state crafted for a
+    // different tenant's sourceId.
+    if (!stateTenantId || stateTenantId !== session.user.tenantId) {
+      logger.warn('[SharePoint OAuth] state tenantId mismatch', {
+        stateTenantId,
+        sessionTenantId: session.user.tenantId,
+      });
+      return redirectWithError('Unauthorized: tenant mismatch');
+    }
+
+    // Get the source, always scoped to the SESSION's tenantId (not the state's)
+    // as a defense-in-depth measure.
     const source = await prisma.contractSource.findFirst({
-      where: { id: sourceId, tenantId },
+      where: { id: sourceId, tenantId: session.user.tenantId },
     });
 
     if (!source) {
@@ -65,9 +91,9 @@ export const GET = withApiHandler(async (request: NextRequest) => {
     connector.setTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresAt);
     const connectionTest = await connector.testConnection();
 
-    // Update the source with tokens
-    await prisma.contractSource.update({
-      where: { id: sourceId },
+    // Update the source with tokens (tenant-scoped to prevent TOCTOU)
+    await prisma.contractSource.updateMany({
+      where: { id: sourceId, tenantId: session.user.tenantId },
       data: {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,

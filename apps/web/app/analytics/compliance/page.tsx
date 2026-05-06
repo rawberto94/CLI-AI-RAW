@@ -13,7 +13,7 @@ import { ComplianceTrendChart } from '@/components/analytics/ComplianceTrendChar
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Shield, Download, RefreshCw, FileText } from 'lucide-react';
+import { Shield, Download, RefreshCw, FileText, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 
@@ -48,16 +48,20 @@ export default function ComplianceAnalyticsPage() {
   const [data, setData] = useState<ComplianceData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchComplianceData = useCallback(async () => {
     try {
       setIsRefreshing(true);
+      setLoadError(null);
       const response = await fetch('/api/analytics/compliance?action=report');
-      if (!response.ok) throw new Error('Failed to fetch compliance data');
+      if (!response.ok) throw new Error(`Request failed (${response.status})`);
       
       const result = await response.json();
       setData(result.data || result);
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load compliance data';
+      setLoadError(msg);
       toast.error('Failed to load compliance data');
     } finally {
       setIsLoading(false);
@@ -147,6 +151,22 @@ export default function ComplianceAnalyticsPage() {
           </Button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-rose-200 bg-rose-50/50 p-4">
+          <div className="flex items-start gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">Couldn’t load compliance data</p>
+              <p className="text-sm text-rose-700 mt-1">{loadError}</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchComplianceData} className="flex-shrink-0">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Overall Score */}
       <Card>

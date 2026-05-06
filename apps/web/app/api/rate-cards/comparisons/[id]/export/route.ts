@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/security/tenant';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
-import { rateCardBenchmarkingService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 /**
  * GET /api/rate-cards/comparisons/[id]/export
  * Export comparison to PDF
  */
-export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
-    const tenantId = await getApiTenantId(request);
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params as { id: string };
+
+  try {
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
+    const isTenantAdmin = ctx.userRole === 'admin' || ctx.userRole === 'owner';
     if (!tenantId) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }
@@ -24,8 +21,17 @@ try {
     const format = searchParams.get('format') || 'pdf';
 
     // Fetch the comparison with all details - tenant isolated
-    const comparison = await prisma.rateComparison.findUnique({
-      where: { id: params.id, tenantId },
+    const comparison = await prisma.rateComparison.findFirst({
+      where: isTenantAdmin
+        ? { id, tenantId }
+        : {
+            id,
+            tenantId,
+            OR: [
+              { createdBy: userId },
+              { isShared: true },
+            ],
+          },
       include: {
         targetRate: true,
       },
@@ -86,7 +92,7 @@ try {
       return new NextResponse(csv, {
         headers: {
           'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="rate-comparison-${params.id}.csv"`,
+          'Content-Disposition': `attachment; filename="rate-comparison-${id}.csv"`,
         },
       });
     }
@@ -100,4 +106,4 @@ try {
   } catch (error: unknown) {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to export comparison. Please try again.', 500);
   }
-}
+});

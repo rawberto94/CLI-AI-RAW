@@ -6,6 +6,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { unwrapApiResponseData } from '@/lib/api-fetch';
 import { getTenantId } from '@/lib/tenant';
 
 // =====================
@@ -153,7 +154,7 @@ async function fetchWithTenant<T>(url: string, options?: RequestInit): Promise<T
     throw new Error(error.message || `HTTP ${response.status}`);
   }
   
-  return response.json();
+  return unwrapApiResponseData<T>(await response.json());
 }
 
 // =====================
@@ -345,8 +346,9 @@ export function useExportAuditLogs() {
       if (filters.category) params.set('category', filters.category);
       if (filters.startDate) params.set('startDate', filters.startDate.toISOString());
       if (filters.endDate) params.set('endDate', filters.endDate.toISOString());
+      params.set('format', 'csv');
       
-      const response = await fetch(`/api/audit/logs/export?${params}`, {
+      const response = await fetch(`/api/admin/audit/export?${params}`, {
         headers: { 'x-tenant-id': getTenantId() },
       });
       

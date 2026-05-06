@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Plus,
   Minus,
+  AlertTriangle,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -40,6 +41,7 @@ interface ClauseVersion {
 export default function ClauseVersionsPage() {
   const [clauses, setClauses] = useState<Record<string, ClauseVersion[]>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selectedClauseId, setSelectedClauseId] = useState<string | null>(null);
   const [diffVersions, setDiffVersions] = useState<[ClauseVersion, ClauseVersion] | null>(null);
@@ -50,9 +52,10 @@ export default function ClauseVersionsPage() {
 
   const fetchClauseVersions = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch('/api/clauses?includeVersions=true');
-      if (!res.ok) throw new Error('Failed to fetch');
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const data = await res.json();
       
       // Group by clause ID
@@ -79,7 +82,9 @@ export default function ClauseVersionsPage() {
       if (Object.keys(grouped).length > 0) {
         setSelectedClauseId(Object.keys(grouped)[0]);
       }
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load clause versions';
+      setLoadError(msg);
       toast.error('Failed to load clause versions');
     } finally {
       setIsLoading(false);
@@ -154,6 +159,21 @@ export default function ClauseVersionsPage() {
           </Button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-rose-200 bg-rose-50/50 p-4 mb-6">
+          <div className="flex items-start gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">Couldn’t load clause versions</p>
+              <p className="text-sm text-rose-700 mt-1">{loadError}</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchClauseVersions} className="flex-shrink-0">
+            <RefreshCw className="w-4 h-4 mr-2" /> Retry
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-12 gap-6">
         {/* Clause List */}

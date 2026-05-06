@@ -3,10 +3,11 @@
  * GET /api/admin/metrics/taxonomy - Get taxonomy adoption and classification metrics
  */
 
-import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { taxonomyService } from 'data-orchestration/services';
 import { Prisma } from '@prisma/client';
+import { hasPermission } from '@/lib/permissions';
 
 interface TaxonomyMetrics {
   migration: {
@@ -36,6 +37,11 @@ interface TaxonomyMetrics {
 }
 
 export const GET = withAuthApiHandler(async (_request, ctx) => {
+  const canViewAnalytics = await hasPermission(ctx.userId, 'analytics:view');
+  if (!canViewAnalytics) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
+  }
+
   const tenantId = ctx.tenantId;
 
   const whereClause = {

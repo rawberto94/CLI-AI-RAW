@@ -43,6 +43,28 @@ export const POST = withCronHandler(async (request, ctx) => {
     const dryRun = body.dryRun === true;
     const testEmail = body.testEmail as string | undefined;
 
+    if (tenantId) {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { id: true },
+      });
+
+      if (!tenant) {
+        return createSuccessResponse(ctx, {
+          message: 'Tenant not found',
+          summary: {
+            totalContracts: 0,
+            remindersProcessed: 0,
+            emailsSent: 0,
+            failures: 0,
+            durationMs: Date.now() - startTime,
+            dryRun,
+          },
+          results: [],
+        }, { status: 404 });
+      }
+    }
+
     logger.info('[CRON] Starting renewal reminder job', { tenantId, dryRun });
 
     // Build tenant filter

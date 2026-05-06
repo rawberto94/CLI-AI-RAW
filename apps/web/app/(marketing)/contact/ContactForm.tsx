@@ -44,13 +44,21 @@ export default function ContactForm() {
         body: JSON.stringify(formState),
       });
 
-      if (response.ok) {
-        setIsSubmitted(true);
-      } else {
-        setError('Failed to send message. Please try again or email us directly.');
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(
+          data.error ||
+            data.message ||
+            `Failed to send message (${response.status}). Please try again or email us directly.`,
+        );
       }
-    } catch {
-      setError('Network error. Please check your connection and try again.');
+      setIsSubmitted(true);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Network error. Please check your connection and try again.',
+      );
     } finally {
       setIsSubmitting(false);
     }

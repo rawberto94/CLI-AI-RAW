@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withAuthApiHandler,
   createSuccessResponse,
   createErrorResponse,
   handleApiError,
@@ -10,6 +9,7 @@ import { prisma } from '@/lib/prisma';
 import { triggerArtifactGeneration, PROCESSING_PRIORITY } from '@/lib/artifact-trigger';
 import { StorageService } from '@/lib/storage-service';
 import { logger } from '@/lib/logger';
+import { decryptDataConnectionConfig } from '@/lib/admin/data-connection-config';
 
 interface ConnectionConfig {
   host?: string;
@@ -53,23 +53,13 @@ interface ExternalContract {
  * queries the contract table, and ingests each row into ConTigo
  * for AI processing.
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(
-      getApiContext(request),
-      'UNAUTHORIZED',
-      'Authentication required',
-      401,
-      { retryable: false }
-    );
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
   }
 
   try {
-    const { id } = await params;
+    const { id } = await (ctx as any).params as { id: string };
     const startTime = Date.now();
 
     // Get the connection configuration
@@ -97,8 +87,7 @@ export async function POST(
     let config: ConnectionConfig = {};
     if (connection.encryptedConfig) {
       try {
-        const decoded = Buffer.from(connection.encryptedConfig, 'base64').toString('utf-8');
-        config = JSON.parse(decoded);
+        config = decryptDataConnectionConfig<ConnectionConfig>(connection.encryptedConfig);
       } catch {
         return createErrorResponse(ctx, 'CONFIGURATION_ERROR', 'Failed to decode connection configuration', 500);
       }
@@ -170,7 +159,7 @@ export async function POST(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 /**
  * Map flexible column names from external DB to our normalized format.

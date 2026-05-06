@@ -4,20 +4,20 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { auditTrailService } from 'data-orchestration/services';
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ invitationId: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+function canManageTeam(userRole: string | undefined): boolean {
+  return userRole === 'owner' || userRole === 'admin' || userRole === 'superadmin';
+}
+
+export const DELETE = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  if (!canManageTeam(ctx.userRole)) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403, { retryable: false });
   }
   try {
-    const { invitationId } = await params;
+    const { invitationId } = await (ctx as any).params as { invitationId: string };
 
     // Get invitation
     const invitation = await prisma.teamInvitation.findFirst({
@@ -56,18 +56,14 @@ export async function DELETE(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ invitationId: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (!canManageTeam(ctx.userRole)) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403, { retryable: false });
   }
   try {
-    const { invitationId } = await params;
+    const { invitationId } = await (ctx as any).params as { invitationId: string };
     const body = await request.json();
     const { action } = body;
 
@@ -124,4 +120,4 @@ export async function POST(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

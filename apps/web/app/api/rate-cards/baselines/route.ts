@@ -4,15 +4,9 @@ import { baselineManagementService as _baselineManagementService } from 'data-or
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const GET = withAuthApiHandler(async (request, ctx) => {
-    const user = await prisma.user.findFirst({
-      where: { 
-        email: ctx.userId,
-        tenantId: ctx.tenantId 
-      },
-      select: { id: true, tenantId: true },
-    });
+    const tenantId = ctx.tenantId;
 
-    if (!user?.tenantId) {
+    if (!tenantId) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
     }
 
@@ -24,7 +18,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     const approvalStatus = searchParams.get('approvalStatus');
 
     const where: Record<string, unknown> = {
-      tenantId: user.tenantId,
+      tenantId,
     };
 
     if (baselineType) {
@@ -61,15 +55,10 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
   });
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
-    const user = await prisma.user.findFirst({
-      where: { 
-        email: ctx.userId,
-        tenantId: ctx.tenantId 
-      },
-      select: { id: true, tenantId: true },
-    });
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
 
-    if (!user?.tenantId) {
+    if (!tenantId || !userId) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
     }
 
@@ -104,7 +93,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     const existing = await prisma.rateCardBaseline.findUnique({
       where: {
         tenantId_baselineName: {
-          tenantId: user.tenantId,
+          tenantId,
           baselineName,
         },
       },
@@ -119,7 +108,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     if (categoryL1 && categoryL2) {
       const category = await prisma.procurementCategory.findFirst({
         where: {
-          tenantId: user.tenantId,
+          tenantId,
           categoryL1,
           categoryL2,
         },
@@ -130,7 +119,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     // Create baseline
     const baseline = await prisma.rateCardBaseline.create({
       data: {
-        tenantId: user.tenantId,
+        tenantId,
         baselineName,
         baselineType,
         roleStandardized: role,
@@ -155,7 +144,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         isActive: true,
         notes: notes || null,
         metadata: {
-          createdBy: user.id,
+          createdBy: userId,
           createdAt: new Date().toISOString(),
         },
       },
@@ -165,12 +154,9 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
   });
 
 export const PUT = withAuthApiHandler(async (request, ctx) => {
-    const user = await prisma.user.findUnique({
-      where: { email: ctx.userId },
-      select: { id: true, tenantId: true },
-    });
+    const tenantId = ctx.tenantId;
 
-    if (!user?.tenantId) {
+    if (!tenantId) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
     }
 
@@ -182,11 +168,11 @@ export const PUT = withAuthApiHandler(async (request, ctx) => {
     }
 
     // Verify baseline belongs to user's tenant
-    const existing = await prisma.rateCardBaseline.findUnique({
-      where: { id },
+    const existing = await prisma.rateCardBaseline.findFirst({
+      where: { id, tenantId },
     });
 
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Baseline not found', 404);
     }
 

@@ -4,6 +4,8 @@ dist
 build
 .next
 .turbo
+**/.next
+**/.turbo
 
 # Environment files (never commit secrets!)
 .env

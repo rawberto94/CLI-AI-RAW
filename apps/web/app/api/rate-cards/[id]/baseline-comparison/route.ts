@@ -1,33 +1,27 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { baselineManagementService } from 'data-orchestration/services';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
 try {
-    const user = await prisma.user.findUnique({
-      where: { email: ctx.userId },
-      select: { id: true, tenantId: true },
-    });
+    const tenantId = ctx.tenantId;
 
-    if (!user?.tenantId) {
+    if (!tenantId) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
     }
 
-    const { id } = params;
+  const { id } = await (ctx as any).params as { id: string };
 
-    // Verify rate card entry belongs to user's tenant
-    const entry = await prisma.rateCardEntry.findUnique({
-      where: { id },
-      select: { tenantId: true },
+    const entry = await prisma.rateCardEntry.findFirst({
+      where: {
+        id,
+        tenantId,
+      },
+      select: { id: true },
     });
 
-    if (!entry || entry.tenantId !== user.tenantId) {
+    if (!entry) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card entry not found', 404);
     }
 
@@ -39,4 +33,4 @@ try {
   } catch {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to compare against baselines', 500);
   }
-}
+})

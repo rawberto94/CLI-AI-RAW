@@ -11,10 +11,9 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerTenantId } from '@/lib/tenant-server';
 import { z } from 'zod';
 import { EmailService } from '@/lib/services/email.service';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
 
 // Validation schema for renewal request
@@ -34,17 +33,11 @@ const renewalRequestSchema = z.object({
   copyMetadata: z.boolean().default(true),
 });
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: originalContractId } = await (ctx as any).params as { id: string };
+
   try {
-    const { id: originalContractId } = await params;
-    const tenantId = await getServerTenantId();
+    const tenantId = ctx.tenantId;
 
     if (!tenantId) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID required', 401);
@@ -147,6 +140,31 @@ export async function POST(
 
     // Wrap all DB writes in a transaction — partial failure rolls back completely
     const renewalContract = await prisma.$transaction(async (tx) => {
+      // 0. Atomic CAS guard against concurrent duplicate renewals.
+      // The outer `childContracts.length > 0` check is a fast 409 for normal users,
+      // but two parallel POSTs (double-click, client retry, two tabs) can both pass
+      // that check and both create a child. Flip the parent's renewalStatus to
+      // COMPLETED conditionally here — if a concurrent request already flipped it,
+      // `count` is 0 and we bail out before creating the child contract.
+      const casResult = await tx.contract.updateMany({
+        where: {
+          id: originalContractId,
+          tenantId,
+          isDeleted: false,
+          OR: [
+            { renewalStatus: null },
+            { renewalStatus: { notIn: ['COMPLETED', 'IN_PROGRESS'] } },
+          ],
+        },
+        data: {
+          renewalStatus: 'IN_PROGRESS',
+        },
+      });
+      if (casResult.count === 0) {
+        // Another request already started/completed a renewal for this contract.
+        throw new Error('RENEWAL_ALREADY_IN_PROGRESS');
+      }
+
       // 1. Create the renewal contract
       const created = await tx.contract.create({
         data: {
@@ -361,25 +379,27 @@ export async function POST(
       },
     });
   } catch (error: unknown) {
+    if (error instanceof Error && error.message === 'RENEWAL_ALREADY_IN_PROGRESS') {
+      return createErrorResponse(
+        ctx,
+        'CONFLICT',
+        'Contract already has a renewal in progress or completed',
+        409,
+      );
+    }
     return handleApiError(ctx, error);
   }
-}
+})
 
 /**
  * GET /api/contracts/[id]/renew - Get renewal chain for a contract
  * Returns all contracts in the renewal chain (predecessors and successors)
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
   try {
-    const { id: contractId } = await params;
-    const tenantId = await getServerTenantId();
+    const tenantId = ctx.tenantId;
 
     if (!tenantId) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID required', 401);
@@ -501,4 +521,4 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

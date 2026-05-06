@@ -11,11 +11,11 @@ import {
   triggerSignatureStatusChanged,
   triggerNonContractDetected,
 } from '@/lib/webhook-triggers'
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 import { logger } from '@/lib/logger';
 
-export const POST = withAuthApiHandler(async (request, ctx) => {
+export const POST = withContractApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId
   const userId = ctx.userId
   const body = await request.json()

@@ -8,7 +8,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { evaluateContractPreApprovalGates, formatUnmetPreApprovalGates } from '@/lib/governance/pre-approval-gates';
 import { logger } from '@/lib/logger';
 
@@ -24,18 +24,11 @@ const redlineSaveSchema = z.object({
 /*  GET — load saved redline state                                     */
 /* ------------------------------------------------------------------ */
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getApiContext(_request);
-  const authCtx = getAuthenticatedApiContext(_request);
-  if (!authCtx) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
-  }
+export const GET = withContractApiHandler(async (_request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params as { id: string };
+
   try {
-    const { id } = await params;
-    const tenantId = authCtx.tenantId;
+    const tenantId = ctx.tenantId;
 
     const contract = await prisma.contract.findFirst({
       where: { id, tenantId, isDeleted: false },
@@ -49,7 +42,7 @@ export async function GET(
     });
 
     if (!contract) {
-      return createErrorResponse(authCtx, 'NOT_FOUND', 'Contract not found', 404);
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Redline state stored in metadata.redline
@@ -60,7 +53,7 @@ export async function GET(
     const docxHtml = meta.docxHtml as string | undefined;
     const fallbackContent = docxHtml || contract.rawText || '';
 
-    return createSuccessResponse(authCtx, {
+    return createSuccessResponse(ctx, {
       contractId: contract.id,
       contractTitle: contract.contractTitle,
       status: contract.status.toLowerCase(),
@@ -74,26 +67,19 @@ export async function GET(
     });
   } catch (error) {
     logger.error('[Redline GET] Error:', error);
-    return createErrorResponse(authCtx, 'INTERNAL_ERROR', 'Failed to load redline data', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to load redline data', 500);
   }
-}
+})
 
 /* ------------------------------------------------------------------ */
 /*  POST — save redline state                                          */
 /* ------------------------------------------------------------------ */
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getApiContext(request);
-  const authCtx = getAuthenticatedApiContext(request);
-  if (!authCtx) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
-  }
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params as { id: string };
+
   try {
-    const { id } = await params;
-    const tenantId = authCtx.tenantId;
+    const tenantId = ctx.tenantId;
 
     const {
       content,
@@ -119,7 +105,7 @@ export async function POST(
     });
 
     if (!contract) {
-      return createErrorResponse(authCtx, 'NOT_FOUND', 'Contract not found', 404);
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     if (finalize) {
@@ -161,7 +147,7 @@ export async function POST(
       if (governance.applicableGates.length > 0) {
         if (!workflowExecution?.workflow) {
           return createErrorResponse(
-            authCtx,
+            ctx,
             'CONFLICT',
             'This contract requires a completed pre-approval workflow before finalization.',
             409,
@@ -171,7 +157,7 @@ export async function POST(
 
         if (governance.unmetGates.length > 0) {
           return createErrorResponse(
-            authCtx,
+            ctx,
             'CONFLICT',
             `Workflow is missing required pre-approval gates: ${formatUnmetPreApprovalGates(governance.unmetGates)}`,
             409,
@@ -193,7 +179,7 @@ export async function POST(
             .join(', ');
 
           return createErrorResponse(
-            authCtx,
+            ctx,
             'CONFLICT',
             pendingStepLabel
               ? `Pre-approval workflow is not complete. Pending steps: ${pendingStepLabel}`
@@ -212,7 +198,7 @@ export async function POST(
 
     // Look up user details for savedBy field
     const user = await prisma.user.findUnique({
-      where: { id: authCtx.userId },
+      where: { id: ctx.userId },
       select: { email: true, firstName: true, lastName: true },
     });
     const savedByName = user?.email || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'unknown');
@@ -263,7 +249,7 @@ export async function POST(
       data: updateData as any,
     });
 
-    return createSuccessResponse(authCtx, {
+    return createSuccessResponse(ctx, {
       contractId: id,
       version,
       documentStatus: redlinePayload.documentStatus,
@@ -275,6 +261,6 @@ export async function POST(
     });
   } catch (error) {
     logger.error('[Redline POST] Error:', error);
-    return createErrorResponse(authCtx, 'INTERNAL_ERROR', 'Failed to save redline data', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to save redline data', 500);
   }
-}
+})

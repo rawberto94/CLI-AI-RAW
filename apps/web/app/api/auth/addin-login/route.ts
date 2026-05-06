@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { compare } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { logger } from '@/lib/logger';
 
@@ -17,13 +17,24 @@ function getJwtSecret(): string {
   return secret;
 }
 
+// Pre-computed dummy hash used to equalize bcrypt compare time when the user
+// does not exist, preventing a user-enumeration oracle via response timing.
+// Generated once per process start with the same cost as real hashes (12).
+let DUMMY_HASH: string | null = null;
+async function getDummyHash(): Promise<string> {
+  if (!DUMMY_HASH) {
+    DUMMY_HASH = await hash('__dummy_password_for_timing__', 12);
+  }
+  return DUMMY_HASH;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const jwtSecret = getJwtSecret();
     const body = await req.json();
     const { email, password, source } = body;
 
-    if (!email || !password) {
+    if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
       return NextResponse.json(
         { error: { code: 'VALIDATION_ERROR', message: 'Email and password are required' } },
         { status: 400 }
@@ -38,19 +49,38 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    if (!user || !user.passwordHash) {
+    // Equalize timing: always run bcrypt.compare even if the user is missing
+    // or has no password hash. Prevents timing-based user enumeration.
+    const hashToCheck = user?.passwordHash || (await getDummyHash());
+    const passwordMatches = await compare(password, hashToCheck);
+
+    if (!user || !user.passwordHash || !passwordMatches) {
       return NextResponse.json(
         { error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } },
         { status: 401 }
       );
     }
 
-    // Verify password
-    const isValid = await compare(password, user.passwordHash);
-    if (!isValid) {
+    // Enforce account state gates that the browser login flow also enforces.
+    if (user.status !== 'ACTIVE') {
       return NextResponse.json(
-        { error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' } },
-        { status: 401 }
+        { error: { code: 'ACCOUNT_INACTIVE', message: 'Account is not active' } },
+        { status: 403 }
+      );
+    }
+
+    // MFA cannot be satisfied from the Word Add-in password form — users with
+    // MFA enabled must sign in through the browser flow to complete the second
+    // factor. Silently minting a 7-day JWT here would bypass MFA.
+    if (user.mfaEnabled) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'MFA_REQUIRED',
+            message: 'Multi-factor authentication is enabled. Please sign in through the browser to use the Word Add-in.',
+          },
+        },
+        { status: 403 }
       );
     }
 

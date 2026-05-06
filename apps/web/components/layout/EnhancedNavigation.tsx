@@ -20,6 +20,7 @@ import { ConTigoLogoSVG } from '@/components/ui/ConTigoLogo';
 import { ThemeToggle } from '@/components/theme/ThemeProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOnClickOutside } from '@/hooks/useEventListener';
+import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import {
   canAccessNavigationAudience,
   getNavigationAudiences,
@@ -102,11 +103,10 @@ const navigationGroups: NavigationGroup[] = [
         name: 'Contracts',
         href: '/contracts',
         icon: FileText,
-        description: 'Repository, intake, and contract records',
+        description: 'Repository of executed and in-flight contracts',
         audiences: ['all'],
         children: [
           { name: 'Upload', href: '/upload', icon: Upload, description: 'Ingest documents', audiences: ['operator'] },
-          { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Approved starting points', audiences: ['legal'] },
           { name: 'Clauses', href: '/clauses', icon: BookOpen, description: 'Clause library', audiences: ['legal'] },
         ],
       },
@@ -114,9 +114,10 @@ const navigationGroups: NavigationGroup[] = [
         name: 'Drafting Studio',
         href: '/drafting',
         icon: PenTool,
-        description: 'AI-assisted drafting and negotiation',
+        description: 'Author new contracts with templates, AI, and playbooks',
         audiences: ['operator'],
         children: [
+          { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Approved starting points', audiences: ['legal'] },
           { name: 'AI Copilot', href: '/drafting/copilot', icon: Sparkles, description: 'Deep drafting workspace', audiences: ['operator'] },
           { name: 'Playbooks', href: '/playbooks', icon: Gavel, description: 'Legal standards and fallbacks', audiences: ['legal'] },
         ],
@@ -419,6 +420,7 @@ function EnhancedNavigation() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
+  const confirm = useConfirm();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -725,7 +727,14 @@ function EnhancedNavigation() {
                       <Settings className="h-4 w-4" /> Settings
                     </Link>
                     <hr className="my-1 dark:border-slate-700" />
-                    <button onClick={() => signOut({ callbackUrl: '/auth/signin' })} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20">
+                    <button
+                      onClick={async () => {
+                        setShowUserMenu(false);
+                        const ok = await confirm(confirmPresets.logout());
+                        if (ok) signOut({ callbackUrl: '/auth/signin' });
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                    >
                       <LogOut className="h-4 w-4" /> Sign Out
                     </button>
                   </motion.div>

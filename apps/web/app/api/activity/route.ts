@@ -143,7 +143,6 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     type,
     title,
     description,
-    userId,
     userName,
     userEmail,
     userAvatar,
@@ -152,10 +151,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     contractName,
   } = body;
 
-  const tenantId = ctx.tenantId || body.tenantId;
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
 
-  if (!type || !title || !userId) {
-    return createErrorResponse(ctx, 'BAD_REQUEST', 'type, title, and userId are required', 400);
+  if (!type || !title) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'type and title are required', 400);
   }
 
   // Create activity in database

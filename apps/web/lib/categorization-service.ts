@@ -941,6 +941,10 @@ export async function categorizeContract(
         category: result.category,
         categoryL1: result.categoryPath?.split("/")[1] || result.category,
         categoryL2: result.categoryPath?.split("/")[2] || null,
+        // Also persist the relational FK so the contract row joins into
+        // taxonomy_categories — required for the typed taxonomy UI and for
+        // any reporting that filters by tenant taxonomy.
+        ...(result.categoryId ? { contractCategoryId: result.categoryId } : {}),
         updatedAt: new Date(),
       },
     });

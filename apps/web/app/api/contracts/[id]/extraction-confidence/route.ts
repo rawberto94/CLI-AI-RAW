@@ -8,10 +8,9 @@
  * 3. Historical accuracy from ExtractionCorrection feedback
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { contractService } from 'data-orchestration/services'
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface FieldConfidence {
   name: string
@@ -23,16 +22,10 @@ interface FieldConfidence {
   feedbackCount?: number
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse> {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withContractApiHandler(async (_request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
   try {
-    const { id: contractId } = await params
     const tenantId = ctx.tenantId
 
     // Get contract with metadata
@@ -166,7 +159,7 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 /**
  * Estimate default confidence based on field type and value

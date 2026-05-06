@@ -8,12 +8,11 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { benchmarkNotificationService } from 'data-orchestration/services';
-import { getApiTenantId } from '@/lib/security/tenant';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const GET = withAuthApiHandler(async (request, ctx) => {
     const searchParams = request.nextUrl.searchParams;
-    const tenantId = await getApiTenantId(request);
+  const tenantId = ctx.tenantId;
     const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '100') || 100), 200);
     const unreadOnly = searchParams.get('unreadOnly') === 'true';
     const type = searchParams.get('type') as any;
@@ -48,17 +47,25 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
  */
 export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
-    const { notificationId, action, tenantId } = body;
+  const { notificationId, action } = body;
 
     const notificationService = new benchmarkNotificationService(prisma);
 
     if (action === 'markAsRead' && notificationId) {
+      const notification = notificationService
+        .getNotifications(ctx.tenantId, { limit: 10000 })
+        .find(item => item.id === notificationId);
+
+      if (!notification) {
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Notification not found', 404);
+      }
+
       const success = notificationService.markAsRead(notificationId);
       return createSuccessResponse(ctx, { success });
     }
 
-    if (action === 'markAllAsRead' && tenantId) {
-      const count = notificationService.markAllAsRead(tenantId);
+    if (action === 'markAllAsRead') {
+      const count = notificationService.markAllAsRead(ctx.tenantId);
       return createSuccessResponse(ctx, { success: true, count });
     }
 

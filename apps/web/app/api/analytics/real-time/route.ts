@@ -13,7 +13,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type Au
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action') || 'dashboard';
-  const tenantId = searchParams.get('tenantId') || undefined;
+  const tenantId = ctx.tenantId;
 
   const analytics = getAnalyticsService();
 
@@ -77,8 +77,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       return new NextResponse(stream, {
         headers: {
           'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'no-cache, no-transform',
           'Connection': 'keep-alive',
+          'X-Accel-Buffering': 'no',
         },
       });
     }
@@ -97,7 +98,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
 
   switch (action) {
     case 'track': {
-      const { eventType, entityType, entityId, metadata, userId, tenantId } = body;
+      const { eventType, entityType, entityId, metadata } = body;
       
       if (!eventType) {
         return createErrorResponse(ctx, 'MISSING_EVENT_TYPE', 'eventType is required', 400);
@@ -108,8 +109,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         action: body.action || eventType,
         entityType,
         entityId,
-        userId,
-        tenantId,
+        userId: ctx.userId,
+        tenantId: ctx.tenantId,
         metadata,
       });
 

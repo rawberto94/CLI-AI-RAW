@@ -155,17 +155,21 @@ export default function ModelPerformancePage() {
   const [_comparedModels, setComparedModels] = useState<string[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchModels = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const res = await fetch(`/api/ai/models?action=list`);
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const json = await res.json();
-      if (json.success && json.data) {
-        const list = Array.isArray(json.data) ? json.data : json.data.models || [];
-        setModels(list.map(mapApiModel));
-      }
-    } catch {
+      if (!json.success || !json.data) throw new Error(json.error || 'Model data unavailable');
+      const list = Array.isArray(json.data) ? json.data : json.data.models || [];
+      setModels(list.map(mapApiModel));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load model data';
+      setLoadError(msg);
       toast.error('Failed to load model data');
     } finally {
       setLoading(false);
@@ -253,6 +257,22 @@ export default function ModelPerformancePage() {
           </Button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-rose-200 bg-rose-50/50 p-4">
+          <div className="flex items-start gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">Couldn’t load model performance</p>
+              <p className="text-sm text-rose-700 mt-1">{loadError}</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchModels} className="flex-shrink-0">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Stats Overview */}
       <div className="grid gap-4 md:grid-cols-4">

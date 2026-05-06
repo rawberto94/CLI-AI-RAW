@@ -1,27 +1,18 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
-import { getApiTenantId } from '@/lib/security/tenant';
 import { getContractQueue } from '@/lib/queue/contract-queue';
 import { v4 as uuidv4 } from 'uuid';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/[id]/orchestrator/generate-artifact
  * 
  * Trigger generation of a specific artifact type
  */
-export async function POST(
-  request: NextRequest,
-  props: { params: Promise<{ id: string }> }
-) {
-  const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-  const contractId = params.id;
-  const tenantId = await getApiTenantId(request);
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+  const tenantId = ctx.tenantId;
 
   try {
     const body = await request.json();
@@ -73,4 +64,4 @@ export async function POST(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

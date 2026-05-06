@@ -14,7 +14,6 @@ const TeamInviteSchema = z.object({
   email: z.string().email('Invalid email format').max(255),
   role: z.enum(['admin', 'manager', 'member', 'viewer']).default('member'),
   department: z.string().max(100).optional(),
-  tenantId: z.string().optional(),
 });
 
 type UserRole = 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
@@ -163,7 +162,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.issues[0]?.message || 'Invalid request body', 400);
   }
   const { email, role } = parsed.data;
-  const tenantId = ctx.tenantId || parsed.data.tenantId;
+  const tenantId = ctx.tenantId;
 
   if (!tenantId) {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);

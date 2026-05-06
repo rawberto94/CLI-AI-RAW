@@ -1708,7 +1708,17 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
     } catch (error) {
       // Clear timeout on any error
       clearTimeout(timeoutId);
-      
+
+      // Flip the user's message status from "sent" (optimistically set 300ms
+      // after dispatch) back to "error". Without this, a failed request
+      // leaves the checkmark showing next to the user's bubble, implying the
+      // server accepted and processed it when it actually never did.
+      // AbortError is still an "error" from the user's POV (their message
+      // didn't get a reply) — they can retry from the error UI.
+      setMessages((prev) =>
+        prev.map((m) => (m.id === userMessage.id ? { ...m, status: "error" } : m))
+      );
+
       // Check if request was aborted (timeout or user cancel)
       if (error instanceof Error && error.name === 'AbortError') {
         const timeoutMessage: Message = {

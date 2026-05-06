@@ -20,6 +20,9 @@ async function getAutoPromptOptimizerService() {
 
 export const GET = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required', 400);
+    }
     const autoPromptOptimizerService = await getAutoPromptOptimizerService();
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'list';
@@ -81,6 +84,9 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required', 400);
+    }
     const autoPromptOptimizerService = await getAutoPromptOptimizerService();
     const body = await request.json();
     const { action } = body;
@@ -101,7 +107,6 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       }
 
       case 'activate': {
-        const tenantId = ctx.tenantId || 'system';
         const { artifactType, promptId } = body;
         if (!artifactType || !promptId) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'artifactType and promptId are required', 400);
@@ -114,7 +119,6 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       }
 
       case 'record-metrics': {
-        const tenantId = ctx.tenantId || 'system';
         const { artifactType, promptId, metrics } = body;
         if (!artifactType || !promptId || !metrics) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'artifactType, promptId, and metrics are required', 400);
@@ -131,7 +135,6 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       }
 
       case 'optimize': {
-        const tenantId = ctx.tenantId || 'system';
         const { artifactType, promptId } = body;
         if (!artifactType || !promptId) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'artifactType and promptId are required', 400);

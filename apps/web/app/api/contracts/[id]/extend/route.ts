@@ -12,12 +12,10 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerTenantId } from '@/lib/tenant-server';
 import { z } from 'zod';
 import { EmailService } from '@/lib/services/email.service';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withContractApiHandler,
   createSuccessResponse,
   createErrorResponse,
   handleApiError,
@@ -31,24 +29,11 @@ const extensionRequestSchema = z.object({
   submitForApproval: z.boolean().default(false),
 });
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(
-      getApiContext(request),
-      'UNAUTHORIZED',
-      'Authentication required',
-      401,
-      { retryable: false }
-    );
-  }
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
 
   try {
-    const { id: contractId } = await params;
-    const tenantId = await getServerTenantId();
+    const tenantId = ctx.tenantId;
 
     if (!tenantId) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID required', 401);
@@ -199,4 +184,4 @@ export async function POST(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})

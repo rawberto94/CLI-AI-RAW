@@ -18,6 +18,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { useConfirm } from '@/components/dialogs/ConfirmDialog';
 import {
   ArrowLeft,
   Check,
@@ -108,6 +109,7 @@ export default function RFxDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
+  const confirm = useConfirm();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -295,11 +297,18 @@ export default function RFxDetailPage() {
   };
 
   const handleCancel = async () => {
-    if (confirm('Are you sure you want to cancel this RFx?')) {
-      await patchEvent({ action: 'cancel', reason: 'Cancelled by user' });
-      toast.success('RFx cancelled');
-      fetchEvent();
-    }
+    const ok = await confirm({
+      title: 'Cancel this RFx?',
+      description: 'Vendors will be notified and the event will be closed. This cannot be undone.',
+      confirmText: 'Cancel RFx',
+      cancelText: 'Keep open',
+      variant: 'warning',
+      destructive: true,
+    });
+    if (!ok) return;
+    await patchEvent({ action: 'cancel', reason: 'Cancelled by user' });
+    toast.success('RFx cancelled');
+    fetchEvent();
   };
 
   // ── Loading state ──────────────────────────────────────────────────────

@@ -5,6 +5,10 @@ export const dynamic = 'force-dynamic';
 
 // Job Monitor API — BullMQ queue introspection
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   try {
     let queueData: any = {};
 
@@ -72,6 +76,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 });
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   try {
     const body = await request.json();
 

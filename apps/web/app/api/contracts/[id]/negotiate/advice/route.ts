@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import {
-  getAuthenticatedApiContext,
+  getAuthenticatedApiContextWithSessionFallback,
   getApiContext,
   createErrorResponse,
 } from '@/lib/api-middleware';
@@ -27,7 +27,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getAuthenticatedApiContext(request);
+  const ctx = await getAuthenticatedApiContextWithSessionFallback(request);
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
@@ -86,16 +86,31 @@ export async function POST(
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
+        let isClosed = false;
+        const safeEnqueue = (data: string) => {
+          if (isClosed) return;
+          try {
+            controller.enqueue(encoder.encode(data));
+          } catch {
+            isClosed = true;
+          }
+        };
+        const safeClose = () => {
+          if (isClosed) return;
+          isClosed = true;
+          try { controller.close(); } catch { /* already closed */ }
+        };
         try {
           for await (const chunk of result.textStream) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'content', text: chunk })}\n\n`));
+            if (isClosed) break;
+            safeEnqueue(`data: ${JSON.stringify({ type: 'content', text: chunk })}\n\n`);
           }
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
-          controller.close();
+          safeEnqueue(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+          safeClose();
         } catch (err) {
           const message = err instanceof Error ? err.message : 'Stream error';
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', message })}\n\n`));
-          controller.close();
+          safeEnqueue(`data: ${JSON.stringify({ type: 'error', message })}\n\n`);
+          safeClose();
         }
       },
     });
@@ -103,8 +118,9 @@ export async function POST(
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
       },
     });
   } catch (error) {

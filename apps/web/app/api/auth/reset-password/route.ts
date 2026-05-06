@@ -48,7 +48,10 @@ export async function POST(request: NextRequest) {
     // Hash the new password
     const passwordHash = await hash(password, 12);
 
-    // Update password and mark token as used in a transaction
+    // Update password, mark token as used, and invalidate all existing sessions
+    // in a single transaction. Session invalidation is critical: if an attacker
+    // holds a stolen/phished session cookie, a password reset must terminate it.
+    // (OWASP ASVS 3.5.1, 3.3.1)
     await prisma.$transaction([
       prisma.user.update({
         where: { id: resetToken.userId },
@@ -62,6 +65,13 @@ export async function POST(request: NextRequest) {
       prisma.passwordResetToken.updateMany({
         where: { userId: resetToken.userId, id: { not: resetToken.id }, usedAt: null },
         data: { usedAt: new Date() },
+      }),
+      // Revoke all NextAuth sessions (forces re-login on every device)
+      prisma.session.deleteMany({ where: { userId: resetToken.userId } }),
+      // Mark all UserSession (custom session tracking) as revoked
+      prisma.userSession.updateMany({
+        where: { userId: resetToken.userId, revokedAt: null },
+        data: { revokedAt: new Date(), revokedReason: 'password_reset' },
       }),
     ]);
 

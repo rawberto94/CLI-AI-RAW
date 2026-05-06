@@ -7,7 +7,34 @@ import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext
 import { prisma } from '@/lib/prisma';
 import { monitoringService } from 'data-orchestration/services';
 
+function canManageTeam(userRole: string | undefined): boolean {
+  return userRole === 'owner' || userRole === 'admin' || userRole === 'superadmin';
+}
+
 export const GET = withAuthApiHandler(async (_request, ctx) => {
+  if (!canManageTeam(ctx.userRole)) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Forbidden',
+        retryable: false,
+      },
+      meta: {
+        requestId: ctx.requestId,
+        timestamp: new Date().toISOString(),
+      },
+    }), {
+      status: 403,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Request-ID': ctx.requestId,
+        'X-Response-Time': `${Date.now() - ctx.startTime}ms`,
+        'Cache-Control': 'no-store',
+      },
+    });
+  }
+
   const members = await prisma.user.findMany({
     where: { tenantId: ctx.tenantId },
     select: {

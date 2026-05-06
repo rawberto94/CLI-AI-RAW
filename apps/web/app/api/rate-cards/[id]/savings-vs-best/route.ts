@@ -7,24 +7,19 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardBenchmarkingService } from 'data-orchestration/services';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 /**
  * GET /api/rate-cards/[id]/savings-vs-best
  * Calculate savings vs best rate for a specific rate card entry
  */
-export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id: rateCardId } = await (ctx as any).params as { id: string };
+
+  try {
     if (!ctx.tenantId) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
-
-    const rateCardId = params.id;
 
     // Verify rate card belongs to tenant
     const rateCard = await prisma.rateCardEntry.findFirst({
@@ -45,4 +40,4 @@ try {
   } catch (error: unknown) {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to calculate savings', 500);
   }
-}
+});

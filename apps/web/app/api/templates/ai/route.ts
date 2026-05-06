@@ -15,8 +15,7 @@ import { getAIModel } from '@/lib/ai/ai-sdk-provider';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withAuthApiHandler,
   createSuccessResponse,
   createErrorResponse,
 } from '@/lib/api-middleware';
@@ -97,12 +96,7 @@ const ExtractVariablesResponseSchema = z.object({
 
 // ── POST handler ───────────────────────────────────────────────────────
 
-export async function POST(request: NextRequest) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/templates/ai', AI_RATE_LIMITS.standard);
   if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
@@ -238,14 +232,14 @@ Return variable names in camelCase format. Mark date, currency, and numeric vari
     logger.error('Template AI error', { error: err instanceof Error ? err.message : String(err) });
 
     if (err instanceof z.ZodError) {
-      return createErrorResponse(ctx!, 'VALIDATION_ERROR', err.errors[0]?.message || 'Invalid request', 400);
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', err.errors[0]?.message || 'Invalid request', 400);
     }
 
     const msg = err instanceof Error ? err.message : '';
     if (msg.includes('API key') || msg.includes('quota')) {
-      return createErrorResponse(ctx!, 'SERVICE_UNAVAILABLE', 'AI service temporarily unavailable', 503, { retryable: true });
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'AI service temporarily unavailable', 503, { retryable: true });
     }
 
-    return createErrorResponse(ctx!, 'INTERNAL_ERROR', 'AI generation failed', 500, { retryable: true });
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'AI generation failed', 500, { retryable: true });
   }
-}
+})

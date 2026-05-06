@@ -16,7 +16,7 @@ import {
   CategorizationResult,
   BulkCategorizationResult,
 } from "@/lib/categorization-service";
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -46,7 +46,7 @@ type CategorizationRequest =
 // POST - Categorize contract(s)
 // ============================================================================
 
-export const POST = withAuthApiHandler(async (request, ctx) => {
+export const POST = withContractApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
   
   // Require tenant ID for data isolation

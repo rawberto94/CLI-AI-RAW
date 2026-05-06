@@ -188,4 +188,17 @@ describe('GET /api/contracts', () => {
     expect(response.status).toBe(200);
     expect(data.data.filters.applied.search).toBe('acme');
   });
+
+  it('returns 400 for an invalid cursor', async () => {
+    const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/contracts', {
+      searchParams: { cursor: 'not-base64' },
+    });
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('VALIDATION_ERROR');
+    expect(mockWithCache).not.toHaveBeenCalled();
+  });
 });

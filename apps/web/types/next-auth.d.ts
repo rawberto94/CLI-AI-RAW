@@ -10,6 +10,8 @@ declare module "next-auth" {
       tenantId: string;
       role: string;
       provider?: string;
+      userSessionId?: string;
+      sessionExpiresAt?: string;
       mfaRequired: boolean;
       mfaVerified: boolean;
     };
@@ -28,6 +30,9 @@ declare module "@auth/core/jwt" {
     tenantId?: string;
     role?: string;
     provider?: string;
+    userSessionId?: string;
+    lastActiveAt?: number;
+    sessionExpiresAt?: number;
     mfaRequired?: boolean;
     mfaVerified?: boolean;
     lastValidated?: number;

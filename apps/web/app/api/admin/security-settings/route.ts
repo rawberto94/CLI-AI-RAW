@@ -4,9 +4,8 @@
  */
 
 import { NextRequest } from 'next/server';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
-import { monitoringService } from 'data-orchestration/services';
 
 interface SecuritySettings {
   mfaRequired: boolean;
@@ -22,7 +21,7 @@ interface SecuritySettings {
 
 const DEFAULT_SETTINGS: SecuritySettings = {
   mfaRequired: false,
-  sessionTimeout: 24,
+  sessionTimeout: 8,
   ipAllowlistEnabled: false,
   passwordPolicy: {
     minLength: 8,
@@ -33,6 +32,10 @@ const DEFAULT_SETTINGS: SecuritySettings = {
 };
 
 export const GET = withAuthApiHandler(async (_request, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   const config = await prisma.tenantConfig.findUnique({
     where: { tenantId: ctx.tenantId },
   });
@@ -45,6 +48,10 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
 });
 
 export const PUT = withAuthApiHandler(async (request, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   const body = await request.json();
   const { settings } = body as { settings: Partial<SecuritySettings> };
 

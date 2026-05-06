@@ -21,7 +21,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 import { contractHierarchyService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
@@ -75,7 +75,7 @@ const createAmendmentSchema = z.object({
 /**
  * GET /api/contracts/[id]/hierarchy
  */
-export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+export const GET = withContractApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const { searchParams } = new URL(request.url);
   
   const validated = getHierarchySchema.safeParse({
@@ -292,7 +292,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
 /**
  * POST /api/contracts/[id]/hierarchy
  */
-export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+export const POST = withContractApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const body = await request.json();
   const action = body.action;
 
@@ -384,7 +384,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
  * DELETE /api/contracts/[id]/hierarchy
  * Remove contract from hierarchy (unlink)
  */
-export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+export const DELETE = withContractApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const { searchParams } = new URL(request.url);
   const relationshipId = searchParams.get('relationshipId');
 

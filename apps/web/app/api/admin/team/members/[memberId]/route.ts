@@ -4,20 +4,20 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { auditTrailService } from 'data-orchestration/services';
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ memberId: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+function canManageTeam(userRole: string | undefined): boolean {
+  return userRole === 'owner' || userRole === 'admin' || userRole === 'superadmin';
+}
+
+export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (!canManageTeam(ctx.userRole)) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403, { retryable: false });
   }
   try {
-    const { memberId } = await params;
+    const { memberId } = await (ctx as any).params as { memberId: string };
 
     // Get target member
     const member = await prisma.user.findFirst({
@@ -76,18 +76,14 @@ export async function PATCH(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ memberId: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+export const DELETE = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  if (!canManageTeam(ctx.userRole)) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403, { retryable: false });
   }
   try {
-    const { memberId } = await params;
+    const { memberId } = await (ctx as any).params as { memberId: string };
 
     // Get target member
     const member = await prisma.user.findFirst({
@@ -131,4 +127,4 @@ export async function DELETE(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

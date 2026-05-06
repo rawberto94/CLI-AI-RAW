@@ -8,11 +8,23 @@ import { NextRequest } from 'next/server';
 import { getScheduledReportsService, ReportSchedule } from '@/lib/reports/scheduled-reports.service';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
+async function getTenantSchedule(
+  service: ReturnType<typeof getScheduledReportsService>,
+  id: string,
+  tenantId: string,
+) {
+  const schedule = await service.getSchedule(id);
+  if (!schedule || schedule.tenantId !== tenantId) {
+    return null;
+  }
+  return schedule;
+}
+
 // GET /api/reports/scheduled
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action') || 'list';
-  const tenantId = searchParams.get('tenantId') || ctx.tenantId;
+  const tenantId = ctx.tenantId;
 
   const service = getScheduledReportsService();
 
@@ -38,7 +50,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         return createErrorResponse(ctx, 'BAD_REQUEST', 'Schedule ID is required', 400);
       }
 
-      const schedule = await service.getSchedule(id);
+      const schedule = await getTenantSchedule(service, id, tenantId);
       if (!schedule) {
         return createErrorResponse(ctx, 'NOT_FOUND', 'Schedule not found', 404);
       }
@@ -52,6 +64,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         return createErrorResponse(ctx, 'BAD_REQUEST', 'Schedule ID is required', 400);
       }
 
+      const schedule = await getTenantSchedule(service, id, tenantId);
+      if (!schedule) {
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Schedule not found', 404);
+      }
+
       const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '10', 10) || 10), 200);
       const history = await service.getExecutionHistory(id, limit);
 
@@ -59,7 +76,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     case 'due': {
-      const dueSchedules = await service.getDueSchedules();
+      const dueSchedules = (await service.getDueSchedules()).filter(schedule => schedule.tenantId === tenantId);
 
       return createSuccessResponse(ctx, {
         data: dueSchedules,
@@ -98,8 +115,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         enabled: schedule.enabled !== false,
         config: schedule.config || {},
         delivery: schedule.delivery || {},
-        tenantId: schedule.tenantId || ctx.tenantId,
-        createdBy: schedule.createdBy || ctx.userId,
+        tenantId: ctx.tenantId,
+        createdBy: ctx.userId,
       });
 
       return createSuccessResponse(ctx, newSchedule);
@@ -110,6 +127,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       
       if (!id) {
         return createErrorResponse(ctx, 'BAD_REQUEST', 'Schedule ID is required', 400);
+      }
+
+      const existing = await getTenantSchedule(service, id, ctx.tenantId);
+      if (!existing) {
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Schedule not found', 404);
       }
 
       const updated = await service.updateSchedule(id, updates);
@@ -127,6 +149,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         return createErrorResponse(ctx, 'BAD_REQUEST', 'Schedule ID is required', 400);
       }
 
+      const existing = await getTenantSchedule(service, id, ctx.tenantId);
+      if (!existing) {
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Schedule not found', 404);
+      }
+
       const execution = await service.triggerReport(id, options);
 
       return createSuccessResponse(ctx, execution);
@@ -137,6 +164,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       
       if (!id) {
         return createErrorResponse(ctx, 'BAD_REQUEST', 'Schedule ID is required', 400);
+      }
+
+      const existing = await getTenantSchedule(service, id, ctx.tenantId);
+      if (!existing) {
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Schedule not found', 404);
       }
 
       const execution = await service.executeReport(id);
@@ -159,6 +191,10 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
   }
 
   const service = getScheduledReportsService();
+  const existing = await getTenantSchedule(service, id, ctx.tenantId);
+  if (!existing) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Schedule not found', 404);
+  }
   const deleted = await service.deleteSchedule(id);
 
   return createSuccessResponse(ctx, { deleted });

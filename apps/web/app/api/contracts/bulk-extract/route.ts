@@ -12,13 +12,13 @@ import {
   getExtractionQueue,
   type BatchExtractionResult,
 } from "@/lib/ai";
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // ============================================================================
 // POST - Queue bulk extraction
 // ============================================================================
 
-export const POST = withAuthApiHandler(async (request, ctx) => {
+export const POST = withContractApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
   
   // Require tenant ID for data isolation
@@ -72,7 +72,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 // GET - Get queue status
 // ============================================================================
 
-export const GET = withAuthApiHandler(async (request, ctx) => {
+export const GET = withContractApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
   
   // Require tenant ID for data isolation
@@ -166,7 +166,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
 // DELETE - Cancel pending jobs
 // ============================================================================
 
-export const DELETE = withAuthApiHandler(async (request, ctx) => {
+export const DELETE = withContractApiHandler(async (request, ctx) => {
   const { searchParams } = new URL(request.url);
   const jobId = searchParams.get("jobId");
 

@@ -8,10 +8,8 @@ import { logger } from '@/lib/logger';
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withAuthApiHandler,
   createSuccessResponse,
   createErrorResponse,
   handleApiError,
@@ -22,21 +20,13 @@ import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate
 export const dynamic = 'force-dynamic';
 
 // PATCH — update comment content or resolved state
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; commentId: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-
+export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     const rl = checkRateLimit(tenantId, ctx.userId, '/api/drafts/[id]/comments/[commentId]', AI_RATE_LIMITS.standard);
     if (!rl.allowed) return rateLimitResponse(rl);
 
-    const { id: draftId, commentId } = await params;
+    const { id: draftId, commentId } = await (ctx as any).params as { id: string; commentId: string };
     const body = await request.json();
 
     const existing = await prisma.draftComment.findFirst({
@@ -81,24 +71,16 @@ export async function PATCH(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // DELETE — remove a comment and its replies
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; commentId: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-
+export const DELETE = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     const rl2 = checkRateLimit(tenantId, ctx.userId, '/api/drafts/[id]/comments/[commentId]', AI_RATE_LIMITS.standard);
     if (!rl2.allowed) return rateLimitResponse(rl2);
 
-    const { id: draftId, commentId } = await params;
+    const { id: draftId, commentId } = await (ctx as any).params as { id: string; commentId: string };
 
     const existing = await prisma.draftComment.findFirst({
       where: { id: commentId, draftId, tenantId },
@@ -124,4 +106,4 @@ export async function DELETE(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

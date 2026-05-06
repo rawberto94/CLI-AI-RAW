@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { workflowService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
@@ -10,20 +10,13 @@ export const dynamic = 'force-dynamic';
  * POST /api/workflows/:id/execute
  * Execute a workflow for a specific contract
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const tenantId = ctx.tenantId;
     const userId = ctx.userId;
-    const { id: workflowId } = await params;
+    const { id: workflowId } = await (ctx as any).params as { id: string };
     const body = await request.json();
-    const { contractId, initiatedBy, metadata, dueDate, priority } = body;
+    const { contractId, metadata, dueDate, priority } = body;
 
     if (!contractId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
@@ -63,7 +56,7 @@ export async function POST(
         contractId,
         status: 'IN_PROGRESS',
         currentStep: '0',
-        startedBy: initiatedBy || userId,
+        startedBy: userId,
         dueDate: calculatedDueDate,
         metadata: { ...(metadata || {}), priority: priority || 'medium' },
       }
@@ -149,22 +142,15 @@ export async function POST(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 /**
  * GET /api/workflows/:id/execute
  * Get execution status for a workflow
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
-    const { id: workflowId } = await params;
+    const { id: workflowId } = await (ctx as any).params as { id: string };
     const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     const contractId = searchParams.get('contractId');
@@ -206,4 +192,4 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

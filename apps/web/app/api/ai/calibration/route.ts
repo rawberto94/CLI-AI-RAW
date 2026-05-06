@@ -18,6 +18,9 @@ async function getConfidenceCalibrationService() {
 
 export const GET = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required', 400);
+    }
     const confidenceCalibrationService = await getConfidenceCalibrationService();
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'report';
@@ -69,6 +72,9 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required', 400);
+    }
     const confidenceCalibrationService = await getConfidenceCalibrationService();
     const body = await request.json();
     const { action } = body;
@@ -94,12 +100,16 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         if (!predictions || !Array.isArray(predictions)) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'predictions array is required', 400);
         }
-        await confidenceCalibrationService.recordBatchPredictions(predictions);
+        await confidenceCalibrationService.recordBatchPredictions(
+          predictions.map((prediction: Record<string, unknown>) => ({
+            ...prediction,
+            tenantId,
+          }))
+        );
         return createSuccessResponse(ctx, { recordedCount: predictions.length });
       }
 
       case 'recalculate': {
-        const tenantId = ctx.tenantId || 'system';
         const { artifactType } = body;
         if (!artifactType) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'artifactType is required', 400);

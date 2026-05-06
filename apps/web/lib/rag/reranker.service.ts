@@ -257,7 +257,7 @@ export async function semanticRerank(
   const allTexts = [query, ...documents];
   
   const rerankModel = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
-  const rerankDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
+  const rerankDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1536', 10);
   const rerankParams: Record<string, unknown> = { model: rerankModel, input: allTexts };
   if (rerankDims > 0 && rerankModel.includes('text-embedding-3')) rerankParams.dimensions = rerankDims;
   const response = await embedOpenai.embeddings.create(rerankParams as any);

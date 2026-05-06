@@ -22,7 +22,7 @@ import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import { recordAICost, estimateTokenCost } from '@/lib/ai/model-router.service';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Import advanced intelligence services (lazy loaded for edge compatibility)
 let advancedIntelligence: any = null;
@@ -236,7 +236,7 @@ Return a comprehensive JSON analysis.`;
 // HANDLER
 // ============================================================================
 
-export const POST = withAuthApiHandler(async (request, ctx) => {
+export const POST = withContractApiHandler(async (request, ctx) => {
   const startTime = Date.now();
   
   try {

@@ -26,9 +26,11 @@ import Placeholder from '@tiptap/extension-placeholder';
 import DOMPurify from 'isomorphic-dompurify';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/dialogs/ConfirmDialog';
 import { exportDraftAsPDF, exportDraftAsDOCX } from '@/lib/drafting/draft-export';
 import type { CopilotWorkflowContext } from '@/lib/drafting/copilot-handoff';
 import { VersionDiffView } from './VersionDiffView';
+import { DraftShapeAssist } from './DraftShapeAssist';
 
 // ============================================================================
 // HELPERS
@@ -1079,6 +1081,10 @@ export function CopilotDraftingCanvas({
   onLegalReview,
 }: CopilotDraftingCanvasProps) {
   const { data: session } = useSession();
+  // Accessible confirmation dialog (focus-trapped, keyboard- & screen-reader-friendly).
+  // Replaces browser-native window.confirm() which is blocked on some mobile browsers,
+  // has no ARIA role, and can be silenced by the “prevent further dialogs” checkbox.
+  const confirm = useConfirm();
 
   // Content state — TipTap manages the DOM; we keep refs for AI API payloads
   // to avoid re-rendering the entire component on every keystroke/cursor move.
@@ -1133,7 +1139,32 @@ export function CopilotDraftingCanvas({
       return next;
     });
   }, []);
-  const [aiChatMessages, _setAiChatMessages] = useState<AiChatMessage[]>([]);
+  const aiChatStorageKey = useMemo(
+    () => (draftId ? `contigo.draft.${draftId}.chat` : null),
+    [draftId],
+  );
+  const [aiChatMessages, _setAiChatMessages] = useState<AiChatMessage[]>(() => {
+    // Rehydrate prior chat thread for this draft so the conversation survives
+    // reloads. We drop any half-streamed assistant bubble (isStreaming=true)
+    // and cap to the most recent 30 messages to stay inside the 5MB quota.
+    if (typeof window === 'undefined' || !draftId) return [];
+    try {
+      const raw = localStorage.getItem(`contigo.draft.${draftId}.chat`);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .map((m: any) => ({
+          ...m,
+          timestamp: m?.timestamp ? new Date(m.timestamp) : new Date(),
+          isStreaming: false,
+        }))
+        .filter((m: any) => m && typeof m.id === 'string' && typeof m.content === 'string')
+        .slice(-30) as AiChatMessage[];
+    } catch {
+      return [];
+    }
+  });
   const [rejectedDraftIds, setRejectedDraftIds] = useState<Set<string>>(() => new Set());
   const [appliedDraftIds, setAppliedDraftIds] = useState<Set<string>>(() => new Set());
   const toggleDraftRejected = useCallback((id: string) => {
@@ -1152,7 +1183,7 @@ export function CopilotDraftingCanvas({
       return next;
     });
   }, []);
-  const aiChatMessagesRef = useRef<AiChatMessage[]>([]);
+  const aiChatMessagesRef = useRef<AiChatMessage[]>(aiChatMessages);
   // Keep ref in sync so sendAiChatMessage reads latest without re-creating
   const setAiChatMessages = useCallback((update: AiChatMessage[] | ((prev: AiChatMessage[]) => AiChatMessage[])) => {
     _setAiChatMessages(prev => {
@@ -1161,7 +1192,113 @@ export function CopilotDraftingCanvas({
       return next;
     });
   }, []);
+
+  // Track which draft our current `aiChatMessages` belongs to. Without this
+  // the state is seeded ONCE from the initial draftId and never resets when
+  // the route switches to a different draft — the persist effect would then
+  // write draft-A's thread into draft-B's localStorage key, cross-contaminating
+  // (including across tenants/users). Whenever draftId changes we re-read
+  // storage for the new key and hard-replace the messages.
+  const loadedChatDraftIdRef = useRef<string | null | undefined>(draftId);
+  const hasShownQuotaWarningRef = useRef(false);
+  useEffect(() => {
+    if (loadedChatDraftIdRef.current === draftId) return;
+    // If a chat stream was still in flight for the previous draft, abort it
+    // FIRST — otherwise its SSE chunks would continue landing on the newly
+    // rehydrated messages for the new draft (the abort controller outlives
+    // the route change, and the stream reader has no idea which draft it
+    // started for).
+    try { aiChatAbortRef.current?.abort(); } catch { /* ignore */ }
+    aiChatAbortRef.current = null;
+    loadedChatDraftIdRef.current = draftId;
+    if (typeof window === 'undefined' || !draftId) {
+      setAiChatMessages([]);
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(`contigo.draft.${draftId}.chat`);
+      if (!raw) { setAiChatMessages([]); return; }
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) { setAiChatMessages([]); return; }
+      const rehydrated = parsed
+        .map((m: any) => ({
+          ...m,
+          timestamp: m?.timestamp ? new Date(m.timestamp) : new Date(),
+          isStreaming: false,
+        }))
+        .filter((m: any) => m && typeof m.id === 'string' && typeof m.content === 'string')
+        .slice(-30) as AiChatMessage[];
+      setAiChatMessages(rehydrated);
+    } catch {
+      setAiChatMessages([]);
+    }
+  }, [draftId, setAiChatMessages]);
+
+  // Persist the chat thread per-draft so reloads/navigation don't wipe
+  // context. We only write when the last message has finished streaming
+  // (avoids JSON-stringifying on every SSE chunk, which would hammer the
+  // main thread on fast streams and risk storing half-formed bubbles).
+  // We also require `loadedChatDraftIdRef` to have caught up with the
+  // current `draftId` so we never write the previous draft's state into
+  // the new draft's key during the brief window between route-change and
+  // the rehydration effect above.
+  useEffect(() => {
+    if (!aiChatStorageKey || typeof window === 'undefined') return;
+    if (loadedChatDraftIdRef.current !== draftId) return;
+    const last = aiChatMessages[aiChatMessages.length - 1];
+    if (last?.isStreaming) return;
+    try {
+      if (aiChatMessages.length === 0) {
+        localStorage.removeItem(aiChatStorageKey);
+      } else {
+        // Cap at 30 most-recent to stay well under quota even with big drafts.
+        const slice = aiChatMessages.slice(-30);
+        localStorage.setItem(aiChatStorageKey, JSON.stringify(slice));
+      }
+    } catch (err) {
+      // QuotaExceededError — tell the user once per session so they know
+      // their chat isn't being saved. We don't retry; truncating further
+      // would silently drop legitimate context.
+      if (!hasShownQuotaWarningRef.current) {
+        hasShownQuotaWarningRef.current = true;
+        const isQuota = err instanceof DOMException && (err.name === 'QuotaExceededError' || err.code === 22);
+        toast.warning(
+          isQuota
+            ? 'Chat history can’t be saved — browser storage is full. Clear older drafts or use “Clear” to reset this thread.'
+            : 'Couldn’t save chat history for this draft.',
+          { duration: 6000 },
+        );
+      }
+    }
+  }, [aiChatMessages, aiChatStorageKey, draftId]);
   const [aiChatInput, setAiChatInput] = useState('');
+  const aiChatInputRef = useRef<HTMLInputElement | null>(null);
+
+  /** Focus the chat input and (optionally) preset a value. Used by both the
+   *  "Not what I meant?" button and the Ctrl/Cmd+J shortcut. Moves cursor to
+   *  the end so typing continues naturally.
+   *
+   *  If the input already has user-typed content we DO NOT overwrite it —
+   *  the user's in-flight text takes priority over any scaffolded preset.
+   *  That way clicking the CTA twice, or clicking it after you've started
+   *  typing, never eats your words. */
+  const focusChatInput = useCallback((preset?: string) => {
+    if (typeof preset === 'string') {
+      setAiChatInput(prev => (prev.trim().length === 0 ? preset : prev));
+    }
+    // Defer focus so any state update flushes first.
+    requestAnimationFrame(() => {
+      const el = aiChatInputRef.current;
+      if (!el) return;
+      el.focus();
+      try {
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      } catch {
+        // setSelectionRange is unsupported on some input types; ignore.
+      }
+    });
+  }, []);
 
   const [showShortcutCoachmark, setShowShortcutCoachmark] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -1766,6 +1903,20 @@ export function CopilotDraftingCanvas({
           if (res.status === 401) {
             toast.error('Session expired. Your changes are not being saved — please sign in again.');
             throw new Error('Session expired');
+          }
+          if (res.status === 403) {
+            // Access was revoked (or tenant membership changed) while the
+            // tab was open. Keep the error loud so the user knows this
+            // draft is read-only now, not merely a transient network blip.
+            toast.error('You no longer have access to this draft — saves are failing.', { duration: 8000 });
+            throw new Error('Forbidden');
+          }
+          if (res.status === 404) {
+            // Draft was deleted (or the URL is stale). Don't silently
+            // retry forever; tell the user so they can decide whether
+            // to copy their work elsewhere.
+            toast.error('This draft no longer exists on the server — your edits can’t be saved. Copy important changes before closing the tab.', { duration: 10000 });
+            throw new Error('Draft not found');
           }
           if (!res.ok) throw new Error('Autosave failed');
         }
@@ -2437,7 +2588,7 @@ export function CopilotDraftingCanvas({
     toast.success(`Duplicated ${section.title}`);
   }, [editor]);
 
-  const deleteOutlineSection = useCallback((sectionId: string) => {
+  const deleteOutlineSection = useCallback(async (sectionId: string) => {
     if (!editor) return;
     const headings: Array<{ title: string; level: number; startPos: number }> = [];
     editor.state.doc.descendants((node, pos) => {
@@ -2457,11 +2608,18 @@ export function CopilotDraftingCanvas({
     }));
     const section = sections.find(s => s.id === sectionId);
     if (!section) return;
-    if (!window.confirm(`Delete section "${section.title}"? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: 'Delete section?',
+      description: `“${section.title}” will be permanently removed from the draft.`,
+      confirmText: 'Delete',
+      destructive: true,
+      variant: 'danger',
+    });
+    if (!ok) return;
     const tr = editor.state.tr.delete(section.startPos, section.endPos).scrollIntoView();
     editor.view.dispatch(tr);
     toast.success(`Deleted ${section.title}`);
-  }, [editor]);
+  }, [editor, confirm]);
 
   const handleOutlineDragStart = useCallback((event: React.DragEvent<HTMLButtonElement>, sectionId: string) => {
     event.dataTransfer.effectAllowed = 'move';
@@ -2632,6 +2790,14 @@ export function CopilotDraftingCanvas({
     if (isMod && e.key === 'k') {
       e.preventDefault();
       setShowSectionJump(true);
+      return;
+    }
+    // Ctrl+J — Jump to AI chat input (opens assistant tab if needed)
+    if (isMod && e.key === 'j') {
+      e.preventDefault();
+      setActiveTab('assistant');
+      setShowDesktopSidebar(true);
+      focusChatInput();
       return;
     }
     // Ctrl+H — Find & Replace
@@ -3031,9 +3197,13 @@ export function CopilotDraftingCanvas({
     const nextIdx = order.indexOf(newStatus as typeof order[number]);
     if (curIdx >= 0 && nextIdx > curIdx + 1) {
       const skipped = order.slice(curIdx + 1, nextIdx).join(' → ');
-      if (!window.confirm(`This skips normal review steps (${skipped}). Continue?`)) {
-        return;
-      }
+      const ok = await confirm({
+        title: 'Skip review steps?',
+        description: `This skips ${skipped}. Continue anyway?`,
+        confirmText: 'Continue',
+        variant: 'warning',
+      });
+      if (!ok) return;
     }
 
     try {
@@ -3774,7 +3944,17 @@ export function CopilotDraftingCanvas({
 
   const sendAiChatMessage = useCallback(async (message: string) => {
     const trimmedMessage = message.trim();
-    if (!trimmedMessage || isAiChatStreaming) return;
+    if (!trimmedMessage) return;
+    // Hard guard: `isAiChatStreaming` is state and can be stale in captured
+    // closures (e.g. a suggestion pill rendered with an older callback). The
+    // abort-ref is authoritative — if a controller is attached, a stream is
+    // already in-flight and we must refuse the new request so we don't
+    // overwrite the in-flight controller and interleave SSE chunks from two
+    // concurrent requests into the same assistant bubble.
+    if (isAiChatStreaming || aiChatAbortRef.current) {
+      toast('Finishing the current reply first — try again in a moment.', { duration: 2500 });
+      return;
+    }
 
     const selectedText = editor?.state?.selection
       ? editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to, ' ')
@@ -3860,14 +4040,26 @@ export function CopilotDraftingCanvas({
         if (done || controller.signal.aborted) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        // SSE frames are separated by a blank line (\n\n). Splitting on a
+        // single \n loses the frame boundary and mis-parses any future
+        // multi-line data: payload. Split on \n\n, keep the trailing
+        // incomplete frame in the buffer.
+        const frames = buffer.split('\n\n');
+        buffer = frames.pop() || '';
 
-        for (const line of lines) {
-          if (!line.trim() || line.startsWith('event: ')) continue;
-          if (line.startsWith('data: ')) {
+        for (const frame of frames) {
+          if (!frame.trim()) continue;
+          // A single frame may contain multiple data: lines that should
+          // be joined with newlines per the SSE spec.
+          const dataLines = frame
+            .split('\n')
+            .filter((line) => line.startsWith('data: '))
+            .map((line) => line.slice(6));
+          if (dataLines.length === 0) continue;
+          const payload = dataLines.join('\n');
+          {
             try {
-              const parsed = JSON.parse(line.slice(6));
+              const parsed = JSON.parse(payload);
 
               if ('draftHtml' in parsed || 'applyMode' in parsed || 'title' in parsed || 'followUpQuestion' in parsed) {
                 setAiChatMessages(prev => {
@@ -4198,6 +4390,7 @@ export function CopilotDraftingCanvas({
                     <ul className="mt-1 list-disc space-y-0.5 pl-4">
                       <li>Type <kbd className="rounded bg-white/70 px-1 font-mono text-[10px] text-violet-800 dark:bg-slate-900/60 dark:text-violet-200">/</kbd> anywhere in the editor to insert blocks or ask AI.</li>
                       <li>Press <kbd className="rounded bg-white/70 px-1 font-mono text-[10px] text-violet-800 dark:bg-slate-900/60 dark:text-violet-200">Ctrl+/</kbd> to jump to the assistant.</li>
+                      <li>Press <kbd className="rounded bg-white/70 px-1 font-mono text-[10px] text-violet-800 dark:bg-slate-900/60 dark:text-violet-200">Ctrl+J</kbd> to jump straight into the chat input.</li>
                       <li>Select text, then use the toolbar to Rewrite or Review with AI.</li>
                     </ul>
                   </div>
@@ -4213,57 +4406,29 @@ export function CopilotDraftingCanvas({
               </div>
             )}
             <div ref={aiChatScrollRef} className="flex-1 space-y-5 overflow-y-auto pr-1 pb-4">
+              {/* Copilot workspace header — renders ONLY while the thread is empty.
+                   Once a conversation starts, the "Understood as" banner on each
+                   assistant message + the chat input itself carry the context,
+                   so this big header collapses away and the thread gets the
+                   vertical room it needs. State-of-the-art chat UX: the tool
+                   should fade into the work, not compete with it. */}
+              {aiChatMessages.length === 0 && (
               <div className="rounded-[24px] border border-slate-200/90 bg-[linear-gradient(140deg,rgba(255,255,255,0.98),rgba(241,245,249,0.96))] p-5 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-[linear-gradient(140deg,rgba(30,41,59,0.96),rgba(15,23,42,0.98))]">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 space-y-2">
-                    <p className={sidebarEyebrowClass}>Copilot workspace</p>
-                    <div className="space-y-1.5">
-                      <p className="text-base font-semibold tracking-[-0.01em] text-slate-950 dark:text-slate-100">Assistant</p>
-                      <p className={sidebarBodyClass}>
-                      {workspaceMode === 'negotiate'
-                        ? 'Pressure-test language, prepare fallback positions, and shape a stronger negotiation posture.'
-                        : 'Rewrite language, add a clause, or pressure-test the section you are editing.'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {latestInlineAiProposal && (
-                      <span className="shrink-0 rounded-full border border-violet-200/80 bg-white/85 px-2.5 py-1 text-[10px] font-semibold text-violet-700 shadow-sm dark:border-violet-800 dark:bg-slate-900/80 dark:text-violet-300">
-                        Rewrite ready
-                      </span>
-                    )}
-                    {priorityRiskCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('review')}
-                        className="shrink-0 rounded-full border border-amber-200/80 bg-white/85 px-2.5 py-1 text-[10px] font-semibold text-amber-700 shadow-sm transition-colors hover:bg-amber-50 dark:border-amber-900/70 dark:bg-slate-900/80 dark:text-amber-300 dark:hover:bg-amber-950/30"
-                      >
-                        {priorityRiskCount} flagged
-                      </button>
-                    )}
-                  </div>
+                <div className="min-w-0 space-y-2">
+                  <p className={sidebarEyebrowClass}>Copilot workspace</p>
+                  <p className="text-base font-semibold tracking-[-0.01em] text-slate-950 dark:text-slate-100">
+                    {workspaceMode === 'negotiate' ? 'Negotiation assistant' : 'Drafting assistant'}
+                  </p>
+                  <p className={sidebarBodyClass}>
+                    {workspaceMode === 'negotiate'
+                      ? 'Pressure-test language, prepare fallback positions, and shape a stronger negotiation posture.'
+                      : 'Rewrite language, add a clause, or pressure-test the section you are editing.'}
+                  </p>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px]">
-                  <span className="rounded-full border border-white/70 bg-white/90 px-2.5 py-1 font-semibold text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200">
-                    {workspaceMode === 'negotiate' ? 'Negotiation workspace' : 'Drafting workspace'}
-                  </span>
-                  {suggestions.length > 0 && (
-                    <span className="rounded-full border border-slate-200 bg-slate-100/90 px-2.5 py-1 font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                      {suggestions.length} live suggestion{suggestions.length === 1 ? '' : 's'}
-                    </span>
-                  )}
-                  {priorityRiskCount > 0 && (
-                    <span className="rounded-full border border-amber-200/80 bg-amber-50/90 px-2.5 py-1 font-semibold text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/20 dark:text-amber-300">
-                      {priorityRiskCount} flagged item{priorityRiskCount === 1 ? '' : 's'}
-                    </span>
-                  )}
-                </div>
-
-                {aiChatMessages.length === 0 && (
-                  <div className="mt-4 border-t border-slate-200/80 pt-4 dark:border-slate-700/80">
-                    <p className={sidebarEyebrowClass}>Quick starts</p>
-                    <div className="mt-2 grid gap-2">
+                <div className="mt-4 border-t border-slate-200/80 pt-4 dark:border-slate-700/80">
+                  <p className={sidebarEyebrowClass}>Quick starts</p>
+                  <div className="mt-2 grid gap-2">
                     {assistantQuickPrompts.map((prompt) => (
                       <button
                         key={prompt}
@@ -4273,10 +4438,21 @@ export function CopilotDraftingCanvas({
                         {prompt}
                       </button>
                     ))}
-                    </div>
                   </div>
-                )}
+                </div>
               </div>
+              )}
+
+              {/* Shape Assist — continuous, one-click AI support that turns the
+                   current draft into a worklist (placeholders, thin sections,
+                   undefined terms). Missing blueprint sections are owned by the
+                   "Drafting path" card below to avoid duplicate UX. */}
+              <DraftShapeAssist
+                editor={editor}
+                contentVersion={debouncedContentVersion}
+                contractTypeKey={contractTypeKey}
+                onAskAi={sendAiChatMessage}
+              />
 
               <div className="rounded-[24px] border border-slate-200/90 bg-white/95 p-5 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-slate-800/95">
                 <div className="flex items-start justify-between gap-3">
@@ -4658,7 +4834,44 @@ export function CopilotDraftingCanvas({
                   </p>
                 </div>
               ) : (
-                aiChatMessages.map((msg) => (
+                <>
+                  <div className="flex items-center justify-between px-0.5">
+                    <p className={sidebarEyebrowClass}>
+                      Thread · {aiChatMessages.length} {aiChatMessages.length === 1 ? 'message' : 'messages'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (aiChatMessages.some(m => m.isStreaming)) return;
+                        setAiChatMessages([]);
+                      }}
+                      className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                      title="Start a fresh conversation (saved history will be discarded)"
+                      aria-label="Clear chat thread"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  {aiChatMessages.map((msg, idx) => {
+                  // Look up the original user ask so a "Not what I meant?" click can
+                  // prefill the input with a rephrase scaffold (proves the AI heard you,
+                  // lets you correct it without retyping the whole request).
+                  const prevMsg = idx > 0 ? aiChatMessages[idx - 1] : null;
+                  const originalAsk = prevMsg?.role === 'user' ? prevMsg.content : '';
+                  const operationLabel =
+                    msg.operation === 'add_clause' ? 'Add clause' :
+                    msg.operation === 'replace_clause' ? 'Replace clause' :
+                    msg.operation === 'remove_clause' ? 'Remove clause' :
+                    msg.operation === 'rewrite' ? 'Rewrite' :
+                    msg.operation === 'fill_variables' ? 'Fill values' :
+                    msg.operation === 'tighten_risk' ? 'Tighten risk' : '';
+                  const hasUnderstanding = Boolean(
+                    msg.role === 'assistant' &&
+                    (operationLabel || msg.detectedCategory || msg.title ||
+                     msg.playbookApplied ||
+                     (msg.detectedParameters && Object.keys(msg.detectedParameters).length > 0))
+                  );
+                  return (
                   <div
                     key={msg.id}
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -4675,6 +4888,61 @@ export function CopilotDraftingCanvas({
                               <Brain className="h-4 w-4" />
                             </div>
                             <div className="min-w-0 flex-1 space-y-3">
+                              {/* "Understood as" banner — renders as soon as the AI's
+                                  classification arrives over SSE, so the user sees
+                                  what was heard BEFORE the full answer is ready. */}
+                              {hasUnderstanding && (
+                                <div className="rounded-2xl border border-violet-200/80 bg-gradient-to-br from-violet-50/90 to-white/90 px-3 py-2.5 dark:border-violet-900/60 dark:from-violet-950/30 dark:to-slate-900/60">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-700/80 dark:text-violet-300/80">
+                                        Understood as
+                                      </p>
+                                      <p className="mt-0.5 truncate text-[13px] font-semibold text-slate-900 dark:text-slate-100">
+                                        {operationLabel && msg.detectedCategory
+                                          ? `${operationLabel} · ${msg.detectedCategory.replace(/_/g, ' ')}`
+                                          : operationLabel || (msg.detectedCategory ? msg.detectedCategory.replace(/_/g, ' ') : (msg.title || 'Interpreting your request…'))}
+                                      </p>
+                                      {msg.detectedParameters && Object.keys(msg.detectedParameters).length > 0 && (
+                                        <div className="mt-1.5 flex flex-wrap gap-1">
+                                          {Object.entries(msg.detectedParameters).slice(0, 5).map(([k, v]) => (
+                                            <span
+                                              key={k}
+                                              className="inline-flex items-center gap-1 rounded-full border border-violet-200/70 bg-white/90 px-2 py-0.5 text-[10px] font-medium text-violet-800 dark:border-violet-800/60 dark:bg-slate-900/80 dark:text-violet-200"
+                                              title={`${k}: ${v}`}
+                                            >
+                                              <span className="opacity-70">{k}:</span>
+                                              <span className="font-semibold">{v.length > 28 ? `${v.slice(0, 28)}…` : v}</span>
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {msg.playbookApplied && (
+                                        <div className="mt-1.5">
+                                          <span
+                                            className="inline-flex items-center gap-1 rounded-full border border-emerald-200/70 bg-emerald-50/90 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-300"
+                                            title={`Playbook applied: ${msg.playbookApplied.name}`}
+                                          >
+                                            Playbook · {msg.playbookApplied.name}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    {originalAsk && !msg.isStreaming && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          focusChatInput('That wasn’t quite what I meant. What I actually want is: ')
+                                        }
+                                        className="shrink-0 rounded-full border border-violet-200/80 bg-white/90 px-2 py-1 text-[10px] font-semibold text-violet-700 transition-colors hover:bg-violet-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 dark:border-violet-800 dark:bg-slate-900/80 dark:text-violet-200 dark:hover:bg-slate-800"
+                                        title="Prefill a rephrase so you can correct the AI without retyping your whole ask"
+                                      >
+                                        Not what I meant?
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                               <div>
                                 <p className={sidebarEyebrowClass}>{msg.title || 'Assistant response'}</p>
                                 {msg.content ? (
@@ -4684,47 +4952,17 @@ export function CopilotDraftingCanvas({
                                 ) : msg.isStreaming ? (
                                   <div className="mt-2 flex items-center gap-2 py-1 text-sm text-gray-500 dark:text-slate-400">
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    Drafting a response...
+                                    {hasUnderstanding
+                                      ? `Drafting${msg.title ? `: ${msg.title}` : operationLabel ? ` a ${operationLabel.toLowerCase()}` : '…'}`
+                                      : 'Understanding your request…'}
                                   </div>
                                 ) : null}
                               </div>
 
-                              {(msg.operation || msg.detectedCategory || msg.playbookApplied || (msg.detectedParameters && Object.keys(msg.detectedParameters).length > 0)) && (
-                                <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold">
-                                  {msg.operation && msg.operation !== 'other' && (
-                                    <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-violet-700 dark:border-violet-800/60 dark:bg-violet-950/40 dark:text-violet-300">
-                                      {msg.operation === 'add_clause' && 'Add clause'}
-                                      {msg.operation === 'replace_clause' && 'Replace clause'}
-                                      {msg.operation === 'remove_clause' && 'Remove clause'}
-                                      {msg.operation === 'rewrite' && 'Rewrite'}
-                                      {msg.operation === 'fill_variables' && 'Fill values'}
-                                      {msg.operation === 'tighten_risk' && 'Tighten risk'}
-                                    </span>
-                                  )}
-                                  {msg.detectedCategory && (
-                                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                                      {msg.detectedCategory.replace(/_/g, ' ')}
-                                    </span>
-                                  )}
-                                  {msg.playbookApplied && (
-                                    <span
-                                      className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300"
-                                      title={`Playbook: ${msg.playbookApplied.name}`}
-                                    >
-                                      Playbook · {msg.playbookApplied.name}
-                                    </span>
-                                  )}
-                                  {msg.detectedParameters && Object.entries(msg.detectedParameters).slice(0, 6).map(([k, v]) => (
-                                    <span
-                                      key={k}
-                                      className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200"
-                                      title={`${k}: ${v}`}
-                                    >
-                                      {k}: {v.length > 24 ? `${v.slice(0, 24)}…` : v}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
+                              {/* Post-hoc pills row removed — the "Understood as"
+                                  banner at the top of the assistant bubble now
+                                  shows the same operation / category / params,
+                                  so rendering them here again was duplicate UX. */}
 
                               {msg.followUpQuestion && (
                                 <div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-3 py-3 text-[13px] leading-6 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
@@ -4880,7 +5118,9 @@ export function CopilotDraftingCanvas({
                       )}
                     </div>
                   </div>
-                ))
+                  );
+                })}
+                </>
               )}
             </div>
 
@@ -4890,6 +5130,8 @@ export function CopilotDraftingCanvas({
                 <div className="flex gap-2">
                   <input
                     type="text"
+                    ref={aiChatInputRef}
+                    data-ai-chat-input="true"
                     value={aiChatInput}
                     onChange={(e) => setAiChatInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendAiChatMessage(aiChatInput)}
@@ -7231,10 +7473,15 @@ export function CopilotDraftingCanvas({
                 <div className="flex justify-end border-t border-slate-200 px-4 py-2 dark:border-slate-700">
                   <button
                     type="button"
-                    onClick={() => {
-                      if (window.confirm(`Delete all ${rationales.length} rationales for this draft?`)) {
-                        persistRationales([]);
-                      }
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: 'Clear all rationales?',
+                        description: `All ${rationales.length} rationales for this draft will be removed.`,
+                        confirmText: 'Clear all',
+                        destructive: true,
+                        variant: 'danger',
+                      });
+                      if (ok) persistRationales([]);
                     }}
                     className="text-[11px] font-medium text-rose-600 hover:text-rose-800 dark:text-rose-400"
                   >

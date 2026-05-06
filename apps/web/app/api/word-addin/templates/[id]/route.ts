@@ -6,8 +6,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withAuthApiHandler,
   createSuccessResponse,
   createErrorResponse,
 } from '@/lib/api-middleware';
@@ -26,13 +25,9 @@ const updateTemplateSchema = z.object({
 type RouteParams = { params: Promise<{ id: string }> };
 
 /** Fetch a single template */
-export async function GET(req: NextRequest, { params }: RouteParams) {
-  const apiCtx = getApiContext(req);
+export const GET = withAuthApiHandler(async (_req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
-
-    const { id } = await params;
+    const { id } = await (ctx as any).params as { id: string };
 
     const template = await prisma.contractTemplate.findFirst({
       where: { id, tenantId: ctx.tenantId },
@@ -60,18 +55,14 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     });
   } catch (error) {
     logger.error('Word Add-in get template error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch template', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to fetch template', 500);
   }
-}
+});
 
 /** Update a template */
-export async function PUT(req: NextRequest, { params }: RouteParams) {
-  const apiCtx = getApiContext(req);
+export const PUT = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
-
-    const { id } = await params;
+    const { id } = await (ctx as any).params as { id: string };
     const body = await req.json();
     const parsed = updateTemplateSchema.safeParse(body);
     if (!parsed.success) {
@@ -116,18 +107,14 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     });
   } catch (error) {
     logger.error('Word Add-in update template error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to update template', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to update template', 500);
   }
-}
+});
 
 /** Soft-delete a template (set isActive = false) */
-export async function DELETE(req: NextRequest, { params }: RouteParams) {
-  const apiCtx = getApiContext(req);
+export const DELETE = withAuthApiHandler(async (_req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
-
-    const { id } = await params;
+    const { id } = await (ctx as any).params as { id: string };
 
     const existing = await prisma.contractTemplate.findFirst({
       where: { id, tenantId: ctx.tenantId },
@@ -145,6 +132,6 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
     return createSuccessResponse(ctx, { deleted: true });
   } catch (error) {
     logger.error('Word Add-in delete template error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to delete template', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to delete template', 500);
   }
-}
+});

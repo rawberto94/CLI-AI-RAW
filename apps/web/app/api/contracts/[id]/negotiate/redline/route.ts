@@ -2,8 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withContractApiHandler,
   createSuccessResponse,
   createErrorResponse,
   handleApiError,
@@ -24,21 +23,17 @@ const redlineRequestSchema = z.object({
  * POST /api/contracts/[id]/negotiate/redline
  * Generate AI redline suggestion for a specific clause
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
+  if (!ctx.tenantId) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID required', 401);
   }
 
   const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/contracts/negotiate/redline', AI_RATE_LIMITS.standard);
   if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
   try {
-    const { id: contractId } = await params;
-
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId: ctx.tenantId },
       select: { id: true, contractType: true },
@@ -80,4 +75,4 @@ export async function POST(
     }
     return handleApiError(ctx, error);
   }
-}
+})

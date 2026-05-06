@@ -1,5 +1,9 @@
-import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+
+function canManageQueues(userRole: string | undefined): boolean {
+  return userRole === 'owner' || userRole === 'admin' || userRole === 'superadmin';
+}
 
 /**
  * Queue status information
@@ -54,6 +58,10 @@ interface ImportBatch {
  * Get status of all processing queues and recent jobs
  */
 export const GET = withAuthApiHandler(async (_request, ctx) => {
+  if (!canManageQueues(ctx.userRole)) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   // Try to get actual queue stats from Redis/BullMQ
   let queues: QueueStatus[] = [];
   let recentJobs: JobInfo[] = [];

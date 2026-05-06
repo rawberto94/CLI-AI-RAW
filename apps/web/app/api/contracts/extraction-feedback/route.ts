@@ -10,7 +10,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { contractService } from 'data-orchestration/services'
 import type { Prisma } from '@prisma/client'
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { invalidateLearnedHintsCache } from '@/lib/ai/self-improving-prompt-loop';
 
 const feedbackItemSchema = z.object({
@@ -71,7 +71,7 @@ interface BatchFeedbackRequest {
 // HANDLERS
 // ============================================================================
 
-export const POST = withAuthApiHandler(async (request, ctx) => {
+export const POST = withContractApiHandler(async (request, ctx) => {
 
   const body = await request.json()
   const tenantId = ctx.tenantId
@@ -243,7 +243,7 @@ async function handleBatchFeedback(body: BatchFeedbackRequest, tenantId: string,
 // GET: Retrieve learning stats and insights
 // ============================================================================
 
-export const GET = withAuthApiHandler(async (request, ctx) => {
+export const GET = withContractApiHandler(async (request, ctx) => {
 
   const tenantId = ctx.tenantId
   const { searchParams } = new URL(request.url)

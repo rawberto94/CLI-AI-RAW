@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { getTenantId } from '@/lib/tenant';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -107,6 +108,135 @@ interface BatchResult {
   errors?: string[];
 }
 
+type OperationPayload = Record<string, unknown>;
+
+interface OperationExecutionResult {
+  batchResult: BatchResult;
+  downloadUrl?: string;
+}
+
+async function readJson(response: Response): Promise<Record<string, unknown>> {
+  const payload = await response.json().catch(() => ({}));
+  if (payload && typeof payload === 'object') {
+    const data = (payload as { data?: unknown }).data;
+    if (data && typeof data === 'object') {
+      return data as Record<string, unknown>;
+    }
+    return payload as Record<string, unknown>;
+  }
+
+  return {};
+}
+
+function extractErrorMessage(payload: Record<string, unknown>, fallback: string): string {
+  const error = payload.error;
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message;
+  }
+
+  if (typeof payload.message === 'string') {
+    return payload.message;
+  }
+
+  if (typeof payload.details === 'string') {
+    return payload.details;
+  }
+
+  return fallback;
+}
+
+function createBatchResult(success: number, failed = 0, errors: string[] = []): BatchResult {
+  return {
+    success,
+    failed,
+    errors: errors.length > 0 ? errors : undefined,
+  };
+}
+
+function normalizeBulkResult(operation: string, payload: Record<string, unknown>, selectedCount: number): OperationExecutionResult {
+  switch (operation) {
+    case 'delete': {
+      const success = typeof payload.deleted === 'number' ? payload.deleted : selectedCount;
+      const failed = typeof payload.failed === 'number' ? payload.failed : Math.max(selectedCount - success, 0);
+      return { batchResult: createBatchResult(success, failed) };
+    }
+    case 'archive': {
+      const success = typeof payload.archived === 'number' ? payload.archived : selectedCount;
+      const failed = Math.max(selectedCount - success, 0);
+      return { batchResult: createBatchResult(success, failed) };
+    }
+    case 'export': {
+      const contracts = Array.isArray(payload.contracts) ? payload.contracts : [];
+      const success = contracts.length > 0 ? contracts.length : selectedCount;
+      return {
+        batchResult: createBatchResult(success, Math.max(selectedCount - success, 0)),
+        downloadUrl: typeof payload.downloadUrl === 'string' ? payload.downloadUrl : undefined,
+      };
+    }
+    case 'analyze': {
+      const results = Array.isArray(payload.results) ? payload.results : [];
+      const success = results.filter((result) => {
+        if (!result || typeof result !== 'object') {
+          return false;
+        }
+
+        return (result as { status?: string }).status === 'queued';
+      }).length;
+      const failed = results.length > 0 ? results.length - success : Math.max(selectedCount - success, 0);
+      const errors = results
+        .filter((result): result is { error?: string } => !!result && typeof result === 'object')
+        .map((result) => result.error)
+        .filter((error): error is string => typeof error === 'string' && error.length > 0);
+
+      return { batchResult: createBatchResult(success || selectedCount, failed, errors) };
+    }
+    default:
+      return { batchResult: createBatchResult(selectedCount) };
+  }
+}
+
+function normalizeCategorizeResult(payload: Record<string, unknown>, selectedCount: number): OperationExecutionResult {
+  const results = Array.isArray(payload.results) ? payload.results : [];
+  const successCount = typeof payload.successCount === 'number'
+    ? payload.successCount
+    : results.filter((result) => !result || typeof result !== 'object' || (result as { success?: boolean }).success !== false).length;
+  const failedCount = typeof payload.failureCount === 'number'
+    ? payload.failureCount
+    : results.length > 0
+      ? results.length - successCount
+      : Math.max(selectedCount - successCount, 0);
+  const errors = results
+    .filter((result): result is { error?: string; errors?: string[] } => !!result && typeof result === 'object')
+    .flatMap((result) => {
+      if (typeof result.error === 'string' && result.error.length > 0) {
+        return [result.error];
+      }
+
+      return Array.isArray(result.errors) ? result.errors.filter((error): error is string => typeof error === 'string') : [];
+    });
+
+  return { batchResult: createBatchResult(successCount || selectedCount, failedCount, errors) };
+}
+
+function normalizeReprocessResult(results: PromiseSettledResult<void>[]): OperationExecutionResult {
+  const success = results.filter((result) => result.status === 'fulfilled').length;
+  const errors = results
+    .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+    .map((result) => result.reason)
+    .map((reason) => (reason instanceof Error ? reason.message : String(reason)));
+
+  return {
+    batchResult: createBatchResult(success, results.length - success, errors),
+  };
+}
+
+function triggerDownload(downloadUrl: string) {
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.rel = 'noopener noreferrer';
+  link.click();
+}
+
 export const BatchOperationsPanel = memo(function BatchOperationsPanel({
   selectedIds,
   onClearSelection,
@@ -117,6 +247,69 @@ export const BatchOperationsPanel = memo(function BatchOperationsPanel({
   const [currentOperation, setCurrentOperation] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [confirmDialog, setConfirmDialog] = useState<BatchOperation | null>(null);
+
+  const tenantId = getTenantId();
+
+  const executeMappedOperation = async (operationId: string): Promise<OperationExecutionResult> => {
+    const baseHeaders = {
+      'Content-Type': 'application/json',
+      'x-tenant-id': tenantId,
+    };
+
+    if (operationId === 'categorize') {
+      const response = await fetch('/api/contracts/categorize', {
+        method: 'POST',
+        headers: baseHeaders,
+        body: JSON.stringify({
+          contractIds: selectedIds,
+          forceRecategorize: true,
+        } satisfies OperationPayload),
+      });
+
+      const payload = await readJson(response);
+      if (!response.ok) {
+        throw new Error(extractErrorMessage(payload, 'Categorization failed'));
+      }
+
+      return normalizeCategorizeResult(payload, selectedIds.length);
+    }
+
+    if (operationId === 'reprocess') {
+      const results = await Promise.allSettled(
+        selectedIds.map(async (contractId) => {
+          const response = await fetch(`/api/contracts/${contractId}/process`, {
+            method: 'POST',
+            headers: {
+              'x-tenant-id': tenantId,
+            },
+          });
+
+          if (!response.ok) {
+            const payload = await readJson(response);
+            throw new Error(extractErrorMessage(payload, `Reprocess failed for ${contractId}`));
+          }
+        }),
+      );
+
+      return normalizeReprocessResult(results);
+    }
+
+    const response = await fetch('/api/contracts/bulk', {
+      method: 'POST',
+      headers: baseHeaders,
+      body: JSON.stringify({
+        operation: operationId,
+        contractIds: selectedIds,
+      } satisfies OperationPayload),
+    });
+
+    const payload = await readJson(response);
+    if (!response.ok) {
+      throw new Error(extractErrorMessage(payload, `${operationId} failed`));
+    }
+
+    return normalizeBulkResult(operationId, payload, selectedIds.length);
+  };
 
   const handleOperation = async (operation: BatchOperation) => {
     if (operation.requiresConfirmation) {
@@ -131,35 +324,23 @@ export const BatchOperationsPanel = memo(function BatchOperationsPanel({
     setConfirmDialog(null);
     setProcessing(true);
     setCurrentOperation(operation.id);
-    setProgress(0);
+    setProgress(15);
 
     try {
-      const response = await fetch('/api/contracts/batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          operation: operation.id,
-          contractIds: selectedIds,
-        }),
-      });
+      const { batchResult, downloadUrl } = await executeMappedOperation(operation.id);
+      setProgress(100);
 
-      // Simulate progress for now
-      for (let i = 0; i <= 100; i += 10) {
-        await new Promise(r => setTimeout(r, 200));
-        setProgress(i);
+      if (downloadUrl) {
+        triggerDownload(downloadUrl);
       }
-
-      if (!response.ok) {
-        throw new Error('Operation failed');
-      }
-
-      const result = await response.json();
       
       toast.success(`${operation.label} completed`, {
-        description: `${result.success || selectedIds.length} contracts processed`,
+        description: batchResult.failed > 0
+          ? `${batchResult.success} succeeded, ${batchResult.failed} failed`
+          : `${batchResult.success} contracts processed`,
       });
 
-      onOperationComplete?.(operation.id, result);
+      onOperationComplete?.(operation.id, batchResult);
       onClearSelection();
     } catch (error) {
       toast.error(`${operation.label} failed`, {

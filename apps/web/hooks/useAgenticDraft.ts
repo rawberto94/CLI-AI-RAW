@@ -35,6 +35,20 @@ export interface AgenticDraftResult {
   contentLength: number;
   totalDurationMs: number;
   editUrl: string;
+  /** Post-generation faithfulness receipt — which of the user's stated values
+   *  landed in the draft vs. which the AI dropped. Null when no user prompt
+   *  was supplied (e.g. pure template-type flow).
+   *  `repaired` = a second LLM pass was run to weave missing values into the draft.
+   *  `addendumAppended` = an explicit "User-Requested Terms" schedule was added
+   *  at the end of the contract for anything the repair pass still missed. */
+  faithfulness?: {
+    items: Array<{ label: string; value: string; found: boolean }>;
+    honored: number;
+    total: number;
+    score: number;
+    repaired?: boolean;
+    addendumAppended?: boolean;
+  } | null;
 }
 
 export interface AgenticDraftRequest {
@@ -112,6 +126,13 @@ export function useAgenticDraft() {
   }, []);
 
   const generate = useCallback(async (request: AgenticDraftRequest): Promise<AgenticDraftResult | null> => {
+    // Refuse a new generation while one is already in flight. Without this
+    // guard a double-click on "Generate" (or two UI paths racing) overwrites
+    // `abortControllerRef.current`, orphans the first stream reader, and
+    // interleaves SSE chunks from both responses into the same state slice.
+    if (abortControllerRef.current) {
+      return null;
+    }
     const controller = new AbortController();
     abortControllerRef.current = controller;
 

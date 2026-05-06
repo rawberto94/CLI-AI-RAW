@@ -116,12 +116,14 @@ export default function CollaboratorPortalPage() {
         }),
       });
 
-      if (response.ok) {
-        // Open contract viewer or redirect
-        window.open(`/api/collaborate/${token}/view/${contract.id}`, '_blank');
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || `Unable to open contract (${response.status})`);
       }
-    } catch {
-      toast.error('Failed to view contract');
+      // Open contract viewer or redirect
+      window.open(`/api/collaborate/${token}/view/${contract.id}`, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to view contract');
     }
   };
 
@@ -136,14 +138,18 @@ export default function CollaboratorPortalPage() {
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.downloadUrl) {
-          window.location.href = data.downloadUrl;
-        }
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || `Download not permitted (${response.status})`);
       }
-    } catch {
-      toast.error('Failed to download contract');
+      const data = await response.json();
+      if (data.downloadUrl) {
+        window.location.href = data.downloadUrl;
+      } else {
+        throw new Error('Download URL missing in response');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to download contract');
     }
   };
 
@@ -177,13 +183,15 @@ export default function CollaboratorPortalPage() {
         }),
       });
 
-      if (response.ok) {
-        toast.success('Comment added');
-        setNewComment('');
-        handleOpenComments(selectedContract); // Refresh comments
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || `Failed to add comment (${response.status})`);
       }
-    } catch {
-      toast.error('Failed to add comment');
+      toast.success('Comment added');
+      setNewComment('');
+      handleOpenComments(selectedContract); // Refresh comments
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to add comment');
     } finally {
       setIsSubmitting(false);
     }

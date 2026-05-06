@@ -30,6 +30,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const contracts = await prisma.contract.findMany({
       where: {
+        tenantId: ctx.tenantId,
+        isDeleted: false,
         OR: [
           { contractTitle: { contains: query, mode: 'insensitive' } },
           { supplierName: { contains: query, mode: 'insensitive' } },
@@ -66,6 +68,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const suppliers = await prisma.contract.findMany({
       where: {
+        tenantId: ctx.tenantId,
+        isDeleted: false,
         supplierName: { contains: query, mode: 'insensitive' },
       },
       select: {

@@ -1,5 +1,6 @@
-import { withAuthApiHandler, createSuccessResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { hasPermission } from '@/lib/permissions';
 
 /**
  * GET /api/admin/metrics/uploads
@@ -13,6 +14,11 @@ import { prisma } from '@/lib/prisma';
  *  - processingPerf: average processing time (upload → completed)
  */
 export const GET = withAuthApiHandler(async (_request, ctx) => {
+  const canViewAnalytics = await hasPermission(ctx.userId, 'analytics:view');
+  if (!canViewAnalytics) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
+  }
+
   const tenantId = ctx.tenantId;
 
   // ── Status distribution ─────────────────────────────────────────────────

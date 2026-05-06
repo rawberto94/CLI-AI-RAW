@@ -8,17 +8,13 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardExtractionService } from 'data-orchestration/services';
 import { roleStandardizationService } from 'data-orchestration/services';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
-export async function POST(request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {    const tenantId = ctx.tenantId;
-    const _userId = ctx.userId;
-    const { contractId } = params;
+export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  const { contractId } = await (ctx as any).params as { contractId: string };
+
+  try {
+    const tenantId = ctx.tenantId;
 
     // Validate contract exists and has text - scoped to tenant
     const contract = await prisma.contract.findFirst({
@@ -117,20 +113,16 @@ try {    const tenantId = ctx.tenantId;
     const msg = error instanceof Error ? error.message : 'Unknown error';
     return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to extract rate cards: ${msg}`, 500);
   }
-}
+});
 
 /**
  * GET /api/rate-cards/extract/[contractId]
  * Check if rate cards have already been extracted for this contract
  */
-export async function GET(request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
-    const { contractId } = params;
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  const { contractId } = await (ctx as any).params as { contractId: string };
+
+  try {
     const tenantId = ctx.tenantId;
 
     if (!tenantId) {
@@ -165,4 +157,4 @@ try {
     const msg = error instanceof Error ? error.message : 'Unknown error';
     return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to check existing rate cards: ${msg}`, 500);
   }
-}
+});

@@ -37,15 +37,18 @@ export async function GET(request: NextRequest) {
       return createErrorResponse(ctx, "BAD_REQUEST", "Invalid or expired verification link", 400);
     }
 
-    // Mark email as verified and consume the token
+    // Mark email as verified and revoke every outstanding verification token
+    // for the user. Otherwise, older links remain valid after the first
+    // successful verification and can be replayed indefinitely until expiry.
+    const consumedAt = new Date();
     await prisma.$transaction([
       prisma.user.update({
         where: { id: verificationToken.userId },
         data: { emailVerified: true },
       }),
-      prisma.emailVerificationToken.update({
-        where: { id: verificationToken.id },
-        data: { usedAt: new Date() },
+      prisma.emailVerificationToken.updateMany({
+        where: { userId: verificationToken.userId, usedAt: null },
+        data: { usedAt: consumedAt },
       }),
     ]);
 

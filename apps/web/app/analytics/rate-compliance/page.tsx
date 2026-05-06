@@ -66,6 +66,7 @@ export default function RateCompliancePage() {
   const [results, setResults] = useState<ComplianceResult[]>([]);
   const [summary, setSummary] = useState<ComplianceSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState('30d');
 
   useEffect(() => {
@@ -74,11 +75,16 @@ export default function RateCompliancePage() {
 
   const fetchCompliance = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const [contractsRes, rateCardsRes] = await Promise.all([
         fetch(`/api/contracts?limit=50&period=${timeRange}`),
         fetch('/api/rate-cards'),
       ]);
+
+      if (!contractsRes.ok && !rateCardsRes.ok) {
+        throw new Error('Both contracts and rate cards failed to load');
+      }
 
       const contractsData = contractsRes.ok ? await contractsRes.json() : { data: { contracts: [] } };
       const rateCardsData = rateCardsRes.ok ? await rateCardsRes.json() : { data: { rateCards: [] } };
@@ -128,7 +134,9 @@ export default function RateCompliancePage() {
         warningCount: complianceResults.filter(r => r.status === 'warning').length,
         nonCompliantCount: complianceResults.filter(r => r.status === 'non-compliant').length,
       });
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load compliance data';
+      setLoadError(msg);
       toast.error('Failed to load compliance data');
     } finally {
       setIsLoading(false);
@@ -186,6 +194,21 @@ export default function RateCompliancePage() {
           </Button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-rose-200 bg-rose-50/50 p-4">
+          <div className="flex items-start gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">Couldn’t load rate compliance</p>
+              <p className="text-sm text-rose-700 mt-1">{loadError}</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchCompliance} className="flex-shrink-0">
+            <RefreshCw className="w-4 h-4 mr-2" /> Retry
+          </Button>
+        </div>
+      )}
 
       {/* Summary Cards */}
       {summary && (

@@ -1,20 +1,16 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
-import { rateCardBenchmarkingService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 /**
  * GET /api/rate-cards/comparisons/[id]
  * Get a specific comparison
  */
-export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-const tenantId = await getApiTenantId(request);
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params as { id: string };
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
+  const isTenantAdmin = ctx.userRole === 'admin' || ctx.userRole === 'owner';
   
   if (!tenantId) {
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
@@ -22,7 +18,16 @@ const tenantId = await getApiTenantId(request);
   
   try {
     const comparison = await prisma.rateComparison.findFirst({
-      where: { id: params.id, tenantId },
+      where: isTenantAdmin
+        ? { id, tenantId }
+        : {
+            id,
+            tenantId,
+            OR: [
+              { createdBy: userId },
+              { isShared: true },
+            ],
+          },
       include: {
         targetRate: true,
       },
@@ -36,19 +41,17 @@ const tenantId = await getApiTenantId(request);
   } catch (error: unknown) {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch comparison. Please try again.', 500);
   }
-}
+});
 
 /**
  * PATCH /api/rate-cards/comparisons/[id]
  * Update a comparison
  */
-export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-const tenantId = await getApiTenantId(request);
+export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params as { id: string };
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
+  const isTenantAdmin = ctx.userRole === 'admin' || ctx.userRole === 'owner';
   
   if (!tenantId) {
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
@@ -57,12 +60,16 @@ const tenantId = await getApiTenantId(request);
   try {
     // Verify comparison belongs to tenant
     const existing = await prisma.rateComparison.findFirst({
-      where: { id: params.id, tenantId },
-      select: { id: true },
+      where: { id, tenantId },
+      select: { id: true, createdBy: true },
     });
 
     if (!existing) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Comparison not found', 404);
+    }
+
+    if (!isTenantAdmin && existing.createdBy !== userId) {
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden - Only the creator or an admin can modify this comparison', 403);
     }
 
     const body = await request.json();
@@ -84,19 +91,17 @@ const tenantId = await getApiTenantId(request);
   } catch (error: unknown) {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update comparison. Please try again.', 500);
   }
-}
+});
 
 /**
  * DELETE /api/rate-cards/comparisons/[id]
  * Delete a comparison
  */
-export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-const tenantId = await getApiTenantId(request);
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params as { id: string };
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
+  const isTenantAdmin = ctx.userRole === 'admin' || ctx.userRole === 'owner';
   
   if (!tenantId) {
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
@@ -105,12 +110,16 @@ const tenantId = await getApiTenantId(request);
   try {
     // Verify comparison belongs to tenant
     const existing = await prisma.rateComparison.findFirst({
-      where: { id: params.id, tenantId },
-      select: { id: true },
+      where: { id, tenantId },
+      select: { id: true, createdBy: true },
     });
 
     if (!existing) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Comparison not found', 404);
+    }
+
+    if (!isTenantAdmin && existing.createdBy !== userId) {
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden - Only the creator or an admin can delete this comparison', 403);
     }
 
     await prisma.rateComparison.delete({
@@ -121,4 +130,4 @@ const tenantId = await getApiTenantId(request);
   } catch (error: unknown) {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to delete comparison. Please try again.', 500);
   }
-}
+});

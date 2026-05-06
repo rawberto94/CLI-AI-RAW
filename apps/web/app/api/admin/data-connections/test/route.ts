@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withAuthApiHandler,
   createSuccessResponse,
   createErrorResponse,
   handleApiError,
@@ -12,16 +11,9 @@ import {
  * Test a data connection before saving it.
  * Attempts to connect using the provided credentials and runs a simple query.
  */
-export async function POST(request: NextRequest) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(
-      getApiContext(request),
-      'UNAUTHORIZED',
-      'Authentication required',
-      401,
-      { retryable: false }
-    );
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
   }
 
   try {
@@ -230,4 +222,4 @@ export async function POST(request: NextRequest) {
       message: `Connection failed: ${message}`,
     });
   }
-}
+})

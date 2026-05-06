@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
-import { getApiTenantId } from '@/lib/security/tenant';
 import { SavingsOpportunityService, savingsOpportunityService } from 'data-orchestration/services';
 import { withCache, CacheKeys } from '@/lib/cache';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
@@ -8,7 +7,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 // Using singleton prisma instance from @/lib/prisma
 
 export const GET = withAuthApiHandler(async (request, ctx) => {
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }

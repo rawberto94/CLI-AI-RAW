@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
@@ -16,12 +16,17 @@ const generateSchema = z.object({
   format: z.enum(['ooxml', 'html', 'plain']).optional().default('html'),
 });
 
-export async function POST(req: NextRequest) {
-  const apiCtx = getApiContext(req);
+export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) {
-      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
+
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant not found', 400);
+    }
+
+    if (!userId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const body = await req.json();
@@ -35,7 +40,7 @@ export async function POST(req: NextRequest) {
     const template = await prisma.contractTemplate.findFirst({
       where: {
         id: templateId,
-        tenantId: ctx.tenantId,
+        tenantId,
       },
     });
 
@@ -49,7 +54,7 @@ export async function POST(req: NextRequest) {
       const rawClauses = await prisma.clauseLibrary.findMany({
         where: {
           id: { in: selectedClauses },
-          tenantId: ctx.tenantId,
+          tenantId,
         },
         select: {
           id: true,
@@ -66,13 +71,13 @@ export async function POST(req: NextRequest) {
     // Create draft record
     const draft = await prisma.contractDraft.create({
       data: {
-        tenantId: ctx.tenantId,
+        tenantId,
         templateId,
         title: variables.contractTitle || `${template.name} - Draft`,
         content: content.raw,
         variables,
         status: 'DRAFT',
-        createdBy: ctx.userId || 'word-addin',
+        createdBy: userId,
       },
     });
 
@@ -93,9 +98,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     logger.error('Word Add-in generate error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Contract generation failed', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Contract generation failed', 500);
   }
-}
+});
 
 function generateContractContent(
   template: { content: unknown; name: string },

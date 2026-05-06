@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import {
   Users,
   UserPlus,
@@ -99,6 +100,7 @@ const STATUS_CONFIG = {
 
 export default function UsersPage() {
   const { data: _session } = useSession();
+  const confirm = useConfirm();
   const [users, setUsers] = useState<User[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [_loading, setLoading] = useState(true);
@@ -182,7 +184,13 @@ export default function UsersPage() {
   };
 
   const handleRemoveUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to remove this user?')) return;
+    const ok = await confirm({
+      ...confirmPresets.delete(),
+      title: 'Remove user?',
+      description: 'They will immediately lose access to this workspace. Their contract history will be preserved.',
+      confirmText: 'Remove',
+    });
+    if (!ok) return;
 
     try {
       const response = await fetch(`/api/users/${userId}`, {

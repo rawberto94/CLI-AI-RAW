@@ -6,10 +6,8 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withAuthApiHandler,
   createSuccessResponse,
   createErrorResponse,
   handleApiError,
@@ -18,18 +16,10 @@ import {
 export const dynamic = 'force-dynamic';
 
 // GET — list all versions (newest first)
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
-    const tenantId = await getApiTenantId(request);
-    const { id: draftId } = await params;
+    const tenantId = ctx.tenantId;
+    const { id: draftId } = await (ctx as any).params as { id: string };
     const { searchParams } = new URL(request.url);
     const versionParam = searchParams.get('version'); // fetch specific version content
 
@@ -81,4 +71,4 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

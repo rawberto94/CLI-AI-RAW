@@ -7,34 +7,9 @@
  */
 
 import { NextRequest } from 'next/server';
-import { z } from 'zod';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withContractApiHandler } from '@/lib/contracts/server/context';
+import { postNegotiationCopilotPlaybook } from '@/lib/contracts/server/negotiation';
 
-const negotiateSchema = z.object({
-  contractId: z.string().min(1, 'contractId is required'),
-  ourRole: z.string().optional(),
-  negotiationContext: z.string().optional(),
-});
-
-export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
-  const { contractId, ourRole, negotiationContext } = negotiateSchema.parse(await request.json());
-
-  try {
-    const { generateAndStorePlaybook } = await import('@/lib/ai/negotiation-copilot.service');
-
-    const playbook = await generateAndStorePlaybook({
-      contractId,
-      tenantId: ctx.tenantId,
-      ourRole: (ourRole || 'auto') as 'auto' | 'licensor' | 'licensee' | 'buyer' | 'seller',
-      negotiationContext,
-    });
-
-    return createSuccessResponse(ctx, { playbook });
-  } catch (error) {
-    return createErrorResponse(
-      ctx, 'INTERNAL_ERROR',
-      error instanceof Error ? error.message : 'Negotiation playbook generation failed',
-      500
-    );
-  }
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  return postNegotiationCopilotPlaybook(request, ctx);
 });

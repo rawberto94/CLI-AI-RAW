@@ -79,7 +79,29 @@ interface InterviewResponse {
   content: string
   finalized: boolean
   brief?: InterviewBrief
+  /** Running brief with whatever has been captured so far. Populated every turn,
+   *  not just on finalize. Useful to show the user a live "here's what I've
+   *  understood so far" panel during the interview. */
+  partialBrief?: InterviewBrief
+  /** Short clickable answer suggestions the AI surfaced for the current question.
+   *  e.g. ["Buyer", "Seller", "Mutual"]. Optional — only present when the AI
+   *  decides the question is narrow/option-style. */
+  quickAnswers?: string[]
 }
+
+type DraftInterviewSafetyMode = 'standard' | 'strict'
+
+const INTERVIEW_PROMPT_NORMALIZATIONS: Array<[RegExp, string]> = [
+  [/\bbody\s+lease\b/gi, 'consultant secondment'],
+  [/\bbody\s+shopping\b/gi, 'staff augmentation'],
+  [/\bkill\s+fee\b/gi, 'early termination fee'],
+  [/\bhit\s+list\b/gi, 'shortlist'],
+  [/\btarget\b/gi, 'objective'],
+  [/\bNDAs\b/g, 'confidentiality agreements'],
+  [/\bNDA\b/g, 'confidentiality agreement'],
+  [/\bnon-disclosure agreement\b/gi, 'confidentiality agreement'],
+  [/\bconsultancy\b/gi, 'consulting'],
+]
 
 const SYSTEM_PROMPT = `You are a senior contract attorney conducting a friendly, efficient scoping interview with a user who wants you to draft a contract.
 
@@ -99,8 +121,21 @@ You MUST respond with a single JSON object (no markdown, no code fences) of the 
 {
   "content": "<what you say to the user>",
   "finalized": <boolean>,
+  "partialBrief": { <structured brief with every field you already know — INCLUDE THIS ON EVERY TURN, even early ones. Omit fields you don't yet know.> },
+  "quickAnswers": [ <0–5 short strings> ],
   "brief": { <structured brief — only when finalized is true, otherwise omit or null> }
 }
+
+Rules for partialBrief:
+- Include on EVERY turn so the user sees what you've understood so far.
+- Only fill fields you are confident about based on the conversation so far.
+- Keep each field short (a few words at most).
+
+Rules for quickAnswers:
+- Only populate when the question you're asking has clear discrete answer options (e.g. "Buyer or seller?", "3 years, 5 years, or perpetual?").
+- Each string is a SHORT label the user can click as their answer (max 3–4 words).
+- Omit or empty array if the question is genuinely open-ended (e.g. "What's the counterparty's legal name?").
+- Never more than 5 options.
 
 When finalized=true, the brief MUST include:
 - contractType, ourRole, counterparty (or null), term, renewal, governingLaw, liabilityCap, paymentTerms, confidentiality, tone
@@ -118,15 +153,69 @@ Examples of bad behavior (never do this):
 - Generating draft language in the interview phase.
 - Setting finalized=true before covering the essentials.`
 
-function buildOpeningMessage(originalPrompt: string, detected: Record<string, unknown>): string {
+function normalizeInterviewPrompt(originalPrompt: string): string {
+  let normalized = originalPrompt.trim()
+
+  for (const [pattern, replacement] of INTERVIEW_PROMPT_NORMALIZATIONS) {
+    normalized = normalized.replace(pattern, replacement)
+  }
+
+  return normalized.replace(/\s+/g, ' ').trim()
+}
+
+function summarizePromptForStrictSafety(originalPrompt: string): string {
+  const normalized = normalizeInterviewPrompt(originalPrompt).toLowerCase()
+
+  if (/\bconfidentiality agreement\b/.test(normalized)) return 'a confidentiality agreement'
+  if (/\bmaster services? agreement\b|\bmsa\b/.test(normalized)) return 'a master services agreement'
+  if (/\bstatement of work\b|\bsow\b/.test(normalized)) return 'a statement of work'
+  if (/\bconsulting\b|\bservices\b/.test(normalized)) return 'a services-related agreement'
+
+  return 'a commercial contract'
+}
+
+function buildOpeningMessage(
+  originalPrompt: string,
+  detected: Record<string, unknown>,
+  safetyMode: DraftInterviewSafetyMode = 'standard',
+): string {
+  const normalizedPrompt = normalizeInterviewPrompt(originalPrompt)
   const parts: string[] = []
-  parts.push(`User's original request: "${originalPrompt.trim()}"`)
+
+  if (safetyMode === 'strict') {
+    parts.push(`The user wants help drafting ${summarizePromptForStrictSafety(originalPrompt)}.`)
+    parts.push('Use neutral business language, avoid repeating the user\'s raw wording, and start with the single most important scoping question.')
+  } else {
+    parts.push(`User's request in plain business language: "${normalizedPrompt}"`)
+  }
+
   if (detected && Object.keys(detected).length > 0) {
     parts.push(`\nClient-side analyzer already detected: ${JSON.stringify(detected, null, 2)}`)
     parts.push('Do NOT ask the user about anything already detected above.')
   }
   parts.push('\nBegin the interview with your FIRST question. Reply with the JSON object described in the system prompt.')
   return parts.join('\n')
+}
+
+function buildInterviewMessages(
+  originalPrompt: string,
+  detected: Record<string, unknown>,
+  history: InterviewMessage[],
+  safetyMode: DraftInterviewSafetyMode = 'standard',
+) {
+  return [
+    { role: 'system' as const, content: SYSTEM_PROMPT },
+    { role: 'user' as const, content: buildOpeningMessage(originalPrompt, detected, safetyMode) },
+    ...history.map(m => ({ role: m.role, content: m.content })),
+  ]
+}
+
+function isContentFilteredError(error: unknown): error is Error & { code?: string; status?: number } {
+  const raw = error instanceof Error ? error.message : String(error)
+
+  return /content[_ ]filter|content management policy|responsible ai/i.test(raw) ||
+    (error as { code?: string } | undefined)?.code === 'content_filter' ||
+    ((error as { status?: number } | undefined)?.status === 400 && /filter/i.test(raw))
 }
 
 async function handler(req: NextRequest, ctx: AuthenticatedApiContext) {
@@ -164,23 +253,67 @@ async function handler(req: NextRequest, ctx: AuthenticatedApiContext) {
 
   // First turn — seed with the user's opening prompt + detected signals.
   // Subsequent turns — the user's latest reply is already the last entry in history.
-  const messages = [
-    { role: 'system' as const, content: SYSTEM_PROMPT },
-    { role: 'user' as const, content: buildOpeningMessage(originalPrompt, detected as Record<string, unknown>) },
-    ...history.map(m => ({ role: m.role, content: m.content })),
-  ]
+  const messages = buildInterviewMessages(originalPrompt, detected as Record<string, unknown>, history)
 
   try {
-    const completion = await openai.chat.completions.create({
-      model,
-      temperature: 0.4,
-      max_tokens: 1200,
-      response_format: { type: 'json_object' },
-      messages,
-    })
+    let completion
+    try {
+      completion = await openai.chat.completions.create({
+        model,
+        temperature: 0.4,
+        max_tokens: 1200,
+        response_format: { type: 'json_object' },
+        messages,
+      })
+    } catch (error) {
+      if (!isContentFilteredError(error)) {
+        throw error
+      }
+
+      logger.info('[draft-interview] Content filter tripped; retrying with neutralized opening prompt', {
+        promptSnippet: originalPrompt.slice(0, 120),
+      })
+
+      const strictMessages = buildInterviewMessages(
+        originalPrompt,
+        detected as Record<string, unknown>,
+        history,
+        'strict',
+      )
+
+      try {
+        completion = await openai.chat.completions.create({
+          model,
+          temperature: 0.4,
+          max_tokens: 1200,
+          response_format: { type: 'json_object' },
+          messages: strictMessages,
+        })
+      } catch (retryError) {
+        if (isContentFilteredError(retryError)) {
+          logger.info('[draft-interview] Content filter persisted after neutral retry', {
+            promptSnippet: originalPrompt.slice(0, 120),
+          })
+          return createErrorResponse(
+            ctx,
+            'CONTENT_FILTERED',
+            "Your request looks legitimate, but our AI safety filter may have misread part of it. You didn't do anything wrong. Try plain-language wording, or skip the interview and draft with what we already have.",
+            422,
+          )
+        }
+
+        throw retryError
+      }
+    }
 
     const raw = completion.choices[0]?.message?.content?.trim() || ''
-    let parsed: { content?: string; finalized?: boolean; brief?: InterviewBrief } = {}
+    let parsed: {
+      content?: string
+      finalized?: boolean
+      brief?: InterviewBrief
+      partialBrief?: InterviewBrief
+      quickAnswers?: unknown
+    } = {}
     try {
       parsed = JSON.parse(raw)
     } catch (err) {
@@ -189,11 +322,24 @@ async function handler(req: NextRequest, ctx: AuthenticatedApiContext) {
       parsed = { content: raw, finalized: false }
     }
 
+    // Sanitise quickAnswers — strings only, trimmed, max 5, max 40 chars each.
+    let quickAnswers: string[] | undefined
+    if (Array.isArray(parsed.quickAnswers)) {
+      quickAnswers = parsed.quickAnswers
+        .filter((s): s is string => typeof s === 'string')
+        .map(s => s.trim())
+        .filter(s => s.length > 0 && s.length <= 40)
+        .slice(0, 5)
+      if (quickAnswers.length === 0) quickAnswers = undefined
+    }
+
     const response: InterviewResponse = {
       role: 'assistant',
       content: String(parsed.content || 'Could you say a bit more about what you need?'),
       finalized: Boolean(parsed.finalized),
       brief: parsed.finalized && parsed.brief ? parsed.brief : undefined,
+      partialBrief: parsed.partialBrief && typeof parsed.partialBrief === 'object' ? parsed.partialBrief : undefined,
+      quickAnswers,
     }
 
     // Defensive: if finalized but no enrichedPrompt, synthesize one.
@@ -221,7 +367,8 @@ async function handler(req: NextRequest, ctx: AuthenticatedApiContext) {
 
     return createSuccessResponse(ctx, response)
   } catch (err) {
-    logger.error('[draft-interview] AI call failed', { error: err instanceof Error ? err.message : String(err) })
+    const raw = err instanceof Error ? err.message : String(err)
+    logger.error('[draft-interview] AI call failed', { error: raw })
     return createErrorResponse(
       ctx,
       'AI_INTERVIEW_FAILED',

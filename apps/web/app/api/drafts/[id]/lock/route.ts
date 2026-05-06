@@ -9,10 +9,8 @@ import { logger } from '@/lib/logger';
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withAuthApiHandler,
   createSuccessResponse,
   createErrorResponse,
   handleApiError,
@@ -24,21 +22,13 @@ export const dynamic = 'force-dynamic';
 
 const LOCK_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes — auto-expire stale locks (clients send heartbeat every 2 min)
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     const rl = checkRateLimit(tenantId, ctx.userId, '/api/drafts/[id]/lock', AI_RATE_LIMITS.standard);
     if (!rl.allowed) return rateLimitResponse(rl);
 
-    const { id: draftId } = await params;
+    const { id: draftId } = await (ctx as any).params as { id: string };
     const body = await request.json().catch(() => ({}));
     const action = body.action as string;
 
@@ -128,4 +118,4 @@ export async function POST(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

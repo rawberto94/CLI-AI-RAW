@@ -62,14 +62,26 @@ export async function POST(req: NextRequest) {
     const email = claims.preferred_username.toLowerCase();
     const displayName = claims.name || email;
 
-    // --- Step 2: Validate the token via Azure AD OBO flow (if credentials configured) ---
-    if (AZURE_AD_CLIENT_ID && AZURE_AD_CLIENT_SECRET) {
+    // --- Step 2: Validate the token via Azure AD OBO flow ---
+    // Production MUST validate via OBO. Without it we'd be trusting unsigned
+    // JWT claims — anyone who can craft a base64-url JSON blob could assume
+    // any email identity. Fail closed.
+    const oboConfigured = Boolean(AZURE_AD_CLIENT_ID && AZURE_AD_CLIENT_SECRET);
+    if (!oboConfigured && process.env.NODE_ENV === 'production') {
+      logger.error('[Office SSO] AZURE_AD_CLIENT_ID/SECRET not configured in production — refusing to trust bootstrap token');
+      return NextResponse.json(
+        { success: false, error: { code: 'SSO_NOT_CONFIGURED', message: 'Microsoft SSO is not configured on this server' } },
+        { status: 503 }
+      );
+    }
+
+    if (oboConfigured) {
       try {
         const tokenEndpoint = `https://login.microsoftonline.com/${AZURE_AD_TENANT_ID}/oauth2/v2.0/token`;
         const oboParams = new URLSearchParams({
           grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-          client_id: AZURE_AD_CLIENT_ID,
-          client_secret: AZURE_AD_CLIENT_SECRET,
+          client_id: AZURE_AD_CLIENT_ID as string,
+          client_secret: AZURE_AD_CLIENT_SECRET as string,
           assertion: officeToken,
           scope: 'https://graph.microsoft.com/User.Read',
           requested_token_use: 'on_behalf_of',
@@ -108,9 +120,11 @@ export async function POST(req: NextRequest) {
           { status: 500 }
         );
       }
+    } else {
+      // Development-only: OBO creds missing and NODE_ENV !== 'production'.
+      // We trust the unsigned bootstrap claims for local dev iteration.
+      logger.warn('[Office SSO] OBO creds missing — trusting bootstrap claims (dev mode only)');
     }
-    // If AZURE_AD creds are not configured, we trust the bootstrap token claims
-    // (acceptable for development; production MUST have OBO validation).
 
     // --- Step 3: Find or create the user in ConTigo ---
     let user = await prisma.user.findUnique({
@@ -148,6 +162,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { success: false, error: { code: 'USER_ERROR', message: 'Failed to find or create user' } },
         { status: 500 }
+      );
+    }
+
+    // Enforce the same account-state gates as the credentials flow.
+    if (user.status !== 'ACTIVE') {
+      return NextResponse.json(
+        { success: false, error: { code: 'ACCOUNT_INACTIVE', message: 'Account is not active' } },
+        { status: 403 }
+      );
+    }
+    // MFA cannot be completed in the Office add-in flow. Force browser login.
+    if (user.mfaEnabled) {
+      return NextResponse.json(
+        { success: false, error: { code: 'MFA_REQUIRED', message: 'Multi-factor authentication is enabled. Please sign in through the browser.' } },
+        { status: 403 }
       );
     }
 

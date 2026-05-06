@@ -13,6 +13,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getTenantId } from '@/lib/tenant';
+import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import {
   Tag,
   Plus,
@@ -88,6 +89,7 @@ const DEFAULT_FORM_DATA: TagFormData = {
 // ============================================================================
 
 export default function TagManagementPage() {
+  const confirm = useConfirm();
   const [tags, setTags] = useState<TagData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -185,9 +187,8 @@ export default function TagManagementPage() {
 
   // Delete tag
   const handleDeleteTag = async (tagName: string) => {
-    if (!confirm(`Are you sure you want to delete the tag "${tagName}"?`)) {
-      return;
-    }
+    const ok = await confirm(confirmPresets.delete(tagName));
+    if (!ok) return;
 
     try {
       const response = await fetch(`/api/tags?name=${encodeURIComponent(tagName)}`, {

@@ -128,7 +128,11 @@ const STATUS_CONFIG = {
 }
 
 const formatCurrency = (value: number, currency = 'CHF'): string => {
-  return new Intl.NumberFormat('de-CH', {
+  // Use the browser's language so non-Swiss users don't see forced de-CH number
+  // grouping (e.g. `1'234.00`). Falls back to en-US during SSR where
+  // `navigator` isn't defined.
+  const locale = typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'en-US';
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,

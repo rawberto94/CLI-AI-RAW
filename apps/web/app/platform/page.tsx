@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { unwrapApiResponseData } from '@/lib/api-fetch';
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
@@ -133,7 +134,7 @@ export default function PlatformAdminPage() {
         setTenants([]);
         return;
       }
-      const data = JSON.parse(text);
+      const data = unwrapApiResponseData<{ tenants?: Tenant[] }>(JSON.parse(text));
       setTenants(data.tenants || []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -163,7 +164,7 @@ export default function PlatformAdminPage() {
           const text = await res.text();
           if (text) {
             const data = JSON.parse(text);
-            errorMessage = data.error || data.message || errorMessage;
+            errorMessage = data.error?.message || data.message || errorMessage;
           } else {
             // Empty response - check status code
             if (res.status === 403) {

@@ -170,9 +170,16 @@ export function ActionHints({ context, className }: ActionHintsProps) {
 
   // Load dismissed hints from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('contigo-dismissed-hints');
-    if (saved) {
-      setDismissedHints(new Set(JSON.parse(saved)));
+    try {
+      const saved = localStorage.getItem('contigo-dismissed-hints');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setDismissedHints(new Set(parsed));
+        }
+      }
+    } catch {
+      // Corrupted or inaccessible storage — start fresh.
     }
   }, []);
 
@@ -187,7 +194,11 @@ export function ActionHints({ context, className }: ActionHintsProps) {
   const dismissHint = useCallback((hintId: string) => {
     const newDismissed = new Set([...dismissedHints, hintId]);
     setDismissedHints(newDismissed);
-    localStorage.setItem('contigo-dismissed-hints', JSON.stringify([...newDismissed]));
+    try {
+      localStorage.setItem('contigo-dismissed-hints', JSON.stringify([...newDismissed]));
+    } catch {
+      // Storage full/unavailable — in-memory state still updates.
+    }
     setCurrentHintIndex(0); // Reset to first hint
   }, [dismissedHints]);
 

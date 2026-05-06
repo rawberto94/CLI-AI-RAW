@@ -171,19 +171,25 @@ export default function ProfileSettingsPage() {
     setIsSaving(true);
     setSaveError(false);
     
-    const success = await updateProfile({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      phone: user.phone,
-      department: user.department,
-      timezone: user.timezone,
-      language: user.language,
-      bio: user.bio,
-      twoFactorEnabled: user.twoFactorEnabled,
-      emailPreferences: emailPrefs,
-    });
-    
-    setIsSaving(false);
+    // Defensive try/finally: even though updateProfile currently swallows errors
+    // and returns false, wrapping in finally guarantees the saving spinner resets
+    // if that contract changes (or a runtime error bubbles up before the return).
+    let success = false;
+    try {
+      success = await updateProfile({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        department: user.department,
+        timezone: user.timezone,
+        language: user.language,
+        bio: user.bio,
+        twoFactorEnabled: user.twoFactorEnabled,
+        emailPreferences: emailPrefs,
+      });
+    } finally {
+      setIsSaving(false);
+    }
     
     if (success) {
       setIsDirty(false);

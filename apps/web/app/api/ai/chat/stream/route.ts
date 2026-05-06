@@ -293,8 +293,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
     return new NextResponse(readable, {
       headers: {
         'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
       },
     });
   }
@@ -410,8 +411,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
       return new NextResponse(readable, {
         headers: {
           'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'no-cache, no-transform',
           'Connection': 'keep-alive',
+          'X-Accel-Buffering': 'no',
         },
       });
     }
@@ -1098,7 +1100,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
                   context: contractId,
                   contextType: contractId ? 'CONTRACT' : 'GENERAL',
                   lastMessageAt: new Date(),
-                  messageCount: 2,
+                  messageCount: 0,
                 },
               });
               conversationId = conv.id;
@@ -1211,12 +1213,18 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         const safeMessage = error instanceof Error && error.name === 'AbortError'
           ? 'Request timed out. Please try again.'
           : 'An error occurred while processing your request.';
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-          type: 'error',
-          error: safeMessage,
-          done: true,
-        })}\n\n`));
-        controller.close();
+        // Guard: the stream may already be closed (client disconnected,
+        // cancel() fired and broke the for-await loop). Enqueue after
+        // close throws `TypeError: Invalid state`, which crashes the
+        // request handler and produces a "hung" response from the client.
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'error',
+            error: safeMessage,
+            done: true,
+          })}\n\n`));
+        } catch { /* already closed */ }
+        try { controller.close(); } catch { /* already closed */ }
       }
     },
   });

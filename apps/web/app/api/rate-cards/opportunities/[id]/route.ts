@@ -1,18 +1,13 @@
 import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
-import { getApiTenantId } from '@/lib/tenant-server';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { rateCardBenchmarkingService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
-export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-const tenantId = await getApiTenantId(request);
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+const { id } = await (ctx as any).params as { id: string };
+const tenantId = ctx.tenantId;
   
   if (!tenantId) {
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400)
@@ -21,7 +16,7 @@ const tenantId = await getApiTenantId(request);
   try {
     // Verify opportunity belongs to tenant
     const opportunity = await prisma.rateSavingsOpportunity.findFirst({
-      where: { id: params.id, tenantId },
+      where: { id, tenantId },
       include: {
         rateCardEntry: true,
       },
@@ -38,15 +33,11 @@ const tenantId = await getApiTenantId(request);
   } catch (error: unknown) {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500)
   }
-}
+})
 
-export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-const tenantId = await getApiTenantId(request);
+export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
+const { id } = await (ctx as any).params as { id: string };
+const tenantId = ctx.tenantId;
   
   if (!tenantId) {
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400)
@@ -55,7 +46,7 @@ const tenantId = await getApiTenantId(request);
   try {
     // Verify opportunity belongs to tenant before updating
     const existing = await prisma.rateSavingsOpportunity.findFirst({
-      where: { id: params.id, tenantId },
+      where: { id, tenantId },
       select: { id: true },
     });
 
@@ -88,15 +79,11 @@ const tenantId = await getApiTenantId(request);
   } catch (error: unknown) {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500)
   }
-}
+})
 
-export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-const tenantId = await getApiTenantId(request);
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
+const { id } = await (ctx as any).params as { id: string };
+const tenantId = ctx.tenantId;
   
   if (!tenantId) {
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400)
@@ -105,7 +92,7 @@ const tenantId = await getApiTenantId(request);
   try {
     // Verify opportunity belongs to tenant before deleting
     const existing = await prisma.rateSavingsOpportunity.findFirst({
-      where: { id: params.id, tenantId },
+      where: { id, tenantId },
       select: { id: true },
     });
 
@@ -124,4 +111,4 @@ const tenantId = await getApiTenantId(request);
   } catch (error: unknown) {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500)
   }
-}
+})

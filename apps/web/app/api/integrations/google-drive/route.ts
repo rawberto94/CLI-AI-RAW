@@ -8,6 +8,7 @@
 
 import { NextRequest } from 'next/server';
 import {
+  createGoogleDriveOAuthState,
   getGoogleDriveAuthUrl,
   getGoogleDriveConnection,
   getValidAccessToken,
@@ -32,7 +33,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
     return createSuccessResponse(ctx, {
       success: true,
       connected: false,
-      authUrl: getGoogleDriveAuthUrl(),
+      authUrl: getGoogleDriveAuthUrl(createGoogleDriveOAuthState(tenantId, ctx.userId)),
     });
   }
 
@@ -58,7 +59,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   switch (action) {
     case 'connect': {
-      const authUrl = getGoogleDriveAuthUrl();
+      const authUrl = getGoogleDriveAuthUrl(createGoogleDriveOAuthState(tenantId, userId));
       return createSuccessResponse(ctx, { success: true, authUrl });
     }
 

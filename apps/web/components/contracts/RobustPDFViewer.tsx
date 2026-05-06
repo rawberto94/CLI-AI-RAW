@@ -306,7 +306,7 @@ export function RobustPDFViewer({
   }, [pdfUrl, filename]);
 
   const handleOpenNewTab = useCallback(() => {
-    window.open(pdfUrl, '_blank');
+    window.open(pdfUrl, '_blank', 'noopener,noreferrer');
   }, [pdfUrl]);
 
   const toggleFullscreen = useCallback(() => {

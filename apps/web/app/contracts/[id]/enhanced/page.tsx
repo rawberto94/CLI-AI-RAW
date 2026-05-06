@@ -130,11 +130,36 @@ export default function EnhancedContractDetailPage() {
     
   }, [contractId])
 
-  // Auto-refresh for processing contracts
+  // Auto-refresh for processing contracts (paused when tab is hidden to save bandwidth + DB load)
   useEffect(() => {
-    if (contract?.status === 'processing') {
-      const interval = setInterval(loadContract, 3000)
-      return () => clearInterval(interval)
+    if (contract?.status !== 'processing') return
+
+    let interval: ReturnType<typeof setInterval> | null = null
+    const start = () => {
+      if (interval) return
+      interval = setInterval(loadContract, 3000)
+    }
+    const stop = () => {
+      if (interval) {
+        clearInterval(interval)
+        interval = null
+      }
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadContract()
+        start()
+      } else {
+        stop()
+      }
+    }
+
+    if (typeof document === 'undefined' || document.visibilityState === 'visible') start()
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      stop()
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibility)
     }
     
   }, [contract?.status])

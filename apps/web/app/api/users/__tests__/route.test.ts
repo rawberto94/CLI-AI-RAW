@@ -49,6 +49,18 @@ describe('GET /api/users', () => {
     const d = await res.json();
     expect(res.status).toBe(200);
     expect(d.data.users.length).toBe(1);
+    expect(mocks.mockPrisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: 'tenant-1',
+          OR: [
+            { firstName: { contains: 'john', mode: 'insensitive' } },
+            { lastName: { contains: 'john', mode: 'insensitive' } },
+            { email: { contains: 'john', mode: 'insensitive' } },
+          ],
+        }),
+      })
+    );
   });
 
   it('should handle db failure', async () => {

@@ -365,7 +365,6 @@ export async function checkRenewalsJob(
  * Schedule daily renewal checks
  */
 export async function scheduleRenewalCheck(tenantId?: string, options?: Partial<RenewalCheckJobData>) {
-  const { getQueueService } = await import('@repo/utils/queue/queue-service');
   const queueService = getQueueService();
   const queue = queueService.getQueue(RENEWAL_ALERT_QUEUE);
 
@@ -395,7 +394,6 @@ export async function scheduleRenewalCheck(tenantId?: string, options?: Partial<
  * Trigger immediate renewal check
  */
 export async function triggerRenewalCheck(data: RenewalCheckJobData) {
-  const { getQueueService } = await import('@repo/utils/queue/queue-service');
   const queueService = getQueueService();
   const queue = queueService.getQueue(RENEWAL_ALERT_QUEUE);
 

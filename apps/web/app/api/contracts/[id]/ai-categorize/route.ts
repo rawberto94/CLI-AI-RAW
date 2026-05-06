@@ -7,26 +7,16 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { contractService } from 'data-orchestration/services';
 import { getTenantIdFromRequest } from '@/lib/tenant-server';
 import { optionalImport } from '@/lib/server/optional-module';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { queueRAGReindex } from '@/lib/rag/reindex-helper';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params as { id: string };
+
   try {
-    const { id } = await params;
-
-    // Auth check
-
     let tenantId: string;
     try {
       tenantId = await getTenantIdFromRequest(request);
@@ -225,22 +215,15 @@ export async function POST(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 /**
  * GET - Get categorization status and details
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-  try {
-    const { id } = await params;
+export const GET = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params as { id: string };
 
+  try {
     let tenantId: string;
     try {
       tenantId = await getTenantIdFromRequest(request);
@@ -285,4 +268,4 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

@@ -12,6 +12,7 @@
  * 5. Set environment variables (see below)
  */
 
+import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 
 // Environment variables required:
@@ -79,6 +80,89 @@ const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
+const GOOGLE_DRIVE_STATE_TTL_MS = 10 * 60 * 1000;
+
+interface GoogleDriveOAuthState {
+  tenantId: string;
+  userId: string;
+  timestamp: number;
+  nonce: string;
+}
+
+function getGoogleDriveStateSecret(): string {
+  const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('NEXTAUTH_SECRET, AUTH_SECRET, or JWT_SECRET must be configured for Google Drive OAuth state signing');
+  }
+  return secret;
+}
+
+function splitSignedState(state: string): { payload: string; signature: string } | null {
+  try {
+    const decoded = Buffer.from(state, 'base64url').toString('utf8');
+    const separatorIndex = decoded.lastIndexOf('.');
+    if (separatorIndex === -1) {
+      return null;
+    }
+    return {
+      payload: decoded.slice(0, separatorIndex),
+      signature: decoded.slice(separatorIndex + 1),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Create a signed OAuth state that binds the callback to the current tenant/user.
+ */
+export function createGoogleDriveOAuthState(tenantId: string, userId: string): string {
+  const secret = getGoogleDriveStateSecret();
+  const payload = JSON.stringify({
+    tenantId,
+    userId,
+    timestamp: Date.now(),
+    nonce: crypto.randomUUID(),
+  } satisfies GoogleDriveOAuthState);
+  const signature = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  return Buffer.from(`${payload}.${signature}`).toString('base64url');
+}
+
+/**
+ * Validate a signed OAuth state for the expected tenant/user and freshness.
+ */
+export function validateGoogleDriveOAuthState(
+  state: string,
+  expectedTenantId: string,
+  expectedUserId: string,
+): boolean {
+  const secret = getGoogleDriveStateSecret();
+  const signed = splitSignedState(state);
+  if (!signed) {
+    return false;
+  }
+
+  const expectedSignature = crypto.createHmac('sha256', secret).update(signed.payload).digest('hex');
+  if (signed.signature.length !== expectedSignature.length) {
+    return false;
+  }
+  if (!crypto.timingSafeEqual(Buffer.from(signed.signature), Buffer.from(expectedSignature))) {
+    return false;
+  }
+
+  try {
+    const parsed = JSON.parse(signed.payload) as Partial<GoogleDriveOAuthState>;
+    if (parsed.tenantId !== expectedTenantId || parsed.userId !== expectedUserId) {
+      return false;
+    }
+    if (typeof parsed.timestamp !== 'number' || Date.now() - parsed.timestamp > GOOGLE_DRIVE_STATE_TTL_MS) {
+      return false;
+    }
+    return typeof parsed.nonce === 'string' && parsed.nonce.length > 0;
+  } catch {
+    return false;
+  }
+}
 
 // Scopes required for Drive access
 const SCOPES = [

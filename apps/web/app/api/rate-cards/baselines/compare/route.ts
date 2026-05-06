@@ -4,15 +4,9 @@ import { baselineManagementService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
-    const user = await prisma.user.findFirst({
-      where: { 
-        email: ctx.userId,
-        tenantId: ctx.tenantId 
-      },
-      select: { id: true, tenantId: true },
-    });
+    const tenantId = ctx.tenantId;
 
-    if (!user?.tenantId) {
+    if (!tenantId) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
     }
 
@@ -26,7 +20,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
     const baselineService = new baselineManagementService(prisma);
     const result = await baselineService.bulkCompareAgainstBaselines(
-      user.tenantId,
+      tenantId,
       {
         minVariancePercentage,
         baselineTypes,

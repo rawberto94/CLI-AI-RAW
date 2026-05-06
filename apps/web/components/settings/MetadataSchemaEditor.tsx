@@ -51,6 +51,7 @@ import {
   MoreVertical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 
 // ============================================================================
 // Types
@@ -200,6 +201,7 @@ export function MetadataSchemaEditor({
   const [selectedCategory, setSelectedCategory] = useState<string>('custom');
   const [searchQuery, setSearchQuery] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+  const confirm = useConfirm();
 
   // Load schema
   useEffect(() => {
@@ -303,7 +305,8 @@ export function MetadataSchemaEditor({
   }, [tenantId]);
 
   const handleDeleteField = useCallback(async (fieldId: string) => {
-    if (!confirm('Are you sure you want to delete this field?')) return;
+    const ok = await confirm(confirmPresets.delete('this field'));
+    if (!ok) return;
 
     try {
       setSaving(true);
@@ -367,7 +370,14 @@ export function MetadataSchemaEditor({
   // =========================================================================
 
   const handleResetToDefault = useCallback(async () => {
-    if (!confirm('Reset to default schema? This will remove all custom fields.')) return;
+    const ok = await confirm({
+      title: 'Reset schema to defaults?',
+      description: 'This will remove all custom fields and categories. This action cannot be undone.',
+      confirmText: 'Reset',
+      variant: 'danger',
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
       setSaving(true);

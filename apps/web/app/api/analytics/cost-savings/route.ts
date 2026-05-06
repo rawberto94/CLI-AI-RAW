@@ -180,10 +180,24 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const body = await request.json();
-  const { opportunityId, contractId, tenantId, userId, status, notes: _notes } = body;
+  const { opportunityId, contractId, status, notes: _notes } = body;
+  const tenantId = ctx.tenantId;
 
-  if (!opportunityId || !contractId || !tenantId || !userId) {
+  if (!opportunityId || !contractId || !tenantId || !ctx.userId) {
     return createErrorResponse(ctx, 'MISSING_FIELDS', 'Missing required fields', 400);
+  }
+
+  const opportunity = await prisma.costSavingsOpportunity.findFirst({
+    where: {
+      id: opportunityId,
+      contractId,
+      tenantId,
+    },
+    select: { id: true },
+  });
+
+  if (!opportunity) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Opportunity not found', 404);
   }
 
   // In production, this would save to database

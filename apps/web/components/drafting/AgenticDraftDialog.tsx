@@ -15,6 +15,7 @@ import {
   Brain, FileSearch, BookOpen, Wand2, Shield, Save,
   Loader2, CheckCircle2, SkipForward, AlertCircle,
   ArrowRight, Sparkles, X, ShieldCheck, AlertTriangle,
+  CircleCheck, CircleAlert,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -229,6 +230,10 @@ export function AgenticDraftDialog({ open, onOpenChange, initialPrompt }: Agenti
     reset();
     setPrompt('');
     setSelectedType('');
+    // Also clear the playbook selection — otherwise the next time the dialog
+    // opens, the previous draft's playbook is pre-selected (can silently
+    // apply the wrong playbook to an unrelated contract type).
+    setSelectedPlaybookId('');
     onOpenChange(false);
   }, [isRunning, abort, reset, onOpenChange]);
 
@@ -492,6 +497,81 @@ export function AgenticDraftDialog({ open, onOpenChange, initialPrompt }: Agenti
                   </div>
                 </div>
               )}
+
+              {/* Faithfulness receipt — shows exactly which of the user's
+                   requested values landed in the draft. This is the answer to
+                   "did the AI actually give me what I asked for?" */}
+              {result.faithfulness && result.faithfulness.total > 0 && (() => {
+                const f = result.faithfulness;
+                const dropped = f.items.filter(i => !i.found);
+                const pct = Math.round(f.score * 100);
+                const accent =
+                  pct >= 90
+                    ? 'emerald'
+                    : pct >= 70
+                    ? 'amber'
+                    : 'rose';
+                const accentClasses: Record<string, { border: string; bg: string; text: string; ring: string }> = {
+                  emerald: { border: 'border-emerald-200 dark:border-emerald-800', bg: 'bg-emerald-50 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-300', ring: 'ring-emerald-300' },
+                  amber:   { border: 'border-amber-200 dark:border-amber-800',     bg: 'bg-amber-50 dark:bg-amber-950/30',     text: 'text-amber-700 dark:text-amber-300',     ring: 'ring-amber-300' },
+                  rose:    { border: 'border-rose-200 dark:border-rose-800',       bg: 'bg-rose-50 dark:bg-rose-950/30',       text: 'text-rose-700 dark:text-rose-300',       ring: 'ring-rose-300' },
+                };
+                const a = accentClasses[accent];
+                return (
+                  <div className={`rounded-lg border ${a.border} ${a.bg} p-3`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className={`flex items-center gap-1.5 text-xs font-semibold ${a.text}`}>
+                        <CircleCheck className="w-3.5 h-3.5" />
+                        What you asked for, checked against the draft
+                      </div>
+                      <div className={`text-xs font-bold ${a.text}`}>
+                        {f.honored}/{f.total} honoured
+                        <span className="ml-1 font-normal opacity-70">({pct}%)</span>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {f.items.map((it, idx) => (
+                        <span
+                          key={`${it.label}-${idx}`}
+                          title={it.found ? `Found in draft: ${it.value}` : `NOT found in draft — the AI may have dropped this`}
+                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                            it.found
+                              ? 'border-emerald-300 bg-white dark:bg-gray-800 text-emerald-700 dark:text-emerald-300'
+                              : 'border-rose-300 bg-white dark:bg-gray-800 text-rose-700 dark:text-rose-300 ring-1 ring-rose-200'
+                          }`}
+                        >
+                          {it.found ? (
+                            <CircleCheck className="w-3 h-3 text-emerald-500" />
+                          ) : (
+                            <CircleAlert className="w-3 h-3 text-rose-500" />
+                          )}
+                          <span className="opacity-60">{it.label}:</span>
+                          <span className="max-w-[10rem] truncate">{it.value}</span>
+                        </span>
+                      ))}
+                    </div>
+                    {(f.repaired || f.addendumAppended) && (
+                      <div className={`mt-2 flex flex-wrap items-center gap-1.5 text-[11px] ${a.text}`}>
+                        {f.repaired && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-white/60 dark:bg-gray-800/60 border border-current/20 px-1.5 py-0.5">
+                            <Sparkles className="w-3 h-3" /> Repaired: ran a second pass to add missing values
+                          </span>
+                        )}
+                        {f.addendumAppended && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-white/60 dark:bg-gray-800/60 border border-current/20 px-1.5 py-0.5">
+                            <BookOpen className="w-3 h-3" /> Added Schedule A: "User-Requested Terms" at the end of the draft
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {dropped.length > 0 && (
+                      <p className={`mt-2 text-[11px] ${a.text}`}>
+                        {dropped.length} value{dropped.length === 1 ? '' : 's'} not detected in the draft — open the editor and search to confirm, or regenerate.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Steps summary */}
               <div className="space-y-1">

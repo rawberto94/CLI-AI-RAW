@@ -20,6 +20,10 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 // ============================================================================
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden - Admin access required', 403);
+  }
+
   const tenantId = ctx.tenantId;
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action') || 'status';
@@ -194,6 +198,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const tenantId = ctx.tenantId;
   const userId = ctx.userId;
+  const isTenantAdmin = ctx.userRole === 'admin' || ctx.userRole === 'owner';
   const body = await request.json();
   const { action } = body;
 
@@ -227,6 +232,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     case 'run_escalation_check': {
+      if (!isTenantAdmin) {
+        return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden - Admin access required', 403);
+      }
+
       // Manually trigger escalation check
       const result = await orchestrator.checkWorkflowEscalations();
 
@@ -238,6 +247,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     case 'suggest_for_contracts': {
+      if (!isTenantAdmin) {
+        return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden - Admin access required', 403);
+      }
+
       // Suggest workflows for contracts without them
       const contractsWithoutWorkflow = await prisma.contract.findMany({
         where: {
@@ -279,6 +292,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     case 'auto_approve_low_risk': {
+      if (!isTenantAdmin) {
+        return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden - Admin access required', 403);
+      }
+
       // Auto-approve pending steps for low-risk contracts (with approval)
       const { confirm } = body;
 
@@ -363,11 +380,39 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         return createErrorResponse(ctx, 'BAD_REQUEST', 'From and to user IDs are required', 400);
       }
 
+      if (!isTenantAdmin && fromUserId !== userId) {
+        return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden - You can only delegate your own workflow steps', 403);
+      }
+
+      const sourceUser = await prisma.user.findFirst({
+        where: {
+          id: fromUserId,
+          tenantId,
+        },
+        select: { id: true },
+      });
+
+      if (!sourceUser) {
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Source user not found', 404);
+      }
+
+      const targetUser = await prisma.user.findFirst({
+        where: {
+          id: toUserId,
+          tenantId,
+        },
+        select: { id: true },
+      });
+
+      if (!targetUser) {
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Target user not found', 404);
+      }
+
       const pendingSteps = await prisma.workflowStepExecution.findMany({
         where: {
           execution: { tenantId },
           status: 'PENDING',
-          assignedTo: fromUserId
+          assignedTo: sourceUser.id
         }
       });
 
@@ -378,7 +423,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           step.stepId,
           'delegate',
           userId,
-          { delegateTo: toUserId, comment: reason || 'Bulk delegation' }
+          { delegateTo: targetUser.id, comment: reason || 'Bulk delegation' }
         );
         if (result.success) delegated++;
       }
@@ -389,10 +434,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           processed: pendingSteps.length,
           delegated,
           failed: pendingSteps.length - delegated,
-          fromUserId,
+          fromUserId: sourceUser.id,
           toUserId
         },
-        message: `Delegated ${delegated} workflow steps from ${fromUserId} to ${toUserId}`
+        message: `Delegated ${delegated} workflow steps from ${sourceUser.id} to ${toUserId}`
       });
     }
 

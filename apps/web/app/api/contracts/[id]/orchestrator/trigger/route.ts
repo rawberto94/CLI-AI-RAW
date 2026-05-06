@@ -1,25 +1,16 @@
 import { NextRequest } from 'next/server';
-import { getApiTenantId } from '@/lib/security/tenant';
 import { getContractQueue } from '@/lib/queue/contract-queue';
 import { v4 as uuidv4 } from 'uuid';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/[id]/orchestrator/trigger
  * 
  * Manually trigger the agent orchestrator
  */
-export async function POST(
-  request: NextRequest,
-  props: { params: Promise<{ id: string }> }
-) {
-  const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-  const contractId = params.id;
-  const tenantId = await getApiTenantId(request);
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+  const tenantId = ctx.tenantId;
 
   try {
     const queueManager = getContractQueue();
@@ -49,4 +40,4 @@ export async function POST(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

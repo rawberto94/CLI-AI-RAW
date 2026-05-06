@@ -6,19 +6,15 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { rateCardClusteringService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
-export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
-    const clusterId = params.id;
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id: clusterId } = await (ctx as any).params as { id: string };
+
+  try {
     const tenantId = ctx.tenantId;
 
     // Require tenant ID for security
@@ -139,16 +135,12 @@ try {
   } catch (error: unknown) {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500);
   }
-}
+});
 
-export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
-    const clusterId = params.id;
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id: clusterId } = await (ctx as any).params as { id: string };
+
+  try {
     const tenantId = ctx.tenantId;
 
     // Require tenant ID for security
@@ -177,4 +169,4 @@ try {
   } catch (error: unknown) {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500);
   }
-}
+});

@@ -214,14 +214,20 @@ export default function NegotiationPrepPage() {
 
       {/* Error State */}
       {error && (
-        <Card>
+        <Card className="border-rose-200 bg-rose-50/50">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-5 w-5" />
-              <span>
-                Error loading negotiation prep data:{' '}
-                {error instanceof Error ? error.message : String(error)}
-              </span>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-2 text-destructive">
+                <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium">Couldn’t load negotiation prep</p>
+                  <p className="text-sm text-rose-700 mt-1">{error instanceof Error ? error.message : String(error)}</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleRefresh} className="flex-shrink-0">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retry
+              </Button>
             </div>
           </CardContent>
         </Card>

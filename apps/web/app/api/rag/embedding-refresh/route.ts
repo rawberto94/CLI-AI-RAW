@@ -10,13 +10,18 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  const ctx = getApiContext(request);
-  const authCtx = getAuthenticatedApiContext(request);
-  if (!authCtx) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
+const ADMIN_ROLES = new Set(['admin', 'owner']);
+
+async function requireAdmin(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  return !!user && ADMIN_ROLES.has(user.role);
+}
+
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  if (!(await requireAdmin(ctx.userId))) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin role required', 403);
   }
   try {
     const currentModel = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
@@ -34,7 +39,7 @@ export async function GET(request: NextRequest) {
       prisma.contractMetadata.count({ where: { embeddingVersion: null } }),
     ]);
 
-    return createSuccessResponse(authCtx, {
+    return createSuccessResponse(ctx, {
       currentModel,
       counts: {
         total,
@@ -47,15 +52,13 @@ export async function GET(request: NextRequest) {
       refreshCron: process.env.EMBEDDING_REFRESH_CRON || '0 3 * * *',
     });
   } catch (error: any) {
-    return createErrorResponse(authCtx, 'INTERNAL_ERROR', error.message || 'Failed to fetch embedding status', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', error.message || 'Failed to fetch embedding status', 500);
   }
-}
+})
 
-export async function POST(request: NextRequest) {
-  const ctx = getApiContext(request);
-  const authCtx = getAuthenticatedApiContext(request);
-  if (!authCtx) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
+export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  if (!(await requireAdmin(ctx.userId))) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin role required', 403);
   }
   try {
     // Dynamic import to avoid bundling worker code in the web app
@@ -66,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     const result = await triggerEmbeddingRefresh();
 
-    return createSuccessResponse(authCtx, result);
+    return createSuccessResponse(ctx, result);
   } catch (error: any) {
     // If the worker module isn't available (e.g. web-only deploy), queue the
     // job via BullMQ directly as a fallback.
@@ -77,11 +80,11 @@ export async function POST(request: NextRequest) {
         jobId: 'embedding-refresh-manual',
         priority: 10,
       });
-      return createSuccessResponse(authCtx, {
+      return createSuccessResponse(ctx, {
         message: 'Embedding refresh job queued (worker will process)',
       });
     } catch {
-      return createErrorResponse(authCtx, 'INTERNAL_ERROR', error.message || 'Failed to trigger embedding refresh', 500);
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', error.message || 'Failed to trigger embedding refresh', 500);
     }
   }
-}
+})

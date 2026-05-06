@@ -5,6 +5,10 @@ export const dynamic = 'force-dynamic';
 
 // DLP Policies API
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   try {
     const { prisma } = await import('@/lib/prisma');
     const policies = await prisma.$queryRaw`SELECT * FROM dlp_policies WHERE tenant_id = ${ctx.tenantId} ORDER BY created_at DESC`;
@@ -15,6 +19,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 });
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   try {
     const body = await request.json();
     const { prisma } = await import('@/lib/prisma');

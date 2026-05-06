@@ -20,6 +20,9 @@ async function getAiCostOptimizerService() {
 
 export const GET = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required', 400);
+    }
     const aiCostOptimizerService = await getAiCostOptimizerService();
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'budget';
@@ -119,6 +122,9 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required', 400);
+    }
     const aiCostOptimizerService = await getAiCostOptimizerService();
     const body = await request.json();
     const { action } = body;
@@ -140,7 +146,6 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       }
 
       case 'record-usage': {
-        const tenantId = ctx.tenantId || 'system';
         const { model, taskType, inputTokens, outputTokens } = body;
         if (!model || !taskType || inputTokens === undefined || outputTokens === undefined) {
           return createErrorResponse(ctx, 'BAD_REQUEST', 'model, taskType, inputTokens, and outputTokens are required', 400);

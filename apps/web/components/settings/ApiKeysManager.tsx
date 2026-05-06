@@ -56,9 +56,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { unwrapApiResponseData } from '@/lib/api-fetch';
 import { useApiKeys } from '@/hooks/use-optimistic-mutations';
 import { useQuery } from '@tanstack/react-query';
-import { getTenantId } from '@/lib/tenant';
 
 interface ApiKey {
   id: string;
@@ -69,6 +69,22 @@ interface ApiKey {
   lastUsedAt?: string;
   expiresAt?: string;
   isActive: boolean;
+}
+
+interface ApiKeyApiRecord {
+  id: string;
+  name: string;
+  key_prefix: string;
+  scopes: string[];
+  is_active: boolean;
+  last_used_at?: string | null;
+  expires_at?: string | null;
+  created_at: string;
+}
+
+interface ApiKeysQueryResult {
+  items: ApiKey[];
+  storageAvailable: boolean;
 }
 
 interface ApiKeysManagerProps {
@@ -95,42 +111,32 @@ export const ApiKeysManager = memo(function ApiKeysManager({
   const apiKeyMutations = useApiKeys();
   
   // Query for API keys with React Query
-  const { data: apiKeysData, isLoading: loading } = useQuery({
+  const { data: apiKeysData, isLoading: loading } = useQuery<ApiKeysQueryResult>({
     queryKey: ['api-keys'],
     queryFn: async () => {
-      const response = await fetch('/api/settings/api-keys', {
-        headers: { 'x-tenant-id': getTenantId() },
-      });
+      const response = await fetch('/api/admin/api-keys');
       if (response.ok) {
-        const data = await response.json();
-        return data.keys || [];
+        const data = unwrapApiResponseData<{ apiKeys: ApiKeyApiRecord[]; storageAvailable?: boolean }>(await response.json());
+        return {
+          storageAvailable: data.storageAvailable !== false,
+          items: (data.apiKeys || []).map((record) => ({
+            id: record.id,
+            name: record.name,
+            keyPreview: record.key_prefix,
+            permissions: record.scopes,
+            createdAt: record.created_at,
+            lastUsedAt: record.last_used_at || undefined,
+            expiresAt: record.expires_at || undefined,
+            isActive: record.is_active,
+          })),
+        };
       }
-      // Mock data for demo
-      return [
-        {
-          id: 'key_1',
-          name: 'Production API',
-          keyPreview: 'sk_live_****abcd',
-          permissions: ['read:contracts', 'write:contracts', 'read:artifacts'],
-          createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          lastUsedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          isActive: true,
-        },
-        {
-          id: 'key_2',
-          name: 'Integration Webhook',
-          keyPreview: 'sk_live_****efgh',
-          permissions: ['read:contracts'],
-          createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-          lastUsedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          isActive: true,
-        },
-      ];
+      return { items: [], storageAvailable: true };
     },
   });
   
-  const apiKeys = apiKeysData || [];
+  const apiKeys = apiKeysData?.items || [];
+  const storageAvailable = apiKeysData?.storageAvailable ?? true;
   // Derive creating state from mutation
   const creating = apiKeyMutations.create.isPending;
   
@@ -156,7 +162,11 @@ export const ApiKeysManager = memo(function ApiKeysManager({
 
     // Use optimistic mutation hook
     apiKeyMutations.create.mutate(
-      { name: newKeyData.name, permissions: newKeyData.permissions },
+      {
+        name: newKeyData.name,
+        permissions: newKeyData.permissions,
+        expiresInDays: newKeyData.expiresIn === 'never' ? undefined : Number(newKeyData.expiresIn),
+      },
       {
         onSuccess: (response) => {
           // Show the secret to user (only time it's visible)
@@ -237,7 +247,8 @@ export const ApiKeysManager = memo(function ApiKeysManager({
               }
             }}>
               <DialogTrigger asChild>
-                <Button className="gap-2">
+                <Button className="gap-2" disabled={!storageAvailable}>
+                  {storageAvailable ? null : <AlertTriangle className="h-4 w-4" />}
                   <Plus className="h-4 w-4" />
                   Create API Key
                 </Button>
@@ -358,6 +369,11 @@ export const ApiKeysManager = memo(function ApiKeysManager({
           </div>
         </CardHeader>
         <CardContent>
+          {!storageAvailable && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              API key storage is not initialized in this environment. Existing keys cannot be listed or created until the underlying database table is provisioned.
+            </div>
+          )}
           {apiKeys.length === 0 ? (
             <div className="text-center py-12">
               <Key className="h-12 w-12 mx-auto mb-4 text-slate-300" />

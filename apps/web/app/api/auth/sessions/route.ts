@@ -38,11 +38,7 @@ interface SessionInfo {
  * GET /api/auth/sessions - List all active sessions
  */
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
-  const { userId } = ctx;
-
-  // Get current session token from cookie
-  const currentSessionToken = request.cookies.get('next-auth.session-token')?.value ||
-                              request.cookies.get('__Secure-next-auth.session-token')?.value;
+  const { userId, userSessionId } = ctx;
 
   // Get all sessions for this user
   const sessions = await prisma.userSession.findMany({
@@ -70,7 +66,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       location: sess.location || undefined,
       lastActive: sess.lastActive || sess.updatedAt,
       createdAt: sess.createdAt,
-      isCurrent: sess.token === currentSessionToken || sess.sessionToken === currentSessionToken,
+      isCurrent: Boolean(userSessionId) && sess.token === userSessionId,
     };
   });
 
@@ -84,14 +80,14 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
  * DELETE /api/auth/sessions - Revoke sessions
  */
 export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
-  const { userId, tenantId } = ctx;
+  const { userId, tenantId, userSessionId } = ctx;
 
   const body = await request.json().catch(() => ({}));
   const { sessionId, revokeAll } = body;
 
-  // Get current session token to preserve it
-  const currentSessionToken = request.cookies.get('next-auth.session-token')?.value ||
-                              request.cookies.get('__Secure-next-auth.session-token')?.value;
+  if (!userSessionId) {
+    return createErrorResponse(ctx, 'CONFLICT', 'Current session could not be identified safely. Please sign in again.', 409);
+  }
 
   if (revokeAll) {
     // Revoke all sessions except current - delete them since revokedAt doesn't exist
@@ -99,8 +95,7 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx: Authe
       where: {
         userId,
         NOT: [
-          { token: currentSessionToken },
-          { sessionToken: currentSessionToken },
+          { token: userSessionId },
         ],
       },
     });
@@ -131,7 +126,7 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx: Authe
     }
 
     // Prevent revoking current session
-    if (targetSession.token === currentSessionToken || targetSession.sessionToken === currentSessionToken) {
+    if (targetSession.token === userSessionId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Cannot revoke current session', 400);
     }
 

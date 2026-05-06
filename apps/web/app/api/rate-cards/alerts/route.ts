@@ -1,17 +1,11 @@
 import { NextRequest } from 'next/server';
+import { prisma } from '@/lib/prisma';
 import { notificationService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const GET = withAuthApiHandler(async (request, ctx) => {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Missing userId', 400);
-    }
-
     const notifications = await notificationService.getUnreadNotifications(
-      userId
+      ctx.userId
     );
 
     return createSuccessResponse(ctx, notifications);
@@ -19,15 +13,28 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
 
 export const PATCH = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
-    const { notificationId, userId, markAllAsRead } = body;
+    const { notificationId, markAllAsRead } = body;
 
-    if (markAllAsRead && userId) {
-      await notificationService.markAllAsRead(userId);
+    if (markAllAsRead) {
+      await notificationService.markAllAsRead(ctx.userId);
       return createSuccessResponse(ctx, { success: true });
     }
 
     if (!notificationId) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Missing notificationId', 400);
+    }
+
+    const notification = await prisma.rateCardAlert.findFirst({
+      where: {
+        id: notificationId,
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+      },
+      select: { id: true },
+    });
+
+    if (!notification) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Notification not found', 404);
     }
 
     await notificationService.markAsRead(notificationId);

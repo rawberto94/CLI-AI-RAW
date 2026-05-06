@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import getDb from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,17 +8,11 @@ export const dynamic = 'force-dynamic';
  * GET /api/contracts/:id/workflows/executions
  * Get all workflow executions for a contract
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
   try {
-    const { id: contractId } = await params;
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
 
     try {
       const db = await getDb();
@@ -91,25 +84,19 @@ export async function GET(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 /**
  * POST /api/contracts/:id/workflows/executions
  * Start a new workflow execution for a contract
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
   try {
-    const { id: contractId } = await params;
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     const body = await request.json();
-    const { workflowId, initiatedBy } = body;
+    const { workflowId } = body;
 
     if (!workflowId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Workflow ID is required', 400);
@@ -149,7 +136,7 @@ export async function POST(
         contractId,
         status: 'IN_PROGRESS',
         startedAt: new Date(),
-        initiatedBy: initiatedBy || 'System',
+        initiatedBy: ctx.userId,
         stepExecutions: {
           create: workflow.steps.map((step, index) => ({
             stepId: step.id,
@@ -183,4 +170,4 @@ export async function POST(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})

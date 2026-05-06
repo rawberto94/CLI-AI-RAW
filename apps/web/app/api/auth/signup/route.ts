@@ -26,24 +26,20 @@ const signupSchema = z.object({
   inviteToken: z.string().optional(),
 });
 
+function isPrismaUniqueConstraintError(error: unknown): error is { code: string } {
+  return Boolean(
+    error &&
+    typeof error === 'object' &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 'P2002'
+  );
+}
+
 export async function POST(request: NextRequest) {
   const ctx = getPublicApiContext(request);
   try {
     const body = await request.json();
     const validated = signupSchema.parse(body);
-
-    // Check if email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: validated.email },
-    });
-
-    if (existingUser) {
-      return createErrorResponse(
-        ctx, 'CONFLICT',
-        "An account with this email already exists",
-        409
-      );
-    }
 
     if (validated.inviteToken) {
       // Joining via invite - find the invitation
@@ -273,26 +269,47 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "ZodError") {
-      const zodError = error as { errors?: Array<{ message?: string }> };
+    if (error instanceof z.ZodError) {
       return createErrorResponse(
         ctx, 'VALIDATION_ERROR',
-        zodError.errors?.[0]?.message || "Invalid input",
+        error.errors[0]?.message || "Invalid input",
         400
+      );
+    }
+
+    if (error instanceof SyntaxError) {
+      return createErrorResponse(
+        ctx,
+        'BAD_REQUEST',
+        'Invalid JSON payload',
+        400
+      );
+    }
+
+    if (error instanceof Error && error.message === 'Invitation already accepted') {
+      return createErrorResponse(
+        ctx,
+        'CONFLICT',
+        'Invitation already accepted or expired',
+        409
+      );
+    }
+
+    if (isPrismaUniqueConstraintError(error)) {
+      return createErrorResponse(
+        ctx,
+        'CONFLICT',
+        'An account or organization with these details already exists',
+        409
       );
     }
 
     // Log the actual error for debugging
     logger.error('[Signup] Error', error);
-    
-    // Extract useful error message
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : "Failed to create account";
-    
+
     return createErrorResponse(
       ctx, 'INTERNAL_ERROR',
-      errorMessage,
+      'Failed to create account',
       500
     );
   }

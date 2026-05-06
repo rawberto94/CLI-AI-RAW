@@ -92,23 +92,93 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Document ID and at least one recipient are required', 400);
   }
 
+  // Verify the document belongs to the caller's tenant before sharing.
+  // Today only 'contract' is a real, tenant-scoped resource; other types are
+  // accepted but the tenant check is skipped until those models exist.
+  if (documentType === 'contract') {
+    const contract = await prisma.contract.findFirst({
+      where: { id: String(documentId), tenantId, isDeleted: false },
+      select: { id: true },
+    });
+    if (!contract) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Document not found', 404);
+    }
+  }
+
+  // Resolve each recipient (email or userId) to a real User in the same tenant.
+  // This prevents orphan DocumentShare / Notification rows whose userId can
+  // never be matched by the notifications feed (which keys on User.id).
+  type Resolved = { raw: string; userId: string };
+  const resolved: Resolved[] = [];
+  const unknown: string[] = [];
+  for (const raw of recipients as unknown[]) {
+    const value = String(raw ?? '').trim();
+    if (!value) continue;
+    const user = value.includes('@')
+      ? await prisma.user.findFirst({
+          where: { email: value, tenantId },
+          select: { id: true },
+        })
+      : await prisma.user.findFirst({
+          where: { id: value, tenantId },
+          select: { id: true },
+        });
+    if (user) {
+      resolved.push({ raw: value, userId: user.id });
+    } else {
+      unknown.push(value);
+    }
+  }
+
+  if (resolved.length === 0) {
+    return createErrorResponse(
+      ctx,
+      'NOT_FOUND',
+      unknown.length
+        ? `No users in this tenant matched: ${unknown.join(', ')}`
+        : 'No valid recipients',
+      404
+    );
+  }
+
   const createdShares: ShareSettings[] = [];
 
   try {
-    // Create shares for each recipient
-    for (const recipient of recipients) {
-      const share = await prisma.documentShare.create({
-        data: {
-          tenantId,
-          documentId,
-          documentType,
-          sharedWith: recipient,
-          sharedBy: userId,
-          permission,
-          expiresAt: expiresAt ? new Date(expiresAt) : null,
-          isActive: true,
-          accessToken: crypto.randomBytes(32).toString('hex'),
-        },
+    // Create share + notification atomically per recipient.
+    for (const { userId: recipientUserId } of resolved) {
+      const share = await prisma.$transaction(async (tx) => {
+        const createdShare = await tx.documentShare.create({
+          data: {
+            tenantId,
+            documentId,
+            documentType,
+            sharedWith: recipientUserId,
+            sharedBy: userId,
+            permission,
+            expiresAt: expiresAt ? new Date(expiresAt) : null,
+            isActive: true,
+            accessToken: crypto.randomBytes(32).toString('hex'),
+          },
+        });
+
+        await tx.notification.create({
+          data: {
+            tenantId,
+            userId: recipientUserId,
+            type: 'SHARE_INVITE',
+            title: 'Document shared with you',
+            message: message || `${userId} shared a ${documentType} with you`,
+            link: `/${documentType}s/${documentId}`,
+            metadata: {
+              documentId,
+              documentType,
+              permission,
+              sharedBy: userId,
+            },
+          },
+        });
+
+        return createdShare;
       });
 
       createdShares.push({
@@ -122,30 +192,16 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         isActive: share.isActive,
         createdAt: share.createdAt.toISOString(),
       });
-
-      // Create notification for recipient
-      await prisma.notification.create({
-        data: {
-          tenantId,
-          userId: recipient,
-          type: 'SHARE_INVITE',
-          title: 'Document shared with you',
-          message: message || `${userId} shared a ${documentType} with you`,
-          link: `/${documentType}s/${documentId}`,
-          metadata: { 
-            documentId, 
-            documentType, 
-            permission, 
-            sharedBy: userId,
-          },
-        },
-      });
     }
 
     return createSuccessResponse(ctx, {
       success: true,
       shares: createdShares,
-      message: `Document shared with ${recipients.length} recipient(s)`,
+      skipped: unknown,
+      message:
+        unknown.length > 0
+          ? `Shared with ${createdShares.length} recipient(s); ${unknown.length} unknown email(s) skipped`
+          : `Document shared with ${createdShares.length} recipient(s)`,
       source: 'database',
     });
   } catch (error) {

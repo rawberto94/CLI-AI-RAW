@@ -1,17 +1,11 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withContractApiHandler(async (_request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params as { id: string };
   try {
-    const { id } = params;
-
     // Verify contract belongs to caller's tenant before returning rate cards
     const tenantId = ctx.tenantId;
     const contract = await prisma.contract.findFirst({
@@ -67,4 +61,4 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})

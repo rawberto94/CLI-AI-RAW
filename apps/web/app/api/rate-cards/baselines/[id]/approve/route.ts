@@ -1,25 +1,20 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { rateCardManagementService } from 'data-orchestration/services';
 
-export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id } = await (ctx as any).params as { id: string };
+
+  try {
     const user = await prisma.user.findUnique({
-      where: { email: ctx.userId },
+      where: { id: ctx.userId },
       select: { id: true, tenantId: true },
     });
 
     if (!user?.tenantId) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
     }
-
-    const { id } = params;
     const body = await request.json();
     const { approvalStatus, notes } = body;
 
@@ -52,4 +47,4 @@ try {
   } catch {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update baseline approval', 500);
   }
-}
+});

@@ -64,6 +64,27 @@ export interface ApiFetchOptions extends Omit<RequestInit, 'signal'> {
   signal?: AbortSignal;
 }
 
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+export function unwrapApiResponseData<T = unknown>(payload: unknown): T {
+  let current = payload;
+  let depth = 0;
+
+  while (
+    depth < 5 &&
+    isObjectRecord(current) &&
+    current.success === true &&
+    'data' in current
+  ) {
+    current = current.data;
+    depth += 1;
+  }
+
+  return current as T;
+}
+
 // ============================================================================
 // Default configuration
 // ============================================================================
@@ -164,7 +185,7 @@ export async function apiFetch<T = unknown>(
     // Handle standardized { success, data, error } API envelope
     if (data && typeof data === 'object' && 'success' in data) {
       if (data.success) {
-        return data.data as T;
+        return unwrapApiResponseData<T>(data);
       }
       throw new ApiError(
         data.error?.message || 'Request failed',
@@ -174,7 +195,7 @@ export async function apiFetch<T = unknown>(
       );
     }
 
-    return data as T;
+    return unwrapApiResponseData<T>(data);
   } catch (error) {
     clearTimeout(timeoutId);
 

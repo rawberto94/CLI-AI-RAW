@@ -15,13 +15,8 @@ import cors from "@/lib/security/cors";
 import { runPostProcessingHooks as _runPostProcessingHooks } from "@/lib/post-processing-hooks";
 import { AutoPopulateService, type AutoPopulateConfig } from "@/lib/services/auto-populate.service";
 import { prisma } from "@/lib/prisma";
-import { getApiTenantId } from "@/lib/tenant-server";
 import { triggerContractReindex } from "@/lib/rag/reindex-trigger";
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Available post-processing hooks
 type HookType = 
@@ -45,17 +40,14 @@ interface PostProcessRequest {
 // POST - Trigger post-processing
 // ============================================================================
 
-export async function POST(
-  request: NextRequest,
-  { params }: RouteParams
-): Promise<NextResponse> {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
   try {
-    const { id: contractId } = await params;
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
+    }
 
     // Get options from body
     const body: PostProcessRequest = await request.json().catch(() => ({}));
@@ -298,16 +290,12 @@ export async function POST(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // ============================================================================
 // OPTIONS HANDLER FOR CORS
 // ============================================================================
 
 export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
   return cors.optionsResponse(request, "POST, OPTIONS");
 }

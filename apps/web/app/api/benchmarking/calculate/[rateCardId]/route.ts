@@ -5,10 +5,9 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/security/tenant';
 import { rateCardBenchmarkingService } from 'data-orchestration/services';
 import { getErrorMessage } from '@/lib/types/common';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 const benchmarkingEngine = new rateCardBenchmarkingService(prisma);
 
@@ -16,20 +15,14 @@ const benchmarkingEngine = new rateCardBenchmarkingService(prisma);
  * POST /api/benchmarking/calculate/:rateCardId
  * Calculate benchmark for a specific rate card
  */
-export async function POST(request: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
-  const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
-
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID required', 400);
     }
 
-    const { rateCardId } = params;
+    const { rateCardId } = await (ctx as any).params as { rateCardId: string };
 
     // Verify rate card belongs to tenant before calculating
     const rateCard = await prisma.rateCardEntry.findUnique({
@@ -49,26 +42,20 @@ export async function POST(request: NextRequest, props: { params: Promise<{ rate
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 /**
  * GET /api/benchmarking/calculate/:rateCardId
  * Get existing benchmark for a rate card
  */
-export async function GET(request: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
-  const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
-
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID required', 400);
     }
 
-    const { rateCardId } = params;
+    const { rateCardId } = await (ctx as any).params as { rateCardId: string };
 
     // Tenant-isolated query
     const rateCard = await prisma.rateCardEntry.findUnique({
@@ -107,4 +94,4 @@ export async function GET(request: NextRequest, props: { params: Promise<{ rateC
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})

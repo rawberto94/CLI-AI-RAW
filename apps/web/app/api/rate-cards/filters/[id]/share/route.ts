@@ -6,21 +6,16 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
-import { rateCardManagementService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 /**
  * POST /api/rate-cards/filters/[id]/share
  * Toggle sharing status of a saved filter
  */
-export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
-    const filterId = params.id;
+export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  const { id: filterId } = await (ctx as any).params as { id: string };
+
+  try {
 
     // Verify ownership
     const filter = await prisma.$queryRaw<any[]>`
@@ -46,4 +41,4 @@ try {
   } catch {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update filter share status', 500);
   }
-}
+});

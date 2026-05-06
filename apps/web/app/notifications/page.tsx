@@ -126,6 +126,7 @@ const PRIORITY_CONFIG = {
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread" | "starred">("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -136,8 +137,9 @@ export default function NotificationsPage() {
   // Fetch notifications from API
   const fetchNotifications = useCallback(async () => {
     try {
+      setLoadError(null);
       const response = await fetch('/api/notifications');
-      if (!response.ok) throw new Error('Failed to fetch notifications');
+      if (!response.ok) throw new Error(`Server returned ${response.status}`);
       const data = await response.json();
       
       // Transform API data to match UI format
@@ -155,7 +157,7 @@ export default function NotificationsPage() {
       setNotifications(transformed);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
-      toast.error('Failed to load notifications');
+      setLoadError(error instanceof Error ? error.message : 'Failed to load notifications');
     } finally {
       setLoading(false);
     }
@@ -454,7 +456,17 @@ export default function NotificationsPage() {
             </div>
           </CardHeader>
           <CardContent className="p-5">
-            {filteredNotifications.length === 0 ? (
+            {loadError ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <AlertTriangle className="h-10 w-10 text-rose-400 mb-3" />
+                <h3 className="font-medium text-lg mb-1">Couldn&apos;t load notifications</h3>
+                <p className="text-muted-foreground text-sm max-w-sm mb-4">{loadError}</p>
+                <Button variant="outline" size="sm" onClick={() => fetchNotifications()} disabled={loading} className="gap-2">
+                  <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+                  Retry
+                </Button>
+              </div>
+            ) : filteredNotifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <BellOff className="h-12 w-12 text-muted-foreground/50 mb-4" />
                 <h3 className="font-medium text-lg mb-2">No notifications</h3>

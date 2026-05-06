@@ -110,10 +110,22 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const body = await request.json();
   const { jobId, status, progress: _progress, currentStep: _currentStep, error, ..._rest } = body;
-  const _tenantId = await ctx.tenantId || body.tenantId;
+  const tenantId = ctx.tenantId;
 
   if (!jobId) {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Job ID is required', 400);
+  }
+
+  const existingJob = await prisma.importJob.findUnique({
+    where: { id: jobId },
+  });
+
+  if (!existingJob) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Job not found', 404);
+  }
+
+  if (tenantId && existingJob.tenantId !== tenantId) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Job not found', 404);
   }
 
   // Build update data

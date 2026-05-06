@@ -13,6 +13,58 @@ import { auditLog, AuditAction, getAuditContext } from '@/lib/security/audit';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
 
+type TenantSecuritySettings = {
+  ipAllowlistEnabled?: unknown;
+};
+
+function extractIpAllowlistEnabled(settings: unknown): boolean | null {
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+    return null;
+  }
+
+  const value = (settings as TenantSecuritySettings).ipAllowlistEnabled;
+  return typeof value === 'boolean' ? value : null;
+}
+
+async function getIpAllowlistEnabled(tenantId: string): Promise<boolean> {
+  const config = await prisma.tenantConfig.findUnique({
+    where: { tenantId },
+    select: { securitySettings: true },
+  });
+
+  const enabledFromConfig = extractIpAllowlistEnabled(config?.securitySettings);
+  return enabledFromConfig ?? false;
+}
+
+async function saveIpAllowlistEnabled(tenantId: string, enabled: boolean): Promise<void> {
+  const config = await prisma.tenantConfig.findUnique({
+    where: { tenantId },
+    select: { securitySettings: true },
+  });
+
+  const currentSecuritySettings =
+    config?.securitySettings && typeof config.securitySettings === 'object' && !Array.isArray(config.securitySettings)
+      ? config.securitySettings as Record<string, unknown>
+      : {};
+
+  await prisma.tenantConfig.upsert({
+    where: { tenantId },
+    create: {
+      tenantId,
+      securitySettings: {
+        ...currentSecuritySettings,
+        ipAllowlistEnabled: enabled,
+      } as any,
+    },
+    update: {
+      securitySettings: {
+        ...currentSecuritySettings,
+        ipAllowlistEnabled: enabled,
+      } as any,
+    },
+  });
+}
+
 // Validation schema for IP entries
 const ipEntrySchema = z.object({
   ip: z.string().refine((ip) => {
@@ -35,9 +87,7 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
     return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
   }
 
-  const settings = await prisma.tenantSecuritySettings.findUnique({
-    where: { tenantId: ctx.tenantId },
-  });
+  const enabled = await getIpAllowlistEnabled(ctx.tenantId);
 
   const entries = await prisma.ipAllowlist.findMany({
     where: {
@@ -51,7 +101,7 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
   });
 
   return createSuccessResponse(ctx, {
-    enabled: settings?.ipAllowlistEnabled ?? false,
+    enabled,
     enforceMode: 'disabled',
     entries: entries.map(e => ({
       id: e.id,
@@ -80,16 +130,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
   if (body.action === 'updateSettings') {
     const { enabled } = body;
 
-    await prisma.tenantSecuritySettings.upsert({
-      where: { tenantId: ctx.tenantId },
-      create: {
-        tenantId: ctx.tenantId,
-        ipAllowlistEnabled: enabled ?? false,
-      },
-      update: {
-        ipAllowlistEnabled: enabled ?? false,
-      },
-    });
+    await saveIpAllowlistEnabled(ctx.tenantId, enabled ?? false);
 
     await auditLog({
       action: AuditAction.SECURITY_SETTINGS_UPDATED,
@@ -200,11 +241,9 @@ export const DELETE = withAuthApiHandler(async (request, ctx) => {
 export async function checkIPAllowed(ip: string, tenantId: string): Promise<{ allowed: boolean; reason?: string }> {
   const ctx = getApiContext(ip as any);
   try {
-    const settings = await prisma.tenantSecuritySettings.findUnique({
-      where: { tenantId },
-    });
+    const enabled = await getIpAllowlistEnabled(tenantId);
 
-    if (!settings?.ipAllowlistEnabled) {
+    if (!enabled) {
       return { allowed: true };
     }
 

@@ -1,13 +1,12 @@
 import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
-import { getApiTenantId } from '@/lib/security/tenant';
 import { strategicRecommendationsService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
 
-export const GET = withAuthApiHandler(async (request, ctx) => {
-    const tenantId = await getApiTenantId(request);
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }

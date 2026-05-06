@@ -20,7 +20,8 @@ import {
   ArrowDownRight,
   BarChart3,
   PieChart,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -95,6 +96,7 @@ export const DashboardOverview = memo(function DashboardOverview({
 }: DashboardOverviewProps) {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     loadMetrics();
@@ -102,28 +104,51 @@ export const DashboardOverview = memo(function DashboardOverview({
 
   const loadMetrics = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const response = await fetch('/api/dashboard/metrics');
-      if (response.ok) {
-        const raw = await response.json();
-        const data = raw.data ?? raw;
-        setMetrics(data);
-      } else {
-        setMetrics(getEmptyMetrics());
+      if (!response.ok) {
+        throw new Error(`Request failed (${response.status})`);
       }
-    } catch {
+      const raw = await response.json();
+      const data = raw.data ?? raw;
+      setMetrics(data);
+    } catch (error) {
       setMetrics(getEmptyMetrics());
+      setLoadError(error instanceof Error ? error.message : 'Failed to load dashboard metrics');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading || !metrics) {
+  if (loading) {
     return (
       <div className={cn('flex items-center justify-center py-12', className)}>
         <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
       </div>
     );
+  }
+
+  if (loadError && !metrics) {
+    return (
+      <div className={cn('rounded-2xl border border-rose-200 bg-rose-50/50 p-6', className)}>
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-rose-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-rose-900">Unable to load dashboard</h3>
+            <p className="text-sm text-rose-700 mt-1">{loadError}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={loadMetrics}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!metrics) {
+    return null;
   }
 
   const maxTypeCount = Math.max(...metrics.byType.map(t => t.count));

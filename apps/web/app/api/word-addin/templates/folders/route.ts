@@ -7,8 +7,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withAuthApiHandler,
   createSuccessResponse,
   createErrorResponse,
 } from '@/lib/api-middleware';
@@ -32,12 +31,8 @@ const folderActionSchema = z.discriminatedUnion('action', [
 const BUILT_IN_CATEGORIES = ['MSA', 'SOW', 'NDA', 'AMENDMENT', 'SLA', 'OTHER'];
 
 /** GET — list all folders (built-in + custom) with template counts */
-export async function GET(req: NextRequest) {
-  const apiCtx = getApiContext(req);
+export const GET = withAuthApiHandler(async (_req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
-
     // Count templates per category
     const categoryCounts = await prisma.contractTemplate.groupBy({
       by: ['category'],
@@ -70,17 +65,13 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     logger.error('Word Add-in folders error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch folders', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to fetch folders', 500);
   }
-}
+});
 
 /** POST — move templates to a folder (category) or rename a folder */
-export async function POST(req: NextRequest) {
-  const apiCtx = getApiContext(req);
+export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
-
     const body = await req.json();
     const parsed = folderActionSchema.safeParse(body);
     if (!parsed.success) {
@@ -114,6 +105,6 @@ export async function POST(req: NextRequest) {
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action.', 400);
   } catch (error) {
     logger.error('Word Add-in folder action error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to perform folder action', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to perform folder action', 500);
   }
-}
+});

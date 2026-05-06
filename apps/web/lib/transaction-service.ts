@@ -203,10 +203,49 @@ export async function createContractWithSideEffects(data: {
         "Outbox event created in transaction"
       );
 
+      // 4. Create initial ContractVersion (v1) so version history starts at upload.
+      const contractVersion = await tx.contractVersion.create({
+        data: {
+          contractId: contract.id,
+          tenantId: contract.tenantId,
+          versionNumber: 1,
+          uploadedBy: contract.uploadedBy ?? null,
+          summary: 'Initial upload',
+          isActive: true,
+          changes: {
+            event: 'initial_upload',
+            fileName: contract.fileName,
+            mimeType: contract.mimeType,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      // 5. Audit log for the upload itself.
+      const auditLog = await tx.auditLog.create({
+        data: {
+          tenantId: contract.tenantId,
+          userId: contract.uploadedBy && contract.uploadedBy !== 'anonymous' ? contract.uploadedBy : null,
+          action: 'CONTRACT_UPLOADED',
+          resource: 'contract',
+          resourceType: 'Contract',
+          resourceId: contract.id,
+          entityType: 'Contract',
+          entityId: contract.id,
+          metadata: {
+            contractId: contract.id,
+            fileName: contract.fileName,
+            mimeType: contract.mimeType,
+            sizeBytes: contract.fileSize?.toString(),
+          } as Prisma.InputJsonValue,
+        },
+      });
+
       return {
         contract,
         processingJob,
         outboxEvent,
+        contractVersion,
+        auditLog,
       };
     });
   };

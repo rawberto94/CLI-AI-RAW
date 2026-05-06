@@ -135,7 +135,7 @@ export async function parallelMultiQueryRAG(
     // ========================================
     // STEP 2: GENERATE EMBEDDINGS FOR ALL QUERIES
     // ========================================
-    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
+    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1536', 10);
     const embModel = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
     const embCreateParams: Record<string, unknown> = {
       model: embModel,

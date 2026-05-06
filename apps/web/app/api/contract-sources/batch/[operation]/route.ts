@@ -13,7 +13,7 @@ import {
   BatchDownloadRequest,
 } from "@/lib/integrations/services/batch-operations.service";
 import { withRateLimit } from "@/lib/integrations/middleware/rate-limit";
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { getAuthenticatedApiContextWithSessionFallback, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
 
 // Validation schemas
@@ -38,11 +38,7 @@ const batchDeleteSchema = z.object({
  * POST /api/contract-sources/batch/download
  * Batch download files from a contract source
  */
-async function handleDownload(req: NextRequest): Promise<NextResponse> {
-  const ctx = getAuthenticatedApiContext(req);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+async function handleDownload(req: NextRequest, ctx: Awaited<ReturnType<typeof getAuthenticatedApiContextWithSessionFallback>>): Promise<NextResponse> {
   try {
     if (!ctx.tenantId) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
@@ -77,11 +73,7 @@ async function handleDownload(req: NextRequest): Promise<NextResponse> {
  * POST /api/contract-sources/batch/import
  * Batch import files to create contracts
  */
-async function handleImport(req: NextRequest): Promise<NextResponse> {
-  const ctx = getAuthenticatedApiContext(req);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+async function handleImport(req: NextRequest, ctx: Awaited<ReturnType<typeof getAuthenticatedApiContextWithSessionFallback>>): Promise<NextResponse> {
   try {
     if (!ctx.tenantId || !ctx.userId) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
@@ -117,11 +109,7 @@ async function handleImport(req: NextRequest): Promise<NextResponse> {
  * POST /api/contract-sources/batch/delete
  * Batch delete files from a contract source
  */
-async function handleDelete(req: NextRequest): Promise<NextResponse> {
-  const ctx = getAuthenticatedApiContext(req);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+async function handleDelete(req: NextRequest, ctx: Awaited<ReturnType<typeof getAuthenticatedApiContextWithSessionFallback>>): Promise<NextResponse> {
   try {
     if (!ctx.tenantId) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
@@ -156,18 +144,18 @@ async function handleDelete(req: NextRequest): Promise<NextResponse> {
 export const POST = withRateLimit(async (req: NextRequest) => {
   const url = new URL(req.url);
   const operation = url.pathname.split("/").pop();
-  const ctx = getAuthenticatedApiContext(req);
+  const ctx = await getAuthenticatedApiContextWithSessionFallback(req);
   if (!ctx) {
     return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
 
   switch (operation) {
     case "download":
-      return handleDownload(req);
+      return handleDownload(req, ctx);
     case "import":
-      return handleImport(req);
+      return handleImport(req, ctx);
     case "delete":
-      return handleDelete(req);
+      return handleDelete(req, ctx);
     default:
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Unknown operation', 400);
   }

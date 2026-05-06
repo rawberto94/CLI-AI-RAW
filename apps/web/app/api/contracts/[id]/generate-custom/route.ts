@@ -8,7 +8,8 @@
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import { createOpenAIClient, getOpenAIApiKey, hasAIClientConfig } from '@/lib/openai-client';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { prisma } from '@/lib/prisma';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Lazy OpenAI client — fails fast with clear error if key is missing
 let _openai: OpenAI | null = null;
@@ -111,19 +112,9 @@ interface ArtifactResult {
   rawAnalysis?: string;
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id: contractId } = await params;
-  
-  const ctx = getAuthenticatedApiContext(request);
-  
-  if (!ctx) {
-  
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  
-  }
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
   try {
     const tenantId = ctx.tenantId;
     if (!tenantId) {
@@ -180,7 +171,7 @@ export async function POST(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 function buildUserPrompt(
   topic: string, 
@@ -256,22 +247,17 @@ function parseAnalysis(rawAnalysis: string, topic: string, focusArea?: string): 
 }
 
 async function getContractText(contractId: string, tenantId: string): Promise<string | null> {
-  // In production, this would fetch from database
-  // For now, return mock contract text
-  
   try {
-    // Try to fetch from internal API or database
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/contracts/${contractId}`,
-      {
-        headers: { 'x-tenant-id': tenantId }
-      }
-    );
-    
-    if (response.ok) {
-      const data = await response.json();
-      return data.rawText || data.content || data.extractedText || null;
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
+      select: { rawText: true, searchableText: true }
+    });
+
+    if (contract?.rawText) {
+      return contract.rawText;
     }
+
+    return contract?.searchableText || null;
   } catch {
     // Could not fetch contract text
   }

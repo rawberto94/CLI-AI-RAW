@@ -10,10 +10,8 @@ import { logger } from '@/lib/logger';
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withAuthApiHandler,
   createSuccessResponse,
   createErrorResponse,
   handleApiError,
@@ -23,27 +21,13 @@ import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(
-      getApiContext(request),
-      'UNAUTHORIZED',
-      'Authentication required',
-      401,
-      { retryable: false }
-    );
-  }
-
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     const rl = checkRateLimit(tenantId, ctx.userId, '/api/drafts/[id]/finalize', AI_RATE_LIMITS.standard);
     if (!rl.allowed) return rateLimitResponse(rl);
 
-    const { id } = await params;
+    const { id } = await (ctx as any).params as { id: string };
 
     // Fetch the draft
     const draft = await prisma.contractDraft.findFirst({
@@ -184,4 +168,4 @@ export async function POST(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

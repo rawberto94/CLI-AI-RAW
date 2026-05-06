@@ -48,6 +48,7 @@ import {
   ChevronsRight,
   ArrowLeftRight,
   Sparkles,
+  AlertCircle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -208,6 +209,7 @@ export default function ContractsPage() {
     data: contractsData, 
     isLoading: loading, 
     isFetching: isRefetching,
+    error: listError,
     refetch,
   } = useContracts(serverParams, {
     pollingEnabled: hasProcessingContracts,
@@ -240,6 +242,14 @@ export default function ContractsPage() {
   } = useContractsPageActions({ dataMode, refetch, refetchStats, crossModule, queryClient });
 
   const contracts: Contract[] = contractsData?.contracts || [];
+
+  // Drop stale selection when the user pages, sorts, searches, or re-filters.
+  // Without this the `selectedContracts` Set can retain ids that are no
+  // longer visible in the current page slice — a subsequent "Bulk Delete"
+  // would operate on invisible rows (data-integrity hazard, not just UX).
+  useEffect(() => {
+    setSelectedContracts((prev) => (prev.size === 0 ? prev : new Set()));
+  }, [currentPage, pageSize, sortField, sortDirection, searchQuery, serverParams, setSelectedContracts]);
 
   // Stable row callbacks — prevent memo() busting on CompactContractRow
   const handleRowSelect = useCallback((id: string) => toggleSelect(id), [toggleSelect]);
@@ -699,6 +709,36 @@ export default function ContractsPage() {
     (filterState.currencies?.length ?? 0) + (filterState.jurisdictions?.length ?? 0) +
     (filterState.paymentTerms?.length ?? 0),
   [filterState]);
+
+  // Surface list-fetch failures — previously `useContracts`' error field was
+  // unused, so a failed GET /api/contracts (500, network, auth drop) left the
+  // page stuck on the loading skeleton forever with no way to recover
+  // short of a full reload.
+  if (listError && !contractsData) {
+    const errorMsg = listError instanceof Error ? listError.message : 'Failed to load contracts';
+    return (
+      <TooltipProvider>
+        <div className="min-h-screen bg-slate-50">
+          <ContractsPageHeader
+            onRefresh={() => refetch()}
+            isRefreshing={isRefetching}
+          />
+          <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-16">
+            <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-red-200 bg-red-50 p-10 text-center">
+              <AlertCircle className="h-10 w-10 text-red-500" />
+              <div>
+                <h2 className="text-lg font-semibold text-red-900">Couldn&apos;t load contracts</h2>
+                <p className="mt-1 text-sm text-red-700">{errorMsg}</p>
+              </div>
+              <Button onClick={() => refetch()} variant="outline">
+                Retry
+              </Button>
+            </div>
+          </div>
+        </div>
+      </TooltipProvider>
+    );
+  }
 
   if (loading) {
     return (

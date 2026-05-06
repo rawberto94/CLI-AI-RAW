@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
 
 const RenewalActionSchema = z.object({
@@ -141,11 +141,7 @@ function calculateRiskLevel(healthScore: number): RenewalContract['riskLevel'] {
   return 'critical';
 }
 
-export async function GET(request: NextRequest) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -390,13 +386,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
-export async function POST(request: NextRequest) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();
     const parsed = RenewalActionSchema.safeParse(body);
@@ -559,13 +551,9 @@ export async function POST(request: NextRequest) {
   } catch {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to process renewal action', 500);
   }
-}
+})
 
-export async function PATCH(request: NextRequest) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();
     const parsed = RenewalPatchSchema.safeParse(body);
@@ -645,4 +633,4 @@ export async function PATCH(request: NextRequest) {
   } catch {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update renewal', 500);
   }
-}
+})

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { PageBreadcrumb } from "@/components/navigation";
+import { useConfirm, confirmPresets } from "@/components/dialogs/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -118,6 +119,7 @@ interface SyncHistory {
 }
 
 export default function ContractSourcesPage() {
+  const confirm = useConfirm();
   const [sources, setSources] = useState<ContractSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSource, setSelectedSource] = useState<ContractSource | null>(null);
@@ -195,7 +197,12 @@ export default function ContractSourcesPage() {
 
   // Delete source
   const handleDelete = async (sourceId: string) => {
-    if (!confirm("Are you sure you want to delete this source?")) return;
+    const ok = await confirm({
+      ...confirmPresets.delete(),
+      title: 'Delete source?',
+      description: 'This source will be disconnected and its sync history removed. This action cannot be undone.',
+    });
+    if (!ok) return;
     
     try {
       const res = await fetch(`/api/contract-sources?id=${sourceId}`, {

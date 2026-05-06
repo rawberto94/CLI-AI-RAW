@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, withPublicApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { taxonomyService } from 'data-orchestration/services';
 
 // ============================================================================
@@ -71,16 +71,9 @@ async function updateChildPaths(
 // GET - Get single category
 // ============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-): Promise<NextResponse> {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx): Promise<NextResponse> => {
   try {
-    const { id } = await params;
+    const { id } = await (ctx as any).params as { id: string };
     const tenantId = ctx.tenantId;
     
     if (!tenantId) {
@@ -122,22 +115,15 @@ export async function GET(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // ============================================================================
 // PUT - Update category
 // ============================================================================
 
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-): Promise<NextResponse> {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const PUT = withAuthApiHandler(async (request: NextRequest, ctx): Promise<NextResponse> => {
   try {
-    const { id } = await params;
+    const { id } = await (ctx as any).params as { id: string };
     const tenantId = ctx.tenantId;
     
     if (!tenantId) {
@@ -262,22 +248,15 @@ export async function PUT(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // ============================================================================
 // DELETE - Delete category
 // ============================================================================
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-): Promise<NextResponse> {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx): Promise<NextResponse> => {
   try {
-    const { id } = await params;
+    const { id } = await (ctx as any).params as { id: string };
     const tenantId = ctx.tenantId;
     
     if (!tenantId) {
@@ -387,16 +366,12 @@ export async function DELETE(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // ============================================================================
 // OPTIONS HANDLER FOR CORS
 // ============================================================================
 
-export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const OPTIONS = withPublicApiHandler(async (request: NextRequest): Promise<NextResponse> => {
   return cors.optionsResponse(request, "GET, PUT, DELETE, OPTIONS");
-}
+})

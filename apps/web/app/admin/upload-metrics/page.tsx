@@ -94,16 +94,20 @@ export default function UploadMetricsPage() {
   const [data, setData] = useState<MetricsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchMetrics = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const res = await fetch('/api/admin/metrics/uploads');
-      if (!res.ok) throw new Error('Failed to fetch metrics');
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const json = await res.json();
       setData(json.data ?? json);
       setLastRefresh(new Date());
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load upload metrics';
+      setLoadError(msg);
       toast.error('Failed to load upload metrics');
     } finally {
       setLoading(false);
@@ -156,6 +160,22 @@ export default function UploadMetricsPage() {
           Refresh
         </Button>
       </div>
+
+      {loadError && (
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-rose-200 bg-rose-50/50 p-4">
+          <div className="flex items-start gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">Couldn’t load upload metrics</p>
+              <p className="text-sm text-rose-700 mt-1">{loadError}</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchMetrics} className="flex-shrink-0">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

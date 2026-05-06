@@ -6,7 +6,7 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
@@ -14,18 +14,9 @@ const paramsSchema = z.object({
   id: z.string().min(1, 'Clause ID is required'),
 });
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const apiCtx = getApiContext(req);
+export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) {
-      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
-    }
-
-    const rawParams = await params;
+    const rawParams = await (ctx as any).params as { id: string };
     const parsed = paramsSchema.safeParse(rawParams);
     if (!parsed.success) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', parsed.error.errors[0].message, 400);
@@ -76,6 +67,6 @@ export async function GET(
     return createSuccessResponse(ctx, alternatives);
   } catch (error) {
     logger.error('Word Add-in clause alternatives error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch alternatives', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to fetch alternatives', 500);
   }
-}
+});

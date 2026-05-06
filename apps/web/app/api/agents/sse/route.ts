@@ -7,14 +7,14 @@
  * - Opportunity detection
  * - Chat messages
  * 
- * Usage: new EventSource('/api/agents/sse?tenantId=xxx')
+ * Usage: new EventSource('/api/agents/sse')
  */
 
 import { NextRequest } from 'next/server';
 import { redis } from '@/lib/redis';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { getAuthenticatedApiContext } from '@/lib/api-middleware';
+import { getAuthenticatedApiContextWithSessionFallback } from '@/lib/api-middleware';
 
 // Track connected clients
 const clients = new Map<string, ReadableStreamDefaultController[]>();
@@ -25,7 +25,7 @@ const clients = new Map<string, ReadableStreamDefaultController[]>();
  * Establish SSE connection for real-time updates
  */
 export async function GET(req: NextRequest) {
-  const ctx = getAuthenticatedApiContext(req);
+  const ctx = await getAuthenticatedApiContextWithSessionFallback(req);
   if (!ctx) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -74,8 +74,9 @@ export async function GET(req: NextRequest) {
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
     },
   });
 }
@@ -88,8 +89,18 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
+    const ctx = await getAuthenticatedApiContextWithSessionFallback(req);
+    if (!ctx) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const body = await req.json();
-    const { tenantId, event, data } = body;
+    const { event, data } = body;
+    const tenantId = ctx.tenantId;
 
     if (!tenantId || !event) {
       return Response.json({ error: 'Missing tenantId or event' }, { status: 400 });

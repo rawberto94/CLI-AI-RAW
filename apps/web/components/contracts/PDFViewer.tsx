@@ -411,7 +411,7 @@ export function PDFViewer({
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => window.open(pdfUrl, '_blank')}
+                onClick={() => window.open(pdfUrl, '_blank', 'noopener,noreferrer')}
               >
                 Open in New Tab
               </Button>

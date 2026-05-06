@@ -43,6 +43,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/dialogs/ConfirmDialog';
 import { format, formatDistanceToNow } from 'date-fns';
 
 export interface ContractVersion {
@@ -108,6 +109,7 @@ export const VersionHistory = memo(function VersionHistory({
   const [versions, setVersions] = useState<ContractVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set());
+  const confirm = useConfirm();
   const [compareMode, setCompareMode] = useState(false);
   const [selectedVersions, setSelectedVersions] = useState<string[]>([]);
 
@@ -171,8 +173,14 @@ export const VersionHistory = memo(function VersionHistory({
     toast.success(`Downloading v${version.version}...`);
   };
 
-  const handleRestore = (version: ContractVersion) => {
-    if (!confirm(`Restore version ${version.version} as the current version?`)) return;
+  const handleRestore = async (version: ContractVersion) => {
+    const ok = await confirm({
+      title: `Restore version ${version.version}?`,
+      description: 'This will make the selected version the current version. The current version will be archived.',
+      confirmText: 'Restore',
+      variant: 'warning',
+    });
+    if (!ok) return;
     toast.success(`Version ${version.version} restored`);
   };
 

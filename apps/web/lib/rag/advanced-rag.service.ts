@@ -30,7 +30,7 @@ import {
   type ChunkingOptions,
 } from '@repo/utils/rag/semantic-chunker';
 import { progressiveRerank as progressiveRerankService } from './reranker.service';
-import { createOpenAIClient, createEmbeddingClient, getOpenAIApiKey } from '@/lib/openai-client';
+import { createOpenAIClient, createEmbeddingClient, getOpenAIApiKey, hasAIClientConfig } from '@/lib/openai-client';
 import { logger } from '@/lib/logger';
 
 // Re-export so existing callers (barrel, tests) keep working
@@ -721,7 +721,7 @@ export async function hybridSearch(
     
     // Generate embedding for cache lookup (we'll reuse it for search too)
     const embModel = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
-    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
+    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1536', 10);
     const embCreateParams: Record<string, unknown> = { model: embModel, input: [query] };
     if (embDims > 0 && embModel.includes('text-embedding-3')) embCreateParams.dimensions = embDims;
     const cacheEmbResponse = await openai.embeddings.create(embCreateParams as any);
@@ -1391,11 +1391,14 @@ export async function processContractWithSemanticChunking(
   text: string,
   options?: { apiKey?: string; model?: string }
 ): Promise<{ chunksCreated: number; embeddingsGenerated: number }> {
-  const apiKey = options?.apiKey || process.env.OPENAI_API_KEY;
   const model = options?.model || process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
-  
-  if (!apiKey) {
-    throw new Error('OpenAI API key required for embedding generation');
+
+  // createEmbeddingClient() handles both Azure OpenAI and stock OpenAI; only fail
+  // if neither is configured. The legacy `OPENAI_API_KEY`-only check used to
+  // short-circuit Azure deployments that have no raw OpenAI key, leaving newly
+  // uploaded contracts permanently un-indexed (ContractEmbedding count = 0).
+  if (!options?.apiKey && !hasAIClientConfig()) {
+    throw new Error('No AI client configured (set AZURE_OPENAI_API_KEY/AZURE_OPENAI_ENDPOINT or OPENAI_API_KEY)');
   }
   
   // Step 1: Semantic chunking
@@ -1432,7 +1435,7 @@ export async function processContractWithSemanticChunking(
     const batch = contextualizedChunks.slice(i, i + BATCH_SIZE);
     const texts = batch.map(c => c.text);
     
-    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
+    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1536', 10);
     const embParams: Record<string, unknown> = { model, input: texts };
     if (embDims > 0 && model.includes('text-embedding-3')) embParams.dimensions = embDims;
     const response = await openai.embeddings.create(embParams as any);

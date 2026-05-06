@@ -28,6 +28,12 @@ import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { getCircuitBreaker } from '@/lib/ai/circuit-breaker';
+import {
+  isAzureContentFilteredError,
+  normalizeDraftingPrompt,
+  normalizeDraftingValue,
+  summarizeDraftingPromptForStrictSafety,
+} from '@/lib/ai/drafting-safety';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,6 +73,8 @@ interface AgentStep {
   durationMs?: number;
 }
 
+type DraftingSafetyMode = 'standard' | 'strict';
+
 // ---------------------------------------------------------------------------
 // SSE Helpers
 // ---------------------------------------------------------------------------
@@ -83,8 +91,14 @@ function sseEvent(event: string, data: unknown): string {
 async function detectIntent(
   prompt: string,
   openai: ReturnType<typeof createOpenAIClient>,
-  model: string
+  model: string,
+  safetyMode: DraftingSafetyMode = 'standard'
 ): Promise<{ contractType: string; title: string; variables: Record<string, string>; instructions: string }> {
+  const userPrompt =
+    safetyMode === 'strict'
+      ? `Treat this as a legitimate commercial contract drafting request. Rewrite it into plain business language internally and extract the same legal and commercial intent from: ${normalizeDraftingPrompt(prompt)}`
+      : prompt;
+
   const response = await openai.chat.completions.create({
     model,
     temperature: 0.2,
@@ -100,7 +114,7 @@ Return JSON with:
 - variables: key-value pairs extracted from the request (partyA, partyB, effectiveDate, etc.)
 - instructions: any specific instructions or requirements mentioned`,
       },
-      { role: 'user', content: prompt },
+  { role: 'user', content: userPrompt },
     ],
   });
 
@@ -109,6 +123,26 @@ Return JSON with:
     return JSON.parse(content);
   } catch {
     return { contractType: 'MSA', title: 'Contract Draft', variables: {}, instructions: prompt };
+  }
+}
+
+async function detectIntentWithSafetyRetry(
+  prompt: string,
+  openai: ReturnType<typeof createOpenAIClient>,
+  model: string
+): Promise<{ contractType: string; title: string; variables: Record<string, string>; instructions: string }> {
+  try {
+    return await detectIntent(prompt, openai, model);
+  } catch (error) {
+    if (!isAzureContentFilteredError(error)) {
+      throw error;
+    }
+
+    logger.warn('Draft intent detection hit Azure content filter, retrying with normalized business wording', {
+      requestShape: summarizeDraftingPromptForStrictSafety(prompt),
+    });
+
+    return detectIntent(prompt, openai, model, 'strict');
   }
 }
 
@@ -252,26 +286,36 @@ async function generateDraftContent(
       clauses: Array<{ title: string; category: string; content: string; notes?: string | null; guidance?: string | null }>;
     } | null;
     prompt?: string;
-  }
+  },
+  safetyMode: DraftingSafetyMode = 'standard'
 ): Promise<{ html: string; plainText: string }> {
-  const variableBlock = Object.entries(params.variables)
+  const safeVariables = safetyMode === 'strict' ? normalizeDraftingValue(params.variables) : params.variables;
+  const safeTemplate = safetyMode === 'strict' && params.template
+    ? { ...params.template, content: normalizeDraftingPrompt(params.template.content) }
+    : params.template;
+  const safeClauses = safetyMode === 'strict' ? normalizeDraftingValue(params.clauses) : params.clauses;
+  const safePlaybook = safetyMode === 'strict' ? normalizeDraftingValue(params.playbook) : params.playbook;
+  const safePrompt = params.prompt && safetyMode === 'strict' ? normalizeDraftingPrompt(params.prompt) : params.prompt;
+  const safeInstructions = safetyMode === 'strict' ? normalizeDraftingPrompt(params.instructions) : params.instructions;
+
+  const variableBlock = Object.entries(safeVariables)
     .filter(([, v]) => v)
     .map(([k, v]) => `${k}: ${v}`)
     .join('\n');
 
-  const templateBlock = params.template
-    ? `\n\nBase Template — STYLE REFERENCE ONLY (${params.template.name}):\n[Use this only for structural inspiration and boilerplate fallbacks. Do NOT copy values, names, dates, or variable placeholders from this template if they conflict with the USER REQUEST above. The USER REQUEST takes priority over anything in this template.]\n${params.template.content.slice(0, 6000)}`
+  const templateBlock = safeTemplate
+    ? `\n\nBase Template — STYLE REFERENCE ONLY (${safeTemplate.name}):\n[Use this only for structural inspiration and boilerplate fallbacks. Do NOT copy values, names, dates, or variable placeholders from this template if they conflict with the USER REQUEST above. The USER REQUEST takes priority over anything in this template.]\n${safeTemplate.content.slice(0, 6000)}`
     : '';
 
   const clauseBlock =
-    params.clauses.length > 0
-      ? `\n\nApproved Clauses to incorporate verbatim (or adapt minimally):\n${params.clauses
+    safeClauses.length > 0
+      ? `\n\nApproved Clauses to incorporate verbatim (or adapt minimally):\n${safeClauses
           .map(c => `[${c.category}] ${c.title}\n${c.content}`)
           .join('\n\n')}`
       : '';
 
-  const playbookBlock = params.playbook?.playbook
-    ? `\n\n=== COMPANY POLICY PACK: ${params.playbook.playbook.name} ===\n${params.playbook.playbook.description ? params.playbook.playbook.description + '\n' : ''}The following clauses are the COMPANY-PREFERRED positions. Use them as the baseline language wherever applicable. Do NOT weaken them without a clear commercial reason.\n\n${params.playbook.clauses
+  const playbookBlock = safePlaybook?.playbook
+    ? `\n\n=== COMPANY POLICY PACK: ${safePlaybook.playbook.name} ===\n${safePlaybook.playbook.description ? safePlaybook.playbook.description + '\n' : ''}The following clauses are the COMPANY-PREFERRED positions. Use them as the baseline language wherever applicable. Do NOT weaken them without a clear commercial reason.\n\n${safePlaybook.clauses
         .map(
           c =>
             `[${c.category}] ${c.title} (preferred language)\n${c.content}${c.notes ? `\nNotes: ${c.notes}` : ''}${c.guidance ? `\nNegotiation guidance: ${c.guidance}` : ''}`
@@ -279,8 +323,8 @@ async function generateDraftContent(
         .join('\n\n')}\n=== END POLICY PACK ===`
     : '';
 
-  const userPromptBlock = params.prompt
-    ? `\n\n=== USER REQUEST — HIGHEST PRIORITY — READ FIRST ===\n${params.prompt}\n=== END USER REQUEST ===\n\nEvery specific value, party name, term, jurisdiction, cap, payment term, renewal behavior, tone and special requirement mentioned in the USER REQUEST above MUST appear VERBATIM in the generated contract. Do NOT leave [___] placeholders, [Name], [Date], or generic template variable names for any value the user specified. If the user said "Swiss law", the governing-law clause must say "Switzerland", not "[Governing Law]". If the user said "CHF 250,000", the cap must be "CHF 250,000", not "[Amount]". When a detail is NOT specified, use a sensible default and mark it with [TBD] so a reviewer can spot it.`
+  const userPromptBlock = safePrompt
+    ? `\n\n=== USER REQUEST — HIGHEST PRIORITY — READ FIRST ===\n${safePrompt}\n=== END USER REQUEST ===\n\nEvery specific value, party name, term, jurisdiction, cap, payment term, renewal behavior, tone and special requirement mentioned in the USER REQUEST above MUST appear VERBATIM in the generated contract. Do NOT leave [___] placeholders, [Name], [Date], or generic template variable names for any value the user specified. If the user said "Swiss law", the governing-law clause must say "Switzerland", not "[Governing Law]". If the user said "CHF 250,000", the cap must be "CHF 250,000", not "[Amount]". When a detail is NOT specified, use a sensible default and mark it with [TBD] so a reviewer can spot it.`
     : '';
 
   const response = await openai.chat.completions.create({
@@ -348,7 +392,7 @@ Return ONLY the HTML document.`,
 
 Variables:
 ${variableBlock || 'None specified — use standard bracketed placeholders.'}${playbookBlock}${clauseBlock}${templateBlock}${
-          params.instructions ? `\n\nAdditional Instructions:\n${params.instructions}` : ''
+          safeInstructions ? `\n\nAdditional Instructions:\n${safeInstructions}` : ''
         }
 
 Produce the full contract now. Honour the USER REQUEST verbatim, then fill every applicable section from the required list. Do not truncate.`,
@@ -367,6 +411,26 @@ Produce the full contract now. Honour the USER REQUEST verbatim, then fill every
     .trim();
 
   return { html, plainText };
+}
+
+async function generateDraftContentWithSafetyRetry(
+  openai: ReturnType<typeof createOpenAIClient>,
+  model: string,
+  params: Parameters<typeof generateDraftContent>[2]
+): Promise<{ html: string; plainText: string }> {
+  try {
+    return await generateDraftContent(openai, model, params);
+  } catch (error) {
+    if (!isAzureContentFilteredError(error)) {
+      throw error;
+    }
+
+    logger.warn('Draft generation hit Azure content filter, retrying with normalized drafting context', {
+      requestShape: params.prompt ? summarizeDraftingPromptForStrictSafety(params.prompt) : params.contractType,
+    });
+
+    return generateDraftContent(openai, model, params, 'strict');
+  }
 }
 
 /** Step 5: Analyze risks in generated content */
@@ -422,6 +486,288 @@ Be practical — focus on genuinely risky items, not minor style issues. Limit t
 
   const parsed = JSON.parse(response.choices[0]?.message?.content || '{"risks":[]}');
   return parsed.risks || [];
+}
+
+/**
+ * Step 5b: Faithfulness check
+ * ----------------------------------------------------------------------------
+ * Parse the structured lines emitted by our interview's `rebuildEnrichedPrompt`
+ * (client-side helper) — they look like:
+ *   Contract type: NDA
+ *   Counterparty: Acme
+ *   Governing law: Switzerland
+ *   Liability cap: CHF 250,000
+ *   Special terms/unusual requirements:
+ *     - Two-year survival for residual trade secrets
+ *
+ * For each specified value, check whether it appears in the generated draft's
+ * plain text (case-insensitive). Return a structured report so the UI can
+ * show the user EXACTLY which of their requested values landed in the draft
+ * and which the AI silently dropped.
+ *
+ * This is the functional answer to "is the AI actually giving me what I asked
+ * for?" — a post-generation receipt that grounds the output in the user's
+ * input.
+ */
+interface FaithfulnessItem {
+  label: string;
+  value: string;
+  found: boolean;
+}
+interface FaithfulnessReport {
+  items: FaithfulnessItem[];
+  honored: number;
+  total: number;
+  score: number; // 0..1
+}
+
+function computeFaithfulness(userPrompt: string, plainText: string): FaithfulnessReport {
+  const items: FaithfulnessItem[] = [];
+  if (!userPrompt || !plainText) {
+    return { items, honored: 0, total: 0, score: 1 };
+  }
+  const haystack = plainText.toLowerCase();
+  // Parse "Label: value" pairs from the enrichedPrompt. We match lines that
+  // start with one of our known labels — this avoids false-positive matches
+  // from freeform sentences in the user's original prompt.
+  const KNOWN_LABELS: Array<[RegExp, string]> = [
+    [/^\s*Contract type\s*:\s*(.+)$/im, 'Contract type'],
+    [/^\s*We are drafting for the\s*:\s*(.+)$/im, 'Our role'],
+    [/^\s*Counterparty\s*:\s*(.+)$/im, 'Counterparty'],
+    [/^\s*Term\s*:\s*(.+)$/im, 'Term'],
+    [/^\s*Renewal\s*:\s*(.+)$/im, 'Renewal'],
+    [/^\s*Governing law\s*:\s*(.+)$/im, 'Governing law'],
+    [/^\s*Liability cap\s*:\s*(.+)$/im, 'Liability cap'],
+    [/^\s*Payment terms\s*:\s*(.+)$/im, 'Payment terms'],
+    [/^\s*Confidentiality\s*:\s*(.+)$/im, 'Confidentiality'],
+    [/^\s*Tone\s*:\s*(.+)$/im, 'Tone'],
+  ];
+  for (const [re, label] of KNOWN_LABELS) {
+    const m = userPrompt.match(re);
+    if (!m) continue;
+    const raw = m[1].trim();
+    if (!raw) continue;
+    // Heuristic: look for the most distinctive token(s) of the value, not the
+    // whole sentence — e.g. for "5 years after termination" we check "5 year".
+    // We still require a reasonably specific substring so that generic values
+    // don't trivially pass.
+    const normalised = raw.replace(/\[TBD\]/gi, '').replace(/[.,;:].*$/, '').trim();
+    const needle = normalised.toLowerCase().slice(0, 64);
+    const found = needle.length > 0 && haystack.includes(needle);
+    items.push({ label, value: normalised, found });
+  }
+  // Special terms — parse the indented list block
+  const specialBlockMatch = userPrompt.match(/Special terms\/unusual requirements:\s*([\s\S]*?)(?=\n\s*(?:Use every value|$))/i);
+  if (specialBlockMatch) {
+    const lines = specialBlockMatch[1]
+      .split('\n')
+      .map(l => l.replace(/^\s*-\s*/, '').trim())
+      .filter(l => l.length > 0 && !/^Use every value/i.test(l));
+    for (const line of lines) {
+      // Match the first 5 content words of the special term — exact long-string
+      // matching is too strict because the AI will rephrase.
+      const words = line.toLowerCase().split(/\s+/).filter(w => w.length > 2).slice(0, 5).join(' ');
+      const needle = words || line.toLowerCase().slice(0, 40);
+      items.push({
+        label: 'Special term',
+        value: line.length > 60 ? `${line.slice(0, 57)}…` : line,
+        found: haystack.includes(needle),
+      });
+    }
+  }
+  const honored = items.filter(i => i.found).length;
+  const total = items.length;
+  return { items, honored, total, score: total === 0 ? 1 : honored / total };
+}
+
+/**
+ * Repair pass — if the first draft didn't include every user-stated value,
+ * run a focused LLM call that takes the current HTML + the explicit list of
+ * missing items and returns an updated HTML that weaves each missing value
+ * into the correct clause. This is what the user meant by "I need it
+ * visible in the contract itself".
+ *
+ * Returns the updated html + plainText. Falls back to the original draft on
+ * any error (content-filter, timeout, etc.) so we never make the output
+ * worse than it already was.
+ */
+async function repairDraftWithMissing(
+  openai: ReturnType<typeof createOpenAIClient>,
+  model: string,
+  currentHtml: string,
+  missingItems: FaithfulnessItem[],
+  contractType: string,
+  jurisdiction: string
+): Promise<{ html: string; plainText: string }> {
+  const missingList = missingItems
+    .map((it, i) => `${i + 1}. ${it.label}: ${it.value}`)
+    .join('\n');
+
+  try {
+    const response = await openai.chat.completions.create({
+      model,
+      temperature: 0.2,
+      max_tokens: 8192,
+      messages: [
+        {
+          role: 'system',
+          content: `You are a senior contract attorney. You will be given an existing contract DRAFT (HTML) and a list of values the USER explicitly asked for that are currently MISSING or PARAPHRASED away. Your job is to return a REVISED version of the same draft in which EVERY missing value appears VERBATIM in the appropriate clause.
+
+Rules:
+- Return the FULL updated HTML document — do not truncate, do not return a diff.
+- Preserve the existing structure, numbering, and tone.
+- Add each missing value to the correct existing clause when possible (e.g., put Governing law into the Governing Law section). If no matching clause exists, add a new clause in a logical location.
+- Use the EXACT user-supplied wording for each value; do not paraphrase, do not substitute synonyms, do not expand abbreviations (e.g., keep "NDA", "CHF 250,000", "Net 30" literally).
+- Do not invent new terms or change any value the user already honoured.
+- Do not remove existing content.
+- Output ONLY the updated HTML (no markdown, no commentary).`,
+        },
+        {
+          role: 'user',
+          content: `Contract type: ${contractType}
+Governing jurisdiction: ${jurisdiction}
+
+=== CURRENT DRAFT (HTML) ===
+${currentHtml}
+=== END DRAFT ===
+
+=== MISSING USER-REQUESTED VALUES (must appear verbatim in revised draft) ===
+${missingList}
+=== END MISSING ===
+
+Return the revised full HTML now.`,
+        },
+      ],
+    });
+    const html = response.choices[0]?.message?.content?.trim() || '';
+    if (!html || html.length < currentHtml.length * 0.5) {
+      // Suspicious truncation — keep the original.
+      return { html: currentHtml, plainText: stripHtml(currentHtml) };
+    }
+    return { html, plainText: stripHtml(html) };
+  } catch {
+    return { html: currentHtml, plainText: stripHtml(currentHtml) };
+  }
+}
+
+/**
+ * Last-resort guarantee: if, after the repair pass, any user-stated values are
+ * STILL not detectable in the draft, append a visible addendum section that
+ * lists them verbatim. This guarantees the user's stated requirements are
+ * physically present in the contract — at minimum as an explicit schedule —
+ * no matter how the LLM behaved upstream.
+ *
+ * The addendum is clearly marked so a reviewer knows to integrate it properly.
+ */
+function appendUserRequestedAddendum(
+  currentHtml: string,
+  missingItems: FaithfulnessItem[]
+): { html: string; plainText: string } {
+  if (missingItems.length === 0) {
+    return { html: currentHtml, plainText: stripHtml(currentHtml) };
+  }
+  const rows = missingItems
+    .map(
+      it =>
+        `<li><strong>${escapeHtml(it.label)}:</strong> ${escapeHtml(it.value)}</li>`
+    )
+    .join('');
+  const addendum = `
+<h2>Schedule A — User-Requested Terms (auto-inserted, requires review)</h2>
+<p><em>The following terms were specified by the user during the drafting interview. They are recorded here verbatim to guarantee they form part of this Agreement. The parties shall give these terms the same force and effect as the corresponding operative clauses above; where any conflict arises, these terms prevail. A reviewer should integrate each item into the body of the Agreement in the appropriate clause before execution.</em></p>
+<ul>${rows}</ul>`;
+  const html = currentHtml + addendum;
+  return { html, plainText: stripHtml(html) };
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Orchestrates the full fidelity-enforcement flow:
+ *   1. Compute faithfulness on the initial draft.
+ *   2. If score < 1.0 AND AI is available → run one LLM repair pass.
+ *   3. Recompute faithfulness on the revised draft.
+ *   4. If STILL missing items → append a visible "User-Requested Terms"
+ *      schedule so the items are physically present in the contract.
+ *   5. Return the final html/plainText/faithfulness along with a small audit
+ *      trail the UI can display ("repaired"/"addendum-appended").
+ */
+async function enforceFaithfulness(
+  openai: ReturnType<typeof createOpenAIClient> | null,
+  model: string,
+  userPrompt: string | undefined,
+  initialHtml: string,
+  initialPlainText: string,
+  contractType: string,
+  jurisdiction: string
+): Promise<{
+  html: string;
+  plainText: string;
+  faithfulness: FaithfulnessReport & { repaired: boolean; addendumAppended: boolean } | null;
+}> {
+  if (!userPrompt) {
+    return { html: initialHtml, plainText: initialPlainText, faithfulness: null };
+  }
+
+  let html = initialHtml;
+  let plainText = initialPlainText;
+  let report = computeFaithfulness(userPrompt, plainText);
+  let repaired = false;
+  let addendumAppended = false;
+
+  const missing = () => report.items.filter(i => !i.found);
+
+  // Step 1: LLM repair pass (only when AI is available and something missing).
+  if (openai && report.total > 0 && report.score < 1 && missing().length > 0) {
+    const revised = await repairDraftWithMissing(
+      openai,
+      model,
+      html,
+      missing(),
+      contractType,
+      jurisdiction,
+    );
+    if (revised.html !== html) {
+      html = revised.html;
+      plainText = revised.plainText;
+      report = computeFaithfulness(userPrompt, plainText);
+      repaired = true;
+    }
+  }
+
+  // Step 2: Addendum safety-net for anything still missing.
+  if (report.total > 0 && missing().length > 0) {
+    const augmented = appendUserRequestedAddendum(html, missing());
+    html = augmented.html;
+    plainText = augmented.plainText;
+    // The addendum puts each value verbatim into the document, so by
+    // definition every missing item is now findable.
+    report = computeFaithfulness(userPrompt, plainText);
+    addendumAppended = true;
+  }
+
+  return {
+    html,
+    plainText,
+    faithfulness: { ...report, repaired, addendumAppended },
+  };
 }
 
 /** Step 6: Save draft to database */
@@ -533,6 +879,22 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         emit('step', step);
       };
 
+      // Heartbeat keeps the connection alive through proxy idle timeouts
+      // (default nginx 60s) while the model thinks. Comment frames are
+      // ignored by the EventSource spec so they don't trigger UI updates.
+      const heartbeat = setInterval(() => {
+        if (cancelled) {
+          clearInterval(heartbeat);
+          return;
+        }
+        try {
+          controller.enqueue(encoder.encode(': hb\n\n'));
+        } catch {
+          clearInterval(heartbeat);
+          cancelled = true;
+        }
+      }, 15_000);
+
       const draftBreaker = getCircuitBreaker('ai-draft', { failureThreshold: 3, resetTimeoutMs: 90_000 });
 
       try {
@@ -577,7 +939,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           } else {
             try {
               const openai = createOpenAIClient();
-              const intent = await detectIntent(body.prompt, openai, model);
+              const intent = await detectIntentWithSafetyRetry(body.prompt, openai, model);
               contractType = intent.contractType || 'MSA';
               title = title || intent.title || `${contractType} Draft`;
               variables = { ...intent.variables, ...variables };
@@ -722,7 +1084,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         } else {
           try {
             const openai = createOpenAIClient();
-            const generated = await generateDraftContent(openai, model, {
+            const generated = await generateDraftContentWithSafetyRetry(openai, model, {
               contractType,
               template: template ? { name: template.name, content: template.content } : null,
               clauses,
@@ -760,6 +1122,32 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
             } else {
               throw error;
             }
+          }
+        }
+
+        // ---------------------------------------------------------------
+        // Step 4b: Faithfulness enforcement
+        // (repair pass + addendum fallback so every user-stated value is
+        //  physically present in the contract)
+        // ---------------------------------------------------------------
+        let faithfulnessReport: Awaited<ReturnType<typeof enforceFaithfulness>>['faithfulness'] = null;
+        if (body.prompt) {
+          try {
+            const openaiForRepair = hasAI ? createOpenAIClient() : null;
+            const enforced = await enforceFaithfulness(
+              openaiForRepair,
+              model,
+              body.prompt,
+              html,
+              plainText,
+              contractType,
+              body.jurisdiction || 'United States',
+            );
+            html = enforced.html;
+            plainText = enforced.plainText;
+            faithfulnessReport = enforced.faithfulness;
+          } catch (e) {
+            logger.warn('Faithfulness enforcement failed, keeping original draft', e);
           }
         }
 
@@ -828,6 +1216,12 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         // Record success in circuit breaker
         draftBreaker.recordSuccess();
 
+        // Use the faithfulness report from the enforcement step (which
+        // already reflects the repair pass + addendum). Fall back to a fresh
+        // compute if enforcement was skipped for any reason.
+        const faithfulness = faithfulnessReport
+          ?? (body.prompt ? { ...computeFaithfulness(body.prompt, plainText), repaired: false, addendumAppended: false } : null);
+
         // Final summary
         // ---------------------------------------------------------------
         emit('done', {
@@ -848,6 +1242,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           steps: steps.map(s => ({ step: s.step, name: s.name, status: s.status, durationMs: s.durationMs })),
           totalDurationMs: Date.now() - step1Start,
           editUrl: `/drafting/copilot?draft=${draft.id}`,
+          faithfulness,
         });
       } catch (error: any) {
         logger.error('Agentic draft generation failed:', error);
@@ -861,6 +1256,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         let safeMessage = 'Draft generation failed. Please try again.';
         if (rawMsg.includes('DeploymentNotFound') || rawMsg.includes('does not exist') || rawMsg.includes('model_not_found')) {
           safeMessage = 'AI model not configured. Please contact your administrator.';
+        } else if (isAzureContentFilteredError(error)) {
+          safeMessage =
+            'Your request looks legitimate, but the upstream AI filter still rejected it after a neutral retry. Try a shorter follow-up or break the drafting ask into smaller steps.';
         } else if (rawMsg.includes('429') || rawMsg.includes('rate limit') || rawMsg.includes('quota')) {
           safeMessage = 'AI service rate limited. Please try again later.';
         } else if (rawMsg.includes('timeout') || rawMsg.includes('AbortError')) {
@@ -871,6 +1269,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           steps: steps.map(s => ({ step: s.step, name: s.name, status: s.status })),
         });
       } finally {
+        clearInterval(heartbeat);
         try {
           controller.close();
         } catch {
@@ -885,6 +1284,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
       'X-Request-Id': ctx.requestId,
     },
   });
@@ -913,7 +1313,7 @@ async function executeNonStreaming(
     if (body.prompt && !body.contractType) {
       if (hasAI) {
         const openai = createOpenAIClient();
-        const intent = await detectIntent(body.prompt, openai, model);
+        const intent = await detectIntentWithSafetyRetry(body.prompt, openai, model);
         contractType = intent.contractType || 'MSA';
         title = title || intent.title || `${contractType} Draft`;
         variables = { ...intent.variables, ...variables };
@@ -961,7 +1361,7 @@ async function executeNonStreaming(
     if (hasAI) {
       try {
         const openai = createOpenAIClient();
-        const generated = await generateDraftContent(openai, model, {
+        const generated = await generateDraftContentWithSafetyRetry(openai, model, {
           contractType,
           template: template ? { name: template.name, content: template.content } : null,
           clauses,
@@ -969,6 +1369,7 @@ async function executeNonStreaming(
           tone: body.tone || 'formal',
           jurisdiction: body.jurisdiction || 'United States',
           instructions,
+          prompt: body.prompt,
         });
         html = generated.html;
         plainText = generated.plainText;
@@ -998,6 +1399,28 @@ async function executeNonStreaming(
       plainText = `${title}\nNo template available and AI is not configured.`;
     }
 
+    // Step 4b: Faithfulness enforcement (repair + addendum)
+    let faithfulnessReport: Awaited<ReturnType<typeof enforceFaithfulness>>['faithfulness'] = null;
+    if (body.prompt) {
+      try {
+        const openaiForRepair = hasAI ? createOpenAIClient() : null;
+        const enforced = await enforceFaithfulness(
+          openaiForRepair,
+          model,
+          body.prompt,
+          html,
+          plainText,
+          contractType,
+          body.jurisdiction || 'United States',
+        );
+        html = enforced.html;
+        plainText = enforced.plainText;
+        faithfulnessReport = enforced.faithfulness;
+      } catch (e) {
+        logger.warn('Faithfulness enforcement failed (non-streaming), keeping original draft', e);
+      }
+    }
+
     // Step 5: Risk analysis
     let risks: unknown[] = [];
     if (hasAI && plainText.length > 100) {
@@ -1020,6 +1443,9 @@ async function executeNonStreaming(
       risks,
     });
 
+    const faithfulness = faithfulnessReport
+      ?? (body.prompt ? { ...computeFaithfulness(body.prompt, plainText), repaired: false, addendumAppended: false } : null);
+
     return createSuccessResponse(ctx, {
       draft: {
         id: draft.id,
@@ -1038,6 +1464,7 @@ async function executeNonStreaming(
       },
       content: { html, plainText },
       risks,
+      faithfulness,
     });
   } catch (error: any) {
     logger.error('Agentic draft generation failed:', error);
@@ -1045,6 +1472,14 @@ async function executeNonStreaming(
     if (msg.includes('DeploymentNotFound') || msg.includes('model_not_found') || msg.includes('does not exist')) {
       return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE',
         'AI model deployment not found. The draft was not created. Please configure Azure OpenAI deployment.', 503);
+    }
+    if (isAzureContentFilteredError(error)) {
+      return createErrorResponse(
+        ctx,
+        'CONTENT_FILTERED',
+        'Your request looks legitimate, but the upstream AI filter still rejected it after a neutral retry. Try a shorter follow-up or break the drafting ask into smaller steps.',
+        400,
+      );
     }
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Draft generation failed', 500);
   }

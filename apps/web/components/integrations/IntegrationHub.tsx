@@ -407,17 +407,19 @@ export function IntegrationHub() {
         body: JSON.stringify({ action: 'sync', integrationId }),
       });
 
-      if (response.ok) {
-        toast({
-          title: 'Sync Started',
-          description: 'Integration sync has been initiated.',
-        });
-        fetchIntegrations();
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || `Sync failed (${response.status})`);
       }
+      toast({
+        title: 'Sync Started',
+        description: 'Integration sync has been initiated.',
+      });
+      fetchIntegrations();
     } catch (err) {
       toast({
         title: 'Sync Failed',
-        description: 'Failed to start sync.',
+        description: err instanceof Error ? err.message : 'Failed to start sync.',
         variant: 'destructive',
       });
     }
@@ -431,17 +433,19 @@ export function IntegrationHub() {
         body: JSON.stringify({ action: 'connect', integrationId }),
       });
 
-      if (response.ok) {
-        toast({
-          title: 'Connected',
-          description: 'Integration connected successfully.',
-        });
-        fetchIntegrations();
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || `Connect failed (${response.status})`);
       }
+      toast({
+        title: 'Connected',
+        description: 'Integration connected successfully.',
+      });
+      fetchIntegrations();
     } catch (err) {
       toast({
         title: 'Connection Failed',
-        description: 'Failed to connect integration.',
+        description: err instanceof Error ? err.message : 'Failed to connect integration.',
         variant: 'destructive',
       });
     }
@@ -455,17 +459,19 @@ export function IntegrationHub() {
         body: JSON.stringify({ action: 'disconnect', integrationId }),
       });
 
-      if (response.ok) {
-        toast({
-          title: 'Disconnected',
-          description: 'Integration disconnected successfully.',
-        });
-        fetchIntegrations();
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || `Disconnect failed (${response.status})`);
       }
+      toast({
+        title: 'Disconnected',
+        description: 'Integration disconnected successfully.',
+      });
+      fetchIntegrations();
     } catch (err) {
       toast({
         title: 'Disconnect Failed',
-        description: 'Failed to disconnect integration.',
+        description: err instanceof Error ? err.message : 'Failed to disconnect integration.',
         variant: 'destructive',
       });
     }
@@ -522,17 +528,19 @@ export function IntegrationHub() {
         body: JSON.stringify({ action: 'enable-sync', integrationId }),
       });
 
-      if (response.ok) {
-        toast({
-          title: 'Sync Enabled',
-          description: 'Automatic sync has been enabled.',
-        });
-        fetchIntegrations();
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || `Failed to enable sync (${response.status})`);
       }
+      toast({
+        title: 'Sync Enabled',
+        description: 'Automatic sync has been enabled.',
+      });
+      fetchIntegrations();
     } catch (err) {
       toast({
         title: 'Failed',
-        description: 'Failed to enable sync.',
+        description: err instanceof Error ? err.message : 'Failed to enable sync.',
         variant: 'destructive',
       });
     }

@@ -1,37 +1,41 @@
 import { NextRequest } from 'next/server';
 import { editableArtifactService } from 'data-orchestration/services';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { prisma } from '@/lib/prisma';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/[id]/artifacts/[artifactId]/revert/[version]
  * Revert artifact to a specific version
  */
-export async function POST(
-  request: NextRequest,
-  props: { params: Promise<{ id: string; artifactId: string; version: string }> }
-) {
-  const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId, artifactId, version } = await (ctx as any).params as { id: string; artifactId: string; version: string };
+
   try {
     const body = await request.json();
-    const { userId } = body;
+    const effectiveUserId = ctx.userId;
 
-    if (!userId) {
+    const artifact = await prisma.artifact.findFirst({
+      where: { id: artifactId, contractId, tenantId: ctx.tenantId },
+      select: { id: true }
+    });
+
+    if (!artifact) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Artifact not found', 404);
+    }
+
+    if (!effectiveUserId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'userId is required', 400);
     }
 
-    const versionNumber = parseInt(params.version);
+    const versionNumber = parseInt(version);
     if (isNaN(versionNumber)) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid version number', 400);
     }
 
     await editableArtifactService.revertToVersion(
-      params.artifactId,
+      artifactId,
       versionNumber,
-      userId
+      effectiveUserId
     );
 
     return createSuccessResponse(ctx, {
@@ -40,4 +44,4 @@ export async function POST(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})

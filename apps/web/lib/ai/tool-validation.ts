@@ -16,9 +16,15 @@ import { z } from 'zod';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CUID_REGEX = /^c[a-z0-9]{24,}$/;
+// Slug-safe ID: alphanumerics, underscores, dashes. Covers UUIDs, CUIDs, and
+// human-readable seeded/imported IDs like `test-contract-1` or
+// `demo_nda_001`. Tenant isolation is enforced at the query layer, so the
+// ID format check here is just an injection guard — it must not reject
+// legitimate Prisma string PKs.
+const SAFE_ID_REGEX = /^[A-Za-z0-9_-]{1,200}$/;
 const idString = z.string().refine(
-  (val) => UUID_REGEX.test(val) || CUID_REGEX.test(val),
-  { message: 'Must be a valid UUID or CUID' },
+  (val) => UUID_REGEX.test(val) || CUID_REGEX.test(val) || SAFE_ID_REGEX.test(val),
+  { message: 'Must be a valid ID (UUID, CUID, or safe slug of letters/digits/underscore/dash)' },
 );
 
 export const ALLOWED_UPDATE_FIELDS = [

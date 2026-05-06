@@ -48,7 +48,6 @@ export async function GET(request: NextRequest) {
     return createSuccessResponse(ctx, {
       valid: true,
       email: invitation.email,
-      tenantId: invitation.tenantId,
       tenantName: invitation.tenant.name,
       role: invitation.role,
     });

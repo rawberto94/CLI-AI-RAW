@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/select';
 import { DatePickerWithRange, DateRange } from '@/components/ui/date-range-picker';
 import { toast } from 'sonner';
+import { unwrapApiResponseData } from '@/lib/api-fetch';
 
 interface ExportConfig {
   format: 'csv' | 'xlsx' | 'json' | 'pdf';
@@ -117,7 +118,7 @@ export const ExportManager = memo(function ExportManager({
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = unwrapApiResponseData<{ downloadUrl: string; count: number }>(await response.json());
         setExportResult({ url: data.downloadUrl, count: data.count });
         toast.success(`Export complete: ${data.count} contracts`);
         onExportComplete?.(data.downloadUrl);
@@ -341,7 +342,7 @@ export const ExportManager = memo(function ExportManager({
                     </p>
                   </div>
                 </div>
-                <Button onClick={() => window.open(exportResult.url, '_blank')} className="gap-2">
+                <Button onClick={() => window.open(exportResult.url, '_blank', 'noopener,noreferrer')} className="gap-2">
                   <Download className="h-4 w-4" />
                   Download
                 </Button>

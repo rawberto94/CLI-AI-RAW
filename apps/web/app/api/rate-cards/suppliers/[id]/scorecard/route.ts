@@ -1,16 +1,12 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { supplierBenchmarkService } from 'data-orchestration/services';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
-    const supplierId = params.id;
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id: supplierId } = await (ctx as any).params as { id: string };
+
+  try {
     const { searchParams } = new URL(request.url);
     const periodMonths = parseInt(searchParams.get('periodMonths') || '12');
 
@@ -45,16 +41,12 @@ try {
   } catch {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch supplier scorecard', 500);
   }
-}
+});
 
-export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
-  const params = await props.params;
-    const ctx = getAuthenticatedApiContext(request);
-    if (!ctx) {
-      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-    }
-try {
-    const supplierId = params.id;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { id: supplierId } = await (ctx as any).params as { id: string };
+
+  try {
     const body = await request.json();
     const periodMonths = body.periodMonths || 12;
 
@@ -71,4 +63,4 @@ try {
   } catch {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to calculate supplier scorecard', 500);
   }
-}
+});

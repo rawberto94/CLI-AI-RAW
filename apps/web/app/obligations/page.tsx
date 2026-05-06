@@ -132,6 +132,7 @@ export default function ObligationsDashboardPage() {
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -227,10 +228,13 @@ export default function ObligationsDashboardPage() {
         const data = raw.data ?? raw;
         // API returns { obligations, pagination, metrics } in data envelope
         setObligations(data.obligations || []);
+        setLoadError(null);
+      } else {
+        throw new Error(`Server returned ${response.status}`);
       }
     } catch (error) {
       console.error('Failed to fetch obligations:', error);
-      toast.error('Failed to load obligations');
+      setLoadError(error instanceof Error ? error.message : 'Failed to load obligations');
     }
   }, [statusFilter, priorityFilter, typeFilter]);
 
@@ -313,6 +317,7 @@ export default function ObligationsDashboardPage() {
   // Refresh handler
   const handleRefresh = async () => {
     setRefreshing(true);
+    setLoadError(null);
     await Promise.all([fetchObligations(), fetchMetrics()]);
     setRefreshing(false);
     toast.success('Dashboard refreshed');
@@ -326,16 +331,16 @@ export default function ObligationsDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
-      
-      if (response.ok) {
-        toast.success('Obligation status updated');
-        fetchObligations();
-        fetchMetrics();
-      } else {
-        toast.error('Failed to update status');
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || `Failed to update status (${response.status})`);
       }
-    } catch {
-      toast.error('Failed to update status');
+      toast.success('Obligation status updated');
+      fetchObligations();
+      fetchMetrics();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update status');
     }
   };
 
@@ -358,15 +363,15 @@ export default function ObligationsDashboardPage() {
         }),
       });
       
-      if (response.ok) {
-        toast.success('Obligation marked as complete');
-        fetchObligations();
-        fetchMetrics();
-      } else {
-        toast.error('Failed to complete obligation');
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || `Failed to complete obligation (${response.status})`);
       }
-    } catch {
-      toast.error('Failed to complete obligation');
+      toast.success('Obligation marked as complete');
+      fetchObligations();
+      fetchMetrics();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to complete obligation');
     } finally {
       setCompleteConfirmOpen(false);
       setObligationToComplete(null);
@@ -408,6 +413,22 @@ export default function ObligationsDashboardPage() {
           </div>
           <p className="text-slate-600 dark:text-slate-300 font-medium">Loading obligations dashboard...</p>
         </motion.div>
+      </div>
+    );
+  }
+
+  if (loadError && obligations.length === 0 && !metrics) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 dark:from-slate-900 dark:via-purple-950/30 dark:to-pink-950/20 flex items-center justify-center px-6">
+        <div className="max-w-md w-full rounded-xl border border-rose-200 bg-rose-50/80 backdrop-blur p-6 text-center">
+          <AlertTriangle className="h-10 w-10 text-rose-500 mx-auto mb-3" />
+          <h2 className="text-lg font-semibold text-rose-900 mb-1">Couldn&apos;t load your obligations</h2>
+          <p className="text-sm text-rose-700/80 mb-4">{loadError}</p>
+          <Button onClick={handleRefresh} disabled={refreshing} className="gap-2">
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Retry
+          </Button>
+        </div>
       </div>
     );
   }

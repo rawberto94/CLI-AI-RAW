@@ -51,11 +51,25 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   }
 
   const body: TriggerPayload = await request.json();
-  const tenantId = body.tenantId || ctx.tenantId;
+  const requestedTenantId = body.tenantId || (ctx.tenantId && ctx.tenantId !== 'unknown' && ctx.tenantId !== 'demo' ? ctx.tenantId : undefined);
 
-  if (!tenantId) {
+  if (!requestedTenantId) {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
   }
+
+  const prisma = await getPrisma();
+  if (prisma) {
+    const tenant = await (prisma as unknown as { tenant: { findUnique: (opts: unknown) => Promise<{ id: string } | null> } }).tenant.findUnique({
+      where: { id: requestedTenantId },
+      select: { id: true },
+    });
+
+    if (!tenant) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
+    }
+  }
+
+  const tenantId = requestedTenantId;
 
   const { event, data } = body;
 
@@ -66,8 +80,6 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   if (!data || typeof data !== 'object') {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Data object is required', 400);
   }
-
-  const prisma = await getPrisma();
   let webhooks: WebhookConfigType[] = [];
 
   if (prisma) {

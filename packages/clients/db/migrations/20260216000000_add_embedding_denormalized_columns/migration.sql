@@ -7,7 +7,7 @@ ADD COLUMN IF NOT EXISTS "contractType" TEXT;
 -- Backfill from Contract table
 UPDATE "ContractEmbedding" ce
 SET "tenantId" = c."tenantId",
-    "contractType" = c."type"
+    "contractType" = c."contractType"
 FROM "Contract" c
 WHERE ce."contractId" = c."id"
     AND (

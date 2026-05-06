@@ -8,9 +8,8 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
-import { getApiTenantId } from '@/lib/tenant-server';
 import { Prisma } from '@prisma/client';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
 
 // ============================================================================
@@ -88,19 +87,12 @@ function transformAuditLog(dbLog: any, contractId: string): AuditLogResponse {
 // GET - Retrieve audit logs
 // ============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
   try {
-    const resolvedParams = await params;
-    const contractId = resolvedParams.id;
     const { searchParams } = new URL(request.url);
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
     
     const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
     const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50') || 50), 200);
@@ -179,32 +171,25 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // ============================================================================
 // POST - Create audit log entry
 // ============================================================================
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
   try {
-    const resolvedParams = await params;
-    const contractId = resolvedParams.id;
     const body = await request.json();
-    const tenantId = await getApiTenantId(request) || body.tenantId;
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
     
     if (!tenantId) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     const {
-      userId,
       userName,
       action,
       category,
@@ -213,8 +198,8 @@ export async function POST(
       errorMessage,
     } = body;
 
-    if (!userId || !action || !category) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'userId, action, and category are required', 400);
+    if (!action || !category) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'action and category are required', 400);
     }
 
     // Get request metadata
@@ -254,7 +239,7 @@ export async function POST(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // ============================================================================
 // Helper Functions

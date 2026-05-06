@@ -9,6 +9,11 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const { id } = await (ctx as any).params;
     const body = await request.json();
     const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
+
+    if (!tenantId || !userId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+    }
     
     const {
       clientName,
@@ -25,7 +30,6 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
       seniority,
       country,
       supplierName,
-      editedBy,
     } = body;
 
     // Fetch current rate card - scoped to tenant
@@ -44,7 +48,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     // Build edit history entry
     const editHistoryEntry = {
       timestamp: new Date().toISOString(),
-      editedBy: editedBy || 'Unknown',
+      editedBy: userId,
       changes: Object.keys(body)
         .filter((key) => key !== 'editedBy')
         .map((key) => `${key}: ${(currentRateCard as any)[key]} → ${body[key]}`)
@@ -73,7 +77,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
         ...(seniority !== undefined && { seniority }),
         ...(country !== undefined && { country }),
         ...(supplierName !== undefined && { supplierName }),
-        editedBy: editedBy || 'Unknown',
+        editedBy: userId,
         editedAt: new Date(),
         editHistory: updatedHistory,
       },
@@ -83,7 +87,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     await prisma.auditLog.create({
       data: {
         tenantId: currentRateCard.tenantId,
-        userId: editedBy,
+        userId,
         action: 'rate_card_updated',
         resource: id,
         resourceType: 'RateCardEntry',

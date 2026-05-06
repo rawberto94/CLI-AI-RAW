@@ -4,7 +4,8 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
-    const { tenantId, reportType, startDate, endDate, filters } = body;
+    const { reportType, startDate, endDate, filters } = body;
+    const tenantId = ctx.tenantId;
 
     if (!tenantId || !reportType) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Missing required fields', 400);

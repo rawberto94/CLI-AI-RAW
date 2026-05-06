@@ -1,200 +1,21 @@
-import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { contractService } from 'data-orchestration/services';
-// TODO: Migrate $executeRaw/$queryRaw calls to contractService when raw query support is added
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withContractApiHandler } from '@/lib/contracts/server/context';
+import {
+  getContractExpirationSyncSummary,
+  postContractExpirationSync,
+} from '@/lib/contracts/server/sync-expirations';
 
 /**
  * POST /api/contracts/sync-expirations
  * Syncs contract expiration data to the ContractExpiration table
  * Uses raw SQL for new tables until Prisma client is regenerated
  */
-export const POST = withAuthApiHandler(async (request, ctx) => {
-  const startTime = Date.now();
-  
-  try {
-    const tenantId = ctx.tenantId;
-    if (!tenantId) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
-    }
-    
-    // Get all contracts with expiration dates
-    const contracts = await prisma.contract.findMany({
-      where: {
-        tenantId,
-        isDeleted: false,
-        OR: [
-          { expirationDate: { not: null } },
-          { endDate: { not: null } }
-        ]
-      },
-      select: {
-        id: true,
-        tenantId: true,
-        contractTitle: true,
-        supplierName: true,
-        clientName: true,
-        contractType: true,
-        expirationDate: true,
-        endDate: true,
-        totalValue: true,
-        uploadedBy: true
-      }
-    });
-
-    const now = new Date();
-    const results = { synced: 0, expired: 0, errors: 0 };
-
-    for (const contract of contracts) {
-      try {
-        const expirationDate = contract.expirationDate || contract.endDate;
-        if (!expirationDate) continue;
-
-        const daysUntilExpiry = Math.ceil(
-          (expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-        );
-        
-        const isExpired = daysUntilExpiry < 0;
-        
-        // Calculate risk level
-        let expirationRisk: string;
-        let impactScore: number;
-        const riskFactors: string[] = [];
-
-        if (isExpired) {
-          expirationRisk = 'EXPIRED';
-          impactScore = 100;
-          riskFactors.push('Contract has expired');
-        } else if (daysUntilExpiry <= 30) {
-          expirationRisk = 'CRITICAL';
-          impactScore = 90;
-          riskFactors.push('Expires within 30 days');
-        } else if (daysUntilExpiry <= 60) {
-          expirationRisk = 'HIGH';
-          impactScore = 70;
-          riskFactors.push('Expires within 60 days');
-        } else if (daysUntilExpiry <= 90) {
-          expirationRisk = 'MEDIUM';
-          impactScore = 50;
-          riskFactors.push('Expires within 90 days');
-        } else {
-          expirationRisk = 'LOW';
-          impactScore = 20;
-        }
-
-        const contractValue = contract.totalValue ? Number(contract.totalValue) : null;
-        if (contractValue && contractValue > 100000) {
-          impactScore = Math.min(100, impactScore + 20);
-          riskFactors.push('High-value contract (>$100K)');
-        }
-
-        // Renewal status
-        const renewalStatus = isExpired ? 'EXPIRED' : (daysUntilExpiry <= 90 ? 'UPCOMING' : 'PENDING');
-        
-        // Recommended action
-        const recommendedAction = isExpired ? 'REVIEW_EXPIRED' : 
-          (daysUntilExpiry <= 30 ? 'URGENT_RENEWAL' : 
-           daysUntilExpiry <= 60 ? 'INITIATE_RENEWAL' : 
-           daysUntilExpiry <= 90 ? 'PLAN_RENEWAL' : null);
-
-        const noticePeriodDays = 30;
-        const noticeDeadline = new Date(expirationDate);
-        noticeDeadline.setDate(noticeDeadline.getDate() - noticePeriodDays);
-
-        const valueAtRisk = (isExpired || daysUntilExpiry <= 90) ? contractValue : null;
-        const id = `exp_${contract.id}`;
-
-        // Upsert into contract_expirations table using raw SQL
-        await prisma.$executeRaw`
-          INSERT INTO contract_expirations (
-            id, contract_id, tenant_id, expiration_date, days_until_expiry,
-            is_expired, expired_at, expiration_risk, risk_factors, impact_score,
-            contract_value, value_at_risk, renewal_status, recommended_action,
-            owner_id, alerts_enabled, notice_period_days, notice_deadline,
-            auto_renewal_enabled, contract_title, supplier_name,
-            client_name, contract_type, created_at, updated_at
-          ) VALUES (
-            ${id}, ${contract.id}, ${contract.tenantId}, ${expirationDate}, ${daysUntilExpiry},
-            ${isExpired}, ${isExpired ? now : null}, ${expirationRisk}, ${JSON.stringify(riskFactors)}::jsonb, ${impactScore},
-            ${contractValue}, ${valueAtRisk}, ${renewalStatus}, ${recommendedAction},
-            ${contract.uploadedBy}, true, ${noticePeriodDays}, ${noticeDeadline},
-            false, ${contract.contractTitle}, ${contract.supplierName},
-            ${contract.clientName}, ${contract.contractType}, ${now}, ${now}
-          )
-          ON CONFLICT (contract_id) DO UPDATE SET
-            expiration_date = EXCLUDED.expiration_date,
-            days_until_expiry = EXCLUDED.days_until_expiry,
-            is_expired = EXCLUDED.is_expired,
-            expired_at = EXCLUDED.expired_at,
-            expiration_risk = EXCLUDED.expiration_risk,
-            risk_factors = EXCLUDED.risk_factors,
-            impact_score = EXCLUDED.impact_score,
-            contract_value = EXCLUDED.contract_value,
-            value_at_risk = EXCLUDED.value_at_risk,
-            renewal_status = EXCLUDED.renewal_status,
-            recommended_action = EXCLUDED.recommended_action,
-            contract_title = EXCLUDED.contract_title,
-            supplier_name = EXCLUDED.supplier_name,
-            client_name = EXCLUDED.client_name,
-            contract_type = EXCLUDED.contract_type,
-            updated_at = ${now}
-        `;
-
-        if (isExpired) results.expired++;
-        results.synced++;
-
-      } catch {
-        results.errors++;
-      }
-    }
-
-    return createSuccessResponse(ctx, {
-      message: 'Expiration sync completed',
-      totalContracts: contracts.length,
-      ...results,
-      duration: `${Date.now() - startTime}ms`
-    });
-
-  } catch (error: unknown) {
-    return handleApiError(ctx, error);
-  }
+export const POST = withContractApiHandler(async (request, ctx) => {
+  return postContractExpirationSync(request, ctx);
 });
 
 /**
  * GET /api/contracts/sync-expirations - Returns expiration statistics
  */
-export const GET = withAuthApiHandler(async (request, ctx) => {
-  const tenantId = ctx.tenantId;
-  if (!tenantId) {
-    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
-  }
-
-  const stats = await prisma.$queryRaw<Array<{
-    total: bigint; expired: bigint; critical: bigint; high: bigint;
-    medium: bigint; low: bigint; upcoming_renewals: bigint; value_at_risk: number | null;
-  }>>`
-    SELECT 
-      COUNT(*) as total,
-      COUNT(*) FILTER (WHERE is_expired = true) as expired,
-      COUNT(*) FILTER (WHERE expiration_risk = 'CRITICAL') as critical,
-      COUNT(*) FILTER (WHERE expiration_risk = 'HIGH') as high,
-      COUNT(*) FILTER (WHERE expiration_risk = 'MEDIUM') as medium,
-      COUNT(*) FILTER (WHERE expiration_risk = 'LOW') as low,
-      COUNT(*) FILTER (WHERE renewal_status IN ('UPCOMING', 'INITIATED', 'IN_PROGRESS')) as upcoming_renewals,
-      COALESCE(SUM(value_at_risk), 0) as value_at_risk
-    FROM contract_expirations WHERE tenant_id = ${tenantId}
-  `;
-
-  const s = stats[0] || { total: 0n, expired: 0n, critical: 0n, high: 0n, medium: 0n, low: 0n, upcoming_renewals: 0n, value_at_risk: 0 };
-
-  return createSuccessResponse(ctx, {
-    summary: {
-      total: Number(s.total), expired: Number(s.expired), critical: Number(s.critical),
-      high: Number(s.high), upcomingRenewals: Number(s.upcoming_renewals), valueAtRisk: s.value_at_risk || 0
-    },
-    byRiskLevel: {
-      EXPIRED: Number(s.expired), CRITICAL: Number(s.critical), HIGH: Number(s.high),
-      MEDIUM: Number(s.medium), LOW: Number(s.low)
-    }
-  });
+export const GET = withContractApiHandler(async (request, ctx) => {
+  return getContractExpirationSyncSummary(request, ctx);
 });

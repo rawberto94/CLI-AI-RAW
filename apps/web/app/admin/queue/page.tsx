@@ -30,6 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 // Types for queue/job management
 interface QueueStats {
@@ -120,56 +121,98 @@ export default function ImportQueuePage() {
   // Initial fetch and auto-refresh
   useEffect(() => {
     fetchData();
-    
+
     let interval: NodeJS.Timeout | null = null;
-    if (autoRefresh) {
+    const startPolling = () => {
+      if (interval) return;
       interval = setInterval(fetchData, 5000); // Refresh every 5 seconds
+    };
+    const stopPolling = () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    const handleVisibility = () => {
+      if (!autoRefresh) return;
+      if (document.visibilityState === 'visible') {
+        fetchData();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    if (autoRefresh && (typeof document === 'undefined' || document.visibilityState === 'visible')) {
+      startPolling();
     }
-    
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibility);
+    }
+
     return () => {
-      if (interval) clearInterval(interval);
+      stopPolling();
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibility);
+      }
     };
   }, [fetchData, autoRefresh]);
 
   // Pause/resume a queue
   const toggleQueuePause = useCallback(async (queueName: string, pause: boolean) => {
     try {
-      await fetch('/api/admin/queue-control', {
+      const response = await fetch('/api/admin/queue-control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: pause ? 'pause' : 'resume', queue: queueName }),
       });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || `Failed to ${pause ? 'pause' : 'resume'} queue (${response.status})`);
+      }
+      toast.success(`Queue ${queueName} ${pause ? 'paused' : 'resumed'}`);
       fetchData();
-    } catch {
-      // Error handled silently
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Failed to ${pause ? 'pause' : 'resume'} queue`);
     }
   }, [fetchData]);
 
   // Retry a failed job
   const retryJob = useCallback(async (jobId: string, queue: string) => {
     try {
-      await fetch('/api/admin/queue-control', {
+      const response = await fetch('/api/admin/queue-control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'retry', jobId, queue }),
       });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || `Failed to retry job (${response.status})`);
+      }
+      toast.success('Job queued for retry');
       fetchData();
-    } catch {
-      // Error handled silently
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to retry job');
     }
   }, [fetchData]);
 
   // Clear completed jobs
   const clearCompleted = useCallback(async (queueName: string) => {
     try {
-      await fetch('/api/admin/queue-control', {
+      const response = await fetch('/api/admin/queue-control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'clear-completed', queue: queueName }),
       });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || data.message || `Failed to clear completed jobs (${response.status})`);
+      }
+      toast.success(`Cleared completed jobs in ${queueName}`);
       fetchData();
-    } catch {
-      // Error handled silently
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to clear completed jobs');
     }
   }, [fetchData]);
 

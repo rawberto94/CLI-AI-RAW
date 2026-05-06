@@ -90,3 +90,4 @@ nohup.out
 *.bak
 *.old
 uploads-persist/
+.gitnexus

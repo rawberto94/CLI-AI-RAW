@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
@@ -19,14 +19,8 @@ const createClauseSchema = z.object({
   tags: z.array(z.string().max(50)).max(20).optional().default([]),
 });
 
-export async function GET(req: NextRequest) {
-  const apiCtx = getApiContext(req);
+export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) {
-      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
-    }
-
     const { searchParams } = new URL(req.url);
     const category = searchParams.get('category');
     const riskLevel = searchParams.get('riskLevel');
@@ -90,16 +84,21 @@ export async function GET(req: NextRequest) {
     return createSuccessResponse(ctx, transformed);
   } catch (error) {
     logger.error('Word Add-in clauses error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch clauses', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to fetch clauses', 500);
   }
-}
+});
 
-export async function POST(req: NextRequest) {
-  const apiCtx = getApiContext(req);
+export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) {
-      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
+
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant not found', 400);
+    }
+
+    if (!userId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const body = await req.json();
@@ -118,7 +117,7 @@ export async function POST(req: NextRequest) {
 
     const clause = await prisma.clauseLibrary.create({
       data: {
-        tenantId: ctx.tenantId,
+        tenantId,
         name: `${clauseName}_${Date.now()}`,
         title,
         category: category || 'General',
@@ -127,7 +126,7 @@ export async function POST(req: NextRequest) {
         isStandard: isStandard || false,
         tags: tags || [],
         usageCount: 0,
-        createdBy: ctx.userId || 'word-addin',
+        createdBy: userId,
       },
     });
 
@@ -144,6 +143,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     logger.error('Word Add-in create clause error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to create clause', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to create clause', 500);
   }
-}
+});

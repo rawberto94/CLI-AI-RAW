@@ -58,6 +58,27 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     
     switch (action) {
       case 'setup': {
+        // Require password re-auth before issuing a TOTP secret. Without this,
+        // a compromised session could enroll MFA with an attacker-controlled
+        // secret, completing takeover by locking out the legitimate user at
+        // next sign-in. Matches the pattern used by `disable` below.
+        if (!password) {
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Current password is required to enable MFA', 400);
+        }
+        const { compare } = await import('bcryptjs');
+        const { prisma } = await import('@/lib/prisma');
+        const user = await prisma.user.findUnique({
+          where: { id: ctx.userId },
+          select: { passwordHash: true },
+        });
+        if (!user?.passwordHash || !/^\$2[aby]\$\d{2}\$.{53}$/.test(user.passwordHash)) {
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Password re-auth not available for this account', 400);
+        }
+        const valid = await compare(password, user.passwordHash);
+        if (!valid) {
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid password', 400);
+        }
+
         // Initialize MFA setup
         const result = await initializeMFASetup(ctx.userId);
         

@@ -25,6 +25,11 @@ const groupSchema = z.object({
  * GET /api/admin/groups - List all groups
  */
 export const GET = withAuthApiHandler(async (_request, ctx) => {
+  const canManage = await hasPermission(ctx.userId, 'users:manage');
+  if (!canManage) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
+  }
+
   const groups = await prisma.userGroup.findMany({
     where: { tenantId: ctx.tenantId },
     include: {

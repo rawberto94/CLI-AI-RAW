@@ -1,11 +1,19 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
+function canManageQueues(userRole: string | undefined): boolean {
+  return userRole === 'owner' || userRole === 'admin' || userRole === 'superadmin';
+}
+
 /**
  * POST /api/admin/queue-control
  * Control queue operations (pause, resume, clear, retry) via real BullMQ APIs
  */
 export const POST = withAuthApiHandler(async (request, ctx) => {
+  if (!canManageQueues(ctx.userRole)) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   const body = await request.json();
   const { action, queueName, jobId, batchId } = body;
 

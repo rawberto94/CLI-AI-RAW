@@ -29,6 +29,18 @@ interface ForecastRefreshJob {
   batchSize?: number;
 }
 
+function getRedisConnectionFromUrl(redisUrl: string) {
+  const parsed = new URL(redisUrl);
+
+  return {
+    host: parsed.hostname,
+    port: parsed.port ? parseInt(parsed.port, 10) : 6379,
+    password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
+    maxRetriesPerRequest: null,
+    ...(parsed.protocol === 'rediss:' ? { tls: {} } : {}),
+  };
+}
+
 /**
  * Core refresh logic — queries contracts nearing expiration or with stale forecasts,
  * then re-runs predictive analytics and persists results.
@@ -125,7 +137,7 @@ async function start(): Promise<void> {
   if (redisUrl) {
     try {
       const { Worker, Queue } = await import('bullmq');
-      const connection = { url: redisUrl } as any;
+      const connection = getRedisConnectionFromUrl(redisUrl);
 
       const queue = new Queue('forecast-refresh', { connection });
       const worker = new Worker('forecast-refresh', processJob as any, {

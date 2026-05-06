@@ -41,6 +41,7 @@ export function AlertRuleForm({ initialValues, onSubmit, onCancel }: AlertRuleFo
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recipients, setRecipients] = useState<string[]>(initialValues?.recipients || []);
   const [channels, setChannels] = useState<string[]>(initialValues?.notificationChannels || ['email']);
+  const [recipientInput, setRecipientInput] = useState('');
 
   const {
     register,
@@ -82,12 +83,21 @@ export function AlertRuleForm({ initialValues, onSubmit, onCancel }: AlertRuleFo
   };
 
   const addRecipient = () => {
-    const email = prompt('Enter email address:');
-    if (email && /\S+@\S+\.\S+/.test(email)) {
-      setRecipients([...recipients, email]);
-    } else if (email) {
-      toast.error('Invalid email address');
+    const email = recipientInput.trim();
+    if (!email) {
+      toast.error('Enter an email address');
+      return;
     }
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      toast.error('Invalid email address');
+      return;
+    }
+    if (recipients.includes(email)) {
+      toast.error('That recipient is already on the list');
+      return;
+    }
+    setRecipients([...recipients, email]);
+    setRecipientInput('');
   };
 
   const removeRecipient = (index: number) => {
@@ -230,10 +240,25 @@ export function AlertRuleForm({ initialValues, onSubmit, onCancel }: AlertRuleFo
                   </Button>
                 </div>
               ))}
-              <Button type="button" variant="outline" size="sm" onClick={addRecipient}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add Recipient
-              </Button>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="email"
+                  value={recipientInput}
+                  onChange={(e) => setRecipientInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addRecipient();
+                    }
+                  }}
+                  placeholder="name@company.com"
+                  aria-label="Recipient email"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={addRecipient}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+              </div>
               {recipients.length === 0 && (
                 <p className="text-sm text-amber-600">At least one recipient is required</p>
               )}

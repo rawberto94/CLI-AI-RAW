@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import * as XLSX from 'xlsx';
 
 interface ExportConfig {
@@ -53,20 +53,22 @@ const fieldMappings: Record<string, string | ((contract: Record<string, unknown>
   },
 };
 
-export const POST = withAuthApiHandler(async (request, ctx) => {
+export const POST = withContractApiHandler(async (request, ctx) => {
   const config: ExportConfig = await request.json();
-  
-  // Build query
-  const where: Record<string, unknown> = {};
-  
+
+  // Build query — ALWAYS scope to the caller's tenant.
+  // Without this, an authenticated user from tenant-A could exfiltrate contracts
+  // from tenant-B by posting foreign contractIds (cross-tenant IDOR).
+  const where: Record<string, unknown> = { tenantId: ctx.tenantId };
+
   if (config.contractIds && config.contractIds.length > 0) {
     where.id = { in: config.contractIds };
   }
-  
+
   if (config.filters?.status && config.filters.status.length > 0) {
     where.status = { in: config.filters.status };
   }
-  
+
   if (config.filters?.contractTypes && config.filters.contractTypes.length > 0) {
     where.category = { in: config.filters.contractTypes };
   }
@@ -183,7 +185,7 @@ function generateCSV(data: Record<string, unknown>[], fields: string[]): string 
   return [headers, ...rows].join('\n');
 }
 
-export const GET = withAuthApiHandler(async (_request, ctx) => {
+export const GET = withContractApiHandler(async (_request, ctx) => {
   return createSuccessResponse(ctx, {
     message: 'Use POST to export contracts',
     supportedFormats: ['csv', 'xlsx', 'json', 'pdf'],

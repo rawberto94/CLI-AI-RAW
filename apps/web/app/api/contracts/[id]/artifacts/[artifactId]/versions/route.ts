@@ -1,23 +1,27 @@
 import { NextRequest } from 'next/server';
 import { editableArtifactService } from 'data-orchestration/services';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { prisma } from '@/lib/prisma';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * GET /api/contracts/[id]/artifacts/[artifactId]/versions
  * Get version history for an artifact
  */
-export async function GET(
-  request: NextRequest,
-  props: { params: Promise<{ id: string; artifactId: string }> }
-) {
-  const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId, artifactId } = await (ctx as any).params as { id: string; artifactId: string };
+
   try {
+    const artifact = await prisma.artifact.findFirst({
+      where: { id: artifactId, contractId, tenantId: ctx.tenantId },
+      select: { id: true }
+    });
+
+    if (!artifact) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Artifact not found', 404);
+    }
+
     const versions = await editableArtifactService.getArtifactVersionHistory(
-      params.artifactId
+      artifactId
     );
 
     return createSuccessResponse(ctx, {
@@ -27,4 +31,4 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

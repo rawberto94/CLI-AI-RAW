@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
@@ -17,14 +17,8 @@ const createTemplateSchema = z.object({
   variables: z.array(z.unknown()).optional(),
 });
 
-export async function GET(req: NextRequest) {
-  const apiCtx = getApiContext(req);
+export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) {
-      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
-    }
-
     const { searchParams } = new URL(req.url);
     const category = searchParams.get('category');
     const search = searchParams.get('search');
@@ -97,16 +91,21 @@ export async function GET(req: NextRequest) {
     return createSuccessResponse(ctx, { templates: transformed, total, limit, offset });
   } catch (error) {
     logger.error('Word Add-in templates error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch templates', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to fetch templates', 500);
   }
-}
+});
 
-export async function POST(req: NextRequest) {
-  const apiCtx = getApiContext(req);
+export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) {
-      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
+
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant not found', 400);
+    }
+
+    if (!userId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const body = await req.json();
@@ -118,7 +117,7 @@ export async function POST(req: NextRequest) {
 
     const template = await prisma.contractTemplate.create({
       data: {
-        tenantId: ctx.tenantId,
+        tenantId,
         name,
         description: description || '',
         category: category || 'OTHER',
@@ -127,7 +126,7 @@ export async function POST(req: NextRequest) {
         metadata: JSON.parse(JSON.stringify(variables || [])),
         isActive: true,
         version: 1,
-        createdBy: ctx.userId || 'word-addin',
+        createdBy: userId,
       },
     });
 
@@ -145,6 +144,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     logger.error('Word Add-in create template error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to create template', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to create template', 500);
   }
-}
+});

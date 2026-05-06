@@ -12,7 +12,7 @@ import {
   ContractTemplateType,
   GenerationLanguage 
 } from 'data-orchestration/services';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 /**
@@ -20,7 +20,7 @@ import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate
  * 
  * Generate a contract from natural language description
  */
-export const POST = withAuthApiHandler(async (request, ctx) => {
+export const POST = withContractApiHandler(async (request, ctx) => {
   const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/contracts/generate', AI_RATE_LIMITS.standard);
   if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 

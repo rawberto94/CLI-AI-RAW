@@ -7,8 +7,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext, getAuthenticatedApiContext, type AuthenticatedApiContext } from '@/lib/api-middleware';
-import { notificationService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
 
 // Validation schemas
@@ -94,11 +93,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
  * PUT /api/notifications/preferences
  * Update user's notification preferences
  */
-export async function PUT(req: NextRequest) {
-  const ctx = getAuthenticatedApiContext(req);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401);
-  }
+export const PUT = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
     const body = await req.json();
     const validated = preferencesSchema.parse(body);
@@ -140,4 +135,4 @@ export async function PUT(req: NextRequest) {
     logger.error("[Notification Preferences PUT Error]", error);
     return handleApiError(ctx, error);
   }
-}
+});

@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   mockRFxOpportunityCount: vi.fn().mockResolvedValue(0),
   mockRedisPublish: vi.fn().mockResolvedValue(undefined),
   mockRedisDuplicate: vi.fn(),
-  mockGetAuthenticatedApiContext: vi.fn(),
+  mockGetAuthenticatedApiContextWithSessionFallback: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -28,7 +28,7 @@ vi.mock('@/lib/redis', () => ({
   redis: {
     publish: mocks.mockRedisPublish,
     duplicate: mocks.mockRedisDuplicate.mockReturnValue({
-      connect: vi.fn().mockResolvedValue(undefined),
+      on: vi.fn(),
       subscribe: vi.fn().mockResolvedValue(undefined),
     }),
   },
@@ -39,12 +39,12 @@ vi.mock('@/lib/notifications/hitl-notification.service', () => ({
 }));
 
 vi.mock('@/lib/api-middleware', () => ({
-  getAuthenticatedApiContext: mocks.mockGetAuthenticatedApiContext,
+  getAuthenticatedApiContextWithSessionFallback: mocks.mockGetAuthenticatedApiContextWithSessionFallback,
 }));
 
 // ── Import AFTER mocks ────────────────────────────────────────────────
 
-import { GET, broadcastActivity, broadcastApproval, broadcastOpportunity } from '../route';
+import { GET, POST, broadcastActivity, broadcastApproval, broadcastOpportunity } from '../route';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -75,7 +75,7 @@ describe('GET /api/agents/sse', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default: unauthenticated
-    mocks.mockGetAuthenticatedApiContext.mockReturnValue(null);
+    mocks.mockGetAuthenticatedApiContextWithSessionFallback.mockResolvedValue(null);
   });
 
   it('returns 400 without tenantId query param', async () => {
@@ -85,7 +85,7 @@ describe('GET /api/agents/sse', () => {
   });
 
   it('returns SSE response with correct headers', async () => {
-    mocks.mockGetAuthenticatedApiContext.mockReturnValue({
+    mocks.mockGetAuthenticatedApiContextWithSessionFallback.mockResolvedValue({
       requestId: 'test-req',
       tenantId: 'tenant-1',
       userId: 'user-1',
@@ -95,12 +95,12 @@ describe('GET /api/agents/sse', () => {
     const res = await GET(reqWithTenant());
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('text/event-stream');
-    expect(res.headers.get('Cache-Control')).toBe('no-cache');
+    expect(res.headers.get('Cache-Control')).toBe('no-cache, no-transform');
     expect(res.headers.get('Connection')).toBe('keep-alive');
   });
 
   it('returns readable stream body', async () => {
-    mocks.mockGetAuthenticatedApiContext.mockReturnValue({
+    mocks.mockGetAuthenticatedApiContextWithSessionFallback.mockResolvedValue({
       requestId: 'test-req',
       tenantId: 'tenant-1',
       userId: 'user-1',
@@ -110,6 +110,71 @@ describe('GET /api/agents/sse', () => {
     const res = await GET(reqWithTenant());
     expect(res.body).toBeTruthy();
     expect(res.body).toBeInstanceOf(ReadableStream);
+  });
+});
+
+describe('POST /api/agents/sse', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.mockGetAuthenticatedApiContextWithSessionFallback.mockResolvedValue(null);
+  });
+
+  it('returns 401 without auth context', async () => {
+    const req = new NextRequest('http://localhost:3000/api/agents/sse', {
+      method: 'POST',
+      body: JSON.stringify({ event: 'activity', data: { id: 'a1' } }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 403 for non-admin users', async () => {
+    mocks.mockGetAuthenticatedApiContextWithSessionFallback.mockResolvedValue({
+      requestId: 'test-req',
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+      userRole: 'member',
+      startTime: Date.now(),
+      dataMode: 'real',
+    });
+
+    const req = new NextRequest('http://localhost:3000/api/agents/sse', {
+      method: 'POST',
+      body: JSON.stringify({ event: 'activity', data: { id: 'a1' } }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+  });
+
+  it('publishes broadcast for admin users', async () => {
+    mocks.mockGetAuthenticatedApiContextWithSessionFallback.mockResolvedValue({
+      requestId: 'test-req',
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+      userRole: 'admin',
+      startTime: Date.now(),
+      dataMode: 'real',
+    });
+
+    const req = new NextRequest('http://localhost:3000/api/agents/sse', {
+      method: 'POST',
+      body: JSON.stringify({ event: 'activity', data: { id: 'a1' } }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await POST(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(mocks.mockRedisPublish).toHaveBeenCalledWith(
+      'sse:tenant-1',
+      expect.stringContaining('"event":"activity"'),
+    );
   });
 });
 

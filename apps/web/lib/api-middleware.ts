@@ -11,6 +11,8 @@ import { ZodSchema, ZodError } from 'zod';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 
+import { isTenantSessionExpired } from '@/lib/security/tenant-session-policy';
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -25,6 +27,12 @@ export interface ApiContext {
 export interface AuthenticatedApiContext extends ApiContext {
   userId: string;
   userRole?: string;
+  userSessionId?: string;
+}
+
+export interface ContractApiContext extends AuthenticatedApiContext {
+  tenantId: string;
+  userId: string;
 }
 
 export interface ApiErrorResponse {
@@ -158,9 +166,48 @@ export function getAuthenticatedApiContext(request: NextRequest): AuthenticatedA
     tenantId: tenantId || 'demo', // Only used in development
     userId,
     userRole: request.headers.get('x-user-role') || undefined,
+    userSessionId: request.headers.get('x-user-session-id') || undefined,
     startTime: Date.now(),
     dataMode: (request.headers.get('x-data-mode') || 'real') as 'real' | 'mock',
   };
+}
+
+export async function getAuthenticatedApiContextWithSessionFallback(
+  request: NextRequest
+): Promise<AuthenticatedApiContext | null> {
+  const context = getAuthenticatedApiContext(request);
+  if (context) {
+    return context;
+  }
+
+  return getAuthenticatedApiContextFromSession(request);
+}
+
+async function getAuthenticatedApiContextFromSession(request: NextRequest): Promise<AuthenticatedApiContext | null> {
+  try {
+    const { auth } = await import('@/lib/auth');
+    const session = await auth();
+
+    if (!session?.user?.id || !session.user.tenantId) {
+      return null;
+    }
+
+    if (isTenantSessionExpired(session.user.sessionExpiresAt)) {
+      return null;
+    }
+
+    return {
+      requestId: request.headers.get('x-request-id') || nanoid(),
+      tenantId: session.user.tenantId,
+      userId: session.user.id,
+      userRole: session.user.role || undefined,
+      userSessionId: session.user.userSessionId || undefined,
+      startTime: Date.now(),
+      dataMode: (request.headers.get('x-data-mode') || 'real') as 'real' | 'mock',
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -404,7 +451,7 @@ export function withAuthApiHandler(
   handler: (request: NextRequest, context: AuthenticatedApiContext) => Promise<NextResponse>
 ) {
   return async (request: NextRequest, routeContext?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
-    const context = getAuthenticatedApiContext(request);
+    const context = await getAuthenticatedApiContextWithSessionFallback(request);
 
     if (!context) {
       const fallback = getApiContext(request);
@@ -414,6 +461,73 @@ export function withAuthApiHandler(
     }
 
     // Merge Next.js route params into context for dynamic routes
+    const mergedContext = routeContext?.params
+      ? Object.assign(context, { params: routeContext.params })
+      : context;
+
+    try {
+      return await handler(request, mergedContext);
+    } catch (error) {
+      return handleApiError(context, error);
+    }
+  };
+}
+
+function hasRequiredContractHeaders(request: NextRequest): boolean {
+  return Boolean(request.headers.get('x-user-id') && request.headers.get('x-tenant-id'));
+}
+
+function hasContractActor(
+  context: AuthenticatedApiContext | null,
+): context is ContractApiContext {
+  return Boolean(context?.tenantId && context?.userId);
+}
+
+export function withContractApiHandler(
+  handler: (request: NextRequest, context: ContractApiContext) => Promise<NextResponse>
+) {
+  return async (request: NextRequest, routeContext?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
+    if (!hasRequiredContractHeaders(request)) {
+      const fallback = getApiContext(request);
+      return createErrorResponse(fallback, 'UNAUTHORIZED', 'Authentication required', 401, {
+        retryable: false,
+      });
+    }
+
+    const context = getAuthenticatedApiContext(request);
+
+    if (!hasContractActor(context)) {
+      const fallback = getApiContext(request);
+      return createErrorResponse(fallback, 'UNAUTHORIZED', 'Authentication required', 401, {
+        retryable: false,
+      });
+    }
+
+    const mergedContext = routeContext?.params
+      ? Object.assign(context, { params: routeContext.params })
+      : context;
+
+    try {
+      return await handler(request, mergedContext);
+    } catch (error) {
+      return handleApiError(context, error);
+    }
+  };
+}
+
+export function withContractSessionApiHandler(
+  handler: (request: NextRequest, context: ContractApiContext) => Promise<NextResponse>
+) {
+  return async (request: NextRequest, routeContext?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
+    const context = await getAuthenticatedApiContextWithSessionFallback(request);
+
+    if (!hasContractActor(context)) {
+      const fallback = getApiContext(request);
+      return createErrorResponse(fallback, 'UNAUTHORIZED', 'Authentication required', 401, {
+        retryable: false,
+      });
+    }
+
     const mergedContext = routeContext?.params
       ? Object.assign(context, { params: routeContext.params })
       : context;

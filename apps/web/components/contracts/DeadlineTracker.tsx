@@ -55,6 +55,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import { format, formatDistanceToNow, differenceInDays, addDays, isPast, isToday } from 'date-fns';
 
 export interface Deadline {
@@ -200,6 +201,7 @@ export const DeadlineTracker = memo(function DeadlineTracker({
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const confirm = useConfirm();
   const [newDeadline, setNewDeadline] = useState({
     type: 'custom',
     title: '',
@@ -292,8 +294,9 @@ export const DeadlineTracker = memo(function DeadlineTracker({
     toast.success(`Status updated to ${newStatus}`);
   };
 
-  const handleDelete = (deadlineId: string) => {
-    if (!confirm('Delete this deadline?')) return;
+  const handleDelete = async (deadlineId: string) => {
+    const ok = await confirm(confirmPresets.delete('this deadline'));
+    if (!ok) return;
     setDeadlines(prev => prev.filter(d => d.id !== deadlineId));
     toast.success('Deadline deleted');
   };

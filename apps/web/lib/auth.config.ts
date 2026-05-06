@@ -9,6 +9,8 @@
 
 import type { NextAuthConfig } from "next-auth";
 
+import { MAX_TENANT_SESSION_TIMEOUT_HOURS } from "@/lib/security/tenant-session-policy";
+
 declare module "next-auth" {
   interface User {
     tenantId?: string;
@@ -24,6 +26,8 @@ declare module "next-auth" {
       tenantId: string;
       role: string;
       provider?: string;
+      userSessionId?: string;
+      sessionExpiresAt?: string;
       mfaRequired: boolean;
       mfaVerified: boolean;
     };
@@ -36,6 +40,9 @@ declare module "@auth/core/jwt" {
     tenantId?: string;
     role?: string;
     provider?: string;
+    userSessionId?: string;
+    lastActiveAt?: number;
+    sessionExpiresAt?: number;
     mfaRequired?: boolean;
     mfaVerified?: boolean;
     lastValidated?: number;
@@ -56,7 +63,7 @@ export const authConfig = {
   },
   session: {
     strategy: "jwt" as const,
-    maxAge: 24 * 60 * 60, // 24 hours — short-lived for sensitive contract data
+    maxAge: MAX_TENANT_SESSION_TIMEOUT_HOURS * 60 * 60,
   },
   // In production, enable secure cookies for HTTPS.
   // In development, keep plain cookie names to avoid __Secure- prefix issues
@@ -101,6 +108,11 @@ export const authConfig = {
         session.user.tenantId = token.tenantId as string;
         session.user.role = token.role as string;
         session.user.provider = token.provider as string;
+        session.user.userSessionId = token.userSessionId as string | undefined;
+        session.user.sessionExpiresAt =
+          typeof token.sessionExpiresAt === 'number'
+            ? new Date(token.sessionExpiresAt).toISOString()
+            : undefined;
         session.user.mfaRequired = (token.mfaRequired as boolean | undefined) ?? false;
         session.user.mfaVerified = (token.mfaVerified as boolean | undefined) ?? true;
       }

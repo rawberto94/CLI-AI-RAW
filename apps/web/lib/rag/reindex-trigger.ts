@@ -6,6 +6,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 import { processContractWithSemanticChunking } from '@/lib/rag/advanced-rag.service';
 
 export interface ReindexOptions {
@@ -92,8 +93,18 @@ export async function queueContractReindex(
     });
 
     // In a production system, you would publish to a message queue here
-    // For now, we'll trigger async processing
-    triggerContractReindex(contractId, { tenantId }).catch(() => {});
+    // For now, we'll trigger async processing. We log failures so a
+    // misconfigured embedding client doesn't silently leave contracts
+    // un-indexed (the previous .catch(() => {}) hid every embedding error).
+    triggerContractReindex(contractId, { tenantId })
+      .then((res) => {
+        if (!res.success) {
+          logger.warn({ contractId, tenantId, error: res.error }, 'Background reindex returned no embeddings');
+        }
+      })
+      .catch((err: unknown) => {
+        logger.error({ contractId, tenantId, err }, 'Background reindex threw');
+      });
 
     return { queued: true, message: 'Reindex queued for background processing' };
   } catch (error: unknown) {

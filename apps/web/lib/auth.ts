@@ -16,7 +16,7 @@
  * - Proper type augmentation (L17 fix)
  */
 
-import NextAuth, { type NextAuthConfig, type Account, type Profile } from "next-auth";
+import NextAuth, { type NextAuthConfig } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
@@ -27,6 +27,11 @@ import { compare } from "bcryptjs";
 import crypto from "crypto";
 import { getAccountLockout } from "@/lib/security/account-lockout";
 import { auditLog, AuditAction } from "@/lib/security/audit";
+import {
+  calculateTenantSessionExpiry,
+  MAX_TENANT_SESSION_TIMEOUT_HOURS,
+} from "@/lib/security/tenant-session-policy";
+import { resolveSSOSignInMapping } from '@/lib/sso-access';
 
 // ============================================================================
 // Auth JWT type (L17 fix — replaces `as any` casts)
@@ -40,11 +45,19 @@ interface AuthJWT {
   tenantId?: string;
   role?: string;
   provider?: string;
+  userSessionId?: string;
+  lastActiveAt?: number;
+  sessionExpiresAt?: number;
   mfaRequired?: boolean;
   mfaVerified?: boolean;
   lastValidated?: number;
   [key: string]: unknown;
 }
+
+type SessionUpdatePayload = {
+  mfaVerificationToken?: unknown;
+  activityHeartbeat?: unknown;
+} | undefined;
 
 // ============================================================================
 // MFA Verification Token (HMAC-signed for secure JWT update)
@@ -104,6 +117,67 @@ export function verifyMfaVerificationToken(token: string, expectedUserId: string
 // ============================================================================
 
 const TOKEN_REFRESH_INTERVAL = 60 * 60 * 1000; // Re-validate every 1 hour
+
+async function resolveTenantSessionExpiresAt(
+  tenantId: string | undefined,
+  issuedAt: Date,
+): Promise<Date> {
+  if (!tenantId) {
+    return calculateTenantSessionExpiry(undefined, issuedAt);
+  }
+
+  try {
+    const tenantConfig = await prisma.tenantConfig.findUnique({
+      where: { tenantId },
+      select: { securitySettings: true },
+    });
+
+    return calculateTenantSessionExpiry(
+      tenantConfig?.securitySettings as { sessionTimeout?: unknown } | undefined,
+      issuedAt,
+    );
+  } catch (error) {
+    console.warn('[Auth] Failed to load tenant session policy:', error instanceof Error ? error.message : error);
+    return calculateTenantSessionExpiry(undefined, issuedAt);
+  }
+}
+
+async function persistUserSessionActivity(
+  userSessionId: string | undefined,
+  activityAt: Date,
+  expiresAt: Date,
+): Promise<void> {
+  if (!userSessionId) {
+    return;
+  }
+
+  try {
+    await prisma.userSession.updateMany({
+      where: {
+        token: userSessionId,
+        revokedAt: null,
+      },
+      data: {
+        lastActive: activityAt,
+        expiresAt,
+      },
+    });
+  } catch (error) {
+    console.warn('[Auth] Failed to persist session activity:', error instanceof Error ? error.message : error);
+  }
+}
+
+async function refreshTenantSessionActivity(
+  token: AuthJWT,
+  activityAt: Date,
+): Promise<void> {
+  token.lastActiveAt = activityAt.getTime();
+
+  const expiresAt = await resolveTenantSessionExpiresAt(token.tenantId, activityAt);
+  token.sessionExpiresAt = expiresAt.getTime();
+
+  await persistUserSessionActivity(token.userSessionId, activityAt, expiresAt);
+}
 
 // Build providers array based on environment configuration
 const providers: NextAuthConfig["providers"] = [];
@@ -286,56 +360,6 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
   );
 }
 
-/**
- * Handle SSO user linking/creation
- * Maps SSO users to existing users by email or creates new ones
- */
-async function handleSSOSignIn(
-  account: Account | null,
-  profile: Profile | undefined,
-  email: string | null | undefined
-): Promise<{ tenantId: string; role: string } | null> {
-  if (!email) return null;
-
-  // Try to find existing user by email
-  const existingUser = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true, tenantId: true, role: true, status: true },
-  });
-
-  if (existingUser) {
-    if (existingUser.status !== "ACTIVE") {
-      return null;
-    }
-    return { tenantId: existingUser.tenantId, role: existingUser.role };
-  }
-
-  // Check for pending invitation
-  const invitation = await prisma.teamInvitation.findFirst({
-    where: {
-      email,
-      status: "PENDING",
-      expiresAt: { gt: new Date() },
-    },
-  });
-
-  if (invitation) {
-    // Auto-join the tenant from invitation
-    return { tenantId: invitation.tenantId, role: invitation.role };
-  }
-
-  // No existing user or invitation - check if auto-provisioning is enabled
-  const autoProvision = process.env.SSO_AUTO_PROVISION === "true";
-  const defaultTenantId = process.env.SSO_DEFAULT_TENANT_ID;
-
-  if (autoProvision && defaultTenantId) {
-    return { tenantId: defaultTenantId, role: "member" };
-  }
-
-  // Deny access - user must be pre-created or invited
-  return null;
-}
-
 const isProduction = process.env.NODE_ENV === 'production';
 const useSecure = isProduction && process.env.DISABLE_SECURE_COOKIES !== 'true';
 if (isProduction && process.env.DISABLE_SECURE_COOKIES === 'true') {
@@ -346,7 +370,7 @@ export const authOptions: NextAuthConfig = {
   adapter: PrismaAdapter(prisma) as NextAuthConfig["adapter"],
   session: {
     strategy: "jwt" as const,
-    maxAge: 24 * 60 * 60, // 24 hours — short-lived for sensitive contract data
+    maxAge: MAX_TENANT_SESSION_TIMEOUT_HOURS * 60 * 60,
   },
   pages: {
     signIn: "/auth/signin",
@@ -394,7 +418,7 @@ export const authOptions: NextAuthConfig = {
       }
 
       // SSO providers - check if user is allowed
-      const ssoMapping = await handleSSOSignIn(account ?? null, profile, user.email);
+      const ssoMapping = await resolveSSOSignInMapping(user.email);
       if (!ssoMapping) {
         return false; // Deny access
       }
@@ -407,12 +431,52 @@ export const authOptions: NextAuthConfig = {
     },
     async jwt({ token: rawToken, user, account, trigger, session }) {
       const token = rawToken as AuthJWT;
+      const issuedAtSeconds = typeof rawToken.iat === 'number' ? rawToken.iat : undefined;
+      const issuedAt = new Date(issuedAtSeconds ? issuedAtSeconds * 1000 : Date.now());
+
+      if (typeof token.lastActiveAt !== 'number') {
+        token.lastActiveAt = issuedAt.getTime();
+      }
+
+      if (typeof token.sessionExpiresAt !== 'number') {
+        token.sessionExpiresAt = (
+          await resolveTenantSessionExpiresAt(
+            token.tenantId,
+            new Date(token.lastActiveAt),
+          )
+        ).getTime();
+      }
+
       // Initial sign in
       if (user) {
         token.id = user.id;
         token.tenantId = user.tenantId;
         token.role = user.role;
         token.provider = account?.provider;
+        const activityAt = new Date();
+        const sessionExpiresAt = await resolveTenantSessionExpiresAt(user.tenantId, activityAt);
+        token.lastActiveAt = activityAt.getTime();
+        token.sessionExpiresAt = sessionExpiresAt.getTime();
+        if (user.id && !token.userSessionId) {
+          const userSessionId = crypto.randomUUID();
+          try {
+            await prisma.userSession.create({
+              data: {
+                userId: user.id,
+                token: userSessionId,
+                sessionToken: `ses_${crypto.randomUUID()}`,
+                expiresAt: sessionExpiresAt,
+                ipAddress: null,
+                userAgent: null,
+                deviceType: 'desktop',
+                lastActive: activityAt,
+              },
+            });
+            token.userSessionId = userSessionId;
+          } catch (error) {
+            console.warn('[Auth] Failed to create UserSession:', error instanceof Error ? error.message : error);
+          }
+        }
         // C1 FIX: Store MFA state in JWT
         token.mfaRequired = user.mfaRequired ?? false;
         token.mfaVerified = user.mfaRequired ? false : true; // If no MFA required, auto-verify
@@ -420,10 +484,30 @@ export const authOptions: NextAuthConfig = {
       }
 
       // Handle session update (MFA verification propagation)
-      if (trigger === "update" && session?.mfaVerificationToken) {
+      const sessionUpdate = session as SessionUpdatePayload;
+
+      if (trigger === "update" && sessionUpdate?.mfaVerificationToken) {
         // Verify the HMAC-signed token server-side before trusting it
-        if (token.id && verifyMfaVerificationToken(session.mfaVerificationToken, token.id)) {
+        if (
+          token.id
+          && typeof sessionUpdate.mfaVerificationToken === 'string'
+          && verifyMfaVerificationToken(sessionUpdate.mfaVerificationToken, token.id)
+        ) {
           token.mfaVerified = true;
+        }
+      }
+
+      if (
+        trigger === 'update'
+        && typeof sessionUpdate?.activityHeartbeat === 'number'
+        && Number.isFinite(sessionUpdate.activityHeartbeat)
+      ) {
+        const activityAt = new Date(sessionUpdate.activityHeartbeat);
+        if (
+          !Number.isNaN(activityAt.getTime())
+          && activityAt.getTime() > (token.lastActiveAt ?? 0)
+        ) {
+          await refreshTenantSessionActivity(token, activityAt);
         }
       }
 
@@ -446,6 +530,13 @@ export const authOptions: NextAuthConfig = {
             token.tenantId = dbUser.tenantId;
             token.role = dbUser.role;
             token.mfaRequired = dbUser.mfaEnabled;
+            const activityAt = new Date(token.lastActiveAt ?? issuedAt.getTime());
+            token.sessionExpiresAt = (
+              await resolveTenantSessionExpiresAt(
+                dbUser.tenantId,
+                activityAt,
+              )
+            ).getTime();
             token.lastValidated = Date.now();
           } catch (error) {
             console.error("[Auth] Token rotation query failed:", error);
@@ -463,6 +554,11 @@ export const authOptions: NextAuthConfig = {
         session.user.tenantId = token.tenantId as string;
         session.user.role = token.role as string;
         session.user.provider = token.provider as string;
+        session.user.userSessionId = token.userSessionId as string | undefined;
+        session.user.sessionExpiresAt =
+          typeof token.sessionExpiresAt === 'number'
+            ? new Date(token.sessionExpiresAt).toISOString()
+            : undefined;
         // C1 FIX: Expose MFA state in session
         session.user.mfaRequired = token.mfaRequired ?? false;
         session.user.mfaVerified = token.mfaVerified ?? true;
@@ -478,23 +574,6 @@ export const authOptions: NextAuthConfig = {
           await prisma.user.update({
             where: { id: user.id },
             data: { lastLoginAt: new Date() },
-          });
-
-          // Create a UserSession record for session management tracking
-          const sessionToken = crypto.randomUUID();
-          await prisma.userSession.create({
-            data: {
-              userId: user.id,
-              token: sessionToken,
-              sessionToken: `ses_${crypto.randomUUID()}`,
-              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
-              ipAddress: null, // Not accessible from the event; headers not passed
-              userAgent: null, // Updated on first API request via middleware
-              deviceType: 'desktop',
-              lastActive: new Date(),
-            },
-          }).catch((err) => {
-            console.warn('[Auth] Failed to create UserSession:', err instanceof Error ? err.message : err);
           });
 
           // Prune expired sessions for this user (housekeeping)

@@ -3,7 +3,7 @@
  * GET /api/admin/health/contracts - Check health of contract system
  */
 
-import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { healthCheckService } from 'data-orchestration/services';
 
@@ -21,6 +21,10 @@ interface HealthCheck {
 }
 
 export const GET = withAuthApiHandler(async (_request, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   // Check database connectivity
   const dbStart = Date.now();
   await prisma.$queryRaw`SELECT 1`;

@@ -15,12 +15,11 @@ import { contractService } from 'data-orchestration/services';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import fs from 'fs/promises';
 import path from 'path';
-import { getApiTenantId } from '@/lib/tenant-server';
 import { sanitizePath, hasPathTraversal } from '@/lib/security/sanitize';
 import cors from '@/lib/security/cors';
 import { getStorageConfig, isDocumentAccessible } from '@/lib/storage/retention-config';
 import { createConnector } from '@/lib/integrations/connectors/factory';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContextWithSessionFallback, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
 
 // Initialize S3 client for MinIO - credentials required in production
@@ -53,7 +52,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getAuthenticatedApiContext(request);
+  const ctx = await getAuthenticatedApiContextWithSessionFallback(request);
   if (!ctx) {
     return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
@@ -65,10 +64,7 @@ export async function GET(
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
-    const tenantId = await getApiTenantId(request);
-    if (!tenantId) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
-    }
+    const tenantId = ctx.tenantId;
 
     // Check query params for fetch strategy
     const { searchParams } = new URL(request.url);
@@ -210,19 +206,48 @@ export async function GET(
       if (hasPathTraversal(contract.fileName || '') || hasPathTraversal(contract.storagePath || '')) {
         return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid file path', 400);
       }
-      
+
+      // Allowlist of filesystem roots that may contain contract files. Anything
+      // resolving outside these roots is rejected — prevents arbitrary file
+      // disclosure (e.g. /etc/passwd, /proc/*, Azure-mounted secrets) via a
+      // storagePath that was set to an absolute path by some ingestion code
+      // path we don't fully control.
+      const UPLOAD_ROOTS = [
+        path.resolve(process.cwd(), 'uploads'),
+        path.resolve(process.cwd(), 'uploads-persist'),
+        path.resolve('/app/apps/web/uploads'),
+        path.resolve('/app/uploads-persist'),
+        path.resolve('/data/uploads'),
+      ];
+
+      const resolvePath = (p: string): string => path.resolve(p);
+      const isUnderAllowedRoot = (resolved: string): boolean =>
+        UPLOAD_ROOTS.some((root) => resolved === root || resolved.startsWith(root + path.sep));
+
       // storagePath may be an absolute path (e.g. /app/apps/web/uploads/...) —
-      // use it directly when it starts with '/'.  Only sanitize and build a
-      // relative path for non-absolute / fileName-only fallbacks.
+      // use it directly when it starts with '/', but only after confirming it
+      // resolves under one of the allowed upload roots.
       let localPath: string;
       if (contract.storagePath && path.isAbsolute(contract.storagePath)) {
-        localPath = contract.storagePath;
+        const resolved = resolvePath(contract.storagePath);
+        if (!isUnderAllowedRoot(resolved)) {
+          logger.error('[File API] storagePath outside allowed roots:', contract.storagePath);
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid file path', 400);
+        }
+        localPath = resolved;
       } else {
         const safeFileName = contract.fileName ? sanitizePath(contract.fileName) : '';
         const safeStoragePath = contract.storagePath ? sanitizePath(contract.storagePath) : '';
-        localPath = safeStoragePath || path.join(process.cwd(), 'uploads', safeFileName);
+        const candidate = safeStoragePath
+          ? path.resolve(process.cwd(), safeStoragePath)
+          : path.resolve(process.cwd(), 'uploads', safeFileName);
+        if (!isUnderAllowedRoot(candidate)) {
+          logger.error('[File API] Relative storagePath escaped uploads root:', contract.storagePath);
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid file path', 400);
+        }
+        localPath = candidate;
       }
-      
+
       try {
         // Check if file exists
         await fs.access(localPath);

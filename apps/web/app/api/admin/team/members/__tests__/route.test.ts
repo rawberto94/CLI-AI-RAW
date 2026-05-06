@@ -29,6 +29,18 @@ function createAuthenticatedRequest(url: string): NextRequest {
     headers: {
       'x-user-id': 'user-1',
       'x-tenant-id': 'tenant-1',
+      'x-user-role': 'owner',
+    },
+  });
+}
+
+function createMemberRequest(url: string): NextRequest {
+  return new NextRequest(url, {
+    method: 'GET',
+    headers: {
+      'x-user-id': 'user-2',
+      'x-tenant-id': 'tenant-1',
+      'x-user-role': 'member',
     },
   });
 }
@@ -96,6 +108,17 @@ describe('Admin Team Members API', () => {
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.data.members).toHaveLength(3);
+    });
+
+    it('returns 403 for non-admin team members', async () => {
+      const request = createMemberRequest('http://localhost:3000/api/admin/team/members');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('FORBIDDEN');
+      expect(mockFindMany).not.toHaveBeenCalled();
     });
 
     it('queries with correct tenant filter', async () => {

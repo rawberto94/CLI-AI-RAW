@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import NextAuth from "next-auth";
 import { authConfig } from "@/lib/auth.config";
 import { BLANK_DRAFTING_PATH, buildTemplateLibraryPath } from "@/lib/drafting/template-routing";
+import { isTenantSessionExpired } from "@/lib/security/tenant-session-policy";
 import { Redis } from "@upstash/redis";
 
 // Edge-compatible auth wrapper (no Prisma/DB dependencies)
@@ -250,9 +251,31 @@ const RATE_LIMIT_EXEMPT_PATTERNS = [
   '/artifacts/stream',  // SSE stream endpoint has its own connection limiter
 ];
 
+// Sub-paths under /api/contracts/** that call Azure OpenAI / embeddings and must
+// be rate-limited at the stricter 'ai' tier (50/min per user) rather than the
+// default 'contracts' tier (200/min). Prevents a single authenticated user from
+// burning through tenant AI quota by hammering regenerate or rag-process.
+const CONTRACT_AI_SUBPATHS = [
+  '/artifacts/regenerate',
+  '/artifacts/stream',
+  '/rag-process',
+  '/analyze',
+  '/ai-categorize',
+  '/extract-metadata',
+  '/generate-custom',
+  '/negotiate',
+  '/post-process',
+  '/redline',
+  '/summarize',
+  '/reprocess',
+];
+
 function getEndpointCategory(pathname: string): string {
   if (pathname.startsWith('/api/auth/')) return 'auth'; // M14: Auth-specific rate limits
   if (pathname.includes('/ai/')) return 'ai';
+  if (pathname.startsWith('/api/contracts/') && CONTRACT_AI_SUBPATHS.some((p) => pathname.includes(p))) {
+    return 'ai';
+  }
   if (pathname.includes('/upload')) return 'upload';
   if (pathname.includes('/export')) return 'export';
   if (pathname.includes('/extraction/')) return 'read';  // Polling endpoints
@@ -285,7 +308,6 @@ const publicPaths = [
   "/auth/reset-password",
   "/auth/verify-email",
   "/auth/mfa-verify",   // MFA verification page (user is half-authenticated)
-  "/api/auth",
   "/signatures",    // Public signing pages (token-validated, no session auth)
   "/portal",        // Supplier portal (token-validated)
 ];
@@ -300,12 +322,33 @@ const publicApiPaths = [
   "/api/health",
   "/api/health/detailed",
   "/api/monitoring/health",
-  "/api/auth",
   "/api/cron", // Allow cron endpoints (protected by CRON_SECRET)
   "/api/csrf", // CSRF token must be obtainable before/during login
   "/api/taxonomy/presets", // Industry preset templates (read-only, public)
   "/api/portal/validate-token", // Portal token validation
   "/api/debug", // Debug endpoints (temporary, remove in production)
+];
+
+// Public auth API endpoints. Keep this explicit: a broad "/api/auth" prefix would
+// also bypass auth/header injection for protected custom routes such as
+// /api/auth/sessions and /api/auth/mfa.
+const publicAuthApiPaths = [
+  '/api/auth/session',
+  '/api/auth/csrf',
+  '/api/auth/providers',
+  '/api/auth/callback',
+  '/api/auth/signin',
+  '/api/auth/signout',
+  '/api/auth/error',
+  '/api/auth/addin-login',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
+  '/api/auth/signup',
+  '/api/auth/providers-list',
+  '/api/auth/verify-email',
+  '/api/auth/verify-invite',
+  '/api/auth/sso',
+  '/api/auth/mfa/verify-login',
 ];
 
 // Static/public assets that bypass auth
@@ -343,6 +386,10 @@ function getRequestOrigin(req: NextRequest): string {
 
 function buildRequestUrl(req: NextRequest, path: string): URL {
   return new URL(path, getRequestOrigin(req));
+}
+
+function matchesRoutePrefix(pathname: string, route: string): boolean {
+  return pathname === route || pathname.startsWith(`${route}/`);
 }
 
 function resolveLegacyGeneratePath(url: URL): string {
@@ -410,7 +457,7 @@ export default auth(async (req) => {
     '/api/auth/callback', '/api/auth/signin', '/api/auth/signout',
     '/api/auth/error',
   ];
-  const isNextAuthInternal = NEXTAUTH_INTERNAL_PREFIXES.some(p => pathname.startsWith(p));
+  const isNextAuthInternal = NEXTAUTH_INTERNAL_PREFIXES.some(p => matchesRoutePrefix(pathname, p));
   const isRateLimitExempt = RATE_LIMIT_EXEMPT.some(p => pathname.startsWith(p))
     || RATE_LIMIT_EXEMPT_PATTERNS.some(p => pathname.includes(p));
   if (pathname.startsWith("/api/") && !isNextAuthInternal && !isRateLimitExempt) {
@@ -483,7 +530,7 @@ export default auth(async (req) => {
   }
 
   // Allow public API paths (health checks only)
-  if (publicApiPaths.some((path) => pathname.startsWith(path))) {
+  if (publicApiPaths.some((path) => pathname.startsWith(path)) || publicAuthApiPaths.some((path) => matchesRoutePrefix(pathname, path))) {
     return addTracingHeaders(NextResponse.next());
   }
 
@@ -519,12 +566,29 @@ export default auth(async (req) => {
     return redirectResponse;
   }
 
+  if (isTenantSessionExpired(req.auth.user?.sessionExpiresAt)) {
+    if (pathname.startsWith("/api/")) {
+      const response = NextResponse.json(
+        { error: "Session expired", message: "Your session has expired. Please sign in again.", code: "SESSION_EXPIRED", requestId },
+        { status: 401 }
+      );
+      response.cookies.set("authjs.session-token", "", { maxAge: 0, path: "/" });
+      return addTracingHeaders(response);
+    }
+
+    const signInUrl = buildRequestUrl(req, "/auth/signin");
+    signInUrl.searchParams.set("callbackUrl", pathname);
+    const redirectResponse = NextResponse.redirect(signInUrl);
+    redirectResponse.cookies.set("authjs.session-token", "", { maxAge: 0, path: "/" });
+    return redirectResponse;
+  }
+
   // C1 FIX: MFA enforcement — redirect to MFA verify if required but not verified
   const mfaRequired = req.auth.user?.mfaRequired;
   const mfaVerified = req.auth.user?.mfaVerified;
   const mfaPendingPaths = ['/auth/mfa-verify', '/api/auth/mfa', '/api/auth/session', '/api/auth/signout', '/api/auth/csrf'];
   
-  if (mfaRequired && !mfaVerified && !mfaPendingPaths.some(p => pathname.startsWith(p))) {
+  if (mfaRequired && !mfaVerified && !mfaPendingPaths.some(p => matchesRoutePrefix(pathname, p))) {
     if (pathname.startsWith("/api/")) {
       const response = NextResponse.json(
         { error: "MFA Required", message: "Multi-factor authentication verification required", code: "MFA_REQUIRED", requestId },
@@ -618,6 +682,9 @@ export default auth(async (req) => {
         if (req.auth.user?.role) {
           requestHeaders.set("x-user-role", req.auth.user.role);
         }
+        if (req.auth.user?.userSessionId) {
+          requestHeaders.set("x-user-session-id", req.auth.user.userSessionId);
+        }
         const response = NextResponse.next({
           request: { headers: requestHeaders },
         });
@@ -670,6 +737,9 @@ export default auth(async (req) => {
     }
     if (req.auth.user?.role) {
       requestHeaders.set("x-user-role", req.auth.user.role);
+    }
+    if (req.auth.user?.userSessionId) {
+      requestHeaders.set("x-user-session-id", req.auth.user.userSessionId);
     }
 
     const response = NextResponse.next({

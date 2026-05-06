@@ -15,8 +15,7 @@ import { generateObject } from 'ai';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import {
-  getAuthenticatedApiContext,
-  getApiContext,
+  withContractApiHandler,
   createSuccessResponse,
   createErrorResponse,
 } from '@/lib/api-middleware';
@@ -42,21 +41,17 @@ const RecommendationSchema = z.object({
   complianceNotes: z.array(z.string()),
 });
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
+  if (!ctx.tenantId) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID required', 401);
   }
 
   const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/contracts/extend/ai-recommend', AI_RATE_LIMITS.standard);
   if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
   try {
-    const { id: contractId } = await params;
-
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId: ctx.tenantId, isDeleted: false },
       select: {
@@ -131,4 +126,4 @@ Provide a recommendation considering:
     }
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to generate recommendation', 500, { retryable: true });
   }
-}
+})

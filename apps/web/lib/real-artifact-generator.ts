@@ -11,9 +11,13 @@ import { PrismaClient, ArtifactType } from '@prisma/client';
 import fs from 'fs/promises';
 import path from 'path';
 import pino from 'pino';
+import { buildPersistedContractTextFields } from '@repo/utils';
 import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { categorizeContract } from '@/lib/categorization-service';
 import { queueContractReindex } from '@/lib/rag/reindex-trigger';
+import { classifyDocumentType } from '@/lib/ai/document-type-classifier';
+import { ensureTenantTaxonomy } from '@/lib/taxonomy/seed-default';
+import { linkPartiesToContract } from '@/lib/contract/party-linker';
 
 const logger = pino({ name: 'real-artifact-generator' });
 
@@ -1055,7 +1059,7 @@ async function extractTextFromBuffer(
   fileContent: Buffer,
   fileName: string,
   mimeType: string
-): Promise<{ text: string; diHandwriting: DIHandwritingEvidence }> {
+): Promise<{ text: string; diHandwriting: DIHandwritingEvidence; ocrProvider?: string; ocrModel?: string }> {
   const ext = path.extname(fileName).toLowerCase();
 
   // PDF extraction — always prefer Azure Document Intelligence for richer output
@@ -1093,22 +1097,22 @@ async function extractTextFromBuffer(
 
     // 3. Choose the best result — prefer DI when it returned meaningful content
     if (diText && diText.length > 10) {
-      return { text: diText, diHandwriting };
+      return { text: diText, diHandwriting, ocrProvider: 'azure-document-intelligence', ocrModel: 'prebuilt-layout' };
     }
     if (pdfParseText.replace(/\s+/g, ' ').trim().length >= 50) {
       logger.info('DI unavailable or insufficient — using pdf-parse text');
-      return { text: pdfParseText, diHandwriting };
+      return { text: pdfParseText, diHandwriting, ocrProvider: 'pdf-parse', ocrModel: 'pdf-parse' };
     }
 
     // 4. Scanned/image PDF with no text from either source — try Vision OCR
     logger.info('No meaningful text from DI or pdf-parse — attempting GPT-4o Vision OCR');
     const ocrText = await extractScannedPDFWithVision(fileContent);
     if (ocrText && ocrText.length > 10) {
-      return { text: ocrText, diHandwriting };
+      return { text: ocrText, diHandwriting, ocrProvider: 'azure-openai-vision', ocrModel: 'gpt-4o' };
     }
 
     // 5. Last resort — if pdf-parse returned any small amount of text, use it
-    if (pdfParseText.trim().length > 0) return { text: pdfParseText, diHandwriting };
+    if (pdfParseText.trim().length > 0) return { text: pdfParseText, diHandwriting, ocrProvider: 'pdf-parse', ocrModel: 'pdf-parse' };
 
     throw new Error('Failed to extract text from PDF — DI, pdf-parse, and Vision OCR all returned no content');
   }
@@ -1119,7 +1123,7 @@ async function extractTextFromBuffer(
       const mammoth = await import('mammoth');
       const result = await mammoth.extractRawText({ buffer: fileContent });
       logger.info({ chars: result.value.length }, 'DOCX parsed successfully');
-      return { text: result.value, diHandwriting: NO_HANDWRITING };
+      return { text: result.value, diHandwriting: NO_HANDWRITING, ocrProvider: 'mammoth', ocrModel: 'mammoth' };
     } catch (error) {
       logger.error({ error }, 'mammoth failed to parse DOCX');
       throw new Error('Failed to extract text from DOCX');
@@ -1128,7 +1132,7 @@ async function extractTextFromBuffer(
 
   // Plain text files
   if (['.txt', '.md', '.csv', '.json', '.xml', '.html', '.htm'].includes(ext)) {
-    return { text: fileContent.toString('utf8'), diHandwriting: NO_HANDWRITING };
+    return { text: fileContent.toString('utf8'), diHandwriting: NO_HANDWRITING, ocrProvider: 'plain-text', ocrModel: 'utf8' };
   }
 
   // RTF files - basic extraction
@@ -1163,7 +1167,7 @@ async function extractTextFromBuffer(
 async function extractTextFromFile(
   filePath: string,
   mimeType: string
-): Promise<{ text: string; diHandwriting: DIHandwritingEvidence }> {
+): Promise<{ text: string; diHandwriting: DIHandwritingEvidence; ocrProvider?: string; ocrModel?: string }> {
   const fileContent = await fs.readFile(filePath);
   return extractTextFromBuffer(fileContent, filePath, mimeType);
 }
@@ -1714,7 +1718,8 @@ async function generateAIArtifact(
         - amounts: Array of {value, currency, description}
         - totalValue: Total contract value if stated
         - currency: Primary currency
-        - paymentTerms: Payment terms if specified
+        - paymentTerms: Payment terms if specified (e.g. "Net 30", "50% upfront / 50% on delivery")
+        - billingFrequency: One of "monthly", "quarterly", "annual", "one-time", "milestone", or null if unclear
         Use numbers only for value fields, with full amounts and no thousands separators in strings.`,
       
       RISK: `Analyze risks in this contract. Return JSON with:
@@ -1724,7 +1729,9 @@ async function generateAIArtifact(
       COMPLIANCE: `Analyze compliance aspects of this contract. Return JSON with:
         - complianceStatus: 'COMPLIANT', 'NEEDS_REVIEW', or 'NON_COMPLIANT'
         - requirements: Array of compliance requirements found
-        - standards: Any standards or regulations referenced`,
+        - standards: Any standards or regulations referenced (e.g. GDPR, HIPAA, SOC 2, ISO 27001)
+        - jurisdiction: The state/country/region named in the governing-law / jurisdiction clause (e.g. "Delaware, USA", "England and Wales", "Switzerland"), or null if not stated
+        - governingLaw: Full governing-law clause text, or null`,
       
       OBLIGATIONS: `Extract obligations from this contract. Return JSON with:
         - obligations: Array of {party, obligation, deadline, type}
@@ -1733,7 +1740,9 @@ async function generateAIArtifact(
       RENEWAL: `Extract renewal information from this contract. Return JSON with:
         - renewalTerms: Description of renewal terms
         - autoRenewal: Boolean if auto-renewal exists
-        - noticePeriod: Notice period for renewal/termination
+        - noticePeriod: Notice period for renewal/termination as written (e.g. "60 days", "3 months")
+        - noticePeriodDays: Notice period normalised to a whole number of days (e.g. 60, 90), or null if not stated
+        - terminationClause: Brief description of the termination-for-convenience clause if any, else null
         - expirationDate: Contract expiration date if found`,
 
       NEGOTIATION_POINTS: `Identify potential negotiation points in this contract. Return JSON with:
@@ -1803,7 +1812,12 @@ async function generateAIArtifact(
       }
     }
 
-    const response = await openai.chat.completions.create({
+    // Build the request once; retry on transient 429/5xx errors honoring
+    // the Retry-After / retry-after-ms headers Azure OpenAI returns when the
+    // per-minute token bucket is exhausted. Without this, generating ~14
+    // artifacts in 5-wide batches reliably blows the gpt-4o TPM and the
+    // last 2-3 artifacts (commonly PARTIES/TIMELINE) come back null.
+    const callOpenAI = () => openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages: [
         {
@@ -1820,6 +1834,36 @@ async function generateAIArtifact(
       response_format: { type: 'json_object' },
     }, { signal: AbortSignal.timeout(60_000) });
 
+    const MAX_RETRIES = 3;
+    let response: Awaited<ReturnType<typeof callOpenAI>> | undefined;
+    let lastErr: any;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        response = await callOpenAI();
+        break;
+      } catch (err: any) {
+        lastErr = err;
+        const status: number | undefined = err?.status ?? err?.response?.status;
+        const isRateLimit = status === 429;
+        const isServerErr = typeof status === 'number' && status >= 500 && status < 600;
+        if (attempt === MAX_RETRIES || (!isRateLimit && !isServerErr)) {
+          throw err;
+        }
+        // Honor Retry-After-Ms / Retry-After if present, otherwise exponential backoff with jitter.
+        const headers = err?.headers || err?.response?.headers || {};
+        const retryAfterMsRaw = headers['retry-after-ms'] ?? headers['Retry-After-Ms'];
+        const retryAfterRaw = headers['retry-after'] ?? headers['Retry-After'];
+        let waitMs = 0;
+        if (retryAfterMsRaw) waitMs = Math.min(parseInt(String(retryAfterMsRaw), 10) || 0, 30_000);
+        else if (retryAfterRaw) waitMs = Math.min((parseInt(String(retryAfterRaw), 10) || 0) * 1000, 30_000);
+        if (waitMs <= 0) waitMs = Math.min(1000 * Math.pow(2, attempt), 15_000);
+        waitMs += Math.floor(Math.random() * 500); // jitter
+        logger.warn({ contractId, type, attempt: attempt + 1, status, waitMs }, 'AI call rate-limited/transient — retrying');
+        await new Promise((r) => setTimeout(r, waitMs));
+      }
+    }
+    if (!response) throw lastErr ?? new Error('AI call failed without response');
+
     const content = response.choices[0]?.message?.content;
     if (!content) {
       return null;
@@ -1830,12 +1874,18 @@ async function generateAIArtifact(
       ...parsed,
       _generated: new Date().toISOString(),
       _mode: 'ai',
-      _model: 'gpt-4o-mini',
+      _model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       _contractId: contractId,
       _ocrConfidence: ocrConfidence,
     };
-  } catch (error) {
-    logger.error({ error, type, contractId }, 'AI artifact generation failed');
+  } catch (error: any) {
+    const status: number | undefined = error?.status ?? error?.response?.status;
+    const reason = status === 429
+      ? 'rate-limited (429) — retries exhausted'
+      : status && status >= 500
+        ? `upstream ${status}`
+        : error?.message || 'unknown error';
+    logger.error({ error, type, contractId, status, reason }, 'AI artifact generation failed');
     return null;
   }
 }
@@ -1996,6 +2046,7 @@ export async function generateRealArtifacts(
 ): Promise<{ success: boolean; artifactsCreated: number; errors?: string[] }> {
   const errors: string[] = [];
   const artifactIds: string[] = [];
+  const failedArtifactTypes: string[] = [];
   const startTime = performance.now();
 
   logger.info({ contractId, tenantId, filePath }, 'Starting artifact generation');
@@ -2134,7 +2185,7 @@ export async function generateRealArtifacts(
 
     // Extract text from the file
     logger.info({ actualPath, mimeType, hasBuffer: !!fileContent }, 'Extracting text from file');
-    const { text: rawExtractedText, diHandwriting: diHandwritingEvidence } = fileContent 
+    const { text: rawExtractedText, diHandwriting: diHandwritingEvidence, ocrProvider, ocrModel } = fileContent 
       ? await extractTextFromBuffer(fileContent, filePath, mimeType)
       : await extractTextFromFile(actualPath, mimeType);
     
@@ -2167,13 +2218,15 @@ export async function generateRealArtifacts(
     // Also store formatted HTML in metadata for the redline editor
     const existingContract = await prisma.contract.findUnique({
       where: { id: contractId },
-      select: { metadata: true, aiMetadata: true },
+      select: { metadata: true, aiMetadata: true, fileName: true, originalName: true },
     });
     const existingMeta = (existingContract?.metadata as Record<string, unknown>) || {};
     const persistedOcrFacts = extractPersistedOcrFacts(existingContract?.aiMetadata);
     const updateData: Record<string, unknown> = {
-      rawText: contractText,
-      searchableText: contractText.substring(0, 65535),
+      ...buildPersistedContractTextFields(contractText),
+      ocrProcessedAt: new Date(),
+      ...(ocrProvider ? { ocrProvider } : {}),
+      ...(ocrModel ? { ocrModel } : {}),
     };
     if (docxHtml) {
       updateData.metadata = { ...existingMeta, docxHtml };
@@ -2250,6 +2303,60 @@ export async function generateRealArtifacts(
         const sigDate = new Date(preMetadata.signatureDate);
         if (!isNaN(sigDate.getTime())) preUpdateData.signatureDate = sigDate;
       }
+
+      // Mirror startDate -> effectiveDate and endDate -> expirationDate so callers
+      // that read either column pair see the same value. (The schema carries both
+      // legacy and modern date columns; only one was populated previously.)
+      if (preUpdateData.startDate && !preUpdateData.effectiveDate) {
+        preUpdateData.effectiveDate = preUpdateData.startDate;
+      }
+      if (preUpdateData.endDate && !preUpdateData.expirationDate) {
+        preUpdateData.expirationDate = preUpdateData.endDate;
+      }
+
+      // ── Tiered document-type classification (filename → keyword → AI) ──
+      // Always runs (zero AI dependency for tiers A+B). Persists confidence and
+      // diagnostic metadata so callers can show a "type detected via X (Y%)"
+      // affordance and audit drift between heuristic and AI guesses.
+      try {
+        const filenameForClassifier =
+          existingContract?.originalName ||
+          existingContract?.fileName ||
+          path.basename(filePath || '');
+        const docTypeResult = await classifyDocumentType(contractText, filenameForClassifier, {
+          priorType: preMetadata.contractType ?? extractedContractFacts.contractType,
+          priorConfidence: 0.3,
+        });
+        if (docTypeResult.type && docTypeResult.type !== 'OTHER') {
+          // Only overwrite contractType when classifier is reasonably confident
+          // OR when no contractType was detected by AI/regex at all.
+          const aiOrRegexType = preUpdateData.contractType as string | undefined;
+          if (!aiOrRegexType || docTypeResult.confidence >= 0.6) {
+            preUpdateData.contractType = docTypeResult.type;
+          }
+        }
+        preUpdateData.classificationConf = docTypeResult.confidence;
+        preUpdateData.classifiedAt = new Date(docTypeResult.classifiedAt);
+        // Mirror to the parallel `document*` columns consumed by the contract
+        // detail API (`/api/contracts/[id]`) and chat-intelligence layer.
+        preUpdateData.documentClassificationConf = docTypeResult.confidence;
+        if (docTypeResult.type === 'OTHER' || docTypeResult.confidence < 0.4) {
+          preUpdateData.documentClassificationWarning =
+            `Document type uncertain (${docTypeResult.source}, confidence ${(docTypeResult.confidence * 100).toFixed(0)}%). Manual review recommended.`;
+        }
+        preUpdateData.classificationMeta = {
+          method: 'real-artifact-generator-tiered',
+          source: docTypeResult.source,
+          reasoning: docTypeResult.reasoning,
+          matchedKeywords: docTypeResult.matchedKeywords,
+          tiersRun: docTypeResult.tiersRun,
+          candidates: docTypeResult.candidates,
+          aiPriorType: preMetadata.contractType ?? extractedContractFacts.contractType ?? null,
+        };
+      } catch (typeErr) {
+        logger.warn({ typeErr, contractId }, 'Tiered document-type classification failed, falling back to AI/regex result');
+      }
+
       if (Object.keys(preUpdateData).length > 0) {
         await prisma.contract.update({ where: { id: contractId }, data: preUpdateData });
         logger.info({ contractId, fields: Object.keys(preUpdateData) }, 'Pre-artifact metadata written');
@@ -2303,7 +2410,10 @@ export async function generateRealArtifacts(
           );
           
           if (!artifactData) {
-            throw new Error(`AI artifact generation returned no data for ${type} — check that AZURE_OPENAI_API_KEY or OPENAI_API_KEY is configured`);
+            // generateAIArtifact already logs the upstream status (429, 5xx, etc.)
+            // so callers can grep the warning trail. The thrown message stays
+            // generic because we no longer assume "no data" means "missing key".
+            throw new Error(`AI artifact generation returned no data for ${type} (see prior log for upstream status)`);
           }
 
           artifactData = repairArtifactData(type, artifactData, artifactGroundingFacts, contractTitle);
@@ -2324,6 +2434,7 @@ export async function generateRealArtifacts(
           const failedType = batch[results.indexOf(result)] || 'unknown';
           logger.error({ error: errorMsg, type: failedType, contractId }, `Failed to generate ${failedType} artifact`);
           errors.push(`${failedType}: ${errorMsg}`);
+          failedArtifactTypes.push(failedType);
         }
       }
 
@@ -2355,9 +2466,194 @@ export async function generateRealArtifacts(
       },
     });
 
+    // ── Artifact → Contract scalar mirror ─────────────────────────────────────
+    // The Contract row has scalar columns (paymentTerms, jurisdiction, renewalTerms,
+    // noticePeriodDays, terminationClause, autoRenewalEnabled) that the contracts
+    // list / details UI binds to directly. Without this pass those columns stay
+    // NULL even though the FINANCIAL/COMPLIANCE/RENEWAL artifacts already contain
+    // the data — so the UI shows "Not specified" while the artifacts page shows
+    // rich answers. This mirror only fills NULL fields; it never overwrites
+    // values the user has manually edited.
+    if (artifactIds.length > 0) {
+      try {
+        const mirrorArtifacts = await prisma.artifact.findMany({
+          where: { contractId, type: { in: ['FINANCIAL', 'COMPLIANCE', 'RENEWAL', 'OVERVIEW', 'TIMELINE'] } },
+          select: { type: true, data: true },
+        });
+        const byType = new Map(mirrorArtifacts.map((a) => [a.type, a.data as Record<string, unknown>]));
+        const fin = byType.get('FINANCIAL') || {};
+        const comp = byType.get('COMPLIANCE') || {};
+        const ren = byType.get('RENEWAL') || {};
+        const ovr = byType.get('OVERVIEW') || {};
+        const tml = byType.get('TIMELINE') || {};
+
+        const current = await prisma.contract.findUnique({
+          where: { id: contractId },
+          select: {
+            paymentTerms: true,
+            jurisdiction: true,
+            renewalTerms: true,
+            noticePeriodDays: true,
+            terminationClause: true,
+            autoRenewalEnabled: true,
+            billingCycle: true,
+            description: true,
+            effectiveDate: true,
+            expirationDate: true,
+            endDate: true,
+            keywords: true,
+            totalValue: true,
+          },
+        });
+
+        const mirror: Record<string, unknown> = {};
+        const asStr = (v: unknown): string | null => {
+          if (typeof v === 'string' && v.trim().length > 0) return v.trim();
+          return null;
+        };
+        const asInt = (v: unknown): number | null => {
+          if (typeof v === 'number' && Number.isFinite(v)) return Math.round(v);
+          if (typeof v === 'string') {
+            const m = v.match(/(\d+)/);
+            if (m) return parseInt(m[1], 10);
+          }
+          return null;
+        };
+
+        if (!current?.paymentTerms) {
+          const pt = asStr(fin.paymentTerms);
+          if (pt) mirror.paymentTerms = pt.slice(0, 500);
+        }
+        if (!current?.billingCycle) {
+          const bf = asStr((fin as Record<string, unknown>).billingFrequency);
+          if (bf) mirror.billingCycle = bf.slice(0, 50);
+        }
+        if (!current?.jurisdiction) {
+          const j = asStr((comp as Record<string, unknown>).jurisdiction);
+          if (j) mirror.jurisdiction = j.slice(0, 200);
+        }
+        if (!current?.renewalTerms) {
+          const rt = asStr(ren.renewalTerms);
+          if (rt) mirror.renewalTerms = { description: rt.slice(0, 1000), source: 'artifact:RENEWAL' };
+        }
+        if (current?.noticePeriodDays == null) {
+          const npd = asInt((ren as Record<string, unknown>).noticePeriodDays) ?? asInt(ren.noticePeriod);
+          if (npd != null && npd > 0 && npd < 3650) mirror.noticePeriodDays = npd;
+        }
+        if (!current?.terminationClause) {
+          const tc = asStr((ren as Record<string, unknown>).terminationClause);
+          if (tc) mirror.terminationClause = tc.slice(0, 1000);
+        }
+        if (current?.autoRenewalEnabled !== true) {
+          const ar = (ren as Record<string, unknown>).autoRenewal;
+          if (typeof ar === 'boolean') mirror.autoRenewalEnabled = ar;
+        }
+
+        // OVERVIEW.summary → Contract.description (rich human-readable summary
+        // shown on the contract details page when no manual description exists).
+        if (!current?.description) {
+          const summary = asStr((ovr as Record<string, unknown>).summary);
+          if (summary) mirror.description = summary.slice(0, 2000);
+        }
+
+        // TIMELINE → expirationDate / endDate. The artifact often supplies
+        // an `effectiveDate` plus a `duration` string ("12 months", "1 year",
+        // "30 days") instead of an explicit endDate, so compute it.
+        const parseDuration = (v: unknown): { months: number } | null => {
+          const s = asStr(v);
+          if (!s) return null;
+          const m = s.match(/(\d+)\s*(year|yr|month|mo|day|week|wk)s?/i);
+          if (!m) return null;
+          const n = parseInt(m[1], 10);
+          const unit = m[2].toLowerCase();
+          if (unit.startsWith('year') || unit === 'yr') return { months: n * 12 };
+          if (unit.startsWith('month') || unit === 'mo') return { months: n };
+          if (unit.startsWith('week') || unit === 'wk') return { months: n / 4.345 };
+          if (unit.startsWith('day')) return { months: n / 30.44 };
+          return null;
+        };
+        const parseDate = (v: unknown): Date | null => {
+          const s = asStr(v);
+          if (!s) return null;
+          const d = new Date(s);
+          return isNaN(d.getTime()) ? null : d;
+        };
+        let computedEnd: Date | null = parseDate((tml as Record<string, unknown>).endDate);
+        if (!computedEnd) {
+          const eff = current?.effectiveDate || parseDate((tml as Record<string, unknown>).effectiveDate);
+          const dur = parseDuration((tml as Record<string, unknown>).duration);
+          if (eff && dur) {
+            const d = new Date(eff);
+            // Approximate month-add via setMonth which handles overflow correctly.
+            d.setMonth(d.getMonth() + Math.round(dur.months));
+            computedEnd = d;
+          }
+        }
+        if (computedEnd && !current?.expirationDate) mirror.expirationDate = computedEnd;
+        if (computedEnd && !current?.endDate) mirror.endDate = computedEnd;
+
+        // OVERVIEW.keyPoints → Contract.keywords (jsonb). Used by the search
+        // facets and "topics" chips on the contract detail page.
+        if (!current?.keywords || (Array.isArray(current.keywords) && current.keywords.length === 0)) {
+          const kp = (ovr as Record<string, unknown>).keyPoints;
+          if (Array.isArray(kp) && kp.length > 0) {
+            const kw = kp
+              .map((k) => (typeof k === 'string' ? k.trim() : ''))
+              .filter((k) => k.length > 0 && k.length <= 200)
+              .slice(0, 20);
+            if (kw.length > 0) mirror.keywords = kw;
+          }
+        }
+
+        // FINANCIAL → Contract.totalValue. Only mirror when the artifact
+        // surfaced a single explicit aggregate value (not a rate-card array).
+        if (current?.totalValue == null) {
+          const tv = (fin as Record<string, unknown>).totalValue;
+          const n = typeof tv === 'number' ? tv : (typeof tv === 'string' ? parseFloat(tv) : NaN);
+          if (Number.isFinite(n) && n > 0 && n < 1e12) mirror.totalValue = n;
+        }
+
+        // Compute daysUntilExpiry from the resolved end date (mirror or current).
+        // Cached for performance; index `[tenantId, daysUntilExpiry]` exists for
+        // upcoming-expiration queries on the dashboard.
+        const resolvedExp = (mirror.expirationDate as Date | undefined) ?? current?.expirationDate ?? (mirror.endDate as Date | undefined) ?? current?.endDate;
+        if (resolvedExp instanceof Date && !isNaN(resolvedExp.getTime())) {
+          const days = Math.round((resolvedExp.getTime() - Date.now()) / 86400000);
+          mirror.daysUntilExpiry = days;
+        }
+
+        if (Object.keys(mirror).length > 0) {
+          await prisma.contract.update({ where: { id: contractId }, data: mirror });
+          logger.info({ contractId, mirroredFields: Object.keys(mirror) }, 'Mirrored artifact data to Contract scalars');
+        }
+      } catch (mirrorErr) {
+        logger.warn({ mirrorErr, contractId }, 'Artifact→Contract mirror failed (non-fatal)');
+      }
+
+      // ── PARTIES → Contract.clientId / Contract.supplierId ──────────────
+      // Same idea as the scalar mirror above but for the relational links.
+      // Find-or-create global Party rows from the PARTIES artifact, never
+      // overwriting manual links the user may already have set.
+      try {
+        const partiesArt = await prisma.artifact.findFirst({
+          where: { contractId, type: 'PARTIES' },
+          select: { data: true },
+        });
+        if (partiesArt?.data) {
+          await linkPartiesToContract({ contractId, partiesArtifactData: partiesArt.data });
+        }
+      } catch (linkErr) {
+        logger.warn({ linkErr, contractId }, 'Party linking failed (non-fatal)');
+      }
+    }
+
     // Auto-categorize the contract using AI after artifacts are generated
     if (artifactIds.length > 0) {
       try {
+        // Make sure the tenant has a taxonomy seeded — first-time tenants
+        // otherwise hit "No taxonomy categories defined for tenant" and never
+        // get a category assigned.
+        await ensureTenantTaxonomy(tenantId);
         logger.info({ contractId }, 'Running inline auto-categorization');
         const catResult = await categorizeContract({
           contractId,
@@ -2377,12 +2673,40 @@ export async function generateRealArtifacts(
     // Determine final status
     const finalStatus = artifactIds.length > 0 ? 'COMPLETED' : 'FAILED';
 
+    // Surface partial-failure metadata so the UI can flag "13/14 artifacts"
+    // instead of silently treating partial success as fully COMPLETED.
+    let mergedMetadata: Record<string, unknown> | undefined;
+    try {
+      const existing = await prisma.contract.findUnique({
+        where: { id: contractId },
+        select: { metadata: true },
+      });
+      const base = (existing?.metadata as Record<string, unknown> | null) ?? {};
+      mergedMetadata = {
+        ...base,
+        artifactsGenerated: artifactIds.length,
+        artifactsExpected: ARTIFACT_TYPES.length,
+        failedArtifactTypes: failedArtifactTypes.slice().sort(),
+        partialFailure: failedArtifactTypes.length > 0,
+        lastArtifactRunAt: new Date().toISOString(),
+      };
+    } catch (metaReadErr) {
+      logger.warn({ metaReadErr, contractId }, 'Failed to read existing metadata for partial-failure flag');
+    }
+
     // Update contract status
     await prisma.contract.update({
       where: { id: contractId },
-      data: { 
+      data: {
         status: finalStatus,
         updatedAt: new Date(),
+        // Provenance: stamp processing/analysis timestamps so the contracts
+        // list and analytics views can show "last analyzed" without needing
+        // to join ProcessingJob.
+        ...(finalStatus === 'COMPLETED'
+          ? { processedAt: new Date(), lastAnalyzedAt: new Date() }
+          : {}),
+        ...(mergedMetadata ? { metadata: mergedMetadata } : {}),
       },
     });
 

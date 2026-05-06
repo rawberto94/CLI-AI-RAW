@@ -13,6 +13,7 @@ import { createOpenAIClient, getOpenAIApiKey, hasAIClientConfig } from '@/lib/op
 import { prisma } from '@/lib/prisma';
 import { analyticalIntelligenceService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
 
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
@@ -30,6 +31,10 @@ export const runtime = 'nodejs';
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
+
+  // Rate limit before we spend any Azure OpenAI tokens.
+  const rl = checkRateLimit(ctx.tenantId, ctx.userId, '/api/ai/analyze/stream', { ...AI_RATE_LIMITS.streaming, identifier: 'ai-analyze-stream' });
+  if (!rl.allowed) return rateLimitResponse(rl, ctx.requestId);
 
   try {
     const body = await request.json();
@@ -129,71 +134,71 @@ Output your analysis in the following markdown format:
     const readableStream = new ReadableStream({
       async start(controller) {
         let aborted = false;
-        
+        let closed = false;
+
+        const safeEnqueue = (payload: Record<string, unknown>) => {
+          if (closed || aborted) return;
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+          } catch {
+            closed = true;
+          }
+        };
+        const safeClose = () => {
+          if (closed) return;
+          closed = true;
+          try { controller.close(); } catch { /* already closed */ }
+        };
+
         // Handle client disconnect to stop wasting OpenAI tokens
         request.signal.addEventListener('abort', () => {
           aborted = true;
-          try { controller.close(); } catch { /* already closed */ }
+          safeClose();
         });
 
         try {
           // Send initial metadata
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: 'metadata',
-                contractId,
-                fileName: contract.fileName,
-                startTime })}\n\n`
-            )
-          );
+          safeEnqueue({
+            type: 'metadata',
+            contractId,
+            fileName: contract.fileName,
+            startTime,
+          });
 
           let fullContent = '';
-          
+
           for await (const chunk of stream) {
-            if (aborted) break;
+            if (aborted || closed) break;
             const content = chunk.choices[0]?.delta?.content || '';
             if (content) {
               fullContent += content;
-              controller.enqueue(
-                encoder.encode(
-                  `data: ${JSON.stringify({
-                    type: 'content',
-                    content })}\n\n`
-                )
-              );
+              safeEnqueue({ type: 'content', content });
             }
           }
 
           // Send completion event with metadata
           const processingTime = Date.now() - startTime;
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: 'complete',
-                processingTime,
-                wordCount: contractText.split(/\s+/).length,
-                totalLength: fullContent.length })}\n\n`
-            )
-          );
+          safeEnqueue({
+            type: 'complete',
+            processingTime,
+            wordCount: contractText.split(/\s+/).length,
+            totalLength: fullContent.length,
+          });
 
-          controller.close();
+          safeClose();
         } catch (error) {
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: 'error',
-                error: error instanceof Error ? error.message : 'Unknown error' })}\n\n`
-            )
-          );
-          controller.close();
+          safeEnqueue({
+            type: 'error',
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+          safeClose();
         }
       } });
 
     return new NextResponse(readableStream, {
       headers: {
         'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
         'X-Accel-Buffering': 'no' } });
   } catch (error) {

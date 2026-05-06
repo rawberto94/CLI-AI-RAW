@@ -41,6 +41,7 @@ import {
   BarChart3,
   Percent,
   Zap,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -517,6 +518,7 @@ export default function ContractComparisonPage() {
   // State - Multi-contract selection
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [isLoadingContracts, setIsLoadingContracts] = useState(true);
+  const [contractsLoadError, setContractsLoadError] = useState<string | null>(null);
   
   // Group 1 state
   const [group1Contracts, setGroup1Contracts] = useState<Contract[]>([]);
@@ -549,39 +551,43 @@ export default function ContractComparisonPage() {
   }, [contracts]);
 
   // Load contracts list
-  useEffect(() => {
-    async function loadContracts() {
-      try {
-        setIsLoadingContracts(true);
-        const response = await fetch("/api/contracts?limit=500", {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to load contracts: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        // Handle nested data structure from API
-        const contractsList = data.data?.contracts || data.contracts || data || [];
-        
-        if (!Array.isArray(contractsList)) {
-          throw new Error("Invalid data format received from API");
-        }
-        
-        setContracts(contractsList);
-      } catch (err) {
-        console.error('[Compare] Failed to load contracts:', err);
-        toast.error('Failed to load contracts. Please try again.');
-        setContracts([]);
-      } finally {
-        setIsLoadingContracts(false);
+  const loadContracts = useCallback(async () => {
+    try {
+      setIsLoadingContracts(true);
+      setContractsLoadError(null);
+      const response = await fetch("/api/contracts?limit=500", {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load contracts: ${response.status} ${response.statusText}`);
       }
+      
+      const data = await response.json();
+      // Handle nested data structure from API
+      const contractsList = data.data?.contracts || data.contracts || data || [];
+      
+      if (!Array.isArray(contractsList)) {
+        throw new Error("Invalid data format received from API");
+      }
+      
+      setContracts(contractsList);
+    } catch (err) {
+      console.error('[Compare] Failed to load contracts:', err);
+      const msg = err instanceof Error ? err.message : 'Failed to load contracts';
+      setContractsLoadError(msg);
+      toast.error(msg);
+      setContracts([]);
+    } finally {
+      setIsLoadingContracts(false);
     }
-    loadContracts();
   }, []);
+
+  useEffect(() => {
+    loadContracts();
+  }, [loadContracts]);
 
   // AI-powered comparison analysis
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
@@ -920,6 +926,28 @@ export default function ContractComparisonPage() {
       </div>
 
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {contractsLoadError && (
+          <div className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 mt-0.5 text-rose-500" />
+              <div>
+                <p className="font-medium">Couldn&apos;t load your contracts</p>
+                <p className="text-rose-700/80 text-xs mt-0.5">{contractsLoadError}</p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => loadContracts()}
+              disabled={isLoadingContracts}
+              className="gap-1.5 border-rose-300 bg-white text-rose-700 hover:bg-rose-100"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoadingContracts ? 'animate-spin' : ''}`} />
+              Retry
+            </Button>
+          </div>
+        )}
+
         {/* Contract Group Selection */}
         <Card className="mb-6">
           <CardHeader>

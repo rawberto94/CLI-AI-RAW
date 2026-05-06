@@ -286,17 +286,31 @@ export default function AIReportBuilderPage() {
   
   // Load presets and history from localStorage on mount
   useEffect(() => {
-    const storedPresets = localStorage.getItem('ai-report-presets');
-    if (storedPresets) {
-      setSavedPresets(JSON.parse(storedPresets));
+    try {
+      const storedPresets = localStorage.getItem('ai-report-presets');
+      if (storedPresets) {
+        const parsed = JSON.parse(storedPresets);
+        if (Array.isArray(parsed)) setSavedPresets(parsed);
+      }
+    } catch {
+      // Ignore corrupted presets
     }
-    const storedHistory = localStorage.getItem('ai-report-history');
-    if (storedHistory) {
-      setReportHistory(JSON.parse(storedHistory));
+    try {
+      const storedHistory = localStorage.getItem('ai-report-history');
+      if (storedHistory) {
+        const parsed = JSON.parse(storedHistory);
+        if (Array.isArray(parsed)) setReportHistory(parsed);
+      }
+    } catch {
+      // Ignore corrupted history
     }
-    const storedSchedule = localStorage.getItem('ai-report-schedule');
-    if (storedSchedule) {
-      setScheduleConfig(JSON.parse(storedSchedule));
+    try {
+      const storedSchedule = localStorage.getItem('ai-report-schedule');
+      if (storedSchedule) {
+        setScheduleConfig(JSON.parse(storedSchedule));
+      }
+    } catch {
+      // Ignore corrupted schedule
     }
   }, []);
   

@@ -1,30 +1,21 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
-import { getApiTenantId } from '@/lib/security/tenant';
 import {
   getContractProfile,
   getRelevantArtifacts,
   type ContractType,
 } from '@repo/workers';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractSessionApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * GET /api/contracts/[id]/orchestrator/progress
  * 
  * Returns current orchestrator state and smart artifact suggestions
  */
-export async function GET(
-  request: NextRequest,
-  props: { params: Promise<{ id: string }> }
-) {
-  const params = await props.params;
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
-  const contractId = params.id;
-  const tenantId = await getApiTenantId(request) ?? undefined;
+export const GET = withContractSessionApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+  const tenantId = ctx.tenantId;
 
   try {
     // Get contract with type
@@ -132,7 +123,7 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 function getArtifactReason(
   type: string,

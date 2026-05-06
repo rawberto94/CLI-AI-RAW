@@ -159,8 +159,12 @@ describe('Auth Signup API', () => {
   });
 
   describe('Email duplicate check', () => {
-    it('returns 409 when email already exists', async () => {
-      mockUserFindUnique.mockResolvedValue({ id: 'existing', email: 'john@example.com' });
+    it('returns generic 409 when signup hits a duplicate email constraint', async () => {
+      mockTenantFindFirst.mockResolvedValue(null);
+      mockTransaction.mockRejectedValue({
+        code: 'P2002',
+        message: 'Unique constraint failed on the fields: (`email`)',
+      });
 
       const request = createRequest(validSignupData);
       const response = await POST(request);
@@ -168,7 +172,8 @@ describe('Auth Signup API', () => {
 
       expect(response.status).toBe(409);
       expect(data.success).toBe(false);
-      expect(data.error.message).toContain('email already exists');
+      expect(data.error.message).toBe('An account or organization with these details already exists');
+      expect(mockUserFindUnique).not.toHaveBeenCalled();
     });
   });
 
@@ -294,16 +299,32 @@ describe('Auth Signup API', () => {
         expiresAt: new Date(Date.now() + 100000),
         tenant: { id: 'existing-tenant', name: 'Acme Corp' },
       });
-      mockInvitationUpdate.mockResolvedValue({});
-      mockUserCreate.mockResolvedValue({
-        id: 'new-user',
-        email: 'jane@example.com',
-        firstName: 'Jane',
-        lastName: 'Smith',
+      mockTransaction.mockImplementation(async (cb: (tx: any) => Promise<any>) => {
+        const txMock = {
+          teamInvitation: {
+            findUnique: vi.fn().mockResolvedValue({ id: 'inv-1', status: 'PENDING' }),
+            update: vi.fn().mockResolvedValue({}),
+          },
+          user: {
+            create: vi.fn().mockResolvedValue({
+              id: 'new-user',
+              email: 'jane@example.com',
+              firstName: 'Jane',
+              lastName: 'Smith',
+            }),
+          },
+          role: {
+            findFirst: vi.fn().mockResolvedValue({ id: 'member-role', name: 'member' }),
+          },
+          userRole: {
+            create: vi.fn().mockResolvedValue({}),
+          },
+          auditLog: {
+            create: vi.fn().mockResolvedValue({}),
+          },
+        };
+        return cb(txMock);
       });
-      mockRoleFindFirst.mockResolvedValue({ id: 'member-role', name: 'member' });
-      mockUserRoleCreate.mockResolvedValue({});
-      mockAuditLogCreate.mockResolvedValue({});
 
       const request = createRequest(validInviteData);
       const response = await POST(request);
@@ -326,21 +347,38 @@ describe('Auth Signup API', () => {
         expiresAt: new Date(Date.now() + 100000),
         tenant: { id: 'existing-tenant' },
       });
-      mockInvitationUpdate.mockResolvedValue({});
-      mockUserCreate.mockResolvedValue({
-        id: 'new-user',
-        email: 'jane@example.com',
-        firstName: 'Jane',
-        lastName: 'Smith',
+      const updateSpy = vi.fn().mockResolvedValue({});
+      mockTransaction.mockImplementation(async (cb: (tx: any) => Promise<any>) => {
+        const txMock = {
+          teamInvitation: {
+            findUnique: vi.fn().mockResolvedValue({ id: 'inv-1', status: 'PENDING' }),
+            update: updateSpy,
+          },
+          user: {
+            create: vi.fn().mockResolvedValue({
+              id: 'new-user',
+              email: 'jane@example.com',
+              firstName: 'Jane',
+              lastName: 'Smith',
+            }),
+          },
+          role: {
+            findFirst: vi.fn().mockResolvedValue({ id: 'member-role', name: 'member' }),
+          },
+          userRole: {
+            create: vi.fn().mockResolvedValue({}),
+          },
+          auditLog: {
+            create: vi.fn().mockResolvedValue({}),
+          },
+        };
+        return cb(txMock);
       });
-      mockRoleFindFirst.mockResolvedValue({ id: 'member-role', name: 'member' });
-      mockUserRoleCreate.mockResolvedValue({});
-      mockAuditLogCreate.mockResolvedValue({});
 
       const request = createRequest(validInviteData);
       await POST(request);
 
-      expect(mockInvitationUpdate).toHaveBeenCalledWith(
+      expect(updateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'inv-1' },
           data: expect.objectContaining({ status: 'ACCEPTED' }),
@@ -360,17 +398,34 @@ describe('Auth Signup API', () => {
         expiresAt: new Date(Date.now() + 100000),
         tenant: { id: 'existing-tenant' },
       });
-      mockInvitationUpdate.mockResolvedValue({});
-      mockUserCreate.mockResolvedValue({
-        id: 'new-user',
-        email: 'jane@example.com',
-        firstName: 'Jane',
-        lastName: 'Smith',
+      const createRoleSpy = vi.fn().mockResolvedValue({ id: 'new-role', name: 'member' });
+      mockTransaction.mockImplementation(async (cb: (tx: any) => Promise<any>) => {
+        const txMock = {
+          teamInvitation: {
+            findUnique: vi.fn().mockResolvedValue({ id: 'inv-1', status: 'PENDING' }),
+            update: vi.fn().mockResolvedValue({}),
+          },
+          user: {
+            create: vi.fn().mockResolvedValue({
+              id: 'new-user',
+              email: 'jane@example.com',
+              firstName: 'Jane',
+              lastName: 'Smith',
+            }),
+          },
+          role: {
+            findFirst: vi.fn().mockResolvedValue(null),
+            create: createRoleSpy,
+          },
+          userRole: {
+            create: vi.fn().mockResolvedValue({}),
+          },
+          auditLog: {
+            create: vi.fn().mockResolvedValue({}),
+          },
+        };
+        return cb(txMock);
       });
-      mockRoleFindFirst.mockResolvedValue(null); // role doesn't exist
-      mockRoleCreate.mockResolvedValue({ id: 'new-role', name: 'member' });
-      mockUserRoleCreate.mockResolvedValue({});
-      mockAuditLogCreate.mockResolvedValue({});
 
       const request = createRequest(validInviteData);
       const response = await POST(request);
@@ -378,7 +433,7 @@ describe('Auth Signup API', () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(mockRoleCreate).toHaveBeenCalled();
+      expect(createRoleSpy).toHaveBeenCalled();
     });
   });
 
@@ -393,8 +448,46 @@ describe('Auth Signup API', () => {
       const response = await POST(request);
       const data = await response.json();
 
-      expect(response.status).toBe(500);
+      expect(response.status).toBe(400);
       expect(data.success).toBe(false);
+      expect(data.error.message).toBe('Invalid JSON payload');
+    });
+
+    it('returns safe conflict for invitation race', async () => {
+      mockUserFindUnique.mockResolvedValue(null);
+      mockInvitationFindFirst.mockResolvedValue({
+        id: 'inv-1',
+        token: 'valid-invite-token',
+        email: 'jane@example.com',
+        tenantId: 'existing-tenant',
+        role: 'member',
+        status: 'PENDING',
+        expiresAt: new Date(Date.now() + 100000),
+        tenant: { id: 'existing-tenant', name: 'Acme Corp' },
+      });
+      mockTransaction.mockRejectedValue(new Error('Invitation already accepted'));
+
+      const request = createRequest(validInviteData);
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(409);
+      expect(data.success).toBe(false);
+      expect(data.error.message).toBe('Invitation already accepted or expired');
+    });
+
+    it('returns safe conflict for uniqueness races', async () => {
+      mockUserFindUnique.mockResolvedValue(null);
+      mockTenantFindFirst.mockResolvedValue(null);
+      mockTransaction.mockRejectedValue({ code: 'P2002', message: 'Unique constraint failed on the fields: (`slug`)' });
+
+      const request = createRequest(validSignupData);
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(409);
+      expect(data.success).toBe(false);
+      expect(data.error.message).toBe('An account or organization with these details already exists');
     });
 
     it('hashes password before storing', async () => {

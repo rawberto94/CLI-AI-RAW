@@ -8,6 +8,7 @@ import {
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Undo, Redo, Type, Palette, X
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { sanitizeHtml, sanitizeUrl } from '@/lib/security/sanitize';
 
 // ============================================================================
@@ -90,17 +91,25 @@ export function RichTextEditor({
   };
 
   const insertLink = () => {
-    const url = prompt('Enter URL:');
-    if (url) {
-      execCommand('createLink', url);
+    const url = prompt('Enter URL (http/https/mailto/tel):');
+    if (!url) return;
+    const safe = sanitizeUrl(url.trim());
+    if (!safe) {
+      toast.error('Link not inserted: only http, https, mailto, and tel URLs are allowed');
+      return;
     }
+    execCommand('createLink', safe);
   };
 
   const insertImage = () => {
-    const url = prompt('Enter image URL:');
-    if (url) {
-      execCommand('insertImage', url);
+    const url = prompt('Enter image URL (http/https):');
+    if (!url) return;
+    const safe = sanitizeUrl(url.trim(), ['http', 'https']);
+    if (!safe) {
+      toast.error('Image not inserted: only http and https URLs are allowed');
+      return;
     }
+    execCommand('insertImage', safe);
   };
 
   useEffect(() => {

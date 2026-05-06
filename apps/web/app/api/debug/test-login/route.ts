@@ -8,7 +8,16 @@ import { prisma } from "@/lib/prisma";
 import { compare, hash } from "bcryptjs";
 import * as bcryptPkg from "bcryptjs";
 
+// SECURITY: This endpoint leaks password hash metadata and acts as an
+// unauthenticated password-verification oracle. Production deployments MUST
+// return 404 so the route is indistinguishable from a non-existent path.
+const isProductionLocked =
+  process.env.NODE_ENV === 'production' && process.env.ENABLE_DEBUG_ENDPOINTS !== 'true';
+
 export async function POST(request: NextRequest) {
+  if (isProductionLocked) {
+    return new NextResponse(null, { status: 404 });
+  }
   try {
     const body = await request.json();
     const { email, password } = body;
@@ -98,6 +107,9 @@ export async function POST(request: NextRequest) {
 
 // Also add GET for easy browser testing
 export async function GET() {
+  if (isProductionLocked) {
+    return new NextResponse(null, { status: 404 });
+  }
   return NextResponse.json({
     message: "Debug login test endpoint. POST with { email, password } to test.",
     bcryptjsLoaded: typeof compare === 'function',

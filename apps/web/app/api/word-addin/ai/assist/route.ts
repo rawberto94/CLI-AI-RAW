@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { getAIClient } from '@/lib/ai/ai-client';
 import { logger } from '@/lib/logger';
 
@@ -35,14 +35,8 @@ interface RiskFlag {
   suggestion?: string;
 }
 
-export async function POST(req: NextRequest) {
-  const apiCtx = getApiContext(req);
+export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) {
-      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
-    }
-
     const body = await req.json();
     const validation = aiAssistSchema.safeParse(body);
     if (!validation.success) {
@@ -164,6 +158,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     logger.error('Word Add-in AI assist error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'AI assistance failed', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'AI assistance failed', 500);
   }
-}
+});

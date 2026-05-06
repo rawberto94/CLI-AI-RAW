@@ -216,22 +216,26 @@ export default function AILearningPage() {
   const [_selectedContractType, _setSelectedContractType] = useState<string>('all');
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>('30d');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const periodMap: Record<string, string> = { '7d': 'week', '30d': 'month', '90d': 'quarter', 'all': 'all' };
 
   const fetchDashboard = useCallback(async (range: string) => {
     try {
       setLoading(true);
+      setLoadError(null);
       const period = periodMap[range] || 'month';
       const res = await fetch(`/api/ai/quality?period=${period}`);
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const json = await res.json();
-      if (json.success && json.data?.dashboard) {
-        const mapped = mapDashboardData(json.data.dashboard);
-        setStats(mapped.stats);
-        setFieldAccuracies(mapped.fieldAccuracies);
-        setRecentCorrections(mapped.recentCorrections);
-      }
-    } catch {
+      if (!json.success || !json.data?.dashboard) throw new Error(json.error || 'Dashboard data unavailable');
+      const mapped = mapDashboardData(json.data.dashboard);
+      setStats(mapped.stats);
+      setFieldAccuracies(mapped.fieldAccuracies);
+      setRecentCorrections(mapped.recentCorrections);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load learning data';
+      setLoadError(msg);
       toast.error('Failed to load learning data');
     } finally {
       setLoading(false);
@@ -321,6 +325,22 @@ export default function AILearningPage() {
           </Button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-rose-200 bg-rose-50/50 p-4">
+          <div className="flex items-start gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">Couldn’t load learning dashboard</p>
+              <p className="text-sm text-rose-700 mt-1">{loadError}</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => fetchDashboard(selectedTimeRange)} className="flex-shrink-0">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Stats Overview */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { monitoringService } from 'data-orchestration/services';
 
@@ -7,16 +7,13 @@ import { monitoringService } from 'data-orchestration/services';
  * DELETE /api/admin/data-connections/[id]
  * Delete a data connection
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+export const DELETE = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
   }
+
   try {
-    const { id } = await params;
+    const { id } = await (ctx as any).params as { id: string };
 
     // Get existing settings
     const settings = await prisma.tenantSettings.findFirst({
@@ -53,4 +50,4 @@ export async function DELETE(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

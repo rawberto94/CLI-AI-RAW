@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { contractKeys } from '@/app/contracts/[id]/hooks/useContractQueries';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -1406,36 +1408,47 @@ export function EnhancedContractMetadataSection({
   onRefresh,
   onVerificationChange
 }: EnhancedContractMetadataSectionProps) {
+  const queryClient = useQueryClient();
   const [metadataFromAPI, setMetadataFromAPI] = useState<Partial<ContractMetadataSchema> | null>(null);
   const [fieldValidations, setFieldValidations] = useState<Record<string, { status: string; validatedAt?: string }>>({});
   const [isExtractingAI, setIsExtractingAI] = useState(false);
-  
-  // Fetch metadata from API
+
+  // Metadata read via React Query so (a) the parent contractKeys.detail
+  // invalidate from save/AI-extract triggers a refetch, (b) we share one
+  // in-flight request across tabs/components, and (c) focus refetch keeps
+  // stale metadata out of the UI.
+  const metadataQueryKey = useMemo(
+    () => [...contractKeys.detail(contractId), 'metadata'] as const,
+    [contractId],
+  );
+  const metadataQuery = useQuery({
+    queryKey: metadataQueryKey,
+    queryFn: async () => {
+      const response = await fetch(`/api/contracts/${contractId}/metadata`, {
+        headers: { 'x-tenant-id': tenantId },
+      });
+      if (!response.ok) throw new Error(`Failed to load metadata: ${response.status}`);
+      const raw = await response.json();
+      // Route wraps payload via createSuccessResponse ({ success, data: { ... } })
+      // but legacy shape returned `metadata` at top level, so we tolerate both.
+      return raw?.data ?? raw;
+    },
+    enabled: Boolean(contractId && tenantId),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
   useEffect(() => {
-    const fetchMetadata = async () => {
-      try {
-        const response = await fetch(`/api/contracts/${contractId}/metadata`, {
-          headers: { 'x-tenant-id': tenantId }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.metadata) {
-            setMetadataFromAPI(data.metadata);
-            // Extract field validations from customFields if present
-            const validations = data.metadata._fieldValidations || data.rawMetadata?.customFields?._fieldValidations;
-            if (validations) {
-              setFieldValidations(validations);
-            }
-          }
-        }
-      } catch {
-        // Silent fail for metadata fetch
-      }
-    };
-    
-    fetchMetadata();
-  }, [contractId, tenantId]);
+    const data = metadataQuery.data;
+    if (!data) return;
+    const m = data.metadata ?? data.enterpriseMetadata ?? null;
+    if (m) {
+      setMetadataFromAPI(m);
+      const validations =
+        m._fieldValidations || data.rawMetadata?.customFields?._fieldValidations;
+      if (validations) setFieldValidations(validations);
+    }
+  }, [metadataQuery.data]);
   
   // Handler for when a field is validated
   const handleFieldValidated = useCallback((fieldKey: string) => {
@@ -1819,32 +1832,26 @@ export function EnhancedContractMetadataSection({
       if (onSave) {
         await onSave(metadata);
       } else {
-        // Default save to API
+        // Default save to API — relies on the React Query invalidation below
+        // to pull fresh metadata, so no second GET here.
         const response = await fetch(`/api/contracts/${contractId}/metadata`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'x-tenant-id': tenantId },
           body: JSON.stringify({
             tenantId,
             metadata,
-            userId: 'current-user'
           })
         });
-        
+
         if (!response.ok) {
-          throw new Error('Failed to save metadata');
-        }
-        
-        // Fetch fresh metadata after save
-        const getResponse = await fetch(`/api/contracts/${contractId}/metadata`, {
-          headers: { 'x-tenant-id': tenantId }
-        });
-        
-        if (getResponse.ok) {
-          const data = await getResponse.json();
-          if (data.success && data.metadata) {
-            setMetadataFromAPI(data.metadata);
-            setMetadata(data.metadata);
-          }
+          // Surface the server's validation message (Zod flatten) instead of
+          // a generic toast, so the user sees which field is wrong.
+          let detail = `Failed to save metadata (${response.status})`;
+          try {
+            const body = await response.json();
+            detail = body?.error?.message || body?.message || detail;
+          } catch { /* non-JSON body */ }
+          throw new Error(detail);
         }
       }
       
@@ -1854,6 +1861,11 @@ export function EnhancedContractMetadataSection({
       
       setTimeout(() => setSaveSuccess(false), 3000);
       
+      // Refresh the parent contract query so every consumer (header, chatbot,
+      // overview, drafting) sees the new metadata without a full page reload.
+      queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) });
+      queryClient.invalidateQueries({ queryKey: metadataQueryKey });
+
       // Dispatch event to notify chatbot and other components about the update
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('artifact-updated', { 
@@ -1867,8 +1879,9 @@ export function EnhancedContractMetadataSection({
       if (onRefresh) {
         onRefresh();
       }
-    } catch {
-      toast.error('Failed to save metadata. Please try again.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save metadata. Please try again.';
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }
@@ -1914,6 +1927,11 @@ export function EnhancedContractMetadataSection({
           }
         }
         
+        // AI extraction rewrote aiMetadata + legacy columns on the contract row;
+        // bust the parent contract query so the UI picks up the new values.
+        queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) });
+        queryClient.invalidateQueries({ queryKey: metadataQueryKey });
+
         if (onRefresh) {
           onRefresh();
         }

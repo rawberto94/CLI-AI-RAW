@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api-middleware';
 import { notificationService } from 'data-orchestration/services';
 import { notificationBuffer } from '@/lib/notifications/notification-engine';
 
@@ -23,11 +23,7 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/notifications - Get user notifications
  */
-export async function GET(request: NextRequest) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const tenantId = ctx.tenantId;
     const userId = ctx.userId;
@@ -75,16 +71,12 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 /**
  * POST /api/notifications - Create a notification
  */
-export async function POST(request: NextRequest) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const tenantId = ctx.tenantId;
     const body = await request.json();
@@ -102,11 +94,23 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'At least one recipient is required', 400);
     }
 
+    const tenantRecipients = await prisma.user.findMany({
+      where: {
+        id: { in: targetUsers.map((uid: string) => String(uid)) },
+        tenantId,
+      },
+      select: { id: true },
+    });
+
+    if (tenantRecipients.length !== targetUsers.length) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'One or more recipients were not found', 404);
+    }
+
     try {
       const notifications = await prisma.notification.createMany({
-        data: targetUsers.map((uid: string) => ({
+        data: tenantRecipients.map(({ id }) => ({
           tenantId,
-          userId: uid,
+          userId: id,
           type: type || 'SYSTEM',
           title,
           message,
@@ -133,16 +137,12 @@ export async function POST(request: NextRequest) {
   } catch {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create notification', 500);
   }
-}
+})
 
 /**
  * PATCH /api/notifications - Mark notifications as read
  */
-export async function PATCH(request: NextRequest) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const tenantId = ctx.tenantId;
     const userId = ctx.userId;
@@ -196,16 +196,12 @@ export async function PATCH(request: NextRequest) {
   } catch {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update notifications', 500);
   }
-}
+})
 
 /**
  * DELETE /api/notifications - Delete notifications
  */
-export async function DELETE(request: NextRequest) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const tenantId = ctx.tenantId;
     const userId = ctx.userId;
@@ -257,4 +253,4 @@ export async function DELETE(request: NextRequest) {
   } catch {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to delete notification', 500);
   }
-}
+})

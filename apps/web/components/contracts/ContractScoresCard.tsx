@@ -174,7 +174,51 @@ function ScoreCard({ title, icon, value, subtitle, score, maxScore = 100, colorS
   )
 }
 
+// ============ COMPACT TILE ============
+
+interface CompactTileProps {
+  label: string
+  value: string
+  icon: React.ReactNode
+  percent: number
+  active: boolean
+  onClick: () => void
+  colorScheme: { text: string; bg: string; border: string; progress?: string }
+}
+
+function CompactTile({ label, value, icon, percent, active, onClick, colorScheme }: CompactTileProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "group relative flex items-center gap-2 px-3 py-2 rounded-lg border text-left transition-all",
+        "hover:bg-slate-50",
+        active ? "ring-2 ring-violet-400 border-violet-300 bg-white" : "border-slate-200 bg-white"
+      )}
+    >
+      <div className={cn("flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center", colorScheme.bg)}>
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-[11px] uppercase tracking-wide text-slate-500 font-medium truncate">{label}</span>
+          <span className={cn("text-sm font-semibold tabular-nums", colorScheme.text)}>{value}</span>
+        </div>
+        <div className="mt-1 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+          <div
+            className={cn("h-full rounded-full transition-all", colorScheme.progress ?? 'bg-slate-400')}
+            style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+          />
+        </div>
+      </div>
+    </button>
+  )
+}
+
 // ============ MAIN COMPONENT ============
+
+type MetricKey = 'extraction' | 'risk' | 'compliance' | 'health'
 
 export function ContractScoresCard({
   riskInfo,
@@ -185,187 +229,191 @@ export function ContractScoresCard({
   onRefresh,
   className,
 }: ContractScoresCardProps) {
-  // Normalize risk info to handle different formats from the hook
+  const [active, setActive] = useState<MetricKey | null>(null)
+
+  // Normalize risk info
   const riskLevel = riskInfo?.level || riskInfo?.riskLevel || 'unknown'
   const riskScore = riskInfo?.score ?? riskInfo?.riskScore ?? (riskLevel === 'low' ? 25 : riskLevel === 'medium' ? 50 : riskLevel === 'high' ? 75 : 0)
   const riskFactors = riskInfo?.factors || riskInfo?.risks?.map(r => r.title) || []
-  
+
   // Normalize compliance info
   const isCompliant = complianceInfo?.compliant ?? complianceInfo?.isCompliant ?? null
   const complianceScore = complianceInfo?.score ?? (isCompliant === true ? 100 : isCompliant === false ? 0 : 50)
   const complianceIssues = complianceInfo?.violations || complianceInfo?.checks?.filter(c => c.status !== 'passed').map(c => c.message || c.name) || []
-  
+
+  const healthScore = healthInfo?.score ?? 100
+
   const riskColors = getRiskColor(riskLevel)
   const complianceColors = getComplianceColor(isCompliant)
-  const healthColors = getHealthColor(healthInfo?.score ?? 100)
-  
+  const healthColors = getHealthColor(healthScore)
+  const extractionColors = { text: 'text-violet-600', bg: 'bg-violet-100', border: 'border-violet-200', progress: 'bg-gradient-to-r from-violet-500 to-purple-500' }
+
+  const toggle = (k: MetricKey) => setActive(prev => (prev === k ? null : k))
+
   return (
-    <Card className={cn("overflow-hidden", className)}>
-      <CardHeader className="pb-3 bg-gradient-to-r from-slate-50 to-purple-50/30 border-b">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Activity className="h-5 w-5 text-violet-600" />
-              Contract Scores & Assessment
-            </CardTitle>
-            <CardDescription className="mt-1">
-              AI-derived scores based on contract analysis
-            </CardDescription>
+    <Card className={cn("overflow-hidden border-slate-200", className)}>
+      <CardHeader className="py-2.5 px-4 border-b bg-slate-50/50">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <Activity className="h-4 w-4 text-violet-600" />
+            <span>Scores & Assessment</span>
+            {isProcessing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-slate-400 ml-1" />}
           </div>
-          
           {onRefresh && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onRefresh}
               disabled={isProcessing}
-              className="text-slate-500"
+              className="h-7 w-7 p-0 text-slate-500"
+              aria-label="Refresh scores"
             >
-              <RefreshCw className={cn("h-4 w-4", isProcessing && "animate-spin")} />
+              <RefreshCw className={cn("h-3.5 w-3.5", isProcessing && "animate-spin")} />
             </Button>
           )}
         </div>
       </CardHeader>
-      
-      <CardContent className="p-4 space-y-3">
-        {/* Extraction Confidence */}
-        {extractionConfidence !== undefined && (
-          <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-violet-500" />
-              <span className="text-sm text-slate-600">AI Extraction Confidence</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-20 bg-slate-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full"
-                  style={{ width: `${extractionConfidence}%` }}
-                />
-              </div>
-              <span className="text-sm font-semibold text-violet-600">{extractionConfidence}%</span>
-            </div>
-          </div>
-        )}
-        
-        {/* Risk Score */}
-        <ScoreCard
-          title="Risk Level"
-          icon={<AlertTriangle className={cn("h-5 w-5", riskColors.text)} />}
-          value={riskLevel ? riskLevel.toUpperCase() : 'Unknown'}
-          subtitle={riskScore ? `Score: ${riskScore}/100` : undefined}
-          score={riskScore}
-          colorScheme={riskColors}
-          explanation="Risk is calculated based on extracted risk factors including liability clauses, indemnification terms, termination conditions, and penalty provisions. Higher scores indicate more risk factors detected."
-          details={
-            riskFactors.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-slate-600">Risk Factors Detected:</p>
-                <ul className="space-y-1">
-                  {riskFactors.map((factor, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-xs text-slate-600">
-                      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-red-500" />
-                      {factor}
-                    </li>
-                  ))}
-                </ul>
-                {riskInfo?.mitigations && riskInfo.mitigations.length > 0 && (
-                  <>
-                    <p className="text-xs font-medium text-slate-600 mt-3">Suggested Mitigations:</p>
-                    <ul className="space-y-1">
-                      {riskInfo.mitigations.map((mitigation, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-xs text-slate-600">
-                          <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-green-500" />
-                          {mitigation}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
-            )
-          }
-        />
-        
-        {/* Compliance Score */}
-        <ScoreCard
-          title="Compliance Status"
-          icon={<Scale className={cn("h-5 w-5", complianceColors.text)} />}
-          value={isCompliant === true ? 'Compliant' : isCompliant === false ? 'Non-Compliant' : 'Unknown'}
-          subtitle={complianceScore ? `Confidence: ${complianceScore}%` : undefined}
-          score={complianceScore}
-          colorScheme={complianceColors}
-          explanation="Compliance is determined by checking contract terms against standard regulatory requirements, company policies, and industry standards. The score reflects confidence in the compliance assessment."
-          details={
-            complianceIssues.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-slate-600">Compliance Issues:</p>
-                <ul className="space-y-1">
-                  {complianceIssues.map((violation, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-xs text-slate-600">
-                      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5 text-red-500" />
-                      {violation}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )
-          }
-        />
-        
-        {/* Health Score */}
-        <ScoreCard
-          title="Contract Health"
-          icon={<Activity className={cn("h-5 w-5", healthColors.text)} />}
-          value={`${healthInfo?.score ?? 100}%`}
-          subtitle={healthInfo?.completeness ? `${healthInfo.completeness}% metadata complete` : undefined}
-          score={healthInfo?.score ?? 100}
-          colorScheme={healthColors}
-          explanation="Health score is calculated from: base score of 100, minus deductions for detected issues (high severity: -20, medium: -10, low: -5), plus bonuses for established parent (+5) and child (+5) relationships."
-          details={
-            healthInfo?.issues && healthInfo.issues.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-slate-600">Issues Affecting Score:</p>
-                <ul className="space-y-1.5">
-                  {healthInfo.issues.map((issue, idx) => (
-                    <li key={idx} className={cn(
-                      "flex items-start gap-2 p-2 rounded text-xs",
-                      issue.severity === 'high' && 'bg-red-50 text-red-700',
-                      issue.severity === 'medium' && 'bg-amber-50 text-amber-700',
-                      issue.severity === 'low' && 'bg-violet-50 text-violet-700'
-                    )}>
-                      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-medium">{issue.type}:</span> {issue.message}
-                        <span className="ml-2 opacity-60">
-                          ({issue.severity === 'high' ? '-20' : issue.severity === 'medium' ? '-10' : '-5'} points)
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )
-          }
-        />
-        
-        {/* Processing indicator */}
-        {isProcessing && (
-          <div className="flex items-center justify-center gap-2 p-4 text-sm text-slate-500">
-            <RefreshCw className="h-4 w-4 animate-spin" />
-            <span>Recalculating scores...</span>
-          </div>
-        )}
-        
-        {/* Legend/Help */}
-        <div className="pt-3 border-t">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span className="flex items-center gap-1.5">
-              <HelpCircle className="h-3.5 w-3.5" />
-              Click each score to see detailed breakdown
-            </span>
-            <span>Scores are automatically updated when contract changes</span>
-          </div>
+
+      <CardContent className="p-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          {extractionConfidence !== undefined && (
+            <CompactTile
+              label="Extraction"
+              value={`${extractionConfidence}%`}
+              icon={<Sparkles className="h-3.5 w-3.5 text-violet-600" />}
+              percent={extractionConfidence}
+              active={active === 'extraction'}
+              onClick={() => toggle('extraction')}
+              colorScheme={extractionColors}
+            />
+          )}
+          <CompactTile
+            label="Risk"
+            value={riskLevel === 'unknown' ? '—' : riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}
+            icon={<AlertTriangle className={cn("h-3.5 w-3.5", riskColors.text)} />}
+            percent={riskScore}
+            active={active === 'risk'}
+            onClick={() => toggle('risk')}
+            colorScheme={riskColors}
+          />
+          <CompactTile
+            label="Compliance"
+            value={isCompliant === true ? 'OK' : isCompliant === false ? 'Issues' : '—'}
+            icon={<Scale className={cn("h-3.5 w-3.5", complianceColors.text)} />}
+            percent={complianceScore}
+            active={active === 'compliance'}
+            onClick={() => toggle('compliance')}
+            colorScheme={{ ...complianceColors, progress: isCompliant === true ? 'bg-green-500' : isCompliant === false ? 'bg-red-500' : 'bg-slate-400' }}
+          />
+          <CompactTile
+            label="Health"
+            value={`${healthScore}%`}
+            icon={<Activity className={cn("h-3.5 w-3.5", healthColors.text)} />}
+            percent={healthScore}
+            active={active === 'health'}
+            onClick={() => toggle('health')}
+            colorScheme={healthColors}
+          />
         </div>
+
+        {active && (
+          <div className="mt-3 p-3 rounded-lg bg-slate-50 border text-xs text-slate-600 space-y-2">
+            {active === 'extraction' && (
+              <>
+                <p className="font-medium text-slate-700 flex items-center gap-1.5">
+                  <Info className="h-3.5 w-3.5" /> AI Extraction Confidence
+                </p>
+                <p>
+                  Confidence that AI-extracted metadata (parties, dates, values, clauses) is accurate. Low confidence
+                  suggests reviewing extraction results manually.
+                </p>
+              </>
+            )}
+            {active === 'risk' && (
+              <>
+                <p className="font-medium text-slate-700 flex items-center gap-1.5">
+                  <Info className="h-3.5 w-3.5" /> Risk Level — {riskScore}/100
+                </p>
+                <p>
+                  Based on liability, indemnification, termination, and penalty provisions detected in the contract.
+                </p>
+                {riskFactors.length > 0 && (
+                  <ul className="space-y-1 pt-1">
+                    {riskFactors.slice(0, 6).map((f, i) => (
+                      <li key={i} className="flex items-start gap-1.5">
+                        <AlertCircle className="h-3 w-3 mt-0.5 text-red-500 flex-shrink-0" />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {riskInfo?.mitigations && riskInfo.mitigations.length > 0 && (
+                  <ul className="space-y-1 pt-1">
+                    {riskInfo.mitigations.slice(0, 4).map((m, i) => (
+                      <li key={i} className="flex items-start gap-1.5">
+                        <CheckCircle2 className="h-3 w-3 mt-0.5 text-green-500 flex-shrink-0" />
+                        <span>{m}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+            {active === 'compliance' && (
+              <>
+                <p className="font-medium text-slate-700 flex items-center gap-1.5">
+                  <Info className="h-3.5 w-3.5" /> Compliance — {complianceScore}% confidence
+                </p>
+                <p>
+                  Checks contract terms against regulatory requirements, company policies, and industry standards.
+                </p>
+                {complianceIssues.length > 0 && (
+                  <ul className="space-y-1 pt-1">
+                    {complianceIssues.slice(0, 6).map((v, i) => (
+                      <li key={i} className="flex items-start gap-1.5">
+                        <AlertCircle className="h-3 w-3 mt-0.5 text-red-500 flex-shrink-0" />
+                        <span>{v}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+            {active === 'health' && (
+              <>
+                <p className="font-medium text-slate-700 flex items-center gap-1.5">
+                  <Info className="h-3.5 w-3.5" /> Contract Health — {healthScore}%
+                  {healthInfo?.completeness !== undefined && (
+                    <span className="text-slate-500 font-normal">· {healthInfo.completeness}% metadata complete</span>
+                  )}
+                </p>
+                <p>
+                  Base 100 minus issue deductions (high −20, medium −10, low −5) plus relationship bonuses (+5 each).
+                </p>
+                {healthInfo?.issues && healthInfo.issues.length > 0 && (
+                  <ul className="space-y-1 pt-1">
+                    {healthInfo.issues.slice(0, 8).map((issue, i) => (
+                      <li key={i} className={cn(
+                        "flex items-start gap-1.5 px-2 py-1 rounded",
+                        issue.severity === 'high' && 'bg-red-50 text-red-700',
+                        issue.severity === 'medium' && 'bg-amber-50 text-amber-700',
+                        issue.severity === 'low' && 'bg-violet-50 text-violet-700'
+                      )}>
+                        <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                        <span><span className="font-medium">{issue.type}:</span> {issue.message}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        <p className="mt-2 text-[11px] text-slate-400 flex items-center gap-1">
+          <HelpCircle className="h-3 w-3" />
+          Click a tile for details
+        </p>
       </CardContent>
     </Card>
   )

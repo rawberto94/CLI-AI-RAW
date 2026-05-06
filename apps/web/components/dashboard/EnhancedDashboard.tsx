@@ -77,6 +77,7 @@ const riskColors: Record<string, string> = { Low: '#10b981', Medium: '#f59e0b', 
 export function EnhancedDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
   const [contractsByStatusData, setContractsByStatusData] = useState<{ name: string; value: number; color: string }[]>([]);
   const [riskDistributionData, setRiskDistributionData] = useState<{ name: string; value: number; color: string }[]>([]);
@@ -90,12 +91,15 @@ export function EnhancedDashboard() {
 
   const fetchMetrics = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const response = await fetch(`/api/analytics/dashboard?timeframe=${timeframe}`);
-      if (response.ok) {
-        const raw = await response.json();
-        const data = raw.data ?? raw;
-        setMetrics(data.metrics ?? data);
+      if (!response.ok) {
+        throw new Error(`Request failed (${response.status})`);
+      }
+      const raw = await response.json();
+      const data = raw.data ?? raw;
+      setMetrics(data.metrics ?? data);
 
         // Wire chart data from API response
         if (data.statusDistribution) {
@@ -130,12 +134,11 @@ export function EnhancedDashboard() {
             setWorkflowData(wf.filter(Boolean).map((w: any) => ({ stage: w.stage || w.name || '', count: Number(w.count || w.value) || 0 })));
           }
         }
-      } else {
-        setMetrics(emptyMetrics);
-      }
-    } catch {
+    } catch (error) {
       setMetrics(emptyMetrics);
-      toast.error('Failed to load analytics data');
+      const message = error instanceof Error ? error.message : 'Failed to load analytics data';
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -178,6 +181,19 @@ export function EnhancedDashboard() {
 
   return (
     <div className="space-y-6">
+      {loadError && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-rose-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-rose-900">Analytics data unavailable</h3>
+            <p className="text-sm text-rose-700 mt-1">{loadError}. Showing empty state until reload.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchMetrics}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+            Retry
+          </Button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>

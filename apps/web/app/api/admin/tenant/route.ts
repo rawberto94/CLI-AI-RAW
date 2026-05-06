@@ -4,11 +4,14 @@
  */
 
 import { NextRequest } from 'next/server';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
-import { monitoringService } from 'data-orchestration/services';
 
 export const GET = withAuthApiHandler(async (_request, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   const tenant = await prisma.tenant.findUnique({
     where: { id: ctx.tenantId },
     include: {
@@ -60,6 +63,10 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
 });
 
 export const PATCH = withAuthApiHandler(async (request, ctx) => {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
+  }
+
   const body = await request.json();
   const { name } = body;
 

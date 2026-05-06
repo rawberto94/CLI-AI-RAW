@@ -8,15 +8,23 @@ import { rateCardBenchmarkingService } from 'data-orchestration/services';
  * List saved comparisons for the tenant
  */
 export const GET = withAuthApiHandler(async (request, ctx) => {
-    const searchParams = request.nextUrl.searchParams;
     const tenantId = ctx.tenantId;
-    const _userId = searchParams.get('userId');
+    const userId = ctx.userId;
+    const isTenantAdmin = ctx.userRole === 'admin' || ctx.userRole === 'owner';
 
     if (!tenantId) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
-  const where: Record<string, unknown> = { tenantId };
+  const where: Record<string, unknown> = isTenantAdmin
+    ? { tenantId }
+    : {
+        tenantId,
+        OR: [
+          { createdBy: userId },
+          { isShared: true },
+        ],
+      };
     const comparisons = await prisma.rateComparison.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -34,7 +42,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
  */
 export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
-    const { name, description, rateCardIds, comparisonType, userId } = body;
+  const { name, description, rateCardIds, comparisonType } = body;
     const tenantId = ctx.tenantId;
 
     if (!tenantId) {
@@ -51,7 +59,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         tenantId,
         comparisonName: name,
         comparisonType: comparisonType || 'CUSTOM',
-        createdBy: userId || 'system',
+        createdBy: ctx.userId,
         targetRateId: rateCardIds[0],
         comparisonRates: rateCardIds.slice(1),
         results: {},

@@ -18,9 +18,8 @@ import {
   type ExtractionResult
 } from '@/lib/ai/metadata-extractor';
 import { MetadataSchemaService } from '@/lib/services/metadata-schema.service';
-import { getApiTenantId } from '@/lib/tenant-server';
 import { queueRAGReindex } from '@/lib/rag/reindex-helper';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { hasAIClientConfig } from '@/lib/openai-client';
 import { logger } from '@/lib/logger';
 
@@ -44,28 +43,26 @@ interface FieldConfidenceData {
 /**
  * POST /api/contracts/[id]/extract-metadata - Extract metadata from contract
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id: contractId } = await params;
-  
-  const ctx = getAuthenticatedApiContext(request);
-  
-  if (!ctx) {
-  
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  
-  }
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+
   try {
     const body: ExtractRequest = await request.json();
-    const tenantId = await getApiTenantId(request);
+    const tenantId = ctx.tenantId;
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
+    }
+
+    const contract = await getTenantContract(contractId, tenantId);
+    if (!contract) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
+    }
     
     let documentText = body.documentText;
 
     // If no text provided, try to get from contract
     if (!documentText || body.useContractText) {
-      const fetchedText = await getContractText(contractId);
+      const fetchedText = contract.rawText || contract.searchableText || null;
       if (!fetchedText) {
         return createErrorResponse(ctx, 'BAD_REQUEST', 'No document text available for extraction', 400);
       }
@@ -127,24 +124,21 @@ export async function POST(
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 /**
  * GET /api/contracts/[id]/extract-metadata - Get previous extraction results
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id: contractId } = await params;
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+export const GET = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+  const tenantId = ctx.tenantId;
+
+  if (!tenantId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
   }
-  const _tenantId = await getApiTenantId(request);
 
   try {
-    const results = await getExtractionResults(contractId);
+    const results = await getExtractionResults(contractId, tenantId);
     
     if (!results) {
       return createErrorResponse(ctx, 'NOT_FOUND', 'An error occurred', 404);
@@ -158,23 +152,25 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 /**
  * PUT /api/contracts/[id]/extract-metadata - Apply extracted metadata to contract
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id: contractId } = await params;
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+export const PUT = withContractApiHandler(async (request: NextRequest, ctx) => {
+  const { id: contractId } = await (ctx as any).params as { id: string };
+  const tenantId = ctx.tenantId;
+
+  if (!tenantId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
   }
-  const tenantId = await getApiTenantId(request);
 
   try {
+    const contract = await getTenantContract(contractId, tenantId);
+    if (!contract) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
+    }
+
     const body = await request.json();
     const { 
       fields, 
@@ -225,37 +221,28 @@ export async function PUT(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
-async function getContractText(contractId: string): Promise<string | null> {
+async function getTenantContract(
+  contractId: string,
+  tenantId: string,
+): Promise<{ rawText: string | null; searchableText: string | null } | null> {
   try {
     const { prisma } = await import('@/lib/prisma');
-    
-    // Try to get raw text from contract
-    const contract = await prisma.contract.findUnique({
-      where: { id: contractId },
+
+    return await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
       select: { 
         rawText: true,
         searchableText: true,
       }
     });
-
-    if (contract?.rawText) {
-      return contract.rawText;
-    }
-
-    // If no raw text, try searchableText
-    if (contract?.searchableText) {
-      return contract.searchableText;
-    }
-
-    return null;
   } catch (error) {
-    logger.error('[ExtractMetadata] getContractText failed', error);
+    logger.error('[ExtractMetadata] getTenantContract failed', error);
     return null;
   }
 }
@@ -325,10 +312,20 @@ async function saveExtractionResults(
 }
 
 async function getExtractionResults(
-  contractId: string
+  contractId: string,
+  tenantId: string,
 ): Promise<Record<string, unknown> | null> {
   try {
     const { prisma } = await import('@/lib/prisma');
+
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
+      select: { id: true }
+    });
+
+    if (!contract) {
+      return null;
+    }
     
     const metadata = await prisma.contractMetadata.findUnique({
       where: { contractId },
@@ -351,6 +348,15 @@ async function applyMetadataToContract(
 ): Promise<void> {
   try {
     const { prisma } = await import('@/lib/prisma');
+
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
+      select: { id: true }
+    });
+
+    if (!contract) {
+      throw new Error('Contract not found');
+    }
     
     const existing = await prisma.contractMetadata.findUnique({
       where: { contractId }

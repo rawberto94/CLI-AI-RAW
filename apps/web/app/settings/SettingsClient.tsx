@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { PageBreadcrumb } from '@/components/navigation';
+import { unwrapApiResponseData } from '@/lib/api-fetch';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -51,7 +52,7 @@ const DEFAULT_SETTINGS = {
     weeklyDigest: true,
   },
   security: {
-    sessionTimeout: 480,
+    sessionTimeout: 8,
     requireMFA: false,
     passwordMinLength: 8,
   },
@@ -90,6 +91,7 @@ export default function SettingsClient() {
     retentionPeriod: '7',
     backupFrequency: 'daily',
   });
+  const canManageTenantSettings = ['admin', 'owner'].includes(userInfo?.role?.toLowerCase() ?? '');
 
   // Fetch settings from API on mount
   useEffect(() => {
@@ -97,9 +99,9 @@ export default function SettingsClient() {
       try {
         const res = await fetch('/api/settings');
         if (res.ok) {
-          const data = await res.json();
-          const settings = data.data?.settings || data.settings || DEFAULT_SETTINGS;
-          const user = data.data?.user || data.user;
+          const data = unwrapApiResponseData<{ settings?: typeof DEFAULT_SETTINGS & { processing?: Record<string, unknown> }; user?: UserInfo | null }>(await res.json());
+          const settings = data.settings || DEFAULT_SETTINGS;
+          const user = data.user;
           if (user) setUserInfo(user);
           if (settings.system) setSystemSettings(s => ({ ...s, ...settings.system }));
           if (settings.notifications) setNotificationSettings(s => ({ ...s, ...settings.notifications }));
@@ -160,9 +162,13 @@ export default function SettingsClient() {
       const sections = [
         { section: 'system', updates: systemSettings },
         { section: 'notifications', updates: notificationSettings },
-        { section: 'security', updates: securitySettings },
         { section: 'display', updates: displaySettings },
-        { section: 'processing', updates: processingSettings },
+        ...(canManageTenantSettings
+          ? [
+              { section: 'security', updates: securitySettings },
+              { section: 'processing', updates: processingSettings },
+            ]
+          : []),
       ];
 
       const results = await Promise.all(
@@ -189,7 +195,7 @@ export default function SettingsClient() {
     } finally {
       setSaving(false);
     }
-  }, [systemSettings, notificationSettings, securitySettings, displaySettings, processingSettings]);
+  }, [canManageTenantSettings, systemSettings, notificationSettings, securitySettings, displaySettings, processingSettings]);
 
   // Reset to defaults
   const handleResetDefaults = useCallback(() => {
@@ -587,104 +593,124 @@ export default function SettingsClient() {
 
           {/* Security Settings */}
           {activeTab === "security" && (
-            <>
-              <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-gradient-to-br from-red-500 to-rose-500 rounded-lg shadow-lg shadow-red-500/25">
-                      <Lock className="w-5 h-5 text-white" />
+            canManageTenantSettings ? (
+              <>
+                <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <div className="p-2 bg-gradient-to-br from-red-500 to-rose-500 rounded-lg shadow-lg shadow-red-500/25">
+                        <Lock className="w-5 h-5 text-white" />
+                      </div>
+                      Authentication & Security
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
+                      <div className="flex items-center gap-3">
+                        <Shield className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                        <div>
+                          <h4 className="font-medium text-slate-800 dark:text-slate-200">
+                            Two-Factor Authentication
+                          </h4>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            {securitySettings.requireMFA ? 'Required for all users' : 'Optional'}
+                          </p>
+                        </div>
+                      </div>
+                      <Toggle
+                        checked={securitySettings.requireMFA}
+                        onChange={(checked) => updateSecurity({ requireMFA: checked })}
+                        size="sm"
+                      />
                     </div>
-                    Authentication & Security
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
-                    <div className="flex items-center gap-3">
-                      <Shield className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <h4 className="font-medium text-slate-800 dark:text-slate-200">
-                          Two-Factor Authentication
-                        </h4>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                          {securitySettings.requireMFA ? 'Required for all users' : 'Optional'}
-                        </p>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                          Session Timeout (hours)
+                        </label>
+                        <select
+                          value={securitySettings.sessionTimeout}
+                          onChange={(e) => updateSecurity({ sessionTimeout: Number(e.target.value) })}
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                        >
+                          <option value={1}>1 hour</option>
+                          <option value={4}>4 hours</option>
+                          <option value={8}>8 hours</option>
+                          <option value={24}>24 hours</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                          Min Password Length
+                        </label>
+                        <select
+                          value={securitySettings.passwordMinLength}
+                          onChange={(e) => updateSecurity({ passwordMinLength: Number(e.target.value) })}
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                        >
+                          <option value={6}>6 characters</option>
+                          <option value={8}>8 characters</option>
+                          <option value={12}>12 characters</option>
+                          <option value={16}>16 characters</option>
+                        </select>
                       </div>
                     </div>
-                    <Toggle
-                      checked={securitySettings.requireMFA}
-                      onChange={(checked) => updateSecurity({ requireMFA: checked })}
-                      size="sm"
-                    />
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        Session Timeout (minutes)
-                      </label>
-                      <select
-                        value={securitySettings.sessionTimeout}
-                        onChange={(e) => updateSecurity({ sessionTimeout: Number(e.target.value) })}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                      >
-                        <option value={60}>1 hour</option>
-                        <option value={240}>4 hours</option>
-                        <option value={480}>8 hours</option>
-                        <option value={1440}>24 hours</option>
-                      </select>
+                    <Link href="/settings/profile">
+                      <Button variant="outline">
+                        <Key className="w-4 h-4 mr-2" />
+                        Change Password
+                      </Button>
+                    </Link>
+
+                    <Link href="/admin/security">
+                      <Button variant="ghost">
+                        <Shield className="w-4 h-4 mr-2" />
+                        Advanced Security Policies
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg shadow-lg shadow-violet-500/25">
+                        <Key className="w-5 h-5 text-white" />
+                      </div>
+                      API Access
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <div>
+                        <h4 className="font-medium text-slate-800 dark:text-slate-200">
+                          API Tokens
+                        </h4>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          Programmatic access to the Contigo API will be available soon.
+                        </p>
+                      </div>
+                      <span className="text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-full">
+                        Coming Soon
+                      </span>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        Min Password Length
-                      </label>
-                      <select
-                        value={securitySettings.passwordMinLength}
-                        onChange={(e) => updateSecurity({ passwordMinLength: Number(e.target.value) })}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                      >
-                        <option value={6}>6 characters</option>
-                        <option value={8}>8 characters</option>
-                        <option value={12}>12 characters</option>
-                        <option value={16}>16 characters</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <Link href="/settings/profile">
-                    <Button variant="outline">
-                      <Key className="w-4 h-4 mr-2" />
-                      Change Password
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
               <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg shadow-lg shadow-violet-500/25">
-                      <Key className="w-5 h-5 text-white" />
-                    </div>
-                    API Access
-                  </CardTitle>
+                  <CardTitle>Admin Access Required</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <div>
-                      <h4 className="font-medium text-slate-800 dark:text-slate-200">
-                        API Tokens
-                      </h4>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Programmatic access to the Contigo API will be available soon.
-                      </p>
-                    </div>
-                    <span className="text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-full">
-                      Coming Soon
-                    </span>
-                  </div>
+                <CardContent>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    Tenant-wide security policies are managed by organization admins from the admin security surface.
+                  </p>
                 </CardContent>
               </Card>
-            </>
+            )
           )}
 
           {/* Notifications Settings */}
@@ -746,10 +772,7 @@ export default function SettingsClient() {
                 </div>
 
                 <p className="text-xs text-slate-400">
-                  For more granular notification settings, visit{' '}
-                  <Link href="/settings/notifications" className="text-violet-500 hover:underline">
-                    Notification Settings →
-                  </Link>
+                  Granular notification controls are not exposed on a separate page yet. The toggles above are the supported settings.
                 </p>
               </CardContent>
             </Card>
@@ -757,79 +780,92 @@ export default function SettingsClient() {
 
           {/* Processing Settings */}
           {activeTab === "processing" && (
-            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <div className="p-2 bg-gradient-to-br from-violet-500 to-pink-500 rounded-lg shadow-lg shadow-violet-500/25">
-                    <Zap className="w-5 h-5 text-white" />
-                  </div>
-                  Processing Configuration
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-4">
-                      Automated Processing
-                    </h4>
-                    <div className="space-y-3">
-                      {([
-                        ['autoProcessing', 'Auto-process uploads'],
-                        ['aiAnalysis', 'AI Analysis'],
-                        ['riskAssessment', 'Risk Assessment'],
-                        ['ocrEnabled', 'OCR Processing'],
-                      ] as const).map(([key, label]) => (
-                        <div key={key} className="flex items-center justify-between">
-                          <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
-                          <Toggle
-                            checked={(processingSettings as unknown as Record<string, boolean>)[key] ?? true}
-                            onChange={(checked) => updateProcessing({ [key]: checked })}
-                            size="sm"
-                          />
-                        </div>
-                      ))}
+            canManageTenantSettings ? (
+              <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-2 bg-gradient-to-br from-violet-500 to-pink-500 rounded-lg shadow-lg shadow-violet-500/25">
+                      <Zap className="w-5 h-5 text-white" />
                     </div>
-                  </div>
+                    Processing Configuration
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-4">
+                        Automated Processing
+                      </h4>
+                      <div className="space-y-3">
+                        {([
+                          ['autoProcessing', 'Auto-process uploads'],
+                          ['aiAnalysis', 'AI Analysis'],
+                          ['riskAssessment', 'Risk Assessment'],
+                          ['ocrEnabled', 'OCR Processing'],
+                        ] as const).map(([key, label]) => (
+                          <div key={key} className="flex items-center justify-between">
+                            <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
+                            <Toggle
+                              checked={(processingSettings as unknown as Record<string, boolean>)[key] ?? true}
+                              onChange={(checked) => updateProcessing({ [key]: checked })}
+                              size="sm"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
 
-                  <div>
-                    <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-4">
-                      Data Management
-                    </h4>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                          Retention Period
-                        </label>
-                        <select
-                          value={(processingSettings as unknown as Record<string, string>).retentionPeriod ?? '7'}
-                          onChange={(e) => updateProcessing({ retentionPeriod: e.target.value })}
-                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                        >
-                          <option value="1">1 year</option>
-                          <option value="3">3 years</option>
-                          <option value="7">7 years</option>
-                          <option value="10">10 years</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                          Backup Frequency
-                        </label>
-                        <select
-                          value={(processingSettings as unknown as Record<string, string>).backupFrequency ?? 'daily'}
-                          onChange={(e) => updateProcessing({ backupFrequency: e.target.value })}
-                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                        >
-                          <option value="hourly">Hourly</option>
-                          <option value="daily">Daily</option>
-                          <option value="weekly">Weekly</option>
-                        </select>
+                    <div>
+                      <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-4">
+                        Data Management
+                      </h4>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                            Retention Period
+                          </label>
+                          <select
+                            value={(processingSettings as unknown as Record<string, string>).retentionPeriod ?? '7'}
+                            onChange={(e) => updateProcessing({ retentionPeriod: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                          >
+                            <option value="1">1 year</option>
+                            <option value="3">3 years</option>
+                            <option value="7">7 years</option>
+                            <option value="10">10 years</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                            Backup Frequency
+                          </label>
+                          <select
+                            value={(processingSettings as unknown as Record<string, string>).backupFrequency ?? 'daily'}
+                            onChange={(e) => updateProcessing({ backupFrequency: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                          >
+                            <option value="hourly">Hourly</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
+                <CardHeader>
+                  <CardTitle>Admin Access Required</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    Processing defaults affect the whole tenant and can only be changed by an organization admin.
+                  </p>
+                </CardContent>
+              </Card>
+            )
           )}
 
           {/* Integrations Settings */}

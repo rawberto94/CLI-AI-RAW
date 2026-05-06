@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 const signatureRequestSchema = z.object({
   signers: z.array(z.object({
@@ -16,16 +16,9 @@ const signatureRequestSchema = z.object({
 });
 
 // GET /api/contracts/[id]/signatures - Get signature workflows for a contract
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withContractApiHandler(async (_request: NextRequest, ctx) => {
   try {
-    const { id: contractId } = await params;
+    const { id: contractId } = await (ctx as any).params as { id: string };
 
     // Verify contract belongs to the caller's tenant
     const tenantId = ctx.tenantId;
@@ -63,19 +56,12 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // POST /api/contracts/[id]/signatures - Create a new signature request
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const POST = withContractApiHandler(async (request: NextRequest, ctx) => {
   try {
-    const { id: contractId } = await params;
+    const { id: contractId } = await (ctx as any).params as { id: string };
     const { signers, provider, message, expiresInDays } = signatureRequestSchema.parse(await request.json());
 
     const newWorkflow = {
@@ -141,4 +127,4 @@ export async function POST(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

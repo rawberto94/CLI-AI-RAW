@@ -72,9 +72,9 @@ const eventOptions = [
   { value: 'contract.updated', label: 'Contract Updated', description: 'When contract metadata is updated' },
   { value: 'contract.deleted', label: 'Contract Deleted', description: 'When a contract is deleted' },
   { value: 'artifact.generated', label: 'Artifact Generated', description: 'When AI artifacts are created' },
-  { value: 'risk.detected', label: 'Risk Detected', description: 'When high-risk clauses are found' },
-  { value: 'deadline.approaching', label: 'Deadline Approaching', description: 'When a deadline is near' },
-  { value: 'import.completed', label: 'Import Completed', description: 'When bulk import finishes' },
+  { value: 'alert.risk_detected', label: 'Risk Detected', description: 'When high-risk clauses are found' },
+  { value: 'alert.deadline_approaching', label: 'Deadline Approaching', description: 'When a deadline is near' },
+  { value: 'ocr.completed', label: 'OCR Completed', description: 'When OCR processing finishes successfully' },
 ];
 
 export const WebhooksManager = memo(function WebhooksManager({

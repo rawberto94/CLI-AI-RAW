@@ -6,8 +6,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@/lib/auth';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { monitoringService } from 'data-orchestration/services';
 
 /**
@@ -41,23 +40,11 @@ async function verifyPlatformAdminAccess(
 }
 
 // GET - Get tenant details
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenantId: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
-    const session = await auth();
-    const { tenantId } = await params;
-    
-    if (!session?.user?.id) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
+    const { tenantId } = await (ctx as any).params as { tenantId: string };
 
-    const accessDenied = await verifyPlatformAdminAccess(ctx, session.user.id, tenantId);
+    const accessDenied = await verifyPlatformAdminAccess(ctx, ctx.userId, tenantId);
     if (accessDenied) return accessDenied;
 
     // Get tenant with full details
@@ -117,26 +104,14 @@ export async function GET(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // PATCH - Update tenant
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenantId: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
-    const session = await auth();
-    const { tenantId } = await params;
-    
-    if (!session?.user?.id) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
+    const { tenantId } = await (ctx as any).params as { tenantId: string };
 
-    const accessDenied = await verifyPlatformAdminAccess(ctx, session.user.id, tenantId);
+    const accessDenied = await verifyPlatformAdminAccess(ctx, ctx.userId, tenantId);
     if (accessDenied) return accessDenied;
 
     const body = await request.json();
@@ -157,26 +132,14 @@ export async function PATCH(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})
 
 // DELETE - Delete/deactivate tenant
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenantId: string }> }
-) {
-  const ctx = getAuthenticatedApiContext(request);
-  if (!ctx) {
-    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
-  }
+export const DELETE = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
-    const session = await auth();
-    const { tenantId } = await params;
-    
-    if (!session?.user?.id) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
+    const { tenantId } = await (ctx as any).params as { tenantId: string };
 
-    const accessDenied = await verifyPlatformAdminAccess(ctx, session.user.id, tenantId);
+    const accessDenied = await verifyPlatformAdminAccess(ctx, ctx.userId, tenantId);
     if (accessDenied) return accessDenied;
 
     // Soft delete - set status to SUSPENDED
@@ -193,4 +156,4 @@ export async function DELETE(
   } catch (error) {
     return handleApiError(ctx, error);
   }
-}
+})

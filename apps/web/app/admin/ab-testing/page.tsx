@@ -257,16 +257,20 @@ export default function ABTestingPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [filter, setFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchExperiments = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const res = await fetch('/api/ai/ab-test');
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const json = await res.json();
-      if (json.success && json.data?.tests) {
-        setExperiments(json.data.tests.map(mapApiTestToExperiment));
-      }
-    } catch {
+      if (!json.success) throw new Error(json.error || 'Request was not successful');
+      setExperiments((json.data?.tests || []).map(mapApiTestToExperiment));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load experiments';
+      setLoadError(msg);
       toast.error('Failed to load experiments');
     } finally {
       setLoading(false);
@@ -329,6 +333,21 @@ export default function ABTestingPage() {
             Run experiments to optimize AI extraction performance
           </p>
         </div>
+        {loadError && (
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-rose-200 bg-rose-50/50 p-4 max-w-xl">
+            <div className="flex items-start gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium">Couldn’t load experiments</p>
+                <p className="text-sm text-rose-700 mt-1">{loadError}</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={fetchExperiments} className="flex-shrink-0">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        )}
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
             <Button>

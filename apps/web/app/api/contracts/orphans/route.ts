@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { contractService } from 'data-orchestration/services'
 import { getTenantIdFromRequest } from '@/lib/tenant-server'
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic'
 
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
  * GET /api/contracts/orphans
  * Returns contracts that should have parent relationships but don't
  */
-export const GET = withAuthApiHandler(async (request, ctx) => {
+export const GET = withContractApiHandler(async (request, ctx) => {
   let tenantId: string
   
   try {

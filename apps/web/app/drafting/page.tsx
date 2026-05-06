@@ -40,6 +40,8 @@ import {
   History,
   Paperclip,
   ChevronRight,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -611,6 +613,7 @@ export default function DraftingPage() {
   const router = useRouter()
   const [drafts, setDrafts] = useState<Draft[]>([])
   const [draftsLoading, setDraftsLoading] = useState(true)
+  const [draftsError, setDraftsError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
   const [activeTab, setActiveTab] = useState('drafts')
@@ -748,6 +751,7 @@ export default function DraftingPage() {
   const fetchDrafts = useCallback(async () => {
     try {
       setDraftsLoading(true)
+      setDraftsError(null)
       const params = new URLSearchParams({ limit: '50', sortBy: 'updatedAt', sortOrder: 'desc' })
       if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim())
       if (statusFilter) params.set('status', statusFilter)
@@ -755,10 +759,12 @@ export default function DraftingPage() {
       if (res.ok) {
         const data = await res.json()
         setDrafts(data.data?.drafts || [])
+      } else {
+        throw new Error(`Server returned ${res.status}`)
       }
     } catch (err) {
       console.error('Failed to load drafts:', err)
-      toast.error('Failed to load drafts')
+      setDraftsError(err instanceof Error ? err.message : 'Failed to load drafts')
     } finally {
       setDraftsLoading(false)
     }
@@ -1632,6 +1638,19 @@ export default function DraftingPage() {
                     </Card>
                   ))}
                 </div>
+              ) : draftsError ? (
+                <Card className="bg-white border-rose-200">
+                  <CardContent className="py-12 text-center">
+                    <div className="mx-auto w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center mb-4">
+                      <AlertTriangle className="h-7 w-7 text-rose-500" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-1">Couldn&apos;t load your drafts</h3>
+                    <p className="text-sm text-slate-500 mb-5 max-w-sm mx-auto">{draftsError}</p>
+                    <Button onClick={() => void fetchDrafts()} variant="outline" className="rounded-xl gap-2">
+                      <RefreshCw className="h-4 w-4" /> Retry
+                    </Button>
+                  </CardContent>
+                </Card>
               ) : recentDrafts.length === 0 ? (
                 <Card className="bg-white border-slate-200">
                   <CardContent className="py-16 text-center">

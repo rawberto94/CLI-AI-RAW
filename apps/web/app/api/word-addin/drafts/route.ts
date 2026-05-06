@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
@@ -16,14 +16,8 @@ const createDraftSchema = z.object({
   variables: z.record(z.string()).optional().default({}),
 });
 
-export async function GET(req: NextRequest) {
-  const apiCtx = getApiContext(req);
+export const GET = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) {
-      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
-    }
-
     const drafts = await prisma.contractDraft.findMany({
       where: {
         tenantId: ctx.tenantId,
@@ -49,16 +43,21 @@ export async function GET(req: NextRequest) {
     return createSuccessResponse(ctx, transformed);
   } catch (error) {
     logger.error('Word Add-in drafts error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to fetch drafts', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to fetch drafts', 500);
   }
-}
+});
 
-export async function POST(req: NextRequest) {
-  const apiCtx = getApiContext(req);
+export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const ctx = getAuthenticatedApiContext(req);
-    if (!ctx) {
-      return createErrorResponse(apiCtx, 'UNAUTHORIZED', 'Authentication required', 401);
+    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
+
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant not found', 400);
+    }
+
+    if (!userId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
     }
 
     const body = await req.json();
@@ -70,19 +69,19 @@ export async function POST(req: NextRequest) {
 
     const draft = await prisma.contractDraft.create({
       data: {
-        tenantId: ctx.tenantId,
+        tenantId,
         templateId: templateId || null,
         title,
         content: content || '',
         variables: variables || {},
         status: 'DRAFT',
-        createdBy: ctx.userId || 'word-addin',
+        createdBy: userId,
       },
     });
 
     return createSuccessResponse(ctx, { draftId: draft.id });
   } catch (error) {
     logger.error('Word Add-in create draft error:', error);
-    return createErrorResponse(apiCtx, 'SERVER_ERROR', 'Failed to create draft', 500);
+    return createErrorResponse(ctx, 'SERVER_ERROR', 'Failed to create draft', 500);
   }
-}
+});
