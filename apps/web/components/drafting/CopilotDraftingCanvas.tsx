@@ -34,6 +34,7 @@ import type { CopilotWorkflowContext } from '@/lib/drafting/copilot-handoff';
 import { VersionDiffView } from './VersionDiffView';
 import { DraftShapeAssist } from './DraftShapeAssist';
 import { VariableManager } from './VariableManager';
+import { CommentMentionInput, formatCommentBody, type MentionMember } from './CommentMentionInput';
 
 // ============================================================================
 // HELPERS
@@ -1470,6 +1471,8 @@ export function CopilotDraftingCanvas({
   const [newComment, setNewComment] = useState('');
   const [replyTarget, setReplyTarget] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
+  const [teamMembers, setTeamMembers] = useState<MentionMember[]>([]);
+  const teamMembersLoadedRef = useRef(false);
   const [showDiffView, setShowDiffView] = useState(false);
   const [diffVersions, setDiffVersions] = useState<Array<{ version: number; content: string; author: string; timestamp: string; label?: string }>>([]);
 
@@ -2030,6 +2033,23 @@ export function CopilotDraftingCanvas({
     }
   }, [draftId]);
 
+  // Fetch team members lazily for @mention autocomplete in comments. Cached
+  // for the lifetime of the component; refreshed only on draft change.
+  const fetchTeamMembers = useCallback(async () => {
+    if (teamMembersLoadedRef.current) return;
+    teamMembersLoadedRef.current = true;
+    try {
+      const res = await fetch('/api/team');
+      if (res.ok) {
+        const json = await res.json();
+        const list = (json?.data?.members || []) as Array<{ id: string; name: string; email: string }>;
+        setTeamMembers(list.map((m) => ({ id: m.id, name: m.name, email: m.email })));
+      }
+    } catch (err) {
+      console.error('Failed to fetch team members:', err);
+    }
+  }, []);
+
   const fetchVersions = useCallback(async () => {
     if (!draftId) return;
     try {
@@ -2101,8 +2121,9 @@ export function CopilotDraftingCanvas({
       fetchDraftMeta();
       fetchComments();
       fetchVersions();
+      fetchTeamMembers();
     }
-  }, [draftId, fetchDraftMeta, fetchComments, fetchVersions]);
+  }, [draftId, fetchDraftMeta, fetchComments, fetchVersions, fetchTeamMembers]);
 
   // Fetch clauses when tab is opened or search changes
   useEffect(() => {
@@ -5773,14 +5794,13 @@ export function CopilotDraftingCanvas({
 
               <div className="space-y-2">
                 <div className="flex gap-2">
-                  <input
-                    type="text"
+                  <CommentMentionInput
                     value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
-                    placeholder="Add a comment..."
-                    aria-label="Add a comment"
-                    className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    onChange={setNewComment}
+                    onSubmit={handleAddComment}
+                    members={teamMembers}
+                    placeholder="Add a comment… use @ to mention"
+                    ariaLabel="Add a comment"
                   />
                   <button
                     onClick={handleAddComment}
@@ -5866,7 +5886,7 @@ export function CopilotDraftingCanvas({
                               </span>
                             )}
                           </div>
-                          <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">{comment.content}</p>
+                          <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">{formatCommentBody(comment.content, teamMembers)}</p>
 
                           {anchorText && (
                             <button
@@ -5936,13 +5956,13 @@ export function CopilotDraftingCanvas({
 
                           {replyTarget === comment.id && (
                             <div className="mt-2 flex gap-2">
-                              <input
-                                type="text"
+                              <CommentMentionInput
                                 value={replyContent}
-                                onChange={(e) => setReplyContent(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleReply(comment.id)}
-                                placeholder="Write a reply..."
-                                className="flex-1 rounded border border-gray-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                                onChange={setReplyContent}
+                                onSubmit={() => handleReply(comment.id)}
+                                members={teamMembers}
+                                placeholder="Write a reply… use @ to mention"
+                                size="sm"
                               />
                               <button
                                 onClick={() => handleReply(comment.id)}
@@ -5964,7 +5984,7 @@ export function CopilotDraftingCanvas({
                                   <span className="ml-2 text-gray-400 dark:text-slate-500">
                                     {new Date(reply.createdAt).toLocaleString()}
                                   </span>
-                                  <p className="mt-0.5 text-gray-600 dark:text-slate-300">{reply.content}</p>
+                                  <p className="mt-0.5 text-gray-600 dark:text-slate-300">{formatCommentBody(reply.content, teamMembers)}</p>
                                 </div>
                               ))}
                             </div>
@@ -7253,13 +7273,13 @@ export function CopilotDraftingCanvas({
                               {selectionToolbar.text}
                             </p>
                             <div className="mt-2 flex gap-2">
-                              <input
-                                type="text"
+                              <CommentMentionInput
                                 value={inlineCommentDraft}
-                                onChange={(event) => setInlineCommentDraft(event.target.value)}
-                                onKeyDown={(event) => event.key === 'Enter' && void handleInlineCommentCreate()}
-                                placeholder="Add an anchored comment..."
-                                className="flex-1 rounded-lg border border-slate-200 px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-violet-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                                onChange={setInlineCommentDraft}
+                                onSubmit={() => void handleInlineCommentCreate()}
+                                members={teamMembers}
+                                placeholder="Add an anchored comment… use @ to mention"
+                                size="sm"
                               />
                               <button
                                 type="button"
