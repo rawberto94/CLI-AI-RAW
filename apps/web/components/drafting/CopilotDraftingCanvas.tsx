@@ -4290,8 +4290,8 @@ export function CopilotDraftingCanvas({
   const sidebarBodyClass = 'text-[13px] leading-6 text-slate-600 dark:text-slate-300';
   const editorEyebrowClass = 'text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500';
   const editorMetaPillClass = 'rounded-full border border-slate-200/80 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200';
-  const editorToolbarGroupClass = 'inline-flex items-center gap-0.5 rounded-[18px] border border-slate-200/80 bg-white/90 p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900/80';
-  const editorToolbarButtonClass = 'inline-flex h-9 w-9 items-center justify-center rounded-[12px] text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100';
+  const editorToolbarGroupClass = 'inline-flex items-center gap-1 rounded-[18px] border border-slate-200/80 bg-white/90 p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900/80';
+  const editorToolbarButtonClass = 'inline-flex h-9 w-9 items-center justify-center rounded-[12px] text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 focus-visible:ring-offset-white dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:focus-visible:ring-offset-slate-900';
   const editorToolbarButtonActiveClass = 'bg-slate-950 text-white shadow-sm hover:bg-slate-900 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-slate-200';
   const sidebarTabButtonBaseClass = 'flex min-h-[44px] min-w-fit shrink-0 items-center justify-center gap-1.5 rounded-[18px] border px-3 py-2 text-[12px] font-semibold transition-all duration-150 lg:min-w-0 lg:w-full lg:px-2.5';
   const draftingButtonBaseClass = 'inline-flex items-center justify-center gap-1.5 rounded-[14px] px-3.5 py-2.5 text-[13px] font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:pointer-events-none disabled:opacity-50';
@@ -6566,7 +6566,7 @@ export function CopilotDraftingCanvas({
                             {documentCanvasSummary}
                           </p>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 lg:max-w-[18rem] lg:justify-end">
+                        <div className="flex flex-wrap items-center gap-2 lg:max-w-[26rem] lg:justify-end xl:max-w-[34rem]">
                           <span className={editorMetaPillClass}>{isEditing ? 'Editing live' : 'Preview mode'}</span>
                           <button
                             type="button"
