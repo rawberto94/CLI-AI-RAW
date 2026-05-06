@@ -36,6 +36,7 @@ import { DraftShapeAssist } from './DraftShapeAssist';
 import { VariableManager } from './VariableManager';
 import { CommentMentionInput, formatCommentBody, type MentionMember } from './CommentMentionInput';
 import { SuggestionMark } from './SuggestionMark';
+import { SuggestionTracking } from './SuggestionTracking';
 
 // ============================================================================
 // HELPERS
@@ -1650,6 +1651,11 @@ export function CopilotDraftingCanvas({
   // TIPTAP EDITOR
   // ============================================================================
 
+  // Forward-declared refs for state that lives below but needs to be readable
+  // from inside extension options (which capture by reference at editor
+  // creation time, not on each render).
+  const suggestingModeRef = useRef(false);
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -1663,6 +1669,10 @@ export function CopilotDraftingCanvas({
       }),
       FindHighlight,
       SuggestionMark,
+      SuggestionTracking.configure({
+        isEnabled: () => suggestingModeRef.current,
+        getAuthor: () => 'You',
+      }),
     ],
     content: initialContent || '',
     editable: isEditing,
@@ -4401,6 +4411,8 @@ export function CopilotDraftingCanvas({
   // reviewer can then accept or reject each suggestion individually.
   const [suggestingMode, setSuggestingMode] = useState(false);
   const [suggestionsRefreshTick, setSuggestionsRefreshTick] = useState(0);
+  // Keep the editor extension's live readback in sync.
+  useEffect(() => { suggestingModeRef.current = suggestingMode; }, [suggestingMode]);
 
   const applyAiToSelection = useCallback(
     async (label: string, instruction: string) => {
@@ -4702,6 +4714,26 @@ export function CopilotDraftingCanvas({
       editor.chain().focus().setTextSelection({ from: first.from, to: first.to }).scrollIntoView().run();
     },
     [editor],
+  );
+
+  // Manual "mark selection as ins/del" — used from the selection toolbar
+  // while suggesting mode is on. Useful for flagging existing text without
+  // typing or running the AI rewriter.
+  const markSelectionAs = useCallback(
+    (kind: 'ins' | 'del') => {
+      if (!editor || !selectionToolbar) return;
+      const sid = `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+      editor
+        .chain()
+        .focus()
+        .setTextSelection({ from: selectionToolbar.from, to: selectionToolbar.to })
+        .setMark('suggestionMark', { kind, author: 'You', suggestionId: sid })
+        .run();
+      setSuggestionsRefreshTick((t) => t + 1);
+      setSelectionToolbar(null);
+      toast.success(kind === 'del' ? 'Marked as deletion' : 'Marked as insertion');
+    },
+    [editor, selectionToolbar],
   );
 
   const handleApplySlashCommand = useCallback((command: SlashCommandConfig) => {
@@ -7471,6 +7503,30 @@ export function CopilotDraftingCanvas({
                               >
                                 {aiInPlaceBusy === 'plain' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookOpen className="h-3.5 w-3.5" />}
                                 Plain English
+                              </button>
+                            </>
+                          )}
+                          {isEditing && suggestingMode && (
+                            <>
+                              <button
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => markSelectionAs('del')}
+                                className={`${draftingInlineButtonClass} text-rose-700 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-950/40`}
+                                title="Flag the selected text as a proposed deletion"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                                Mark deletion
+                              </button>
+                              <button
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => markSelectionAs('ins')}
+                                className={`${draftingInlineButtonClass} text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40`}
+                                title="Flag the selected text as a proposed insertion"
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                                Mark insertion
                               </button>
                             </>
                           )}
