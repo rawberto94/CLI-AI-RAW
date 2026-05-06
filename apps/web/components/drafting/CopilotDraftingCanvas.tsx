@@ -4293,7 +4293,7 @@ export function CopilotDraftingCanvas({
   const editorToolbarGroupClass = 'inline-flex items-center gap-0.5 rounded-[18px] border border-slate-200/80 bg-white/90 p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900/80';
   const editorToolbarButtonClass = 'inline-flex h-9 w-9 items-center justify-center rounded-[12px] text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100';
   const editorToolbarButtonActiveClass = 'bg-slate-950 text-white shadow-sm hover:bg-slate-900 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-slate-200';
-  const sidebarTabButtonBaseClass = 'flex min-h-[46px] min-w-fit shrink-0 items-center justify-center gap-2 rounded-[18px] border px-4 py-2.5 text-[12px] font-semibold transition-all duration-150 md:min-w-0 md:w-full';
+  const sidebarTabButtonBaseClass = 'flex min-h-[44px] min-w-fit shrink-0 items-center justify-center gap-1.5 rounded-[18px] border px-3 py-2 text-[12px] font-semibold transition-all duration-150 lg:min-w-0 lg:w-full lg:px-2.5';
   const draftingButtonBaseClass = 'inline-flex items-center justify-center gap-1.5 rounded-[14px] px-3.5 py-2.5 text-[13px] font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:pointer-events-none disabled:opacity-50';
   const draftingPrimaryButtonClass = `${draftingButtonBaseClass} bg-slate-950 text-white shadow-[0_16px_28px_-20px_rgba(15,23,42,0.55)] hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-slate-200`;
   const draftingSecondaryButtonClass = `${draftingButtonBaseClass} border border-slate-200/90 bg-white/92 text-slate-700 shadow-[0_14px_24px_-22px_rgba(15,23,42,0.45)] hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/85 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800`;
@@ -4331,7 +4331,7 @@ export function CopilotDraftingCanvas({
     <div className="flex h-full min-h-0 flex-col">
       {/* Tab Navigation */}
       <div className="border-b border-slate-200/80 px-4 pt-4 dark:border-slate-700/80">
-        <div className="flex gap-2 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-4 md:overflow-visible" role="tablist" aria-label="Sidebar panels">
+        <div className="flex gap-1.5 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-4 lg:gap-2 lg:overflow-visible" role="tablist" aria-label="Sidebar panels">
           {[
             { id: 'assistant', icon: Brain, label: 'Assistant', count: suggestions.length + priorityRiskCount },
             { id: 'review', icon: CheckCircle2, label: 'Review', count: unresolvedCommentsCount + approvalHistory.length + risks.length },
@@ -4354,10 +4354,10 @@ export function CopilotDraftingCanvas({
               <tab.icon className="h-3.5 w-3.5" />
               <span>{tab.label}</span>
               {tab.count !== null && tab.count > 0 && (
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                   activeTab === tab.id
-                    ? 'bg-white/15 text-white dark:bg-slate-900/10 dark:text-slate-700'
-                    : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'
+                    ? 'bg-white/20 text-white dark:bg-slate-900/15 dark:text-slate-800'
+                    : 'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-100'
                 }`}>
                   {tab.count}
                 </span>
