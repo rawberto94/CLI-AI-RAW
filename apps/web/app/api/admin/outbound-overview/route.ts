@@ -18,7 +18,7 @@ export async function GET() {
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const [webhookTotal, webhookActive, deliveryCounts, tokenActive, requestAggregate, eventCount, eventAggregate] = await Promise.all([
+  const [webhookTotal, webhookActive, deliveryCounts, tokenActive, requestAggregate, eventCount, eventAggregate, recentIssueRows] = await Promise.all([
     prisma.webhookConfig.count({ where: { tenantId } }),
     prisma.webhookConfig.count({ where: { tenantId, isActive: true } }),
     prisma.webhookDelivery.groupBy({
@@ -36,7 +36,40 @@ export async function GET() {
       where: { tenantId },
       _max: { createdAt: true },
     }),
+    prisma.webhookDelivery.findMany({
+      where: {
+        tenantId,
+        status: { in: ['failed', 'dead'] },
+      },
+      orderBy: [
+        { lastAttemptAt: 'desc' },
+        { updatedAt: 'desc' },
+      ],
+      take: 5,
+      select: {
+        id: true,
+        webhookId: true,
+        event: true,
+        status: true,
+        error: true,
+        statusCode: true,
+        lastAttemptAt: true,
+        updatedAt: true,
+        payload: true,
+      },
+    }),
   ]);
+
+  const webhookNames = recentIssueRows.length > 0
+    ? await prisma.webhookConfig.findMany({
+        where: {
+          tenantId,
+          id: { in: recentIssueRows.map((row) => row.webhookId) },
+        },
+        select: { id: true, name: true },
+      })
+    : [];
+  const webhookNameById = new Map(webhookNames.map((row) => [row.id, row.name]));
 
   const deliveries = { pending: 0, success: 0, failed: 0, dead: 0 } as Record<string, number>;
   for (const row of deliveryCounts) {
@@ -58,6 +91,20 @@ export async function GET() {
         last24h: eventCount,
         lastAt: eventAggregate._max.createdAt,
       },
+      recentIssues: recentIssueRows.map((row) => ({
+        id: row.id,
+        webhookId: row.webhookId,
+        webhookName: webhookNameById.get(row.webhookId) ?? row.webhookId,
+        event: row.event,
+        status: row.status,
+        error: row.error,
+        statusCode: row.statusCode,
+        lastAttemptAt: row.lastAttemptAt ?? row.updatedAt,
+        dispatchId:
+          row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
+            ? ((row.payload as { dispatchId?: unknown }).dispatchId ?? null)
+            : null,
+      })),
     },
   });
 }

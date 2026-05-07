@@ -91,6 +91,17 @@ interface OutboundOverview {
     last24h: number;
     lastAt: string | null;
   };
+  recentIssues: Array<{
+    id: string;
+    webhookId: string;
+    webhookName: string;
+    event: string;
+    status: string;
+    error: string | null;
+    statusCode: number | null;
+    lastAttemptAt: string | null;
+    dispatchId: string | null;
+  }>;
 }
 
 export default function SettingsClient() {
@@ -991,6 +1002,60 @@ export default function SettingsClient() {
                           <div className="text-xs text-slate-500 dark:text-slate-400">{outboundOverview.apiTokens.requestsLast24h} requests in 24h</div>
                           <div className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">Open tokens →</div>
                         </Link>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Recent Outbound Issues</h5>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              Latest failed or dead-lettered deliveries across all webhook subscribers.
+                            </p>
+                          </div>
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={deliveryOverviewHref}>Open deliveries</Link>
+                          </Button>
+                        </div>
+
+                        {outboundOverview.recentIssues.length === 0 ? (
+                          <div className="mt-4 rounded-lg border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/70 dark:bg-emerald-950/20 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
+                            No recent failed or dead-lettered deliveries.
+                          </div>
+                        ) : (
+                          <div className="mt-4 space-y-3">
+                            {outboundOverview.recentIssues.map((issue) => {
+                              const issueHref = issue.dispatchId
+                                ? `/settings/webhook-deliveries?dispatchId=${encodeURIComponent(issue.dispatchId)}`
+                                : `/settings/webhook-deliveries?webhookId=${encodeURIComponent(issue.webhookId)}&status=${encodeURIComponent(issue.status)}`;
+
+                              return (
+                                <div
+                                  key={issue.id}
+                                  className="flex flex-col gap-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-950/20 px-4 py-3 md:flex-row md:items-center md:justify-between"
+                                >
+                                  <div className="min-w-0 space-y-1.5">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <Badge variant={issue.status === 'dead' ? 'destructive' : 'outline'}>
+                                        {issue.status}
+                                      </Badge>
+                                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{issue.webhookName}</span>
+                                      <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{issue.event}</span>
+                                    </div>
+                                    <div className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                                      {issue.error || `HTTP ${issue.statusCode ?? 'unknown error'}`}
+                                    </div>
+                                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                                      Last attempt {issue.lastAttemptAt ? new Date(issue.lastAttemptAt).toLocaleString() : '—'}
+                                    </div>
+                                  </div>
+                                  <Button asChild variant="outline" size="sm">
+                                    <Link href={issueHref}>Inspect</Link>
+                                  </Button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
