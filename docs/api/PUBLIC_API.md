@@ -187,5 +187,29 @@ CDC event stream (`events:read`, coming in Phase 1.2) for sub-second freshness.
 
 ## Rate limits
 
-Currently unenforced; will land alongside the CDC stream. Be polite — keep
-sustained traffic under 50 req/s per token.
+Per-token fixed-window: **600 requests per 60 seconds** by default.
+Tunable per-deployment via `API_V1_RATE_LIMIT` and
+`API_V1_RATE_WINDOW_SECONDS` env vars.
+
+Every successful response carries:
+
+```
+X-RateLimit-Limit: 600
+X-RateLimit-Remaining: 597
+X-RateLimit-Reset: 42        # seconds until counter resets
+```
+
+When the limit is exceeded the API returns `429 Too Many Requests`:
+
+```json
+{
+  "error": "Rate limit exceeded",
+  "limit": 600,
+  "retryAfterSeconds": 42
+}
+```
+
+with a standard `Retry-After: 42` header. Backoff and retry — do not hammer.
+
+The limiter uses Redis (`REDIS_URL`) when available and falls back to a
+process-local counter on single-instance deployments.

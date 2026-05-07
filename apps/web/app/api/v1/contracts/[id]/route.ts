@@ -8,6 +8,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { authenticateApiToken, requireScope } from '@/lib/api/v1/auth';
+import {
+  enforceApiV1RateLimit,
+  withRateLimitHeaders,
+} from '@/lib/api/v1/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,6 +26,9 @@ export async function GET(
   const { auth } = authResult;
   const scopeError = requireScope(auth, 'contracts:read');
   if (scopeError) return scopeError;
+
+  const { exceeded, result: rlResult } = await enforceApiV1RateLimit(auth);
+  if (exceeded) return exceeded;
 
   const url = new URL(request.url);
   const include = (url.searchParams.get('include') || '').split(',').map(s => s.trim());
@@ -61,5 +68,5 @@ export async function GET(
   if (!contract) {
     return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
   }
-  return NextResponse.json({ data: contract });
+  return withRateLimitHeaders(NextResponse.json({ data: contract }), rlResult);
 }

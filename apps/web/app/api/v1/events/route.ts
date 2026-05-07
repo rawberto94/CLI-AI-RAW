@@ -25,6 +25,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { authenticateApiToken, requireScope } from '@/lib/api/v1/auth';
+import {
+  enforceApiV1RateLimit,
+  withRateLimitHeaders,
+} from '@/lib/api/v1/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,6 +42,9 @@ export async function GET(request: Request) {
   const { auth } = authResult;
   const scopeError = requireScope(auth, 'events:read');
   if (scopeError) return scopeError;
+
+  const { exceeded, result: rlResult } = await enforceApiV1RateLimit(auth);
+  if (exceeded) return exceeded;
 
   const url = new URL(request.url);
   const limit = Math.min(
@@ -86,5 +93,8 @@ export async function GET(request: Request) {
 
   const nextSince = data.length > 0 ? data[data.length - 1].id : null;
 
-  return NextResponse.json({ data, nextSince, hasMore });
+  return withRateLimitHeaders(
+    NextResponse.json({ data, nextSince, hasMore }),
+    rlResult,
+  );
 }
