@@ -297,6 +297,85 @@ Outbound webhook delivery is durable and at-least-once:
 6. Run `POST /api/cron/webhook-retry` (or `GET`, same handler) every
    ~60s with `Authorization: Bearer $CRON_SECRET` to drain due retries.
 
+### Receiving webhooks
+
+Every outbound POST carries the following headers and a JSON body:
+
+| Header                | Description                                                 |
+|-----------------------|-------------------------------------------------------------|
+| `X-Webhook-Event`     | Event type, e.g. `contract.created`                         |
+| `X-Webhook-Delivery`  | UUID of the delivery row (idempotency key)                  |
+| `X-Webhook-Signature` | HMAC-SHA256 of the raw request body, hex-encoded            |
+| `Content-Type`        | `application/json`                                          |
+| `User-Agent`          | `ContractIntelligence-Webhook/1.0`                          |
+
+Body envelope:
+
+```json
+{
+  "id": "<delivery-uuid>",
+  "event": "contract.created",
+  "timestamp": "2026-05-07T10:21:33.456Z",
+  "tenantId": "acme",
+  "data": { "contractId": "ckxx...", "fileName": "MSA.pdf" }
+}
+```
+
+The signature is computed against the **exact raw bytes** of the body
+(no re-serialization). Compare in constant time:
+
+**Node / Express**
+
+```ts
+import crypto from 'crypto';
+import express from 'express';
+
+const app = express();
+const SECRET = process.env.CONTIGO_WEBHOOK_SECRET!;
+
+app.post('/webhooks/contigo', express.raw({ type: 'application/json' }), (req, res) => {
+  const sig = req.header('X-Webhook-Signature') ?? '';
+  const expected = crypto.createHmac('sha256', SECRET).update(req.body).digest('hex');
+  const ok =
+    sig.length === expected.length &&
+    crypto.timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(expected, 'hex'));
+  if (!ok) return res.status(401).end();
+
+  const event = JSON.parse(req.body.toString('utf8'));
+  // dedupe on event.id (X-Webhook-Delivery), then handle event.event
+  res.status(204).end();
+});
+```
+
+**Python / Flask**
+
+```python
+import hmac, hashlib, os, json
+from flask import Flask, request, abort
+
+app = Flask(__name__)
+SECRET = os.environ["CONTIGO_WEBHOOK_SECRET"].encode()
+
+@app.post("/webhooks/contigo")
+def contigo_webhook():
+    sig = request.headers.get("X-Webhook-Signature", "")
+    expected = hmac.new(SECRET, request.get_data(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, expected):
+        abort(401)
+    event = json.loads(request.get_data())
+    # dedupe on event["id"], handle event["event"]
+    return ("", 204)
+```
+
+Recommended consumer behaviour:
+
+- **Dedupe** on `X-Webhook-Delivery` (or `data.id`). At-least-once delivery
+  means the same event id can arrive more than once after a retry.
+- **Respond fast** — return 2xx within a few seconds; do heavy work async.
+  Anything other than 2xx triggers the retry/backoff machinery above.
+- **Tolerate field additions** — payloads gain fields over time without
+  a major version bump; ignore unknown keys.
+
 ### Retention
 
 Append-only outbound tables are pruned by `POST /api/cron/retention-cleanup`
