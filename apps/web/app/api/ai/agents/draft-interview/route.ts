@@ -210,6 +210,88 @@ function buildInterviewMessages(
   ]
 }
 
+function buildLocalFallbackTurn(
+  originalPrompt: string,
+  detected: Record<string, unknown>,
+  history: InterviewMessage[],
+): InterviewResponse {
+  // Local deterministic interview turn used when Azure's content filter
+  // refuses to play ball. Picks the next sensible scoping question based on
+  // what we already know, with no AI roundtrip — so the safety filter has
+  // nothing to flag.
+  const summary = summarizePromptForStrictSafety(originalPrompt)
+
+  const det = detected as {
+    contractType?: unknown
+    ourRole?: unknown
+    counterparty?: unknown
+    term?: unknown
+    governingLaw?: unknown
+  }
+  const knownContractType = typeof det.contractType === 'string' ? det.contractType : undefined
+  const knownRole = typeof det.ourRole === 'string' ? det.ourRole : undefined
+  const knownCounterparty = typeof det.counterparty === 'string' ? det.counterparty : undefined
+  const knownTerm = typeof det.term === 'string' ? det.term : undefined
+  const knownGoverningLaw = typeof det.governingLaw === 'string' ? det.governingLaw : undefined
+
+  const partialBrief: InterviewBrief = {
+    ...(knownContractType ? { contractType: knownContractType } : {}),
+    ...(knownRole ? { ourRole: knownRole } : {}),
+    ...(knownCounterparty ? { counterparty: knownCounterparty } : {}),
+    ...(knownTerm ? { term: knownTerm } : {}),
+    ...(knownGoverningLaw ? { governingLaw: knownGoverningLaw } : {}),
+  }
+
+  if (!knownRole) {
+    return {
+      role: 'assistant',
+      content: `Got it — you're looking for ${knownContractType ? `a ${knownContractType.toLowerCase()}` : summary}. Which side are you drafting for: yours or the counterparty's?`,
+      finalized: false,
+      partialBrief,
+      quickAnswers: ['Our side', 'Counterparty', 'Mutual'],
+    }
+  }
+  if (!knownCounterparty) {
+    return {
+      role: 'assistant',
+      content: `Thanks. Who's the counterparty — what's their legal name?`,
+      finalized: false,
+      partialBrief,
+    }
+  }
+  if (!knownTerm) {
+    return {
+      role: 'assistant',
+      content: `How long should the agreement run for?`,
+      finalized: false,
+      partialBrief,
+      quickAnswers: ['1 year', '2 years', '3 years', 'Open-ended'],
+    }
+  }
+  if (!knownGoverningLaw) {
+    return {
+      role: 'assistant',
+      content: `Which jurisdiction's law should govern the contract?`,
+      finalized: false,
+      partialBrief,
+      quickAnswers: ['Delaware', 'New York', 'England & Wales', 'Switzerland'],
+    }
+  }
+
+  const turnNumber = history.length
+  const closingNudge = turnNumber >= 2
+    ? 'Anything else unusual we should bake in? Otherwise say "ready" and I\'ll generate the draft.'
+    : 'Anything else specific you want included — payment terms, liability cap, or unusual clauses?'
+
+  return {
+    role: 'assistant',
+    content: closingNudge,
+    finalized: false,
+    partialBrief,
+    quickAnswers: ['Standard payment terms', 'Add liability cap', 'Ready to draft'],
+  }
+}
+
 function isContentFilteredError(error: unknown): error is Error & { code?: string; status?: number } {
   const raw = error instanceof Error ? error.message : String(error)
 
@@ -291,15 +373,17 @@ async function handler(req: NextRequest, ctx: AuthenticatedApiContext) {
         })
       } catch (retryError) {
         if (isContentFilteredError(retryError)) {
-          logger.info('[draft-interview] Content filter persisted after neutral retry', {
+          logger.info('[draft-interview] Content filter persisted after neutral retry — falling back to deterministic interview turn', {
             promptSnippet: originalPrompt.slice(0, 120),
           })
-          return createErrorResponse(
-            ctx,
-            'CONTENT_FILTERED',
-            "Your request looks legitimate, but our AI safety filter may have misread part of it. You didn't do anything wrong. Try plain-language wording, or skip the interview and draft with what we already have.",
-            422,
-          )
+          // The Azure content filter occasionally misreads benign B2B
+          // language (industry jargon, acronyms like NDA / RFP, etc.).
+          // Rather than blocking the user with a "rephrase your request"
+          // wall, synthesize a safe deterministic interview turn locally
+          // so the flow keeps moving. The user can answer it normally and
+          // we'll go back to AI-driven turns on the next round.
+          const fallback = buildLocalFallbackTurn(originalPrompt, detected as Record<string, unknown>, history)
+          return createSuccessResponse(ctx, fallback)
         }
 
         throw retryError

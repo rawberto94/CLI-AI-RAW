@@ -106,7 +106,7 @@ describe('/api/ai/agents/draft-interview', () => {
     expect(secondMessages[1].content).not.toContain('NDA for consultancy support');
   });
 
-  it('returns a softer content-filter error only after the neutral retry also fails', async () => {
+  it('falls back to a deterministic interview turn when the content filter trips even after the neutral retry', async () => {
     mockCompletionCreate
       .mockRejectedValueOnce(createContentFilterError())
       .mockRejectedValueOnce(createContentFilterError());
@@ -114,10 +114,11 @@ describe('/api/ai/agents/draft-interview', () => {
     const response = await POST(createRequest({ messages: [], originalPrompt: 'NDA for consultancy support', detected: {} }));
     const data = await response.json();
 
-    expect(response.status).toBe(422);
-    expect(data.success).toBe(false);
-    expect(data.error.code).toBe('CONTENT_FILTERED');
-    expect(data.error.message).toContain("You didn't do anything wrong");
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(typeof data.data.content).toBe('string');
+    expect(data.data.content.length).toBeGreaterThan(0);
+    expect(data.data.finalized).toBe(false);
     expect(mockCompletionCreate).toHaveBeenCalledTimes(2);
   });
 });
