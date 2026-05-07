@@ -169,6 +169,14 @@ export default function WebhookDeliveriesPage() {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => window.location.assign("/settings/integration-events")}
+            disabled={requeueing !== null}
+          >
+            Event Log
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onBulkRequeue}
             disabled={requeueing !== null || !canBulkRequeue}
           >
