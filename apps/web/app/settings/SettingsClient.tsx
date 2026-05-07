@@ -109,6 +109,7 @@ export default function SettingsClient() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [requeueingIssueId, setRequeueingIssueId] = useState<string | null>(null);
   
   // Real settings state fetched from API
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
@@ -126,6 +127,18 @@ export default function SettingsClient() {
     backupFrequency: 'daily',
   });
   const canManageTenantSettings = ['admin', 'owner'].includes(userInfo?.role?.toLowerCase() ?? '');
+
+  const loadOutboundOverview = useCallback(async () => {
+    try {
+      const outboundRes = await fetch('/api/admin/outbound-overview').catch(() => null);
+      if (outboundRes?.ok) {
+        const outboundJson = await outboundRes.json();
+        setOutboundOverview((outboundJson as { data?: OutboundOverview }).data ?? null);
+      }
+    } catch {
+      // Non-fatal on the settings landing page.
+    }
+  }, []);
 
   // Fetch settings from API on mount
   useEffect(() => {
@@ -158,6 +171,27 @@ export default function SettingsClient() {
     }
     fetchSettings();
   }, []);
+
+  const requeueIssue = useCallback(async (issueId: string) => {
+    if (!confirm('Requeue this delivery now? It will be retried on the next cron tick.')) return;
+    setRequeueingIssueId(issueId);
+    try {
+      const res = await fetch(`/api/admin/webhook-deliveries/${issueId}/requeue`, {
+        method: 'POST',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error((json as { error?: string }).error || 'Requeue failed');
+        return;
+      }
+      toast.success('Delivery requeued');
+      await loadOutboundOverview();
+    } catch {
+      toast.error('Requeue failed');
+    } finally {
+      setRequeueingIssueId(null);
+    }
+  }, [loadOutboundOverview]);
 
   // Warn user before leaving with unsaved changes
   useEffect(() => {
@@ -1048,9 +1082,19 @@ export default function SettingsClient() {
                                       Last attempt {issue.lastAttemptAt ? new Date(issue.lastAttemptAt).toLocaleString() : '—'}
                                     </div>
                                   </div>
-                                  <Button asChild variant="outline" size="sm">
-                                    <Link href={issueHref}>Inspect</Link>
-                                  </Button>
+                                  <div className="flex items-center gap-2">
+                                    <Button asChild variant="outline" size="sm">
+                                      <Link href={issueHref}>Inspect</Link>
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={requeueingIssueId === issue.id}
+                                      onClick={() => requeueIssue(issue.id)}
+                                    >
+                                      {requeueingIssueId === issue.id ? 'Requeueing…' : 'Requeue'}
+                                    </Button>
+                                  </div>
                                 </div>
                               );
                             })}
