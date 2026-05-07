@@ -110,6 +110,7 @@ export default function SettingsClient() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [requeueingIssueId, setRequeueingIssueId] = useState<string | null>(null);
+  const [bulkRequeueingIssues, setBulkRequeueingIssues] = useState(false);
   
   // Real settings state fetched from API
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
@@ -190,6 +191,36 @@ export default function SettingsClient() {
       toast.error('Requeue failed');
     } finally {
       setRequeueingIssueId(null);
+    }
+  }, [loadOutboundOverview]);
+
+  const requeueDeadIssues = useCallback(async () => {
+    if (!confirm('Requeue all dead deliveries now? They will be retried on the next cron tick.')) return;
+    setBulkRequeueingIssues(true);
+    try {
+      const res = await fetch('/api/admin/webhook-deliveries/requeue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error((json as { error?: string }).error || 'Bulk requeue failed');
+        return;
+      }
+      const requeued = typeof (json as { requeued?: unknown }).requeued === 'number'
+        ? (json as { requeued: number }).requeued
+        : 0;
+      toast.success(
+        requeued > 0
+          ? `Requeued ${requeued} dead ${requeued === 1 ? 'delivery' : 'deliveries'}`
+          : 'No dead deliveries to requeue',
+      );
+      await loadOutboundOverview();
+    } catch {
+      toast.error('Bulk requeue failed');
+    } finally {
+      setBulkRequeueingIssues(false);
     }
   }, [loadOutboundOverview]);
 
@@ -1046,9 +1077,19 @@ export default function SettingsClient() {
                               Latest failed or dead-lettered deliveries across all webhook subscribers.
                             </p>
                           </div>
-                          <Button asChild variant="outline" size="sm">
-                            <Link href={deliveryOverviewHref}>Open deliveries</Link>
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={requeueDeadIssues}
+                              disabled={bulkRequeueingIssues || outboundOverview.deliveries.dead === 0}
+                            >
+                              {bulkRequeueingIssues ? 'Requeueing…' : 'Requeue Dead'}
+                            </Button>
+                            <Button asChild variant="outline" size="sm">
+                              <Link href={deliveryOverviewHref}>Open deliveries</Link>
+                            </Button>
+                          </div>
                         </div>
 
                         {outboundOverview.recentIssues.length === 0 ? (
