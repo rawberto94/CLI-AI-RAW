@@ -35,7 +35,6 @@ import {
   Settings,
   Upload,
   Activity,
-  TrendingUp,
   Calendar,
   Menu,
   X,
@@ -52,7 +51,6 @@ import {
   Database,
   Keyboard,
   RefreshCcw,
-  Network,
   GitBranch,
   BookOpen,
   Lightbulb,
@@ -65,7 +63,6 @@ import {
   CheckSquare,
   PenTool,
   ScrollText,
-  Rocket,
   Gavel,
 } from 'lucide-react';
 
@@ -159,7 +156,6 @@ const navigationGroups: NavigationGroup[] = [
         children: [
           { name: 'Rate Cards', href: '/rate-cards/dashboard', icon: Receipt, description: 'Rate monitoring', audiences: ['commercial'] },
           { name: 'Spend Analysis', href: '/spend', icon: Wallet, description: 'Spend visibility', audiences: ['commercial'] },
-          { name: 'Forecasting', href: '/forecast', icon: TrendingUp, description: 'Demand and spend forecast', audiences: ['commercial'] },
         ],
       },
     ],
@@ -178,7 +174,6 @@ const navigationGroups: NavigationGroup[] = [
           { name: 'Contract Health', href: '/intelligence/health', icon: ShieldCheck, description: 'Portfolio health scores', audiences: ['all'] },
           { name: 'Risk', href: '/risk', icon: AlertTriangle, description: 'Risk analysis', audiences: ['all'] },
           { name: 'Compliance', href: '/compliance', icon: ClipboardCheck, description: 'Compliance tracking', audiences: ['legal'] },
-          { name: 'Knowledge Graph', href: '/knowledge-graph', icon: Network, description: 'Entity relationships', audiences: ['oversight'] },
         ],
       },
       {
@@ -187,11 +182,7 @@ const navigationGroups: NavigationGroup[] = [
         icon: BarChart3,
         description: 'Dashboards and reporting',
         audiences: ['oversight'],
-        children: [
-          { name: 'Reports', href: '/reports', icon: FileText, description: 'Custom reports', audiences: ['oversight'] },
-        ],
       },
-      { name: 'AI Workspace', href: '/contigo-labs', icon: Rocket, description: 'Advanced AI operations', audiences: ['oversight'], isNew: true },
     ],
   },
   {
