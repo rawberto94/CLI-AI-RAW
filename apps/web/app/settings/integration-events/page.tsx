@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { ArrowRightLeft, RefreshCw } from "lucide-react";
+import { ArrowRightLeft, RefreshCw, RotateCcw } from "lucide-react";
 
 interface IntegrationEventRow {
   id: string;
@@ -51,6 +51,7 @@ export default function IntegrationEventsPage() {
   const [resourceIdFilter, setResourceIdFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [replayingEventId, setReplayingEventId] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
 
@@ -87,6 +88,35 @@ export default function IntegrationEventsPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventTypeFilter, resourceIdFilter]);
+
+  const replayEvent = async (row: IntegrationEventRow) => {
+    if (!confirm(`Replay ${row.eventType} to current active webhook subscribers?`)) return;
+    setReplayingEventId(row.id);
+    try {
+      const res = await fetch(`/api/admin/integration-events/${row.id}/replay`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Replay failed");
+        return;
+      }
+
+      const delivered = json?.replay?.delivered ?? 0;
+      const failed = json?.replay?.failed ?? 0;
+      toast.success(
+        failed > 0
+          ? `Replay queued: ${delivered} delivered, ${failed} failed`
+          : delivered > 0
+            ? `Replay queued to ${delivered} webhook${delivered === 1 ? "" : "s"}`
+            : "Replay finished: no active subscribers for this event",
+      );
+    } catch {
+      toast.error("Replay failed");
+    } finally {
+      setReplayingEventId(null);
+    }
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -189,8 +219,28 @@ export default function IntegrationEventsPage() {
                       {formatTime(row.createdAt)}
                     </div>
                   </div>
-                  <div className="text-right text-xs font-mono text-muted-foreground min-w-0">
-                    {row.resourceId ?? "—"}
+                  <div className="flex flex-col items-end gap-2 min-w-0">
+                    <div className="text-right text-xs font-mono text-muted-foreground min-w-0">
+                      {row.resourceId ?? "—"}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.location.assign(`/settings/webhook-deliveries?event=${encodeURIComponent(row.eventType)}`)}
+                      >
+                        Deliveries
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => replayEvent(row)}
+                        disabled={replayingEventId === row.id}
+                      >
+                        <RotateCcw className={`w-4 h-4 mr-2 ${replayingEventId === row.id ? "animate-spin" : ""}`} />
+                        Replay
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
