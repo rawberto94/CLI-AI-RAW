@@ -35,6 +35,7 @@ model Tenant {
   chatConversations       ChatConversation[]
   obligationNotifications ObligationNotification[]
   obligations             Obligation[]
+  apiTokens               ApiToken[]
 
   @@index([status])
   @@index([createdAt])
@@ -6211,4 +6212,34 @@ model DelegationOfAuthority {
   @@index([tenantId])
   @@index([tenantId, isActive])
   @@map("delegation_of_authority")
+}
+
+/// API token for outbound REST consumers (warehouse pulls, BI tools,
+/// other systems treating Contigo as the contract engine).
+/// Token is shown only once at creation; only the bcrypt hash + a short
+/// non-secret prefix are persisted.
+model ApiToken {
+  id          String    @id @default(cuid())
+  tenantId    String
+  name        String
+  /// First 8 chars of the raw token, plain text, for UI display
+  /// ("ctg_a3f9..."). Lets users identify a token without revealing it.
+  prefix      String
+  /// bcrypt(rawToken). Never returned by any API.
+  tokenHash   String
+  /// Comma-separated scopes: "contracts:read", "contracts:write",
+  /// "obligations:read", "events:read", "*"
+  scopes      String    @default("contracts:read")
+  createdBy   String?
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, revokedAt])
+  @@index([prefix])
+  @@map("api_tokens")
 }

@@ -86,6 +86,8 @@ const CSRF_EXEMPT_PATHS = [
   '/api/agents/execute',     // Agent execution stream
   '/api/ai/chat/stream',     // AI chat SSE stream
   '/api/rfx',                // RFx creation/management (session-protected)
+  // Outbound public REST — Bearer token auth, no session/cookie
+  '/api/v1',
 ];
 
 /**
