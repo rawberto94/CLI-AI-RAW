@@ -71,6 +71,27 @@ interface UserInfo {
   avatar: string | null;
 }
 
+interface OutboundOverview {
+  webhooks: {
+    total: number;
+    active: number;
+  };
+  deliveries: {
+    pending: number;
+    success: number;
+    failed: number;
+    dead: number;
+  };
+  apiTokens: {
+    active: number;
+    requestsLast24h: number;
+  };
+  events: {
+    last24h: number;
+    lastAt: string | null;
+  };
+}
+
 export default function SettingsClient() {
   const [activeTab, setActiveTab] = React.useState("general");
   const [loading, setLoading] = useState(true);
@@ -79,6 +100,7 @@ export default function SettingsClient() {
   
   // Real settings state fetched from API
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [outboundOverview, setOutboundOverview] = useState<OutboundOverview | null>(null);
   const [systemSettings, setSystemSettings] = useState(DEFAULT_SETTINGS.system);
   const [notificationSettings, setNotificationSettings] = useState(DEFAULT_SETTINGS.notifications);
   const [securitySettings, setSecuritySettings] = useState(DEFAULT_SETTINGS.security);
@@ -97,9 +119,12 @@ export default function SettingsClient() {
   useEffect(() => {
     async function fetchSettings() {
       try {
-        const res = await fetch('/api/settings');
-        if (res.ok) {
-          const data = unwrapApiResponseData<{ settings?: typeof DEFAULT_SETTINGS & { processing?: Record<string, unknown> }; user?: UserInfo | null }>(await res.json());
+        const [settingsRes, outboundRes] = await Promise.all([
+          fetch('/api/settings'),
+          fetch('/api/admin/outbound-overview').catch(() => null),
+        ]);
+        if (settingsRes.ok) {
+          const data = unwrapApiResponseData<{ settings?: typeof DEFAULT_SETTINGS & { processing?: Record<string, unknown> }; user?: UserInfo | null }>(await settingsRes.json());
           const settings = data.settings || DEFAULT_SETTINGS;
           const user = data.user;
           if (user) setUserInfo(user);
@@ -108,6 +133,10 @@ export default function SettingsClient() {
           if (settings.security) setSecuritySettings(s => ({ ...s, ...settings.security }));
           if (settings.display) setDisplaySettings(s => ({ ...s, ...settings.display }));
           if (settings.processing) setProcessingSettings(s => ({ ...s, ...settings.processing }));
+        }
+        if (outboundRes?.ok) {
+          const outboundJson = await outboundRes.json();
+          setOutboundOverview((outboundJson as { data?: OutboundOverview }).data ?? null);
         }
       } catch {
         toast.error('Failed to load settings');
@@ -881,6 +910,39 @@ export default function SettingsClient() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  {outboundOverview && (
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Live Outbound Overview</h4>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          Current tenant health across webhook subscribers, delivery backlog, event volume, and token traffic.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4">
+                          <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Webhooks</div>
+                          <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{outboundOverview.webhooks.active}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">{outboundOverview.webhooks.total} total subscribers</div>
+                        </div>
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4">
+                          <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Retries / DLQ</div>
+                          <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{outboundOverview.deliveries.pending}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">{outboundOverview.deliveries.dead} dead-lettered</div>
+                        </div>
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4">
+                          <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Events 24h</div>
+                          <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{outboundOverview.events.last24h}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">Last event {outboundOverview.events.lastAt ? new Date(outboundOverview.events.lastAt).toLocaleString() : '—'}</div>
+                        </div>
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4">
+                          <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">API Tokens</div>
+                          <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{outboundOverview.apiTokens.active}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">{outboundOverview.apiTokens.requestsLast24h} requests in 24h</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {([
                     { key: 'sharepoint', label: 'SharePoint', icon: FileText, description: 'Document management' },
                     { key: 'salesforce', label: 'Salesforce', icon: BarChart3, description: 'CRM integration' },
