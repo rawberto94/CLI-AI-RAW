@@ -28,11 +28,14 @@ export interface EnqueueInput {
   webhook: WebhookTarget;
   event: string;
   payload: Record<string, unknown>;
+  dispatchId?: string;
   maxAttempts?: number;
 }
 
 export interface AttemptResult {
   deliveryRowId: string;
+  deliveryId: string;
+  dispatchId: string;
   status: 'success' | 'failed' | 'dead';
   statusCode?: number;
   error?: string;
@@ -108,11 +111,13 @@ async function performHttpDelivery(
  */
 export async function enqueueAndAttempt(input: EnqueueInput): Promise<AttemptResult> {
   const prisma = await getPrisma();
+  const dispatchId = input.dispatchId ?? crypto.randomUUID();
   const deliveryId = crypto.randomUUID();
   const maxAttempts = input.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
 
   const wrappedPayload = {
     id: deliveryId,
+    dispatchId,
     event: input.event,
     timestamp: new Date().toISOString(),
     tenantId: input.tenantId,
@@ -154,6 +159,11 @@ async function attemptDelivery(row: DeliveryRow, target: WebhookTarget): Promise
   const bodyJson = JSON.stringify(row.payload);
   const result = await performHttpDelivery(target, row.event, row.deliveryId ?? row.id, bodyJson);
   const now = new Date();
+  const dispatchId =
+    row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
+      ? ((row.payload as { dispatchId?: unknown }).dispatchId ?? row.id)
+      : row.id;
+  const deliveryId = row.deliveryId ?? row.id;
 
   if (result.ok) {
     await prisma.webhookDelivery.update({
@@ -169,7 +179,13 @@ async function attemptDelivery(row: DeliveryRow, target: WebhookTarget): Promise
         nextAttemptAt: null,
       },
     });
-    return { deliveryRowId: row.id, status: 'success', statusCode: result.statusCode };
+    return {
+      deliveryRowId: row.id,
+      deliveryId,
+      dispatchId: String(dispatchId),
+      status: 'success',
+      statusCode: result.statusCode,
+    };
   }
 
   const isFinal = nextAttemptNumber >= row.maxAttempts;
@@ -191,6 +207,8 @@ async function attemptDelivery(row: DeliveryRow, target: WebhookTarget): Promise
     });
     return {
       deliveryRowId: row.id,
+      deliveryId,
+      dispatchId: String(dispatchId),
       status: 'dead',
       statusCode: result.statusCode,
       error: errorText,
@@ -212,6 +230,8 @@ async function attemptDelivery(row: DeliveryRow, target: WebhookTarget): Promise
   });
   return {
     deliveryRowId: row.id,
+    deliveryId,
+    dispatchId: String(dispatchId),
     status: 'failed',
     statusCode: result.statusCode,
     error: errorText,

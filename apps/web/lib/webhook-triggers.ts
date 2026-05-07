@@ -25,6 +25,8 @@ export async function triggerWebhook(options: TriggerOptions): Promise<{
   success: boolean;
   delivered: number;
   failed: number;
+  dispatchId?: string;
+  details?: Array<Record<string, unknown>>;
   error?: string;
 }> {
   const { tenantId, event, data } = options;
@@ -60,6 +62,8 @@ export async function triggerWebhook(options: TriggerOptions): Promise<{
       success: result.success,
       delivered: result.delivered || 0,
       failed: result.failed || 0,
+      dispatchId: result.dispatchId,
+      details: Array.isArray(result.details) ? result.details : undefined,
       error: result.error,
     };
   } catch (error: unknown) {

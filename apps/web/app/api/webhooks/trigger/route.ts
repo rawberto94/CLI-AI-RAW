@@ -98,9 +98,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
     return createSuccessResponse(ctx, { success: true, message: 'No active webhooks subscribed to this event', delivered: 0 });
   }
 
-  const timestamp = new Date().toISOString();
-  const deliveryId = crypto.randomUUID();
-  const payload = { id: deliveryId, event, timestamp, tenantId, data };
+  const dispatchId = crypto.randomUUID();
 
   const { enqueueAndAttempt } = await import('@/lib/webhooks/delivery');
 
@@ -113,6 +111,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
           webhook: { id: webhook.id, url: webhook.url, secret: webhook.secret },
           event,
           payload: data,
+          dispatchId,
         });
         const deliveryTimeMs = Date.now() - startTime;
 
@@ -129,6 +128,8 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
         return {
           webhookId: webhook.id,
           deliveryRowId: outcome.deliveryRowId,
+          deliveryId: outcome.deliveryId,
+          dispatchId: outcome.dispatchId,
           success: outcome.status === 'success',
           status: outcome.status,
           statusCode: outcome.statusCode,
@@ -155,7 +156,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
 
   return createSuccessResponse(ctx, {
     message: `Webhooks triggered for event: ${event}`,
-    deliveryId,
+    dispatchId,
     delivered: successful,
     failed,
     details: results.map(r => r.status === 'fulfilled' ? r.value : { error: 'Promise rejected' }),
