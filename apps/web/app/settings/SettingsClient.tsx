@@ -364,7 +364,12 @@ export default function SettingsClient() {
           ...(outboundOverview.deliveries.dead > 0
             ? [{ label: `${outboundOverview.deliveries.dead} dead-letter`, variant: 'destructive' as const }]
             : []),
-          { label: `${outboundOverview.deliveries.pending} retrying`, variant: 'outline' as const },
+          ...(outboundOverview.deliveries.failed > 0
+            ? [{ label: `${outboundOverview.deliveries.failed} retrying`, variant: 'outline' as const }]
+            : []),
+          ...(outboundOverview.deliveries.pending > 0
+            ? [{ label: `${outboundOverview.deliveries.pending} queued`, variant: 'secondary' as const }]
+            : []),
         ],
         'integration-events': [
           { label: `${outboundOverview.events.last24h} in 24h`, variant: 'outline' as const },
@@ -379,13 +384,49 @@ export default function SettingsClient() {
       }
     : null;
 
-  const deliveryOverviewHref = outboundOverview
+  const deliveryOverviewState = outboundOverview
     ? outboundOverview.deliveries.dead > 0
-      ? '/settings/webhook-deliveries?status=dead'
-      : outboundOverview.deliveries.pending > 0
-        ? '/settings/webhook-deliveries?status=pending'
-        : '/settings/webhook-deliveries'
-    : '/settings/webhook-deliveries';
+      ? {
+          title: 'Dead Letter',
+          count: outboundOverview.deliveries.dead,
+          detail:
+            outboundOverview.deliveries.failed > 0
+              ? `${outboundOverview.deliveries.failed} retrying${outboundOverview.deliveries.pending > 0 ? ` • ${outboundOverview.deliveries.pending} queued` : ''}`
+              : outboundOverview.deliveries.pending > 0
+                ? `${outboundOverview.deliveries.pending} queued`
+                : 'Manual recovery required',
+          cta: 'Review DLQ →',
+          href: '/settings/webhook-deliveries?status=dead',
+        }
+      : outboundOverview.deliveries.failed > 0
+        ? {
+            title: 'Retrying',
+            count: outboundOverview.deliveries.failed,
+            detail:
+              outboundOverview.deliveries.pending > 0
+                ? `${outboundOverview.deliveries.pending} queued first attempts`
+                : 'Automatic retries scheduled',
+            cta: 'Review retries →',
+            href: '/settings/webhook-deliveries?status=failed',
+          }
+        : outboundOverview.deliveries.pending > 0
+          ? {
+              title: 'Queued',
+              count: outboundOverview.deliveries.pending,
+              detail: 'First attempts waiting to send',
+              cta: 'View queue →',
+              href: '/settings/webhook-deliveries?status=pending',
+            }
+          : {
+              title: 'Retries / DLQ',
+              count: 0,
+              detail: 'No delivery backlog',
+              cta: 'Open deliveries →',
+              href: '/settings/webhook-deliveries',
+            }
+    : null;
+
+  const deliveryOverviewHref = deliveryOverviewState?.href ?? '/settings/webhook-deliveries';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100/50 to-gray-50/30 dark:from-slate-900 dark:via-slate-800/50 dark:to-slate-900/30">
@@ -1043,11 +1084,11 @@ export default function SettingsClient() {
                           href={deliveryOverviewHref}
                           className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4 transition-colors hover:bg-slate-100 dark:hover:bg-slate-900/50"
                         >
-                          <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Retries / DLQ</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{outboundOverview.deliveries.pending}</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">{outboundOverview.deliveries.dead} dead-lettered</div>
+                          <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{deliveryOverviewState?.title ?? 'Retries / DLQ'}</div>
+                          <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{deliveryOverviewState?.count ?? 0}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">{deliveryOverviewState?.detail ?? 'No delivery backlog'}</div>
                           <div className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">
-                            {outboundOverview.deliveries.dead > 0 ? 'Review DLQ →' : 'Open deliveries →'}
+                            {deliveryOverviewState?.cta ?? 'Open deliveries →'}
                           </div>
                         </Link>
                         <Link
