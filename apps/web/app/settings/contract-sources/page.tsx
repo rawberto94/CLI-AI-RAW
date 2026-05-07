@@ -75,6 +75,7 @@ const PROVIDERS = {
   POSTGRES: { name: "PostgreSQL", icon: HardDrive, color: "text-violet-600" },
   MYSQL: { name: "MySQL", icon: HardDrive, color: "text-blue-600" },
   MSSQL: { name: "SQL Server", icon: HardDrive, color: "text-red-700" },
+  MONGODB: { name: "MongoDB", icon: HardDrive, color: "text-green-700" },
   CUSTOM_API: { name: "Custom API", icon: Server, color: "text-violet-600" },
 };
 
@@ -544,39 +545,72 @@ function CreateSourceDialog({
         provider === "POSTGRES" ? "postgres" : provider === "MYSQL" ? "mysql" : "mssql";
       const defaultPort =
         provider === "POSTGRES" ? 5432 : provider === "MYSQL" ? 3306 : 1433;
-      const credentialPayload: Record<string, unknown> = isSqlProvider
-        ? {
-            type: sqlType,
-            host: credentials.host,
-            port: credentials.port ? Number(credentials.port) : defaultPort,
-            database: credentials.database,
-            username: credentials.username,
-            password: credentials.password,
-            ssl: credentials.ssl === "true",
-            ...(provider === "MSSQL"
-              ? {
-                  encrypt: credentials.encrypt !== "false",
-                  trustServerCertificate: credentials.trustServerCertificate === "true",
-                }
-              : {}),
-            ...((provider === "POSTGRES" || provider === "MSSQL") && credentials.schema
-              ? { schema: credentials.schema }
-              : {}),
-            table: credentials.table,
-            whereClause: credentials.whereClause || undefined,
-            mapping: {
-              idColumn: credentials.idColumn,
-              bodyColumn: credentials.bodyColumn,
-              titleColumn: credentials.titleColumn || undefined,
-              modifiedAtColumn: credentials.modifiedAtColumn || undefined,
-              supplierColumn: credentials.supplierColumn || undefined,
-              clientColumn: credentials.clientColumn || undefined,
-              externalIdColumn: credentials.externalIdColumn || undefined,
-              mimeTypeColumn: credentials.mimeTypeColumn || undefined,
-              mode: credentials.mode === "reference" ? "reference" : "copy",
-            },
+      let credentialPayload: Record<string, unknown>;
+      if (isSqlProvider) {
+        credentialPayload = {
+          type: sqlType,
+          host: credentials.host,
+          port: credentials.port ? Number(credentials.port) : defaultPort,
+          database: credentials.database,
+          username: credentials.username,
+          password: credentials.password,
+          ssl: credentials.ssl === "true",
+          ...(provider === "MSSQL"
+            ? {
+                encrypt: credentials.encrypt !== "false",
+                trustServerCertificate: credentials.trustServerCertificate === "true",
+              }
+            : {}),
+          ...((provider === "POSTGRES" || provider === "MSSQL") && credentials.schema
+            ? { schema: credentials.schema }
+            : {}),
+          table: credentials.table,
+          whereClause: credentials.whereClause || undefined,
+          mapping: {
+            idColumn: credentials.idColumn,
+            bodyColumn: credentials.bodyColumn,
+            titleColumn: credentials.titleColumn || undefined,
+            modifiedAtColumn: credentials.modifiedAtColumn || undefined,
+            supplierColumn: credentials.supplierColumn || undefined,
+            clientColumn: credentials.clientColumn || undefined,
+            externalIdColumn: credentials.externalIdColumn || undefined,
+            mimeTypeColumn: credentials.mimeTypeColumn || undefined,
+            mode: credentials.mode === "reference" ? "reference" : "copy",
+          },
+        };
+      } else if (provider === "MONGODB") {
+        let mongoFilter: unknown = undefined;
+        if (credentials.filter) {
+          try {
+            mongoFilter = JSON.parse(credentials.filter);
+          } catch {
+            toast.error("MongoDB filter must be valid JSON");
+            setIsCreating(false);
+            return;
           }
-        : { type: provider.toLowerCase(), ...credentials };
+        }
+        credentialPayload = {
+          type: "mongodb",
+          connectionString: credentials.connectionString,
+          database: credentials.database || undefined,
+          collection: credentials.collection,
+          gridfsBucket: credentials.gridfsBucket || undefined,
+          filter: mongoFilter,
+          mapping: {
+            idColumn: credentials.idColumn || "_id",
+            bodyColumn: credentials.bodyColumn,
+            titleColumn: credentials.titleColumn || undefined,
+            modifiedAtColumn: credentials.modifiedAtColumn || undefined,
+            supplierColumn: credentials.supplierColumn || undefined,
+            clientColumn: credentials.clientColumn || undefined,
+            externalIdColumn: credentials.externalIdColumn || undefined,
+            mimeTypeColumn: credentials.mimeTypeColumn || undefined,
+            mode: credentials.mode === "reference" ? "reference" : "copy",
+          },
+        };
+      } else {
+        credentialPayload = { type: provider.toLowerCase(), ...credentials };
+      }
 
       const res = await fetch("/api/contract-sources", {
         method: "POST",
@@ -953,6 +987,142 @@ function CreateSourceDialog({
                   value={credentials.whereClause || ""}
                   onChange={(e) => setCredentials({ ...credentials, whereClause: e.target.value })}
                   placeholder="status = 'EXECUTED'"
+                />
+              </div>
+            </div>
+          </>
+        );
+      case "MONGODB":
+        return (
+          <>
+            <div className="rounded-md border border-violet-200 bg-violet-50 p-3 text-xs text-violet-900">
+              Connect to a MongoDB collection where each document is one
+              contract. Field names below may be dotted paths
+              (e.g. <code>metadata.title</code>). The connector reads only.
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="connectionString">Connection String</Label>
+              <Input
+                id="connectionString"
+                type="password"
+                value={credentials.connectionString || ""}
+                onChange={(e) => setCredentials({ ...credentials, connectionString: e.target.value })}
+                placeholder="mongodb+srv://user:pass@cluster.mongodb.net/contracts"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label htmlFor="database">Database (optional)</Label>
+                <Input
+                  id="database"
+                  value={credentials.database || ""}
+                  onChange={(e) => setCredentials({ ...credentials, database: e.target.value })}
+                  placeholder="(from connection string)"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="collection">Collection</Label>
+                <Input
+                  id="collection"
+                  value={credentials.collection || ""}
+                  onChange={(e) => setCredentials({ ...credentials, collection: e.target.value })}
+                  placeholder="contracts"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mode">Mode</Label>
+              <Select
+                value={credentials.mode || "copy"}
+                onValueChange={(v) => setCredentials({ ...credentials, mode: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="copy">
+                    Copy &mdash; Buffer/BSON Binary or GridFS id
+                  </SelectItem>
+                  <SelectItem value="reference">
+                    Reference &mdash; URL field, metadata only
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {credentials.mode === "copy" && (
+              <div className="space-y-2">
+                <Label htmlFor="gridfsBucket">GridFS bucket (optional)</Label>
+                <Input
+                  id="gridfsBucket"
+                  value={credentials.gridfsBucket || ""}
+                  onChange={(e) => setCredentials({ ...credentials, gridfsBucket: e.target.value })}
+                  placeholder="fs"
+                />
+              </div>
+            )}
+            <div className="pt-2 border-t">
+              <p className="text-xs font-medium mb-2">Field Mapping</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="idColumn">ID field *</Label>
+                  <Input
+                    id="idColumn"
+                    value={credentials.idColumn || ""}
+                    onChange={(e) => setCredentials({ ...credentials, idColumn: e.target.value })}
+                    placeholder="_id"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bodyColumn">Body field *</Label>
+                  <Input
+                    id="bodyColumn"
+                    value={credentials.bodyColumn || ""}
+                    onChange={(e) => setCredentials({ ...credentials, bodyColumn: e.target.value })}
+                    placeholder={credentials.mode === "reference" ? "fileUrl" : "fileData"}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="titleColumn">Title field</Label>
+                  <Input
+                    id="titleColumn"
+                    value={credentials.titleColumn || ""}
+                    onChange={(e) => setCredentials({ ...credentials, titleColumn: e.target.value })}
+                    placeholder="name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="modifiedAtColumn">Modified-at field</Label>
+                  <Input
+                    id="modifiedAtColumn"
+                    value={credentials.modifiedAtColumn || ""}
+                    onChange={(e) => setCredentials({ ...credentials, modifiedAtColumn: e.target.value })}
+                    placeholder="updatedAt"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="supplierColumn">Supplier field</Label>
+                  <Input
+                    id="supplierColumn"
+                    value={credentials.supplierColumn || ""}
+                    onChange={(e) => setCredentials({ ...credentials, supplierColumn: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="externalIdColumn">External ID field</Label>
+                  <Input
+                    id="externalIdColumn"
+                    value={credentials.externalIdColumn || ""}
+                    onChange={(e) => setCredentials({ ...credentials, externalIdColumn: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2 mt-2">
+                <Label htmlFor="filter">Optional MongoDB filter (JSON)</Label>
+                <Input
+                  id="filter"
+                  value={credentials.filter || ""}
+                  onChange={(e) => setCredentials({ ...credentials, filter: e.target.value })}
+                  placeholder='{"status":"EXECUTED"}'
                 />
               </div>
             </div>

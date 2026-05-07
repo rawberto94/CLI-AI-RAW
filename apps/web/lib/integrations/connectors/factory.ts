@@ -29,6 +29,7 @@ import { SlackConnector } from './slack.connector';
 import { PostgresConnector } from './postgres.connector';
 import { MysqlConnector, MysqlCredentials } from './mysql.connector';
 import { MssqlConnector, MssqlCredentials } from './mssql.connector';
+import { MongoConnector, MongoCredentials } from './mongodb.connector';
 
 /**
  * Create a connector instance for the given provider
@@ -79,7 +80,7 @@ export function createConnector(
       return new MssqlConnector(credentials as unknown as MssqlCredentials);
     
     case ContractSourceProvider.MONGODB:
-      throw new Error(`Provider ${provider} is not yet implemented`);
+      return new MongoConnector(credentials as unknown as MongoCredentials);
     
     case ContractSourceProvider.CUSTOM_API:
       throw new Error(`Provider ${provider} is not yet implemented`);
@@ -177,6 +178,9 @@ export function getRequiredCredentialFields(
     
     case ContractSourceProvider.MSSQL:
       return ['table'];
+    
+    case ContractSourceProvider.MONGODB:
+      return ['connectionString', 'collection'];
     
     default:
       return [];
