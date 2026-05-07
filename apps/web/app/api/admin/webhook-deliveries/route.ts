@@ -43,6 +43,10 @@ export async function GET(request: NextRequest) {
   if (event) where.event = event;
   if (webhookId) where.webhookId = webhookId;
 
+  const summaryWhere: Record<string, unknown> = { tenantId };
+  if (event) summaryWhere.event = event;
+  if (webhookId) summaryWhere.webhookId = webhookId;
+
   const [rows, counts] = await Promise.all([
     prisma.webhookDelivery.findMany({
       where,
@@ -69,7 +73,7 @@ export async function GET(request: NextRequest) {
     }),
     prisma.webhookDelivery.groupBy({
       by: ['status'],
-      where: { tenantId },
+      where: summaryWhere,
       _count: { _all: true },
     }),
   ]);

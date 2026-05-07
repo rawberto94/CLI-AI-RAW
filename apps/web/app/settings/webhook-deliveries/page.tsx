@@ -71,6 +71,11 @@ export default function WebhookDeliveriesPage() {
   const [loading, setLoading] = useState(true);
   const [requeueing, setRequeueing] = useState<string | null>(null);
 
+  const visibleDeadCount = rows.filter((row) => row.status === "dead").length;
+  const canBulkRequeue =
+    visibleDeadCount > 0 ||
+    (!eventFilter.trim() && !webhookIdFilter.trim() && !statusFilter && summary.dead > 0);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -119,6 +124,36 @@ export default function WebhookDeliveriesPage() {
     }
   };
 
+  const onBulkRequeue = async () => {
+    if (!confirm("Requeue all dead deliveries matching the current filters?")) return;
+    setRequeueing("bulk");
+    try {
+      const res = await fetch("/api/admin/webhook-deliveries/requeue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: eventFilter.trim() || undefined,
+          webhookId: webhookIdFilter.trim() || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Bulk requeue failed");
+        return;
+      }
+      toast.success(
+        json.requeued > 0
+          ? `Requeued ${json.requeued} dead ${json.requeued === 1 ? "delivery" : "deliveries"}`
+          : "No dead deliveries matched the current filters",
+      );
+      load();
+    } catch {
+      toast.error("Bulk requeue failed");
+    } finally {
+      setRequeueing(null);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-start justify-between">
@@ -130,10 +165,21 @@ export default function WebhookDeliveriesPage() {
             manually.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onBulkRequeue}
+            disabled={requeueing !== null || !canBulkRequeue}
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Requeue Dead
+          </Button>
+          <Button variant="outline" size="sm" onClick={load} disabled={loading || requeueing !== null}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

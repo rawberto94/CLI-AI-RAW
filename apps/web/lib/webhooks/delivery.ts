@@ -296,7 +296,7 @@ export async function runDueRetries(): Promise<{
 export async function requeueDeadDelivery(deliveryRowId: string, tenantId: string): Promise<boolean> {
   const prisma = await getPrisma();
   const row = await prisma.webhookDelivery.findFirst({
-    where: { id: deliveryRowId, tenantId, status: 'dead' },
+    where: { id: deliveryRowId, tenantId, status: { in: ['dead', 'failed'] } },
     select: { id: true },
   });
   if (!row) return false;
@@ -312,4 +312,37 @@ export async function requeueDeadDelivery(deliveryRowId: string, tenantId: strin
     },
   });
   return true;
+}
+
+export interface RequeueMatchingDeliveriesInput {
+  tenantId: string;
+  event?: string;
+  webhookId?: string;
+}
+
+/**
+ * Requeue all dead deliveries matching the supplied tenant-scoped filters.
+ * Used by the ops dashboard for batch DLQ recovery after downstream outages.
+ */
+export async function requeueMatchingDeadDeliveries(
+  input: RequeueMatchingDeliveriesInput,
+): Promise<number> {
+  const prisma = await getPrisma();
+  const result = await prisma.webhookDelivery.updateMany({
+    where: {
+      tenantId: input.tenantId,
+      status: 'dead',
+      ...(input.event ? { event: input.event } : {}),
+      ...(input.webhookId ? { webhookId: input.webhookId } : {}),
+    },
+    data: {
+      status: 'pending',
+      attempt: 0,
+      error: null,
+      deadAt: null,
+      nextAttemptAt: new Date(),
+    },
+  });
+
+  return result.count;
 }
