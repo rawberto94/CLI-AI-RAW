@@ -132,6 +132,7 @@ Query params: `limit` (max 500), `since` (event id, exclusive),
 | `obligation.created`    | obligation id| Obligation created (manual / bulk / AI extraction)          |
 | `obligation.completed`  | obligation id| Status transitioned to COMPLETED                            |
 | `obligation.overdue`    | obligation id| `dueDate` crossed (lifecycle scan)                          |
+| `signature.completed`   | contract id  | All required signers have signed the contract               |
 
 Response:
 

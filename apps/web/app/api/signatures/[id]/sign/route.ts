@@ -292,6 +292,33 @@ export async function POST(
           updatedAt: new Date(),
         },
       });
+
+      // Outbound webhook + durable event log (fire-and-forget).
+      const sigPayload = {
+        contractId: sigRequest.contractId,
+        requestId: sigRequest.id,
+        signerEmail: tokenData.email,
+        completedAt: now.toISOString(),
+      };
+      import('@/lib/webhook-triggers')
+        .then(({ triggerWebhook }) =>
+          triggerWebhook({
+            tenantId: sigRequest.tenantId,
+            event: 'signature.completed',
+            data: sigPayload,
+          }),
+        )
+        .catch(() => {});
+      import('@/lib/events/integration-events')
+        .then(({ recordIntegrationEvent }) =>
+          recordIntegrationEvent({
+            tenantId: sigRequest.tenantId,
+            eventType: 'signature.completed',
+            resourceId: sigRequest.contractId,
+            payload: sigPayload,
+          }),
+        )
+        .catch(() => {});
     }
 
     // Publish realtime event
