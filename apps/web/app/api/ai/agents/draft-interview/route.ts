@@ -46,6 +46,7 @@ import {
   type AuthenticatedApiContext,
 } from '@/lib/api-middleware'
 import { createOpenAIClient, hasAIClientConfig, getDeploymentName } from '@/lib/openai-client'
+import { containsBannedWord } from '@/lib/ai/drafting-safety'
 import { logger } from '@/lib/logger'
 
 interface InterviewMessage {
@@ -90,18 +91,6 @@ interface InterviewResponse {
 }
 
 type DraftInterviewSafetyMode = 'standard' | 'strict'
-
-const INTERVIEW_PROMPT_NORMALIZATIONS: Array<[RegExp, string]> = [
-  [/\bbody\s+lease\b/gi, 'consultant secondment'],
-  [/\bbody\s+shopping\b/gi, 'staff augmentation'],
-  [/\bkill\s+fee\b/gi, 'early termination fee'],
-  [/\bhit\s+list\b/gi, 'shortlist'],
-  [/\btarget\b/gi, 'objective'],
-  [/\bNDAs\b/g, 'confidentiality agreements'],
-  [/\bNDA\b/g, 'confidentiality agreement'],
-  [/\bnon-disclosure agreement\b/gi, 'confidentiality agreement'],
-  [/\bconsultancy\b/gi, 'consulting'],
-]
 
 const SYSTEM_PROMPT = `You are a senior contract attorney conducting a friendly, efficient scoping interview with a user who wants you to draft a contract.
 
@@ -154,22 +143,19 @@ Examples of bad behavior (never do this):
 - Setting finalized=true before covering the essentials.`
 
 function normalizeInterviewPrompt(originalPrompt: string): string {
-  let normalized = originalPrompt.trim()
-
-  for (const [pattern, replacement] of INTERVIEW_PROMPT_NORMALIZATIONS) {
-    normalized = normalized.replace(pattern, replacement)
-  }
-
-  return normalized.replace(/\s+/g, ' ').trim()
+  // Pass-through. We deliberately do NOT rewrite the user's wording \u2014
+  // the user's exact phrasing is what we send to the model. The only
+  // gating is the explicit BANNED_PATTERNS check upstream.
+  return originalPrompt.trim().replace(/\s+/g, ' ')
 }
 
 function summarizePromptForStrictSafety(originalPrompt: string): string {
   const normalized = normalizeInterviewPrompt(originalPrompt).toLowerCase()
 
-  if (/\bconfidentiality agreement\b/.test(normalized)) return 'a confidentiality agreement'
+  if (/\bconfidentiality agreement\b|\bnda\b|\bnon-disclosure\b/.test(normalized)) return 'a confidentiality agreement'
   if (/\bmaster services? agreement\b|\bmsa\b/.test(normalized)) return 'a master services agreement'
   if (/\bstatement of work\b|\bsow\b/.test(normalized)) return 'a statement of work'
-  if (/\bconsulting\b|\bservices\b/.test(normalized)) return 'a services-related agreement'
+  if (/\bconsulting\b|\bconsultancy\b|\bservices\b/.test(normalized)) return 'a services-related agreement'
 
   return 'a commercial contract'
 }
@@ -322,11 +308,27 @@ async function handler(req: NextRequest, ctx: AuthenticatedApiContext) {
     return createErrorResponse(ctx, 'MISSING_PROMPT', 'originalPrompt is required', 400)
   }
 
+  // The only filter we apply locally is a tiny explicit blocklist.
+  // Industry jargon, acronyms, blunt B2B wording — all accepted as-is.
+  const banCheck = containsBannedWord(originalPrompt)
+  if (banCheck.banned) {
+    return createErrorResponse(ctx, 'CONTENT_NOT_ALLOWED', banCheck.reason, 400)
+  }
+
   const history: InterviewMessage[] = Array.isArray(body.messages)
     ? body.messages
         .filter(m => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant'))
         .slice(-20) // cap history
     : []
+
+  // Same banned-word check on the latest user reply, if any.
+  const lastUserTurn = [...history].reverse().find(m => m.role === 'user')
+  if (lastUserTurn) {
+    const turnCheck = containsBannedWord(lastUserTurn.content)
+    if (turnCheck.banned) {
+      return createErrorResponse(ctx, 'CONTENT_NOT_ALLOWED', turnCheck.reason, 400)
+    }
+  }
 
   const detected = body.detected && typeof body.detected === 'object' ? body.detected : {}
 

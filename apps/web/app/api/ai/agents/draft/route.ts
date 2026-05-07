@@ -33,6 +33,7 @@ import {
   normalizeDraftingPrompt,
   normalizeDraftingValue,
   summarizeDraftingPromptForStrictSafety,
+  containsBannedWord,
 } from '@/lib/ai/drafting-safety';
 
 // ---------------------------------------------------------------------------
@@ -839,6 +840,22 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
       'Either "prompt" (free-text description) or "contractType" is required.',
       400
     );
+  }
+
+  // The only filter we apply locally is a tiny explicit blocklist.
+  // User wording (jargon, acronyms, blunt B2B phrasing) is otherwise
+  // accepted as-is.
+  if (body.prompt) {
+    const banCheck = containsBannedWord(body.prompt);
+    if (banCheck.banned) {
+      return createErrorResponse(ctx, 'CONTENT_NOT_ALLOWED', banCheck.reason, 400);
+    }
+  }
+  if (body.instructions) {
+    const banCheck = containsBannedWord(body.instructions);
+    if (banCheck.banned) {
+      return createErrorResponse(ctx, 'CONTENT_NOT_ALLOWED', banCheck.reason, 400);
+    }
   }
 
   const shouldStream = body.stream !== false;

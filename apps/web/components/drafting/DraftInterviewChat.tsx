@@ -45,7 +45,6 @@ import {
   Pencil,
   Check,
   X,
-  Lightbulb,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -384,20 +383,12 @@ export function DraftInterviewChat({ open, onOpenChange, prompt, detected, onCom
     async (override?: string) => {
       const text = (override ?? input).trim()
       if (!text || loading || finalized) return
-      // If the first turn was rejected by the content filter, treat the user's
-      // next message as a replacement for the flagged opening prompt — otherwise
-      // the server re-embeds the flagged phrase and trips the filter again.
-      if (errorCode === 'CONTENT_FILTERED' && messages.length === 0) {
-        setInput('')
-        await callInterview([], text)
-        return
-      }
       const next: ChatTurn[] = [...messages, { role: 'user' as const, content: text }]
       setMessages(next)
       setInput('')
       await callInterview(next)
     },
-    [input, loading, finalized, messages, callInterview, errorCode],
+    [input, loading, finalized, messages, callInterview],
   )
 
   const handleRetry = useCallback(async () => {
@@ -818,31 +809,7 @@ export function DraftInterviewChat({ open, onOpenChange, prompt, detected, onCom
               )}
             </AnimatePresence>
 
-            {error && errorCode === 'CONTENT_FILTERED' && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-[12px] text-amber-900">
-                <div className="flex items-start gap-2">
-                  <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
-                  <div className="flex-1 space-y-1.5">
-                    <p className="font-medium">Let&apos;s rephrase that request</p>
-                    <p className="text-amber-800/90">
-                      You didn&apos;t do anything wrong. A phrase in your request may have been misread by our AI
-                      safety filter, usually because of industry jargon. Try neutral wording:
-                    </p>
-                    <ul className="ml-3 list-disc space-y-0.5 text-amber-800/90">
-                      <li><span className="font-medium">body lease / body shopping</span> → consultant secondment, staff augmentation</li>
-                      <li><span className="font-medium">kill fee</span> → early-termination fee</li>
-                      <li><span className="font-medium">hit list / target</span> → shortlist, objective</li>
-                    </ul>
-                    <p className="pt-1 text-amber-800/80">
-                      Edit your request below and press <span className="font-medium">Send</span>, or skip the
-                      interview to draft with what we already have.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {error && errorCode !== 'CONTENT_FILTERED' && (
+            {error && (
               <div className="flex items-start justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-[12px] text-rose-800">
                 <span className="flex-1">{error}</span>
                 <button

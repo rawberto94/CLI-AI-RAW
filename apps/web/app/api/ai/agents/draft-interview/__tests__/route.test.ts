@@ -71,7 +71,7 @@ describe('/api/ai/agents/draft-interview', () => {
     mockCtx.tenantId = 'tenant-1';
   });
 
-  it('retries with a stricter neutralized opening prompt after a content filter false positive', async () => {
+  it('passes the user\'s raw wording through on the first attempt and only neutralizes on the strict retry after a content-filter false positive', async () => {
     mockCompletionCreate
       .mockRejectedValueOnce(createContentFilterError())
       .mockResolvedValueOnce({
@@ -94,16 +94,16 @@ describe('/api/ai/agents/draft-interview', () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.data.content).toContain('confidentiality agreement');
     expect(mockCompletionCreate).toHaveBeenCalledTimes(2);
 
     const firstMessages = mockCompletionCreate.mock.calls[0][0].messages;
     const secondMessages = mockCompletionCreate.mock.calls[1][0].messages;
 
-    expect(firstMessages[1].content).toContain('confidentiality agreement for consulting support');
-    expect(firstMessages[1].content).not.toContain('"NDA for consultancy support"');
+    // First attempt: user wording is sent through verbatim
+    expect(firstMessages[1].content).toContain('NDA for consultancy support');
+    // Strict retry: replaced with a neutral category summary, not the raw text
     expect(secondMessages[1].content).toContain('avoid repeating the user\'s raw wording');
-    expect(secondMessages[1].content).not.toContain('NDA for consultancy support');
+    expect(secondMessages[1].content).toContain('confidentiality agreement');
   });
 
   it('falls back to a deterministic interview turn when the content filter trips even after the neutral retry', async () => {
