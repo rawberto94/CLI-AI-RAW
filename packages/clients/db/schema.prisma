@@ -6233,20 +6233,46 @@ model ApiToken {
   /// bcrypt(rawToken). Never returned by any API.
   tokenHash   String
   /// Comma-separated scopes: "contracts:read", "contracts:write",
-  /// "obligations:read", "events:read", "*"
+  /// "obligations:read", "events:read", "webhooks:read",
+  /// "webhooks:write", "*"
   scopes      String    @default("contracts:read")
   createdBy   String?
   expiresAt   DateTime?
   lastUsedAt  DateTime?
+  /// Cumulative successful auth count (bumped fire-and-forget per
+  /// authenticated request; ~== request count for the lifetime of
+  /// the token).
+  requestCount Int      @default(0)
   revokedAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  usage       ApiTokenUsageBucket[]
 
   @@index([tenantId])
   @@index([tenantId, revokedAt])
   @@index([prefix])
   @@map("api_tokens")
+}
+
+/// Per-token hourly request bucket. Append-only counter table keyed by
+/// (tokenId, hourBucket). Powers "requests in the last 24h / 7d" charts
+/// in the API tokens UI without scanning IntegrationEvent or audit logs.
+model ApiTokenUsageBucket {
+  id         String   @id @default(cuid())
+  tokenId    String
+  tenantId   String
+  /// Hour-aligned UTC timestamp (e.g. 2026-05-07T13:00:00Z).
+  hourBucket DateTime
+  count      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  token      ApiToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@unique([tokenId, hourBucket])
+  @@index([tenantId, hourBucket])
+  @@index([hourBucket])
+  @@map("api_token_usage_buckets")
 }
 
 /// Append-only event log for outbound consumers. Every webhook trigger

@@ -20,6 +20,8 @@ const VALID_SCOPES = new Set([
   'contracts:write',
   'obligations:read',
   'events:read',
+  'webhooks:read',
+  'webhooks:write',
 ]);
 
 export async function GET() {
@@ -41,12 +43,32 @@ export async function GET() {
       prefix: true,
       scopes: true,
       lastUsedAt: true,
+      requestCount: true,
       expiresAt: true,
       createdAt: true,
       createdBy: true,
     },
   });
-  return NextResponse.json({ data: tokens });
+
+  // Augment with last-24h request counts from the hourly bucket table.
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const buckets = await prisma.apiTokenUsageBucket.groupBy({
+    by: ['tokenId'],
+    where: {
+      tenantId,
+      hourBucket: { gte: since },
+      tokenId: { in: tokens.map(t => t.id) },
+    },
+    _sum: { count: true },
+  });
+  const last24hByToken = new Map(
+    buckets.map(b => [b.tokenId, b._sum.count ?? 0]),
+  );
+  const data = tokens.map(t => ({
+    ...t,
+    requestsLast24h: last24hByToken.get(t.id) ?? 0,
+  }));
+  return NextResponse.json({ data });
 }
 
 export async function POST(request: Request) {

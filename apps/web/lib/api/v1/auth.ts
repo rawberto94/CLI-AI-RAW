@@ -72,9 +72,38 @@ export async function authenticateApiToken(
     const ok = await bcrypt.compare(raw, c.tokenHash);
     if (!ok) continue;
 
-    // Fire-and-forget last-used update
+    // Fire-and-forget usage tracking: bump lastUsedAt + requestCount and
+    // upsert the per-token hourly bucket. Failures are silently swallowed
+    // so an outage in usage tracking never breaks API auth.
+    const now = new Date();
+    const hourBucket = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        now.getUTCHours(),
+        0,
+        0,
+        0,
+      ),
+    );
     prisma.apiToken
-      .update({ where: { id: c.id }, data: { lastUsedAt: new Date() } })
+      .update({
+        where: { id: c.id },
+        data: { lastUsedAt: now, requestCount: { increment: 1 } },
+      })
+      .catch(() => {});
+    prisma.apiTokenUsageBucket
+      .upsert({
+        where: { tokenId_hourBucket: { tokenId: c.id, hourBucket } },
+        create: {
+          tokenId: c.id,
+          tenantId: c.tenantId,
+          hourBucket,
+          count: 1,
+        },
+        update: { count: { increment: 1 } },
+      })
       .catch(() => {});
 
     return {

@@ -25,6 +25,8 @@ interface ApiTokenRow {
   lastUsedAt: string | null;
   expiresAt: string | null;
   createdAt: string;
+  requestCount?: number;
+  requestsLast24h?: number;
 }
 
 const SCOPE_OPTIONS = [
@@ -32,6 +34,8 @@ const SCOPE_OPTIONS = [
   "contracts:write",
   "obligations:read",
   "events:read",
+  "webhooks:read",
+  "webhooks:write",
   "*",
 ];
 
@@ -168,6 +172,12 @@ export default function ApiTokensPage() {
                       Created {new Date(t.createdAt).toLocaleDateString()}
                       {t.lastUsedAt ? ` · Last used ${new Date(t.lastUsedAt).toLocaleString()}` : " · Never used"}
                       {t.expiresAt ? ` · Expires ${new Date(t.expiresAt).toLocaleDateString()}` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {(t.requestsLast24h ?? 0).toLocaleString()} requests · last 24h
+                      {typeof t.requestCount === "number"
+                        ? ` · ${t.requestCount.toLocaleString()} lifetime`
+                        : ""}
                     </p>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => onRevoke(t.id)}>
