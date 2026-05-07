@@ -302,6 +302,14 @@ export default function SettingsClient() {
       }
     : null;
 
+  const deliveryOverviewHref = outboundOverview
+    ? outboundOverview.deliveries.dead > 0
+      ? '/settings/webhook-deliveries?status=dead'
+      : outboundOverview.deliveries.pending > 0
+        ? '/settings/webhook-deliveries?status=pending'
+        : '/settings/webhook-deliveries'
+    : '/settings/webhook-deliveries';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100/50 to-gray-50/30 dark:from-slate-900 dark:via-slate-800/50 dark:to-slate-900/30">
       <div className="p-6 space-y-6">
@@ -945,26 +953,44 @@ export default function SettingsClient() {
                         </p>
                       </div>
                       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-                        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4">
+                        <Link
+                          href="/settings/webhooks"
+                          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4 transition-colors hover:bg-slate-100 dark:hover:bg-slate-900/50"
+                        >
                           <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Webhooks</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{outboundOverview.webhooks.active}</div>
                           <div className="text-xs text-slate-500 dark:text-slate-400">{outboundOverview.webhooks.total} total subscribers</div>
-                        </div>
-                        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4">
+                          <div className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">Open endpoints →</div>
+                        </Link>
+                        <Link
+                          href={deliveryOverviewHref}
+                          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4 transition-colors hover:bg-slate-100 dark:hover:bg-slate-900/50"
+                        >
                           <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Retries / DLQ</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{outboundOverview.deliveries.pending}</div>
                           <div className="text-xs text-slate-500 dark:text-slate-400">{outboundOverview.deliveries.dead} dead-lettered</div>
-                        </div>
-                        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4">
+                          <div className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">
+                            {outboundOverview.deliveries.dead > 0 ? 'Review DLQ →' : 'Open deliveries →'}
+                          </div>
+                        </Link>
+                        <Link
+                          href="/settings/integration-events"
+                          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4 transition-colors hover:bg-slate-100 dark:hover:bg-slate-900/50"
+                        >
                           <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Events 24h</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{outboundOverview.events.last24h}</div>
                           <div className="text-xs text-slate-500 dark:text-slate-400">Last event {outboundOverview.events.lastAt ? new Date(outboundOverview.events.lastAt).toLocaleString() : '—'}</div>
-                        </div>
-                        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4">
+                          <div className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">Open event log →</div>
+                        </Link>
+                        <Link
+                          href="/settings/api-tokens"
+                          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/30 p-4 transition-colors hover:bg-slate-100 dark:hover:bg-slate-900/50"
+                        >
                           <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">API Tokens</div>
                           <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{outboundOverview.apiTokens.active}</div>
                           <div className="text-xs text-slate-500 dark:text-slate-400">{outboundOverview.apiTokens.requestsLast24h} requests in 24h</div>
-                        </div>
+                          <div className="mt-2 text-xs font-medium text-violet-600 dark:text-violet-400">Open tokens →</div>
+                        </Link>
                       </div>
                     </div>
                   )}
