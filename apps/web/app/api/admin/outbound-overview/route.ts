@@ -65,6 +65,7 @@ export async function GET() {
         error: true,
         statusCode: true,
         lastAttemptAt: true,
+        nextAttemptAt: true,
         updatedAt: true,
         payload: true,
       },
@@ -113,6 +114,7 @@ export async function GET() {
         error: row.error,
         statusCode: row.statusCode,
         lastAttemptAt: row.lastAttemptAt ?? row.updatedAt,
+        nextAttemptAt: row.nextAttemptAt,
         dispatchId:
           row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
             ? ((row.payload as { dispatchId?: unknown }).dispatchId ?? null)

@@ -100,6 +100,7 @@ interface OutboundOverview {
     error: string | null;
     statusCode: number | null;
     lastAttemptAt: string | null;
+    nextAttemptAt: string | null;
     dispatchId: string | null;
   }>;
 }
@@ -1102,6 +1103,7 @@ export default function SettingsClient() {
                               const issueHref = issue.dispatchId
                                 ? `/settings/webhook-deliveries?dispatchId=${encodeURIComponent(issue.dispatchId)}`
                                 : `/settings/webhook-deliveries?webhookId=${encodeURIComponent(issue.webhookId)}&status=${encodeURIComponent(issue.status)}`;
+                              const isRetrying = issue.status === 'failed' && Boolean(issue.nextAttemptAt);
 
                               return (
                                 <div
@@ -1119,8 +1121,15 @@ export default function SettingsClient() {
                                     <div className="text-sm text-slate-500 dark:text-slate-400 truncate">
                                       {issue.error || `HTTP ${issue.statusCode ?? 'unknown error'}`}
                                     </div>
-                                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                                      Last attempt {issue.lastAttemptAt ? new Date(issue.lastAttemptAt).toLocaleString() : '—'}
+                                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                                      <span>
+                                        Last attempt {issue.lastAttemptAt ? new Date(issue.lastAttemptAt).toLocaleString() : '—'}
+                                      </span>
+                                      {isRetrying && (
+                                        <span>
+                                          Next retry {new Date(issue.nextAttemptAt as string).toLocaleString()}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
@@ -1133,7 +1142,11 @@ export default function SettingsClient() {
                                       disabled={requeueingIssueId === issue.id}
                                       onClick={() => requeueIssue(issue.id)}
                                     >
-                                      {requeueingIssueId === issue.id ? 'Requeueing…' : 'Requeue'}
+                                      {requeueingIssueId === issue.id
+                                        ? 'Retrying…'
+                                        : isRetrying
+                                          ? 'Retry now'
+                                          : 'Requeue'}
                                     </Button>
                                   </div>
                                 </div>
