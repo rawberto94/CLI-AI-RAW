@@ -13,6 +13,30 @@ import {
   Prisma,
 } from '@prisma/client';
 
+/** Fire-and-forget obligation.created emission (webhook + event log). */
+function emitObligationCreated(
+  tenantId: string,
+  obligationId: string,
+  payload: Record<string, unknown>,
+): void {
+  const fullPayload = { obligationId, ...payload };
+  import('@/lib/webhook-triggers')
+    .then(({ triggerObligationCreated }) =>
+      triggerObligationCreated(tenantId, obligationId, payload),
+    )
+    .catch(() => {});
+  import('@/lib/events/integration-events')
+    .then(({ recordIntegrationEvent }) =>
+      recordIntegrationEvent({
+        tenantId,
+        eventType: 'obligation.created',
+        resourceId: obligationId,
+        payload: fullPayload,
+      }),
+    )
+    .catch(() => {});
+}
+
 const openai = createOpenAIClient();
 
 // Type mappings for string to enum conversion
@@ -334,6 +358,15 @@ async function handleCreate(
     },
   });
 
+  emitObligationCreated(tenantId, newObligation.id, {
+    contractId: newObligation.contractId,
+    title: newObligation.title,
+    type: newObligation.type,
+    priority: newObligation.priority,
+    dueDate: newObligation.dueDate,
+    extractionMethod: 'MANUAL',
+  });
+
   return createSuccessResponse(ctx, {
     obligation: {
       ...newObligation,
@@ -392,6 +425,15 @@ async function handleBulkCreate(
           description: 'Obligation created via bulk operation',
           performedBy: userId,
         },
+      });
+
+      emitObligationCreated(tenantId, newObligation.id, {
+        contractId: newObligation.contractId,
+        title: newObligation.title,
+        type: newObligation.type,
+        priority: newObligation.priority,
+        dueDate: newObligation.dueDate,
+        extractionMethod: newObligation.extractionMethod,
       });
 
       created.push(newObligation);
@@ -503,6 +545,16 @@ async function handleExtraction(
         performedBy: userId,
         metadata: { confidence: extractedObligations.confidence },
       },
+    });
+
+    emitObligationCreated(tenantId, newObligation.id, {
+      contractId: newObligation.contractId,
+      title: newObligation.title,
+      type: newObligation.type,
+      priority: newObligation.priority,
+      dueDate: newObligation.dueDate,
+      extractionMethod: 'AI',
+      extractionConfidence: extractedObligations.confidence,
     });
 
     created.push(newObligation);

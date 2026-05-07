@@ -227,6 +227,36 @@ export async function triggerApprovalCompleted(
 }
 
 /**
+ * Trigger webhook when an obligation is created
+ */
+export async function triggerObligationCreated(
+  tenantId: string,
+  obligationId: string,
+  data: Record<string, unknown>
+) {
+  return triggerWebhook({
+    tenantId,
+    event: 'obligation.created',
+    data: { obligationId, ...data },
+  });
+}
+
+/**
+ * Trigger webhook when an obligation is completed
+ */
+export async function triggerObligationCompleted(
+  tenantId: string,
+  obligationId: string,
+  data: Record<string, unknown>
+) {
+  return triggerWebhook({
+    tenantId,
+    event: 'obligation.completed',
+    data: { obligationId, ...data },
+  });
+}
+
+/**
  * Trigger webhook when a risk is detected
  */
 export async function triggerRiskDetected(

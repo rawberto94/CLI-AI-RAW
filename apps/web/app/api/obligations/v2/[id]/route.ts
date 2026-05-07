@@ -175,6 +175,32 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     },
   });
 
+  // Emit obligation.completed when status transitions to COMPLETED.
+  if (body.status === 'completed' && existing.status !== 'COMPLETED') {
+    const eventPayload = {
+      obligationId: id,
+      contractId: updated.contractId,
+      title: updated.title,
+      completedBy: ctx.userId,
+      completedAt: new Date().toISOString(),
+    };
+    import('@/lib/webhook-triggers')
+      .then(({ triggerObligationCompleted }) =>
+        triggerObligationCompleted(ctx.tenantId, id, eventPayload),
+      )
+      .catch(() => {});
+    import('@/lib/events/integration-events')
+      .then(({ recordIntegrationEvent }) =>
+        recordIntegrationEvent({
+          tenantId: ctx.tenantId,
+          eventType: 'obligation.completed',
+          resourceId: id,
+          payload: eventPayload,
+        }),
+      )
+      .catch(() => {});
+  }
+
   return createSuccessResponse(ctx, {
     success: true,
     obligation: {
