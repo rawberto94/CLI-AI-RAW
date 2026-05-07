@@ -16,6 +16,27 @@
  *     nextCursor: string | null,
  *     hasMore: boolean
  *   }
+ *
+ * POST /api/v1/contracts — register a contract (reference mode).
+ *
+ * Scope: `contracts:write`. Used by upstream systems (DMS, ERP, custom
+ * apps) that already store contract files elsewhere and want Contigo to
+ * track metadata + obligations without holding the bytes.
+ *
+ * Body:
+ *   {
+ *     fileName: string,
+ *     externalUrl: string,
+ *     contractType?: string,
+ *     contractTitle?: string,
+ *     clientName?: string,
+ *     supplierName?: string,
+ *     externalId?: string,
+ *     mimeType?: string,
+ *   }
+ *
+ * Returns the created contract row (status = "UPLOADED",
+ * storageProvider = "reference", externalUrl set). Never auto-processes.
  */
 
 import { NextResponse } from 'next/server';
@@ -89,4 +110,120 @@ export async function GET(request: Request) {
     nextCursor,
     hasMore,
   });
+}
+
+interface CreateBody {
+  fileName?: string;
+  externalUrl?: string;
+  contractType?: string;
+  contractTitle?: string;
+  clientName?: string;
+  supplierName?: string;
+  externalId?: string;
+  mimeType?: string;
+}
+
+export async function POST(request: Request) {
+  const authResult = await authenticateApiToken(request);
+  if (!authResult.ok) return authResult.response;
+  const { auth } = authResult;
+  const scopeError = requireScope(auth, 'contracts:write');
+  if (scopeError) return scopeError;
+
+  let body: CreateBody;
+  try {
+    body = (await request.json()) as CreateBody;
+  } catch {
+    return NextResponse.json({ error: 'Body must be valid JSON' }, { status: 400 });
+  }
+
+  const fileName = (body.fileName || '').trim();
+  const externalUrl = (body.externalUrl || '').trim();
+  if (!fileName) {
+    return NextResponse.json({ error: 'fileName is required' }, { status: 400 });
+  }
+  if (!externalUrl) {
+    return NextResponse.json(
+      { error: 'externalUrl is required (Contigo only stores metadata in this mode)' },
+      { status: 400 },
+    );
+  }
+  try {
+    // eslint-disable-next-line no-new
+    new URL(externalUrl);
+  } catch {
+    return NextResponse.json({ error: 'externalUrl must be a valid URL' }, { status: 400 });
+  }
+
+  const contract = await prisma.contract.create({
+    data: {
+      tenantId: auth.tenantId,
+      fileName,
+      originalName: fileName,
+      mimeType: body.mimeType || 'application/pdf',
+      fileSize: BigInt(0),
+      status: 'UPLOADED',
+      storagePath: '',
+      storageProvider: 'reference',
+      contractType: body.contractType || 'UNKNOWN',
+      contractTitle: body.contractTitle || fileName,
+      clientName: body.clientName || undefined,
+      supplierName: body.supplierName || undefined,
+      externalId: body.externalId || undefined,
+      externalUrl,
+      importSource: 'api_v1',
+      uploadedAt: new Date(),
+      sourceMetadata: {
+        mode: 'reference',
+        createdVia: 'api_v1',
+        apiTokenId: auth.tokenId,
+      },
+    },
+    select: {
+      id: true,
+      fileName: true,
+      contractType: true,
+      contractTitle: true,
+      status: true,
+      clientName: true,
+      supplierName: true,
+      externalId: true,
+      externalUrl: true,
+      storageProvider: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  // Webhook + durable event log (fire-and-forget).
+  import('@/lib/webhook-triggers')
+    .then(({ triggerContractCreated }) =>
+      triggerContractCreated(auth.tenantId, contract.id, {
+        fileName: contract.fileName,
+        contractType: contract.contractType,
+        clientName: contract.clientName ?? undefined,
+        supplierName: contract.supplierName ?? undefined,
+        importSource: 'api_v1',
+        mode: 'reference',
+      }),
+    )
+    .catch(() => {});
+  import('@/lib/events/integration-events')
+    .then(({ recordIntegrationEvent }) =>
+      recordIntegrationEvent({
+        tenantId: auth.tenantId,
+        eventType: 'contract.created',
+        resourceId: contract.id,
+        payload: {
+          contractId: contract.id,
+          fileName: contract.fileName,
+          contractType: contract.contractType,
+          importSource: 'api_v1',
+          mode: 'reference',
+        },
+      }),
+    )
+    .catch(() => {});
+
+  return NextResponse.json({ data: contract }, { status: 201 });
 }

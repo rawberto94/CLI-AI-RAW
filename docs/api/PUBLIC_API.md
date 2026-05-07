@@ -76,6 +76,33 @@ Scope: `contracts:read`
 
 Optional `?include=` (comma-separated): `artifacts`, `rawText`.
 
+### `POST /api/v1/contracts`
+
+Scope: `contracts:write`
+
+Register a contract that you store elsewhere (DMS, ERP, S3, SharePoint).
+Contigo will track metadata + obligations + lifecycle events; the bytes
+stay in the source system.
+
+Body:
+
+```json
+{
+  "fileName": "MSA-2024.pdf",
+  "externalUrl": "https://dms.example.com/contracts/abc123",
+  "contractType": "MSA",
+  "contractTitle": "MSA — Acme & Beta",
+  "clientName": "Acme",
+  "supplierName": "Beta",
+  "externalId": "abc123",
+  "mimeType": "application/pdf"
+}
+```
+
+Response: `201 { data: Contract }`. `status` is `UPLOADED` and Contigo
+never fetches the URL automatically — it's stored as the canonical
+pointer for downstream UIs and integrations.
+
 ### `GET /api/v1/obligations`
 
 Scope: `obligations:read`
