@@ -27,6 +27,7 @@ import { BoxConnector, BoxCredentials } from './box.connector';
 import { SalesforceConnector } from './salesforce.connector';
 import { SlackConnector } from './slack.connector';
 import { PostgresConnector } from './postgres.connector';
+import { MysqlConnector, MysqlCredentials } from './mysql.connector';
 
 /**
  * Create a connector instance for the given provider
@@ -71,6 +72,8 @@ export function createConnector(
       return new PostgresConnector(credentials as PostgresCredentials);
     
     case ContractSourceProvider.MYSQL:
+      return new MysqlConnector(credentials as unknown as MysqlCredentials);
+    
     case ContractSourceProvider.MSSQL:
     case ContractSourceProvider.MONGODB:
       throw new Error(`Provider ${provider} is not yet implemented`);
@@ -164,6 +167,9 @@ export function getRequiredCredentialFields(
       // For Postgres we accept either a connectionString OR (host + database).
       // The factory checks `table` and the column-mapping shape; deeper
       // validation happens in the connector constructor.
+      return ['table'];
+    
+    case ContractSourceProvider.MYSQL:
       return ['table'];
     
     default:

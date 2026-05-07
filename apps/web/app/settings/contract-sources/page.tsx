@@ -73,6 +73,7 @@ const PROVIDERS = {
   DROPBOX: { name: "Dropbox", icon: Cloud, color: "text-violet-400" },
   BOX: { name: "Box", icon: Cloud, color: "text-violet-700" },
   POSTGRES: { name: "PostgreSQL", icon: HardDrive, color: "text-violet-600" },
+  MYSQL: { name: "MySQL", icon: HardDrive, color: "text-blue-600" },
   CUSTOM_API: { name: "Custom API", icon: Server, color: "text-violet-600" },
 };
 
@@ -536,32 +537,38 @@ function CreateSourceDialog({
 
     setIsCreating(true);
     try {
-      const credentialPayload: Record<string, unknown> =
-        provider === "POSTGRES"
-          ? {
-              type: "postgres",
-              host: credentials.host,
-              port: credentials.port ? Number(credentials.port) : undefined,
-              database: credentials.database,
-              username: credentials.username,
-              password: credentials.password,
-              ssl: credentials.ssl === "true",
-              schema: credentials.schema || undefined,
-              table: credentials.table,
-              whereClause: credentials.whereClause || undefined,
-              mapping: {
-                idColumn: credentials.idColumn,
-                bodyColumn: credentials.bodyColumn,
-                titleColumn: credentials.titleColumn || undefined,
-                modifiedAtColumn: credentials.modifiedAtColumn || undefined,
-                supplierColumn: credentials.supplierColumn || undefined,
-                clientColumn: credentials.clientColumn || undefined,
-                externalIdColumn: credentials.externalIdColumn || undefined,
-                mimeTypeColumn: credentials.mimeTypeColumn || undefined,
-                mode: credentials.mode === "reference" ? "reference" : "copy",
-              },
-            }
-          : { type: provider.toLowerCase(), ...credentials };
+      const isSqlProvider = provider === "POSTGRES" || provider === "MYSQL";
+      const credentialPayload: Record<string, unknown> = isSqlProvider
+        ? {
+            type: provider === "POSTGRES" ? "postgres" : "mysql",
+            host: credentials.host,
+            port: credentials.port
+              ? Number(credentials.port)
+              : provider === "POSTGRES"
+              ? 5432
+              : 3306,
+            database: credentials.database,
+            username: credentials.username,
+            password: credentials.password,
+            ssl: credentials.ssl === "true",
+            ...(provider === "POSTGRES" && credentials.schema
+              ? { schema: credentials.schema }
+              : {}),
+            table: credentials.table,
+            whereClause: credentials.whereClause || undefined,
+            mapping: {
+              idColumn: credentials.idColumn,
+              bodyColumn: credentials.bodyColumn,
+              titleColumn: credentials.titleColumn || undefined,
+              modifiedAtColumn: credentials.modifiedAtColumn || undefined,
+              supplierColumn: credentials.supplierColumn || undefined,
+              clientColumn: credentials.clientColumn || undefined,
+              externalIdColumn: credentials.externalIdColumn || undefined,
+              mimeTypeColumn: credentials.mimeTypeColumn || undefined,
+              mode: credentials.mode === "reference" ? "reference" : "copy",
+            },
+          }
+        : { type: provider.toLowerCase(), ...credentials };
 
       const res = await fetch("/api/contract-sources", {
         method: "POST",
@@ -772,12 +779,14 @@ function CreateSourceDialog({
           </>
         );
       case "POSTGRES":
+      case "MYSQL":
         return (
           <>
             <div className="rounded-md border border-violet-200 bg-violet-50 p-3 text-xs text-violet-900">
-              Connect to a PostgreSQL database where each row in a table is one
-              contract. Map your column names below. The connector reads only;
-              create a read-only role for it.
+              Connect to a {provider === "POSTGRES" ? "PostgreSQL" : "MySQL"}{" "}
+              database where each row in a table is one contract. Map your
+              column names below. The connector reads only; create a read-only
+              user for it.
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-2">
@@ -794,7 +803,7 @@ function CreateSourceDialog({
                 <Input
                   id="port"
                   type="number"
-                  value={credentials.port || "5432"}
+                  value={credentials.port || (provider === "POSTGRES" ? "5432" : "3306")}
                   onChange={(e) => setCredentials({ ...credentials, port: e.target.value })}
                 />
               </div>
@@ -827,15 +836,17 @@ function CreateSourceDialog({
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-2">
-                <Label htmlFor="schema">Schema</Label>
-                <Input
-                  id="schema"
-                  value={credentials.schema || ""}
-                  onChange={(e) => setCredentials({ ...credentials, schema: e.target.value })}
-                  placeholder="public"
-                />
-              </div>
+              {provider === "POSTGRES" && (
+                <div className="space-y-2">
+                  <Label htmlFor="schema">Schema</Label>
+                  <Input
+                    id="schema"
+                    value={credentials.schema || ""}
+                    onChange={(e) => setCredentials({ ...credentials, schema: e.target.value })}
+                    placeholder="public"
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="table">Table</Label>
                 <Input

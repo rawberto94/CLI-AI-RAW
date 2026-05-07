@@ -579,6 +579,59 @@ class ContractSourceSyncService {
     });
 
     try {
+      // Reference-mode short-circuit: some connectors (e.g. Postgres in
+      // reference mode) only carry a URL/path in the source row and have no
+      // bytes to download. Skip downloadFile + storage and create a
+      // metadata-only Contract pointing at the original URL.
+      const isReferenceMode =
+        (file.metadata as Record<string, unknown> | undefined)?.mode === 'reference';
+
+      if (isReferenceMode) {
+        const externalUrl = file.webUrl || file.downloadUrl;
+        if (!externalUrl) {
+          throw new Error(
+            `Reference-mode row ${file.id} has no webUrl/downloadUrl; ` +
+              `check that the body column maps to a URL string.`,
+          );
+        }
+
+        const contract = await prisma.contract.create({
+          data: {
+            tenantId: source.tenantId,
+            fileName: file.name,
+            originalName: file.name,
+            mimeType: file.mimeType,
+            fileSize: BigInt(file.size || 0),
+            status: 'UPLOADED', // never auto-process; we don't have the bytes
+            storagePath: '', // no local copy
+            storageProvider: 'reference',
+            importSource: source.provider,
+            externalId: file.id,
+            externalUrl,
+            sourceMetadata: {
+              sourceId: source.id,
+              sourceName: source.name,
+              remotePath: file.path,
+              syncedAt: new Date().toISOString(),
+              mode: 'reference',
+              ...(file.metadata as Record<string, unknown> | undefined),
+            },
+          },
+        });
+
+        await prisma.syncedFile.update({
+          where: { id: syncedFile.id },
+          data: {
+            contractId: contract.id,
+            processingStatus: SyncFileStatus.COMPLETED,
+            processedAt: new Date(),
+          },
+        });
+
+        progress.filesProcessed++;
+        return;
+      }
+
       // Download file
       const downloaded = await connector.downloadFile(file.id);
       const downloadedSize = downloaded.size ?? 0;
