@@ -214,6 +214,21 @@ Outbound webhook delivery is durable and at-least-once:
 6. Run `POST /api/cron/webhook-retry` (or `GET`, same handler) every
    ~60s with `Authorization: Bearer $CRON_SECRET` to drain due retries.
 
+### Retention
+
+Append-only outbound tables are pruned by `POST /api/cron/retention-cleanup`
+(Bearer `CRON_SECRET`, recommended once per day). Defaults:
+
+| Table                       | Default window | Env override               |
+|-----------------------------|----------------|----------------------------|
+| `IntegrationEvent`          | 90 days        | `EVENT_RETENTION_DAYS`     |
+| `ApiTokenUsageBucket`       | 30 days        | `USAGE_RETENTION_DAYS`     |
+| `WebhookDelivery` (terminal)| 30 days        | `DELIVERY_RETENTION_DAYS`  |
+
+`pending` deliveries are never pruned. The endpoint accepts `?dryRun=1`
+plus per-target overrides (`eventDays`, `usageDays`, `deliveryDays`) for
+ad-hoc retention experiments.
+
 ## Pagination
 
 All list endpoints use forward-only cursor pagination. Loop until
