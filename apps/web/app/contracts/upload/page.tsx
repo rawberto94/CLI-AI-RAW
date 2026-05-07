@@ -556,11 +556,7 @@ export default function UploadPage() {
                       tenantId={getTenantId()}
                     />
                     {file.contractId && file.status === 'processing' && file.showArtifacts && (
-                      <div className="mt-2 p-3 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-100 dark:border-violet-800">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden="true" />
-                          <span className="text-sm font-medium text-violet-700 dark:text-violet-300">Live AI Processing</span>
-                        </div>
+                      <div className="mt-3">
                         <RealtimeArtifactViewer
                           contractId={file.contractId}
                           tenantId={getTenantId()}

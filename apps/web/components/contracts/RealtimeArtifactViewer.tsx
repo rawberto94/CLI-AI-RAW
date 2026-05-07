@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { 
   FileText, 
   DollarSign, 
@@ -17,7 +16,6 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
-  Wifi,
   Sparkles,
   RefreshCw,
   Eye,
@@ -303,118 +301,94 @@ export function RealtimeArtifactViewer({
     return null;
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Connection Status */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {isConnected ? (
-            <>
-              <Wifi className="h-4 w-4 text-green-600 animate-pulse" />
-              <span className="text-sm text-green-600 font-medium">Live Updates Connected</span>
-            </>
-          ) : isEffectivelyComplete ? (
-            <>
-              <CheckCircle2 className="h-4 w-4 text-violet-600" />
-              <span className="text-sm text-violet-600 font-medium">Processing Complete</span>
-            </>
-          ) : error ? (
-            <>
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="text-sm text-red-500">
-                {error.includes('not found') ? 'Contract not found' : 'Connection Error'}
-              </span>
-              {!error.includes('not found') && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setError(null);
-                    setIsPollingFallback(false);
-                    if (pollingIntervalRef.current) {
-                      clearInterval(pollingIntervalRef.current);
-                    }
-                    reconnect();
-                  }}
-                  className="ml-2"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                </Button>
-              )}
-            </>
-          ) : isPollingFallback ? (
-            <>
-              <RefreshCw className="h-4 w-4 text-yellow-600 animate-spin" />
-              <span className="text-sm text-yellow-600">Checking status...</span>
-            </>
-          ) : (
-            <>
-              <Loader2 className="h-4 w-4 text-violet-500 animate-spin" />
-              <span className="text-sm text-violet-500">Connecting to live updates...</span>
-            </>
-          )}
-        </div>
-        
-        {!isEffectivelyComplete && hasArtifacts && (
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Clock className="h-4 w-4" />
-            <span>{completedCount} of {totalCount} artifacts</span>
-          </div>
-        )}
-      </div>
+  // While we're still queued and have no artifacts yet, the parent
+  // upload row already shows the file-level "Waiting in queue …"
+  // status. Suppress the entire inner viewer until either real work
+  // starts or there's an error to show — prevents three duplicate
+  // "queued / waiting / connecting" labels stacked on top of each
+  // other.
+  const stageStarted = !!processingStage && processingStage !== 'queued';
+  const isQueuedSilent =
+    !error &&
+    !isEffectivelyComplete &&
+    !hasArtifacts &&
+    !stageStarted;
+  if (isQueuedSilent) {
+    return null;
+  }
 
-      {/* Progress Bar */}
-      {!isEffectivelyComplete && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">
-                    {processingStage ? stageLabels[processingStage] : 'Processing contract...'}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {contractStatus === 'PROCESSING' ? 'Analyzing document with AI' : contractStatus}
-                  </p>
-                </div>
-                <Loader2 className="h-5 w-5 animate-spin text-violet-600" />
-              </div>
-              <Progress value={hasArtifacts ? progressPercent : undefined} className="h-2" />
-              {hasArtifacts ? (
-                <p className="text-xs text-gray-500 text-right">
-                  {Math.round(progressPercent)}% complete
-                </p>
-              ) : (
-                <p className="text-xs text-gray-400 text-right">Waiting for AI analysis...</p>
-              )}
+  return (
+    <div className="space-y-4">
+      {/* Compact status strip — connection state + progress in one line */}
+      {!isEffectivelyComplete && !error && (
+        <div className="flex items-center gap-3 rounded-lg border border-violet-100 bg-violet-50/60 px-3 py-2 dark:border-violet-900/50 dark:bg-violet-950/30">
+          <div className="flex items-center gap-2 min-w-0">
+            {isConnected ? (
+              <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-300" aria-hidden="true" />
+            ) : isPollingFallback ? (
+              <RefreshCw className="h-3.5 w-3.5 shrink-0 text-amber-600 animate-spin" aria-hidden="true" />
+            ) : (
+              <Loader2 className="h-3.5 w-3.5 shrink-0 text-violet-500 animate-spin" aria-hidden="true" />
+            )}
+            <span className="text-[13px] font-medium text-violet-900 dark:text-violet-100 truncate">
+              {processingStage ? stageLabels[processingStage] : 'AI analysis in progress'}
+            </span>
+          </div>
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            {hasArtifacts ? (
+              <span className="text-[12px] tabular-nums text-violet-800 dark:text-violet-200">
+                {completedCount} / {totalCount}
+              </span>
+            ) : (
+              <span className="text-[12px] text-violet-700/80 dark:text-violet-200/80">Starting…</span>
+            )}
+            <div className="w-32 hidden sm:block">
+              <Progress value={hasArtifacts ? progressPercent : undefined} className="h-1.5" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* Error Alert */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Processing Error</AlertTitle>
-          <AlertDescription>
-            <div className="space-y-2">
-              <p>{error}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setError(null);
-                  reconnect();
-                }}
-                className="mt-2"
-              >
-                <RefreshCw className="h-3 w-3 mr-1" />
-                Retry Connection
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
+      {/* Connection-error banner (only when actually broken) */}
+      {error && !error.includes('not found') && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 dark:border-red-900/60 dark:bg-red-950/30">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-red-500" aria-hidden="true" />
+            <span className="text-[13px] text-red-700 dark:text-red-300 truncate">Live updates lost — retrying…</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setError(null);
+              setIsPollingFallback(false);
+              if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+              }
+              reconnect();
+            }}
+            className="h-7 px-2 text-red-700 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/40"
+          >
+            <RefreshCw className="h-3 w-3 mr-1" aria-hidden="true" />
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {/* Completion strip */}
+      {isEffectivelyComplete && (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-900/60 dark:bg-emerald-950/30">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-300" aria-hidden="true" />
+          <span className="text-[13px] font-medium text-emerald-800 dark:text-emerald-200">Analysis complete</span>
+        </div>
+      )}
+
+      {/* Hard error (contract not found, etc.) */}
+      {error && error.includes('not found') && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 dark:border-red-900/60 dark:bg-red-950/30">
+          <AlertTriangle className="h-4 w-4 text-red-500" aria-hidden="true" />
+          <span className="text-[13px] text-red-700 dark:text-red-300">Contract not found</span>
+        </div>
       )}
 
       {/* Artifacts Grid */}
