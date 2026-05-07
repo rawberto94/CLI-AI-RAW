@@ -3656,35 +3656,40 @@ model Webhook {
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt
   createdBy  String?
-  deliveries WebhookDelivery[]
 
   @@index([tenantId])
   @@index([enabled])
   @@map("webhooks")
 }
 
-// Webhook Delivery Tracking
+// Webhook Delivery Tracking - persistent queue with retry + DLQ semantics.
+// Status transitions: pending -> success | failed (retry pending) | dead (DLQ).
+// webhookId is a free string ref (matches Webhook.id or WebhookConfig.id).
 model WebhookDelivery {
-  id          String    @id @default(cuid())
-  webhookId   String
-  tenantId    String
-  event       String
-  payload     Json
-  status      String    @default("pending") // pending, success, failed
-  attempt     Int       @default(1)
-  maxAttempts Int       @default(5)
-  statusCode  Int?
-  response    String?   @db.Text
-  error       String?   @db.Text
-  sentAt      DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  webhook     Webhook   @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  webhookId     String
+  tenantId      String
+  event         String
+  deliveryId    String?   @unique
+  payload       Json
+  status        String    @default("pending") // pending, success, failed, dead
+  attempt       Int       @default(0)
+  maxAttempts   Int       @default(8)
+  statusCode    Int?
+  response      String?   @db.Text
+  error         String?   @db.Text
+  sentAt        DateTime?
+  lastAttemptAt DateTime?
+  nextAttemptAt DateTime?
+  deadAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([webhookId])
-  @@index([tenantId])
-  @@index([status])
+  @@index([tenantId, status])
+  @@index([status, nextAttemptAt])
   @@index([createdAt])
+  @@index([event])
   @@map("webhook_deliveries")
 }
 

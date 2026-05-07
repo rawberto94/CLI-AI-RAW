@@ -102,43 +102,50 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const deliveryId = crypto.randomUUID();
   const payload = { id: deliveryId, event, timestamp, tenantId, data };
 
+  const { enqueueAndAttempt } = await import('@/lib/webhooks/delivery');
+
   const results = await Promise.allSettled(
     webhooks.map(async (webhook) => {
-      const signature = crypto.createHmac('sha256', webhook.secret).update(JSON.stringify(payload)).digest('hex');
       const startTime = Date.now();
-
       try {
-        const response = await fetch(webhook.url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'ContractIntelligence-Webhook/1.0',
-            'X-Webhook-Signature': signature,
-            'X-Webhook-Event': event,
-            'X-Webhook-Delivery': deliveryId,
-          },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(10000),
+        const outcome = await enqueueAndAttempt({
+          tenantId,
+          webhook: { id: webhook.id, url: webhook.url, secret: webhook.secret },
+          event,
+          payload: data,
         });
+        const deliveryTimeMs = Date.now() - startTime;
 
-        const deliveryTime = Date.now() - startTime;
-
+        // Mirror legacy in-memory failureCount/lastDeliveryAt tracking.
         const stored = webhookStore.get(webhook.id);
         if (stored) {
-          if (response.ok) {
+          if (outcome.status === 'success') {
             webhookStore.set(webhook.id, { ...stored, lastDeliveryAt: new Date(), failureCount: 0 });
           } else {
             webhookStore.set(webhook.id, { ...stored, failureCount: stored.failureCount + 1 });
           }
         }
 
-        return { webhookId: webhook.id, success: response.ok, statusCode: response.status, deliveryTimeMs: deliveryTime };
+        return {
+          webhookId: webhook.id,
+          deliveryRowId: outcome.deliveryRowId,
+          success: outcome.status === 'success',
+          status: outcome.status,
+          statusCode: outcome.statusCode,
+          error: outcome.error,
+          deliveryTimeMs,
+        };
       } catch (error) {
-        const deliveryTime = Date.now() - startTime;
+        const deliveryTimeMs = Date.now() - startTime;
         const stored = webhookStore.get(webhook.id);
         if (stored) webhookStore.set(webhook.id, { ...stored, failureCount: stored.failureCount + 1 });
-
-        return { webhookId: webhook.id, success: false, error: error instanceof Error ? error.message : 'Unknown error', deliveryTimeMs: deliveryTime };
+        return {
+          webhookId: webhook.id,
+          success: false,
+          status: 'failed' as const,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          deliveryTimeMs,
+        };
       }
     })
   );
@@ -148,6 +155,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
 
   return createSuccessResponse(ctx, {
     message: `Webhooks triggered for event: ${event}`,
+    deliveryId,
     delivered: successful,
     failed,
     details: results.map(r => r.status === 'fulfilled' ? r.value : { error: 'Promise rejected' }),

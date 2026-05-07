@@ -17,9 +17,11 @@ Tokens are scoped to a single tenant. Possible scopes:
 | Scope               | Grants                                |
 |---------------------|---------------------------------------|
 | `contracts:read`    | List/get contracts                    |
-| `contracts:write`   | (reserved)                            |
+| `contracts:write`   | Create contracts (reference mode)     |
 | `obligations:read`  | List obligations                      |
-| `events:read`       | (reserved — CDC stream)               |
+| `events:read`       | Read durable IntegrationEvent stream  |
+| `webhooks:read`     | Read webhook delivery status / DLQ    |
+| `webhooks:write`    | Requeue dead-lettered webhook deliveries |
 | `*`                 | All current and future scopes         |
 
 The raw token is shown once at creation. Only its bcrypt hash and a 12-char
@@ -168,6 +170,49 @@ while :; do
   [[ "$(echo "$resp" | jq -r '.hasMore')" == "false" ]] && sleep 5
 done
 ```
+
+### `GET /api/v1/webhook-deliveries`
+
+Scope: `webhooks:read`
+
+Provides visibility into the persistent outbound webhook delivery queue —
+every dispatch attempt produces a `WebhookDelivery` row that progresses
+through `pending → success`, `pending → failed (retry pending) → …` or
+`pending → dead` (DLQ after max attempts).
+
+Query params: `status` (`pending` | `success` | `failed` | `dead`), `event`,
+`webhookId`, `limit` (default 50, max 200), `cursor` (delivery row id).
+
+Response item fields: `id`, `webhookId`, `event`, `status`, `attempt`,
+`maxAttempts`, `statusCode`, `error`, `deliveryId`, `sentAt`,
+`lastAttemptAt`, `nextAttemptAt`, `deadAt`, `createdAt`.
+
+### `POST /api/v1/webhook-deliveries/:id/requeue`
+
+Scope: `webhooks:write`
+
+Requeues a `dead` delivery for another retry pass. Resets the attempt
+counter and schedules an immediate retry. The next
+`/api/cron/webhook-retry` tick will pick it up.
+
+Returns 404 if the delivery is not found in the caller's tenant or is not
+currently in `dead` status.
+
+### Retry / DLQ semantics
+
+Outbound webhook delivery is durable and at-least-once:
+
+1. Each event triggers one `WebhookDelivery` row per subscribed webhook.
+2. The first attempt runs synchronously inside the originating request.
+3. On HTTP 2xx → `status = success`, `sentAt` set.
+4. On any other outcome (network error, 4xx, 5xx) → `status = pending`,
+   `attempt` incremented, `nextAttemptAt` scheduled with exponential
+   backoff (~30s, 1m, 2m, 4m, 8m, 16m, 32m, 60m; capped at 1h, jittered).
+5. After `maxAttempts` (default 8) → `status = dead`, `deadAt` set.
+   Inspect with `GET /api/v1/webhook-deliveries?status=dead` and replay
+   with the requeue endpoint.
+6. Run `POST /api/cron/webhook-retry` (or `GET`, same handler) every
+   ~60s with `Authorization: Bearer $CRON_SECRET` to drain due retries.
 
 ## Pagination
 
