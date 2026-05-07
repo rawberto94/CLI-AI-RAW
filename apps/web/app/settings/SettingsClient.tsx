@@ -886,7 +886,6 @@ export default function SettingsClient() {
                     { key: 'salesforce', label: 'Salesforce', icon: BarChart3, description: 'CRM integration' },
                     { key: 'slack', label: 'Slack', icon: Bell, description: 'Team notifications' },
                     { key: 'teams', label: 'Microsoft Teams', icon: Users, description: 'Collaboration' },
-                    { key: 'webhook', label: 'Webhooks', icon: Globe, description: 'Custom integrations' },
                   ] as const).map((integration) => {
                     const Icon = integration.icon;
                     return (
@@ -918,6 +917,46 @@ export default function SettingsClient() {
                       </div>
                     );
                   })}
+
+                  <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+                    <div className="mb-3">
+                      <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Outbound Integrations</h4>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        Manage webhook subscribers, delivery recovery, durable event replay, and API tokens.
+                      </p>
+                    </div>
+                    {([
+                    { key: 'webhook-config', label: 'Webhook Endpoints', icon: Globe, description: 'Manage subscribers and secrets', href: '/settings/webhooks', cta: 'Open' },
+                    { key: 'webhook-deliveries', label: 'Webhook Deliveries', icon: RefreshCw, description: 'Inspect retries, DLQ, and requeue', href: '/settings/webhook-deliveries', cta: 'Open' },
+                    { key: 'integration-events', label: 'Integration Events', icon: Play, description: 'Browse durable events and replay them', href: '/settings/integration-events', cta: 'Open' },
+                    { key: 'api-tokens', label: 'API Tokens', icon: Key, description: 'Issue scoped tokens for /api/v1 access', href: '/settings/api-tokens', cta: 'Open' },
+                  ] as const).map((integration) => {
+                    const Icon = integration.icon;
+                    return (
+                      <div
+                        key={integration.key}
+                        className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-slate-700">
+                            <Icon className="w-5 h-5 text-violet-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-slate-900 dark:text-slate-100">
+                              {integration.label}
+                            </h4>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              {integration.description}
+                            </p>
+                          </div>
+                        </div>
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={integration.href}>{integration.cta}</Link>
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  </div>
                 </div>
               </CardContent>
             </Card>
