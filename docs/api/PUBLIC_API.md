@@ -129,6 +129,7 @@ Query params: `limit` (max 500), `since` (event id, exclusive),
 | `eventType`             | Resource     | Emitted when                                                |
 | ----------------------- | ------------ | ----------------------------------------------------------- |
 | `contract.created`      | contract id  | Contract registered (UI upload, DB sync, or `POST /api/v1/contracts`) |
+| `contract.updated`      | contract id  | Contract metadata changed (PUT/PATCH `/api/contracts/:id` or bulk metadata update). Payload includes `changedFields[]` + `updatedBy`. |
 | `contract.processed`    | contract id  | OCR + artifact generation finished                          |
 | `contract.expired`      | contract id  | `expirationDate` crossed (lifecycle scan)                   |
 | `contract.renewed`      | contract id  | Contract renewed via `/renew` (new contract) or `/extend` (in-place)  |

@@ -221,6 +221,37 @@ export async function postBulkContractMetadataUpdate(
     userId: context.userId,
   });
 
+  // Fire-and-forget: emit contract.updated for each successfully updated contract.
+  if (result.successful && Array.isArray(result.successful) && context.tenantId) {
+    const tenantId = context.tenantId;
+    const updatedBy = context.userId ?? null;
+    const changedFields = Object.keys(updates ?? {});
+    const successfulIds: string[] = result.successful
+      .map((s: unknown) => (typeof s === 'string' ? s : (s as { id?: string })?.id))
+      .filter((id): id is string => typeof id === 'string' && id.length > 0);
+    if (successfulIds.length > 0) {
+      import('@/lib/webhook-triggers')
+        .then(({ triggerContractUpdated }) => {
+          for (const id of successfulIds) {
+            triggerContractUpdated(tenantId, id, { changedFields, updatedBy, bulk: true }).catch(() => {});
+          }
+        })
+        .catch(() => {});
+      import('@/lib/events/integration-events')
+        .then(({ recordIntegrationEvent }) => {
+          for (const id of successfulIds) {
+            recordIntegrationEvent({
+              tenantId,
+              eventType: 'contract.updated',
+              resourceId: id,
+              payload: { contractId: id, changedFields, updatedBy, bulk: true },
+            }).catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
+  }
+
   return createSuccessResponse(context, {
     message: 'Bulk metadata update completed',
     successful: result.successful,

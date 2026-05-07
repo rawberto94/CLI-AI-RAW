@@ -1046,6 +1046,33 @@ export async function putContractDetails(
       metadata: { changes: prismaUpdates },
     }).catch((error) => logger.error('[ContractUpdate] Audit log failed:', error));
 
+    // Fire-and-forget: emit contract.updated to webhooks + integration event log.
+    // Strip metadata blob (often huge) from the changedFields summary; downstream
+    // consumers re-read the contract via /api/v1 if they need the full state.
+    {
+      const changedFields = Object.keys(prismaUpdates).filter((k) => k !== 'updatedAt');
+      const payload = {
+        contractId,
+        changedFields,
+        updatedBy: context.userId ?? null,
+      };
+      import('@/lib/webhook-triggers')
+        .then(({ triggerContractUpdated }) =>
+          triggerContractUpdated(tenantId, contractId, { changedFields, updatedBy: context.userId ?? null }),
+        )
+        .catch(() => {});
+      import('@/lib/events/integration-events')
+        .then(({ recordIntegrationEvent }) =>
+          recordIntegrationEvent({
+            tenantId,
+            eventType: 'contract.updated',
+            resourceId: contractId,
+            payload,
+          }),
+        )
+        .catch(() => {});
+    }
+
     const aiFields = [
       'contractType',
       'clientName',
