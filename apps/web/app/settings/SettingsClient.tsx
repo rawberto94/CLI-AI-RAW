@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { PageBreadcrumb } from '@/components/navigation';
 import { unwrapApiResponseData } from '@/lib/api-fetch';
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -275,6 +276,31 @@ export default function SettingsClient() {
       href: "/settings/taxonomy",
     },
   ];
+
+  const outboundCardBadges = outboundOverview
+    ? {
+        'webhook-config': [
+          { label: `${outboundOverview.webhooks.active} active`, variant: 'outline' as const },
+          { label: `${outboundOverview.webhooks.total} total`, variant: 'secondary' as const },
+        ],
+        'webhook-deliveries': [
+          ...(outboundOverview.deliveries.dead > 0
+            ? [{ label: `${outboundOverview.deliveries.dead} dead-letter`, variant: 'destructive' as const }]
+            : []),
+          { label: `${outboundOverview.deliveries.pending} retrying`, variant: 'outline' as const },
+        ],
+        'integration-events': [
+          { label: `${outboundOverview.events.last24h} in 24h`, variant: 'outline' as const },
+          ...(outboundOverview.events.lastAt
+            ? [{ label: 'live stream active', variant: 'secondary' as const }]
+            : []),
+        ],
+        'api-tokens': [
+          { label: `${outboundOverview.apiTokens.active} active`, variant: 'outline' as const },
+          { label: `${outboundOverview.apiTokens.requestsLast24h} req / 24h`, variant: 'secondary' as const },
+        ],
+      }
+    : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100/50 to-gray-50/30 dark:from-slate-900 dark:via-slate-800/50 dark:to-slate-900/30">
@@ -1010,6 +1036,15 @@ export default function SettingsClient() {
                             <p className="text-sm text-slate-500 dark:text-slate-400">
                               {integration.description}
                             </p>
+                            {outboundCardBadges?.[integration.key as keyof typeof outboundCardBadges] && (
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {outboundCardBadges[integration.key as keyof typeof outboundCardBadges].map((badge) => (
+                                  <Badge key={badge.label} variant={badge.variant} className="text-[11px]">
+                                    {badge.label}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <Button asChild variant="outline" size="sm">
