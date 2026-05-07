@@ -74,6 +74,7 @@ const PROVIDERS = {
   BOX: { name: "Box", icon: Cloud, color: "text-violet-700" },
   POSTGRES: { name: "PostgreSQL", icon: HardDrive, color: "text-violet-600" },
   MYSQL: { name: "MySQL", icon: HardDrive, color: "text-blue-600" },
+  MSSQL: { name: "SQL Server", icon: HardDrive, color: "text-red-700" },
   CUSTOM_API: { name: "Custom API", icon: Server, color: "text-violet-600" },
 };
 
@@ -537,21 +538,28 @@ function CreateSourceDialog({
 
     setIsCreating(true);
     try {
-      const isSqlProvider = provider === "POSTGRES" || provider === "MYSQL";
+      const isSqlProvider =
+        provider === "POSTGRES" || provider === "MYSQL" || provider === "MSSQL";
+      const sqlType =
+        provider === "POSTGRES" ? "postgres" : provider === "MYSQL" ? "mysql" : "mssql";
+      const defaultPort =
+        provider === "POSTGRES" ? 5432 : provider === "MYSQL" ? 3306 : 1433;
       const credentialPayload: Record<string, unknown> = isSqlProvider
         ? {
-            type: provider === "POSTGRES" ? "postgres" : "mysql",
+            type: sqlType,
             host: credentials.host,
-            port: credentials.port
-              ? Number(credentials.port)
-              : provider === "POSTGRES"
-              ? 5432
-              : 3306,
+            port: credentials.port ? Number(credentials.port) : defaultPort,
             database: credentials.database,
             username: credentials.username,
             password: credentials.password,
             ssl: credentials.ssl === "true",
-            ...(provider === "POSTGRES" && credentials.schema
+            ...(provider === "MSSQL"
+              ? {
+                  encrypt: credentials.encrypt !== "false",
+                  trustServerCertificate: credentials.trustServerCertificate === "true",
+                }
+              : {}),
+            ...((provider === "POSTGRES" || provider === "MSSQL") && credentials.schema
               ? { schema: credentials.schema }
               : {}),
             table: credentials.table,
@@ -780,10 +788,16 @@ function CreateSourceDialog({
         );
       case "POSTGRES":
       case "MYSQL":
+      case "MSSQL":
         return (
           <>
             <div className="rounded-md border border-violet-200 bg-violet-50 p-3 text-xs text-violet-900">
-              Connect to a {provider === "POSTGRES" ? "PostgreSQL" : "MySQL"}{" "}
+              Connect to a{" "}
+              {provider === "POSTGRES"
+                ? "PostgreSQL"
+                : provider === "MYSQL"
+                ? "MySQL"
+                : "SQL Server"}{" "}
               database where each row in a table is one contract. Map your
               column names below. The connector reads only; create a read-only
               user for it.
@@ -803,7 +817,7 @@ function CreateSourceDialog({
                 <Input
                   id="port"
                   type="number"
-                  value={credentials.port || (provider === "POSTGRES" ? "5432" : "3306")}
+                  value={credentials.port || (provider === "POSTGRES" ? "5432" : provider === "MYSQL" ? "3306" : "1433")}
                   onChange={(e) => setCredentials({ ...credentials, port: e.target.value })}
                 />
               </div>
@@ -836,14 +850,14 @@ function CreateSourceDialog({
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {provider === "POSTGRES" && (
+              {(provider === "POSTGRES" || provider === "MSSQL") && (
                 <div className="space-y-2">
                   <Label htmlFor="schema">Schema</Label>
                   <Input
                     id="schema"
                     value={credentials.schema || ""}
                     onChange={(e) => setCredentials({ ...credentials, schema: e.target.value })}
-                    placeholder="public"
+                    placeholder={provider === "POSTGRES" ? "public" : "dbo"}
                   />
                 </div>
               )}

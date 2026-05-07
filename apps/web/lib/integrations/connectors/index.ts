@@ -28,6 +28,7 @@ export { DropboxConnector, createDropboxConnector } from './dropbox.connector';
 export { BoxConnector, createBoxConnector } from './box.connector';
 export { PostgresConnector, createPostgresConnector } from './postgres.connector';
 export { MysqlConnector, createMysqlConnector } from './mysql.connector';
+export { MssqlConnector, createMssqlConnector } from './mssql.connector';
 
 // Credential encryption
 export {
