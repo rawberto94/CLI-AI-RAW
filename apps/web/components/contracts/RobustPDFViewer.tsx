@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -82,7 +82,6 @@ export function RobustPDFViewer({
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const objectRef = useRef<HTMLObjectElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   const pdfUrl = `/api/contracts/${contractId}/file`;
@@ -369,8 +368,23 @@ export function RobustPDFViewer({
     return null;
   }
 
-  // Create blob URL for embed fallback
-  const blobUrl = pdfData ? URL.createObjectURL(new Blob([pdfData], { type: 'application/pdf' })) : pdfUrl;
+  // Create a stable blob URL for the embed/iframe fallback. Re-creating
+  // it on every render churns memory and — more importantly — the previous
+  // URL gets revoked, which can race with the <object>/<iframe> load and
+  // surface as the "Unable to display PDF inline" fallback even on browsers
+  // that fully support inline PDF rendering.
+  const blobUrl = useMemo(() => {
+    if (!pdfData) return pdfUrl;
+    return URL.createObjectURL(new Blob([pdfData], { type: 'application/pdf' }));
+  }, [pdfData, pdfUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (blobUrl && blobUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [blobUrl]);
 
   // Fullscreen overlay - renders as a portal-like fixed overlay
   if (isFullscreen) {
@@ -560,10 +574,10 @@ export function RobustPDFViewer({
               />
             )}
             {mode === 'embed' && (
-              <object
-                data={blobUrl}
-                type="application/pdf"
-                className="w-full h-full"
+              <iframe
+                src={blobUrl}
+                title={filename}
+                className="w-full h-full bg-white"
               />
             )}
           </div>
@@ -863,31 +877,16 @@ export function RobustPDFViewer({
             </div>
           )}
 
-          {/* Embed mode - Native browser PDF viewer */}
+          {/* Embed mode - Native browser PDF viewer (iframe is most
+              reliable across Chromium/WebKit/Firefox; <object> falls back
+              to its children too aggressively in some embedded contexts). */}
           {mode === 'embed' && (
-            <object
-              ref={objectRef}
-              data={blobUrl}
-              type="application/pdf"
-              className="w-full h-full"
+            <iframe
+              src={blobUrl}
+              title={filename}
+              className="w-full h-full bg-white"
               onError={handleEmbedError}
-            >
-              <div className="flex flex-col items-center justify-center h-full p-8">
-                <FileText className="h-16 w-16 text-slate-400 mb-4" />
-                <p className="text-slate-300 mb-2">Unable to display PDF inline</p>
-                <p className="text-sm text-slate-400 mb-4">Your browser may not support inline PDF viewing</p>
-                <div className="flex gap-2">
-                  <Button onClick={handleDownload} size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download PDF
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleOpenNewTab}>
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Open in New Tab
-                  </Button>
-                </div>
-              </div>
-            </object>
+            />
           )}
 
           {/* Fallback mode */}
