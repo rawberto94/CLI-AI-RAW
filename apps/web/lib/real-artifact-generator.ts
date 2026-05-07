@@ -2729,6 +2729,15 @@ export async function generateRealArtifacts(
       } catch (reindexError) {
         logger.warn({ contractId, reindexError }, 'Post-artifact reindex trigger failed');
       }
+
+      // Outbound contract.processed webhook (non-blocking).
+      import('@/lib/webhook-triggers')
+        .then(({ triggerContractProcessed }) =>
+          triggerContractProcessed(tenantId, contractId, {
+            artifactsCreated: artifactIds.length,
+          }),
+        )
+        .catch(() => {});
     }
 
     const totalDurationMs = Math.round(performance.now() - startTime);

@@ -573,6 +573,21 @@ export async function postContractUpload(
         },
         source: 'api:contracts/upload',
       });
+
+      // Fire outbound contract.created webhook (non-blocking).
+      import('@/lib/webhook-triggers')
+        .then(({ triggerContractCreated }) =>
+          triggerContractCreated(contract.tenantId, contract.id, {
+            fileName: contract.fileName,
+            contractType: contract.contractType,
+            clientName: contract.clientName ?? undefined,
+            supplierName: contract.supplierName ?? undefined,
+            uploadedBy: context.userId,
+          }),
+        )
+        .catch((error) =>
+          logger.warn('[ContractUpload] webhook trigger failed: ' + (error as Error).message),
+        );
     }
 
     try {

@@ -628,6 +628,18 @@ class ContractSourceSyncService {
           },
         });
 
+        // Outbound webhook (non-blocking)
+        import('@/lib/webhook-triggers')
+          .then(({ triggerContractCreated }) =>
+            triggerContractCreated(source.tenantId, contract.id, {
+              fileName: contract.fileName,
+              importSource: source.provider,
+              mode: 'reference',
+              externalUrl: contract.externalUrl,
+            }),
+          )
+          .catch(() => {});
+
         progress.filesProcessed++;
         return;
       }
@@ -673,6 +685,17 @@ class ContractSourceSyncService {
           processedAt: new Date(),
         },
       });
+
+      // Outbound webhook (non-blocking)
+      import('@/lib/webhook-triggers')
+        .then(({ triggerContractCreated }) =>
+          triggerContractCreated(source.tenantId, contract.id, {
+            fileName: contract.fileName,
+            importSource: source.provider,
+            mode: 'copy',
+          }),
+        )
+        .catch(() => {});
 
       // If auto-process is enabled, queue for processing
       if (source.autoProcess) {
