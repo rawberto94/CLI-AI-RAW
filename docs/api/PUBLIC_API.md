@@ -172,6 +172,88 @@ while :; do
 done
 ```
 
+#### Warehouse loader recipes
+
+Both recipes assume an `events:read` API token in the caller's tenant
+and a daily/hourly orchestrator (Airflow, Prefect, Dagster, cron). The
+cursor is the integer-as-string `id` returned in `nextSince`; persist it
+between runs and never rewind it.
+
+**Snowflake — staged JSON via external table or VARIANT load**
+
+```sql
+-- one-time setup
+CREATE TABLE contigo_events_state (cursor STRING);
+INSERT INTO contigo_events_state VALUES ('');
+
+CREATE TABLE contigo_events_raw (
+  id        STRING,
+  tenant_id STRING,
+  event_type STRING,
+  resource_id STRING,
+  payload   VARIANT,
+  created_at TIMESTAMP_NTZ
+);
+```
+
+```bash
+# orchestrator step (bash + snowsql)
+cursor=$(snowsql -q "SELECT cursor FROM contigo_events_state" -o output_format=plain | tail -1)
+while :; do
+  resp=$(curl -s -H "Authorization: Bearer $CTG_TOKEN" \
+    "https://contigo.example.com/api/v1/events?since=$cursor&limit=500")
+  echo "$resp" | jq -c '.data[] | {id,tenantId,eventType,resourceId,payload,createdAt}' \
+    > /tmp/events.ndjson
+  snowsql -q "PUT file:///tmp/events.ndjson @~/contigo_events AUTO_COMPRESS=TRUE OVERWRITE=TRUE; \
+    COPY INTO contigo_events_raw FROM @~/contigo_events \
+      FILE_FORMAT = (TYPE = JSON) \
+      MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;"
+  cursor=$(echo "$resp" | jq -r '.nextSince // empty')
+  snowsql -q "UPDATE contigo_events_state SET cursor = '$cursor';"
+  [[ "$(echo "$resp" | jq -r '.hasMore')" == "false" ]] && break
+done
+```
+
+**BigQuery — newline-delimited JSON load with cursor in a state table**
+
+```sql
+-- one-time setup
+CREATE TABLE `proj.contigo.events_state`  (cursor STRING);
+INSERT INTO `proj.contigo.events_state` VALUES ('');
+
+CREATE TABLE `proj.contigo.events_raw` (
+  id          STRING,
+  tenant_id   STRING,
+  event_type  STRING,
+  resource_id STRING,
+  payload     JSON,
+  created_at  TIMESTAMP
+);
+```
+
+```bash
+cursor=$(bq query --nouse_legacy_sql --format=csv \
+  "SELECT cursor FROM \`proj.contigo.events_state\`" | tail -1)
+while :; do
+  resp=$(curl -s -H "Authorization: Bearer $CTG_TOKEN" \
+    "https://contigo.example.com/api/v1/events?since=$cursor&limit=500")
+  echo "$resp" | jq -c '.data[]
+      | {id, tenant_id: .tenantId, event_type: .eventType,
+         resource_id: .resourceId, payload, created_at: .createdAt}' \
+    > /tmp/events.ndjson
+  bq load --source_format=NEWLINE_DELIMITED_JSON \
+    proj:contigo.events_raw /tmp/events.ndjson
+  cursor=$(echo "$resp" | jq -r '.nextSince // empty')
+  bq query --nouse_legacy_sql \
+    "UPDATE \`proj.contigo.events_state\` SET cursor = '$cursor' WHERE TRUE"
+  [[ "$(echo "$resp" | jq -r '.hasMore')" == "false" ]] && break
+done
+```
+
+The event log is append-only and ordered by `id` (monotonic per tenant),
+so loaders are safe to retry: re-running a step with the same cursor
+produces the same rows and downstream `MERGE` on `id` is idempotent.
+
 ### `GET /api/v1/webhook-deliveries`
 
 Scope: `webhooks:read`
