@@ -24,6 +24,10 @@ export interface WebhookConfig {
   lastTriggeredAt?: string;
   lastStatus?: 'success' | 'failed';
   failureCount: number;
+  pendingDeliveryCount: number;
+  deadDeliveryCount: number;
+  lastSuccessAt?: string;
+  lastFailureAt?: string;
 }
 
 export interface ApiKeyConfig {
@@ -48,9 +52,28 @@ interface WebhookApiRecord {
   lastDeliveryAt?: string | null;
   failureCount: number;
 }
+  pendingDeliveryCount?: number;
+  deadDeliveryCount?: number;
+  lastSuccessAt?: string | null;
+  lastFailureAt?: string | null;
 
 interface ApiKeyApiRecord {
   id: string;
+  const lastSuccessAt = record.lastSuccessAt || undefined;
+  const lastFailureAt = record.lastFailureAt || undefined;
+  const lastTriggeredAt = lastSuccessAt && lastFailureAt
+    ? (new Date(lastSuccessAt) > new Date(lastFailureAt) ? lastSuccessAt : lastFailureAt)
+    : lastSuccessAt || lastFailureAt || record.lastDeliveryAt || undefined;
+  const lastStatus = lastSuccessAt && lastFailureAt
+    ? (new Date(lastSuccessAt) > new Date(lastFailureAt) ? 'success' : 'failed')
+    : lastSuccessAt
+      ? 'success'
+      : lastFailureAt
+        ? 'failed'
+        : record.lastDeliveryAt
+          ? (record.failureCount > 0 ? 'failed' : 'success')
+          : undefined;
+
   name: string;
   key_prefix: string;
   scopes: string[];
@@ -59,9 +82,13 @@ interface ApiKeyApiRecord {
   created_at: string;
 }
 
-function mapWebhook(record: WebhookApiRecord): WebhookConfig {
-  return {
+    lastTriggeredAt,
+    lastStatus,
     id: record.id,
+    pendingDeliveryCount: record.pendingDeliveryCount ?? 0,
+    deadDeliveryCount: record.deadDeliveryCount ?? 0,
+    lastSuccessAt,
+    lastFailureAt,
     name: record.name,
     url: record.url,
     events: record.events,

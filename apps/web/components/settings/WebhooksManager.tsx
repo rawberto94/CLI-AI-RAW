@@ -9,6 +9,7 @@
 'use client';
 
 import { memo, useState } from 'react';
+import { memo, useState } from 'react';
 import { 
   Webhook, 
   Plus, 
@@ -194,6 +195,10 @@ export const WebhooksManager = memo(function WebhooksManager({
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const testingWebhookId = testMutation.isPending ? testMutation.variables : null;
 
+  const openDeliveries = (webhookId: string) => {
+    window.location.assign(`/settings/webhook-deliveries?webhookId=${encodeURIComponent(webhookId)}`);
+  };
+
   if (loading) {
     return (
       <Card className={className}>
@@ -269,6 +274,18 @@ export const WebhooksManager = memo(function WebhooksManager({
                             {webhook.failureCount} failures
                           </Badge>
                         )}
+                        {webhook.pendingDeliveryCount > 0 && (
+                          <Badge variant="outline" className="text-xs gap-1">
+                            <Clock className="h-3 w-3" />
+                            {webhook.pendingDeliveryCount} retrying
+                          </Badge>
+                        )}
+                        {webhook.deadDeliveryCount > 0 && (
+                          <Badge variant="destructive" className="text-xs gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            {webhook.deadDeliveryCount} dead-letter
+                          </Badge>
+                        )}
                       </div>
                       
                       <div className="flex items-center gap-2 text-sm text-slate-500">
@@ -297,10 +314,31 @@ export const WebhooksManager = memo(function WebhooksManager({
                             Last triggered {formatTimeAgo(webhook.lastTriggeredAt)}
                           </span>
                         )}
+                        {webhook.lastSuccessAt && (
+                          <span className="flex items-center gap-1">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                            Last success {formatTimeAgo(webhook.lastSuccessAt)}
+                          </span>
+                        )}
+                        {webhook.lastFailureAt && (
+                          <span className="flex items-center gap-1">
+                            <XCircle className="h-3.5 w-3.5 text-red-500" />
+                            Last failure {formatTimeAgo(webhook.lastFailureAt)}
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openDeliveries(webhook.id)}
+                        className="gap-1.5"
+                      >
+                        <Clock className="h-3.5 w-3.5" />
+                        Deliveries
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,7 @@ function formatTime(iso: string | null): string {
 }
 
 export default function WebhookDeliveriesPage() {
+  const searchParams = useSearchParams();
   const [rows, setRows] = useState<DeliveryRow[]>([]);
   const [summary, setSummary] = useState<DeliveryListResponse["summary"]>({
     pending: 0,
@@ -66,8 +68,9 @@ export default function WebhookDeliveriesPage() {
     dead: 0,
   });
   const [statusFilter, setStatusFilter] = useState<string>("");
-  const [eventFilter, setEventFilter] = useState<string>("");
-  const [webhookIdFilter, setWebhookIdFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>(() => searchParams.get("status") ?? "");
+  const [eventFilter, setEventFilter] = useState<string>(() => searchParams.get("event") ?? "");
+  const [webhookIdFilter, setWebhookIdFilter] = useState<string>(() => searchParams.get("webhookId") ?? "");
   const [loading, setLoading] = useState(true);
   const [requeueing, setRequeueing] = useState<string | null>(null);
 

@@ -57,6 +57,10 @@ export interface WebhookConfigType {
   updatedAt: Date;
   lastDeliveryAt?: Date | null;
   failureCount: number;
+  pendingDeliveryCount?: number;
+  deadDeliveryCount?: number;
+  lastSuccessAt?: Date | null;
+  lastFailureAt?: Date | null;
 }
 
 // In-memory storage for webhooks (fallback if database not available)
@@ -95,6 +99,82 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         where: { tenantId },
         orderBy: { createdAt: 'desc' },
       });
+      if (webhooks.length > 0) {
+        const deliveryHealth = await (prisma as unknown as {
+          webhookDelivery: {
+            groupBy: (args: unknown) => Promise<Array<{
+              webhookId: string;
+              status: string;
+              _count: { _all: number };
+              _max: {
+                lastAttemptAt: Date | null;
+                sentAt: Date | null;
+                deadAt: Date | null;
+              };
+            }>>;
+          };
+        }).webhookDelivery.groupBy({
+          by: ['webhookId', 'status'],
+          where: {
+            tenantId,
+            webhookId: { in: webhooks.map(webhook => webhook.id) },
+          },
+          _count: { _all: true },
+          _max: {
+            lastAttemptAt: true,
+            sentAt: true,
+            deadAt: true,
+          },
+        });
+
+        const healthByWebhookId = new Map<string, {
+          pendingDeliveryCount: number;
+          deadDeliveryCount: number;
+          lastSuccessAt: Date | null;
+          lastFailureAt: Date | null;
+        }>();
+
+        for (const row of deliveryHealth) {
+          const health = healthByWebhookId.get(row.webhookId) ?? {
+            pendingDeliveryCount: 0,
+            deadDeliveryCount: 0,
+            lastSuccessAt: null,
+            lastFailureAt: null,
+          };
+
+          if (row.status === 'pending' || row.status === 'failed') {
+            health.pendingDeliveryCount += row._count._all;
+            if (row._max.lastAttemptAt && (!health.lastFailureAt || row._max.lastAttemptAt > health.lastFailureAt)) {
+              health.lastFailureAt = row._max.lastAttemptAt;
+            }
+          }
+
+          if (row.status === 'dead') {
+            health.deadDeliveryCount += row._count._all;
+            const deadAt = row._max.deadAt ?? row._max.lastAttemptAt;
+            if (deadAt && (!health.lastFailureAt || deadAt > health.lastFailureAt)) {
+              health.lastFailureAt = deadAt;
+            }
+          }
+
+          if (row.status === 'success') {
+            const successAt = row._max.sentAt ?? row._max.lastAttemptAt;
+            if (successAt && (!health.lastSuccessAt || successAt > health.lastSuccessAt)) {
+              health.lastSuccessAt = successAt;
+            }
+          }
+
+          healthByWebhookId.set(row.webhookId, health);
+        }
+
+        webhooks = webhooks.map(webhook => ({
+          ...webhook,
+          pendingDeliveryCount: healthByWebhookId.get(webhook.id)?.pendingDeliveryCount ?? 0,
+          deadDeliveryCount: healthByWebhookId.get(webhook.id)?.deadDeliveryCount ?? 0,
+          lastSuccessAt: healthByWebhookId.get(webhook.id)?.lastSuccessAt ?? null,
+          lastFailureAt: healthByWebhookId.get(webhook.id)?.lastFailureAt ?? null,
+        }));
+      }
     } catch {
       webhooks = Array.from(webhookStore.values()).filter(w => w.tenantId === tenantId);
     }
