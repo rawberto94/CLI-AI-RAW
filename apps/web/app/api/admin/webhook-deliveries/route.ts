@@ -3,7 +3,7 @@
  *
  * Session-auth admin endpoint backing the /settings/webhook-deliveries page.
  * Lists `WebhookDelivery` rows for the caller's tenant with optional filters
- * (status, event, webhookId) plus aggregate counts by status. Cursor pagination
+ * (status, event, webhookId, dispatchId) plus aggregate counts by status. Cursor pagination
  * via row id (descending).
  */
 
@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get('status') ?? undefined;
   const event = searchParams.get('event') ?? undefined;
   const webhookId = searchParams.get('webhookId') ?? undefined;
+  const dispatchId = searchParams.get('dispatchId') ?? undefined;
   const cursor = searchParams.get('cursor') ?? undefined;
   const limitRaw = parseInt(searchParams.get('limit') ?? '50', 10);
   const limit = Math.min(Math.max(Number.isFinite(limitRaw) ? limitRaw : 50, 1), 200);
@@ -42,10 +43,12 @@ export async function GET(request: NextRequest) {
   if (status) where.status = status;
   if (event) where.event = event;
   if (webhookId) where.webhookId = webhookId;
+  if (dispatchId) where.payload = { path: ['dispatchId'], equals: dispatchId };
 
   const summaryWhere: Record<string, unknown> = { tenantId };
   if (event) summaryWhere.event = event;
   if (webhookId) summaryWhere.webhookId = webhookId;
+  if (dispatchId) summaryWhere.payload = { path: ['dispatchId'], equals: dispatchId };
 
   const [rows, counts] = await Promise.all([
     prisma.webhookDelivery.findMany({
@@ -63,6 +66,7 @@ export async function GET(request: NextRequest) {
         statusCode: true,
         error: true,
         deliveryId: true,
+        payload: true,
         createdAt: true,
         updatedAt: true,
         lastAttemptAt: true,
@@ -90,7 +94,13 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    data: rows,
+    data: rows.map((row) => ({
+      ...row,
+      dispatchId:
+        row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
+          ? ((row.payload as { dispatchId?: unknown }).dispatchId ?? null)
+          : null,
+    })),
     summary,
     nextCursor,
     hasMore: nextCursor !== null,

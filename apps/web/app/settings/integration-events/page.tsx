@@ -102,15 +102,22 @@ export default function IntegrationEventsPage() {
         return;
       }
 
+      const dispatchId = json?.replay?.dispatchId;
       const delivered = json?.replay?.delivered ?? 0;
       const failed = json?.replay?.failed ?? 0;
-      toast.success(
-        failed > 0
-          ? `Replay queued: ${delivered} delivered, ${failed} failed`
-          : delivered > 0
-            ? `Replay queued to ${delivered} webhook${delivered === 1 ? "" : "s"}`
-            : "Replay finished: no active subscribers for this event",
-      );
+      const message = failed > 0
+        ? `Replay queued: ${delivered} delivered, ${failed} failed`
+        : delivered > 0
+          ? `Replay queued to ${delivered} webhook${delivered === 1 ? "" : "s"}`
+          : "Replay finished: no active subscribers for this event";
+
+      if (dispatchId && (delivered > 0 || failed > 0)) {
+        toast.success(`${message}. Opening matching deliveries…`);
+        window.location.assign(`/settings/webhook-deliveries?dispatchId=${encodeURIComponent(dispatchId)}`);
+        return;
+      }
+
+      toast.success(message);
     } catch {
       toast.error("Replay failed");
     } finally {

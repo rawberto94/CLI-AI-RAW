@@ -11,6 +11,7 @@
  *   - status     — filter: pending | success | failed | dead
  *   - event      — filter by event type
  *   - webhookId  — filter by webhook config id
+ *   - dispatchId — filter by one trigger/replay batch id
  *   - limit      — default 50, max 200
  *   - cursor     — opaque (delivery row id) for pagination
  */
@@ -48,6 +49,7 @@ export async function GET(request: Request) {
   const status = url.searchParams.get('status') || undefined;
   const event = url.searchParams.get('event') || undefined;
   const webhookId = url.searchParams.get('webhookId') || undefined;
+  const dispatchId = url.searchParams.get('dispatchId') || undefined;
   const cursor = url.searchParams.get('cursor') || undefined;
 
   if (status && !ALLOWED_STATUS.has(status)) {
@@ -61,6 +63,9 @@ export async function GET(request: Request) {
   if (status) where.status = status;
   if (event) where.event = event;
   if (webhookId) where.webhookId = webhookId;
+  if (dispatchId) {
+    where.payload = { path: ['dispatchId'], equals: dispatchId };
+  }
 
   const rows = await prisma.webhookDelivery.findMany({
     where,
@@ -82,6 +87,10 @@ export async function GET(request: Request) {
     statusCode: r.statusCode,
     error: r.error,
     deliveryId: r.deliveryId,
+    dispatchId:
+      r.payload && typeof r.payload === 'object' && !Array.isArray(r.payload)
+        ? ((r.payload as { dispatchId?: unknown }).dispatchId ?? null)
+        : null,
     sentAt: r.sentAt,
     lastAttemptAt: r.lastAttemptAt,
     nextAttemptAt: r.nextAttemptAt,

@@ -264,10 +264,11 @@ through `pending → success`, `pending → failed (retry pending) → …` or
 `pending → dead` (DLQ after max attempts).
 
 Query params: `status` (`pending` | `success` | `failed` | `dead`), `event`,
-`webhookId`, `limit` (default 50, max 200), `cursor` (delivery row id).
+`webhookId`, `dispatchId`, `limit` (default 50, max 200), `cursor`
+(delivery row id).
 
 Response item fields: `id`, `webhookId`, `event`, `status`, `attempt`,
-`maxAttempts`, `statusCode`, `error`, `deliveryId`, `sentAt`,
+`maxAttempts`, `statusCode`, `error`, `deliveryId`, `dispatchId`, `sentAt`,
 `lastAttemptAt`, `nextAttemptAt`, `deadAt`, `createdAt`.
 
 ### `POST /api/v1/webhook-deliveries/:id/requeue`
@@ -314,6 +315,7 @@ Body envelope:
 ```json
 {
   "id": "<delivery-uuid>",
+  "dispatchId": "<trigger-batch-uuid>",
   "event": "contract.created",
   "timestamp": "2026-05-07T10:21:33.456Z",
   "tenantId": "acme",
@@ -369,8 +371,10 @@ def contigo_webhook():
 
 Recommended consumer behaviour:
 
-- **Dedupe** on `X-Webhook-Delivery` (or `data.id`). At-least-once delivery
+- **Dedupe** on `X-Webhook-Delivery` (or the top-level body `id`). At-least-once delivery
   means the same event id can arrive more than once after a retry.
+- **Correlate batches** with the top-level `dispatchId` when one trigger or replay fan-outs to
+  multiple subscribed webhooks.
 - **Respond fast** — return 2xx within a few seconds; do heavy work async.
   Anything other than 2xx triggers the retry/backoff machinery above.
 - **Tolerate field additions** — payloads gain fields over time without

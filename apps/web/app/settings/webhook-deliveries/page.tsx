@@ -19,6 +19,7 @@ interface DeliveryRow {
   statusCode: number | null;
   error: string | null;
   deliveryId: string | null;
+  dispatchId: string | null;
   createdAt: string;
   updatedAt: string;
   lastAttemptAt: string | null;
@@ -67,10 +68,10 @@ export default function WebhookDeliveriesPage() {
     failed: 0,
     dead: 0,
   });
-  const [statusFilter, setStatusFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>(() => searchParams.get("status") ?? "");
   const [eventFilter, setEventFilter] = useState<string>(() => searchParams.get("event") ?? "");
   const [webhookIdFilter, setWebhookIdFilter] = useState<string>(() => searchParams.get("webhookId") ?? "");
+  const [dispatchIdFilter, setDispatchIdFilter] = useState<string>(() => searchParams.get("dispatchId") ?? "");
   const [loading, setLoading] = useState(true);
   const [requeueing, setRequeueing] = useState<string | null>(null);
 
@@ -86,6 +87,7 @@ export default function WebhookDeliveriesPage() {
       if (statusFilter) params.set("status", statusFilter);
       if (eventFilter.trim()) params.set("event", eventFilter.trim());
       if (webhookIdFilter.trim()) params.set("webhookId", webhookIdFilter.trim());
+      if (dispatchIdFilter.trim()) params.set("dispatchId", dispatchIdFilter.trim());
       params.set("limit", "100");
       const res = await fetch(`/api/admin/webhook-deliveries?${params.toString()}`);
       const json: DeliveryListResponse = await res.json();
@@ -100,7 +102,7 @@ export default function WebhookDeliveriesPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, eventFilter, webhookIdFilter]);
+  }, [statusFilter, eventFilter, webhookIdFilter, dispatchIdFilter]);
 
   useEffect(() => {
     load();
@@ -238,6 +240,14 @@ export default function WebhookDeliveriesPage() {
                 onChange={(e) => setWebhookIdFilter(e.target.value)}
               />
             </div>
+            <div className="md:col-span-2">
+              <label className="text-xs text-muted-foreground">Dispatch ID</label>
+              <Input
+                placeholder="batch id from trigger/replay response"
+                value={dispatchIdFilter}
+                onChange={(e) => setDispatchIdFilter(e.target.value)}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -254,6 +264,7 @@ export default function WebhookDeliveriesPage() {
                   <th className="text-left px-4 py-2">Status</th>
                   <th className="text-left px-4 py-2">Event</th>
                   <th className="text-left px-4 py-2">Webhook</th>
+                  <th className="text-left px-4 py-2">Dispatch</th>
                   <th className="text-left px-4 py-2">Attempts</th>
                   <th className="text-left px-4 py-2">Last attempt</th>
                   <th className="text-left px-4 py-2">Next attempt</th>
@@ -265,7 +276,7 @@ export default function WebhookDeliveriesPage() {
               <tbody>
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
                       {loading ? "Loading…" : "No deliveries match the current filters."}
                     </td>
                   </tr>
@@ -279,6 +290,7 @@ export default function WebhookDeliveriesPage() {
                     </td>
                     <td className="px-4 py-2 font-mono text-xs">{r.event}</td>
                     <td className="px-4 py-2 font-mono text-xs">{r.webhookId.slice(0, 12)}…</td>
+                    <td className="px-4 py-2 font-mono text-xs">{r.dispatchId ? `${r.dispatchId.slice(0, 12)}…` : "—"}</td>
                     <td className="px-4 py-2">
                       {r.attempt} / {r.maxAttempts}
                     </td>
