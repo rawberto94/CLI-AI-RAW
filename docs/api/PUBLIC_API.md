@@ -122,6 +122,17 @@ miss an event, even across consumer outages.
 Query params: `limit` (max 500), `since` (event id, exclusive),
 `eventType`, `resourceId`.
 
+#### Event types
+
+| `eventType`             | Resource     | Emitted when                                                |
+| ----------------------- | ------------ | ----------------------------------------------------------- |
+| `contract.created`      | contract id  | Contract registered (UI upload, DB sync, or `POST /api/v1/contracts`) |
+| `contract.processed`    | contract id  | OCR + artifact generation finished                          |
+| `contract.expired`      | contract id  | `expirationDate` crossed (lifecycle scan)                   |
+| `obligation.created`    | obligation id| Obligation created (manual / bulk / AI extraction)          |
+| `obligation.completed`  | obligation id| Status transitioned to COMPLETED                            |
+| `obligation.overdue`    | obligation id| `dueDate` crossed (lifecycle scan)                          |
+
 Response:
 
 ```json
