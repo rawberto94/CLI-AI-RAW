@@ -1152,8 +1152,9 @@ export default function ContractsPage() {
               exit={{ opacity: 0 }}
             >
               <Card className="overflow-hidden bg-white border-slate-200 shadow-sm rounded-xl" role="table" aria-label="Contracts list">
+                <div className="overflow-x-auto">
                 {/* Table Header */}
-                <div role="row" className="flex items-center gap-4 px-5 py-4 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider sticky top-16 lg:top-0 z-30">
+                <div role="row" className="flex items-center gap-3 px-5 py-4 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider sticky top-16 lg:top-0 z-30 min-w-[1180px]">
                   <div role="columnheader" className="w-10 flex-shrink-0 flex items-center justify-center">
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -1179,14 +1180,14 @@ export default function ContractsPage() {
                       <TooltipContent>Select all on this page</TooltipContent>
                     </Tooltip>
                   </div>
-                  <div role="columnheader" className="flex-1 min-w-[200px]">Contract</div>
+                  <div role="columnheader" className="flex-1 min-w-[220px]">Contract</div>
                   <div role="columnheader" className="hidden lg:block w-[120px]">Category</div>
-                  <div role="columnheader" className="hidden lg:block w-[90px]">Type</div>
-                  <div role="columnheader" className="hidden md:block w-[140px]">Party</div>
-                  <div role="columnheader" className="hidden lg:block w-[100px] text-right">Value</div>
-                  <div role="columnheader" className="hidden md:block w-[100px]">Expires</div>
-                  <div role="columnheader" className="hidden lg:block w-[80px]">Signed</div>
-                  <div role="columnheader" className="w-[100px]">Status</div>
+                  <div role="columnheader" className="hidden lg:block w-[110px]">Type</div>
+                  <div role="columnheader" className="hidden md:block w-[150px]">Party</div>
+                  <div role="columnheader" className="hidden lg:block w-[110px] text-right">Value</div>
+                  <div role="columnheader" className="hidden md:block w-[110px]">Expires</div>
+                  <div role="columnheader" className="hidden lg:block w-[90px]">Signed</div>
+                  <div role="columnheader" className="w-[200px]">Status</div>
                   <div role="columnheader" className="w-10 flex-shrink-0"></div>
                 </div>
                 
@@ -1218,6 +1219,7 @@ export default function ContractsPage() {
                       />
                     </ErrorBoundary>
                   ))}
+                </div>
                 </div>
               </Card>
             </motion.div>

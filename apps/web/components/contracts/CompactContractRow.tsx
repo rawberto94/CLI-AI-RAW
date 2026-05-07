@@ -96,7 +96,7 @@ export const CompactContractRow = memo(function CompactContractRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-4 px-5 py-4 cursor-pointer transition-colors duration-150 group border-b border-slate-100 dark:border-slate-700 relative",
+        "flex items-center gap-3 px-5 py-4 cursor-pointer transition-colors duration-150 group border-b border-slate-100 dark:border-slate-700 relative min-w-[1180px]",
         isSelected 
           ? "bg-slate-50 dark:bg-slate-800 ring-1 ring-slate-300 dark:ring-slate-600" 
           : "hover:bg-slate-50/80 dark:hover:bg-slate-800/50",
@@ -140,6 +140,7 @@ export const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Contract Title with Hover Preview */}
+      <div className="flex-1 min-w-[220px] overflow-hidden">
       <ContractHoverPreview
         contract={contract}
         onView={onView}
@@ -197,9 +198,10 @@ export const CompactContractRow = memo(function CompactContractRow({
           </div>
         </div>
       </ContractHoverPreview>
+      </div>
 
       {/* Category */}
-      <div className="hidden lg:block w-[120px] truncate">
+      <div className="hidden lg:block w-[120px] overflow-hidden">
         {contract.category ? (
           <CategoryBadge 
             category={contract.category.name} 
@@ -217,9 +219,9 @@ export const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Contract Type */}
-      <div className="hidden lg:block w-[90px]">
+      <div className="hidden lg:block w-[110px] overflow-hidden">
         {contract.type && contract.type !== 'OTHER' ? (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 truncate" title={contract.type}>
+          <span className="block max-w-full truncate px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300" title={contract.type}>
             {contract.type}
           </span>
         ) : (
@@ -230,7 +232,7 @@ export const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Party */}
-      <div className="hidden md:block w-[140px]">
+      <div className="hidden md:block w-[150px] overflow-hidden">
         {(contract.parties?.supplier || contract.parties?.client) ? (
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center flex-shrink-0">
@@ -249,7 +251,7 @@ export const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Value */}
-      <div className="hidden lg:block w-[100px] text-right">
+      <div className="hidden lg:block w-[110px] text-right">
         {contract.value ? (
           <span className="text-[13px] font-medium tabular-nums text-slate-800">
             {formatCurrency(contract.value)}
@@ -260,7 +262,7 @@ export const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Expiration Date */}
-      <div className="hidden md:block w-[100px]">
+      <div className="hidden md:block w-[110px]">
         {contract.expirationDate ? (
           <div className="flex flex-col">
             <span className={cn(
@@ -289,12 +291,12 @@ export const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Signature Status */}
-      <div className="hidden lg:block w-[80px]">
+      <div className="hidden lg:block w-[90px]">
         <SignatureStatusBadge status={contract.signatureStatus} />
       </div>
 
       {/* Status */}
-      <div className="w-[100px]">
+      <div className="w-[200px]">
         <ContractStatusBadge 
           status={contract.status} 
           documentRole={contract.documentRole}
