@@ -164,6 +164,39 @@ export const POST = withContractApiHandler(async (request: NextRequest, ctx) => 
       });
     }
 
+    // Outbound webhook + durable IntegrationEvent.
+    {
+      const renewalPayload = {
+        contractId,
+        contractTitle: contract.contractTitle,
+        previousExpiration,
+        newExpiration: newExpiration.toISOString(),
+        extensionDays,
+        previousValue,
+        newValue: validatedData.newTotalValue ?? previousValue,
+        extendedBy: ctx.userId,
+      };
+      import('@/lib/webhook-triggers')
+        .then(({ triggerWebhook }) =>
+          triggerWebhook({
+            tenantId,
+            event: 'contract.renewed',
+            data: renewalPayload,
+          }),
+        )
+        .catch(() => {});
+      import('@/lib/events/integration-events')
+        .then(({ recordIntegrationEvent }) =>
+          recordIntegrationEvent({
+            tenantId,
+            eventType: 'contract.renewed',
+            resourceId: contractId,
+            payload: renewalPayload,
+          }),
+        )
+        .catch(() => {});
+    }
+
     return createSuccessResponse(ctx, {
       success: true,
       message: `Contract extended by ${extensionDays} days`,

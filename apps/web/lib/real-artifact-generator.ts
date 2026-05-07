@@ -2030,6 +2030,34 @@ async function saveArtifact(
     },
   });
 
+  // Outbound webhook + durable event log (fire-and-forget).
+  {
+    const artifactPayload = {
+      artifactId: artifact.id,
+      contractId,
+      type,
+      validationStatus,
+      confidence: confidenceValue,
+      mode: data._mode || null,
+      model: data._model || null,
+    };
+    import('@/lib/webhook-triggers')
+      .then(({ triggerArtifactGenerated }) =>
+        triggerArtifactGenerated(tenantId, contractId, type, artifact.id),
+      )
+      .catch(() => {});
+    import('@/lib/events/integration-events')
+      .then(({ recordIntegrationEvent }) =>
+        recordIntegrationEvent({
+          tenantId,
+          eventType: 'artifact.generated',
+          resourceId: artifact.id,
+          payload: artifactPayload,
+        }),
+      )
+      .catch(() => {});
+  }
+
   return artifact.id;
 }
 

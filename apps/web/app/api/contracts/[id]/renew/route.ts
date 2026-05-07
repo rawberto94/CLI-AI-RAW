@@ -360,6 +360,40 @@ export const POST = withContractApiHandler(async (request: NextRequest, ctx) => 
       });
     }
 
+    // Outbound webhook + durable IntegrationEvent.
+    {
+      const renewalPayload = {
+        contractId: renewalContract.id,
+        parentContractId: originalContractId,
+        contractTitle: renewalContract.contractTitle,
+        effectiveDate: renewalContract.effectiveDate,
+        expirationDate: renewalContract.expirationDate,
+        totalValue: renewalContract.totalValue
+          ? Number(renewalContract.totalValue)
+          : null,
+        renewedBy: ctx.userId,
+      };
+      import('@/lib/webhook-triggers')
+        .then(({ triggerWebhook }) =>
+          triggerWebhook({
+            tenantId,
+            event: 'contract.renewed',
+            data: renewalPayload,
+          }),
+        )
+        .catch(() => {});
+      import('@/lib/events/integration-events')
+        .then(({ recordIntegrationEvent }) =>
+          recordIntegrationEvent({
+            tenantId,
+            eventType: 'contract.renewed',
+            resourceId: renewalContract.id,
+            payload: renewalPayload,
+          }),
+        )
+        .catch(() => {});
+    }
+
     return createSuccessResponse(ctx, {
       success: true,
       message: 'Renewal contract created successfully',

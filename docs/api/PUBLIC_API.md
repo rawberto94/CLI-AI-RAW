@@ -129,6 +129,9 @@ Query params: `limit` (max 500), `since` (event id, exclusive),
 | `contract.created`      | contract id  | Contract registered (UI upload, DB sync, or `POST /api/v1/contracts`) |
 | `contract.processed`    | contract id  | OCR + artifact generation finished                          |
 | `contract.expired`      | contract id  | `expirationDate` crossed (lifecycle scan)                   |
+| `contract.renewed`      | contract id  | Contract renewed via `/renew` (new contract) or `/extend` (in-place)  |
+| `contract.deleted`      | contract id  | Contract permanently deleted (cascades to artifacts/obligations)      |
+| `artifact.generated`    | artifact id  | Artifact (overview, clauses, risk, …) created or refreshed  |
 | `obligation.created`    | obligation id| Obligation created (manual / bulk / AI extraction)          |
 | `obligation.completed`  | obligation id| Status transitioned to COMPLETED                            |
 | `obligation.overdue`    | obligation id| `dueDate` crossed (lifecycle scan)                          |

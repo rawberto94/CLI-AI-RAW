@@ -305,6 +305,36 @@ export async function safeDeleteContract(
       // Event publishing failed - non-fatal
     }
 
+    // Outbound webhook + durable IntegrationEvent (fire-and-forget).
+    {
+      const eventPayload = {
+        contractId,
+        fileName: result.contract.fileName,
+        deletedBy: userId || null,
+        reason: reason || null,
+        cascade: true,
+      };
+      import('@/lib/webhook-triggers')
+        .then(({ triggerWebhook }) =>
+          triggerWebhook({
+            tenantId,
+            event: 'contract.deleted',
+            data: eventPayload,
+          }),
+        )
+        .catch(() => {});
+      import('@/lib/events/integration-events')
+        .then(({ recordIntegrationEvent }) =>
+          recordIntegrationEvent({
+            tenantId,
+            eventType: 'contract.deleted',
+            resourceId: contractId,
+            payload: eventPayload,
+          }),
+        )
+        .catch(() => {});
+    }
+
     // Invalidate Redis cache so the contracts list refreshes
     try {
       await invalidateCache.contract(contractId);
