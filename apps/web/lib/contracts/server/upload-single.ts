@@ -588,6 +588,25 @@ export async function postContractUpload(
         .catch((error) =>
           logger.warn('[ContractUpload] webhook trigger failed: ' + (error as Error).message),
         );
+
+      // Durable event log for /api/v1/events consumers.
+      import('@/lib/events/integration-events')
+        .then(({ recordIntegrationEvent }) =>
+          recordIntegrationEvent({
+            tenantId: contract.tenantId,
+            eventType: 'contract.created',
+            resourceId: contract.id,
+            payload: {
+              contractId: contract.id,
+              fileName: contract.fileName,
+              contractType: contract.contractType,
+              clientName: contract.clientName ?? undefined,
+              supplierName: contract.supplierName ?? undefined,
+              uploadedBy: context.userId,
+            },
+          }),
+        )
+        .catch(() => {});
     }
 
     try {

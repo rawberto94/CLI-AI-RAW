@@ -83,6 +83,50 @@ Scope: `obligations:read`
 Query params: `limit` (max 500), `cursor`, `contractId`, `status`,
 `dueBefore` (ISO), `updatedSince` (ISO).
 
+### `GET /api/v1/events`
+
+Scope: `events:read`
+
+Durable, append-only event stream. Every contract lifecycle change
+(created, processed, …) is recorded here in addition to being pushed
+via webhooks. Consumers poll with a monotonic cursor (`since`) and never
+miss an event, even across consumer outages.
+
+Query params: `limit` (max 500), `since` (event id, exclusive),
+`eventType`, `resourceId`.
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "id": "1234",
+      "tenantId": "acme",
+      "eventType": "contract.created",
+      "resourceId": "ckxx...",
+      "payload": { "contractId": "ckxx...", "fileName": "MSA.pdf" },
+      "createdAt": "2026-05-07T10:21:33.456Z"
+    }
+  ],
+  "nextSince": "1234",
+  "hasMore": true
+}
+```
+
+Polling pattern:
+
+```bash
+cursor=""
+while :; do
+  resp=$(curl -s -H "Authorization: Bearer $CTG_TOKEN" \
+    "https://contigo.example.com/api/v1/events?since=$cursor&limit=500")
+  echo "$resp" | jq '.data[]' | warehouse-load
+  cursor=$(echo "$resp" | jq -r '.nextSince // empty')
+  [[ "$(echo "$resp" | jq -r '.hasMore')" == "false" ]] && sleep 5
+done
+```
+
 ## Pagination
 
 All list endpoints use forward-only cursor pagination. Loop until

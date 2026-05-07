@@ -2738,6 +2738,21 @@ export async function generateRealArtifacts(
           }),
         )
         .catch(() => {});
+
+      // Durable event log
+      import('@/lib/events/integration-events')
+        .then(({ recordIntegrationEvent }) =>
+          recordIntegrationEvent({
+            tenantId,
+            eventType: 'contract.processed',
+            resourceId: contractId,
+            payload: {
+              contractId,
+              artifactsCreated: artifactIds.length,
+            },
+          }),
+        )
+        .catch(() => {});
     }
 
     const totalDurationMs = Math.round(performance.now() - startTime);

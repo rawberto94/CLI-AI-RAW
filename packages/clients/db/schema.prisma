@@ -6243,3 +6243,27 @@ model ApiToken {
   @@index([prefix])
   @@map("api_tokens")
 }
+
+/// Append-only event log for outbound consumers. Every webhook trigger
+/// also writes a row here; consumers poll `/api/v1/events?since=<id>`
+/// to get a deterministic, replayable stream. Rows are immutable;
+/// retention is driven by an external cleanup job (not yet shipped).
+model IntegrationEvent {
+  /// Monotonic numeric id; cursor pagination uses this column.
+  id         BigInt   @id @default(autoincrement())
+  tenantId   String
+  /// Dot-namespaced event type, matching webhook events
+  /// ("contract.created", "contract.processed", ...).
+  eventType  String
+  /// Optional resource id (contract id, obligation id, etc.) so consumers
+  /// can filter by entity without parsing the payload.
+  resourceId String?
+  /// Free-form JSON payload — same shape as the corresponding webhook.
+  payload    Json
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, id])
+  @@index([tenantId, eventType, id])
+  @@index([tenantId, resourceId, id])
+  @@map("integration_events")
+}

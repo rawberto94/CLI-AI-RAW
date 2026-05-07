@@ -640,6 +640,24 @@ class ContractSourceSyncService {
           )
           .catch(() => {});
 
+        // Durable event log
+        import('@/lib/events/integration-events')
+          .then(({ recordIntegrationEvent }) =>
+            recordIntegrationEvent({
+              tenantId: source.tenantId,
+              eventType: 'contract.created',
+              resourceId: contract.id,
+              payload: {
+                contractId: contract.id,
+                fileName: contract.fileName,
+                importSource: source.provider,
+                mode: 'reference',
+                externalUrl: contract.externalUrl,
+              },
+            }),
+          )
+          .catch(() => {});
+
         progress.filesProcessed++;
         return;
       }
@@ -693,6 +711,23 @@ class ContractSourceSyncService {
             fileName: contract.fileName,
             importSource: source.provider,
             mode: 'copy',
+          }),
+        )
+        .catch(() => {});
+
+      // Durable event log
+      import('@/lib/events/integration-events')
+        .then(({ recordIntegrationEvent }) =>
+          recordIntegrationEvent({
+            tenantId: source.tenantId,
+            eventType: 'contract.created',
+            resourceId: contract.id,
+            payload: {
+              contractId: contract.id,
+              fileName: contract.fileName,
+              importSource: source.provider,
+              mode: 'copy',
+            },
           }),
         )
         .catch(() => {});
