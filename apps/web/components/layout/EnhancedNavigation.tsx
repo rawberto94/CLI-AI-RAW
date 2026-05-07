@@ -118,7 +118,6 @@ const navigationGroups: NavigationGroup[] = [
         audiences: ['operator'],
         children: [
           { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Approved starting points', audiences: ['legal'] },
-          { name: 'AI Copilot', href: '/drafting/copilot', icon: Sparkles, description: 'Deep drafting workspace', audiences: ['operator'] },
           { name: 'Playbooks', href: '/playbooks', icon: Gavel, description: 'Legal standards and fallbacks', audiences: ['legal'] },
         ],
       },

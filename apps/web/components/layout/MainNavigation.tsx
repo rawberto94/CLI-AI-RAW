@@ -32,7 +32,6 @@ import {
   Sparkles,
   Scale,
   Edit3,
-  Bot,
   FilePlus,
   Key,
 } from 'lucide-react'
@@ -106,13 +105,6 @@ const navigationItems: NavigationItem[] = [
         href: '/drafting',
         icon: Edit3,
         description: 'Draft contracts'
-      },
-      {
-        name: 'AI Copilot',
-        href: '/drafting/copilot',
-        icon: Bot,
-        description: 'Premium AI assistance',
-        isPremium: true
       },
       {
         name: 'New Contract',

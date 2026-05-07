@@ -193,7 +193,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       icon: PenTool,
       category: 'actions',
       audiences: ['operator'],
-      action: () => router.push('/drafting/copilot'),
+      action: () => router.push('/drafting'),
       keywords: ['draft', 'copilot', 'redline', 'write'],
     },
     {

@@ -135,7 +135,7 @@ export function MobileBottomNav() {
   const quickActions = useMemo<QuickAction[]>(() => {
     const actions: QuickAction[] = [
       { label: 'Upload Contract', icon: Upload, href: '/upload', audiences: ['operator'], color: 'bg-violet-500' },
-      { label: 'Start Draft', icon: PenTool, href: '/drafting/copilot', audiences: ['operator'], color: 'bg-violet-500' },
+      { label: 'Start Draft', icon: PenTool, href: '/drafting', audiences: ['operator'], color: 'bg-violet-500' },
       { label: 'AI Assistant', icon: Sparkles, onClick: openAIAssistant, audiences: ['all'], color: 'bg-violet-500' },
       { label: 'Smart Search', icon: Search, href: '/search', audiences: ['all'], color: 'bg-amber-500' },
       { label: 'Analytics', icon: BarChart3, href: '/analytics', audiences: ['oversight'], color: 'bg-violet-500' },

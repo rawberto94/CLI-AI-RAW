@@ -153,6 +153,20 @@ export default function CopilotDraftPage() {
   const requestedPlaybookId = searchParams?.get('playbook') || searchParams?.get('playbookId');
   const requestedDraftType = searchParams?.get('type');
   const quickStart = resolveDraftingQuickStart(requestedDraftType);
+
+  // The copilot canvas is meant to be opened from the drafting studio with at least
+  // one of: a template, an existing draft, a source contract, a handoff, a quick-start
+  // type, or an explicit blank-canvas mode. If a user lands here with no params (e.g.
+  // an old bookmark), bounce them back to the drafting studio entry point.
+  useEffect(() => {
+    if (!searchParams) return;
+    const hasAnyParam = Boolean(
+      mode || templateId || templateName || draftId || sourceContractId || handoffId || requestedPlaybookId || requestedDraftType,
+    );
+    if (!hasAnyParam) {
+      router.replace('/drafting');
+    }
+  }, [searchParams, mode, templateId, templateName, draftId, sourceContractId, handoffId, requestedPlaybookId, requestedDraftType, router]);
   
   // Track if we've created a draft already
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(draftId || null);
