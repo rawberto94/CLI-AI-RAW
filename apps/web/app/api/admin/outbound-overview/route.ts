@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import {
+  getRetryingDeliveryWhere,
+  toDisplayDeliveryStatus,
+} from '@/lib/webhooks/status';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,13 +22,19 @@ export async function GET() {
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const [webhookTotal, webhookActive, deliveryCounts, tokenActive, requestAggregate, eventCount, eventAggregate, recentIssueRows] = await Promise.all([
+  const [webhookTotal, webhookActive, deliveryCounts, retryingPendingCount, tokenActive, requestAggregate, eventCount, eventAggregate, recentIssueRows] = await Promise.all([
     prisma.webhookConfig.count({ where: { tenantId } }),
     prisma.webhookConfig.count({ where: { tenantId, isActive: true } }),
     prisma.webhookDelivery.groupBy({
       by: ['status'],
       where: { tenantId },
       _count: { _all: true },
+    }),
+    prisma.webhookDelivery.count({
+      where: {
+        tenantId,
+        ...getRetryingDeliveryWhere(),
+      },
     }),
     prisma.apiToken.count({ where: { tenantId, revokedAt: null } }),
     prisma.apiTokenUsageBucket.aggregate({
@@ -39,7 +49,7 @@ export async function GET() {
     prisma.webhookDelivery.findMany({
       where: {
         tenantId,
-        status: { in: ['failed', 'dead'] },
+        OR: [{ status: 'dead' }, { status: 'failed' }, getRetryingDeliveryWhere()],
       },
       orderBy: [
         { lastAttemptAt: 'desc' },
@@ -51,6 +61,7 @@ export async function GET() {
         webhookId: true,
         event: true,
         status: true,
+        attempt: true,
         error: true,
         statusCode: true,
         lastAttemptAt: true,
@@ -75,6 +86,8 @@ export async function GET() {
   for (const row of deliveryCounts) {
     deliveries[row.status] = row._count._all;
   }
+  deliveries.pending = Math.max(0, deliveries.pending - retryingPendingCount);
+  deliveries.failed += retryingPendingCount;
 
   return NextResponse.json({
     data: {
@@ -96,7 +109,7 @@ export async function GET() {
         webhookId: row.webhookId,
         webhookName: webhookNameById.get(row.webhookId) ?? row.webhookId,
         event: row.event,
-        status: row.status,
+        status: toDisplayDeliveryStatus(row),
         error: row.error,
         statusCode: row.statusCode,
         lastAttemptAt: row.lastAttemptAt ?? row.updatedAt,

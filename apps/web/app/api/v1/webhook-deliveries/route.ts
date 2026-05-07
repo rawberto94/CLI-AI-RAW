@@ -23,6 +23,11 @@ import {
   enforceApiV1RateLimit,
   withRateLimitHeaders,
 } from '@/lib/api/v1/rate-limit';
+import {
+  getQueuedDeliveryWhere,
+  getRetryingDeliveryWhere,
+  toDisplayDeliveryStatus,
+} from '@/lib/webhooks/status';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,7 +65,13 @@ export async function GET(request: Request) {
   }
 
   const where: Record<string, unknown> = { tenantId: auth.tenantId };
-  if (status) where.status = status;
+  if (status === 'failed') {
+    where.OR = [{ status: 'failed' }, getRetryingDeliveryWhere()];
+  } else if (status === 'pending') {
+    Object.assign(where, getQueuedDeliveryWhere());
+  } else if (status) {
+    where.status = status;
+  }
   if (event) where.event = event;
   if (webhookId) where.webhookId = webhookId;
   if (dispatchId) {
@@ -81,7 +92,7 @@ export async function GET(request: Request) {
     id: r.id,
     webhookId: r.webhookId,
     event: r.event,
-    status: r.status,
+    status: toDisplayDeliveryStatus(r),
     attempt: r.attempt,
     maxAttempts: r.maxAttempts,
     statusCode: r.statusCode,

@@ -10,6 +10,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import {
+  getQueuedDeliveryWhere,
+  getRetryingDeliveryWhere,
+  toDisplayDeliveryStatus,
+} from '@/lib/webhooks/status';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,7 +45,13 @@ export async function GET(request: NextRequest) {
   }
 
   const where: Record<string, unknown> = { tenantId };
-  if (status) where.status = status;
+  if (status === 'failed') {
+    where.OR = [{ status: 'failed' }, getRetryingDeliveryWhere()];
+  } else if (status === 'pending') {
+    Object.assign(where, getQueuedDeliveryWhere());
+  } else if (status) {
+    where.status = status;
+  }
   if (event) where.event = event;
   if (webhookId) where.webhookId = webhookId;
   if (dispatchId) where.payload = { path: ['dispatchId'], equals: dispatchId };
@@ -50,7 +61,7 @@ export async function GET(request: NextRequest) {
   if (webhookId) summaryWhere.webhookId = webhookId;
   if (dispatchId) summaryWhere.payload = { path: ['dispatchId'], equals: dispatchId };
 
-  const [rows, counts] = await Promise.all([
+  const [rows, counts, retryingPendingCount] = await Promise.all([
     prisma.webhookDelivery.findMany({
       where,
       orderBy: { id: 'desc' },
@@ -80,6 +91,12 @@ export async function GET(request: NextRequest) {
       where: summaryWhere,
       _count: { _all: true },
     }),
+    prisma.webhookDelivery.count({
+      where: {
+        ...summaryWhere,
+        ...getRetryingDeliveryWhere(),
+      },
+    }),
   ]);
 
   let nextCursor: string | null = null;
@@ -92,10 +109,13 @@ export async function GET(request: NextRequest) {
   for (const row of counts) {
     summary[row.status] = row._count._all;
   }
+  summary.pending = Math.max(0, summary.pending - retryingPendingCount);
+  summary.failed += retryingPendingCount;
 
   return NextResponse.json({
     data: rows.map((row) => ({
       ...row,
+      status: toDisplayDeliveryStatus(row),
       dispatchId:
         row.payload && typeof row.payload === 'object' && !Array.isArray(row.payload)
           ? ((row.payload as { dispatchId?: unknown }).dispatchId ?? null)

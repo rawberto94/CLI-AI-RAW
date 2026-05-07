@@ -12,6 +12,7 @@
  */
 
 import crypto from 'crypto';
+import { getRetryingDeliveryWhere } from '@/lib/webhooks/status';
 
 const DEFAULT_MAX_ATTEMPTS = 8;
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -310,13 +311,21 @@ export async function runDueRetries(): Promise<{
 }
 
 /**
- * Manually requeue a dead delivery. Resets attempt counter and schedules
- * an immediate retry (nextAttemptAt = now). Used by ops UI / API.
+ * Manually requeue a dead or retrying delivery. Resets attempt counter and
+ * schedules an immediate retry (nextAttemptAt = now). Used by ops UI / API.
  */
 export async function requeueDeadDelivery(deliveryRowId: string, tenantId: string): Promise<boolean> {
   const prisma = await getPrisma();
   const row = await prisma.webhookDelivery.findFirst({
-    where: { id: deliveryRowId, tenantId, status: { in: ['dead', 'failed'] } },
+    where: {
+      id: deliveryRowId,
+      tenantId,
+      OR: [
+        { status: 'dead' },
+        { status: 'failed' },
+        getRetryingDeliveryWhere(),
+      ],
+    },
     select: { id: true },
   });
   if (!row) return false;
