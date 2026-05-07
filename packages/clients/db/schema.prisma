@@ -4082,6 +4082,10 @@ enum ContractSourceProvider {
   BOX
   SALESFORCE
   SLACK
+  POSTGRES
+  MYSQL
+  MSSQL
+  MONGODB
   CUSTOM_API
 }
 

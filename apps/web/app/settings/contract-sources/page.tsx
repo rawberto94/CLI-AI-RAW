@@ -72,6 +72,7 @@ const PROVIDERS = {
   FTP: { name: "FTP", icon: Server, color: "text-gray-500" },
   DROPBOX: { name: "Dropbox", icon: Cloud, color: "text-violet-400" },
   BOX: { name: "Box", icon: Cloud, color: "text-violet-700" },
+  POSTGRES: { name: "PostgreSQL", icon: HardDrive, color: "text-violet-600" },
   CUSTOM_API: { name: "Custom API", icon: Server, color: "text-violet-600" },
 };
 
@@ -535,13 +536,40 @@ function CreateSourceDialog({
 
     setIsCreating(true);
     try {
+      const credentialPayload: Record<string, unknown> =
+        provider === "POSTGRES"
+          ? {
+              type: "postgres",
+              host: credentials.host,
+              port: credentials.port ? Number(credentials.port) : undefined,
+              database: credentials.database,
+              username: credentials.username,
+              password: credentials.password,
+              ssl: credentials.ssl === "true",
+              schema: credentials.schema || undefined,
+              table: credentials.table,
+              whereClause: credentials.whereClause || undefined,
+              mapping: {
+                idColumn: credentials.idColumn,
+                bodyColumn: credentials.bodyColumn,
+                titleColumn: credentials.titleColumn || undefined,
+                modifiedAtColumn: credentials.modifiedAtColumn || undefined,
+                supplierColumn: credentials.supplierColumn || undefined,
+                clientColumn: credentials.clientColumn || undefined,
+                externalIdColumn: credentials.externalIdColumn || undefined,
+                mimeTypeColumn: credentials.mimeTypeColumn || undefined,
+                mode: credentials.mode === "reference" ? "reference" : "copy",
+              },
+            }
+          : { type: provider.toLowerCase(), ...credentials };
+
       const res = await fetch("/api/contract-sources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
           provider,
-          credentials: { type: provider.toLowerCase(), ...credentials },
+          credentials: credentialPayload,
           syncFolder,
         }),
       });
@@ -740,6 +768,168 @@ function CreateSourceDialog({
                   setCredentials({ ...credentials, password: e.target.value })
                 }
               />
+            </div>
+          </>
+        );
+      case "POSTGRES":
+        return (
+          <>
+            <div className="rounded-md border border-violet-200 bg-violet-50 p-3 text-xs text-violet-900">
+              Connect to a PostgreSQL database where each row in a table is one
+              contract. Map your column names below. The connector reads only;
+              create a read-only role for it.
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label htmlFor="host">Host</Label>
+                <Input
+                  id="host"
+                  value={credentials.host || ""}
+                  onChange={(e) => setCredentials({ ...credentials, host: e.target.value })}
+                  placeholder="db.company.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="port">Port</Label>
+                <Input
+                  id="port"
+                  type="number"
+                  value={credentials.port || "5432"}
+                  onChange={(e) => setCredentials({ ...credentials, port: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="database">Database</Label>
+              <Input
+                id="database"
+                value={credentials.database || ""}
+                onChange={(e) => setCredentials({ ...credentials, database: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  value={credentials.username || ""}
+                  onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={credentials.password || ""}
+                  onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label htmlFor="schema">Schema</Label>
+                <Input
+                  id="schema"
+                  value={credentials.schema || ""}
+                  onChange={(e) => setCredentials({ ...credentials, schema: e.target.value })}
+                  placeholder="public"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="table">Table</Label>
+                <Input
+                  id="table"
+                  value={credentials.table || ""}
+                  onChange={(e) => setCredentials({ ...credentials, table: e.target.value })}
+                  placeholder="contracts"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mode">Mode</Label>
+              <Select
+                value={credentials.mode || "copy"}
+                onValueChange={(v) => setCredentials({ ...credentials, mode: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="copy">
+                    Copy &mdash; pull bytea/blob and ingest with OCR
+                  </SelectItem>
+                  <SelectItem value="reference">
+                    Reference &mdash; URL/path column, metadata only
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="pt-2 border-t">
+              <p className="text-xs font-medium mb-2">Column Mapping</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="idColumn">ID column *</Label>
+                  <Input
+                    id="idColumn"
+                    value={credentials.idColumn || ""}
+                    onChange={(e) => setCredentials({ ...credentials, idColumn: e.target.value })}
+                    placeholder="id"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bodyColumn">Body column *</Label>
+                  <Input
+                    id="bodyColumn"
+                    value={credentials.bodyColumn || ""}
+                    onChange={(e) => setCredentials({ ...credentials, bodyColumn: e.target.value })}
+                    placeholder={credentials.mode === "reference" ? "file_url" : "file_data"}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="titleColumn">Title column</Label>
+                  <Input
+                    id="titleColumn"
+                    value={credentials.titleColumn || ""}
+                    onChange={(e) => setCredentials({ ...credentials, titleColumn: e.target.value })}
+                    placeholder="name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="modifiedAtColumn">Modified-at column</Label>
+                  <Input
+                    id="modifiedAtColumn"
+                    value={credentials.modifiedAtColumn || ""}
+                    onChange={(e) => setCredentials({ ...credentials, modifiedAtColumn: e.target.value })}
+                    placeholder="updated_at"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="supplierColumn">Supplier column</Label>
+                  <Input
+                    id="supplierColumn"
+                    value={credentials.supplierColumn || ""}
+                    onChange={(e) => setCredentials({ ...credentials, supplierColumn: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="externalIdColumn">External ID column</Label>
+                  <Input
+                    id="externalIdColumn"
+                    value={credentials.externalIdColumn || ""}
+                    onChange={(e) => setCredentials({ ...credentials, externalIdColumn: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2 mt-2">
+                <Label htmlFor="whereClause">Optional WHERE clause</Label>
+                <Input
+                  id="whereClause"
+                  value={credentials.whereClause || ""}
+                  onChange={(e) => setCredentials({ ...credentials, whereClause: e.target.value })}
+                  placeholder="status = 'EXECUTED'"
+                />
+              </div>
             </div>
           </>
         );

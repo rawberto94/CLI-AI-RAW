@@ -26,6 +26,7 @@ export { SFTPConnector, createSFTPConnector } from './sftp.connector';
 export { GoogleDriveConnector } from './google-drive.connector';
 export { DropboxConnector, createDropboxConnector } from './dropbox.connector';
 export { BoxConnector, createBoxConnector } from './box.connector';
+export { PostgresConnector, createPostgresConnector } from './postgres.connector';
 
 // Credential encryption
 export {

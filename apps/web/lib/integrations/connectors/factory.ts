@@ -15,6 +15,7 @@ import {
   GoogleDriveCredentials,
   SalesforceCredentials,
   SlackCredentials,
+  PostgresCredentials,
 } from './types';
 import { SharePointConnector, OneDriveConnector } from './sharepoint.connector';
 import { AzureBlobConnector } from './azure-blob.connector';
@@ -25,6 +26,7 @@ import { DropboxConnector, DropboxCredentials } from './dropbox.connector';
 import { BoxConnector, BoxCredentials } from './box.connector';
 import { SalesforceConnector } from './salesforce.connector';
 import { SlackConnector } from './slack.connector';
+import { PostgresConnector } from './postgres.connector';
 
 /**
  * Create a connector instance for the given provider
@@ -64,6 +66,14 @@ export function createConnector(
     
     case ContractSourceProvider.SLACK:
       return new SlackConnector(credentials as SlackCredentials);
+    
+    case ContractSourceProvider.POSTGRES:
+      return new PostgresConnector(credentials as PostgresCredentials);
+    
+    case ContractSourceProvider.MYSQL:
+    case ContractSourceProvider.MSSQL:
+    case ContractSourceProvider.MONGODB:
+      throw new Error(`Provider ${provider} is not yet implemented`);
     
     case ContractSourceProvider.CUSTOM_API:
       throw new Error(`Provider ${provider} is not yet implemented`);
@@ -150,6 +160,12 @@ export function getRequiredCredentialFields(
     case ContractSourceProvider.SLACK:
       return ['clientId', 'clientSecret'];
     
+    case ContractSourceProvider.POSTGRES:
+      // For Postgres we accept either a connectionString OR (host + database).
+      // The factory checks `table` and the column-mapping shape; deeper
+      // validation happens in the connector constructor.
+      return ['table'];
+    
     default:
       return [];
   }
@@ -189,6 +205,10 @@ export function getProviderDisplayName(provider: ContractSourceProvider): string
     [ContractSourceProvider.BOX]: 'Box',
     [ContractSourceProvider.SALESFORCE]: 'Salesforce',
     [ContractSourceProvider.SLACK]: 'Slack',
+    [ContractSourceProvider.POSTGRES]: 'PostgreSQL',
+    [ContractSourceProvider.MYSQL]: 'MySQL',
+    [ContractSourceProvider.MSSQL]: 'SQL Server',
+    [ContractSourceProvider.MONGODB]: 'MongoDB',
     [ContractSourceProvider.CUSTOM_API]: 'Custom API',
   };
   
@@ -211,6 +231,10 @@ export function getProviderIcon(provider: ContractSourceProvider): string {
     [ContractSourceProvider.BOX]: 'box',
     [ContractSourceProvider.SALESFORCE]: 'salesforce',
     [ContractSourceProvider.SLACK]: 'slack',
+    [ContractSourceProvider.POSTGRES]: 'database',
+    [ContractSourceProvider.MYSQL]: 'database',
+    [ContractSourceProvider.MSSQL]: 'database',
+    [ContractSourceProvider.MONGODB]: 'database',
     [ContractSourceProvider.CUSTOM_API]: 'code',
   };
   

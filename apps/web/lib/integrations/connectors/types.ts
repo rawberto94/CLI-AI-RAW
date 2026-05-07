@@ -129,6 +129,7 @@ export type ConnectorCredentials =
   | BoxCredentials
   | SalesforceCredentials
   | SlackCredentials
+  | PostgresCredentials
   | CustomAPICredentials;
 
 export interface SalesforceCredentials {
@@ -219,6 +220,64 @@ export interface CustomAPICredentials {
   apiSecret?: string;
   baseUrl: string;
   headers?: Record<string, string>;
+}
+
+/**
+ * SQL connector column mapping. Tells the connector which columns in the
+ * source table correspond to Contigo concepts. `id` and `body` are the only
+ * required mappings; the others are best-effort metadata.
+ *
+ * Two ingestion modes are supported via `mode`:
+ *   - 'copy'      Pull the bytea/blob from `bodyColumn` and ingest the file
+ *                 through the OCR + artifact pipeline. The full Contigo flow.
+ *   - 'reference' Use `bodyColumn` as a URL/path string and store metadata
+ *                 only. Useful when contract files live in S3 and the DB
+ *                 just holds metadata + a download URL. The connector still
+ *                 produces a Contract row but no document body is fetched
+ *                 (sync-service will skip the OCR pipeline).
+ */
+export interface SqlColumnMapping {
+  /** Required: primary key column. Must be unique per row. */
+  idColumn: string;
+  /** Required: column containing the document. bytea/BLOB in copy mode,
+   *  or a string URL/path in reference mode. */
+  bodyColumn: string;
+  /** Optional: human-readable title / file name. */
+  titleColumn?: string;
+  /** Optional: MIME type column. Defaults to application/pdf if absent. */
+  mimeTypeColumn?: string;
+  /** Optional: timestamp column used for incremental sync change detection. */
+  modifiedAtColumn?: string;
+  /** Optional: counterparty / supplier column. */
+  supplierColumn?: string;
+  /** Optional: client / buyer column. */
+  clientColumn?: string;
+  /** Optional: arbitrary external_id column for cross-system linking. */
+  externalIdColumn?: string;
+  /** Ingestion mode. Defaults to 'copy'. */
+  mode?: 'copy' | 'reference';
+}
+
+export interface PostgresCredentials {
+  type: 'postgres';
+  /** Connection: host/port/database/user/password OR a full connectionString. */
+  connectionString?: string;
+  host?: string;
+  port?: number;
+  database?: string;
+  username?: string;
+  password?: string;
+  ssl?: boolean;
+  /** Required: schema-qualified or bare table name to read from. */
+  table: string;
+  /** Optional schema. Defaults to 'public'. */
+  schema?: string;
+  /** How to map columns to Contigo concepts. */
+  mapping: SqlColumnMapping;
+  /** Optional WHERE clause appended to every list query (parameter-free).
+   *  Use for filtering: e.g. "status = 'EXECUTED'". The connector wraps it
+   *  in parens so it composes safely with pagination. */
+  whereClause?: string;
 }
 
 // ============================================
