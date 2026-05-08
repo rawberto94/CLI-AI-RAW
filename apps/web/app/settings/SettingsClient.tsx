@@ -131,6 +131,11 @@ export default function SettingsClient() {
   const canManageTenantSettings = ['admin', 'owner'].includes(userInfo?.role?.toLowerCase() ?? '');
 
   const loadOutboundOverview = useCallback(async () => {
+    if (!canManageTenantSettings) {
+      setOutboundOverview(null);
+      return;
+    }
+
     try {
       const outboundRes = await fetch('/api/admin/outbound-overview').catch(() => null);
       if (outboundRes?.ok) {
@@ -140,30 +145,35 @@ export default function SettingsClient() {
     } catch {
       // Non-fatal on the settings landing page.
     }
-  }, []);
+  }, [canManageTenantSettings]);
 
   // Fetch settings from API on mount
   useEffect(() => {
     async function fetchSettings() {
       try {
-        const [settingsRes, outboundRes] = await Promise.all([
-          fetch('/api/settings'),
-          fetch('/api/admin/outbound-overview').catch(() => null),
-        ]);
+        const settingsRes = await fetch('/api/settings');
         if (settingsRes.ok) {
           const data = unwrapApiResponseData<{ settings?: typeof DEFAULT_SETTINGS & { processing?: Record<string, unknown> }; user?: UserInfo | null }>(await settingsRes.json());
           const settings = data.settings || DEFAULT_SETTINGS;
           const user = data.user;
+          const canManageOutbound = ['admin', 'owner'].includes(user?.role?.toLowerCase() ?? '');
+
           if (user) setUserInfo(user);
           if (settings.system) setSystemSettings(s => ({ ...s, ...settings.system }));
           if (settings.notifications) setNotificationSettings(s => ({ ...s, ...settings.notifications }));
           if (settings.security) setSecuritySettings(s => ({ ...s, ...settings.security }));
           if (settings.display) setDisplaySettings(s => ({ ...s, ...settings.display }));
           if (settings.processing) setProcessingSettings(s => ({ ...s, ...settings.processing }));
-        }
-        if (outboundRes?.ok) {
-          const outboundJson = await outboundRes.json();
-          setOutboundOverview((outboundJson as { data?: OutboundOverview }).data ?? null);
+
+          if (canManageOutbound) {
+            const outboundRes = await fetch('/api/admin/outbound-overview').catch(() => null);
+            if (outboundRes?.ok) {
+              const outboundJson = await outboundRes.json();
+              setOutboundOverview((outboundJson as { data?: OutboundOverview }).data ?? null);
+            }
+          } else {
+            setOutboundOverview(null);
+          }
         }
       } catch {
         toast.error('Failed to load settings');
@@ -1068,6 +1078,16 @@ export default function SettingsClient() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                {loading ? (
+                  <div className="p-8 flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                    <span className="ml-2 text-slate-500">Loading integrations...</span>
+                  </div>
+                ) : !canManageTenantSettings ? (
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    Webhook endpoints, delivery recovery, durable event replay, and API token management are limited to organization admins and owners.
+                  </p>
+                ) : (
                 <div className="space-y-4">
                   {outboundOverview && (
                     <div className="space-y-3">
@@ -1300,6 +1320,7 @@ export default function SettingsClient() {
                   })}
                   </div>
                 </div>
+                )}
               </CardContent>
             </Card>
           )}
