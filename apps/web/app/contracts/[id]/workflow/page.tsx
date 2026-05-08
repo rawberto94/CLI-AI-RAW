@@ -132,9 +132,9 @@ export default function ContractWorkflowPage() {
         setContract(loadedContract);
       }
 
-      // Load available approvers from users API
+      // Load tenant users for approver selection without requiring admin scope.
       try {
-        const usersRes = await fetch('/api/admin/users', {
+        const usersRes = await fetch('/api/users', {
           headers: { 'x-tenant-id': getTenantId() },
         });
         if (usersRes.ok) {
