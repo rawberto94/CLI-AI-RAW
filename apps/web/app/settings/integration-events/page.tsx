@@ -1,12 +1,17 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ArrowRightLeft, RefreshCw, RotateCcw } from "lucide-react";
+import {
+  AdminOnlySettingsState,
+  SettingsAccessLoadingState,
+  useAdminSettingsAccess,
+} from "../_components/admin-settings-access";
 
 interface IntegrationEventRow {
   id: string;
@@ -46,6 +51,7 @@ function formatTime(iso: string): string {
 }
 
 export default function IntegrationEventsPage() {
+  const { loading: accessLoading, isAdmin, error: accessError } = useAdminSettingsAccess();
   const [rows, setRows] = useState<IntegrationEventRow[]>([]);
   const [eventTypeFilter, setEventTypeFilter] = useState("");
   const [resourceIdFilter, setResourceIdFilter] = useState("");
@@ -55,7 +61,11 @@ export default function IntegrationEventsPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
 
-  const load = async (cursor?: string, append = false) => {
+  const load = useCallback(async (cursor?: string, append = false) => {
+    if (accessLoading || accessError || !isAdmin) {
+      return;
+    }
+
     if (append) setLoadingMore(true);
     else setLoading(true);
 
@@ -82,12 +92,15 @@ export default function IntegrationEventsPage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  };
+  }, [accessLoading, accessError, isAdmin, eventTypeFilter, resourceIdFilter]);
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventTypeFilter, resourceIdFilter]);
+    if (accessLoading || accessError || !isAdmin) {
+      return;
+    }
+
+    void load();
+  }, [accessLoading, accessError, isAdmin, load]);
 
   const replayEvent = async (row: IntegrationEventRow) => {
     if (!confirm(`Replay ${row.eventType} to current active webhook subscribers?`)) return;
@@ -124,6 +137,29 @@ export default function IntegrationEventsPage() {
       setReplayingEventId(null);
     }
   };
+
+  if (accessLoading) {
+    return <SettingsAccessLoadingState label="Checking integration event access…" />;
+  }
+
+  if (accessError) {
+    return (
+      <AdminOnlySettingsState
+        title="Unable to load integration events"
+        description="We couldn't verify whether you can browse and replay durable outbound events right now."
+        errorMessage={accessError}
+      />
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <AdminOnlySettingsState
+        title="Admin Access Required"
+        description="Durable event browsing and replay are limited to organization admins and owners."
+      />
+    );
+  }
 
   return (
     <div className="container mx-auto p-6 space-y-6">

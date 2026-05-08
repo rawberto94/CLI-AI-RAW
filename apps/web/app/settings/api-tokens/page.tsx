@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,11 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Copy, KeyRound, Plus, Trash2 } from "lucide-react";
+import {
+  AdminOnlySettingsState,
+  SettingsAccessLoadingState,
+  useAdminSettingsAccess,
+} from "../_components/admin-settings-access";
 
 interface ApiTokenRow {
   id: string;
@@ -40,6 +45,7 @@ const SCOPE_OPTIONS = [
 ];
 
 export default function ApiTokensPage() {
+  const { loading: accessLoading, isAdmin, error: accessError } = useAdminSettingsAccess();
   const [tokens, setTokens] = useState<ApiTokenRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -49,7 +55,11 @@ export default function ApiTokensPage() {
   const [expiresAt, setExpiresAt] = useState("");
   const [newToken, setNewToken] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
+    if (accessLoading || accessError || !isAdmin) {
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/api/admin/api-tokens");
@@ -61,11 +71,15 @@ export default function ApiTokensPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessLoading, accessError, isAdmin]);
 
   useEffect(() => {
-    load();
-  }, []);
+    if (accessLoading || accessError || !isAdmin) {
+      return;
+    }
+
+    void load();
+  }, [accessLoading, accessError, isAdmin, load]);
 
   const onCreate = async () => {
     if (!name.trim()) {
@@ -113,6 +127,29 @@ export default function ApiTokensPage() {
     }
   };
 
+
+  if (accessLoading) {
+    return <SettingsAccessLoadingState label="Checking API token access…" />;
+  }
+
+  if (accessError) {
+    return (
+      <AdminOnlySettingsState
+        title="Unable to load API tokens"
+        description="We couldn't verify whether you can manage API tokens right now."
+        errorMessage={accessError}
+      />
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <AdminOnlySettingsState
+        title="Admin Access Required"
+        description="API token issuance and revocation are limited to organization admins and owners."
+      />
+    );
+  }
   const closeDialog = () => {
     setShowDialog(false);
     setName("");

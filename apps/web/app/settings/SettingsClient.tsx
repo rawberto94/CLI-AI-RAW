@@ -1247,7 +1247,9 @@ export default function SettingsClient() {
                     <div className="mb-3">
                       <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Outbound Integrations</h4>
                       <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Manage webhook subscribers, delivery recovery, durable event replay, and API tokens.
+                        {canManageTenantSettings
+                          ? 'Manage webhook subscribers, delivery recovery, durable event replay, and API tokens.'
+                          : 'Webhook subscribers, delivery recovery, durable event replay, and API tokens are limited to organization admins and owners.'}
                       </p>
                     </div>
                     {([
@@ -1284,9 +1286,15 @@ export default function SettingsClient() {
                             )}
                           </div>
                         </div>
-                        <Button asChild variant="outline" size="sm">
-                          <Link href={integration.href}>{integration.cta}</Link>
-                        </Button>
+                        {canManageTenantSettings ? (
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={integration.href}>{integration.cta}</Link>
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" disabled>
+                            Admin only
+                          </Button>
+                        )}
                       </div>
                     );
                   })}

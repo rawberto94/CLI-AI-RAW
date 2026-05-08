@@ -8,6 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { RefreshCw, RotateCcw } from "lucide-react";
+import {
+  AdminOnlySettingsState,
+  SettingsAccessLoadingState,
+  useAdminSettingsAccess,
+} from "../_components/admin-settings-access";
 
 interface DeliveryRow {
   id: string;
@@ -60,6 +65,7 @@ function formatTime(iso: string | null): string {
 }
 
 export default function WebhookDeliveriesPage() {
+  const { loading: accessLoading, isAdmin, error: accessError } = useAdminSettingsAccess();
   const searchParams = useSearchParams();
   const [rows, setRows] = useState<DeliveryRow[]>([]);
   const [summary, setSummary] = useState<DeliveryListResponse["summary"]>({
@@ -81,6 +87,10 @@ export default function WebhookDeliveriesPage() {
     (!eventFilter.trim() && !webhookIdFilter.trim() && !statusFilter && summary.dead > 0);
 
   const load = useCallback(async () => {
+    if (accessLoading || accessError || !isAdmin) {
+      return;
+    }
+
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -102,11 +112,15 @@ export default function WebhookDeliveriesPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, eventFilter, webhookIdFilter, dispatchIdFilter]);
+  }, [accessLoading, accessError, isAdmin, statusFilter, eventFilter, webhookIdFilter, dispatchIdFilter]);
 
   useEffect(() => {
+    if (accessLoading || accessError || !isAdmin) {
+      return;
+    }
+
     load();
-  }, [load]);
+  }, [accessLoading, accessError, isAdmin, load]);
 
   const onRequeue = async (id: string) => {
     if (!confirm("Requeue this delivery? It will be retried on the next cron tick.")) return;
@@ -158,6 +172,29 @@ export default function WebhookDeliveriesPage() {
       setRequeueing(null);
     }
   };
+
+  if (accessLoading) {
+    return <SettingsAccessLoadingState label="Checking webhook deliveries access…" />;
+  }
+
+  if (accessError) {
+    return (
+      <AdminOnlySettingsState
+        title="Unable to load webhook deliveries"
+        description="We couldn't verify whether you can inspect delivery retries and DLQ state right now."
+        errorMessage={accessError}
+      />
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <AdminOnlySettingsState
+        title="Admin Access Required"
+        description="Webhook delivery inspection and recovery are limited to organization admins and owners."
+      />
+    );
+  }
 
   return (
     <div className="container mx-auto p-6 space-y-6">
