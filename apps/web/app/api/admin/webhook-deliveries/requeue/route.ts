@@ -6,21 +6,18 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
 import { requeueMatchingDeadDeliveries } from '@/lib/webhooks/delivery';
+import { requireAdminScope, isScopeError } from '@/lib/tenant-isolation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const scope = await requireAdminScope(request);
+  if (isScopeError(scope)) {
+    return scope;
   }
-  const tenantId = (session.user as { tenantId?: string }).tenantId;
-  if (!tenantId) {
-    return NextResponse.json({ error: 'No tenant context' }, { status: 400 });
-  }
+  const tenantId = scope.tenantId;
 
   const body = await request.json().catch(() => ({}));
   const event = typeof body?.event === 'string' && body.event.trim() ? body.event.trim() : undefined;

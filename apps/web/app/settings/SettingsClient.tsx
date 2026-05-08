@@ -864,18 +864,25 @@ export default function SettingsClient() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-700">
                       <div>
                         <h4 className="font-medium text-slate-800 dark:text-slate-200">
                           API Tokens
                         </h4>
                         <p className="text-sm text-slate-500 dark:text-slate-400">
-                          Programmatic access to the Contigo API will be available soon.
+                          Issue, revoke, and monitor scoped credentials for <span className="font-mono">/api/v1</span> consumers.
                         </p>
+                        {outboundOverview && (
+                          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                            {outboundOverview.apiTokens.active} active tokens • {outboundOverview.apiTokens.requestsLast24h} requests in the last 24h
+                          </p>
+                        )}
                       </div>
-                      <span className="text-xs font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-full">
-                        Coming Soon
-                      </span>
+                      <Link href="/settings/api-tokens">
+                        <Button variant="outline" size="sm">
+                          Manage Tokens
+                        </Button>
+                      </Link>
                     </div>
                   </CardContent>
                 </Card>

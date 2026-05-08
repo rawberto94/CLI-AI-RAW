@@ -117,7 +117,7 @@ export async function requireOwnerScope(
  * Check if scope is an error response
  */
 export function isScopeError(scope: TenantScope | NextResponse): scope is NextResponse {
-  return scope instanceof NextResponse;
+  return typeof scope === 'object' && scope !== null && 'status' in scope && 'headers' in scope;
 }
 
 /**

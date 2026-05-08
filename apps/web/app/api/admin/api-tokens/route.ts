@@ -6,10 +6,10 @@
  * expose only id/name/prefix/scopes/lastUsedAt/createdAt/expiresAt.
  */
 
-import { NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { generateApiToken, hashApiToken } from '@/lib/api/v1/auth';
+import { requireAdminScope, isScopeError } from '@/lib/tenant-isolation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,15 +24,12 @@ const VALID_SCOPES = new Set([
   'webhooks:write',
 ]);
 
-export async function GET() {
-  const session = await getServerSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function GET(request: NextRequest) {
+  const scope = await requireAdminScope(request);
+  if (isScopeError(scope)) {
+    return scope;
   }
-  const tenantId = (session.user as { tenantId?: string }).tenantId;
-  if (!tenantId) {
-    return NextResponse.json({ error: 'No tenant context' }, { status: 400 });
-  }
+  const tenantId = scope.tenantId;
 
   const tokens = await prisma.apiToken.findMany({
     where: { tenantId, revokedAt: null },
@@ -71,15 +68,12 @@ export async function GET() {
   return NextResponse.json({ data });
 }
 
-export async function POST(request: Request) {
-  const session = await getServerSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function POST(request: NextRequest) {
+  const scope = await requireAdminScope(request);
+  if (isScopeError(scope)) {
+    return scope;
   }
-  const tenantId = (session.user as { tenantId?: string }).tenantId;
-  if (!tenantId) {
-    return NextResponse.json({ error: 'No tenant context' }, { status: 400 });
-  }
+  const tenantId = scope.tenantId;
 
   const body = (await request.json().catch(() => ({}))) as {
     name?: string;
@@ -117,7 +111,7 @@ export async function POST(request: Request) {
       prefix,
       tokenHash,
       scopes: scopesArr.join(','),
-      createdBy: session.user.id,
+      createdBy: scope.userId,
       expiresAt,
     },
     select: {

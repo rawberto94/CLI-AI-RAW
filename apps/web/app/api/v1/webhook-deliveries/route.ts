@@ -109,7 +109,7 @@ export async function GET(request: Request) {
     createdAt: r.createdAt,
   }));
 
-  const nextCursor = data.length > 0 ? data[data.length - 1].id : null;
+  const nextCursor = hasMore && data.length > 0 ? data[data.length - 1].id : null;
 
   return withRateLimitHeaders(
     NextResponse.json({ data, nextCursor, hasMore }),

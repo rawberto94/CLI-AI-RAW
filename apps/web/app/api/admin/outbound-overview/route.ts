@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireAdminScope, isScopeError } from '@/lib/tenant-isolation';
 import {
   getRetryingDeliveryWhere,
   toDisplayDeliveryStatus,
@@ -9,16 +9,13 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  const session = await getServerSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function GET(request: NextRequest) {
+  const scope = await requireAdminScope(request);
+  if (isScopeError(scope)) {
+    return scope;
   }
 
-  const tenantId = (session.user as { tenantId?: string }).tenantId;
-  if (!tenantId) {
-    return NextResponse.json({ error: 'No tenant context' }, { status: 400 });
-  }
+  const tenantId = scope.tenantId;
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 

@@ -8,8 +8,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { requireAdminScope, isScopeError } from '@/lib/tenant-isolation';
 import { triggerWebhook } from '@/lib/webhook-triggers';
 import { WEBHOOK_EVENTS, type WebhookEvent } from '@/app/api/webhooks/route';
 
@@ -17,18 +17,14 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
-  const session = await getServerSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const scope = await requireAdminScope(request);
+  if (isScopeError(scope)) {
+    return scope;
   }
-
-  const tenantId = (session.user as { tenantId?: string }).tenantId;
-  if (!tenantId) {
-    return NextResponse.json({ error: 'No tenant context' }, { status: 400 });
-  }
+  const tenantId = scope.tenantId;
 
   const { id } = await context.params;
   let eventId: bigint;
