@@ -20,6 +20,7 @@ import { withCronHandler, createSuccessResponse, getApiContext} from '@/lib/api-
 import { prisma } from '@/lib/prisma';
 import { EmailService } from '@/lib/services/email.service';
 import { logger } from '@/lib/logger';
+import { getPublicAppUrl } from '@/lib/public-app-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,7 +103,7 @@ export const POST = withCronHandler(async (request, ctx) => {
     logger.info(`[CRON] Found ${expiringContracts.length} contracts expiring within 90 days`);
 
     const results: ReminderResult[] = [];
-    const baseUrl = process.env.NEXTAUTH_URL || 'https://app.contigo.ai';
+    const baseUrl = getPublicAppUrl();
 
     for (const contract of expiringContracts) {
       const expiryDate = new Date(contract.expirationDate!);

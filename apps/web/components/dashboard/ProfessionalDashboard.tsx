@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -757,8 +758,10 @@ function PortfolioHealthWidget() {
 
 export function ProfessionalDashboard() {
   const router = useRouter();
+  const { data: session } = useSession();
   const { metrics, chartData, recentContracts, expirations, loading } = useDashboardData();
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('30d');
+  const canManageIntegrations = session?.user?.role === 'admin' || session?.user?.role === 'owner';
   
   // Widget data (fetched from API)
   const [favoriteContracts, setFavoriteContracts] = useState<FavoriteContract[]>([]);
@@ -1390,13 +1393,12 @@ export function ProfessionalDashboard() {
           activities={teamData.activities}
           teamMembers={teamData.members}
           onActivityClick={(activity) => activity.targetId && router.push(`/contracts/${activity.targetId}`)}
-          onViewAll={() => router.push('/activity')}
         />
         <IntegrationStatusWidget
           integrations={integrations}
           onRefresh={() => {}}
-          onSettings={(id) => router.push(`/settings/integrations/${id}`)}
-          onViewAll={() => router.push('/settings/integrations')}
+          onSettings={canManageIntegrations ? () => router.push('/admin/integrations') : undefined}
+          onViewAll={canManageIntegrations ? () => router.push('/admin/integrations') : undefined}
         />
       </div>
 

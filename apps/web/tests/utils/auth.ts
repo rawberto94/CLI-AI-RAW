@@ -50,10 +50,14 @@ export async function authenticatePageContext(page: Page, request: APIRequestCon
         redirect: 'false',
         callbackUrl: '/dashboard',
       },
+      maxRedirects: 0,
     })
   );
 
-  if (!signInResponse.ok()) {
+  const signInStatus = signInResponse.status();
+  const isExpectedRedirect = signInStatus >= 300 && signInStatus < 400;
+
+  if (!signInResponse.ok() && !isExpectedRedirect) {
     throw new Error(`Credential sign-in failed: ${signInResponse.status()}`);
   }
 

@@ -16,6 +16,7 @@
  */
 
 import { logger } from '@/lib/logger';
+import { getPublicAppUrl } from '@/lib/public-app-url';
 
 // Email provider types
 type EmailProvider = 'resend' | 'sendgrid' | 'ses' | 'smtp' | 'console';
@@ -636,7 +637,7 @@ export class EmailService {
     expiryDate: Date;
     baseUrl?: string;
   }): Promise<EmailResult> {
-    const baseUrl = data.baseUrl || process.env.NEXTAUTH_URL || 'https://app.contigo.ai';
+    const baseUrl = data.baseUrl || getPublicAppUrl();
     const template = EMAIL_TEMPLATES.contractExpiry({
       recipientName: data.recipientName,
       contractName: data.contractName,
@@ -677,7 +678,7 @@ export class EmailService {
     value?: number;
     baseUrl?: string;
   }): Promise<EmailResult> {
-    const baseUrl = data.baseUrl || process.env.NEXTAUTH_URL || 'https://app.contigo.ai';
+    const baseUrl = data.baseUrl || getPublicAppUrl();
     const template = EMAIL_TEMPLATES.approvalRequest({
       recipientName: data.recipientName,
       contractName: data.contractName,
@@ -730,7 +731,7 @@ export class EmailService {
     }>;
     baseUrl?: string;
   }): Promise<EmailResult> {
-    const baseUrl = data.baseUrl || process.env.NEXTAUTH_URL || 'https://app.contigo.ai';
+    const baseUrl = data.baseUrl || getPublicAppUrl();
     const template = EMAIL_TEMPLATES.weeklyDigest({
       recipientName: data.recipientName,
       stats: data.stats,
@@ -764,7 +765,7 @@ export class EmailService {
     submittedForApproval?: boolean;
     baseUrl?: string;
   }): Promise<EmailResult> {
-    const baseUrl = data.baseUrl || process.env.NEXTAUTH_URL || 'https://app.contigo.ai';
+    const baseUrl = data.baseUrl || getPublicAppUrl();
     const template = EMAIL_TEMPLATES.renewalCreated({
       recipientName: data.recipientName,
       originalContractName: data.originalContractName,

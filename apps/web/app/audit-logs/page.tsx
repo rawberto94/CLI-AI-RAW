@@ -15,11 +15,20 @@
 
 'use client';
 
-import { Suspense } from 'react';
+import Link from 'next/link';
+import { Suspense, useEffect, useState } from 'react';
 import { AuditLogViewer } from '@/components/audit/AuditLogViewer';
-import { Card, CardContent } from '@/components/ui/card';
+import { unwrapApiResponseData } from '@/lib/api-fetch';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Shield } from 'lucide-react';
+
+interface AuditLogsAccessPayload {
+  user?: {
+    role?: string | null;
+  } | null;
+}
 
 
 
@@ -58,6 +67,95 @@ function AuditLogsPageLoading() {
 }
 
 export default function AuditLogsPage() {
+  const [accessLoading, setAccessLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadAccess() {
+      try {
+        const response = await fetch('/api/settings');
+        if (!response.ok) {
+          throw new Error('We could not verify your audit log access.');
+        }
+
+        const data = unwrapApiResponseData<AuditLogsAccessPayload>(await response.json());
+        if (!active) return;
+
+        const role = (data.user?.role ?? '').toLowerCase();
+        setIsAdmin(role === 'admin' || role === 'owner');
+        setAccessError(null);
+      } catch (error) {
+        if (!active) return;
+        setIsAdmin(false);
+        setAccessError(error instanceof Error ? error.message : 'We could not verify your audit log access.');
+      } finally {
+        if (active) setAccessLoading(false);
+      }
+    }
+
+    loadAccess();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (accessLoading) {
+    return <AuditLogsPageLoading />;
+  }
+
+  if (accessError) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Unable to load audit logs</CardTitle>
+              <CardDescription>
+                We could not verify whether you can view tenant-wide audit activity right now.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-slate-600">{accessError}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild variant="outline">
+                  <Link href="/dashboard">Back to Dashboard</Link>
+                </Button>
+                <Button variant="outline" onClick={() => window.location.reload()}>
+                  Retry
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-10 py-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin Access Required</CardTitle>
+              <CardDescription>
+                Tenant-wide audit logs and compliance activity are limited to organization admins and owners.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline">
+                <Link href="/dashboard">Back to Dashboard</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Page Header */}

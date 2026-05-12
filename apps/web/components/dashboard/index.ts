@@ -1,5 +1,4 @@
 // Dashboard components index
-export { DashboardOverview } from './DashboardOverview';
 export { ProfessionalDashboard } from './ProfessionalDashboard';
 
 // New Dashboard Widgets

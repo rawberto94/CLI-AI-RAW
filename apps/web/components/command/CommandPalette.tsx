@@ -108,7 +108,7 @@ export function CommandPalette({ isOpen, onClose, customCommands = [] }: Command
     { id: 'nav-upload', label: 'Go to Upload', icon: Upload, category: 'navigation', action: () => router.push('/upload'), keywords: ['new', 'add'] },
     { id: 'nav-settings', label: 'Go to Settings', icon: Settings, category: 'navigation', action: () => router.push('/settings'), shortcut: ['G', 'S'] },
     { id: 'nav-notifications', label: 'Go to Notifications', icon: Bell, category: 'navigation', action: () => router.push('/notifications') },
-    { id: 'nav-profile', label: 'Go to Profile', icon: User, category: 'navigation', action: () => router.push('/profile') },
+    { id: 'nav-profile', label: 'Go to Profile', icon: User, category: 'navigation', action: () => router.push('/settings/profile') },
 
     // Actions
     { id: 'action-new-contract', label: 'Upload New Contract', icon: Plus, category: 'actions', action: () => router.push('/upload'), shortcut: ['⌘', 'N'], keywords: ['create', 'add'] },
@@ -121,8 +121,8 @@ export function CommandPalette({ isOpen, onClose, customCommands = [] }: Command
     // Settings
     { id: 'settings-theme', label: 'Toggle Dark Mode', icon: Moon, category: 'settings', action: () => {}, keywords: ['dark', 'light', 'appearance'] },
     { id: 'settings-keyboard', label: 'Keyboard Shortcuts', icon: Keyboard, category: 'settings', action: () => {}, shortcut: ['?'], keywords: ['keys', 'hotkeys'] },
-    { id: 'settings-help', label: 'Help & Support', icon: HelpCircle, category: 'settings', action: () => router.push('/help'), keywords: ['support', 'docs'] },
-    { id: 'settings-logout', label: 'Sign Out', icon: LogOut, category: 'settings', action: () => router.push('/auth/logout'), keywords: ['logout', 'exit'] },
+    { id: 'settings-help', label: 'Help & Support', icon: HelpCircle, category: 'settings', action: () => router.push('/self-service/help'), keywords: ['support', 'docs'] },
+    { id: 'settings-logout', label: 'Sign Out', icon: LogOut, category: 'settings', action: () => router.push('/auth/signout'), keywords: ['logout', 'exit'] },
   ], [router]);
 
   const allCommands = useMemo(() => [...defaultCommands, ...customCommands], [defaultCommands, customCommands]);

@@ -1,12 +1,18 @@
 import { NextRequest } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
+import { hasPermission } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
 
 // Audit Logs API — dedicated endpoint for the audit log viewer
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
+    const canViewAudit = await hasPermission(ctx.userId, 'audit:view');
+    if (!canViewAudit) {
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
+    }
+
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const success = searchParams.get('success');

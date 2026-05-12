@@ -3409,7 +3409,10 @@ export function CopilotDraftingCanvas({
 
       if (response.status === 401) {
         toast.error('Your session has expired. Please sign in again.');
-        setTimeout(() => { window.location.href = '/login'; }, 1500);
+        const redirectPath = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+        setTimeout(() => {
+          window.location.href = `/auth/signin?reason=session_expired&redirect=${redirectPath}`;
+        }, 1500);
         return;
       }
       if (!response.ok) throw new Error('Status update failed');
@@ -3512,7 +3515,6 @@ export function CopilotDraftingCanvas({
       while ((m = re.exec(text)) !== null) tokens.add(m[0]);
     }
     return tokens.size;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, debouncedContentVersion]);
   const selectedSuggestionData = useMemo(
     () => suggestions.find((suggestion) => suggestion.id === selectedSuggestion) || null,
@@ -4629,7 +4631,6 @@ export function CopilotDraftingCanvas({
       return aStart - bStart;
     });
     // Re-run when content or suggestion tick changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, debouncedContentVersion, suggestionsRefreshTick]);
 
   const acceptSuggestion = useCallback(
@@ -4728,14 +4729,6 @@ export function CopilotDraftingCanvas({
     pendingSuggestions.forEach((s) => rejectSuggestion(s.id));
   }, [pendingSuggestions, rejectSuggestion]);
 
-  // Keep refs in sync so the global keyboard handler (defined earlier) can
-  // call the latest accept/reject without stale closures.
-  useEffect(() => {
-    getSuggestionIdAtCursorRef.current = getSuggestionIdAtCursor;
-    acceptSuggestionRef.current = acceptSuggestion;
-    rejectSuggestionRef.current = rejectSuggestion;
-  }, [getSuggestionIdAtCursor, acceptSuggestion, rejectSuggestion]);
-
   const jumpToSuggestion = useCallback(
     (s: PendingSuggestion) => {
       if (!editor) return;
@@ -4767,6 +4760,14 @@ export function CopilotDraftingCanvas({
     });
     return found;
   }, [editor]);
+
+  // Keep refs in sync so the global keyboard handler (defined earlier) can
+  // call the latest accept/reject without stale closures.
+  useEffect(() => {
+    getSuggestionIdAtCursorRef.current = getSuggestionIdAtCursor;
+    acceptSuggestionRef.current = acceptSuggestion;
+    rejectSuggestionRef.current = rejectSuggestion;
+  }, [getSuggestionIdAtCursor, acceptSuggestion, rejectSuggestion]);
 
   // Manual "mark selection as ins/del" — used from the selection toolbar
   // while suggesting mode is on. Useful for flagging existing text without

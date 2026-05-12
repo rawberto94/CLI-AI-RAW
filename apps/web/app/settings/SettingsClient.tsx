@@ -72,6 +72,10 @@ interface UserInfo {
   avatar: string | null;
 }
 
+interface SettingsClientProps {
+  initialTab?: string;
+}
+
 interface OutboundOverview {
   webhooks: {
     total: number;
@@ -105,8 +109,8 @@ interface OutboundOverview {
   }>;
 }
 
-export default function SettingsClient() {
-  const [activeTab, setActiveTab] = React.useState("general");
+export default function SettingsClient({ initialTab = "general" }: SettingsClientProps) {
+  const [activeTab, setActiveTab] = React.useState(initialTab);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -129,6 +133,10 @@ export default function SettingsClient() {
     backupFrequency: 'daily',
   });
   const canManageTenantSettings = ['admin', 'owner'].includes(userInfo?.role?.toLowerCase() ?? '');
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   const loadOutboundOverview = useCallback(async () => {
     if (!canManageTenantSettings) {

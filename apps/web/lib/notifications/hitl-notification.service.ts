@@ -14,6 +14,7 @@
 import { prisma } from '@/lib/prisma';
 import { sendNotification, type NotificationPriority } from './notification-engine';
 import { sendPushNotification } from '@/lib/push-notification.service';
+import { getPublicAppUrl } from '@/lib/public-app-url';
 
 // ============================================================================
 // APPROVAL TYPE → ROLE MAPPING
@@ -25,6 +26,8 @@ const APPROVAL_ROLE_MAP: Record<string, string[]> = {
   finance_approval: ['admin', 'finance'],
   legal_approval: ['admin', 'legal'],
 };
+
+const publicAppUrl = getPublicAppUrl();
 
 /**
  * Resolve which users should be notified for a given set of required approvals.
@@ -177,7 +180,7 @@ export async function sendHITLApprovalNotification(
                   `> *Risk Level:* ${riskLevel.toUpperCase()}`,
                   `> *Required Approvals:* ${approvalLabels}`,
                   goalDescription ? `> ${goalDescription.slice(0, 200)}` : '',
-                  `\n<${process.env.NEXT_PUBLIC_APP_URL || 'https://app.contigo.ch'}/agents/approvals?goalId=${goalId}|Review in ConTiGo>`,
+                  `\n<${publicAppUrl}/agents/approvals?goalId=${goalId}|Review in ConTiGo>`,
                 ]
                   .filter(Boolean)
                   .join('\n'),

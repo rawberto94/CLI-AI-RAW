@@ -318,6 +318,42 @@ export function RecentActivityWidget({
   variant = 'card',
 }: RecentActivityWidgetProps) {
   const [filter, setFilter] = useState<FilterType>('all')
+  const [canViewAuditLogs, setCanViewAuditLogs] = useState(false)
+
+  useEffect(() => {
+    let active = true
+
+    if (!showViewAll) {
+      setCanViewAuditLogs(false)
+      return () => {
+        active = false
+      }
+    }
+
+    async function loadAuditLogAccess() {
+      try {
+        const response = await fetch('/api/settings')
+        if (!response.ok) {
+          throw new Error('Unable to load settings')
+        }
+
+        const payload = await response.json()
+        if (!active) return
+
+        const role = payload?.data?.user?.role?.toLowerCase?.() ?? ''
+        setCanViewAuditLogs(role === 'admin' || role === 'owner')
+      } catch {
+        if (!active) return
+        setCanViewAuditLogs(false)
+      }
+    }
+
+    loadAuditLogAccess()
+
+    return () => {
+      active = false
+    }
+  }, [showViewAll])
   
   const filteredActivities = filterActivities(activities, filter).slice(0, maxItems)
   const hasNewItems = activities.some(a => a.isNew)
@@ -359,7 +395,7 @@ export function RecentActivityWidget({
           </div>
         </ScrollArea>
         
-        {showViewAll && (
+        {showViewAll && canViewAuditLogs && (
           <div className="px-4 py-3 border-t">
             <Link href="/audit-logs">
               <Button variant="ghost" className="w-full justify-between text-sm">
@@ -454,7 +490,7 @@ export function RecentActivityWidget({
           )}
         </div>
         
-        {showViewAll && filteredActivities.length > 0 && (
+        {showViewAll && canViewAuditLogs && filteredActivities.length > 0 && (
           <div className="mt-4 pt-4 border-t">
             <Link href="/audit-logs">
               <Button variant="ghost" className="w-full justify-center text-sm">

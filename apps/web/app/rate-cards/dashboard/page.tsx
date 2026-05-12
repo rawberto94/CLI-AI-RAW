@@ -82,7 +82,7 @@ export default function RateCardDashboardPage() {
         <div className="flex gap-3">
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="motion-reduce:transform-none">
             <Button 
-              onClick={() => router.push('/rate-cards/import')} 
+              onClick={() => router.push('/rate-cards/upload')} 
               variant="outline"
               className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 hover:bg-white dark:hover:bg-slate-700 shadow-sm"
             >
@@ -92,7 +92,7 @@ export default function RateCardDashboardPage() {
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="motion-reduce:transform-none">
             <Button 
-              onClick={() => router.push('/rate-cards/create')}
+              onClick={() => router.push('/rate-cards/new')}
               className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25"
             >
               <Plus className="h-4 w-4 mr-2" aria-hidden="true" />

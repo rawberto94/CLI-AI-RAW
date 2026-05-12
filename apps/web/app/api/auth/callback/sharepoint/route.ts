@@ -14,6 +14,17 @@ import { withApiHandler } from '@/lib/api-middleware';
 import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 
+function buildCallbackRedirectUrl(request: NextRequest, path: string): URL {
+  const publicAppUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+  if (publicAppUrl) {
+    return new URL(path, publicAppUrl);
+  }
+
+  const protocol = request.headers.get('x-forwarded-proto') || request.nextUrl.protocol.replace(':', '') || 'http';
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || request.nextUrl.host;
+  return new URL(path, `${protocol}://${host}`);
+}
+
 export const GET = withApiHandler(async (request: NextRequest) => {
   try {
     // Validate that this callback is being driven by a logged-in user.
@@ -25,7 +36,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
     const session = await auth();
     if (!session?.user?.id || !session.user.tenantId) {
       return NextResponse.redirect(
-        new URL('/auth/signin?error=session_expired&redirect=/settings/integrations/sources', request.url)
+        buildCallbackRedirectUrl(request, '/auth/signin?error=session_expired&redirect=/settings/contract-sources')
       );
     }
 
@@ -37,11 +48,11 @@ export const GET = withApiHandler(async (request: NextRequest) => {
 
     if (error) {
       logger.error('OAuth error:', error, errorDescription ? { description: errorDescription } : undefined);
-      return redirectWithError(`Authentication failed: ${errorDescription || error}`);
+      return redirectWithError(request, `Authentication failed: ${errorDescription || error}`);
     }
 
     if (!code) {
-      return redirectWithError('No authorization code received');
+      return redirectWithError(request, 'No authorization code received');
     }
 
     // Parse state to get sourceId
@@ -53,7 +64,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
       sourceId = stateData.sourceId;
       stateTenantId = stateData.tenantId;
     } catch {
-      return redirectWithError('Invalid state parameter');
+      return redirectWithError(request, 'Invalid state parameter');
     }
 
     // Verify the state's tenantId matches the logged-in session. Prevents
@@ -64,7 +75,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
         stateTenantId,
         sessionTenantId: session.user.tenantId,
       });
-      return redirectWithError('Unauthorized: tenant mismatch');
+      return redirectWithError(request, 'Unauthorized: tenant mismatch');
     }
 
     // Get the source, always scoped to the SESSION's tenantId (not the state's)
@@ -74,11 +85,11 @@ export const GET = withApiHandler(async (request: NextRequest) => {
     });
 
     if (!source) {
-      return redirectWithError('Source not found');
+      return redirectWithError(request, 'Source not found');
     }
 
     if (!source.credentials) {
-      return redirectWithError('Source credentials not configured');
+      return redirectWithError(request, 'Source credentials not configured');
     }
 
     // Exchange code for tokens
@@ -111,22 +122,21 @@ export const GET = withApiHandler(async (request: NextRequest) => {
     await connector.disconnect();
 
     // Redirect back to the sources page
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
     return NextResponse.redirect(
-      new URL(`/settings/integrations/sources?connected=${sourceId}`, appUrl)
+      buildCallbackRedirectUrl(request, `/settings/contract-sources?connected=${sourceId}`)
     );
   } catch (error) {
     logger.error('OAuth callback error:', error);
     return redirectWithError(
+      request,
       error instanceof Error ? error.message : 'Authentication failed'
     );
   }
 });
 
-function redirectWithError(message: string): NextResponse {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+function redirectWithError(request: NextRequest, message: string): NextResponse {
   const encodedError = encodeURIComponent(message);
   return NextResponse.redirect(
-    new URL(`/settings/integrations/sources?error=${encodedError}`, appUrl)
+    buildCallbackRedirectUrl(request, `/settings/contract-sources?error=${encodedError}`)
   );
 }

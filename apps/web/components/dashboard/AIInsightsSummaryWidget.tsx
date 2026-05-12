@@ -505,7 +505,7 @@ export function AIInsightsSummaryWidget({
         
         {hasMore && (
           <div className="mt-4 pt-4 border-t">
-            <Link href="/insights">
+            <Link href="/intelligence">
               <Button variant="ghost" className="w-full justify-center text-sm">
                 View all {insights.length} insights
                 <ChevronRight className="h-4 w-4 ml-1" />

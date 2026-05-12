@@ -273,7 +273,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       icon: HelpCircle,
       category: 'help',
       audiences: ['all'],
-      action: () => window.open('/docs', '_blank'),
+      action: () => router.push('/self-service/help'),
       keywords: ['help', 'docs', 'documentation', 'guide'],
     },
     {

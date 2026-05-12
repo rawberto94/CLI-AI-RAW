@@ -124,7 +124,7 @@ export default function PortalPage() {
               <div className="pt-4 border-t border-slate-200">
                 <p className="text-xs text-slate-400">
                   Already have an account?{' '}
-                  <a href="/login" className="text-amber-600 hover:underline">
+                  <a href="/auth/signin" className="text-amber-600 hover:underline">
                     Sign in here
                   </a>
                 </p>

@@ -10,8 +10,11 @@ import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 import { aiObligationTrackerService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { getPublicAppUrl } from '@/lib/public-app-url';
 
 export const dynamic = 'force-dynamic';
+
+const publicAppUrl = getPublicAppUrl();
 
 // Generate iCal format for obligations
 function generateICalEvent(obligation: Record<string, unknown>): string {
@@ -30,7 +33,7 @@ function generateICalEvent(obligation: Record<string, unknown>): string {
     `Type: ${obligation.type}`,
     `Contract: ${obligation.contractTitle || 'Unknown'}`,
     obligation.clauseReference ? `Clause: ${obligation.clauseReference}` : '',
-    `View in ConTigo: ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.contigo.ai'}/obligations?id=${uid}`,
+    `View in ConTigo: ${publicAppUrl}/obligations?id=${uid}`,
   ].filter(Boolean).join('\\n').replace(/[,;]/g, '\\$&');
 
   const priority = {
@@ -174,15 +177,14 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     },
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.contigo.ai';
   const syncUrls = tokens.map((t) => ({
     id: t.id,
     name: t.name,
     provider: t.provider,
     createdAt: t.createdAt,
     lastSyncedAt: t.lastSyncedAt,
-    icalUrl: `${baseUrl}/api/obligations/calendar-sync?token=${t.token}&format=ics`,
-    jsonUrl: `${baseUrl}/api/obligations/calendar-sync?token=${t.token}&format=json`,
+    icalUrl: `${publicAppUrl}/api/obligations/calendar-sync?token=${t.token}&format=ics`,
+    jsonUrl: `${publicAppUrl}/api/obligations/calendar-sync?token=${t.token}&format=json`,
   }));
 
   return createSuccessResponse(ctx, {
@@ -215,8 +217,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       },
     });
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.contigo.ai';
-    const feedUrl = `${baseUrl}/api/obligations/calendar-sync?token=${token}&format=ics`;
+    const feedUrl = `${publicAppUrl}/api/obligations/calendar-sync?token=${token}&format=ics`;
 
     return createSuccessResponse(ctx, {
       success: true,

@@ -17,6 +17,7 @@ try {
 
 import { ContractSource } from "@prisma/client";
 import { format } from "date-fns";
+import { getPublicAppUrl } from '@/lib/public-app-url';
 
 // Define our own SyncLog type since ContractSyncLog may not exist in schema
 interface SyncLog {
@@ -73,6 +74,7 @@ export class EmailNotificationService {
    
   private transporter: any = null;
   private config: EmailConfig;
+  private readonly appUrl = getPublicAppUrl();
 
   constructor(config: EmailConfig) {
     this.config = config;
@@ -299,7 +301,7 @@ export class EmailNotificationService {
               </div>
             `}
             
-            <a href="${process.env.NEXTAUTH_URL}/settings/contract-sources/${source.id}" class="button">
+            <a href="${this.appUrl}/settings/contract-sources?sourceId=${source.id}" class="button">
               View Source Details →
             </a>
           </div>
@@ -333,7 +335,7 @@ ${retryCount < maxRetries
   ? `Automatic retry ${retryCount + 1} of ${maxRetries} scheduled.`
   : `Max retries reached. Manual intervention may be required.`}
 
-View source: ${process.env.NEXTAUTH_URL}/settings/contract-sources/${source.id}
+View source: ${this.appUrl}/settings/contract-sources?sourceId=${source.id}
     `.trim();
   }
 
@@ -426,7 +428,7 @@ View source: ${process.env.NEXTAUTH_URL}/settings/contract-sources/${source.id}
             ` : ''}
             
             <div style="text-align: center; margin-top: 24px;">
-              <a href="${process.env.NEXTAUTH_URL}/settings/contract-sources" class="button">
+              <a href="${this.appUrl}/settings/contract-sources" class="button">
                 View All Sources →
               </a>
             </div>
@@ -463,7 +465,7 @@ ${topSources.length > 0 ? `TOP SOURCES\n${topSources.map(s => `- ${s.name}: ${s.
 
 ${failedSources.length > 0 ? `SOURCES WITH ISSUES\n${failedSources.map(s => `- ${s.name}: ${s.errorCount} errors`).join('\n')}` : ''}
 
-View all sources: ${process.env.NEXTAUTH_URL}/settings/contract-sources
+View all sources: ${this.appUrl}/settings/contract-sources
     `.trim();
   }
 }

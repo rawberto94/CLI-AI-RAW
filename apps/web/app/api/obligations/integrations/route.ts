@@ -11,7 +11,10 @@ import { prisma } from '@/lib/prisma';
 import { aiObligationTrackerService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
+import { getPublicAppUrl } from '@/lib/public-app-url';
 export const dynamic = 'force-dynamic';
+
+const publicAppUrl = getPublicAppUrl();
 
 interface SlackMessage {
   channel?: string;
@@ -72,7 +75,7 @@ function formatSlackObligation(obligation: Record<string, unknown>): SlackMessag
   const status = (obligation.status as string)?.toLowerCase() || 'pending';
   const priority = (obligation.priority as string)?.toLowerCase() || 'medium';
   const dueDate = obligation.dueDate ? new Date(obligation.dueDate as string).toLocaleDateString() : 'No due date';
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.contigo.ai';
+  const baseUrl = publicAppUrl;
 
   return {
     text: `${statusEmoji[status] || '📋'} Obligation Update: ${obligation.title}`,
@@ -130,7 +133,7 @@ function formatTeamsObligation(obligation: Record<string, unknown>): TeamsMessag
   const status = (obligation.status as string)?.toLowerCase() || 'pending';
   const priority = (obligation.priority as string)?.toLowerCase() || 'medium';
   const dueDate = obligation.dueDate ? new Date(obligation.dueDate as string).toLocaleDateString() : 'No due date';
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.contigo.ai';
+  const baseUrl = publicAppUrl;
 
   const themeColors: Record<string, string> = {
     pending: '808080',
@@ -401,7 +404,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
               {
                 type: 'button',
                 text: { type: 'plain_text', text: 'View All Obligations', emoji: true },
-                url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.contigo.ai'}/obligations`,
+                url: `${publicAppUrl}/obligations`,
                 style: 'primary',
               },
             ],
@@ -448,7 +451,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           {
             '@type': 'OpenUri',
             name: 'View All Obligations',
-            targets: [{ os: 'default', uri: `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.contigo.ai'}/obligations` }],
+            targets: [{ os: 'default', uri: `${publicAppUrl}/obligations` }],
           },
         ],
       };

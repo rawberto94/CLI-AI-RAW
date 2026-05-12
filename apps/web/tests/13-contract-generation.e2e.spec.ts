@@ -64,9 +64,9 @@ async function openGenerateTemplates(page: Page) {
 
 async function waitForDraftingHubReady(page: Page) {
   const readySignals = [
-    page.getByRole('heading', { name: /document studio/i }).first(),
-    page.getByText(/Quick Start/i).first(),
-    page.getByText(/AI Copilot/i).first(),
+    page.getByRole('heading', { name: /Negotiate at the speed of thought\./i }).first(),
+    page.getByRole('textbox', { name: /Describe the document you want/i }).first(),
+    page.getByText(/Drafting studio .* AI online/i).first(),
   ];
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -115,6 +115,62 @@ async function openDashboard(page: Page) {
   }
 }
 
+async function issueClientCsrfToken(page: Page) {
+  await page.evaluate(async () => {
+    const response = await fetch('/api/csrf', {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to issue CSRF token: ${response.status}`);
+    }
+  });
+}
+
+async function createBrowserDraft(page: Page) {
+  await issueClientCsrfToken(page);
+
+  const response = await page.evaluate(async () => {
+    const csrfToken = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)?.[1];
+    const request = await fetch('/api/drafts', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        ...(csrfToken ? { 'x-csrf-token': decodeURIComponent(csrfToken) } : {}),
+      },
+      body: JSON.stringify({
+        title: 'Playwright Copilot Regression Draft',
+        content: '<p>Playwright draft body</p>',
+      }),
+    });
+
+    const data = await request.json().catch(() => null);
+    return {
+      ok: request.ok,
+      status: request.status,
+      data,
+    };
+  });
+
+  expect(response.ok, `Expected draft creation to succeed, got ${response.status}`).toBe(true);
+
+  const draftId = response.data?.data?.draft?.id;
+  expect(draftId).toBeTruthy();
+
+  return draftId as string;
+}
+
+async function expectCopilotCanvasReady(page: Page) {
+  await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+  await expect(page.getByText(/Oops! Something went wrong/i)).toHaveCount(0);
+  await expect(page.getByText(/DOCUMENT CANVAS/i).first()).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText(/Drafting mode active/i).first()).toBeVisible({ timeout: 30000 });
+}
+
 test.describe('Contract Generation Workflow', () => {
   test.describe('Generate Page Access', () => {
     test('should redirect the legacy generate route to the drafting hub', async ({ page }) => {
@@ -152,8 +208,30 @@ test.describe('Contract Generation Workflow', () => {
     test('should show drafting hub quick-start content after redirect', async ({ page }) => {
       await openDraftingHub(page);
 
-      await expect(page.getByText(/Quick Start/i).first()).toBeVisible({ timeout: 30000 });
-      await expect(page.getByText(/AI Copilot/i).first()).toBeVisible({ timeout: 30000 });
+      await expect(page.getByRole('heading', { name: /Negotiate at the speed of thought\./i }).first()).toBeVisible({ timeout: 30000 });
+      await expect(page.getByRole('textbox', { name: /Describe the document you want/i }).first()).toBeVisible({ timeout: 30000 });
+    });
+
+    test('should render the blank copilot route without hitting the error boundary', async ({ page }) => {
+      test.slow();
+
+      await page.goto('/drafting/copilot?mode=blank&type=MSA', { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+      await expectCopilotCanvasReady(page);
+      await expect(page.getByText(/New MSA/i).first()).toBeVisible({ timeout: 30000 });
+    });
+
+    test('should render the existing-draft copilot route without hitting the error boundary', async ({ page }) => {
+      test.slow();
+
+      await openDraftingHub(page);
+      const draftId = await createBrowserDraft(page);
+
+      await page.goto(`/drafting/copilot?draft=${draftId}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+      await expectCopilotCanvasReady(page);
+      await expect(page.getByText(/Edit Draft/i).first()).toBeVisible({ timeout: 30000 });
+      await expect(page.getByRole('textbox', { name: /Draft title/i }).first()).toHaveValue(/Playwright Copilot Regression Draft/i, { timeout: 30000 });
     });
   });
 

@@ -16,6 +16,7 @@ import {
 import { pushAgentNotification } from '@/lib/ai/agent-notifications';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 import { checkRateLimit, rateLimitResponse, AI_RATE_LIMITS } from '@/lib/ai/rate-limit';
+import { getPublicAppUrl } from '@/lib/public-app-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,7 +114,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     if (creator?.email) {
       const { sendEmail } = await import('@/lib/email/email-service');
       const recipientName = `${creator.firstName || ''} ${creator.lastName || ''}`.trim() || creator.email;
-      const actionUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'}/drafting/copilot?draft=${draftId}`;
+      const actionUrl = `${getPublicAppUrl()}/drafting/copilot?draft=${draftId}`;
       sendEmail({
         to: creator.email,
         subject: `✗ Rejected: "${updated.title}"`,

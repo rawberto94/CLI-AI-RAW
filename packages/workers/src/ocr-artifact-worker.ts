@@ -8,6 +8,9 @@ import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 import { buildPersistedContractTextFields } from '@repo/utils';
 import {
+  CircuitBreaker,
+  CircuitBreakerError,
+  CircuitState,
   getQueueService,
   ocrCache,
   publishJobProgress,
@@ -21,7 +24,6 @@ import {
   type JobType,
   type ProcessContractJobData,
 } from './compat/repo-utils';
-import * as circuitBreakerExports from '../../utils/src/patterns/circuit-breaker';
 import pino from 'pino';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
@@ -656,23 +658,23 @@ type CircuitBreakerOptionsLike = {
 };
 
 function getCircuitBreakerCtor(): new (name: string, options: CircuitBreakerOptionsLike) => CircuitBreakerLike {
-  const ctor = (circuitBreakerExports as any).CircuitBreaker ?? (circuitBreakerExports as any).default?.CircuitBreaker;
+  const ctor = CircuitBreaker;
   if (typeof ctor !== 'function') {
     throw new TypeError('CircuitBreaker constructor unavailable');
   }
-  return ctor;
+  return ctor as new (name: string, options: CircuitBreakerOptionsLike) => CircuitBreakerLike;
 }
 
 function getCircuitBreakerErrorCtor(): new (...args: any[]) => Error {
-  const errorCtor = (circuitBreakerExports as any).CircuitBreakerError ?? (circuitBreakerExports as any).default?.CircuitBreakerError;
+  const errorCtor = CircuitBreakerError;
   if (typeof errorCtor !== 'function') {
     throw new TypeError('CircuitBreakerError constructor unavailable');
   }
-  return errorCtor;
+  return errorCtor as new (...args: any[]) => Error;
 }
 
 function getCircuitState() {
-  const state = (circuitBreakerExports as any).CircuitState ?? (circuitBreakerExports as any).default?.CircuitState;
+  const state = CircuitState;
   if (!state) {
     throw new TypeError('CircuitState enum unavailable');
   }

@@ -283,7 +283,7 @@ export default function AIInsightsDashboard() {
                       </div>
                     ))}
                     <Button variant="outline" size="sm" className="w-full" asChild>
-                      <Link href="/agents/all">View All 9 Agents</Link>
+                      <Link href="/agents">View All 9 Agents</Link>
                     </Button>
                   </div>
                 </CardContent>

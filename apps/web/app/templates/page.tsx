@@ -147,7 +147,11 @@ export default function TemplatesPage() {
     setFavorites(prev => {
       const next = new Set(prev)
       const willFav = !next.has(id)
-      willFav ? next.add(id) : next.delete(id)
+      if (willFav) {
+        next.add(id)
+      } else {
+        next.delete(id)
+      }
       if (typeof window !== 'undefined') {
         localStorage.setItem('template-favorites', JSON.stringify([...next]))
       }
@@ -252,7 +256,7 @@ export default function TemplatesPage() {
 
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">
-            <Link href="/contracts/clauses">Clause library</Link>
+            <Link href="/clauses">Clause library</Link>
           </Button>
           <Button asChild size="sm" className="bg-violet-600 hover:bg-violet-700 text-white">
             <Link href="/templates/new">

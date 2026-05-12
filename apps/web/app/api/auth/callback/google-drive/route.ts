@@ -52,7 +52,7 @@ export const GET = withApiHandler(async (request: NextRequest) => {
 
     if (!tenantId || !userId) {
       return NextResponse.redirect(
-        buildCallbackRedirectUrl(request, '/login?error=session_expired&redirect=/integrations')
+        buildCallbackRedirectUrl(request, '/auth/signin?error=session_expired&redirect=/integrations')
       );
     }
 

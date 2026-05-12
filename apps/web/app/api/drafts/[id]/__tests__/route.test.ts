@@ -7,13 +7,17 @@ const {
   mockDraftFindFirst,
   mockDraftUpdate,
   mockDraftDelete,
+  mockDraftVersionFindFirst,
   mockVersionCreate,
+  mockTransaction,
   mockGetApiTenantId,
 } = vi.hoisted(() => ({
   mockDraftFindFirst: vi.fn(),
   mockDraftUpdate: vi.fn(),
   mockDraftDelete: vi.fn(),
+  mockDraftVersionFindFirst: vi.fn(),
   mockVersionCreate: vi.fn(),
+  mockTransaction: vi.fn(),
   mockGetApiTenantId: vi.fn(),
 }));
 
@@ -26,7 +30,9 @@ vi.mock('@/lib/prisma', () => ({
     },
     draftVersion: {
       create: mockVersionCreate,
+      findFirst: mockDraftVersionFindFirst,
     },
+    $transaction: mockTransaction,
   },
 }));
 
@@ -50,7 +56,12 @@ import { GET, PATCH, DELETE } from '../route';
 function authReq(method: string, url: string, opts?: { body?: object }) {
   return new NextRequest(url, {
     method,
-    headers: { 'x-user-id': 'user-1', 'x-tenant-id': 'tenant-1', 'Content-Type': 'application/json' },
+    headers: {
+      'x-user-id': 'user-1',
+      'x-tenant-id': 'tenant-1',
+      'x-user-role': 'member',
+      'Content-Type': 'application/json',
+    },
     body: opts?.body ? JSON.stringify(opts.body) : undefined,
   });
 }
@@ -65,6 +76,7 @@ const params = Promise.resolve({ id: 'd1' });
 const SAMPLE_DRAFT = {
   id: 'd1', title: 'Test', status: 'DRAFT', version: 1, content: '<p>Hello</p>',
   isLocked: false, lockedBy: null, tenantId: 'tenant-1',
+  createdBy: 'user-1',
   template: null, sourceContract: null,
   createdByUser: { id: 'user-1', firstName: 'A', lastName: 'B', email: 'a@b.com' },
 };
@@ -75,6 +87,16 @@ describe('GET /api/drafts/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetApiTenantId.mockResolvedValue('tenant-1');
+    mockDraftVersionFindFirst.mockResolvedValue(null);
+    mockTransaction.mockImplementation(async (callback) => callback({
+      draftVersion: {
+        findFirst: mockDraftVersionFindFirst,
+        create: mockVersionCreate,
+      },
+      contractDraft: {
+        update: mockDraftUpdate,
+      },
+    }));
   });
 
   it('returns 401 without auth', async () => {
@@ -95,7 +117,7 @@ describe('GET /api/drafts/[id]', () => {
     const res = await GET(authReq('GET', BASE), { params });
     const data = await res.json();
     expect(res.status).toBe(200);
-    expect(data.data.data.draft.id).toBe('d1');
+    expect(data.data.draft.id).toBe('d1');
   });
 });
 
@@ -103,6 +125,16 @@ describe('PATCH /api/drafts/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetApiTenantId.mockResolvedValue('tenant-1');
+    mockDraftVersionFindFirst.mockResolvedValue(null);
+    mockTransaction.mockImplementation(async (callback) => callback({
+      draftVersion: {
+        findFirst: mockDraftVersionFindFirst,
+        create: mockVersionCreate,
+      },
+      contractDraft: {
+        update: mockDraftUpdate,
+      },
+    }));
   });
 
   it('returns 401 without auth', async () => {
@@ -128,7 +160,7 @@ describe('PATCH /api/drafts/[id]', () => {
     const res = await PATCH(authReq('PATCH', BASE, { body: { title: 'Updated Title' } }), { params });
     const data = await res.json();
     expect(res.status).toBe(200);
-    expect(data.data.data.draft.title).toBe('Updated Title');
+    expect(data.data.draft.title).toBe('Updated Title');
   });
 
   it('creates version snapshot on content change', async () => {
@@ -150,6 +182,16 @@ describe('DELETE /api/drafts/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetApiTenantId.mockResolvedValue('tenant-1');
+    mockDraftVersionFindFirst.mockResolvedValue(null);
+    mockTransaction.mockImplementation(async (callback) => callback({
+      draftVersion: {
+        findFirst: mockDraftVersionFindFirst,
+        create: mockVersionCreate,
+      },
+      contractDraft: {
+        update: mockDraftUpdate,
+      },
+    }));
   });
 
   it('returns 401 without auth', async () => {
