@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { unwrapApiResponseData } from '@/lib/api-fetch';
 import { useArtifactStream, type ArtifactUpdate } from '@/hooks/useArtifactStream';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,11 @@ interface RealtimeArtifactViewerProps {
   tenantId?: string; // Deprecated: server uses session tenant from middleware
   onComplete?: () => void;
   onContractNotFound?: () => void;  // Called when contract returns 404
+}
+
+interface ArtifactFailureState {
+  partialFailure: boolean;
+  failedArtifactTypes: string[];
 }
 
 // Helper to normalize artifact types to uppercase
@@ -96,6 +102,27 @@ const stageLabels: Record<string, string> = {
   'COMPLETED': 'Processing complete!'
 };
 
+function mapArtifactListToUpdates(artifactList: Array<Record<string, unknown>>): ArtifactUpdate[] {
+  return artifactList.map((artifact) => {
+    const artifactData = (artifact.data as Record<string, unknown> | null) || {};
+    return {
+      id: String(artifact.id || ''),
+      type: String(artifact.type || ''),
+      status: 'COMPLETED',
+      hasContent: Object.keys(artifactData).length > 0,
+      contentLength: JSON.stringify(artifactData).length,
+      qualityScore: null,
+      completenessScore: typeof artifact.completeness === 'number' ? artifact.completeness : null,
+      confidence: typeof artifact.confidence === 'number' ? artifact.confidence : null,
+      metadata: {
+        confidence: artifact.confidence,
+      },
+      createdAt: String(artifact.createdAt || new Date().toISOString()),
+      updatedAt: String(artifact.updatedAt || new Date().toISOString()),
+    };
+  });
+}
+
 export function RealtimeArtifactViewer({ 
   contractId, 
   tenantId: _tenantId, // Deprecated: server uses session tenant from middleware
@@ -142,10 +169,54 @@ export function RealtimeArtifactViewer({
 
   const [animatingArtifacts, setAnimatingArtifacts] = useState<Set<string>>(new Set());
   const [retryingArtifacts, setRetryingArtifacts] = useState<Set<string>>(new Set());
+  const [retryingFailedTypes, setRetryingFailedTypes] = useState<Set<string>>(new Set());
+  const [isRetryingAllFailedTypes, setIsRetryingAllFailedTypes] = useState(false);
+  const [artifactFailureState, setArtifactFailureState] = useState<ArtifactFailureState>({
+    partialFailure: false,
+    failedArtifactTypes: [],
+  });
   const [_localError, setError] = useState<string | null>(null);
   const [isPollingFallback, setIsPollingFallback] = useState(false);
   const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const connectionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const refreshArtifacts = useCallback(async () => {
+    const response = await fetch(`/api/contracts/${contractId}/artifacts`);
+    if (!response.ok) {
+      throw new Error('Failed to refresh artifacts');
+    }
+
+    const payload = unwrapApiResponseData<{ artifacts?: Array<Record<string, unknown>> }>(await response.json());
+    const artifactList = Array.isArray(payload.artifacts) ? payload.artifacts : [];
+    const nextArtifacts = mapArtifactListToUpdates(artifactList);
+    setArtifacts(nextArtifacts);
+    if (nextArtifacts.length > 0) {
+      setIsComplete(nextArtifacts.every((artifact) => artifact.status === 'COMPLETED'));
+    }
+    return nextArtifacts;
+  }, [contractId]);
+
+  const refreshArtifactFailureState = useCallback(async () => {
+    const response = await fetch(`/api/contracts/${contractId}/metadata`);
+    if (!response.ok) {
+      throw new Error('Failed to load artifact run metadata');
+    }
+
+    const payload = unwrapApiResponseData<{ metadata?: Record<string, unknown>; data?: { metadata?: Record<string, unknown> } }>(await response.json());
+    const rawMetadata = (payload.metadata as Record<string, unknown> | undefined)
+      ?? (payload.data?.metadata as Record<string, unknown> | undefined)
+      ?? {};
+    const failedArtifactTypes = Array.isArray(rawMetadata.failedArtifactTypes)
+      ? rawMetadata.failedArtifactTypes
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => normalizeType(value))
+      : [];
+
+    setArtifactFailureState({
+      partialFailure: Boolean(rawMetadata.partialFailure) || failedArtifactTypes.length > 0,
+      failedArtifactTypes,
+    });
+  }, [contractId]);
 
   // Compute completedCount and isEffectivelyComplete early (before callbacks that need them)
   const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
@@ -169,6 +240,22 @@ export function RealtimeArtifactViewer({
     
   }, [artifacts]);
 
+  useEffect(() => {
+    setArtifactFailureState({ partialFailure: false, failedArtifactTypes: [] });
+    setRetryingFailedTypes(new Set());
+    setIsRetryingAllFailedTypes(false);
+  }, [contractId]);
+
+  useEffect(() => {
+    if (!isEffectivelyComplete) {
+      return;
+    }
+
+    void refreshArtifactFailureState().catch(() => {
+      setArtifactFailureState({ partialFailure: false, failedArtifactTypes: [] });
+    });
+  }, [isEffectivelyComplete, refreshArtifactFailureState]);
+
   // Polling fallback when SSE fails
   const startPollingFallback = useCallback(async () => {
     if (isEffectivelyComplete || isConnected) return;
@@ -177,34 +264,18 @@ export function RealtimeArtifactViewer({
     
     const poll = async () => {
       try {
-        const response = await fetch(`/api/contracts/${contractId}/artifacts`);
-        if (response.ok) {
-          const data = await response.json();
-          // Response shape: { success, data: [...artifacts] } via createSuccessResponse
-          const artifactList = Array.isArray(data.data) ? data.data : (data.artifacts || []);
-          if (artifactList.length > 0) {
-            // Count items with actual content
-            const completed = artifactList.filter((a: any) => 
-              a.data && Object.keys(a.data || {}).length > 0
-            ).length;
-            if (completed >= artifactList.length) {
-              // All artifacts complete — update state instead of full page reload
-              setIsPollingFallback(false);
-              if (pollingIntervalRef.current) {
-                clearInterval(pollingIntervalRef.current);
-              }
-              setArtifacts(artifactList.map((a: any) => ({
-                id: a.id,
-                type: a.type,
-                status: 'COMPLETED',
-                hasContent: true,
-                contentLength: JSON.stringify(a.data).length,
-                metadata: {},
-                createdAt: a.createdAt,
-                updatedAt: a.updatedAt,
-              })));
-              setIsComplete(true);
+        const nextArtifacts = await refreshArtifacts();
+        if (nextArtifacts.length > 0) {
+          const completed = nextArtifacts.filter((artifact) => artifact.hasContent).length;
+          if (completed >= nextArtifacts.length) {
+            setIsPollingFallback(false);
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
             }
+            setIsComplete(true);
+            await refreshArtifactFailureState().catch(() => {
+              setArtifactFailureState({ partialFailure: false, failedArtifactTypes: [] });
+            });
           }
         }
       } catch {
@@ -278,6 +349,65 @@ export function RealtimeArtifactViewer({
     }
   };
 
+  const retryFailedArtifactType = useCallback(async (artifactType: string, shouldRefresh: boolean) => {
+    const normalizedType = normalizeType(artifactType);
+    setRetryingFailedTypes((prev) => new Set(prev).add(normalizedType));
+
+    try {
+      const response = await fetch(`/api/contracts/${contractId}/artifacts/regenerate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ artifactType: normalizedType }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Regeneration failed');
+      }
+
+      if (shouldRefresh) {
+        await Promise.all([
+          refreshArtifacts().catch(() => undefined),
+          refreshArtifactFailureState().catch(() => undefined),
+        ]);
+      }
+    } catch {
+      // Failed to retry artifact type - silently handle
+    } finally {
+      setRetryingFailedTypes((prev) => {
+        const next = new Set(prev);
+        next.delete(normalizedType);
+        return next;
+      });
+    }
+  }, [contractId, refreshArtifactFailureState, refreshArtifacts]);
+
+  const handleRetryFailedType = useCallback(async (artifactType: string) => {
+    await retryFailedArtifactType(artifactType, true);
+  }, [retryFailedArtifactType]);
+
+  const handleRetryAllFailedTypes = useCallback(async () => {
+    const failedTypes = [...artifactFailureState.failedArtifactTypes];
+    if (failedTypes.length === 0) {
+      return;
+    }
+
+    setIsRetryingAllFailedTypes(true);
+    try {
+      for (const artifactType of failedTypes) {
+        await retryFailedArtifactType(artifactType, false);
+      }
+
+      await Promise.all([
+        refreshArtifacts().catch(() => undefined),
+        refreshArtifactFailureState().catch(() => undefined),
+      ]);
+    } finally {
+      setIsRetryingAllFailedTypes(false);
+    }
+  }, [artifactFailureState.failedArtifactTypes, refreshArtifactFailureState, refreshArtifacts, retryFailedArtifactType]);
+
   // Normalize artifact types for consistent display
   const normalizedArtifacts = artifacts.map(a => ({
     ...a,
@@ -292,9 +422,10 @@ export function RealtimeArtifactViewer({
 
   // Use actual artifact count from the stream (varies by contract type)
   const totalCount = artifacts.length;
-  // Show indeterminate progress (pulsing bar) when no artifacts yet, otherwise real progress
   const hasArtifacts = totalCount > 0;
   const progressPercent = hasArtifacts ? Math.min(100, (completedCount / totalCount) * 100) : 0;
+  const stripProgress = hasArtifacts ? progressPercent : 10;
+  const hasPartialFailures = artifactFailureState.partialFailure && artifactFailureState.failedArtifactTypes.length > 0;
 
   // Early return if contract not found - don't render anything
   if (contractNotFound) {
@@ -321,29 +452,55 @@ export function RealtimeArtifactViewer({
     <div className="space-y-4">
       {/* Compact status strip — connection state + progress in one line */}
       {!isEffectivelyComplete && !error && (
-        <div className="flex items-center gap-3 rounded-lg border border-violet-100 bg-violet-50/60 px-3 py-2 dark:border-violet-900/50 dark:bg-violet-950/30">
-          <div className="flex items-center gap-2 min-w-0">
-            {isConnected ? (
-              <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-300" aria-hidden="true" />
-            ) : isPollingFallback ? (
-              <RefreshCw className="h-3.5 w-3.5 shrink-0 text-amber-600 animate-spin" aria-hidden="true" />
-            ) : (
-              <Loader2 className="h-3.5 w-3.5 shrink-0 text-violet-500 animate-spin" aria-hidden="true" />
-            )}
-            <span className="text-[13px] font-medium text-violet-900 dark:text-violet-100 truncate">
-              {processingStage ? stageLabels[processingStage] : 'AI analysis in progress'}
-            </span>
-          </div>
-          <div className="ml-auto flex items-center gap-2 shrink-0">
-            {hasArtifacts ? (
-              <span className="text-[12px] tabular-nums text-violet-800 dark:text-violet-200">
-                {completedCount} / {totalCount}
-              </span>
-            ) : (
-              <span className="text-[12px] text-violet-700/80 dark:text-violet-200/80">Starting…</span>
-            )}
-            <div className="w-32 hidden sm:block">
-              <Progress value={hasArtifacts ? progressPercent : undefined} className="h-1.5" />
+        <div className="rounded-2xl border border-violet-200/70 bg-[linear-gradient(135deg,rgba(245,243,255,0.96),rgba(255,255,255,0.98))] px-4 py-3 shadow-[0_18px_40px_-32px_rgba(79,70,229,0.45)] dark:border-violet-900/60 dark:bg-[linear-gradient(135deg,rgba(49,46,129,0.28),rgba(15,23,42,0.96))]">
+          <div className="flex items-start gap-3">
+            <div className={cn(
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border shadow-sm',
+              isPollingFallback
+                ? 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
+                : 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-900/40 dark:text-violet-200'
+            )}>
+              {isConnected ? (
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+              ) : isPollingFallback ? (
+                <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              )}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-violet-600/80 dark:text-violet-300/80">
+                  Artifact pipeline
+                </span>
+                <Badge className={cn(
+                  'border font-medium hover:bg-transparent',
+                  isPollingFallback
+                    ? 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
+                    : 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-900/40 dark:text-violet-200'
+                )}>
+                  {isPollingFallback ? 'Polling fallback' : isConnected ? 'Live stream' : 'Connecting'}
+                </Badge>
+              </div>
+
+              <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+                <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {processingStage ? stageLabels[processingStage] : 'AI analysis in progress'}
+                </span>
+                <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                  {hasArtifacts ? `${completedCount} / ${totalCount} ready` : 'Starting…'}
+                </span>
+              </div>
+
+              <div className="mt-3 flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <Progress value={stripProgress} variant={isPollingFallback ? 'warning' : 'default'} className="h-2 bg-white/80 dark:bg-slate-800" />
+                </div>
+                <span className="shrink-0 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  {Math.round(stripProgress)}%
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -380,6 +537,63 @@ export function RealtimeArtifactViewer({
         <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-900/60 dark:bg-emerald-950/30">
           <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-300" aria-hidden="true" />
           <span className="text-[13px] font-medium text-emerald-800 dark:text-emerald-200">Analysis complete</span>
+        </div>
+      )}
+
+      {hasPartialFailures && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 dark:border-amber-900/60 dark:bg-amber-950/30">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" aria-hidden="true" />
+                <span className="text-[13px] font-medium text-amber-900 dark:text-amber-100">
+                  Analysis finished with partial artifact failures
+                </span>
+              </div>
+              <p className="mt-1 text-[13px] text-amber-800 dark:text-amber-200">
+                {artifactFailureState.failedArtifactTypes.length} artifact{artifactFailureState.failedArtifactTypes.length === 1 ? '' : 's'} still need regeneration.
+              </p>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleRetryAllFailedTypes()}
+              disabled={isRetryingAllFailedTypes || retryingFailedTypes.size > 0}
+              className="border-amber-300 bg-white text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/20 dark:text-amber-100 dark:hover:bg-amber-900/30"
+            >
+              {isRetryingAllFailedTypes ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" aria-hidden="true" />
+              ) : (
+                <RefreshCw className="h-3 w-3 mr-1" aria-hidden="true" />
+              )}
+              Retry all failed artifacts
+            </Button>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {artifactFailureState.failedArtifactTypes.map((artifactType) => {
+              const normalizedType = normalizeType(artifactType);
+              const isRetrying = retryingFailedTypes.has(normalizedType);
+              return (
+                <Button
+                  key={normalizedType}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleRetryFailedType(normalizedType)}
+                  disabled={isRetryingAllFailedTypes || isRetrying}
+                  className="h-8 border-amber-300 bg-white text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/20 dark:text-amber-100 dark:hover:bg-amber-900/30"
+                >
+                  {isRetrying ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3 mr-1" aria-hidden="true" />
+                  )}
+                  Retry {artifactLabels[normalizedType] || normalizedType}
+                </Button>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -553,21 +767,50 @@ export function RealtimeArtifactViewer({
       {/* Completion Summary */}
       {isEffectivelyComplete && (
         <Card className={cn(
-          completedCount > 0
+          hasPartialFailures
+            ? 'border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30'
+            : completedCount > 0
             ? 'border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/30'
             : 'border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/30'
         )}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <CheckCircle2 className={cn('h-6 w-6', completedCount > 0 ? 'text-green-600' : 'text-blue-600')} />
+              <CheckCircle2 className={cn(
+                'h-6 w-6',
+                hasPartialFailures
+                  ? 'text-amber-600'
+                  : completedCount > 0
+                    ? 'text-green-600'
+                    : 'text-blue-600',
+              )} />
               <div>
-                <p className={cn('font-semibold', completedCount > 0 ? 'text-green-900 dark:text-green-100' : 'text-blue-900 dark:text-blue-100')}>
-                  {completedCount > 0 ? 'All artifacts generated successfully!' : 'Processing complete'}
+                <p className={cn(
+                  'font-semibold',
+                  hasPartialFailures
+                    ? 'text-amber-900 dark:text-amber-100'
+                    : completedCount > 0
+                      ? 'text-green-900 dark:text-green-100'
+                      : 'text-blue-900 dark:text-blue-100',
+                )}>
+                  {hasPartialFailures
+                    ? 'Processing completed with a few missing artifacts'
+                    : completedCount > 0
+                      ? 'All artifacts generated successfully!'
+                      : 'Processing complete'}
                 </p>
-                <p className={cn('text-sm', completedCount > 0 ? 'text-green-700 dark:text-green-300' : 'text-blue-700 dark:text-blue-300')}>
-                  {completedCount > 0
-                    ? `${completedCount} artifact${completedCount !== 1 ? 's' : ''} ready to view`
-                    : 'View the contract for full details'}
+                <p className={cn(
+                  'text-sm',
+                  hasPartialFailures
+                    ? 'text-amber-700 dark:text-amber-300'
+                    : completedCount > 0
+                      ? 'text-green-700 dark:text-green-300'
+                      : 'text-blue-700 dark:text-blue-300',
+                )}>
+                  {hasPartialFailures
+                    ? `${completedCount} artifact${completedCount !== 1 ? 's are' : ' is'} ready. Retry the remaining ${artifactFailureState.failedArtifactTypes.length} above.`
+                    : completedCount > 0
+                      ? `${completedCount} artifact${completedCount !== 1 ? 's' : ''} ready to view`
+                      : 'View the contract for full details'}
                 </p>
               </div>
             </div>

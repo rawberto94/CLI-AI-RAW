@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -157,6 +158,12 @@ function formatDuration(ms: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
   return `${minutes}m ${remainingSeconds}s`;
+}
+
+function getFileExtensionLabel(fileName: string): string {
+  const extension = fileName.split('.').pop()?.trim();
+  if (!extension) return 'FILE';
+  return extension.length > 4 ? extension.slice(0, 4).toUpperCase() : extension.toUpperCase();
 }
 
 function getProcessingMessage(stage: string, artifactCount: number, apiStatus?: ContractStatusResponse | null): string {
@@ -406,17 +413,41 @@ export function EnhancedUploadProgress({
   const currentStage = stages.find(s => s.status === 'in-progress');
   const activeStageId = currentStage?.id || (contractId ? 'extract' : 'upload');
   const processingMessage = getProcessingMessage(activeStageId, artifactCount, apiStatus);
+  const fileExtensionLabel = getFileExtensionLabel(fileName);
+  const statusBadge = (() => {
+    if (status === 'error' && !isCompleted) {
+      return { label: 'Needs attention', className: 'border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-200' };
+    }
+    if (status === 'completed' || isCompleted) {
+      return { label: 'Ready', className: 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' };
+    }
+    if (status === 'pending') {
+      return { label: 'Queued', className: 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300' };
+    }
+    if (apiStatus?.status === 'QUEUED') {
+      return { label: 'Awaiting worker', className: 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200' };
+    }
+    return { label: apiStatus?.currentStepName || currentStage?.name || 'Processing', className: 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-900/40 dark:text-violet-200' };
+  })();
+  const progressVariant = status === 'error'
+    ? 'error'
+    : (status === 'completed' || isCompleted)
+      ? 'success'
+      : 'default';
 
   // Handle duplicate
   if (isDuplicate && existingContractId) {
     return (
-      <div className="flex items-center gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30">
-        <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-800">
+      <div className="flex items-center gap-3 rounded-2xl border border-amber-200/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.96),rgba(255,255,255,0.98))] p-4 shadow-[0_18px_40px_-28px_rgba(217,119,6,0.45)] dark:border-amber-700 dark:bg-[linear-gradient(135deg,rgba(120,53,15,0.35),rgba(30,41,59,0.95))]">
+        <div className="rounded-2xl bg-amber-100 p-3 dark:bg-amber-900/60">
           <Copy className="h-5 w-5 text-amber-600 dark:text-amber-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-amber-900 dark:text-amber-100 truncate">{fileName}</p>
-          <p className="text-sm text-amber-700 dark:text-amber-300">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-medium text-amber-950 dark:text-amber-100 truncate">{fileName}</p>
+            <Badge className="border-amber-200 bg-white/80 text-amber-700 hover:bg-white/80 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">{fileExtensionLabel}</Badge>
+          </div>
+          <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
             Already uploaded recently
           </p>
         </div>
@@ -455,25 +486,26 @@ export function EnhancedUploadProgress({
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        'rounded-lg border bg-white dark:bg-slate-800 overflow-hidden transition-all relative',
-        status === 'error' && 'border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900/30',
-        (status === 'completed' || isCompleted) && 'border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/30',
+        'relative overflow-hidden rounded-[22px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.94))] shadow-[0_20px_45px_-30px_rgba(15,23,42,0.38)] backdrop-blur transition-all dark:border-slate-700/80 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(15,23,42,0.9))]',
+        status === 'error' && 'border-red-200/80 bg-[linear-gradient(180deg,rgba(254,242,242,0.96),rgba(255,255,255,0.98))] dark:border-red-700 dark:bg-[linear-gradient(180deg,rgba(127,29,29,0.4),rgba(15,23,42,0.92))]',
+        (status === 'completed' || isCompleted) && 'border-emerald-200/80 bg-[linear-gradient(180deg,rgba(236,253,245,0.96),rgba(255,255,255,0.98))] dark:border-emerald-700 dark:bg-[linear-gradient(180deg,rgba(6,78,59,0.35),rgba(15,23,42,0.92))]',
         showSuccess && 'ring-2 ring-green-400 ring-offset-2'
       )}
     >
       {/* Main Row */}
-      <div className="flex items-center gap-3 p-3">
+      <div className="p-4 sm:p-5">
+        <div className="flex items-start gap-4">
         {/* Icon with pulse animation */}
         <div className={cn(
-          'p-2 rounded-lg shrink-0 relative',
-          (status === 'completed' || isCompleted) ? 'bg-green-100 dark:bg-green-900/30' :
-          status === 'error' ? 'bg-red-100 dark:bg-red-900/30' :
-          status === 'processing' || status === 'uploading' ? 'bg-violet-100 dark:bg-violet-900/30' :
-          'bg-gray-100 dark:bg-slate-700'
+          'relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-sm',
+          (status === 'completed' || isCompleted) ? 'border-emerald-200 bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/30' :
+          status === 'error' ? 'border-red-200 bg-red-100 dark:border-red-800 dark:bg-red-900/30' :
+          status === 'processing' || status === 'uploading' ? 'border-violet-200 bg-violet-100 dark:border-violet-800 dark:bg-violet-900/30' :
+          'border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800'
         )}>
           {(status === 'processing' || status === 'uploading') && !isCompleted && (
             <motion.div
-              className="absolute inset-0 rounded-lg bg-violet-400"
+              className="absolute inset-0 rounded-2xl bg-violet-400"
               animate={{ opacity: [0.15, 0.3, 0.15] }}
               transition={{ duration: 2, repeat: Infinity }}
             />
@@ -493,52 +525,76 @@ export function EnhancedUploadProgress({
 
         {/* File Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{fileName}</p>
-            <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{formatFileSize(fileSize)}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{fileName}</p>
+            <Badge className="border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">{fileExtensionLabel}</Badge>
+            <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">{formatFileSize(fileSize)}</span>
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Badge className={cn('border font-medium hover:bg-transparent', statusBadge.className)}>{statusBadge.label}</Badge>
+            {artifactCount > 0 && (
+              <Badge className="border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:bg-violet-900/30 dark:text-violet-200">
+                <Sparkles className="mr-1 h-3 w-3" />
+                {artifactCount} insight{artifactCount === 1 ? '' : 's'}
+              </Badge>
+            )}
           </div>
           
           {/* Status Line */}
-          <div className="flex items-center gap-2 mt-0.5">
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             {status === 'pending' && !isCompleted && (
-              <span className="text-xs text-gray-500">Waiting to upload...</span>
+              <span className="text-sm text-slate-500 dark:text-slate-400">Waiting to upload...</span>
             )}
             {(status === 'uploading' || status === 'processing') && !isCompleted && (
               <>
-                <span className="text-xs text-violet-600 font-medium">
+                <span className="text-sm font-medium text-violet-700 dark:text-violet-300">
                   {processingMessage}
                 </span>
-                <span className="text-xs text-gray-400">•</span>
-                <span className="text-xs text-gray-500">{formatDuration(displayTime)}</span>
+                <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                  <Clock className="h-3 w-3" />
+                  {formatDuration(displayTime)}
+                </span>
                 {estimatedRemaining && estimatedRemaining > 0 && (
-                  <>
-                    <span className="text-xs text-gray-400">•</span>
-                    <span className="text-xs text-gray-400">~{formatDuration(estimatedRemaining)} left</span>
-                  </>
+                  <span className="inline-flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500">
+                    ~{formatDuration(estimatedRemaining)} left
+                  </span>
                 )}
               </>
             )}
             {(status === 'completed' || isCompleted) && (
-              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-green-600 font-medium flex items-center gap-1">
+              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-1 text-sm font-medium text-emerald-700 dark:text-emerald-300">
                 <Zap className="h-3 w-3" />
-                Complete
+                Contract analysis complete
               </motion.span>
             )}
             {status === 'error' && !isCompleted && (
-              <span className="text-xs text-red-600 font-medium">
+              <span className="text-sm font-medium text-red-600 dark:text-red-300">
                 {error || 'Processing failed'}
               </span>
             )}
           </div>
+
+          {(status === 'uploading' || status === 'processing') && !isCompleted && (
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
+                  Pipeline progress
+                </span>
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{Math.round(progress)}%</span>
+              </div>
+              <Progress value={progress} variant={progressVariant} className="h-2.5 bg-slate-100/90 dark:bg-slate-800" />
+            </div>
+          )}
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex shrink-0 items-start gap-1.5">
           {(status === 'completed' || isCompleted) && contractId && (
             <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }}>
               <Button 
                 size="sm" 
-                className="h-8 text-xs bg-green-600 hover:bg-green-700"
+                className="h-9 rounded-full bg-emerald-600 px-3 text-xs font-medium hover:bg-emerald-700"
                 onClick={() => router.push(`/contracts/${contractId}`)}
               >
                 <Eye className="h-3.5 w-3.5 mr-1" />
@@ -549,7 +605,7 @@ export function EnhancedUploadProgress({
           )}
           
           {status === 'error' && (
-            <Button size="sm" variant="outline" className="h-8 text-xs border-red-200 hover:bg-red-50" onClick={onRetry}>
+            <Button size="sm" variant="outline" className="h-9 rounded-full border-red-200 px-3 text-xs hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20" onClick={onRetry}>
               <RefreshCw className="h-3.5 w-3.5 mr-1" />
               Retry
             </Button>
@@ -559,7 +615,7 @@ export function EnhancedUploadProgress({
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0"
+              className="h-9 w-9 rounded-full border border-slate-200/70 bg-white/70 p-0 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:bg-slate-800"
               onClick={() => setExpanded(!expanded)}
             >
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -567,20 +623,15 @@ export function EnhancedUploadProgress({
           )}
 
           {(status === 'pending' || status === 'error' || status === 'completed' || isCompleted) && (
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={onRemove} aria-label="Remove file">
+            <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full p-0 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={onRemove} aria-label="Remove file">
               <X className="h-4 w-4" />
             </Button>
           )}
         </div>
       </div>
+      </div>
 
       {/* Progress Bar */}
-      {(status === 'uploading' || status === 'processing') && !isCompleted && (
-        <div className="px-3 pb-3">
-          <Progress value={progress} className="h-1.5" />
-        </div>
-      )}
-
       {/* Expanded Details */}
       <AnimatePresence>
         {expanded && (status === 'uploading' || status === 'processing' || status === 'error') && (
@@ -588,9 +639,9 @@ export function EnhancedUploadProgress({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-t border-gray-100 dark:border-slate-700"
+            className="overflow-hidden border-t border-slate-200/80 dark:border-slate-700"
           >
-            <div className={cn("p-4", status === 'error' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-gray-50 dark:bg-slate-800/50')}>
+            <div className={cn("p-4", status === 'error' ? 'bg-red-50/70 dark:bg-red-900/20' : 'bg-slate-50/80 dark:bg-slate-900/40')}>
               {/* Error Details */}
               {status === 'error' && error && (
                 <div className="mb-4 p-3 rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700">

@@ -25,6 +25,7 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import Link from 'next/link'
+import { unwrapApiResponseData } from '@/lib/api-fetch'
 import { cn } from '@/lib/utils'
 import { getTenantId } from '@/lib/tenant'
 import { toast } from 'sonner'
@@ -239,6 +240,8 @@ export default function ContractDetailPage() {
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [aiExtensionRec, setAiExtensionRec] = React.useState<AIExtensionRecommendation | null>(null)
   const [aiExtensionLoading, setAiExtensionLoading] = React.useState(false)
+  const [retryingArtifactTypes, setRetryingArtifactTypes] = React.useState<string[]>([])
+  const [isRetryingAllArtifacts, setIsRetryingAllArtifacts] = React.useState(false)
   const signedFileRef = React.useRef<HTMLInputElement>(null)
   const lastAIActionRef = React.useRef<number>(0)
   const AI_COOLDOWN_MS = 5000
@@ -275,6 +278,70 @@ export default function ContractDetailPage() {
       citationRequest.snippet,
     )
   }, [citationRequest, contractData?.rawText])
+
+  const failedArtifactTypes = React.useMemo(() => {
+    const values = Array.isArray(contract?.metadata?.failedArtifactTypes)
+      ? contract.metadata.failedArtifactTypes
+      : []
+    return values.filter((value): value is string => typeof value === 'string')
+  }, [contract?.metadata?.failedArtifactTypes])
+
+  const retryArtifactType = useCallback(async (artifactType: string) => {
+    setRetryingArtifactTypes((current) => current.includes(artifactType) ? current : [...current, artifactType])
+
+    try {
+      const response = await fetch(`/api/contracts/${contractId}/artifacts/regenerate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': getTenantId(),
+        },
+        body: JSON.stringify({ artifactType }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Retry failed')
+      }
+
+      const payload = unwrapApiResponseData<{ artifactType?: string }>(await response.json())
+      toast.success(`${payload.artifactType || artifactType} regenerated`)
+      await refetchContract()
+    } catch {
+      toast.error(`Could not regenerate ${artifactType}`)
+    } finally {
+      setRetryingArtifactTypes((current) => current.filter((value) => value !== artifactType))
+    }
+  }, [contractId, refetchContract])
+
+  const retryAllArtifactTypes = useCallback(async () => {
+    if (failedArtifactTypes.length === 0) return
+
+    setIsRetryingAllArtifacts(true)
+    try {
+      for (const artifactType of failedArtifactTypes) {
+        const response = await fetch(`/api/contracts/${contractId}/artifacts/regenerate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-tenant-id': getTenantId(),
+          },
+          body: JSON.stringify({ artifactType }),
+        })
+
+        if (!response.ok) {
+          throw new Error(`Retry failed for ${artifactType}`)
+        }
+      }
+
+      toast.success('All failed artifacts regenerated')
+      await refetchContract()
+    } catch {
+      toast.error('Could not regenerate all failed artifacts')
+    } finally {
+      setIsRetryingAllArtifacts(false)
+      setRetryingArtifactTypes([])
+    }
+  }, [contractId, failedArtifactTypes, refetchContract])
 
   const clearCitationParams = useCallback(() => {
     const next = new URLSearchParams(searchParams?.toString?.() || '')
@@ -323,7 +390,6 @@ export default function ContractDetailPage() {
     if (shouldShowPdf !== showPdfViewer) {
       setShowPdfViewer(shouldShowPdf)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── WebSocket connection ──────────────────────────────────────────────────
@@ -1089,12 +1155,17 @@ export default function ContractDetailPage() {
               signatureStatus={metadata.signature_status}
               documentClassification={metadata.document_classification}
               documentClassificationWarning={metadata.document_classification_warning}
+              failedArtifactTypes={failedArtifactTypes}
+              retryingArtifactTypes={retryingArtifactTypes}
+              isRetryingAllArtifacts={isRetryingAllArtifacts}
               onAction={() => setTab('overview')}
               onInitiateRenewal={() => router.push(`/contracts/${contractId}/renew`)}
               onSetReminder={() => openDialog('reminder')}
               onStartReview={() => router.push(`/contracts/${contractId}/legal-review`)}
               onStartRedline={() => router.push(`/contracts/${contractId}/redline`)}
               onRequestSignature={handleRequestSignature}
+              onRetryArtifactType={(artifactType) => { void retryArtifactType(artifactType) }}
+              onRetryAllArtifacts={() => { void retryAllArtifactTypes() }}
             />
 
             {/* Quick Overview */}

@@ -90,6 +90,7 @@ const externalPartySchema = z.object({
 const metadataPutSchema = z.object({
   document_number: z.string().optional(),
   document_title: z.string().optional(),
+  contractType: z.string().optional(),
   document_classification: z.string().optional(),
   document_classification_confidence: z.number().min(0).max(1).optional(),
   document_classification_warning: z.string().optional(),
@@ -326,6 +327,7 @@ export async function getContractMetadata(
       fileName: true,
       contractTitle: true,
       contractType: true,
+      classificationConf: true,
       contractCategoryId: true,
       categoryL1: true,
       categoryL2: true,
@@ -349,6 +351,9 @@ export async function getContractMetadata(
       autoRenewalEnabled: true,
       metadata: true,
       aiMetadata: true,
+      documentClassification: true,
+      documentClassificationConf: true,
+      documentClassificationWarning: true,
       createdAt: true,
       updatedAt: true,
       uploadedBy: true,
@@ -450,9 +455,9 @@ export async function getContractMetadata(
   const enterpriseMetadata: EnterpriseMetadata = {
     document_number: aiMetadata.document_number || contract.id,
     document_title: aiMetadata.document_title || contract.contractTitle || contract.fileName || '',
-    document_classification: aiMetadata.document_classification || 'contract',
-    document_classification_confidence: aiMetadata.document_classification_confidence,
-    document_classification_warning: aiMetadata.document_classification_warning,
+    document_classification: aiMetadata.document_classification || contract.documentClassification || 'contract',
+    document_classification_confidence: aiMetadata.document_classification_confidence ?? contract.documentClassificationConf ?? contract.classificationConf ?? undefined,
+    document_classification_warning: aiMetadata.document_classification_warning || contract.documentClassificationWarning,
     contract_short_description: aiMetadata.contract_short_description || contract.description || artifactOverview?.summary || '',
     external_parties: normalizedParties,
     tcv_amount: aiMetadata.tcv_amount || (contract.totalValue ? Number(contract.totalValue) : 0) || (artifactOverview?.totalValue ? Number(artifactOverview.totalValue) : 0),
@@ -677,6 +682,10 @@ export async function putContractMetadata(
 
   const legacyUpdates: Record<string, any> = {};
   if (metadata.document_title) legacyUpdates.contractTitle = metadata.document_title;
+  if (metadata.contractType !== undefined) {
+    const normalizedContractType = metadata.contractType.trim();
+    legacyUpdates.contractType = normalizedContractType ? normalizedContractType : null;
+  }
   if (metadata.contract_short_description) legacyUpdates.description = metadata.contract_short_description;
   if (metadata.tcv_amount !== undefined) legacyUpdates.totalValue = metadata.tcv_amount;
   if (metadata.currency) legacyUpdates.currency = metadata.currency;
@@ -687,6 +696,9 @@ export async function putContractMetadata(
   if (metadata.billing_frequency_type) legacyUpdates.paymentFrequency = metadata.billing_frequency_type;
   if (metadata.periodicity) legacyUpdates.billingCycle = metadata.periodicity;
   if (metadata.tags) legacyUpdates.tags = metadata.tags;
+  if (metadata.document_classification !== undefined) legacyUpdates.documentClassification = metadata.document_classification;
+  if (metadata.document_classification_confidence !== undefined) legacyUpdates.documentClassificationConf = metadata.document_classification_confidence;
+  if (metadata.document_classification_warning !== undefined) legacyUpdates.documentClassificationWarning = metadata.document_classification_warning || null;
 
   if (metadata.external_parties && Array.isArray(metadata.external_parties)) {
     const client = metadata.external_parties.find((party: { role?: string; legalName?: string }) =>

@@ -25,6 +25,7 @@ import { logger } from '@/lib/logger'
 import Link from 'next/link'
 
 import { UploadDropZone } from './components'
+import { UploadMetadataReviewDialog } from './components'
 
 // ── Types & Utilities ────────────────────────────────────────────────────────
 
@@ -42,6 +43,12 @@ interface UploadFile {
   startTime?: number
   endTime?: number
   skipDuplicateCheck?: boolean
+}
+
+interface UploadMetadataReviewItem {
+  fileId: string
+  contractId: string
+  fileName: string
 }
 
 const DEFAULT_PROCESSING_OPTIONS: ProcessingOptions = {
@@ -87,12 +94,18 @@ export default function UploadPage() {
   const [processingOptions] = useState<ProcessingOptions>(DEFAULT_PROCESSING_OPTIONS)
   const [isMounted, setIsMounted] = useState(false)
   const [shouldAutoStart, setShouldAutoStart] = useState(false)
+  const [reviewQueue, setReviewQueue] = useState<UploadMetadataReviewItem[]>([])
+  const [activeReview, setActiveReview] = useState<UploadMetadataReviewItem | null>(null)
+  const [skipAllMetadataReview, setSkipAllMetadataReview] = useState(false)
 
   // Clear stale HMR state on mount + cleanup on unmount
   useEffect(() => {
     setFiles([])
     setIsUploading(false)
     setIsMounted(true)
+    setReviewQueue([])
+    setActiveReview(null)
+    setSkipAllMetadataReview(false)
     const cleanupSessionKeys = () => {
       if (typeof window !== 'undefined') {
         const keysToRemove: string[] = []
@@ -122,6 +135,8 @@ export default function UploadPage() {
   const ACCEPTED_EXTENSIONS = new Set(['.pdf', '.docx', '.txt', '.md', '.csv', '.json', '.xml', '.rtf', '.html', '.htm'])
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
+    setSkipAllMetadataReview(false)
+
     const validFiles: File[] = []
     for (const file of acceptedFiles) {
       const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase()
@@ -147,6 +162,18 @@ export default function UploadPage() {
     setFiles(prev => [...prev, ...newFiles])
     setShouldAutoStart(true)
   }, [])
+
+  const queueMetadataReview = useCallback((fileId: string, contractId?: string, nextFileName?: string) => {
+    if (!contractId || !nextFileName || skipAllMetadataReview) return
+
+    setReviewQueue(prev => {
+      if (activeReview?.contractId === contractId || prev.some(item => item.contractId === contractId)) {
+        return prev
+      }
+
+      return [...prev, { fileId, contractId, fileName: nextFileName }]
+    })
+  }, [activeReview?.contractId, skipAllMetadataReview])
 
   const uploadFile = async (uploadFile: UploadFile, skipDuplicateCheck = false) => {
     const formData = new FormData()
@@ -397,12 +424,48 @@ export default function UploadPage() {
 
   const viewContract = useCallback((contractId: string) => { router.push(`/contracts/${contractId}`) }, [router])
 
+  const dismissActiveReview = useCallback(() => {
+    setActiveReview(null)
+  }, [])
+
+  const handleSkipAllMetadataReview = useCallback(() => {
+    setSkipAllMetadataReview(true)
+    setReviewQueue([])
+    setActiveReview(null)
+    toast.info('Skipping metadata review for the rest of this upload batch.')
+  }, [])
+
+  useEffect(() => {
+    if (skipAllMetadataReview || activeReview || reviewQueue.length === 0) return
+
+    const [nextReview, ...remaining] = reviewQueue
+    setActiveReview(nextReview)
+    setReviewQueue(remaining)
+  }, [skipAllMetadataReview, activeReview, reviewQueue])
+
   // ── Derived state ───────────────────────────────────────────────────────
   const completedCount = files.filter(f => f.status === 'completed').length
   const errorCount = files.filter(f => f.status === 'error').length
   const pendingCount = files.filter(f => f.status === 'pending').length
   const processingCount = files.filter(f => ['uploading', 'processing'].includes(f.status)).length
   const hasFiles = files.length > 0
+  const queueTitle = processingCount > 0
+    ? `Processing ${processingCount} file${processingCount !== 1 ? 's' : ''}`
+    : pendingCount > 0
+      ? `${pendingCount} file${pendingCount !== 1 ? 's' : ''} ready`
+      : completedCount > 0
+        ? `${completedCount} completed`
+        : errorCount > 0
+          ? `${errorCount} failed`
+          : 'Upload queue'
+  const queueSubtitle = processingCount > 0
+    ? 'Extraction, AI analysis, and artifact generation are running now.'
+    : pendingCount > 0
+      ? 'Review the files in queue, then start the pipeline when ready.'
+      : completedCount > 0
+        ? 'Processed contracts stay here until you clear them from the queue.'
+        : 'Retry failed uploads or remove them from the current batch.'
+  const queueProgress = files.length > 0 ? ((completedCount + errorCount) / files.length) * 100 : 0
 
   // ── Batch completion notification ───────────────────────────────────────
   const batchCompleteRef = useRef(false)
@@ -461,36 +524,70 @@ export default function UploadPage() {
 
         {/* File Queue */}
         {hasFiles && (
-          <Card className="shadow-sm dark:border-slate-700">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base dark:text-slate-100">
-                  {processingCount > 0 && `Processing ${processingCount} file${processingCount !== 1 ? 's' : ''}`}
-                  {processingCount === 0 && pendingCount > 0 && `${pendingCount} file${pendingCount !== 1 ? 's' : ''} ready`}
-                  {processingCount === 0 && pendingCount === 0 && completedCount > 0 && `${completedCount} completed`}
-                  {processingCount === 0 && pendingCount === 0 && completedCount === 0 && errorCount > 0 && `${errorCount} failed`}
-                </CardTitle>
-                <div className="flex items-center gap-2">
+          <Card className="overflow-hidden border-slate-200/80 bg-white/95 shadow-[0_24px_60px_-36px_rgba(79,70,229,0.4)] backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/90">
+            <CardHeader className="border-b border-slate-100/80 bg-[radial-gradient(circle_at_top_left,rgba(241,245,249,0.9),rgba(245,243,255,0.95),rgba(255,255,255,1))] pb-4 dark:border-slate-800 dark:bg-[radial-gradient(circle_at_top_left,rgba(30,41,59,0.96),rgba(67,56,202,0.18),rgba(15,23,42,1))]">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-violet-600/80 dark:text-violet-300/80">
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                    Contract Processing
+                  </div>
+                  <CardTitle className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    {queueTitle}
+                  </CardTitle>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {queueSubtitle}
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+                    {processingCount > 0 && (
+                      <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-violet-700 dark:border-violet-800 dark:bg-violet-900/30 dark:text-violet-200">
+                        <RefreshCw className="h-3 w-3 animate-spin" aria-hidden="true" />
+                        {processingCount} active
+                      </div>
+                    )}
+                    {pendingCount > 0 && (
+                      <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        <Play className="h-3 w-3" aria-hidden="true" />
+                        {pendingCount} queued
+                      </div>
+                    )}
+                    {completedCount > 0 && (
+                      <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">
+                        <Sparkles className="h-3 w-3" aria-hidden="true" />
+                        {completedCount} ready
+                      </div>
+                    )}
+                    {errorCount > 0 && (
+                      <div className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+                        <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                        {errorCount} failed
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
                   {completedCount > 0 && (
-                    <Button variant="ghost" size="sm" onClick={clearCompleted} className="gap-1 text-gray-500">
+                    <Button variant="ghost" size="sm" onClick={clearCompleted} className="h-9 rounded-full gap-1 px-3 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                       <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                       Clear Done
                     </Button>
                   )}
                   {pendingCount > 0 && !isUploading && (
-                    <Button onClick={handleUploadAll} size="sm" className="gap-1">
+                    <Button onClick={handleUploadAll} size="sm" className="h-9 rounded-full gap-1 px-4">
                       <Play className="h-3.5 w-3.5" aria-hidden="true" />
                       Upload All ({pendingCount})
                     </Button>
                   )}
                   {isUploading && !isPaused && (
-                    <Button onClick={handlePauseAll} variant="outline" size="sm" className="gap-1">
+                    <Button onClick={handlePauseAll} variant="outline" size="sm" className="h-9 rounded-full gap-1 px-4">
                       <Pause className="h-3.5 w-3.5" aria-hidden="true" />
                       Pause
                     </Button>
                   )}
                   {isPaused && (
-                    <Button onClick={handleUploadAll} size="sm" className="gap-1">
+                    <Button onClick={handleUploadAll} size="sm" className="h-9 rounded-full gap-1 px-4">
                       <Play className="h-3.5 w-3.5" aria-hidden="true" />
                       Resume
                     </Button>
@@ -498,17 +595,17 @@ export default function UploadPage() {
                 </div>
               </div>
               {files.length > 1 && (processingCount > 0 || completedCount > 0 || errorCount > 0) && (
-                <div className="mt-2">
-                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <div className="mt-1 rounded-2xl border border-slate-200/80 bg-white/80 p-3 dark:border-slate-800 dark:bg-slate-900/70">
+                  <div className="mb-2 flex justify-between text-xs text-slate-500 dark:text-slate-400">
                     <span>{completedCount + errorCount} of {files.length}{errorCount > 0 ? ` (${errorCount} failed)` : ''}</span>
-                    <span>{Math.round(((completedCount + errorCount) / files.length) * 100)}%</span>
+                    <span>{Math.round(queueProgress)}%</span>
                   </div>
-                  <Progress value={((completedCount + errorCount) / files.length) * 100} className="h-1" />
+                  <Progress value={queueProgress} className="h-2 bg-slate-100 dark:bg-slate-800" />
                 </div>
               )}
             </CardHeader>
 
-            <CardContent className="pt-0 space-y-3">
+            <CardContent className="space-y-4 bg-slate-50/40 pt-4 dark:bg-slate-950/20">
               <AnimatePresence mode="popLayout">
                 {isMounted && files.map((file, index) => (
                   <motion.div
@@ -552,6 +649,7 @@ export default function UploadPage() {
                           } : undefined,
                           duration: 5000,
                         });
+                        queueMetadataReview(file.id, file.contractId, file.file.name)
                       }}
                       tenantId={getTenantId()}
                     />
@@ -566,6 +664,7 @@ export default function UploadPage() {
                                 ? { ...f, status: 'completed', progress: 100, endTime: Date.now() }
                                 : f
                             ))
+                            queueMetadataReview(file.id, file.contractId, file.file.name)
                           }}
                           onContractNotFound={() => {
                             logger.warn('upload_contract_not_found', { fileId: file.id });
@@ -598,6 +697,16 @@ export default function UploadPage() {
           </Card>
         )}
       </div>
+
+      <UploadMetadataReviewDialog
+        open={!!activeReview}
+        contractId={activeReview?.contractId ?? null}
+        fileName={activeReview?.fileName ?? ''}
+        remainingCount={reviewQueue.length}
+        onSkip={dismissActiveReview}
+        onSkipAll={handleSkipAllMetadataReview}
+        onSaved={dismissActiveReview}
+      />
     </div>
   )
 }

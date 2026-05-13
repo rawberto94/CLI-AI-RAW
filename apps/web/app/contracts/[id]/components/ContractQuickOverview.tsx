@@ -45,6 +45,10 @@ interface QuickOverviewProps {
   signatureRequiredFlag?: boolean
 }
 
+const overviewTileClassName = 'flex h-full min-h-[184px] flex-col rounded-[24px] border border-slate-200/90 bg-white p-5 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.16)]'
+const overviewTileHeaderClassName = 'mb-4 flex items-center gap-2.5'
+const overviewTileLabelClassName = 'text-[10px] sm:text-xs font-semibold uppercase tracking-[0.22em] text-slate-500'
+
 // Memoized sub-components for better performance
 const ValueSection = memo(function ValueSection({
   tcvAmount,
@@ -53,19 +57,19 @@ const ValueSection = memo(function ValueSection({
   periodicity,
 }: Pick<QuickOverviewProps, 'tcvAmount' | 'currency' | 'paymentType' | 'periodicity'>) {
   return (
-    <div className="p-4 sm:p-5 border-b sm:border-b lg:border-b-0 sm:border-r border-slate-100 bg-gradient-to-br from-violet-50/40 via-white to-white">
-      <div className="flex items-center gap-2 mb-2 sm:mb-3">
-        <div className="p-1.5 rounded-lg bg-violet-100">
+    <div className={cn(overviewTileClassName, 'bg-[linear-gradient(135deg,rgba(245,243,255,0.95),rgba(255,255,255,1))]')}>
+      <div className={overviewTileHeaderClassName}>
+        <div className="rounded-2xl bg-violet-100 p-2 shadow-sm">
           <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-violet-600" />
         </div>
-        <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Value</span>
+        <span className={overviewTileLabelClassName}>Value</span>
       </div>
-      <p className="text-xl sm:text-2xl font-bold text-slate-900 mb-1.5 sm:mb-2">
+      <p className="mb-3 text-xl font-bold leading-tight text-slate-900 sm:text-2xl">
         {tcvAmount != null && tcvAmount > 0 
           ? formatCurrency(tcvAmount, currency || 'USD')
           : <span className="text-slate-400 text-base sm:text-lg">Not specified</span>}
       </p>
-      <div className="flex flex-wrap items-center gap-1">
+      <div className="mt-auto flex flex-wrap items-center gap-1.5">
         {paymentType && paymentType !== 'none' && (
           <Badge className="bg-violet-100 text-violet-700 border-0 text-[10px] sm:text-xs font-medium hover:bg-violet-100">
             {formatPaymentType(paymentType as any)}
@@ -87,21 +91,21 @@ const PartiesSection = memo(function PartiesSection({
   const displayParties = useMemo(() => parties.slice(0, 2), [parties])
   
   return (
-    <div className="p-4 sm:p-5 border-b lg:border-b-0 sm:border-r border-slate-100">
-      <div className="flex items-center gap-2 mb-2 sm:mb-3">
-        <div className="p-1.5 rounded-lg bg-violet-100">
+    <div className={overviewTileClassName}>
+      <div className={overviewTileHeaderClassName}>
+        <div className="rounded-2xl bg-violet-100 p-2 shadow-sm">
           <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-violet-600" />
         </div>
-        <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Parties</span>
+        <span className={overviewTileLabelClassName}>Parties</span>
       </div>
-      <div className="space-y-1.5 sm:space-y-2">
+      <div className="flex flex-1 flex-col gap-2.5">
         {displayParties.length > 0 ? (
           displayParties.map((party, idx) => {
             const isClient = ['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role || '')
             return (
-              <div key={(party as any).id || party.legalName || `party-${idx}`} className="flex items-center gap-2">
+              <div key={(party as any).id || party.legalName || `party-${idx}`} className="flex min-h-[60px] items-center gap-3 rounded-2xl border border-violet-100 bg-violet-50/80 px-3 py-2.5">
                 <div className={cn(
-                  "w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0",
+                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl',
                   isClient ? "bg-violet-100" : "bg-violet-100"
                 )}>
                   {isClient ? (
@@ -125,10 +129,10 @@ const PartiesSection = memo(function PartiesSection({
             )
           })
         ) : (
-          <p className="text-xs sm:text-sm text-slate-400 italic">No parties identified</p>
+          <div className="flex flex-1 items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2.5 text-xs italic text-slate-400 sm:text-sm">No parties identified</div>
         )}
         {parties.length > 2 && (
-          <button className="text-[10px] sm:text-xs text-violet-600 hover:text-violet-700 font-medium">
+          <button className="mt-auto text-left text-[10px] font-medium text-violet-600 hover:text-violet-700 sm:text-xs">
             +{parties.length - 2} more
           </button>
         )}
@@ -153,20 +157,20 @@ const DurationSection = memo(function DurationSection({
   }, [startDate, endDate])
 
   return (
-    <div className="p-4 sm:p-5 border-b sm:border-b-0 sm:border-r border-slate-100">
-      <div className="flex items-center gap-2 mb-2 sm:mb-3">
-        <div className="p-1.5 rounded-lg bg-violet-100">
+    <div className={overviewTileClassName}>
+      <div className={overviewTileHeaderClassName}>
+        <div className="rounded-2xl bg-violet-100 p-2 shadow-sm">
           <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-violet-600" />
         </div>
-        <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Duration</span>
+        <span className={overviewTileLabelClassName}>Duration</span>
       </div>
-      <div className="space-y-1.5 sm:space-y-2">
+      <div className="flex flex-1 flex-col gap-2.5">
         {/* Date Range */}
-        <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
-          <span className="text-slate-600">{startDate ? formatDate(startDate) : '—'}</span>
+        <div className="flex min-h-[60px] items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 text-xs sm:text-sm">
+          <span className="font-medium text-slate-600">{startDate ? formatDate(startDate) : '—'}</span>
           <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400" />
           <span className={cn(
-            "font-medium",
+            'font-semibold',
             isExpired ? "text-red-600" : 
             isEvergreen ? "text-violet-600" :
             daysRemaining !== null && daysRemaining <= 90 ? "text-amber-600" : 
@@ -177,7 +181,7 @@ const DurationSection = memo(function DurationSection({
         </div>
         
         {/* Status Badge */}
-        <div className="flex items-center gap-2">
+        <div className="flex min-h-[44px] items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/80 px-3 py-2.5">
           {isExpired ? (
             <Badge className="bg-red-100 text-red-700 border-0 text-[10px] sm:text-xs">
               <AlertCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
@@ -211,10 +215,10 @@ const DurationSection = memo(function DurationSection({
         
         {/* Notice Period */}
         {noticePeriod && !isExpired && (
-          <p className="text-[10px] sm:text-xs text-slate-500 flex items-center gap-1">
+          <div className="mt-auto flex min-h-[44px] items-center gap-1.5 rounded-2xl border border-slate-200/80 bg-white/80 px-3 py-2.5 text-[10px] text-slate-500 sm:text-xs">
             <Bell className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
             {noticePeriod} notice
-          </p>
+          </div>
         )}
       </div>
     </div>
@@ -229,16 +233,16 @@ const AssessmentSection = memo(function AssessmentSection({
   signatureRequiredFlag,
 }: Pick<QuickOverviewProps, 'riskLevel' | 'complianceStatus' | 'contractStatus' | 'signatureStatus' | 'signatureRequiredFlag'>) {
   return (
-    <div className="p-4 sm:p-5">
-      <div className="flex items-center gap-2 mb-2 sm:mb-3">
-        <div className="p-1.5 rounded-lg bg-amber-100">
+    <div className={overviewTileClassName}>
+      <div className={overviewTileHeaderClassName}>
+        <div className="rounded-2xl bg-amber-100 p-2 shadow-sm">
           <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-600" />
         </div>
-        <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Health</span>
+        <span className={overviewTileLabelClassName}>Health</span>
       </div>
-      <div className="space-y-2">
+      <div className="flex flex-1 flex-col gap-2.5">
         {/* Signature Status */}
-        <div className="flex items-center justify-between">
+        <div className="flex min-h-[44px] items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className={cn(
               "w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full",
@@ -270,7 +274,7 @@ const AssessmentSection = memo(function AssessmentSection({
         </div>
 
         {/* Risk Level */}
-        <div className="flex items-center justify-between">
+        <div className="flex min-h-[44px] items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className={cn(
               "w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full",
@@ -291,7 +295,7 @@ const AssessmentSection = memo(function AssessmentSection({
         </div>
         
         {/* Compliance */}
-        <div className="flex items-center justify-between">
+        <div className="flex min-h-[44px] items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className={cn(
               "w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full",
@@ -313,8 +317,7 @@ const AssessmentSection = memo(function AssessmentSection({
 
 export const ContractQuickOverview = memo(function ContractQuickOverview(props: QuickOverviewProps) {
   return (
-    <Card className="border-slate-200 bg-white shadow-sm overflow-hidden">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-0">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 xl:gap-5">
         <ValueSection 
           tcvAmount={props.tcvAmount}
           currency={props.currency}
@@ -334,7 +337,6 @@ export const ContractQuickOverview = memo(function ContractQuickOverview(props: 
           signatureStatus={props.signatureStatus}
           signatureRequiredFlag={props.signatureRequiredFlag}
         />
-      </div>
-    </Card>
+    </div>
   )
 })

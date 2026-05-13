@@ -19,6 +19,52 @@ async function getPrismaClient() {
   return prisma;
 }
 
+async function clearRegeneratedArtifactFailureState(
+  prisma: Awaited<ReturnType<typeof getPrismaClient>>,
+  contractId: string,
+  tenantId: string,
+  artifactType: string,
+) {
+  const contract = await prisma.contract.findFirst({
+    where: { id: contractId, tenantId },
+    select: { metadata: true },
+  });
+
+  const currentMetadata = (contract?.metadata as Record<string, unknown> | null) ?? {};
+  const failedArtifactTypes = Array.isArray(currentMetadata.failedArtifactTypes)
+    ? currentMetadata.failedArtifactTypes.filter((value): value is string => typeof value === 'string')
+    : [];
+
+  if (!failedArtifactTypes.includes(artifactType)) {
+    return;
+  }
+
+  const nextFailedArtifactTypes = failedArtifactTypes.filter((value) => value !== artifactType);
+  const nextMetadata: Record<string, unknown> = {
+    ...currentMetadata,
+    failedArtifactTypes: nextFailedArtifactTypes,
+    partialFailure: nextFailedArtifactTypes.length > 0,
+    lastArtifactRunAt: new Date().toISOString(),
+  };
+
+  if (typeof currentMetadata.artifactsExpected === 'number') {
+    nextMetadata.artifactsGenerated = Math.max(
+      0,
+      currentMetadata.artifactsExpected - nextFailedArtifactTypes.length,
+    );
+  } else if (typeof currentMetadata.artifactsGenerated === 'number') {
+    nextMetadata.artifactsGenerated = currentMetadata.artifactsGenerated + 1;
+  }
+
+  await prisma.contract.update({
+    where: { id: contractId },
+    data: {
+      metadata: nextMetadata,
+      updatedAt: new Date(),
+    },
+  });
+}
+
 export async function getContractArtifacts(
   request: NextRequest,
   context: ContractApiContext,
@@ -257,6 +303,8 @@ export async function postContractArtifactRegeneration(
     return createErrorResponse(context, 'INTERNAL_ERROR', 'Regeneration failed', 500);
   }
 
+  await clearRegeneratedArtifactFailureState(prisma, contractId, tenantId, artifactType);
+
   return createSuccessResponse(context, {
     success: true,
     contractId,
@@ -382,6 +430,8 @@ async function regenerateContractArtifactAsync(
         updatedAt: new Date(),
       },
     });
+
+    await clearRegeneratedArtifactFailureState(prisma, contractId, tenantId, artifactType);
 
     const { queueRAGReindex } = await import('@/lib/rag/reindex-helper');
     await queueRAGReindex({

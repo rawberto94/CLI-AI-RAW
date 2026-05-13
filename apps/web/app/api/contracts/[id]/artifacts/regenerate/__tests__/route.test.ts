@@ -3,9 +3,11 @@ import { NextRequest } from 'next/server';
 
 const {
   mockContractFindFirst,
+  mockContractUpdate,
   mockGenerateArtifact,
 } = vi.hoisted(() => ({
   mockContractFindFirst: vi.fn(),
+  mockContractUpdate: vi.fn(),
   mockGenerateArtifact: vi.fn(),
 }));
 
@@ -13,6 +15,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: {
     contract: {
       findFirst: mockContractFindFirst,
+      update: mockContractUpdate,
     },
   },
 }));
@@ -52,6 +55,7 @@ describe('/api/contracts/[id]/artifacts/regenerate', () => {
       rawText: 'Contract text',
       status: 'ACTIVE',
     });
+    mockContractUpdate.mockResolvedValue({ id: 'contract-1' });
     mockGenerateArtifact.mockResolvedValue({
       success: true,
       data: { summary: 'Regenerated artifact' },
@@ -121,5 +125,38 @@ describe('/api/contracts/[id]/artifacts/regenerate', () => {
       }),
     );
     expect(data.data.artifact).toEqual({ summary: 'Regenerated artifact' });
+  });
+
+  it('clears the regenerated type from contract partial failure metadata', async () => {
+    mockContractFindFirst
+      .mockResolvedValueOnce({
+        id: 'contract-1',
+        rawText: 'Contract text',
+        status: 'ACTIVE',
+      })
+      .mockResolvedValueOnce({
+        metadata: {
+          partialFailure: true,
+          failedArtifactTypes: ['OVERVIEW', 'TIMELINE'],
+          artifactsExpected: 14,
+          artifactsGenerated: 12,
+        },
+      });
+
+    const response = await POST(createRequest(true, { artifactType: 'OVERVIEW' }), routeContext);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(mockContractUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'contract-1' },
+      data: expect.objectContaining({
+        metadata: expect.objectContaining({
+          partialFailure: true,
+          failedArtifactTypes: ['TIMELINE'],
+          artifactsGenerated: 13,
+        }),
+      }),
+    }));
   });
 });

@@ -153,4 +153,31 @@ describe('/api/contracts/[id]/metadata', () => {
     expect(data.data.data.ragReindexQueued).toBe(true);
     expect(mockQueueRagIndexing).toHaveBeenCalled();
   });
+
+  it('persists document classification and contract type to the contract record', async () => {
+    mockContractFindFirst.mockResolvedValue({ aiMetadata: {}, metadata: {}, contractType: 'UNKNOWN' });
+    mockContractUpdate.mockResolvedValue({ id: 'contract-1' });
+
+    const response = await PUT(createRequest('PUT', {
+      metadata: {
+        document_classification: 'invoice',
+        document_classification_confidence: 0.93,
+        document_classification_warning: 'Non-binding commercial document',
+        contractType: '',
+      },
+    }), routeContext);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(mockContractUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'contract-1' },
+      data: expect.objectContaining({
+        documentClassification: 'invoice',
+        documentClassificationConf: 0.93,
+        documentClassificationWarning: 'Non-binding commercial document',
+        contractType: null,
+      }),
+    }));
+  });
 })

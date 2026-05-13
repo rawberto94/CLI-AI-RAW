@@ -116,14 +116,14 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
 
   return (
     <Card className={cn(
-      "overflow-hidden border-0 shadow-sm bg-white",
+      'flex h-full flex-col overflow-hidden rounded-[24px] border border-slate-200/90 bg-white shadow-[0_18px_40px_-30px_rgba(15,23,42,0.16)]',
       className
     )}>
       {/* Header */}
-      <div className="p-4 sm:p-5 border-b border-slate-100 bg-gradient-to-r from-violet-50 via-purple-50 to-indigo-50">
+      <div className="flex min-h-[88px] flex-col justify-center border-b border-violet-100 bg-[linear-gradient(135deg,rgba(245,243,255,0.95),rgba(255,255,255,1))] p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm">
+            <div className="rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 p-2.5 shadow-sm">
               <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
             <div>
@@ -159,21 +159,21 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
         
         {/* Quick Stats */}
         {insightStats.total > 0 && (
-          <div className="flex items-center gap-3 mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             {insightStats.risks > 0 && (
-              <div className="flex items-center gap-1.5 text-xs text-red-600">
+              <div className="flex items-center gap-1.5 rounded-full border border-red-100 bg-red-50 px-2.5 py-1 text-xs text-red-600">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 <span>{insightStats.risks} risk{insightStats.risks > 1 ? 's' : ''}</span>
               </div>
             )}
             {insightStats.opportunities > 0 && (
-              <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+              <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-600">
                 <TrendingUp className="h-3.5 w-3.5" />
                 <span>{insightStats.opportunities} opportunit{insightStats.opportunities > 1 ? 'ies' : 'y'}</span>
               </div>
             )}
             {insightStats.obligations > 0 && (
-              <div className="flex items-center gap-1.5 text-xs text-amber-600">
+              <div className="flex items-center gap-1.5 rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-xs text-amber-600">
                 <Target className="h-3.5 w-3.5" />
                 <span>{insightStats.obligations} obligation{insightStats.obligations > 1 ? 's' : ''}</span>
               </div>
@@ -182,11 +182,11 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
         )}
       </div>
       
-      <div className="p-4 sm:p-5">
+      <div className="flex flex-1 flex-col space-y-5 p-5">
         {/* Contract Summary */}
         {contractSummary && (
-          <div className="mb-4 pb-4 border-b border-slate-100">
-            <div className="flex items-center justify-between mb-2">
+          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
+            <div className="mb-2 flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
                 Summary
               </span>
@@ -205,7 +205,7 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
         
         {/* Key Terms */}
         {keyTerms && keyTerms.length > 0 && (
-          <div className="mb-4 pb-4 border-b border-slate-100">
+          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
             <span className="text-xs font-medium text-slate-500 uppercase tracking-wide block mb-2">
               Key Terms
             </span>
@@ -225,7 +225,7 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
         
         {/* Insights List */}
         {sortedInsights.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-3.5">
             <span className="text-xs font-medium text-slate-500 uppercase tracking-wide block">
               Top Insights
             </span>
@@ -238,7 +238,7 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ delay: idx * 0.05 }}
                   className={cn(
-                    "p-3 rounded-lg border transition-colors",
+                      'rounded-2xl border px-4 py-4 transition-colors',
                     insight.importance === 'high' 
                       ? "bg-amber-50/50 border-amber-100 hover:bg-amber-50"
                       : "bg-slate-50/50 border-slate-100 hover:bg-slate-50"

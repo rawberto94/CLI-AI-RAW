@@ -17,12 +17,47 @@ interface StatusBannerProps {
   signatureStatus?: SignatureStatus
   documentClassification?: DocumentClassification
   documentClassificationWarning?: string
+  failedArtifactTypes?: string[]
+  retryingArtifactTypes?: string[]
+  isRetryingAllArtifacts?: boolean
   onAction?: () => void
   onInitiateRenewal?: () => void
   onSetReminder?: () => void
   onRequestSignature?: () => void
   onStartReview?: () => void
   onStartRedline?: () => void
+  onRetryArtifactType?: (artifactType: string) => void
+  onRetryAllArtifacts?: () => void
+}
+
+const artifactLabels: Record<string, string> = {
+  OVERVIEW: 'Overview',
+  FINANCIAL: 'Financial Analysis',
+  CLAUSES: 'Key Clauses',
+  RISK: 'Risk Assessment',
+  COMPLIANCE: 'Compliance Check',
+  OBLIGATIONS: 'Obligations',
+  RENEWAL: 'Renewal Terms',
+  NEGOTIATION_POINTS: 'Negotiation Points',
+  AMENDMENTS: 'Amendments',
+  CONTACTS: 'Contacts & Signatories',
+  PARTIES: 'Contract Parties',
+  TIMELINE: 'Timeline & Milestones',
+  DELIVERABLES: 'Deliverables',
+  EXECUTIVE_SUMMARY: 'Executive Summary',
+  RATES: 'Rate Cards',
+  PROACTIVE_RISKS: 'Proactive Risk Detection',
+  PRICING: 'Pricing Analysis',
+  INTELLECTUAL_PROPERTY: 'Intellectual Property',
+  DATA_PRIVACY: 'Data Privacy',
+  AUDIT_TRAIL: 'Audit Trail',
+  ACTION_ITEMS: 'Action Items',
+}
+
+const MAX_VISIBLE_BANNERS = 2
+
+function normalizeArtifactType(value: string): string {
+  return value.toUpperCase().replace('KEY_CLAUSES', 'CLAUSES').replace('FINANCIAL_ANALYSIS', 'FINANCIAL').replace('RISK_ASSESSMENT', 'RISK').replace('COMPLIANCE_CHECK', 'COMPLIANCE')
 }
 
 /**
@@ -61,12 +96,17 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
   signatureStatus,
   documentClassification,
   documentClassificationWarning,
+  failedArtifactTypes = [],
+  retryingArtifactTypes = [],
+  isRetryingAllArtifacts = false,
   onAction,
   onInitiateRenewal,
   onSetReminder,
   onRequestSignature,
   onStartReview,
   onStartRedline,
+  onRetryArtifactType,
+  onRetryAllArtifacts,
 }: StatusBannerProps) {
   // Generate all applicable banners
   const banners = useMemo(() => {
@@ -196,16 +236,71 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
     return result.sort((a, b) => b.priority - a.priority)
   }, [endDate, riskLevel, complianceOk, signatureStatus, documentClassification, documentClassificationWarning])
   
-  if (banners.length === 0) return null
-  
-  const MAX_VISIBLE = 2
+  const normalizedFailedArtifactTypes = useMemo(
+    () => failedArtifactTypes.map(normalizeArtifactType),
+    [failedArtifactTypes],
+  )
+
   const [expanded, setExpanded] = useState(false)
-  const visibleBanners = expanded ? banners : banners.slice(0, MAX_VISIBLE)
-  const hiddenCount = banners.length - MAX_VISIBLE
+
+  if (banners.length === 0 && normalizedFailedArtifactTypes.length === 0) return null
+
+  const visibleBanners = expanded ? banners : banners.slice(0, MAX_VISIBLE_BANNERS)
+  const hiddenCount = banners.length - MAX_VISIBLE_BANNERS
 
   // Render all banners
   return (
     <div className="space-y-2 mb-4">
+      {normalizedFailedArtifactTypes.length > 0 && (
+        <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-700">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <div className="min-w-0">
+                <div className="font-semibold">Some artifact generation steps failed</div>
+                <div className="text-sm">
+                  {normalizedFailedArtifactTypes.length} artifact{normalizedFailedArtifactTypes.length === 1 ? '' : 's'} need regeneration.
+                </div>
+              </div>
+            </div>
+
+            {onRetryAllArtifacts && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onRetryAllArtifacts}
+                disabled={isRetryingAllArtifacts}
+                className="border-amber-300 text-amber-700 hover:bg-amber-100"
+              >
+                {isRetryingAllArtifacts && <Clock className="h-3 w-3 mr-1 animate-spin" />}
+                Retry All
+              </Button>
+            )}
+          </div>
+
+          {onRetryArtifactType && (
+            <div className="flex flex-wrap gap-2">
+              {normalizedFailedArtifactTypes.map((artifactType) => {
+                const isRetrying = retryingArtifactTypes.includes(artifactType)
+                return (
+                  <Button
+                    key={artifactType}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onRetryArtifactType(artifactType)}
+                    disabled={isRetrying || isRetryingAllArtifacts}
+                    className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                  >
+                    {isRetrying && <Clock className="h-3 w-3 mr-1 animate-spin" />}
+                    Retry {artifactLabels[artifactType] || artifactType}
+                  </Button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {visibleBanners.map((banner, index) => {
         const Icon = banner.icon
         
