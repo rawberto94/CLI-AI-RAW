@@ -18,6 +18,7 @@ import { queueContractReindex } from '@/lib/rag/reindex-trigger';
 import { classifyDocumentType } from '@/lib/ai/document-type-classifier';
 import { ensureTenantTaxonomy } from '@/lib/taxonomy/seed-default';
 import { linkPartiesToContract } from '@/lib/contract/party-linker';
+import { shouldApplyExtractedContractTitle } from '@/lib/contracts/display-name';
 
 const logger = pino({ name: 'real-artifact-generator' });
 
@@ -2246,7 +2247,7 @@ export async function generateRealArtifacts(
     // Also store formatted HTML in metadata for the redline editor
     const existingContract = await prisma.contract.findUnique({
       where: { id: contractId },
-      select: { metadata: true, aiMetadata: true, fileName: true, originalName: true },
+      select: { metadata: true, aiMetadata: true, fileName: true, originalName: true, contractTitle: true },
     });
     const existingMeta = (existingContract?.metadata as Record<string, unknown>) || {};
     const persistedOcrFacts = extractPersistedOcrFacts(existingContract?.aiMetadata);
@@ -2284,7 +2285,9 @@ export async function generateRealArtifacts(
     try {
       const preMetadata = await extractContractMetadata(contractText, contractId, extractedContractFacts);
       const preUpdateData: Record<string, any> = {};
-      if (preMetadata.title) preUpdateData.contractTitle = preMetadata.title;
+      if (preMetadata.title && shouldApplyExtractedContractTitle(existingContract)) {
+        preUpdateData.contractTitle = preMetadata.title;
+      }
       if (preMetadata.contractType) preUpdateData.contractType = preMetadata.contractType;
       if (preMetadata.startDate) {
         const sd = new Date(preMetadata.startDate);
