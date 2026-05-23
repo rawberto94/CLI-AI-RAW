@@ -1,7 +1,7 @@
 # ConTigo — System Architecture
 
 **Comprehensive Architecture Reference**
-**Version 2.0 — February 2026**
+**Version 2.1 — May 2026**
 
 ---
 
@@ -253,24 +253,32 @@ Tenant (1)
 
 ### Multi-Model Strategy
 
+Provider selection uses an environment-driven priority chain:
+
 ```
                     ┌─────────────────────┐
-                    │   Model Router      │
-                    │   (Cost/Quality/    │
-                    │    Residency)       │
+                    │   Provider Chain    │
+                    │  (env-driven, first │
+                    │   configured wins)  │
                     └──────┬──┬──┬────────┘
                            │  │  │
               ┌────────────┘  │  └────────────┐
               ▼               ▼               ▼
-      ┌──────────────┐ ┌──────────┐  ┌──────────────┐
-      │ Azure OpenAI │ │ Mistral  │  │  Anthropic   │
-      │ (Switzerland)│ │  (EU)    │  │    (US)      │
-      │              │ │          │  │              │
-      │ GPT-4o       │ │ Mistral  │  │ Claude 3.5   │
-      │ GPT-4o-mini  │ │ Large    │  │ Sonnet       │
-      └──────────────┘ └──────────┘  └──────────────┘
-       🇨🇭 Primary      🇪🇺 Fallback   🇺🇸 Opt-in
+      ┌──────────────┐ ┌──────────────┐ ┌──────────┐
+      │ Azure OpenAI │ │ OpenAI       │ │ Mistral  │
+      │ (Switzerland)│ │ (Direct)     │ │  (EU)    │
+      │              │ │              │ │          │
+      │ GPT-4o       │ │ GPT-4o-mini  │ │ Mistral  │
+      │              │ │ (configurable│ │ Large    │
+      └──────────────┘ │  via env)    │ └──────────┘
+       🇨🇭 Primary      └──────────────┘  🇪🇺 Fallback
+                         2️⃣ Secondary
 ```
+
+**Selection logic** (evaluated at request time):
+1. `AZURE_OPENAI_ENDPOINT` + `AZURE_OPENAI_API_KEY` → Azure OpenAI (deployment: `gpt-4o`, API version: `2024-02-01`)
+2. `OPENAI_API_KEY` (direct) → OpenAI (model: `OPENAI_MODEL` or `gpt-4o-mini`)
+3. `MISTRAL_API_KEY` → Mistral via OpenAI-compatible endpoint (`mistral-large-latest`)
 
 ### Agent System
 
@@ -316,8 +324,8 @@ User Query: "What is the liability cap in our Swisscom MSA?"
         │
         ▼
 ┌───────────────────┐
-│ 1. Embed Query    │  text-embedding-3-small → 1536 dims
-└────────┬──────────┘
+│ 1. Embed Query    │  text-embedding-3-small (dims: configurable via
+└────────┬──────────┘  RAG_EMBED_DIMENSIONS, default 1536; Azure deployment: 1024)
          │
          ▼
 ┌───────────────────┐
@@ -720,9 +728,9 @@ Application ──┬── Pino (structured JSON logs) ──▶ Azure Monitor 
 | Field | Value |
 |---|---|
 | **Date** | 2024-Q4 |
-| **Decision** | Support multiple AI providers (Azure OpenAI, Mistral, Anthropic) |
+| **Decision** | Support multiple AI providers (Azure OpenAI primary, direct OpenAI secondary, Mistral fallback) |
 | **Rationale** | Avoid vendor lock-in, data residency options (Swiss/EU), cost optimisation by routing to cheapest capable model, fallback resilience |
-| **Status** | Active |
+| **Status** | Active (Azure OpenAI → OpenAI → Mistral chain implemented; Anthropic not yet integrated) |
 
 ---
 
@@ -754,4 +762,4 @@ Application ──┬── Pino (structured JSON logs) ──▶ Azure Monitor 
 ---
 
 *ConTigo GmbH — Zurich, Switzerland*
-*Last updated: February 2026*
+*Last updated: May 2026*
