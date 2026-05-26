@@ -465,7 +465,12 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           // Detect per-artifact status transitions
           const transitions = detectTransitions(artifacts);
           const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
-          const totalCount = expectedTotal > 0 ? expectedTotal : artifacts.length;
+          const isTerminalStatus = contractStatus === 'COMPLETED' || contractStatus === 'FAILED';
+          const totalCount = expectedTotal > 0
+            ? expectedTotal
+            : isTerminalStatus
+              ? artifacts.length
+              : Math.max(artifacts.length + 1, 1);
           const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
           const stage = inferProcessingStage(contractStatus, totalCount, completedCount);
 
@@ -516,20 +521,19 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             }
           }
 
-          // If contract is completed or failed, close stream
-          // Also close if all fetched artifacts are complete (dynamic, not hardcoded)
-          const allArtifactsComplete = artifacts.length > 0 && completedCount >= artifacts.length;
-          
-          if (contractStatus === 'COMPLETED' || contractStatus === 'FAILED' || allArtifactsComplete) {
+          // Artifacts are inserted incrementally, so a fully complete fetched set can
+          // still be only the first saved batch. Wait for the contract status, which
+          // flips after metadata mirroring, categorization, and final bookkeeping.
+          if (isTerminalStatus) {
             // Send final update with artifacts
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ 
                 type: 'complete', 
                 contractId,
-                status: allArtifactsComplete ? 'COMPLETED' : contractStatus,
+                status: contractStatus,
                 artifactCount: artifacts.length,
                 completedCount,
-                progress: allArtifactsComplete ? 100 : progress,
+                progress: contractStatus === 'COMPLETED' ? 100 : progress,
                 artifacts
               })}\n\n`)
             );

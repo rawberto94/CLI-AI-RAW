@@ -20,6 +20,7 @@ import {
 import { PresenceIndicator } from '@/components/collaboration/PresenceIndicator'
 import { CopyableId } from '@/components/contracts/detail/CopyableId'
 import { StatusBadge } from '@/components/contracts/detail/StatusBadge'
+import { cn } from '@/lib/utils'
 import {
   ArrowLeft,
   RefreshCw,
@@ -40,6 +41,10 @@ import {
   Loader2,
   CalendarPlus,
   FileDown,
+  AlertTriangle,
+  Clock,
+  PenLine,
+  ShieldAlert,
 } from 'lucide-react'
 
 interface ContractHeaderProps {
@@ -47,6 +52,11 @@ interface ContractHeaderProps {
   filename: string
   originalName?: string
   status: string
+  signatureStatus?: string | null
+  signatureRequiredFlag?: boolean | null
+  riskLevel?: string | null
+  endDate?: string | null
+  failedArtifactTypes?: string[]
   currentVersion?: number
   showPdfViewer: boolean
   isEditing: boolean
@@ -73,6 +83,11 @@ export const ContractHeader = memo(function ContractHeader({
   filename,
   originalName,
   status,
+  signatureStatus,
+  signatureRequiredFlag,
+  riskLevel,
+  endDate,
+  failedArtifactTypes = [],
   currentVersion,
   showPdfViewer,
   isEditing,
@@ -119,6 +134,78 @@ export const ContractHeader = memo(function ContractHeader({
       setIsRenaming(false)
     }
   }, [handleRenameSubmit, filename])
+
+  const headerWarnings = React.useMemo(() => {
+    const warnings: Array<{
+      key: string
+      label: string
+      detail: string
+      className: string
+      Icon: React.ElementType
+    }> = []
+
+    const normalizedSignature = signatureStatus?.toLowerCase()
+    if (normalizedSignature === 'partially_signed') {
+      warnings.push({
+        key: 'signature-partial',
+        label: 'Partially signed',
+        detail: 'Some parties have not signed yet.',
+        className: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200',
+        Icon: PenLine,
+      })
+    } else if (normalizedSignature === 'unsigned' || (signatureRequiredFlag && normalizedSignature !== 'signed')) {
+      warnings.push({
+        key: 'signature-missing',
+        label: 'Signature needed',
+        detail: 'This contract still needs execution or a signed copy.',
+        className: 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-900/30 dark:text-violet-200',
+        Icon: PenLine,
+      })
+    }
+
+    if (endDate) {
+      const daysRemaining = Math.ceil((new Date(endDate).getTime() - Date.now()) / 86_400_000)
+      if (Number.isFinite(daysRemaining) && daysRemaining < 0) {
+        warnings.push({
+          key: 'renewal-overdue',
+          label: 'Expired',
+          detail: `Ended ${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) === 1 ? '' : 's'} ago.`,
+          className: 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200',
+          Icon: AlertTriangle,
+        })
+      } else if (Number.isFinite(daysRemaining) && daysRemaining <= 90) {
+        warnings.push({
+          key: 'renewal-window',
+          label: `${daysRemaining}d to renewal`,
+          detail: 'Renewal or expiry is inside the 90-day review window.',
+          className: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200',
+          Icon: Clock,
+        })
+      }
+    }
+
+    if (riskLevel === 'high') {
+      warnings.push({
+        key: 'risk-high',
+        label: 'High risk',
+        detail: 'High-risk terms or compliance issues were detected.',
+        className: 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
+        Icon: ShieldAlert,
+      })
+    }
+
+    if (failedArtifactTypes.length > 0) {
+      warnings.push({
+        key: 'partial-analysis',
+        label: 'Partial analysis',
+        detail: `${failedArtifactTypes.length} analysis section${failedArtifactTypes.length === 1 ? '' : 's'} need regeneration.`,
+        className: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200',
+        Icon: AlertTriangle,
+      })
+    }
+
+    return warnings.slice(0, 4)
+  }, [endDate, failedArtifactTypes.length, riskLevel, signatureRequiredFlag, signatureStatus])
   return (
     <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50 sticky top-0 z-40 shadow-sm dark:shadow-slate-900/50">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -199,6 +286,23 @@ export const ContractHeader = memo(function ContractHeader({
                         </Tooltip>
                       </TooltipProvider>
                     </>
+                  )}
+                  {headerWarnings.length > 0 && (
+                    <TooltipProvider>
+                      <div className="hidden md:flex items-center gap-1.5 min-w-0">
+                        {headerWarnings.map(({ key, label, detail, className, Icon }) => (
+                          <Tooltip key={key}>
+                            <TooltipTrigger asChild>
+                              <span className={cn('inline-flex max-w-[150px] items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-none', className)}>
+                                <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                <span className="truncate">{label}</span>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">{detail}</TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+                    </TooltipProvider>
                   )}
                 </div>
               </div>

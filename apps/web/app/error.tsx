@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import * as Sentry from '@sentry/nextjs';
 import { 
   AlertCircle, 
   RefreshCw, 
@@ -25,11 +24,7 @@ export default function Error({
   const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
-    // Report error to Sentry in production
-    Sentry.captureException(error, {
-      tags: { boundary: 'route-error' },
-      extra: { digest: error.digest },
-    });
+    console.error('Route error boundary caught an error:', error);
   }, [error]);
 
   const handleRetry = async () => {

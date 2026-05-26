@@ -82,6 +82,26 @@ export const CompactContractRow = memo(function CompactContractRow({
       isExpired: !!(contract.expirationDate && new Date(contract.expirationDate).getTime() < now),
     };
   }, [contract.expirationDate, contract.createdAt]);
+  const normalizedStatus = contract.status?.toLowerCase() || '';
+  const isFailed = normalizedStatus === 'failed';
+  const isProcessing = ['uploaded', 'queued', 'processing'].includes(normalizedStatus);
+  const isHighRisk = (contract.riskScore ?? 0) >= 70;
+  const needsSignature = contract.signatureStatus === 'unsigned'
+    || contract.signatureStatus === 'partially_signed'
+    || (contract.signatureRequiredFlag && contract.signatureStatus !== 'signed');
+  const rowAttentionClass = isFailed
+    ? 'border-l-2 border-l-red-500 bg-red-50/30 dark:bg-red-950/20'
+    : isExpired
+      ? 'border-l-2 border-l-red-400 bg-red-50/20 dark:bg-red-950/20'
+      : isHighRisk
+        ? 'border-l-2 border-l-orange-400 bg-orange-50/25 dark:bg-orange-950/20'
+        : needsSignature
+          ? 'border-l-2 border-l-violet-400 bg-violet-50/25 dark:bg-violet-950/20'
+          : isExpiringSoon
+            ? 'border-l-2 border-l-amber-400 bg-amber-50/30 dark:bg-amber-950/30'
+            : isProcessing
+              ? 'border-l-2 border-l-blue-400 bg-blue-50/25 dark:bg-blue-950/20'
+              : '';
 
   const handleRowKeyDown = (e: React.KeyboardEvent) => {
     // Only activate when the row itself is focused (not a child control like checkbox/buttons/menus)
@@ -103,8 +123,7 @@ export const CompactContractRow = memo(function CompactContractRow({
         // Zebra striping for unselected rows
         !isSelected && index % 2 === 0 && "bg-white dark:bg-slate-900",
         !isSelected && index % 2 === 1 && "bg-slate-50/30 dark:bg-slate-800/30",
-        isExpiringSoon && !isSelected && "border-l-2 border-l-amber-400 bg-amber-50/30 dark:bg-amber-950/30",
-        isExpired && !isSelected && "border-l-2 border-l-red-400 bg-red-50/20 dark:bg-red-950/20"
+        !isSelected && rowAttentionClass
       )}
       onClick={onView}
       role="link"
@@ -188,6 +207,30 @@ export const CompactContractRow = memo(function CompactContractRow({
                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-50 text-violet-600 flex-shrink-0" title={contract.parentContractId ? 'Linked to parent contract' : `${contract.childContracts?.length || 0} linked contract(s)`}>
                   <Link2 className="h-3 w-3" />
                   {contract.parentContractId ? 'Linked' : contract.childContracts?.length || 0}
+                </span>
+              )}
+              {isFailed && (
+                <span className="inline-flex items-center gap-0.5 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 flex-shrink-0" title="Processing failed">
+                  <AlertCircle className="h-3 w-3" />
+                  Failed
+                </span>
+              )}
+              {isHighRisk && !isFailed && (
+                <span className="inline-flex items-center gap-0.5 rounded bg-orange-50 px-1.5 py-0.5 text-[10px] font-semibold text-orange-600 flex-shrink-0" title={`Risk score ${contract.riskScore}`}>
+                  <AlertCircle className="h-3 w-3" />
+                  High risk
+                </span>
+              )}
+              {needsSignature && !isFailed && (
+                <span className="inline-flex items-center gap-0.5 rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-600 flex-shrink-0" title="Signature attention needed">
+                  <PenTool className="h-3 w-3" />
+                  Signature
+                </span>
+              )}
+              {isProcessing && !isFailed && (
+                <span className="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 flex-shrink-0" title="Analysis in progress">
+                  <RefreshCw className="h-3 w-3" />
+                  Processing
                 </span>
               )}
             </div>

@@ -220,6 +220,23 @@ const nextConfig = {
       asyncFunction: true,
     };
 
+    config.infrastructureLogging = {
+      ...(config.infrastructureLogging || {}),
+      level: 'error',
+    };
+
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      (warning) => {
+        const message = warning.message || '';
+        const moduleName = warning.module?.resource || '';
+        return (
+          message.includes('Critical dependency: the request of a dependency is an expression') &&
+          moduleName.includes('@opentelemetry/instrumentation')
+        );
+      },
+    ];
+
     // Dev-mode stability: disable lazy compilation to prevent HMR crashes
     if (dev && !isServer) {
       config.experiments = {

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import * as Sentry from '@sentry/nextjs';
 import { 
   AlertTriangle, 
   RefreshCw, 
@@ -23,11 +22,7 @@ export default function GlobalError({
   const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
-    // Report error to Sentry in production
-    Sentry.captureException(error, {
-      tags: { boundary: 'global-error' },
-      extra: { digest: error.digest },
-    });
+    console.error('Global error boundary caught an error:', error);
   }, [error]);
 
   const handleRetry = () => {

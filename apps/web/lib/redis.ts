@@ -10,6 +10,10 @@ type RedisInstance = InstanceType<typeof Redis>;
 
 const redisUrl = process.env.REDIS_URL;
 
+function isStaticBuild(): boolean {
+  return process.env.NEXT_BUILD === 'true' || process.env.NEXT_PHASE === 'phase-production-build';
+}
+
 // Null Redis client for build time when REDIS_URL is not available
 class NullRedis {
   async publish(): Promise<number> { return 0; }
@@ -28,7 +32,9 @@ class NullRedis {
 
 function createRedisClient(): RedisInstance | NullRedis {
   if (!redisUrl) {
-    console.warn('[Redis] REDIS_URL not configured, using null Redis client');
+    if (!isStaticBuild()) {
+      console.warn('[Redis] REDIS_URL not configured, using null Redis client');
+    }
     return new NullRedis() as unknown as RedisInstance;
   }
   

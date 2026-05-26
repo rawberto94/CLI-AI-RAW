@@ -2687,7 +2687,7 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                                             return `[${toSuperscriptNumber(idx)}](${buildCitationHref({ source: sources[idx - 1], index: idx })})`;
                                           });
                                         })()}
-                                        className={`text-[15px] leading-relaxed ${message.role === "user" ? "prose-invert text-white" : ""}`}
+                                        className={`text-[15px] leading-relaxed ${message.role === "user" ? "prose-invert !text-white [&_*]:!text-white [&_a]:!underline [&_code]:!bg-white/15 [&_pre]:!bg-black/20 [&_table]:!border-white/30 [&_td]:!border-white/30 [&_th]:!border-white/30 [&_th]:!bg-white/10" : ""}`}
                                         onInternalLinkClick={(href, event) => handleInlineCitationClick(href, message.metadata?.ragSources, event)}
                                       />
                                       {/* Streaming cursor: visible only on the last assistant message while still loading */}

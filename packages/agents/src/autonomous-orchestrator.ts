@@ -389,10 +389,18 @@ export class AutonomousAgentOrchestrator extends EventEmitter {
   private static readonly MAX_GOALS = 500;
   private static readonly MAX_NOTIFICATIONS_PER_TENANT = 100;
   private static readonly STALE_GOAL_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+  private static isStaticBuild(): boolean {
+    return process.env.NEXT_BUILD === 'true' || process.env.NEXT_PHASE === 'phase-production-build';
+  }
   
   constructor() {
     super();
     this.setupDefaultTriggers();
+    if (AutonomousAgentOrchestrator.isStaticBuild()) {
+      this.hydrated = true;
+      return;
+    }
     // Auto-hydrate from DB on startup (non-blocking)
     this.hydrateFromDB().catch(() => {});
     // Start the cron scheduler for trigger evaluation

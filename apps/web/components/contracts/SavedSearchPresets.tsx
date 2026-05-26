@@ -166,7 +166,8 @@ export function SavedSearchPresets({
   return (
     <>
       {/* Quick Actions */}
-      <div className="flex items-center gap-2">,        <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+      <div className="flex items-center gap-2">
+        <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
           <DialogTrigger asChild>
             <Button
               variant="outline"

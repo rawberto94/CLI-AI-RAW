@@ -48,6 +48,23 @@ export interface CreateClauseLibraryInput {
   contractTypes?: string[];
 }
 
+export interface BulkClauseLibraryInput extends CreateClauseLibraryInput {
+  rowNumber?: number;
+}
+
+export interface BulkClauseImportIssue {
+  rowNumber: number;
+  title: string;
+  reason: string;
+}
+
+export interface BulkClauseLibraryResult {
+  totalRows: number;
+  created: ClauseLibraryItem[];
+  skipped: BulkClauseImportIssue[];
+  failed: BulkClauseImportIssue[];
+}
+
 const defaultLibraryClauses = [
   {
     name: 'standard_indemnification',
@@ -187,6 +204,20 @@ function stripHtml(content: string): string {
   return content.replace(/<[^>]*>/g, '').replace(/\{\{[^}]+\}\}/g, '').trim();
 }
 
+function buildClauseLibraryName(value: string, suffix: string | number): string {
+  const normalizedName = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 50);
+
+  return `${normalizedName || 'clause'}_${suffix}`;
+}
+
+export function getClauseImportKey(input: { title?: string | null; name?: string | null }): string {
+  return (input.title || input.name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
 function toClauseLibraryItem(clause: Record<string, unknown>): ClauseLibraryItem {
   const content = typeof clause.content === 'string' ? clause.content : '';
   const alternativeText = typeof clause.alternativeText === 'string' ? clause.alternativeText : null;
@@ -287,12 +318,6 @@ export async function createClauseLibraryEntry(
   userId: string,
   input: CreateClauseLibraryInput,
 ): Promise<ClauseLibraryItem> {
-  const normalizedName = (input.name || input.title)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_|_$/g, '')
-    .slice(0, 50);
-
   const content = input.content.trim();
   const tags = input.tags || [];
   const contractTypes = input.contractTypes || [];
@@ -300,7 +325,7 @@ export async function createClauseLibraryEntry(
   const clause = await prisma.clauseLibrary.create({
     data: {
       tenantId,
-      name: `${normalizedName}_${Date.now()}`,
+      name: buildClauseLibraryName(input.name || input.title, Date.now()),
       title: input.title.trim(),
       category: normalizeCategoryForQuery(input.category) || 'GENERAL',
       content,
@@ -318,4 +343,86 @@ export async function createClauseLibraryEntry(
   });
 
   return toClauseLibraryItem(clause as unknown as Record<string, unknown>);
+}
+
+export async function findExistingClauseImportDuplicates(
+  tenantId: string,
+  inputs: Array<{ title?: string | null; name?: string | null }>,
+): Promise<Set<string>> {
+  const inputKeys = new Set(inputs.map(getClauseImportKey).filter(Boolean));
+  if (inputKeys.size === 0) return new Set();
+
+  const existingClauses = await prisma.clauseLibrary.findMany({
+    where: { tenantId },
+    select: { title: true, name: true },
+    take: 5000,
+  });
+
+  const existingKeys = new Set<string>();
+  for (const clause of existingClauses) {
+    const titleKey = getClauseImportKey({ title: clause.title });
+    const nameKey = getClauseImportKey({ name: clause.name });
+    if (titleKey) existingKeys.add(titleKey);
+    if (nameKey) existingKeys.add(nameKey);
+  }
+
+  return new Set([...inputKeys].filter((key) => existingKeys.has(key)));
+}
+
+export async function bulkCreateClauseLibraryEntries(
+  tenantId: string,
+  userId: string,
+  inputs: BulkClauseLibraryInput[],
+): Promise<BulkClauseLibraryResult> {
+  const existingKeys = await findExistingClauseImportDuplicates(tenantId, inputs);
+  const seenKeys = new Set<string>();
+  const created: ClauseLibraryItem[] = [];
+  const skipped: BulkClauseImportIssue[] = [];
+  const failed: BulkClauseImportIssue[] = [];
+
+  for (const [index, input] of inputs.entries()) {
+    const rowNumber = input.rowNumber ?? index + 1;
+    const title = input.title?.trim() || '';
+    const content = input.content?.trim() || '';
+    const category = input.category?.trim() || '';
+    const importKey = getClauseImportKey({ title });
+
+    if (!title || !content || !category) {
+      failed.push({
+        rowNumber,
+        title: title || `Row ${rowNumber}`,
+        reason: 'Title, content, and category are required',
+      });
+      continue;
+    }
+
+    if (importKey && existingKeys.has(importKey)) {
+      skipped.push({ rowNumber, title, reason: 'Already exists in the clause library' });
+      continue;
+    }
+
+    if (importKey && seenKeys.has(importKey)) {
+      skipped.push({ rowNumber, title, reason: 'Duplicate title in this import' });
+      continue;
+    }
+
+    try {
+      const clause = await createClauseLibraryEntry(tenantId, userId, input);
+      created.push(clause);
+      if (importKey) seenKeys.add(importKey);
+    } catch (error) {
+      failed.push({
+        rowNumber,
+        title,
+        reason: error instanceof Error ? error.message : 'Failed to create clause',
+      });
+    }
+  }
+
+  return {
+    totalRows: inputs.length,
+    created,
+    skipped,
+    failed,
+  };
 }

@@ -25,6 +25,7 @@ import {
   Filter,
   Tag,
   MoreHorizontal,
+  Upload,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -61,6 +62,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { ClauseUploadDialog } from './ClauseUploadDialog';
 import { toast } from 'sonner';
 
 type ClauseCategory = 
@@ -94,14 +96,51 @@ interface Clause {
   notes?: string;
 }
 
+function normalizeClauseCategory(value: unknown): ClauseCategory {
+  const key = String(value || '')
+    .trim()
+    .replace(/([a-z])([A-Z])/g, '$1_$2')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
+
+  const aliases: Record<string, ClauseCategory> = {
+    general: 'general',
+    liability: 'liability',
+    limitation_of_liability: 'liability',
+    confidentiality: 'confidentiality',
+    nda: 'confidentiality',
+    data_protection: 'compliance',
+    privacy: 'compliance',
+    termination: 'termination',
+    payment: 'payment',
+    intellectual_property: 'intellectual_property',
+    ip: 'intellectual_property',
+    ip_rights: 'intellectual_property',
+    indemnification: 'indemnification',
+    indemnity: 'indemnification',
+    force_majeure: 'force_majeure',
+    dispute_resolution: 'dispute_resolution',
+    disputes: 'dispute_resolution',
+    compliance: 'compliance',
+  };
+
+  return aliases[key] || 'general';
+}
+
+function normalizeRiskLevel(value: unknown): RiskLevel {
+  const key = String(value || '').toLowerCase();
+  return key === 'high' || key === 'medium' || key === 'low' ? key : 'medium';
+}
+
 // Transform API response to component format
 function transformClause(apiClause: Record<string, unknown>): Clause {
   return {
     id: apiClause.id as string,
     name: (apiClause.title as string) || (apiClause.name as string) || '',
     content: apiClause.content as string || '',
-    category: (apiClause.category as ClauseCategory) || 'general',
-    riskLevel: (apiClause.riskLevel as RiskLevel) || 'low',
+    category: normalizeClauseCategory(apiClause.category),
+    riskLevel: normalizeRiskLevel(apiClause.riskLevel),
     tags: (apiClause.tags as string[]) || [],
     isFavorite: (apiClause.isFavorite as boolean) || false,
     usageCount: (apiClause.usageCount as number) || 0,
@@ -151,6 +190,7 @@ export const ClausesLibrary = memo(function ClausesLibrary({
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [selectedClause, setSelectedClause] = useState<Clause | null>(null);
   const [showNewClauseDialog, setShowNewClauseDialog] = useState(false);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [copying, setCopying] = useState<string | null>(null);
 
   // Form state for new clause
@@ -355,10 +395,16 @@ export const ClausesLibrary = memo(function ClausesLibrary({
             Standard contract clauses for quick insertion
           </p>
         </div>
-        <Button onClick={() => setShowNewClauseDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Clause
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowUploadDialog(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Clauses
+          </Button>
+          <Button onClick={() => setShowNewClauseDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Clause
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -523,9 +569,27 @@ export const ClausesLibrary = memo(function ClausesLibrary({
         <div className="text-center py-12 text-slate-500">
           <Library className="h-12 w-12 mx-auto mb-4 opacity-20" />
           <p>No clauses found</p>
-          <p className="text-sm mt-1">Try adjusting your filters or create a new clause</p>
+          <p className="text-sm mt-1">Try adjusting your filters, create a clause, or upload a clause library</p>
+          {clauses.length === 0 && (
+            <div className="mt-4 flex justify-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowUploadDialog(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Clauses
+              </Button>
+              <Button size="sm" onClick={() => setShowNewClauseDialog(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Clause
+              </Button>
+            </div>
+          )}
         </div>
       )}
+
+      <ClauseUploadDialog
+        open={showUploadDialog}
+        onOpenChange={setShowUploadDialog}
+        onImportComplete={fetchClauses}
+      />
 
       {/* Clause Detail Dialog */}
       <Dialog open={!!selectedClause} onOpenChange={() => setSelectedClause(null)}>

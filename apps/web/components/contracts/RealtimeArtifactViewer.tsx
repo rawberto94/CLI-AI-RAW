@@ -38,6 +38,8 @@ interface ArtifactFailureState {
   failedArtifactTypes: string[];
 }
 
+type TerminalContractStatus = 'COMPLETED' | 'FAILED';
+
 // Helper to normalize artifact types to uppercase
 const normalizeType = (type: string): string => type.toUpperCase().replace('KEY_CLAUSES', 'CLAUSES').replace('FINANCIAL_ANALYSIS', 'FINANCIAL').replace('RISK_ASSESSMENT', 'RISK').replace('COMPLIANCE_CHECK', 'COMPLIANCE');
 
@@ -190,10 +192,18 @@ export function RealtimeArtifactViewer({
     const artifactList = Array.isArray(payload.artifacts) ? payload.artifacts : [];
     const nextArtifacts = mapArtifactListToUpdates(artifactList);
     setArtifacts(nextArtifacts);
-    if (nextArtifacts.length > 0) {
-      setIsComplete(nextArtifacts.every((artifact) => artifact.status === 'COMPLETED'));
-    }
     return nextArtifacts;
+  }, [contractId]);
+
+  const refreshContractTerminalStatus = useCallback(async (): Promise<TerminalContractStatus | null> => {
+    const response = await fetch(`/api/contracts/${contractId}/status`);
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = unwrapApiResponseData<{ status?: string }>(await response.json());
+    const status = String(payload.status || '').toUpperCase();
+    return status === 'COMPLETED' || status === 'FAILED' ? status : null;
   }, [contractId]);
 
   const refreshArtifactFailureState = useCallback(async () => {
@@ -220,8 +230,7 @@ export function RealtimeArtifactViewer({
 
   // Compute completedCount and isEffectivelyComplete early (before callbacks that need them)
   const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
-  // Complete when the stream says so, or when all received artifacts are done
-  const isEffectivelyComplete = isComplete || (artifacts.length > 0 && completedCount >= artifacts.length);
+  const isEffectivelyComplete = isComplete;
 
   // Animate new artifacts
   useEffect(() => {
@@ -264,19 +273,20 @@ export function RealtimeArtifactViewer({
     
     const poll = async () => {
       try {
-        const nextArtifacts = await refreshArtifacts();
-        if (nextArtifacts.length > 0) {
-          const completed = nextArtifacts.filter((artifact) => artifact.hasContent).length;
-          if (completed >= nextArtifacts.length) {
-            setIsPollingFallback(false);
-            if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current);
-            }
-            setIsComplete(true);
-            await refreshArtifactFailureState().catch(() => {
-              setArtifactFailureState({ partialFailure: false, failedArtifactTypes: [] });
-            });
+        const [, terminalStatus] = await Promise.all([
+          refreshArtifacts(),
+          refreshContractTerminalStatus().catch(() => null),
+        ]);
+
+        if (terminalStatus) {
+          setIsPollingFallback(false);
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
           }
+          setIsComplete(true);
+          await refreshArtifactFailureState().catch(() => {
+            setArtifactFailureState({ partialFailure: false, failedArtifactTypes: [] });
+          });
         }
       } catch {
         // Polling fallback error - silently continue
@@ -285,7 +295,7 @@ export function RealtimeArtifactViewer({
     
     pollingIntervalRef.current = setInterval(poll, 3000);
     poll(); // Immediate first poll
-  }, [contractId, isConnected, isEffectivelyComplete]);
+  }, [contractId, isConnected, isEffectivelyComplete, refreshArtifacts, refreshArtifactFailureState, refreshContractTerminalStatus]);
 
   // Start polling fallback if connection doesn't establish within 10s
   useEffect(() => {
@@ -534,9 +544,16 @@ export function RealtimeArtifactViewer({
 
       {/* Completion strip */}
       {isEffectivelyComplete && (
-        <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-900/60 dark:bg-emerald-950/30">
+        <div className={cn(
+          'flex items-center gap-2 rounded-lg border px-3 py-2',
+          hasPartialFailures
+            ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200'
+            : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200'
+        )}>
           <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-300" aria-hidden="true" />
-          <span className="text-[13px] font-medium text-emerald-800 dark:text-emerald-200">Analysis complete</span>
+          <span className="text-[13px] font-medium">
+            {hasPartialFailures ? 'Analysis complete with follow-up needed' : 'Analysis complete'}
+          </span>
         </div>
       )}
 
@@ -547,11 +564,11 @@ export function RealtimeArtifactViewer({
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" aria-hidden="true" />
                 <span className="text-[13px] font-medium text-amber-900 dark:text-amber-100">
-                  Analysis finished with partial artifact failures
+                  Partial analysis: {artifactFailureState.failedArtifactTypes.length} section{artifactFailureState.failedArtifactTypes.length === 1 ? '' : 's'} need regeneration
                 </span>
               </div>
               <p className="mt-1 text-[13px] text-amber-800 dark:text-amber-200">
-                {artifactFailureState.failedArtifactTypes.length} artifact{artifactFailureState.failedArtifactTypes.length === 1 ? '' : 's'} still need regeneration.
+                The contract is usable, but regenerate these sections before relying on the full AI analysis.
               </p>
             </div>
 
@@ -567,7 +584,7 @@ export function RealtimeArtifactViewer({
               ) : (
                 <RefreshCw className="h-3 w-3 mr-1" aria-hidden="true" />
               )}
-              Retry all failed artifacts
+              Regenerate all failed sections
             </Button>
           </div>
 
@@ -589,7 +606,7 @@ export function RealtimeArtifactViewer({
                   ) : (
                     <RefreshCw className="h-3 w-3 mr-1" aria-hidden="true" />
                   )}
-                  Retry {artifactLabels[normalizedType] || normalizedType}
+                  Regenerate {artifactLabels[normalizedType] || normalizedType}
                 </Button>
               );
             })}

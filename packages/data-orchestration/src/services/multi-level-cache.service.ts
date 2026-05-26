@@ -1,6 +1,10 @@
 
 import Redis from 'ioredis';
 
+function isStaticBuild(): boolean {
+  return process.env.NEXT_BUILD === 'true' || process.env.NEXT_PHASE === 'phase-production-build';
+}
+
 // In-memory cache (L1)
 class MemoryCache {
   private cache: Map<string, { value: any; expiry: number }> = new Map();
@@ -50,16 +54,31 @@ class RedisCache {
   private connected: boolean = false;
 
   constructor() {
-    this.initialize();
+    if (!isStaticBuild()) {
+      void this.initialize();
+    }
   }
 
   private async initialize() {
+    if (isStaticBuild()) return;
+
     try {
+      const redisUrl = process.env.REDIS_URL;
+      if (!redisUrl && !process.env.REDIS_HOST) return;
+
       // Initialize Redis client
-      this.client = new Redis({
+      this.client = redisUrl ? new Redis(redisUrl, {
+        lazyConnect: true,
+        enableOfflineQueue: false,
+        maxRetriesPerRequest: 1,
+        retryStrategy: () => null,
+      }) : new Redis({
         host: process.env.REDIS_HOST,
-        port: parseInt(process.env.REDIS_PORT || '6379'),
+        port: parseInt(process.env.REDIS_PORT || '6379', 10),
         password: process.env.REDIS_PASSWORD,
+        lazyConnect: true,
+        enableOfflineQueue: false,
+        maxRetriesPerRequest: 1,
         retryStrategy: (times) => {
           const delay = Math.min(times * 50, 2000);
           return delay;
@@ -73,8 +92,12 @@ class RedisCache {
       this.client.on('error', () => {
         this.connected = false;
       });
+
+      await this.client.connect();
     } catch {
       // Redis initialization failed, continue without it
+      this.client = null;
+      this.connected = false;
     }
   }
 

@@ -4,6 +4,7 @@ import {
   buildUploadMetadataReviewFields,
   createUploadMetadataReviewDraft,
   mergeReviewedParties,
+  unwrapUploadMetadataReviewPayload,
 } from '../upload-metadata-review';
 
 describe('upload metadata review helpers', () => {
@@ -144,5 +145,29 @@ describe('upload metadata review helpers', () => {
       { legalName: 'Auditor Inc', role: 'Auditor' },
       { legalName: 'New Supplier', role: 'Service Provider' },
     ]);
+  });
+
+  it('preserves metadata when unwrapping nested API success envelopes', () => {
+    const payload = unwrapUploadMetadataReviewPayload({
+      success: true,
+      data: {
+        success: true,
+        metadata: {
+          document_classification: 'contract',
+          external_parties: [
+            { legalName: 'Alpine Retail AG', role: 'Client' },
+          ],
+        },
+        data: {
+          contractType: 'SUPPLY',
+          clientName: 'Alpine Retail AG',
+        },
+      },
+    });
+
+    expect(payload.metadata?.document_classification).toBe('contract');
+    expect(payload.metadata?.external_parties?.[0]?.legalName).toBe('Alpine Retail AG');
+    expect(payload.data?.contractType).toBe('SUPPLY');
+    expect(payload.data?.clientName).toBe('Alpine Retail AG');
   });
 });

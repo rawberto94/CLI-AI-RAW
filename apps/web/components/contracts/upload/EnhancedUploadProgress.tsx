@@ -169,16 +169,16 @@ function getFileExtensionLabel(fileName: string): string {
 function getProcessingMessage(stage: string, artifactCount: number, apiStatus?: ContractStatusResponse | null): string {
   // Show queue-specific message when status is QUEUED
   if (apiStatus?.status === 'QUEUED') {
-    return 'Waiting in queue...';
+    return 'Queued for analysis. We will start as soon as a worker is free.';
   }
   switch (stage) {
-    case 'upload': return 'Preparing document...';
-    case 'extract': return 'Extracting text from document...';
+    case 'upload': return 'Uploading securely...';
+    case 'extract': return 'Reading document text...';
     case 'analyze': return artifactCount > 0 
-      ? `Analyzing with AI (${artifactCount} insights)...`
-      : 'Analyzing with AI...';
-    case 'index': return 'Saving and indexing...';
-    default: return 'Processing...';
+      ? `Generating AI analysis (${artifactCount} section${artifactCount === 1 ? '' : 's'} ready)...`
+      : 'Generating AI analysis and metadata...';
+    case 'index': return 'Saving results and search index...';
+    default: return 'Processing document...';
   }
 }
 
@@ -270,11 +270,11 @@ export function EnhancedUploadProgress({
       pollCount++;
 
       // ── Processing timeout ──
-      // If we've been polling for too long without a terminal status,
-      // mark as completed so the user can view the contract.
-      // The contract page will reflect the actual processing state.
+      // If we've been polling for a long time, keep waiting for the
+      // authoritative terminal status. Completing here can surface metadata
+      // review before artifact mirroring and categorization finish.
       if (Date.now() - pollStartTime > MAX_PROCESSING_MS) {
-        handleCompletion(contractId);
+        schedulePoll(15_000);
         return;
       }
 
@@ -419,7 +419,7 @@ export function EnhancedUploadProgress({
       return { label: 'Needs attention', className: 'border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-200' };
     }
     if (status === 'completed' || isCompleted) {
-      return { label: 'Ready', className: 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' };
+      return { label: 'Analysis ready', className: 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' };
     }
     if (status === 'pending') {
       return { label: 'Queued', className: 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300' };
@@ -448,7 +448,10 @@ export function EnhancedUploadProgress({
             <Badge className="border-amber-200 bg-white/80 text-amber-700 hover:bg-white/80 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">{fileExtensionLabel}</Badge>
           </div>
           <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
-            Already uploaded recently
+            Duplicate detected — no new copy was created.
+          </p>
+          <p className="mt-1 text-xs text-amber-700/80 dark:text-amber-300/80">
+            Open the existing contract or re-process to create a fresh analysis run.
           </p>
         </div>
         <div className="flex items-center gap-2">

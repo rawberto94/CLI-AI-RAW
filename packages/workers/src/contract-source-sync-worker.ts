@@ -23,6 +23,10 @@ const connection = {
 // Queue name
 const QUEUE_NAME = 'contract-source-sync';
 
+function isStaticBuild(): boolean {
+  return process.env.NEXT_BUILD === 'true' || process.env.NEXT_PHASE === 'phase-production-build';
+}
+
 // Job types
 interface SyncJobData {
   type: 'manual' | 'scheduled';
@@ -37,18 +41,40 @@ interface SchedulerJobData {
 
 type JobData = SyncJobData | SchedulerJobData;
 
-// Create the queue
-// @ts-ignore - generic Queue resolved from workers tsconfig
-export const contractSourceSyncQueue = new Queue<JobData>(QUEUE_NAME, {
-  connection,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 5000,
-    },
-    removeOnComplete: 100,
-    removeOnFail: 50,
+let contractSourceSyncQueueInstance: Queue<JobData> | null = null;
+
+function getContractSourceSyncQueue(): Queue<JobData> {
+  if (!contractSourceSyncQueueInstance) {
+    if (isStaticBuild()) {
+      throw new Error('Contract source sync queue is unavailable during static build');
+    }
+
+    // @ts-ignore - generic Queue resolved from workers tsconfig
+    contractSourceSyncQueueInstance = new Queue<JobData>(QUEUE_NAME, {
+      connection,
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+        removeOnComplete: 100,
+        removeOnFail: 50,
+      },
+    });
+  }
+
+  return contractSourceSyncQueueInstance;
+}
+
+export const contractSourceSyncQueue = new Proxy({} as Queue<JobData>, {
+  get(_target, prop) {
+    const queue = getContractSourceSyncQueue() as unknown as Record<PropertyKey, unknown>;
+    const value = queue[prop];
+    if (typeof value === 'function') {
+      return value.bind(queue);
+    }
+    return value;
   },
 });
 

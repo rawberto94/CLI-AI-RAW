@@ -20,10 +20,10 @@ describe('ContractStatusBanner', () => {
       />,
     )
 
-    expect(screen.getByText('Some artifact generation steps failed')).toBeInTheDocument()
+    expect(screen.getByText(/Partial analysis:/)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Retry All' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Retry Contract Parties' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate all' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Contract Parties' }))
 
     expect(onRetryAllArtifacts).toHaveBeenCalledTimes(1)
     expect(onRetryArtifactType).toHaveBeenCalledWith('PARTIES')

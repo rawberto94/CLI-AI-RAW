@@ -11,8 +11,7 @@ import { processContractWithSemanticChunking } from '@/lib/rag/advanced-rag.serv
 import type { ContractApiContext } from '@/lib/contracts/server/context';
 
 async function loadLegacyRagClient() {
-  const moduleName = 'clients-rag';
-  return import(moduleName);
+  return import('clients-rag');
 }
 
 export async function postContractRagProcess(

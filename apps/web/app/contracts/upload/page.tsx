@@ -280,8 +280,8 @@ export default function UploadPage() {
               }
             : f
         ))
-        toast.info(`${uploadFile.file.name} already exists`, {
-          description: 'You can view the existing contract or reprocess it.',
+        toast.info(`${uploadFile.file.name} is a duplicate`, {
+          description: 'No new copy was created. Open the existing contract or re-process it as a fresh analysis.',
           action: {
             label: 'Reprocess',
             onClick: () => {
@@ -428,20 +428,23 @@ export default function UploadPage() {
     setActiveReview(null)
   }, [])
 
+  const startMetadataReview = useCallback(() => {
+    if (activeReview) return
+
+    setReviewQueue(prev => {
+      const [nextReview, ...remaining] = prev
+      if (!nextReview) return prev
+      setActiveReview(nextReview)
+      return remaining
+    })
+  }, [activeReview])
+
   const handleSkipAllMetadataReview = useCallback(() => {
     setSkipAllMetadataReview(true)
     setReviewQueue([])
     setActiveReview(null)
     toast.info('Skipping metadata review for the rest of this upload batch.')
   }, [])
-
-  useEffect(() => {
-    if (skipAllMetadataReview || activeReview || reviewQueue.length === 0) return
-
-    const [nextReview, ...remaining] = reviewQueue
-    setActiveReview(nextReview)
-    setReviewQueue(remaining)
-  }, [skipAllMetadataReview, activeReview, reviewQueue])
 
   // ── Derived state ───────────────────────────────────────────────────────
   const completedCount = files.filter(f => f.status === 'completed').length
@@ -486,13 +489,13 @@ export default function UploadPage() {
       const completedFiles = files.filter(f => f.status === 'completed')
       const singleContractId = completedFiles.length === 1 ? completedFiles[0].contractId : null
       toast.success(`All ${completedCount} file${completedCount !== 1 ? 's' : ''} processed successfully`, {
-        description: 'AI analysis is complete for your batch',
+        description: 'AI analysis is complete. Metadata reviews are waiting in the review queue.',
         action: { label: singleContractId ? 'View Contract' : 'View Contracts', onClick: () => router.push(singleContractId ? `/contracts/${singleContractId}` : '/contracts?sort=newest') },
         duration: 8000,
       })
     } else if (completedCount > 0 && errorCount > 0) {
       toast.warning(`${completedCount} succeeded, ${errorCount} failed`, {
-        description: 'Some files encountered errors during processing',
+        description: 'Completed files can still be reviewed; failed files remain in the queue for retry.',
         duration: 8000,
       })
     }
@@ -521,6 +524,45 @@ export default function UploadPage() {
       <div className="max-w-4xl mx-auto p-6 space-y-6">
         {/* Drop Zone */}
         <UploadDropZone onDrop={onDrop} disabled={isUploading} />
+
+        {reviewQueue.length > 0 && !activeReview && !skipAllMetadataReview && (
+          <Card className="border-blue-200 bg-blue-50/80 shadow-sm dark:border-blue-900/60 dark:bg-blue-950/30">
+            <CardContent className="p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-blue-900 dark:text-blue-100">
+                    <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-300" aria-hidden="true" />
+                    {reviewQueue.length} metadata review{reviewQueue.length === 1 ? '' : 's'} ready
+                  </div>
+                  <p className="mt-1 text-sm text-blue-700 dark:text-blue-200">
+                    Analysis has finished. Review extracted parties, dates, value, and signature details when you are ready.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {reviewQueue.slice(0, 3).map((item) => (
+                      <span key={item.contractId} className="max-w-[220px] truncate rounded-full border border-blue-200 bg-white/80 px-2 py-0.5 text-xs text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200" title={item.fileName}>
+                        {item.fileName}
+                      </span>
+                    ))}
+                    {reviewQueue.length > 3 && (
+                      <span className="rounded-full border border-blue-200 bg-white/80 px-2 py-0.5 text-xs text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+                        +{reviewQueue.length - 3} more
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={handleSkipAllMetadataReview} className="text-blue-700 hover:bg-blue-100 dark:text-blue-200 dark:hover:bg-blue-900/40">
+                    Skip reviews
+                  </Button>
+                  <Button size="sm" onClick={startMetadataReview} className="bg-blue-700 text-white hover:bg-blue-800">
+                    Review next
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* File Queue */}
         {hasFiles && (
@@ -642,7 +684,7 @@ export default function UploadPage() {
                             : f
                         ));
                         toast.success(`${file.file.name} ready`, {
-                          description: 'AI analysis complete',
+                          description: 'AI analysis complete. Metadata review was added to the review queue.',
                           action: file.contractId ? {
                             label: 'View',
                             onClick: () => router.push(`/contracts/${file.contractId}`),

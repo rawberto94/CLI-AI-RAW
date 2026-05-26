@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Loader2, Sparkles } from 'lucide-react';
 
-import { unwrapApiResponseData } from '@/lib/api-fetch';
 import { getTenantId } from '@/lib/tenant';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -29,10 +28,10 @@ import {
   buildUploadMetadataReviewFields,
   createUploadMetadataReviewDraft,
   mergeReviewedParties,
+  unwrapUploadMetadataReviewPayload,
   type UploadMetadataParty,
   type UploadMetadataReviewDraft,
   type UploadMetadataReviewField,
-  type UploadMetadataReviewPayload,
 } from './upload-metadata-review';
 
 interface UploadMetadataReviewDialogProps {
@@ -135,7 +134,7 @@ export function UploadMetadataReviewDialog({
           throw new Error('We could not load extracted metadata for review.');
         }
 
-        const payload = unwrapApiResponseData<UploadMetadataReviewPayload>(await response.json());
+        const payload = unwrapUploadMetadataReviewPayload(await response.json());
         if (!active) return;
 
         const nextDraft = createUploadMetadataReviewDraft(payload, fileName);

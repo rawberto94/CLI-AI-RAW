@@ -185,6 +185,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                   size="icon"
                   onClick={handleToggleFavorite}
                   disabled={isFavoriting}
+                  aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                   className={cn(
                     "h-9 w-9 rounded-full transition-colors",
                     isFavorite && "text-yellow-500 hover:text-yellow-600"
@@ -208,6 +209,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                   size="icon"
                   onClick={handleToggleReminder}
                   disabled={isTogglingReminder}
+                  aria-label={hasReminder ? 'Disable expiry reminder' : 'Set expiry reminder'}
                   className={cn(
                     "h-9 w-9 rounded-full transition-colors",
                     hasReminder && "text-violet-500 hover:text-violet-600"
@@ -229,20 +231,26 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
 
             {/* Export Dropdown */}
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-full transition-colors"
-                  disabled={!!exportingFormat}
-                >
-                  {exportingFormat ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileDown className="h-4 w-4" />
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 rounded-full transition-colors"
+                      disabled={!!exportingFormat}
+                      aria-label={exportingFormat ? `Exporting as ${exportingFormat.toUpperCase()}` : 'Export contract'}
+                    >
+                      {exportingFormat ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <FileDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Export contract</TooltipContent>
+              </Tooltip>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={() => handleExport('pdf')} className="cursor-pointer">
                   <FileText className="h-4 w-4 mr-2 text-red-500" />
@@ -266,15 +274,21 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
 
             {/* More Actions */}
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-full transition-colors"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 rounded-full transition-colors"
+                      aria-label="More contract actions"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>More contract actions</TooltipContent>
+              </Tooltip>
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem 
                   onClick={handleCopyLink}

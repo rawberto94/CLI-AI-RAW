@@ -99,8 +99,8 @@ describe('RealtimeArtifactViewer', () => {
 
     render(<RealtimeArtifactViewer contractId="contract-1" />);
 
-    expect(await screen.findByText('Analysis finished with partial artifact failures')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Retry Contract Parties' }));
+    expect(await screen.findByText(/Partial analysis:/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate Contract Parties' }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenNthCalledWith(
@@ -113,6 +113,39 @@ describe('RealtimeArtifactViewer', () => {
       );
     });
 
-    expect(await screen.findByRole('button', { name: 'Retry Timeline & Milestones' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Regenerate Timeline & Milestones' })).toBeInTheDocument();
+  });
+
+  it('does not mark analysis complete while the contract is still processing', () => {
+    mockUseArtifactStream.mockReturnValue({
+      artifacts: [
+        {
+          id: 'artifact-1',
+          type: 'OVERVIEW',
+          status: 'COMPLETED',
+          hasContent: true,
+          contentLength: 128,
+          qualityScore: null,
+          completenessScore: null,
+          confidence: 0.92,
+          metadata: { preview: 'Overview ready' },
+          createdAt: '2026-05-12T08:00:00.000Z',
+          updatedAt: '2026-05-12T08:00:00.000Z',
+        },
+      ],
+      isConnected: true,
+      isComplete: false,
+      contractStatus: 'PROCESSING',
+      processingStage: 'artifact_generation',
+      error: null,
+      contractNotFound: false,
+      disconnect: vi.fn(),
+      reconnect: vi.fn(),
+    });
+
+    render(<RealtimeArtifactViewer contractId="contract-1" />);
+
+    expect(screen.queryByText('Analysis complete')).not.toBeInTheDocument();
+    expect(screen.queryByText('All artifacts generated successfully!')).not.toBeInTheDocument();
   });
 });

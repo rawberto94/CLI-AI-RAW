@@ -32,6 +32,10 @@ export interface UploadMetadataReviewPayload {
   };
 }
 
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 export type UploadMetadataReviewFieldKey =
   | 'document_title'
   | 'document_classification'
@@ -76,6 +80,33 @@ const CONTRACT_LIKE_CLASSIFICATIONS = new Set([
 
 function normalizeText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+export function unwrapUploadMetadataReviewPayload(payload: unknown): UploadMetadataReviewPayload {
+  let current = payload;
+
+  for (let depth = 0; depth < 3; depth += 1) {
+    if (!isObjectRecord(current)) return {};
+
+    if ('metadata' in current) {
+      return current as UploadMetadataReviewPayload;
+    }
+
+    if (current.success === true && isObjectRecord(current.data)) {
+      current = current.data;
+      continue;
+    }
+
+    break;
+  }
+
+  if (isObjectRecord(current) && ('metadata' in current || 'data' in current)) {
+    return current as UploadMetadataReviewPayload;
+  }
+
+  return isObjectRecord(current)
+    ? { data: current as UploadMetadataReviewPayload['data'] }
+    : {};
 }
 
 function normalizeComparisonText(value: string): string {

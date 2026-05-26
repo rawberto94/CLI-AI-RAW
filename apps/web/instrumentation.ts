@@ -11,6 +11,10 @@
 const logInfo = (message: string) => console.warn(`[INFO] ${message}`);
 
 export async function register() {
+  if (process.env.NEXT_BUILD === 'true' || process.env.NEXT_PHASE === 'phase-production-build') {
+    return;
+  }
+
   // Only run validation on Node.js runtime (not Edge)
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     // Initialize OpenTelemetry (skips in dev unless OTEL_ENABLED=true)

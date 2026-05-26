@@ -1023,6 +1023,11 @@ export default function ContractDetailPage() {
         filename={contract?.filename || ''}
         originalName={(contract as any)?.originalName || ''}
         status={contract?.status || 'unknown'}
+        signatureStatus={metadata.signature_status}
+        signatureRequiredFlag={metadata.signature_required_flag}
+        riskLevel={riskInfo.riskLevel}
+        endDate={metadata.end_date}
+        failedArtifactTypes={failedArtifactTypes}
         currentVersion={currentVersionNumber}
         showPdfViewer={showPdfViewer}
         isEditing={isEditing}

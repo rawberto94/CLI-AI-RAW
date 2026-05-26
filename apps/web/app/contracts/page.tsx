@@ -49,6 +49,9 @@ import {
   ArrowLeftRight,
   Sparkles,
   AlertCircle,
+  Clock,
+  PenLine,
+  ShieldAlert,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -133,7 +136,7 @@ export default function ContractsPage() {
     valueRangeFilter, setValueRangeFilter,
     dateRangeFilter, setDateRangeFilter,
     expirationFilters, setExpirationFilters,
-    signatureFilters, documentTypeFilters,
+    signatureFilters, setSignatureFilters, documentTypeFilters,
     currentPage, setCurrentPage, pageSize, setPageSize,
     sortField, setSortField, sortDirection, setSortDirection,
     statusFilter, typeFilters, riskFilters, supplierFilters, categoryFilter,
@@ -710,6 +713,61 @@ export default function ContractsPage() {
     (filterState.paymentTerms?.length ?? 0),
   [filterState]);
 
+  const applyQuickFilter = useCallback((filter: 'expiring' | 'signature' | 'risk' | 'processing' | 'recent') => {
+    clearFilters();
+
+    switch (filter) {
+      case 'expiring':
+        setExpirationFilters(['expiring-30']);
+        break;
+      case 'signature':
+        setSignatureFilters(['unsigned', 'partially_signed']);
+        break;
+      case 'risk':
+        setRiskFilters(['high']);
+        break;
+      case 'processing':
+        setStatusFilter('processing');
+        break;
+      case 'recent':
+        setDateRangeFilter('week');
+        break;
+    }
+  }, [clearFilters, setDateRangeFilter, setExpirationFilters, setRiskFilters, setSignatureFilters, setStatusFilter]);
+
+  const quickFilters = useMemo(() => [
+    {
+      id: 'expiring' as const,
+      label: 'Expiring soon',
+      icon: Clock,
+      active: expirationFilters.includes('expiring-30'),
+    },
+    {
+      id: 'signature' as const,
+      label: 'Needs signature',
+      icon: PenLine,
+      active: signatureFilters.includes('unsigned') || signatureFilters.includes('partially_signed'),
+    },
+    {
+      id: 'risk' as const,
+      label: 'High risk',
+      icon: ShieldAlert,
+      active: riskFilters.includes('high'),
+    },
+    {
+      id: 'processing' as const,
+      label: 'Processing',
+      icon: Sparkles,
+      active: statusFilter === 'processing',
+    },
+    {
+      id: 'recent' as const,
+      label: 'Recent uploads',
+      icon: AlertCircle,
+      active: dateRangeFilter === 'week',
+    },
+  ], [dateRangeFilter, expirationFilters, riskFilters, signatureFilters, statusFilter]);
+
   // Surface list-fetch failures — previously `useContracts`' error field was
   // unused, so a failed GET /api/contracts (500, network, auth drop) left the
   // page stuck on the loading skeleton forever with no way to recover
@@ -916,6 +974,44 @@ export default function ContractsPage() {
           onRetry={() => refetch()}
           onDismiss={() => refetch()}
         />
+
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+          <span className="mr-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Quick filters
+          </span>
+          {quickFilters.map((filter) => {
+            const Icon = filter.icon;
+            return (
+              <Button
+                key={filter.id}
+                type="button"
+                variant={filter.active ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => applyQuickFilter(filter.id)}
+                className={cn(
+                  'h-8 rounded-full px-3 text-xs font-medium',
+                  filter.active
+                    ? 'bg-slate-800 text-white hover:bg-slate-700'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                )}
+              >
+                <Icon className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                {filter.label}
+              </Button>
+            );
+          })}
+          {hasActiveFilters && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="ml-auto h-8 rounded-full px-3 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            >
+              Clear filters
+            </Button>
+          )}
+        </div>
 
         {/* Advanced Filter Panel - Inline & Collapsible */}
         <AnimatePresence>

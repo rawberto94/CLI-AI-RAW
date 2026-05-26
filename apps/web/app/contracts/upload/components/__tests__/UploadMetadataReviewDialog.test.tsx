@@ -48,6 +48,7 @@ describe('UploadMetadataReviewDialog', () => {
         json: async () => ({
           success: true,
           data: {
+            success: true,
             metadata: {
               document_title: 'msa-final.pdf',
               document_classification: 'contract',
@@ -91,7 +92,7 @@ describe('UploadMetadataReviewDialog', () => {
 
     const titleInput = await screen.findByLabelText('Contract title');
     fireEvent.change(titleInput, { target: { value: 'Master Services Agreement' } });
-  fireEvent.change(screen.getByLabelText('Contract type'), { target: { value: 'MSA' } });
+    fireEvent.change(screen.getByLabelText('Contract type'), { target: { value: 'MSA' } });
     fireEvent.click(screen.getByRole('button', { name: /save and continue/i }));
 
     await waitFor(() => {
@@ -134,6 +135,7 @@ describe('UploadMetadataReviewDialog', () => {
       json: async () => ({
         success: true,
         data: {
+          success: true,
           metadata: {
             document_title: 'Master Services Agreement',
             document_classification: 'contract',

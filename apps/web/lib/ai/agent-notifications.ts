@@ -72,8 +72,13 @@ let redisPub: IoRedisInstance | null = null;
 let redisSub: IoRedisInstance | null = null;
 let redisReady = false;
 
+function isStaticBuild(): boolean {
+  return process.env.NEXT_BUILD === 'true' || process.env.NEXT_PHASE === 'phase-production-build';
+}
+
 async function initRedis(): Promise<void> {
   if (redisReady || redisPub) return; // already initialised or in progress
+  if (isStaticBuild()) return;
   const url = process.env.REDIS_URL;
   if (!url) return;
 
@@ -120,9 +125,6 @@ async function initRedis(): Promise<void> {
   }
 }
 
-// Fire-and-forget initialisation on module load
-initRedis().catch(() => {});
-
 // ── In-memory helpers (fallback) ──────────────────────────────────────
 
 function evictStaleTenants(): void {
@@ -134,7 +136,7 @@ function evictStaleTenants(): void {
   }
 }
 
-const _evictionInterval = setInterval(evictStaleTenants, 10 * 60_000);
+const _evictionInterval = isStaticBuild() ? null : setInterval(evictStaleTenants, 10 * 60_000);
 if (typeof _evictionInterval?.unref === 'function') _evictionInterval.unref();
 
 function getMemoryStore(tenantId: string): TenantStore {
@@ -167,6 +169,8 @@ function redisReadSetKey(tenantId: string): string {
 export function pushAgentNotification(
   notification: Omit<AgentNotification, 'id' | 'createdAt' | 'read'>
 ): AgentNotification {
+  void initRedis();
+
   const full: AgentNotification = {
     ...notification,
     id: `notif-${++notificationCounter}-${Date.now()}`,
@@ -215,6 +219,8 @@ function pushToMemory(tenantId: string, notif: AgentNotification): void {
  * Reads from Redis when available, falls back to in-memory.
  */
 export async function getNotifications(filter: NotificationFilter): Promise<AgentNotification[]> {
+  await initRedis();
+
   let notifications: AgentNotification[];
 
   if (redisReady && redisPub) {
@@ -258,6 +264,8 @@ export async function getNotifications(filter: NotificationFilter): Promise<Agen
  * Mark a notification as read.
  */
 export async function markNotificationRead(tenantId: string, notificationId: string): Promise<boolean> {
+  await initRedis();
+
   if (redisReady && redisPub) {
     try {
       await redisPub.sadd(redisReadSetKey(tenantId), notificationId);
@@ -279,6 +287,8 @@ export async function markNotificationRead(tenantId: string, notificationId: str
  * Mark all notifications as read for a tenant/user.
  */
 export async function markAllRead(tenantId: string, userId?: string): Promise<number> {
+  await initRedis();
+
   if (redisReady && redisPub) {
     try {
       const raw = await redisPub.lrange(redisListKey(tenantId), 0, MAX_NOTIFICATIONS_PER_TENANT - 1);
@@ -319,6 +329,8 @@ export function subscribeToNotifications(
   userId: string | undefined,
   callback: (notification: AgentNotification) => void
 ): () => void {
+  void initRedis();
+
   const eventKey = userId ? `notification:${tenantId}:${userId}` : `notification:${tenantId}`;
   emitter.on(eventKey, callback);
 

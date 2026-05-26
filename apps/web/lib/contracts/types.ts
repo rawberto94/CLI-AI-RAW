@@ -58,7 +58,7 @@ export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'none';
 export type RiskLevel = 'low' | 'medium' | 'high';
 export type SortField = 'title' | 'createdAt' | 'value' | 'expirationDate' | 'status' | 'riskScore';
 export type SortDirection = 'asc' | 'desc';
-export type ViewMode = 'compact' | 'cards' | 'timeline' | 'kanban';
+export type ViewMode = 'compact' | 'cards';
 
 export interface FilterState {
   searchQuery: string;

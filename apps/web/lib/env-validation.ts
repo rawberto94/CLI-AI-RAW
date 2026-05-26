@@ -14,6 +14,7 @@ interface EnvVarConfig {
   default?: string;
   description?: string;
   validator?: (value: string) => boolean;
+  warnIfMissing?: boolean;
   sensitive?: boolean; // Don't log value
 }
 
@@ -97,6 +98,7 @@ const OPTIONAL_ENV_VARS: EnvVarConfig[] = [
     name: 'SENTRY_DSN',
     type: 'url',
     description: 'Sentry DSN for error tracking',
+    warnIfMissing: false,
   },
   {
     name: 'LOG_LEVEL',
@@ -184,6 +186,8 @@ export function validateEnvironment(options?: {
       if (config.default) {
         // Apply default
         summary[config.name] = { set: false, valid: true, value: `(default: ${config.default})` };
+      } else if (config.warnIfMissing === false) {
+        summary[config.name] = { set: false, valid: true };
       } else {
         warnings.push(`Optional env var not set: ${config.name} - ${config.description}`);
         summary[config.name] = { set: false, valid: true };

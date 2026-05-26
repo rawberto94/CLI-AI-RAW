@@ -6,7 +6,7 @@ dotenv.config();
 type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any };
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
-import { buildPersistedContractTextFields } from '@repo/utils';
+import { assessSignatureEvidence, buildPersistedContractTextFields } from '@repo/utils';
 import {
   CircuitBreaker,
   CircuitBreakerError,
@@ -3313,6 +3313,32 @@ export async function processOCRArtifactJob(
       }
     }
 
+    const signatureEvidence = assessSignatureEvidence(ocrResult.text || '');
+    const aiSignatureStatus = unwrapVal(contactsData.signatureStatus);
+    const signatories = Array.isArray(contactsData.signatories) ? contactsData.signatories : [];
+    const signedSignatoryCount = signatories.filter((signatory: any) => signatory?.isSigned === true).length;
+    const hasHandwritingInSignatureDocument = (ocrResult.handwrittenText || []).length > 0 && signatureEvidence.hasSignatureBlock;
+    const resolvedSignatureStatus = (() => {
+      if (signatureEvidence.hasActualSignatureEvidence || hasHandwritingInSignatureDocument) {
+        if (aiSignatureStatus === 'partially_signed' || (signedSignatoryCount > 0 && signedSignatoryCount < signatories.length)) {
+          return 'partially_signed';
+        }
+
+        return 'signed';
+      }
+
+      if (signatureEvidence.hasSignatureBlock) {
+        return 'unsigned';
+      }
+
+      if (aiSignatureStatus === 'unsigned' || aiSignatureStatus === 'partially_signed') {
+        return aiSignatureStatus;
+      }
+
+      return aiSignatureStatus === 'signed' ? 'unknown' : (aiSignatureStatus || 'unknown');
+    })();
+    const resolvedSignatureRequiredFlag = resolvedSignatureStatus === 'unsigned' || resolvedSignatureStatus === 'partially_signed';
+
     // Build enterprise metadata schema
     const enterpriseMetadata = {
       // Document identification
@@ -3408,49 +3434,18 @@ export async function processOCRArtifactJob(
         })() ||
         null,
       
-      // Signature status: combine AI verdict with DI handwriting evidence.
-      // The AI only analyzes OCR text and can miss physical handwritten signatures
-      // (scribbles/cursive that DI detects as handwriting but can't read as text).
-      // DI handwriting detection overrides AI's 'unsigned' when signatures are present.
-      signature_status: (() => {
-        const aiStatus = unwrapVal(contactsData.signatureStatus);
-        const handwrittenSpans = ocrResult.handwrittenText || [];
-        const hasHandwriting = handwrittenSpans.length > 0;
-        const fullText = ocrResult.text || '';
-        const sigPatterns = /\b(signature|signed|sign here|executed|witness|authorized|acknowledged)\b|\/s\//i;
-        const hasSignatureContext = sigPatterns.test(fullText);
-        const signatoryCount = (contactsData.signatories || []).length;
-        const signedCount = (contactsData.signatories || []).filter((s: any) => s.isSigned).length;
-
-        // If AI says signed/partially_signed, trust it
-        if (aiStatus === 'signed' || aiStatus === 'partially_signed') return aiStatus;
-
-        // If signatories have isSigned flags, trust those
-        if (signedCount > 0 && signedCount === signatoryCount) return 'signed';
-        if (signedCount > 0) return 'partially_signed';
-
-        // DI detected handwriting + document has signature blocks → signed
-        // This catches handwritten signatures the AI couldn't see in text form
-        if (hasHandwriting && hasSignatureContext) return 'signed';
-
-        // AI says unsigned with no DI contradiction → trust it
-        if (aiStatus === 'unsigned' && !hasHandwriting) return 'unsigned';
-
-        // AI says unsigned but DI found handwriting without signature context
-        // (could be annotations/fill-ins, not signatures) → keep unsigned
-        if (aiStatus === 'unsigned') return 'unsigned';
-
-        return aiStatus || 'unknown';
-      })(),
-      signature_date: unwrapVal(contactsData.signatureDate) || 
-        (contactsData.signatories?.find((s: any) => s.dateSigned)?.dateSigned) || 
+      signature_status: resolvedSignatureStatus,
+      signature_date: resolvedSignatureRequiredFlag ? null : (
+        unwrapVal(contactsData.signatureDate) ||
+        (signatories.find((signatory: any) => signatory.dateSigned)?.dateSigned) ||
+        signatureEvidence.signatureDateText ||
         ocrResult.contractFields?.dates?.executionDate ||
-        unwrapVal(overviewArtifactData.executionDate) || null,
+        unwrapVal(overviewArtifactData.executionDate) || null
+      ),
       // Only flag signature_required if we have a definitive unsigned/partially_signed status
       // Don't flag when status is 'unknown' — avoids spurious alerts on newly uploaded contracts
-      signature_required_flag: unwrapVal(contactsData.signatureStatus) === 'unsigned' || 
-        unwrapVal(contactsData.signatureStatus) === 'partially_signed',
-      signatories: contactsData.signatories || [],
+      signature_required_flag: resolvedSignatureRequiredFlag,
+      signatories,
       signature_analysis: contactsData.signatureAnalysis || null,
       di_handwriting_detected: ocrResult.handwrittenText.length > 0,
       di_handwritten_spans: ocrResult.handwrittenText.slice(0, 20),

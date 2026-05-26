@@ -11,7 +11,7 @@ import { PrismaClient, ArtifactType } from '@prisma/client';
 import fs from 'fs/promises';
 import path from 'path';
 import pino from 'pino';
-import { buildPersistedContractTextFields } from '@repo/utils';
+import { assessSignatureEvidence, buildPersistedContractTextFields } from '@repo/utils';
 import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { categorizeContract } from '@/lib/categorization-service';
 import { queueContractReindex } from '@/lib/rag/reindex-trigger';
@@ -395,57 +395,17 @@ function extractPaymentTerms(contractText: string): string | null {
 }
 
 function extractSignatureInfo(contractText: string): { signatureStatus: string | null; signatureDate: string | null } {
-  const signatureBlockPatterns = [
-    /(?:IN WITNESS WHEREOF|SIGNED|EXECUTED)\b/i,
-    /\bSignature[:\s]*_{3,}/i,
-    /\bSigned\s+by[:\s]/i,
-    /\/s\/\s+\w+/i,
-    /\[SIGNATURE\]/i,
-    // Additional patterns for scanned/handwritten/electronic signatures
-    /\bFor and on behalf of\b/i,
-    /\bauthori[sz]ed\s+signator/i,
-    /\bduly\s+authori[sz]ed/i,
-    /\bPlace[,:\s]+Date[:\s]/i,
-    /\bOrt[,:\s]+Datum[:\s]/i,        // German: Place, Date
-    /\bUnterschrift/i,                 // German: Signature
-    /\bName[:\s]*_{3,}/i,
-    /\bTitle[:\s]*_{3,}/i,
-    /\bBy[:\s]*_{3,}/i,
-    /_{5,}\s*\n.*(?:Name|Title|Date)/i,
-    /\bDigitally signed\b/i,
-    /\bDocuSign/i,
-    /\bAdobe Sign/i,
-    /\belectronic(?:ally)?\s+signed/i,
-  ];
-  const signedIndicators = [
-    /\/s\/\s+\S+/i,
-    new RegExp(`(?:Signed|Executed)\s+(?:on|this)\s+${FULL_DATE_PATTERN}`, 'i'),
-    new RegExp(`\bDate(?:d)?[:\s]+${FULL_DATE_PATTERN}`, 'i'),
-    // Additional signed indicators
-    /\bFor and on behalf of\b.*\n.*[A-Z][a-z]/i,
-    /\bduly\s+executed/i,
-    /\bDigitally signed by\b/i,
-    /\bDocuSigned by\b/i,
-    // Completed signature blocks: Signature field followed by Name/Title fields with values
-    // (indicates physical/handwritten signatures exist even if DI can't OCR the ink)
-    /\bSignature[:\s]*\n[\s\S]{0,200}?\bName[:\s]+[A-Z][a-z]/i,
-    /\bBuyer\b[\s\S]{0,300}?\bSupplier\b[\s\S]{0,300}?\bName[:\s]+\S/i,
-  ];
+  const signatureEvidence = assessSignatureEvidence(contractText);
 
-  const hasSignatureBlock = signatureBlockPatterns.some(pattern => pattern.test(contractText));
-  const hasSignedContent = signedIndicators.some(pattern => pattern.test(contractText));
-
-  if (!hasSignatureBlock && !hasSignedContent) {
+  if (!signatureEvidence.hasSignatureBlock && !signatureEvidence.hasActualSignatureEvidence) {
     return { signatureStatus: null, signatureDate: null };
   }
 
-  const signatureDateMatch = contractText.match(
-    new RegExp(`(?:Executed|Signed|Dated?)\s+(?:this\s+)?(?:on\s+)?(${FULL_DATE_PATTERN})`, 'i')
-  ) || contractText.match(new RegExp(`\bDate(?:d)?[:\s]+(${FULL_DATE_PATTERN})`, 'i'));
-
   return {
-    signatureStatus: hasSignedContent ? 'signed' : 'unsigned',
-    signatureDate: signatureDateMatch?.[1] ? tryParseDate(signatureDateMatch[1]) : null,
+    signatureStatus: signatureEvidence.hasActualSignatureEvidence ? 'signed' : 'unsigned',
+    signatureDate: signatureEvidence.hasActualSignatureEvidence && signatureEvidence.signatureDateText
+      ? tryParseDate(signatureEvidence.signatureDateText)
+      : null,
   };
 }
 
@@ -1269,7 +1229,7 @@ async function extractContractMetadata(
 - parties: Array of all party names as strings (companies/individuals only, no addresses)
 - clientName: Name of the client/buyer/customer party if explicit, otherwise null
 - supplierName: Name of the supplier/vendor/service provider party if explicit, otherwise null
-- signatureStatus: One of "signed", "partially_signed", "unsigned", or "unknown". Look for signature blocks, "For and on behalf of", "/s/" markers, names appearing after signature lines, handwritten-style names, DocuSign/Adobe Sign indicators, execution clauses, witness sections, or any indication the contract was executed. If the document has signature blocks with names filled in, it is "signed". If signature blocks exist but are blank, it is "unsigned".
+- signatureStatus: One of "signed", "partially_signed", "unsigned", or "unknown". Only mark "signed" when there is direct execution evidence such as a /s/ marker, a non-empty Signature/Signed by/Executed by field, a digital/e-sign completion marker, or explicit "Signed by"/"Executed by" text with a person. Typed Name, Title, Buyer, Supplier, or organization fields identify signatories only; they do not prove execution. If Signature or Date fields are blank, return "unsigned".
 - signatureDate: Date of final execution (ISO format YYYY-MM-DD or null)
 
 Return ONLY valid JSON.
@@ -1329,6 +1289,17 @@ ${truncatedText}`,
           logger.warn({ contractId, conflicts }, 'Metadata extraction conflicts (AI values used)');
         }
 
+        const parsedSignatureStatus = typeof parsed.signatureStatus === 'string' ? parsed.signatureStatus : undefined;
+        const signatureEvidence = assessSignatureEvidence(contractText);
+        const resolvedSignatureStatus = signatureEvidence.hasActualSignatureEvidence
+          ? (parsedSignatureStatus === 'partially_signed' ? 'partially_signed' : 'signed')
+          : signatureEvidence.hasSignatureBlock
+            ? 'unsigned'
+            : (parsedSignatureStatus || basicMetadata.signatureStatus);
+        const resolvedSignatureDate = resolvedSignatureStatus === 'signed' || resolvedSignatureStatus === 'partially_signed'
+          ? (parsed.signatureDate || basicMetadata.signatureDate)
+          : undefined;
+
         return {
           title: parsed.title || basicMetadata.title,
           contractType: parsed.contractType || basicMetadata.contractType,
@@ -1339,13 +1310,8 @@ ${truncatedText}`,
           parties: parsedParties || basicMetadata.parties,
           clientName: parsed.clientName || basicMetadata.clientName,
           supplierName: parsed.supplierName || basicMetadata.supplierName,
-          // For signatureStatus: prefer regex "signed" over AI "unsigned" because
-          // AI only sees extracted text and cannot detect handwritten/ink signatures
-          // that the regex heuristics identify from completed signature blocks
-          signatureStatus: (basicMetadata.signatureStatus === 'signed' && parsed.signatureStatus === 'unsigned')
-            ? basicMetadata.signatureStatus
-            : (parsed.signatureStatus || basicMetadata.signatureStatus),
-          signatureDate: parsed.signatureDate || basicMetadata.signatureDate,
+          signatureStatus: resolvedSignatureStatus,
+          signatureDate: resolvedSignatureDate,
         };
       }
     } catch (aiError) {
@@ -2283,6 +2249,7 @@ export async function generateRealArtifacts(
     // ── Extract metadata FIRST so contractTitle is in DB before artifacts run ──
     logger.info({ contractId }, 'Extracting contract metadata (pre-artifact)');
     try {
+      const preSignatureEvidence = assessSignatureEvidence(contractText);
       const preMetadata = await extractContractMetadata(contractText, contractId, extractedContractFacts);
       const preUpdateData: Record<string, any> = {};
       if (preMetadata.title && shouldApplyExtractedContractTitle(existingContract)) {
@@ -2325,7 +2292,7 @@ export async function generateRealArtifacts(
       }
       // DI handwriting override: if Document Intelligence detected handwritten content
       // in a document that has signature-related context, treat as signed
-      if (diHandwritingEvidence.hasHandwriting && (!preUpdateData.signatureStatus || preUpdateData.signatureStatus === 'unknown')) {
+      if (diHandwritingEvidence.hasHandwriting && preSignatureEvidence.hasSignatureBlock && (!preUpdateData.signatureStatus || preUpdateData.signatureStatus === 'unknown')) {
         logger.info({ contractId, handwrittenSpans: diHandwritingEvidence.handwrittenSpans.length }, 'DI detected handwritten content — overriding signature status to signed');
         preUpdateData.signatureStatus = 'signed';
         preUpdateData.signatureRequiredFlag = false;

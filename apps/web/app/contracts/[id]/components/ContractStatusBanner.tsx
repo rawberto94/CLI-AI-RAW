@@ -159,8 +159,8 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
         icon: PenLine,
         bgClass: 'bg-violet-50 border-violet-200',
         textClass: 'text-violet-700',
-        title: 'Contract Not Signed',
-        subtitle: 'This contract has not been executed. It may not be legally binding.',
+        title: 'Signature Missing',
+        subtitle: 'This contract has not been executed. Request signature or upload the signed copy before relying on it as final.',
         buttonText: 'Request Signature',
         buttonClass: 'border-violet-300 text-violet-700 hover:bg-violet-100',
         priority: 90,
@@ -171,7 +171,7 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
         icon: PenLine,
         bgClass: 'bg-amber-50 border-amber-200',
         textClass: 'text-amber-700',
-        title: 'Partially Signed',
+        title: 'Signature Incomplete',
         subtitle: 'Some parties have not yet signed this contract.',
         buttonText: 'Request Signature',
         buttonClass: 'border-amber-300 text-amber-700 hover:bg-amber-100',
@@ -193,8 +193,8 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
         icon: AlertCircle,
         bgClass: 'bg-red-50 border-red-200',
         textClass: 'text-red-700',
-        title: 'Contract Expired',
-        subtitle: `Ended ${formatDate(endDate!)} (${Math.abs(daysRemaining!)} days ago)`,
+        title: 'Renewal Overdue',
+        subtitle: `Ended ${formatDate(endDate!)} (${Math.abs(daysRemaining!)} days ago). Start renewal or mark the contract closed.`,
         buttonText: 'Initiate Renewal',
         buttonClass: 'border-red-300 text-red-700 hover:bg-red-100',
         priority: 80,
@@ -205,8 +205,8 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
         icon: Clock,
         bgClass: 'bg-amber-50 border-amber-200',
         textClass: 'text-amber-700',
-        title: 'Expiring Soon',
-        subtitle: `${daysRemaining} days until ${formatDate(endDate!)}`,
+        title: 'Renewal Window Open',
+        subtitle: `${daysRemaining} days until ${formatDate(endDate!)}. Decide whether to renew, extend, or set a reminder.`,
         buttonText: 'Start Renewal',
         secondaryButtonText: 'Set Reminder',
         buttonClass: 'border-amber-300 text-amber-700 hover:bg-amber-100',
@@ -224,8 +224,8 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
         icon: AlertTriangle,
         bgClass: 'bg-amber-50 border-amber-200',
         textClass: 'text-amber-700',
-        title: isHighRisk ? 'High Risk Contract' : 'Review Needed',
-        subtitle: needsReview ? 'Compliance review required' : 'Risk assessment recommended',
+        title: isHighRisk ? 'High-Risk Terms Detected' : 'Compliance Review Needed',
+        subtitle: needsReview ? 'Compliance issues were found in the analysis.' : 'Risk assessment recommends legal review.',
         buttonText: 'View Details',
         buttonClass: 'border-amber-300 text-amber-700 hover:bg-amber-100',
         priority: 60,
@@ -234,7 +234,7 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
     
     // Sort by priority (highest first)
     return result.sort((a, b) => b.priority - a.priority)
-  }, [endDate, riskLevel, complianceOk, signatureStatus, documentClassification, documentClassificationWarning])
+  }, [contractStatus, endDate, riskLevel, complianceOk, signatureStatus, documentClassification, documentClassificationWarning])
   
   const normalizedFailedArtifactTypes = useMemo(
     () => failedArtifactTypes.map(normalizeArtifactType),
@@ -257,9 +257,11 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 shrink-0" />
               <div className="min-w-0">
-                <div className="font-semibold">Some artifact generation steps failed</div>
+                <div className="font-semibold">
+                  Partial analysis: {normalizedFailedArtifactTypes.length} section{normalizedFailedArtifactTypes.length === 1 ? '' : 's'} need regeneration
+                </div>
                 <div className="text-sm">
-                  {normalizedFailedArtifactTypes.length} artifact{normalizedFailedArtifactTypes.length === 1 ? '' : 's'} need regeneration.
+                  Regenerate these sections before relying on the full AI analysis.
                 </div>
               </div>
             </div>
@@ -273,7 +275,7 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
                 className="border-amber-300 text-amber-700 hover:bg-amber-100"
               >
                 {isRetryingAllArtifacts && <Clock className="h-3 w-3 mr-1 animate-spin" />}
-                Retry All
+                Regenerate all
               </Button>
             )}
           </div>
@@ -292,7 +294,7 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
                     className="border-amber-300 text-amber-700 hover:bg-amber-100"
                   >
                     {isRetrying && <Clock className="h-3 w-3 mr-1 animate-spin" />}
-                    Retry {artifactLabels[artifactType] || artifactType}
+                    Regenerate {artifactLabels[artifactType] || artifactType}
                   </Button>
                 )
               })}

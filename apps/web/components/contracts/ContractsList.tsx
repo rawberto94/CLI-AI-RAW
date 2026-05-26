@@ -1,7 +1,7 @@
 /**
  * Contracts List Component
  * 
- * Renders the list of contracts in various view modes.
+ * Renders the list of contracts in finished list/card view modes.
  * Handles selection, pagination, and view mode switching.
  */
 
@@ -72,7 +72,7 @@ export interface Contract {
   updatedAt?: string | Date;
 }
 
-export type ViewMode = 'compact' | 'cards' | 'timeline' | 'kanban' | 'calendar';
+export type ViewMode = 'compact' | 'cards';
 
 export interface ContractsListProps {
   contracts: Contract[];
@@ -1234,47 +1234,6 @@ export const ContractsList = memo(function ContractsList({
             </div>
           ))}
         </motion.div>
-      </div>
-    );
-  }
-
-  // Timeline and Kanban views would use their own dedicated components
-  if (viewMode === 'timeline') {
-    return (
-      <div className={className}>
-        <TimelineView
-          contracts={contracts}
-          selectedIds={selectedIds}
-          onSelect={handleSelect}
-          onContractClick={onContractClick}
-          onContractEdit={onContractEdit}
-          onContractDelete={onContractDelete}
-        />
-      </div>
-    );
-  }
-
-  if (viewMode === 'kanban') {
-    return (
-      <div className={className}>
-        <KanbanView
-          contracts={contracts}
-          selectedIds={selectedIds}
-          onSelect={handleSelect}
-          onContractClick={onContractClick}
-        />
-      </div>
-    );
-  }
-
-  if (viewMode === 'calendar') {
-    return (
-      <div className={className}>
-        <CalendarView
-          contracts={contracts}
-          selectedIds={selectedIds}
-          onContractClick={onContractClick}
-        />
       </div>
     );
   }

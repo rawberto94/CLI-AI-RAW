@@ -42,6 +42,7 @@ export interface StreamMessage {
   status?: string;
   artifactCount?: number;
   error?: string;
+  message?: string;
   recoverable?: boolean;
 }
 
@@ -98,24 +99,6 @@ export function useArtifactStream({
   // Keep callback refs in sync
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
   useEffect(() => { onErrorRef.current = onError; }, [onError]);
-
-  // Also mark complete if all received artifacts are done (fallback)
-  // Don't hardcode a count — contract-type filtering may produce fewer than 10
-  useEffect(() => {
-    if (!isComplete && artifacts.length > 0) {
-      const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
-      if (completedCount >= artifacts.length) {
-        // All artifacts the server told us about are complete
-        setIsComplete(true);
-        isCompleteRef.current = true;
-        // Clean up connection
-        if (eventSourceRef.current) {
-          eventSourceRef.current.close();
-          eventSourceRef.current = null;
-        }
-      }
-    }
-  }, [artifacts, isComplete]);
 
   // Visibility change handler - reconnect when tab becomes visible
   useEffect(() => {
@@ -241,13 +224,22 @@ export function useArtifactStream({
             break;
 
           case 'complete':
+            if (data.artifacts) {
+              setArtifacts(data.artifacts);
+            }
+            if (data.status) {
+              setContractStatus(data.status);
+            }
             setIsComplete(true);
             isCompleteRef.current = true;
             setIsConnected(false);
             // Use artifacts from message or current state
             const finalArtifacts = data.artifacts || artifacts;
-            if (finalArtifacts.length > 0 && onCompleteRef.current) {
+            if (data.status === 'COMPLETED' && finalArtifacts.length > 0 && onCompleteRef.current) {
               onCompleteRef.current(finalArtifacts);
+            }
+            if (data.status && data.status !== 'COMPLETED') {
+              setError(data.error || data.message || `Processing ended with status ${data.status}.`);
             }
             eventSource.close();
             break;

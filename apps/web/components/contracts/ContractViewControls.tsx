@@ -24,8 +24,6 @@ import {
 import {
   LayoutGrid,
   LayoutList,
-  GanttChartSquare,
-  Kanban,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -45,7 +43,7 @@ import { SORT_OPTIONS, PAGE_SIZE_OPTIONS } from "@/lib/contracts/constants";
 // VIEW MODE TOGGLE
 // ============================================================================
 
-export type ViewMode = 'compact' | 'cards' | 'timeline' | 'kanban';
+export type ViewMode = 'compact' | 'cards';
 
 interface ViewModeToggleProps {
   mode: ViewMode;
@@ -59,8 +57,6 @@ export const ViewModeToggle = memo(function ViewModeToggle({
   const views: Array<{ value: ViewMode; icon: typeof LayoutList; label: string }> = [
     { value: 'compact', icon: LayoutList, label: 'List View' },
     { value: 'cards', icon: LayoutGrid, label: 'Card View' },
-    { value: 'timeline', icon: GanttChartSquare, label: 'Timeline View' },
-    { value: 'kanban', icon: Kanban, label: 'Kanban View' },
   ];
 
   return (
