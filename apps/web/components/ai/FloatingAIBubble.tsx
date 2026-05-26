@@ -72,14 +72,13 @@ import { AIErrorBoundary } from "@/components/ai/AIErrorBoundary";
 import { MarkdownContent } from "@/components/ai/MarkdownContent";
 import { useOfflineQueue } from "@/lib/ai/offline-queue.service";
 import { ExportChatDialog } from "@/components/ai/ExportChatDialog";
-import { InlineUsageIndicator } from "@/components/ai/AIUsageQuotaWidget";
 import { ChatHistorySearch } from "@/components/ai/ChatHistorySearch";
 import { OfflineStatusIndicator } from "@/components/ai/OfflineStatusIndicator";
 
 // Round 3 Enhancements
 import { AIFeedbackDialog } from "@/components/ai/AIFeedbackDialog";
 import { ConversationHistoryPanel } from "@/components/ai/ConversationHistoryPanel";
-import { AICostWidget, calculateCost } from "@/components/ai/AICostWidget";
+import { calculateCost } from "@/components/ai/AICostWidget";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 
 // Types
@@ -1866,6 +1865,9 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
     const match = persistence.conversations.find((c) => c.id === id);
     return match?.title || null;
   }, [persistence.conversationId, persistence.conversations]);
+  const chatModeLabel = chatMode === 'fast' ? 'Fast' : chatMode === 'deep' ? 'Deep' : 'Balanced';
+  const visibleMessageCount = Math.max(0, messages.length - 1);
+  const statusLabel = isTyping ? 'Analyzing' : currentContractId ? 'Context-aware' : 'Ready';
 
   // Update conversation context
   const updateContext = (query: string) => {
@@ -2123,23 +2125,23 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                 <div className="relative h-full flex flex-col">
                   {/* Header - Clean glassmorphism design */}
                   <div 
-                    className={`flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white/80 backdrop-blur-md select-none ${isEmbedded ? '' : 'cursor-grab active:cursor-grabbing'}`}
+                    className={`flex items-center justify-between gap-4 px-5 py-3.5 border-b border-gray-200 bg-white/90 backdrop-blur-md select-none ${isEmbedded ? '' : 'cursor-grab active:cursor-grabbing'}`}
                     onMouseDown={isEmbedded ? undefined : handleDragStart}
                     onTouchStart={isEmbedded ? undefined : handleDragStart}
                   >
-                    <div className="flex items-center gap-3.5 pointer-events-none">
+                    <div className="flex min-w-0 items-center gap-3 pointer-events-none">
                       <div className="relative">
                         <div 
-                          className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md"
+                          className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md"
                         >
-                          <Bot className="w-5.5 h-5.5 text-white" />
+                          <Bot className="w-5 h-5 text-white" />
                         </div>
                         <span
-                          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white"
+                          className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500"
                         />
                       </div>
-                      <div>
-                        <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                      <div className="min-w-0">
+                        <h3 className="flex min-w-0 items-center text-base font-semibold text-gray-900">
                           {isRenamingTitle ? (
                             <input
                               autoFocus
@@ -2155,7 +2157,7 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                           ) : (
                             <button
                               type="button"
-                              className="text-left truncate max-w-[180px] hover:underline focus:outline-none focus-visible:underline pointer-events-auto"
+                              className="truncate text-left hover:underline focus:outline-none focus-visible:underline pointer-events-auto max-w-[260px] sm:max-w-[320px]"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (!persistence.conversationId) return;
@@ -2167,109 +2169,89 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                               {conversationTitle || 'ConTigo AI'}
                             </button>
                           )}
-                          <Badge className="bg-violet-50 text-violet-700 text-[10px] border-violet-200/50 px-2 py-0.5 font-medium">
-                            <Zap className="w-2.5 h-2.5 mr-1" />
-                            RAG
-                          </Badge>
-                          <Badge
-                            className={`text-[10px] px-2 py-0.5 font-medium border cursor-default ${
-                              chatMode === 'fast'
-                                ? 'bg-sky-50 text-sky-700 border-sky-200/60'
-                                : chatMode === 'deep'
-                                  ? 'bg-purple-50 text-purple-700 border-purple-200/60'
-                                  : 'bg-slate-50 text-slate-700 border-slate-200/70'
-                            }`}
-                            title={`Response mode: ${chatMode}`}
-                          >
-                            {chatMode === 'fast' ? 'Fast' : chatMode === 'deep' ? 'Deep' : 'Balanced'}
-                          </Badge>
-                          {perspective === 'counterparty' && (
-                            <Badge
-                              className="bg-amber-50 text-amber-800 text-[10px] border-amber-200/60 px-2 py-0.5 font-medium cursor-default"
-                              title="Opposing-party lens is ON — analyzing from counterparty view"
-                            >
-                              Counterparty view
-                            </Badge>
-                          )}
-                          {persona !== 'default' && (
-                            <Badge
-                              className="bg-indigo-50 text-indigo-700 text-[10px] border-indigo-200/60 px-2 py-0.5 font-medium cursor-default"
-                              title={`Persona: ${persona}`}
-                            >
-                              {persona.charAt(0).toUpperCase() + persona.slice(1)}
-                            </Badge>
-                          )}
-                          {/* Usage Quota Indicator */}
-                          <InlineUsageIndicator />
-                          {lastArtifactUpdate && (
-                            <Badge className="bg-emerald-50 text-emerald-700 text-[10px] border-emerald-200/50 px-2 py-0.5 font-medium">
-                              <RefreshCw className="w-2.5 h-2.5 mr-1" />
-                              Live
-                            </Badge>
-                          )}
                         </h3>
-                        <p className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
                           {isTyping ? (
                             <span 
-                              className="flex items-center gap-1.5"
+                              className="flex items-center gap-1.5 text-violet-600 font-medium"
                             >
                               <motion.span 
                                 className="w-1.5 h-1.5 bg-violet-500 rounded-full"
                                 animate={{ scale: [1, 1.3, 1] }}
                                 transition={{ repeat: Infinity, duration: 0.8 }}
                               />
-                              <span className="text-violet-600 font-medium">Analyzing...</span>
+                              {statusLabel}
                             </span>
                           ) : currentContractId ? (
-                            <span className="flex items-center gap-1.5">
+                            <span className="flex items-center gap-1.5 text-violet-600">
                               <span className="w-1.5 h-1.5 bg-violet-500 rounded-full" />
-                              <span className="text-violet-600">Context-aware</span>
-                              {lastArtifactUpdate && (
-                                <span className="text-xs text-green-600">
-                                  • Synced {formatTimeAgo(lastArtifactUpdate)}
-                                </span>
-                              )}
+                              {statusLabel}
                             </span>
                           ) : (
                             <span className="flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                              Ready • {messages.length - 1} message{messages.length - 1 !== 1 ? 's' : ''}
+                              {statusLabel}
                             </span>
                           )}
-                        </p>
+                          <span className="text-gray-300">|</span>
+                          <span>{visibleMessageCount} message{visibleMessageCount !== 1 ? 's' : ''}</span>
+                          <span className="text-gray-300">|</span>
+                          <span>{chatModeLabel}</span>
+                          <span className="text-gray-300">|</span>
+                          <span>RAG on</span>
+                          {perspective === 'counterparty' && (
+                            <>
+                              <span className="text-gray-300">|</span>
+                              <span className="text-amber-700">Counterparty</span>
+                            </>
+                          )}
+                          {persona !== 'default' && (
+                            <>
+                              <span className="text-gray-300">|</span>
+                              <span className="text-indigo-700">{persona.charAt(0).toUpperCase() + persona.slice(1)}</span>
+                            </>
+                          )}
+                          {lastArtifactUpdate && (
+                            <>
+                              <span className="text-gray-300">|</span>
+                              <span className="text-emerald-700">Synced {formatTimeAgo(lastArtifactUpdate)}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2 pointer-events-auto">
-                      {/* Cost Widget - Real-time token usage */}
-                      <AICostWidget
-                        currentUsage={currentTokenUsage}
-                        compact
-                        onBudgetAlert={(percent) => {
-                          if (percent >= 95) {
-                            // Show warning in chat
-                            setMessages((prev) => [...prev, {
-                              id: `budget-warning-${Date.now()}`,
-                              role: "system" as const,
-                              content: "⚠️ You've used 95% of your daily AI budget.",
-                              timestamp: new Date(),
-                            }]);
-                          }
-                        }}
-                      />
-                      
+                    <div className="flex shrink-0 items-center gap-1.5 pointer-events-auto">
                       {/* Settings dropdown */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-10 w-10 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                            className="h-9 w-9 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100"
                           >
-                            <Settings className="w-5 h-5" />
+                            <Settings className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-white border-gray-200 text-gray-900 min-w-[220px] shadow-lg">
+                          <div className="border-b border-gray-100 px-3 py-3 text-xs text-gray-600">
+                            <div className="flex items-center justify-between gap-6">
+                              <span>Mode</span>
+                              <span className="font-medium text-gray-900">{chatModeLabel}</span>
+                            </div>
+                            <div className="mt-1.5 flex items-center justify-between gap-6">
+                              <span>Retrieval</span>
+                              <span className="font-medium text-gray-900">RAG on</span>
+                            </div>
+                            <div className="mt-1.5 flex items-center justify-between gap-6">
+                              <span>Last request</span>
+                              <span className="font-medium text-gray-900">
+                                {currentTokenUsage
+                                  ? `${currentTokenUsage.totalTokens.toLocaleString()} tokens - $${currentTokenUsage.cost.toFixed(4)}`
+                                  : 'No usage yet'}
+                              </span>
+                            </div>
+                          </div>
                           <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                             Response mode
                           </div>
@@ -2441,18 +2423,18 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-10 w-10 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                            className="h-9 w-9 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100"
                             onClick={() => setIsExpanded(!isExpanded)}
                           >
-                            {isExpanded ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+                            {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-10 w-10 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                            className="h-9 w-9 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100"
                             onClick={toggleOpen}
                           >
-                            <X className="w-5 h-5" />
+                            <X className="w-4 h-4" />
                           </Button>
                         </>
                       )}
