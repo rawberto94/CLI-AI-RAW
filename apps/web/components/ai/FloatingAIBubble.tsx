@@ -2673,23 +2673,32 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                                           : ''
                                       }
                                     >
-                                      <MarkdownContent
-                                        content={(() => {
-                                          // Inline citations: transform [N] tokens into visible superscripts
-                                          // when the message has ragSources. Keeps markdown rendering simple.
-                                          const sources = message.metadata?.ragSources;
-                                          if (!sources || sources.length === 0 || message.role === 'user') {
-                                            return message.content;
-                                          }
-                                          return message.content.replace(/\[(\d+)\]/g, (_m, digits) => {
-                                            const idx = parseInt(digits, 10);
-                                            if (idx < 1 || idx > sources.length) return `[${digits}]`;
-                                            return `[${toSuperscriptNumber(idx)}](${buildCitationHref({ source: sources[idx - 1], index: idx })})`;
-                                          });
-                                        })()}
-                                        className={`text-[15px] leading-relaxed ${message.role === "user" ? "prose-invert !text-white [&_*]:!text-white [&_a]:!underline [&_code]:!bg-white/15 [&_pre]:!bg-black/20 [&_table]:!border-white/30 [&_td]:!border-white/30 [&_th]:!border-white/30 [&_th]:!bg-white/10" : ""}`}
-                                        onInternalLinkClick={(href, event) => handleInlineCitationClick(href, message.metadata?.ragSources, event)}
-                                      />
+                                      {message.role === 'user' ? (
+                                        <div
+                                          className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-white"
+                                          style={{ color: '#fff' }}
+                                        >
+                                          {message.content}
+                                        </div>
+                                      ) : (
+                                        <MarkdownContent
+                                          content={(() => {
+                                            // Inline citations: transform [N] tokens into visible superscripts
+                                            // when the message has ragSources. Keeps markdown rendering simple.
+                                            const sources = message.metadata?.ragSources;
+                                            if (!sources || sources.length === 0) {
+                                              return message.content;
+                                            }
+                                            return message.content.replace(/\[(\d+)\]/g, (_m, digits) => {
+                                              const idx = parseInt(digits, 10);
+                                              if (idx < 1 || idx > sources.length) return `[${digits}]`;
+                                              return `[${toSuperscriptNumber(idx)}](${buildCitationHref({ source: sources[idx - 1], index: idx })})`;
+                                            });
+                                          })()}
+                                          className="text-[15px] leading-relaxed"
+                                          onInternalLinkClick={(href, event) => handleInlineCitationClick(href, message.metadata?.ragSources, event)}
+                                        />
+                                      )}
                                       {/* Streaming cursor: visible only on the last assistant message while still loading */}
                                       {isLoading && message.role === 'assistant' && msgIndex === messages.length - 1 && (
                                         <span
