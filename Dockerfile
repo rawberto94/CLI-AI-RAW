@@ -83,8 +83,8 @@ RUN DATABASE_URL="$DATABASE_URL" \
 FROM node:22-alpine AS runner
 WORKDIR /app
 
-# Install OpenSSL for Prisma runtime + tini for proper signal handling
-RUN apk add --no-cache libc6-compat openssl openssl-dev tini
+# Install OpenSSL for Prisma runtime, poppler for PDF page rendering, and tini for proper signal handling
+RUN apk add --no-cache libc6-compat openssl openssl-dev poppler-utils tini
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

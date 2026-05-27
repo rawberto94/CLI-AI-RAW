@@ -45,7 +45,7 @@ interface QuickOverviewProps {
   signatureRequiredFlag?: boolean
 }
 
-const overviewTileClassName = 'flex h-full min-h-[184px] flex-col rounded-[24px] border border-slate-200/90 bg-white p-5 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.16)]'
+const overviewTileClassName = 'flex h-full min-h-[168px] min-w-0 flex-col rounded-lg border border-slate-200/90 bg-white p-4 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.16)]'
 const overviewTileHeaderClassName = 'mb-4 flex items-center gap-2.5'
 const overviewTileLabelClassName = 'text-[10px] sm:text-xs font-semibold uppercase tracking-[0.22em] text-slate-500'
 
@@ -64,19 +64,19 @@ const ValueSection = memo(function ValueSection({
         </div>
         <span className={overviewTileLabelClassName}>Value</span>
       </div>
-      <p className="mb-3 text-xl font-bold leading-tight text-slate-900 sm:text-2xl">
+      <p className="mb-3 min-w-0 break-words text-xl font-bold leading-tight text-slate-900 sm:text-2xl">
         {tcvAmount != null && tcvAmount > 0 
           ? formatCurrency(tcvAmount, currency || 'USD')
           : <span className="text-slate-400 text-base sm:text-lg">Not specified</span>}
       </p>
       <div className="mt-auto flex flex-wrap items-center gap-1.5">
         {paymentType && paymentType !== 'none' && (
-          <Badge className="bg-violet-100 text-violet-700 border-0 text-[10px] sm:text-xs font-medium hover:bg-violet-100">
+          <Badge className="max-w-full whitespace-normal bg-violet-100 text-violet-700 border-0 text-[10px] sm:text-xs font-medium hover:bg-violet-100">
             {formatPaymentType(paymentType as any)}
           </Badge>
         )}
         {periodicity && periodicity !== 'none' && (
-          <Badge variant="outline" className="text-[10px] sm:text-xs text-slate-600 border-slate-200">
+          <Badge variant="outline" className="max-w-full whitespace-normal text-[10px] sm:text-xs text-slate-600 border-slate-200">
             {formatPeriodicity(periodicity as any)}
           </Badge>
         )}
@@ -103,7 +103,7 @@ const PartiesSection = memo(function PartiesSection({
           displayParties.map((party, idx) => {
             const isClient = ['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role || '')
             return (
-              <div key={(party as any).id || party.legalName || `party-${idx}`} className="flex min-h-[60px] items-center gap-3 rounded-2xl border border-violet-100 bg-violet-50/80 px-3 py-2.5">
+              <div key={(party as any).id || party.legalName || `party-${idx}`} className="flex min-h-[56px] min-w-0 items-center gap-3 rounded-lg border border-violet-100 bg-violet-50/80 px-3 py-2.5">
                 <div className={cn(
                   'flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl',
                   isClient ? "bg-violet-100" : "bg-violet-100"
@@ -129,7 +129,7 @@ const PartiesSection = memo(function PartiesSection({
             )
           })
         ) : (
-          <div className="flex flex-1 items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2.5 text-xs italic text-slate-400 sm:text-sm">No parties identified</div>
+          <div className="flex flex-1 items-center rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-2.5 text-xs italic text-slate-400 sm:text-sm">No parties identified</div>
         )}
         {parties.length > 2 && (
           <button className="mt-auto text-left text-[10px] font-medium text-violet-600 hover:text-violet-700 sm:text-xs">
@@ -166,11 +166,11 @@ const DurationSection = memo(function DurationSection({
       </div>
       <div className="flex flex-1 flex-col gap-2.5">
         {/* Date Range */}
-        <div className="flex min-h-[60px] items-center gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 text-xs sm:text-sm">
-          <span className="font-medium text-slate-600">{startDate ? formatDate(startDate) : '—'}</span>
-          <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400" />
+        <div className="flex min-h-[56px] min-w-0 items-center gap-2 rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 text-xs sm:text-sm">
+          <span className="min-w-0 truncate font-medium text-slate-600">{startDate ? formatDate(startDate) : '—'}</span>
+          <ArrowRight className="h-3 w-3 shrink-0 text-slate-400 sm:h-3.5 sm:w-3.5" />
           <span className={cn(
-            'font-semibold',
+            'min-w-0 truncate font-semibold',
             isExpired ? "text-red-600" : 
             needsDateReview ? "text-slate-500" :
             daysRemaining !== null && daysRemaining <= 90 ? "text-amber-600" : 
@@ -181,7 +181,7 @@ const DurationSection = memo(function DurationSection({
         </div>
         
         {/* Status Badge */}
-        <div className="flex min-h-[44px] items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/80 px-3 py-2.5">
+        <div className="flex min-h-[44px] min-w-0 flex-wrap items-center gap-2 rounded-lg border border-slate-200/80 bg-white/80 px-3 py-2.5">
           {isExpired ? (
             <Badge className="bg-red-100 text-red-700 border-0 text-[10px] sm:text-xs">
               <AlertCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
@@ -215,9 +215,9 @@ const DurationSection = memo(function DurationSection({
         
         {/* Notice Period */}
         {noticePeriod && !isExpired && (
-          <div className="mt-auto flex min-h-[44px] items-center gap-1.5 rounded-2xl border border-slate-200/80 bg-white/80 px-3 py-2.5 text-[10px] text-slate-500 sm:text-xs">
-            <Bell className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-            {noticePeriod} notice
+          <div className="mt-auto flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white/80 px-3 py-2.5 text-[10px] text-slate-500 sm:text-xs">
+            <Bell className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" />
+            <span className="min-w-0 truncate">{noticePeriod} notice</span>
           </div>
         )}
       </div>
@@ -242,22 +242,22 @@ const AssessmentSection = memo(function AssessmentSection({
       </div>
       <div className="flex flex-1 flex-col gap-2.5">
         {/* Signature Status */}
-        <div className="flex min-h-[44px] items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
-          <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex min-h-[44px] min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             <div className={cn(
-              "w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full",
+              "h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5",
               signatureStatus === 'signed' ? 'bg-violet-500' : 
               signatureStatus === 'partially_signed' ? 'bg-amber-500' : 
               signatureStatus === 'unsigned' ? 'bg-red-500' :
               'bg-slate-400'
             )} />
-            <span className="text-xs sm:text-sm font-medium text-slate-700">Signature</span>
+            <span className="min-w-0 truncate text-xs font-medium text-slate-700 sm:text-sm">Signature</span>
             {signatureRequiredFlag && (
               <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-500" />
             )}
           </div>
           <Badge className={cn(
-            "text-[10px] sm:text-xs font-medium border-0 flex items-center gap-1",
+            "max-w-full shrink-0 text-[10px] sm:text-xs font-medium border-0 flex items-center gap-1",
             signatureStatus === 'signed' ? 'bg-violet-100 text-violet-700' : 
             signatureStatus === 'partially_signed' ? 'bg-amber-100 text-amber-700' : 
             signatureStatus === 'unsigned' ? 'bg-red-100 text-red-700' :
@@ -274,18 +274,18 @@ const AssessmentSection = memo(function AssessmentSection({
         </div>
 
         {/* Risk Level */}
-        <div className="flex min-h-[44px] items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
-          <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex min-h-[44px] min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             <div className={cn(
-              "w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full",
+              "h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5",
               riskLevel === 'low' ? 'bg-violet-500' : 
               riskLevel === 'medium' ? 'bg-amber-500' : 
               'bg-red-500'
             )} />
-            <span className="text-xs sm:text-sm font-medium text-slate-700">Risk</span>
+            <span className="min-w-0 truncate text-xs font-medium text-slate-700 sm:text-sm">Risk</span>
           </div>
           <Badge className={cn(
-            "text-[10px] sm:text-xs font-medium border-0",
+            "max-w-full shrink-0 text-[10px] sm:text-xs font-medium border-0",
             riskLevel === 'low' ? 'bg-violet-100 text-violet-700' : 
             riskLevel === 'medium' ? 'bg-amber-100 text-amber-700' : 
             'bg-red-100 text-red-700'
@@ -295,16 +295,16 @@ const AssessmentSection = memo(function AssessmentSection({
         </div>
         
         {/* Compliance */}
-        <div className="flex min-h-[44px] items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
-          <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex min-h-[44px] min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             <div className={cn(
-              "w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full",
+              "h-2 w-2 shrink-0 rounded-full sm:h-2.5 sm:w-2.5",
               complianceStatus === 'ok' ? 'bg-violet-500' : 'bg-amber-500'
             )} />
-            <span className="text-xs sm:text-sm font-medium text-slate-700">Compliance</span>
+            <span className="min-w-0 truncate text-xs font-medium text-slate-700 sm:text-sm">Compliance</span>
           </div>
           <Badge className={cn(
-            "text-[10px] sm:text-xs font-medium border-0",
+            "max-w-full shrink-0 text-[10px] sm:text-xs font-medium border-0",
             complianceStatus === 'ok' ? 'bg-violet-100 text-violet-700' : 'bg-amber-100 text-amber-700'
           )}>
             {complianceStatus === 'ok' ? 'OK' : 'Review'}
@@ -317,7 +317,7 @@ const AssessmentSection = memo(function AssessmentSection({
 
 export const ContractQuickOverview = memo(function ContractQuickOverview(props: QuickOverviewProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 xl:gap-5">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-4">
         <ValueSection 
           tcvAmount={props.tcvAmount}
           currency={props.currency}

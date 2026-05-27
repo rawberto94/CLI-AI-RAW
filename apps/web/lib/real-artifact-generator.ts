@@ -8,9 +8,12 @@
  */
 
 import { PrismaClient, ArtifactType } from '@prisma/client';
+import { execFile } from 'child_process';
 import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import pino from 'pino';
+import { promisify } from 'util';
 import {
   assessCriticalContractEvidence,
   assessSignatureEvidence,
@@ -30,6 +33,7 @@ import { linkPartiesToContract } from '@/lib/contract/party-linker';
 import { shouldApplyExtractedContractTitle } from '@/lib/contracts/display-name';
 
 const logger = pino({ name: 'real-artifact-generator' });
+const execFileAsync = promisify(execFile);
 
 // ── Text Preprocessing ──
 // Clean OCR output before feeding to AI: normalize whitespace, remove page numbers,
@@ -911,14 +915,15 @@ function repairArtifactData(
  * Uses native PDF file input (NOT image_url which rejects application/pdf MIME).
  */
 async function extractScannedPDFWithVision(fileContent: Buffer): Promise<string> {
-  const apiKey = getOpenAIApiKey();
-  if (!apiKey) {
-    logger.warn('OPENAI_API_KEY not set — cannot use Vision OCR for scanned PDF');
+  let apiKey = '';
+  try {
+    apiKey = getOpenAIApiKey();
+  } catch (error) {
+    logger.warn({ error }, 'AI API key not set — cannot use Vision OCR for scanned PDF');
     return '';
   }
   
   try {
-    const OpenAI = (await import('openai')).default;
     const openai = createOpenAIClient(apiKey);
     const base64 = fileContent.toString('base64');
     
@@ -960,6 +965,228 @@ Return the extracted text in clean markdown format.`,
     logger.error({ error }, 'GPT-4o Vision OCR failed for scanned PDF');
     return '';
   }
+}
+
+type VisualSignatureStatus = 'signed' | 'partially_signed' | 'unsigned' | 'unknown';
+
+interface VisualSignatureEvidence {
+  status: VisualSignatureStatus;
+  confidence: number;
+  signers: string[];
+  dates: string[];
+  reason: string;
+}
+
+const EMPTY_VISUAL_SIGNATURE_EVIDENCE: VisualSignatureEvidence = {
+  status: 'unknown',
+  confidence: 0,
+  signers: [],
+  dates: [],
+  reason: '',
+};
+
+function normalizeVisualSignatureStatus(value: unknown): VisualSignatureStatus {
+  const normalized = String(value || '').toLowerCase().replace(/\s+/g, '_');
+  if (normalized === 'signed' || normalized === 'partially_signed' || normalized === 'unsigned') return normalized;
+  return 'unknown';
+}
+
+function normalizeVisualConfidence(value: unknown): number {
+  if (typeof value === 'number') return Math.max(0, Math.min(1, value));
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'high' || normalized === 'very high') return 0.95;
+  if (normalized === 'medium' || normalized === 'moderate') return 0.75;
+  if (normalized === 'low') return 0.45;
+  const parsed = Number.parseFloat(normalized.replace('%', ''));
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.min(1, parsed > 1 ? parsed / 100 : parsed));
+}
+
+function normalizeVisualStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === 'string') return item.trim();
+      if (item && typeof item === 'object') {
+        const record = item as Record<string, unknown>;
+        const parts = [record.name, record.title, record.organization]
+          .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+          .map((part) => part.trim());
+        return parts.join(' — ');
+      }
+      return '';
+    })
+    .filter((item) => item.length > 0);
+}
+
+function parseVisualSignatureEvidence(rawContent: string): VisualSignatureEvidence {
+  if (!rawContent.trim()) return EMPTY_VISUAL_SIGNATURE_EVIDENCE;
+
+  try {
+    const parsed = JSON.parse(rawContent) as Record<string, unknown>;
+
+    return {
+      status: normalizeVisualSignatureStatus(parsed.signatureStatus ?? parsed.status),
+      confidence: normalizeVisualConfidence(parsed.confidence),
+      signers: normalizeVisualStringArray(parsed.signers),
+      dates: normalizeVisualStringArray(parsed.dates),
+      reason: typeof parsed.reason === 'string' ? parsed.reason.trim() : '',
+    };
+  } catch (error) {
+    logger.warn({ error, rawContent: rawContent.slice(0, 500) }, 'Failed to parse visual signature JSON');
+    return EMPTY_VISUAL_SIGNATURE_EVIDENCE;
+  }
+}
+
+function hasPositiveVisualSignatureEvidence(evidence: VisualSignatureEvidence): boolean {
+  return (evidence.status === 'signed' || evidence.status === 'partially_signed') && evidence.confidence >= 0.7;
+}
+
+function buildVisualSignatureEvidenceBlock(evidence: VisualSignatureEvidence): string {
+  const lines = [
+    '--- VISUAL SIGNATURE EVIDENCE ---',
+    `Signature status: ${evidence.status}`,
+    `Confidence: ${Math.round(evidence.confidence * 100)}%`,
+  ];
+  if (evidence.signers.length > 0) lines.push(`Signed by: ${evidence.signers.join('; ')}`);
+  if (evidence.dates.length > 0) lines.push(`Signature date(s): ${evidence.dates.join('; ')}`);
+  if (evidence.reason) lines.push(`Reason: ${evidence.reason}`);
+  lines.push('Evidence type: visible handwritten or digital signatures on the execution page.');
+  return lines.join('\n');
+}
+
+async function callVisualSignatureModel(content: Array<Record<string, unknown>>): Promise<VisualSignatureEvidence> {
+  let apiKey = '';
+  try {
+    apiKey = getOpenAIApiKey();
+  } catch (error) {
+    logger.warn({ error }, 'AI API key not set — cannot inspect PDF signature pages visually');
+    return EMPTY_VISUAL_SIGNATURE_EVIDENCE;
+  }
+
+  try {
+    const openai = createOpenAIClient(apiKey);
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `You inspect contract execution pages for visible signature evidence. Return strict JSON only.
+Rules:
+- Mark signed only when you can see handwritten ink signatures, drawn signature marks, or completed digital/e-signature marks on signature lines/blocks.
+- Typed names, titles, organization names, dates, empty lines, and blank signature labels do not prove execution.
+- Mark partially_signed when some required signature blocks are visibly signed and others are blank.
+- Mark unsigned when signature blocks exist but no visible signatures or completed e-signature marks are present.
+- Use unknown only when page visibility is too poor to decide.
+JSON shape: {"signatureStatus":"signed|partially_signed|unsigned|unknown","confidence":0.0,"signers":["name/title/org"],"dates":["date"],"reason":"short evidence summary"}.`,
+        },
+        {
+          role: 'user',
+          content: content as any,
+        },
+      ],
+      response_format: { type: 'json_object' },
+      max_tokens: 500,
+      temperature: 0,
+    }, { signal: AbortSignal.timeout(90_000) });
+
+    return parseVisualSignatureEvidence(response.choices[0]?.message?.content || '');
+  } catch (error) {
+    logger.warn({ error }, 'Visual signature inspection failed');
+    return EMPTY_VISUAL_SIGNATURE_EVIDENCE;
+  }
+}
+
+async function inspectPDFSignatureNative(fileContent: Buffer): Promise<VisualSignatureEvidence> {
+  const base64 = fileContent.toString('base64');
+  return callVisualSignatureModel([
+    {
+      type: 'text',
+      text: `Inspect the final execution/signature pages of this contract PDF and decide if it is signed.
+Return JSON with exactly these keys: signatureStatus, confidence, signers, dates, reason.
+    confidence must be a number from 0 to 1. signers and dates must be arrays of strings.
+signatureStatus must be one of signed, partially_signed, unsigned, unknown.`,
+    },
+    {
+      type: 'file',
+      file: {
+        filename: 'contract.pdf',
+        file_data: `data:application/pdf;base64,${base64}`,
+      },
+    } as any,
+  ]);
+}
+
+async function renderPDFSignaturePages(fileContent: Buffer, totalPdfPages: number): Promise<string[]> {
+  if (!totalPdfPages || totalPdfPages < 1) return [];
+
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'contigo-signature-pages-'));
+  try {
+    const inputPath = path.join(tempDir, 'contract.pdf');
+    const outputPrefix = path.join(tempDir, 'page');
+    const startPage = Math.max(1, totalPdfPages - 1);
+    await fs.writeFile(inputPath, fileContent);
+    await execFileAsync('pdftoppm', ['-r', '144', '-png', '-f', String(startPage), '-l', String(totalPdfPages), inputPath, outputPrefix], { timeout: 45_000 });
+    const files = (await fs.readdir(tempDir))
+      .filter((name) => name.startsWith('page-') && name.endsWith('.png'))
+      .sort();
+
+    const images: string[] = [];
+    for (const file of files) {
+      const image = await fs.readFile(path.join(tempDir, file));
+      images.push(image.toString('base64'));
+    }
+    return images;
+  } catch (error) {
+    logger.warn({ error }, 'Failed to render PDF signature pages for visual inspection');
+    return [];
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
+async function inspectPDFSignatureImages(fileContent: Buffer, totalPdfPages: number): Promise<VisualSignatureEvidence> {
+  const renderedPages = await renderPDFSignaturePages(fileContent, totalPdfPages);
+  if (renderedPages.length === 0) return EMPTY_VISUAL_SIGNATURE_EVIDENCE;
+
+  return callVisualSignatureModel([
+    {
+      type: 'text',
+      text: `These images are the final page(s) of a contract. Inspect only visible execution/signature evidence.
+Return JSON with exactly these keys: signatureStatus, confidence, signers, dates, reason.
+    confidence must be a number from 0 to 1. signers and dates must be arrays of strings.
+signatureStatus must be one of signed, partially_signed, unsigned, unknown.`,
+    },
+    ...renderedPages.map((base64) => ({
+      type: 'image_url',
+      image_url: { url: `data:image/png;base64,${base64}` },
+    })),
+  ]);
+}
+
+async function assessPDFSignatureVisually(fileContent: Buffer, totalPdfPages: number, extractedText: string): Promise<VisualSignatureEvidence> {
+  if (process.env.PDF_VISUAL_SIGNATURE_ENRICHMENT === 'false') return EMPTY_VISUAL_SIGNATURE_EVIDENCE;
+  if (assessSignatureEvidence(extractedText).hasActualSignatureEvidence) return EMPTY_VISUAL_SIGNATURE_EVIDENCE;
+
+  const nativeEvidence = await inspectPDFSignatureNative(fileContent);
+  if (hasPositiveVisualSignatureEvidence(nativeEvidence)) return nativeEvidence;
+  if (nativeEvidence.status === 'unsigned' && nativeEvidence.confidence >= 0.85) return nativeEvidence;
+
+  return inspectPDFSignatureImages(fileContent, totalPdfPages);
+}
+
+async function appendVisualSignatureEvidenceIfNeeded(fileContent: Buffer, totalPdfPages: number, text: string): Promise<{ text: string; evidence: VisualSignatureEvidence }> {
+  const evidence = await assessPDFSignatureVisually(fileContent, totalPdfPages, text);
+  if (!hasPositiveVisualSignatureEvidence(evidence)) {
+    return { text, evidence };
+  }
+
+  const evidenceBlock = buildVisualSignatureEvidenceBlock(evidence);
+  logger.info({ status: evidence.status, confidence: evidence.confidence, signers: evidence.signers.length }, 'Visual signature evidence appended to extracted contract text');
+  return {
+    text: `${text.trim()}\n\n${evidenceBlock}`.trim(),
+    evidence,
+  };
 }
 
 function buildDocumentIntelligenceOcrText(result: {
@@ -1229,8 +1456,13 @@ async function extractTextFromBuffer(
 
     // 3. Choose the best result — prefer DI when it returned meaningful content
     if (diText && diText.length > 10) {
+      const visualSignature = await appendVisualSignatureEvidenceIfNeeded(fileContent, pdfParseTotalPages, diText);
+      if (hasPositiveVisualSignatureEvidence(visualSignature.evidence)) {
+        diHandwriting.hasHandwriting = true;
+        diHandwriting.handwrittenSpans = [visualSignature.evidence.reason || 'Visible signature marks on execution page'];
+      }
       return {
-        text: diText,
+        text: visualSignature.text,
         diHandwriting,
         ocrProvider: 'azure-document-intelligence',
         ocrModel: 'prebuilt-layout',
@@ -1241,14 +1473,24 @@ async function extractTextFromBuffer(
     }
     if (pdfParseText.replace(/\s+/g, ' ').trim().length >= 50) {
       logger.info('DI unavailable or insufficient — using pdf-parse text');
-      return { text: pdfParseText, diHandwriting, ocrProvider: 'pdf-parse', ocrModel: 'pdf-parse' };
+      const visualSignature = await appendVisualSignatureEvidenceIfNeeded(fileContent, pdfParseTotalPages, pdfParseText);
+      if (hasPositiveVisualSignatureEvidence(visualSignature.evidence)) {
+        diHandwriting.hasHandwriting = true;
+        diHandwriting.handwrittenSpans = [visualSignature.evidence.reason || 'Visible signature marks on execution page'];
+      }
+      return { text: visualSignature.text, diHandwriting, ocrProvider: 'pdf-parse', ocrModel: 'pdf-parse' };
     }
 
     // 4. Scanned/image PDF with no text from either source — try Vision OCR
     logger.info('No meaningful text from DI or pdf-parse — attempting GPT-4o Vision OCR');
     const ocrText = await extractScannedPDFWithVision(fileContent);
     if (ocrText && ocrText.length > 10) {
-      return { text: ocrText, diHandwriting, ocrProvider: 'azure-openai-vision', ocrModel: 'gpt-4o' };
+      const visualSignature = await appendVisualSignatureEvidenceIfNeeded(fileContent, pdfParseTotalPages, ocrText);
+      if (hasPositiveVisualSignatureEvidence(visualSignature.evidence)) {
+        diHandwriting.hasHandwriting = true;
+        diHandwriting.handwrittenSpans = [visualSignature.evidence.reason || 'Visible signature marks on execution page'];
+      }
+      return { text: visualSignature.text, diHandwriting, ocrProvider: 'azure-openai-vision', ocrModel: 'gpt-4o' };
     }
 
     // 5. Last resort — if pdf-parse returned any small amount of text, use it

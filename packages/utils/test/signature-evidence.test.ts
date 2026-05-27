@@ -73,4 +73,31 @@ Signature:
       hasBlankSignatureMarkers: false,
     });
   });
+
+  it('detects persisted visual signature evidence', () => {
+    const text = `--- VISUAL SIGNATURE EVIDENCE ---
+Signature status: signed
+Confidence: 95%
+Signed by: Jane Doe; John Smith
+Signature date(s): 17.01.2025
+Evidence type: visible handwritten or digital signatures on the execution page.`;
+
+    expect(assessSignatureEvidence(text)).toMatchObject({
+      hasSignatureBlock: true,
+      hasActualSignatureEvidence: true,
+      signatureDateText: '17.01.2025',
+    });
+  });
+
+  it('does not treat unsigned visual evidence as signed', () => {
+    const text = `--- VISUAL SIGNATURE EVIDENCE ---
+Signature status: unsigned
+Confidence: 95%
+Reason: Signature blocks are present but empty.`;
+
+    expect(assessSignatureEvidence(text)).toMatchObject({
+      hasSignatureBlock: true,
+      hasActualSignatureEvidence: false,
+    });
+  });
 });

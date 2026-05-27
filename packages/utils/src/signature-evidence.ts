@@ -1,5 +1,5 @@
 const MONTH_NAMES = '(?:january|february|march|april|may|june|july|august|september|october|november|december)';
-const FULL_DATE_PATTERN = `(?:${MONTH_NAMES}\\s+\\d{1,2},?\\s+\\d{4}|\\d{1,2}\\s+${MONTH_NAMES}\\s+\\d{4}|\\d{1,2}[\\/\\-]\\d{1,2}[\\/\\-]\\d{2,4})`;
+const FULL_DATE_PATTERN = `(?:${MONTH_NAMES}\\s+\\d{1,2},?\\s+\\d{4}|\\d{1,2}\\s+${MONTH_NAMES}\\s+\\d{4}|\\d{1,2}[\\/\\-.]\\d{1,2}[\\/\\-.]\\d{2,4})`;
 
 export interface SignatureEvidenceAssessment {
   hasSignatureBlock: boolean;
@@ -26,6 +26,7 @@ const DEFINITIVE_SIGNED_PATTERNS = [
   /\bdocusigned\s+by\s+[A-Za-z0-9][A-Za-z0-9 .,'-]{1,120}/i,
   /\badobe\s+sign\s+(?:certificate|audit|completed|signature)/i,
   /\bdocusign\s+(?:certificate|audit|completed|completion)/i,
+  /---\s*visual\s+signature\s+evidence\s*---[\s\S]{0,1200}?signature\s+status\s*:\s*(?:signed|partially_signed)\b/i,
   new RegExp(`\\b(?:signed|executed)\\s+(?:on|this)\\s+${FULL_DATE_PATTERN}`, 'i'),
 ];
 
@@ -34,6 +35,7 @@ const EXPLICIT_SIGNED_BY_PATTERN = /\b(?:signed|executed)\s+by\s*[:\-]?\s+([^\n.
 const SIGNATURE_DATE_PATTERNS = [
   new RegExp(`\\b(?:signed|executed)\\s+(?:on|this)\\s+(${FULL_DATE_PATTERN})`, 'i'),
   new RegExp(`\\b(?:signature date|date signed|date of signature)\\s*[:\-]?\\s+(${FULL_DATE_PATTERN})`, 'i'),
+  new RegExp(`\\bsignature date\\(s\\)\\s*[:\-]?\\s+(${FULL_DATE_PATTERN})`, 'i'),
 ];
 
 const BLANK_SIGNATURE_MARKERS = [
