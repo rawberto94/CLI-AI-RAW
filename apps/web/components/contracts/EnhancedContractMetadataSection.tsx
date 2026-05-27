@@ -708,6 +708,7 @@ interface MetadataSectionProps {
   metadata: Partial<ContractMetadataSchema>;
   isEditing: boolean;
   onChange: (field: string, value: unknown) => void;
+  onFieldSave?: (field: string, value: unknown) => Promise<void>;
   defaultOpen?: boolean;
   contractId?: string;
   tenantId?: string;
@@ -720,6 +721,7 @@ function MetadataSection({
   metadata, 
   isEditing, 
   onChange,
+  onFieldSave,
   defaultOpen = true,
   contractId,
   tenantId,
@@ -946,6 +948,7 @@ function MetadataSection({
                   confidence={(metadata._field_confidence as Record<string, { value: number; source?: string; needsVerification: boolean; message?: string }> | undefined)?.[field.key]}
                   isEditing={isEditing && field.editable}
                   onChange={(value) => onChange(field.key, value)}
+                  onFieldSave={onFieldSave}
                   metadata={metadata}
                   contractId={contractId}
                   tenantId={tenantId}
@@ -970,6 +973,7 @@ interface MetadataFieldProps {
   confidence?: { value: number; source?: string; needsVerification: boolean; message?: string };
   isEditing: boolean;
   onChange: (value: unknown) => void;
+  onFieldSave?: (field: string, value: unknown) => Promise<void>;
   metadata: Partial<ContractMetadataSchema>;
   contractId?: string;
   tenantId?: string;
@@ -984,6 +988,7 @@ function MetadataField({
   confidence, 
   isEditing, 
   onChange, 
+  onFieldSave,
   metadata, 
   contractId, 
   tenantId, 
@@ -994,6 +999,7 @@ function MetadataField({
   const [isFieldEditing, setIsFieldEditing] = useState(false);
   const [fieldValue, setFieldValue] = useState(value);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isFieldSaving, setIsFieldSaving] = useState(false);
   
   // Check if field was previously validated (from API response or local state)
   const savedValidation = fieldValidations?.[field.key];
@@ -1042,10 +1048,29 @@ function MetadataField({
     setFieldValue(value);
   }, [value]);
   
-  const handleSaveField = () => {
+  const handleSaveField = async () => {
+    const previousValue = value;
     onChange(fieldValue);
-    setIsFieldEditing(false);
-    toast.success(`${field.label} updated`);
+
+    if (!onFieldSave) {
+      setIsFieldEditing(false);
+      toast.success(`${field.label} updated`);
+      return;
+    }
+
+    setIsFieldSaving(true);
+    try {
+      await onFieldSave(field.key, fieldValue);
+      setIsFieldEditing(false);
+      toast.success(`${field.label} saved`);
+    } catch (error) {
+      onChange(previousValue);
+      setFieldValue(previousValue);
+      const message = error instanceof Error ? error.message : `Failed to save ${field.label}`;
+      toast.error(message);
+    } finally {
+      setIsFieldSaving(false);
+    }
   };
   
   const handleCancelField = () => {
@@ -1352,8 +1377,10 @@ function MetadataField({
           )}
           {isFieldEditing && (
             <div className="flex items-center gap-0.5">
-              <button onClick={handleSaveField} className="p-1 hover:bg-emerald-50 rounded text-emerald-600" aria-label="Save field"><Check className="h-3 w-3" /></button>
-              <button onClick={handleCancelField} className="p-1 hover:bg-red-50 rounded text-red-500" aria-label="Cancel editing"><X className="h-3 w-3" /></button>
+              <button onClick={handleSaveField} disabled={isFieldSaving} className="p-1 hover:bg-emerald-50 rounded text-emerald-600 disabled:opacity-50" aria-label="Save field">
+                {isFieldSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+              </button>
+              <button onClick={handleCancelField} disabled={isFieldSaving} className="p-1 hover:bg-red-50 rounded text-red-500 disabled:opacity-50" aria-label="Cancel editing"><X className="h-3 w-3" /></button>
             </div>
           )}
         </div>
@@ -1816,13 +1843,18 @@ export function EnhancedContractMetadataSection({
     return { isValid: errors.length === 0, errors };
   }, []);
   
-  const handleSave = async () => {
+  const persistMetadata = useCallback(async (
+    nextMetadata: Partial<ContractMetadataSchema>,
+    options: { closeEditor?: boolean; showToast?: boolean } = {},
+  ) => {
+    const { closeEditor = true, showToast = true } = options;
+
     // Validate before saving
-    const { isValid, errors } = validateMetadata(metadata);
+    const { isValid, errors } = validateMetadata(nextMetadata);
     
     if (!isValid) {
       errors.forEach(error => toast.error(error));
-      return;
+      throw new Error(errors.join('\n'));
     }
     
     setIsSaving(true);
@@ -1830,7 +1862,7 @@ export function EnhancedContractMetadataSection({
     
     try {
       if (onSave) {
-        await onSave(metadata);
+        await onSave(nextMetadata);
       } else {
         // Default save to API — relies on the React Query invalidation below
         // to pull fresh metadata, so no second GET here.
@@ -1839,7 +1871,7 @@ export function EnhancedContractMetadataSection({
           headers: { 'Content-Type': 'application/json', 'x-tenant-id': tenantId },
           body: JSON.stringify({
             tenantId,
-            metadata,
+            metadata: nextMetadata,
           })
         });
 
@@ -1855,9 +1887,10 @@ export function EnhancedContractMetadataSection({
         }
       }
       
+      setMetadata(nextMetadata);
       setSaveSuccess(true);
-      setIsEditing(false);
-      toast.success('Contract metadata saved successfully');
+      if (closeEditor) setIsEditing(false);
+      if (showToast) toast.success('Contract metadata saved successfully');
       
       setTimeout(() => setSaveSuccess(false), 3000);
       
@@ -1881,11 +1914,22 @@ export function EnhancedContractMetadataSection({
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save metadata. Please try again.';
-      toast.error(message);
+      if (showToast) toast.error(message);
+      throw err;
     } finally {
       setIsSaving(false);
     }
+  }, [contractId, metadataQueryKey, onRefresh, onSave, queryClient, tenantId, validateMetadata]);
+
+  const handleSave = async () => {
+    await persistMetadata(metadata).catch(() => {});
   };
+
+  const handleFieldSave = useCallback(async (field: string, value: unknown) => {
+    const nextMetadata = { ...metadata, [field]: value };
+    setMetadata(nextMetadata);
+    await persistMetadata(nextMetadata, { closeEditor: false, showToast: false });
+  }, [metadata, persistMetadata]);
   
   const handleCancel = () => {
     setMetadata(mergedInitial);
@@ -2079,6 +2123,7 @@ export function EnhancedContractMetadataSection({
             metadata={metadata} 
             isEditing={isEditing}
             onChange={handleChange}
+            onFieldSave={handleFieldSave}
             defaultOpen={true}
             contractId={contractId}
             tenantId={tenantId}
@@ -2092,6 +2137,7 @@ export function EnhancedContractMetadataSection({
             metadata={metadata} 
             isEditing={isEditing}
             onChange={handleChange}
+            onFieldSave={handleFieldSave}
             defaultOpen={true}
             contractId={contractId}
             tenantId={tenantId}
@@ -2105,6 +2151,7 @@ export function EnhancedContractMetadataSection({
             metadata={metadata} 
             isEditing={isEditing}
             onChange={handleChange}
+            onFieldSave={handleFieldSave}
             defaultOpen={true}
             contractId={contractId}
             tenantId={tenantId}
@@ -2118,6 +2165,7 @@ export function EnhancedContractMetadataSection({
             metadata={metadata}
             isEditing={isEditing}
             onChange={handleChange}
+            onFieldSave={handleFieldSave}
             defaultOpen={true}
             contractId={contractId}
             tenantId={tenantId}
@@ -2131,6 +2179,7 @@ export function EnhancedContractMetadataSection({
             metadata={metadata} 
             isEditing={isEditing}
             onChange={handleChange}
+            onFieldSave={handleFieldSave}
             defaultOpen={false}
             contractId={contractId}
             tenantId={tenantId}
@@ -2144,6 +2193,7 @@ export function EnhancedContractMetadataSection({
             metadata={metadata} 
             isEditing={isEditing}
             onChange={handleChange}
+            onFieldSave={handleFieldSave}
             defaultOpen={false}
             contractId={contractId}
             tenantId={tenantId}

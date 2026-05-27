@@ -378,6 +378,9 @@ export async function getContractMetadata(
       paymentTerms: true,
       paymentFrequency: true,
       billingCycle: true,
+      signatureStatus: true,
+      signatureDate: true,
+      signatureRequiredFlag: true,
       noticePeriodDays: true,
       terminationClause: true,
       autoRenewalEnabled: true,
@@ -498,9 +501,9 @@ export async function getContractMetadata(
     billing_frequency_type: aiMetadata.billing_frequency_type || contract.paymentFrequency || '',
     periodicity: aiMetadata.periodicity || contract.billingCycle || '',
     currency: aiMetadata.currency || contract.currency || artifactOverview?.currency || 'USD',
-    signature_date: aiMetadata.signature_date || null,
-    signature_status: aiMetadata.signature_status || 'unknown',
-    signature_required_flag: aiMetadata.signature_required_flag ?? (
+    signature_date: aiMetadata.signature_date || contract.signatureDate?.toISOString().split('T')[0] || null,
+    signature_status: aiMetadata.signature_status || contract.signatureStatus || 'unknown',
+    signature_required_flag: aiMetadata.signature_required_flag ?? contract.signatureRequiredFlag ?? (
       aiMetadata.signature_status === 'unsigned' ||
       aiMetadata.signature_status === 'partially_signed' ||
       (!aiMetadata.signature_date && aiMetadata.signature_status !== 'signed')
@@ -713,14 +716,17 @@ export async function putContractMetadata(
   };
 
   const legacyUpdates: Record<string, any> = {};
-  if (metadata.document_title) legacyUpdates.contractTitle = metadata.document_title;
+  if (metadata.document_title !== undefined) legacyUpdates.contractTitle = metadata.document_title || null;
   if (metadata.contractType !== undefined) {
     const normalizedContractType = metadata.contractType.trim();
     legacyUpdates.contractType = normalizedContractType ? normalizedContractType : null;
   }
-  if (metadata.contract_short_description) legacyUpdates.description = metadata.contract_short_description;
+  if (metadata.contract_short_description !== undefined) legacyUpdates.description = metadata.contract_short_description || null;
   if (metadata.tcv_amount !== undefined) legacyUpdates.totalValue = metadata.tcv_amount;
-  if (metadata.currency) legacyUpdates.currency = metadata.currency;
+  if (metadata.currency !== undefined) legacyUpdates.currency = metadata.currency || null;
+  if (metadata.signature_date !== undefined) legacyUpdates.signatureDate = toNullableMetadataDate(metadata.signature_date);
+  if (metadata.signature_status !== undefined) legacyUpdates.signatureStatus = metadata.signature_status || 'unknown';
+  if (metadata.signature_required_flag !== undefined) legacyUpdates.signatureRequiredFlag = metadata.signature_required_flag;
   if (metadata.start_date !== undefined) {
     const startDate = toNullableMetadataDate(metadata.start_date);
     legacyUpdates.effectiveDate = startDate;
@@ -732,11 +738,11 @@ export async function putContractMetadata(
     legacyUpdates.endDate = endDate;
     applyExpirationState(legacyUpdates, endDate);
   }
-  if (metadata.jurisdiction) legacyUpdates.jurisdiction = metadata.jurisdiction;
-  if (metadata.notice_period_days) legacyUpdates.noticePeriodDays = metadata.notice_period_days;
-  if (metadata.billing_frequency_type) legacyUpdates.paymentFrequency = metadata.billing_frequency_type;
-  if (metadata.periodicity) legacyUpdates.billingCycle = metadata.periodicity;
-  if (metadata.tags) legacyUpdates.tags = metadata.tags;
+  if (metadata.jurisdiction !== undefined) legacyUpdates.jurisdiction = metadata.jurisdiction || null;
+  if (metadata.notice_period_days !== undefined) legacyUpdates.noticePeriodDays = metadata.notice_period_days;
+  if (metadata.billing_frequency_type !== undefined) legacyUpdates.paymentFrequency = metadata.billing_frequency_type || null;
+  if (metadata.periodicity !== undefined) legacyUpdates.billingCycle = metadata.periodicity || null;
+  if (metadata.tags !== undefined) legacyUpdates.tags = metadata.tags;
   if (metadata.document_classification !== undefined) legacyUpdates.documentClassification = metadata.document_classification;
   if (metadata.document_classification_confidence !== undefined) legacyUpdates.documentClassificationConf = metadata.document_classification_confidence;
   if (metadata.document_classification_warning !== undefined) legacyUpdates.documentClassificationWarning = metadata.document_classification_warning || null;

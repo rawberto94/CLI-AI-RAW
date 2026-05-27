@@ -204,6 +204,54 @@ describe('/api/contracts/[id]/metadata', () => {
     }));
   });
 
+  it('mirrors signature metadata to contract signature fields', async () => {
+    mockContractFindFirst.mockResolvedValue({ aiMetadata: {}, metadata: {} });
+    mockContractUpdate.mockResolvedValue({ id: 'contract-1' });
+
+    const response = await PUT(createRequest('PUT', {
+      metadata: {
+        signature_date: '2026-05-27',
+        signature_status: 'unsigned',
+        signature_required_flag: true,
+      },
+    }), routeContext);
+
+    expect(response.status).toBe(200);
+    expect(mockContractUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'contract-1' },
+      data: expect.objectContaining({
+        signatureDate: new Date('2026-05-27'),
+        signatureStatus: 'unsigned',
+        signatureRequiredFlag: true,
+      }),
+    }));
+  });
+
+  it('persists cleared scalar metadata to contract fields', async () => {
+    mockContractFindFirst.mockResolvedValue({ aiMetadata: {}, metadata: {} });
+    mockContractUpdate.mockResolvedValue({ id: 'contract-1' });
+
+    const response = await PUT(createRequest('PUT', {
+      metadata: {
+        currency: '',
+        billing_frequency_type: '',
+        periodicity: '',
+        jurisdiction: '',
+      },
+    }), routeContext);
+
+    expect(response.status).toBe(200);
+    expect(mockContractUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'contract-1' },
+      data: expect.objectContaining({
+        currency: null,
+        paymentFrequency: null,
+        billingCycle: null,
+        jurisdiction: null,
+      }),
+    }));
+  });
+
   it('persists document classification and contract type to the contract record', async () => {
     mockContractFindFirst.mockResolvedValue({ aiMetadata: {}, metadata: {}, contractType: 'UNKNOWN' });
     mockContractUpdate.mockResolvedValue({ id: 'contract-1' });

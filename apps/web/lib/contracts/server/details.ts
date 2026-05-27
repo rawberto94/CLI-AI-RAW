@@ -532,6 +532,8 @@ export async function getContractDetails(
       extractedData: artifactsByType,
     };
 
+    const enterpriseMetadata = ((contract as any).aiMetadata || {}) as Record<string, any>;
+
     const enrichedData = {
       ...contractData,
       createdAt: contract.createdAt?.toISOString() || null,
@@ -539,8 +541,18 @@ export async function getContractDetails(
       fileName: contract.fileName || null,
       originalName: contract.originalName || contract.fileName || null,
       signatureStatus: contract.signatureStatus || 'unknown',
+      signatureDate: contract.signatureDate?.toISOString() || null,
+      signatureRequiredFlag: contract.signatureRequiredFlag ?? false,
       totalValue: contract.totalValue ? Number(contract.totalValue) : null,
+      tcv_amount: contract.totalValue ? Number(contract.totalValue) : null,
+      tcv_text: enterpriseMetadata.tcv_text || null,
       currency: contract.currency || null,
+      paymentTerms: contract.paymentTerms || null,
+      paymentFrequency: contract.paymentFrequency || null,
+      billingCycle: contract.billingCycle || null,
+      payment_type: enterpriseMetadata.payment_type || null,
+      billing_frequency_type: enterpriseMetadata.billing_frequency_type || contract.paymentFrequency || null,
+      periodicity: enterpriseMetadata.periodicity || contract.billingCycle || null,
       clientName: contract.clientName || null,
       supplierName: contract.supplierName || null,
       contractTitle: contract.contractTitle || null,
@@ -554,8 +566,10 @@ export async function getContractDetails(
       endDate: contract.endDate?.toISOString?.() ?? contract.expirationDate?.toISOString() ?? null,
       start_date: contract.startDate?.toISOString?.() ?? contract.effectiveDate?.toISOString() ?? null,
       end_date: contract.endDate?.toISOString?.() ?? contract.expirationDate?.toISOString() ?? null,
-      termination_date: (contract as any).terminationDate?.toISOString?.() ?? null,
-      aiMetadata: (contract as any).aiMetadata || null,
+      termination_date: enterpriseMetadata.termination_date || null,
+      reminder_enabled: enterpriseMetadata.reminder_enabled ?? false,
+      reminder_days_before_end: enterpriseMetadata.reminder_days_before_end ?? null,
+      aiMetadata: enterpriseMetadata,
       contractType: contract.contractType || null,
       contract_short_description: (() => {
         const overviewArtifact = artifactsByType.overview || artifactsByType.metadata;
