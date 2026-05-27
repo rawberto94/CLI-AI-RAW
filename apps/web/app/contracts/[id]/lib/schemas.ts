@@ -232,6 +232,8 @@ export const contractVersionSchema = z.object({
   uploadedBy: z.string().optional(),
   isActive: z.boolean(),
   fileSize: z.number().optional(),
+  changes: z.record(z.string(), z.unknown()).optional(),
+  fileUrl: z.string().optional(),
 });
 
 export type ContractVersion = z.infer<typeof contractVersionSchema>;

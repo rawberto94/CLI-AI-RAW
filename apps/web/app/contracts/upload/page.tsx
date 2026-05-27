@@ -40,6 +40,7 @@ interface UploadFile {
   showArtifacts?: boolean
   isDuplicate?: boolean
   existingContractId?: string
+  versionNumber?: number
   startTime?: number
   endTime?: number
   skipDuplicateCheck?: boolean
@@ -265,8 +266,14 @@ export default function UploadPage() {
       // API wraps response in { success, data, meta } envelope
       const result = (responseData.data ?? responseData) as Record<string, unknown>;
 
-      // Check for duplicate — let user choose to reprocess
+      // Check for duplicate/version registration response
       if (result.isDuplicate && !skipDuplicateCheck) {
+        const versionNumber = typeof result.versionNumber === 'number'
+          ? result.versionNumber
+          : (result.version && typeof result.version === 'object' && 'versionNumber' in result.version
+            ? (result.version as { versionNumber?: number }).versionNumber
+            : undefined)
+
         setFiles(prev => prev.map(f =>
           f.id === uploadFile.id
             ? { 
@@ -276,22 +283,23 @@ export default function UploadPage() {
                 contractId: result.contractId as string | undefined,
                 isDuplicate: true,
                 existingContractId: result.contractId as string | undefined,
+                versionNumber,
+                processingStage: versionNumber ? `Registered as v${versionNumber}` : 'Duplicate detected',
                 endTime: Date.now(),
               }
             : f
         ))
-        toast.info(`${uploadFile.file.name} is a duplicate`, {
-          description: 'No new copy was created. Open the existing contract or re-process it as a fresh analysis.',
+        toast.success(
+          versionNumber
+            ? `${uploadFile.file.name} registered as v${versionNumber}`
+            : `${uploadFile.file.name} is a duplicate`,
+          {
+          description: versionNumber
+            ? 'The duplicate file was added to the existing contract version history.'
+            : 'No new copy was created. Open the existing contract or upload it as a fresh analysis.',
           action: {
-            label: 'Reprocess',
-            onClick: () => {
-              setFiles(prev => prev.map(f =>
-                f.id === uploadFile.id
-                  ? { ...f, status: 'pending', progress: 0, isDuplicate: false, existingContractId: undefined, skipDuplicateCheck: true }
-                  : f
-              ))
-              setShouldAutoStart(true)
-            },
+            label: 'View contract',
+            onClick: () => router.push(`/contracts/${result.contractId}`),
           },
           duration: 8000,
         });
@@ -666,6 +674,7 @@ export default function UploadPage() {
                       error={file.error}
                       isDuplicate={file.isDuplicate}
                       existingContractId={file.existingContractId}
+                      versionNumber={file.versionNumber}
                       onRetry={() => retryFile(file.id)}
                       onRemove={() => removeFile(file.id)}
                       onViewContract={viewContract}

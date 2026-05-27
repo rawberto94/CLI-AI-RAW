@@ -6,7 +6,14 @@ dotenv.config();
 type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any };
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
-import { assessSignatureEvidence, buildPersistedContractTextFields } from '@repo/utils';
+import {
+  assessSignatureEvidence,
+  buildPersistedContractTextFields,
+  CONTRACT_DI_QUERY_FIELDS,
+  type ContractFieldEvidence,
+  normalizeDIQueryAnswers,
+  type NormalizedContractFieldEvidence,
+} from '@repo/utils';
 import {
   CircuitBreaker,
   CircuitBreakerError,
@@ -145,6 +152,12 @@ export interface StructuredOCRResult {
   confidence: number;
   /** Whether the source is DI (trusted, skip enhancement) */
   isDISource: boolean;
+  /** Normalized field evidence from Azure DI query fields */
+  fieldEvidence?: ContractFieldEvidence[];
+  /** Normalized metadata derived from field evidence */
+  fieldMetadata?: NormalizedContractFieldEvidence['metadata'];
+  /** Raw Azure DI query answers keyed by question */
+  queryAnswers?: Record<string, string>;
 }
 
 /** Create a minimal StructuredOCRResult for non-DI providers */
@@ -1153,6 +1166,9 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
           barcodes: (di.barcodes as DIBarcode[]) || [],
           formulas: (di.formulas as DIFormula[]) || [],
           pageInfo: (di.pageInfo as StructuredOCRResult['pageInfo']) || [],
+          queryAnswers: (di.queryAnswers as Record<string, string>) || {},
+          fieldEvidence: (di.fieldEvidence as ContractFieldEvidence[]) || [],
+          fieldMetadata: (di.fieldMetadata as NormalizedContractFieldEvidence['metadata']) || {},
           isDISource: true,
         };
       }
@@ -1294,28 +1310,23 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
         ) {
           try {
             const { analyzeWithQueries } = await import('./azure-document-intelligence');
-            const queryFields = [
-              'What is the governing law or jurisdiction?',
-              'What is the termination notice period?',
-              'What is the contract effective date?',
-              'What is the contract expiration or renewal date?',
-              'What are the payment terms?',
-              'What is the total contract value?',
-              'Who are the contracting parties?',
-              'What are the key obligations?',
-            ];
             const fileBuffer = await fs.readFile(filePath);
-            const { answers } = await analyzeWithQueries(fileBuffer, queryFields);
+            const { answers } = await analyzeWithQueries(fileBuffer, CONTRACT_DI_QUERY_FIELDS);
             const validAnswers = Object.entries(answers).filter(([, v]) => v && v.trim().length > 0);
             if (validAnswers.length > 0) {
+              const queryAnswers = Object.fromEntries(validAnswers);
+              const normalized = normalizeDIQueryAnswers(queryAnswers, { confidence: 0.82, source: 'azure-di-query' });
               // Merge answers into keyValuePairs for downstream artifact generation
               for (const [key, value] of validAnswers) {
                 structuredResult.keyValuePairs.push({ key, value, confidence: 0.8 } as any);
               }
+              structuredResult.queryAnswers = queryAnswers;
+              structuredResult.fieldEvidence = normalized.evidence;
+              structuredResult.fieldMetadata = normalized.metadata;
               // Append answers to the text for RAG indexing
               const answerBlock = validAnswers.map(([k, v]) => `${k}: ${v}`).join('\n');
               structuredResult.text += `\n\n--- DI QUERY FIELD ANSWERS ---\n${answerBlock}`;
-              logger.info({ answerCount: validAnswers.length }, 'DI analyzeWithQueries enrichment added');
+              logger.info({ answerCount: validAnswers.length, evidenceCount: normalized.evidence.length }, 'DI analyzeWithQueries enrichment added');
             }
           } catch (queryErr) {
             logger.warn({ error: (queryErr as Error).message }, 'DI analyzeWithQueries enrichment failed, continuing without');
@@ -1340,6 +1351,9 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
             barcodes: structuredResult.barcodes.map(b => ({ kind: b.kind, value: b.value, confidence: b.confidence })),
             formulas: structuredResult.formulas.map(f => ({ kind: f.kind, value: f.value, confidence: f.confidence })),
             pageInfo: structuredResult.pageInfo,
+            queryAnswers: structuredResult.queryAnswers,
+            fieldEvidence: structuredResult.fieldEvidence,
+            fieldMetadata: structuredResult.fieldMetadata,
           } : undefined);
         }
         logger.info({ ocrMode, textLength: structuredResult.text.length, confidence: structuredResult.confidence.toFixed(3), tables: structuredResult.tables.length, kvPairs: structuredResult.keyValuePairs.length }, 'DI model OCR succeeded with structured data');
@@ -2482,6 +2496,9 @@ export async function processOCRArtifactJob(
             diKeyValuePairs: ocrResult.keyValuePairs.slice(0, 200),
             diContractFields: ocrResult.contractFields || null,
             diInvoiceFields: ocrResult.invoiceFields || null,
+            diQueryAnswers: ocrResult.queryAnswers || {},
+            diFieldEvidence: ocrResult.fieldEvidence || [],
+            diFieldMetadata: ocrResult.fieldMetadata || {},
             diHandwritingDetected: ocrResult.handwrittenText.length > 0,
             diHandwrittenSpans: ocrResult.handwrittenText.slice(0, 50),
             diDetectedLanguages: ocrResult.detectedLanguages,

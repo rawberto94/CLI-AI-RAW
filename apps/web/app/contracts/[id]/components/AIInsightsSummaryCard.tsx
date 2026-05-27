@@ -116,22 +116,22 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
 
   return (
     <Card className={cn(
-      'flex h-full flex-col overflow-hidden rounded-[24px] border border-slate-200/90 bg-white shadow-[0_18px_40px_-30px_rgba(15,23,42,0.16)]',
+      'flex h-full flex-col overflow-hidden rounded-lg border border-slate-200/90 bg-white shadow-sm',
       className
     )}>
       {/* Header */}
-      <div className="flex min-h-[88px] flex-col justify-center border-b border-violet-100 bg-[linear-gradient(135deg,rgba(245,243,255,0.95),rgba(255,255,255,1))] p-5">
+      <div className="flex min-h-[64px] flex-col justify-center border-b border-slate-100 bg-slate-50/80 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 p-2.5 shadow-sm">
+            <div className="rounded-lg bg-slate-900 p-2 shadow-sm">
               <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-semibold text-slate-900 flex items-center gap-2">
-                AI Insights
+                Review Findings
                 {insights.length > 0 && (
                   <Badge variant="secondary" className="text-[10px]">
-                    {insights.length} found
+                    {insights.length} open
                   </Badge>
                 )}
               </h3>
@@ -182,10 +182,10 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
         )}
       </div>
       
-      <div className="flex flex-1 flex-col space-y-5 p-5">
+      <div className="flex flex-1 flex-col space-y-4 p-4">
         {/* Contract Summary */}
         {contractSummary && (
-          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
+          <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 p-3">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
                 Summary
@@ -205,7 +205,7 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
         
         {/* Key Terms */}
         {keyTerms && keyTerms.length > 0 && (
-          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
+          <div className="rounded-lg border border-slate-200/80 bg-slate-50/80 p-3">
             <span className="text-xs font-medium text-slate-500 uppercase tracking-wide block mb-2">
               Key Terms
             </span>
@@ -227,7 +227,7 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
         {sortedInsights.length > 0 ? (
           <div className="space-y-3.5">
             <span className="text-xs font-medium text-slate-500 uppercase tracking-wide block">
-              Top Insights
+              Attention Items
             </span>
             <AnimatePresence mode="popLayout">
               {sortedInsights.map((insight, idx) => (
@@ -238,7 +238,7 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ delay: idx * 0.05 }}
                   className={cn(
-                      'rounded-2xl border px-4 py-4 transition-colors',
+                      'rounded-lg border px-3 py-3 transition-colors',
                     insight.importance === 'high' 
                       ? "bg-amber-50/50 border-amber-100 hover:bg-amber-50"
                       : "bg-slate-50/50 border-slate-100 hover:bg-slate-50"
@@ -279,17 +279,6 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
                         </button>
                       )}
                     </div>
-                    <div className="flex items-center gap-1">
-                      <div className={cn(
-                        "w-1.5 h-1.5 rounded-full",
-                        insight.confidence >= 0.8 ? "bg-emerald-500" :
-                        insight.confidence >= 0.6 ? "bg-amber-500" :
-                        "bg-slate-400"
-                      )} />
-                      <span className="text-[10px] text-slate-400">
-                        {Math.round(insight.confidence * 100)}%
-                      </span>
-                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -300,9 +289,9 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
             <div className="p-3 rounded-full bg-slate-100 inline-flex mb-3">
               <Brain className="h-6 w-6 text-slate-400" />
             </div>
-            <p className="text-sm text-slate-500 mb-2">No AI insights yet</p>
+            <p className="text-sm text-slate-500 mb-2">No review findings yet</p>
             <p className="text-xs text-slate-400">
-              Run AI extraction to generate insights
+              Run analysis to generate findings
             </p>
           </div>
         )}
@@ -315,7 +304,7 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
             onClick={onViewAll}
             className="w-full mt-4 text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50"
           >
-            View all {insights.length} insights
+            View all {insights.length} findings
             <ChevronRight className="h-3.5 w-3.5 ml-1" />
           </Button>
         )}

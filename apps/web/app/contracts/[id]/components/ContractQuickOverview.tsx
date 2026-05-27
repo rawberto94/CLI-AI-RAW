@@ -146,13 +146,13 @@ const DurationSection = memo(function DurationSection({
   endDate,
   noticePeriod,
 }: Pick<QuickOverviewProps, 'startDate' | 'endDate' | 'noticePeriod'>) {
-  const { daysRemaining, isActive, isExpired, isEvergreen } = useMemo(() => {
+  const { daysRemaining, isActive, isExpired, needsDateReview } = useMemo(() => {
     const days = endDate ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null
     return {
       daysRemaining: days,
-      isActive: startDate && new Date(startDate) <= new Date() && (!endDate || new Date(endDate) >= new Date()),
+      isActive: Boolean(startDate && new Date(startDate) <= new Date() && endDate && new Date(endDate) >= new Date()),
       isExpired: endDate ? new Date(endDate) < new Date() : false,
-      isEvergreen: !endDate,
+      needsDateReview: !endDate,
     }
   }, [startDate, endDate])
 
@@ -172,11 +172,11 @@ const DurationSection = memo(function DurationSection({
           <span className={cn(
             'font-semibold',
             isExpired ? "text-red-600" : 
-            isEvergreen ? "text-violet-600" :
+            needsDateReview ? "text-slate-500" :
             daysRemaining !== null && daysRemaining <= 90 ? "text-amber-600" : 
             "text-slate-700"
           )}>
-            {endDate ? formatDate(endDate) : 'Evergreen'}
+            {endDate ? formatDate(endDate) : 'Needs review'}
           </span>
         </div>
         
@@ -187,10 +187,10 @@ const DurationSection = memo(function DurationSection({
               <AlertCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
               Expired
             </Badge>
-          ) : isEvergreen ? (
-            <Badge className="bg-violet-100 text-violet-700 border-0 text-[10px] sm:text-xs">
-              <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-violet-500 rounded-full mr-1" />
-              Auto-renewing
+          ) : needsDateReview ? (
+            <Badge className="bg-slate-100 text-slate-600 border-0 text-[10px] sm:text-xs">
+              <AlertCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
+              Date review
             </Badge>
           ) : isActive ? (
             <Badge className="bg-violet-100 text-violet-700 border-0 text-[10px] sm:text-xs">
@@ -202,7 +202,7 @@ const DurationSection = memo(function DurationSection({
               Pending
             </Badge>
           )}
-          {daysRemaining !== null && daysRemaining > 0 && !isEvergreen && (
+          {daysRemaining !== null && daysRemaining > 0 && !needsDateReview && (
             <span className={cn(
               "text-[10px] sm:text-xs font-medium",
               daysRemaining <= 30 ? "text-red-600" :

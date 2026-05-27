@@ -40,7 +40,6 @@ import {
   EnhancedContractMetadataSection,
   ContractRelationshipsCard,
   ContractScoresCard,
-  ExtractionAccuracyCard,
 } from '@/components/contracts'
 import { RobustPDFViewer } from '@/components/contracts/RobustPDFViewer'
 import { VersionManager } from '@/components/contracts/VersionManager'
@@ -72,7 +71,6 @@ import {
   useVersionsQuery,
   useNotesQuery,
   useHealthQuery,
-  useExtractionConfidenceQuery,
   useNoteMutations,
   useAIExtraction,
   useExtractObligations,
@@ -212,7 +210,6 @@ export default function ContractDetailPage() {
   const { data: versionsData } = useVersionsQuery(contractId, dataMode)
   const { data: notesData } = useNotesQuery(contractId, activeTab === 'activity')
   const { data: healthData } = useHealthQuery(contractId)
-  const { data: extractionConfidence } = useExtractionConfidenceQuery(contractId)
 
   const contractVersions = versionsData?.versions ?? []
   const currentVersionNumber = versionsData?.currentVersionNumber ?? 1
@@ -493,7 +490,7 @@ export default function ContractDetailPage() {
     }
   }, [isProcessing, contract, contractId, dataMode, queryClient])
 
-  // ── AI Insights for overview tab ──────────────────────────────────────────
+  // ── Review findings for overview tab ──────────────────────────────────────
   const aiInsights = React.useMemo(() => {
     const insights: Array<{
       id: string
@@ -504,20 +501,6 @@ export default function ContractDetailPage() {
       importance: 'high' | 'medium' | 'low'
       actionable?: boolean
     }> = []
-
-    // Build from risk data
-    if (riskInfo.risks?.length > 0) {
-      riskInfo.risks.slice(0, 3).forEach((risk: { title?: string; description?: string }, i: number) => {
-        insights.push({
-          id: `risk-${i}`,
-          type: 'risk',
-          title: risk.title || 'Risk Identified',
-          content: risk.description || risk.title || '',
-          confidence: 0.85,
-          importance: riskInfo.riskLevel === 'high' ? 'high' : 'medium',
-        })
-      })
-    }
 
     // Build from compliance data
     if (complianceInfo.violations?.length > 0) {
@@ -534,22 +517,8 @@ export default function ContractDetailPage() {
       })
     }
 
-    // Build from overview key terms
-    if (overviewData?.keyTerms?.length > 0) {
-      overviewData.keyTerms.slice(0, 3).forEach((kt: { term: string; value: string }, i: number) => {
-        insights.push({
-          id: `term-${i}`,
-          type: 'key_term',
-          title: kt.term,
-          content: kt.value,
-          confidence: 0.95,
-          importance: 'medium',
-        })
-      })
-    }
-
     return insights
-  }, [riskInfo, complianceInfo, overviewData])
+  }, [complianceInfo])
 
   // ── Action handlers ───────────────────────────────────────────────────────
   const handleRefresh = useCallback(() => {
@@ -1236,7 +1205,7 @@ export default function ContractDetailPage() {
                 </TabsTrigger>
                 <TabsTrigger value="ai" className="flex items-center gap-1.5 text-xs sm:text-sm py-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-lg transition-all">
                   <Brain className="h-3.5 w-3.5" />
-                  <span>AI</span>
+                  <span>Analysis</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -1247,18 +1216,19 @@ export default function ContractDetailPage() {
                     keyTerms={overviewData?.keyTerms}
                     parties={metadata.external_parties}
                     signatureDate={metadata.signature_date}
+                    signatureStatus={metadata.signature_status}
                     startDate={metadata.start_date}
                     endDate={metadata.end_date}
                     noticePeriod={metadata.notice_period}
+                    totalValue={metadata.tcv_amount ?? contract?.totalValue}
+                    currency={metadata.currency ?? contract?.currency}
                     risks={riskInfo.risks}
                     riskLevel={riskInfo.riskLevel}
                   />
                 {aiInsights.length > 0 && (
-                  <SectionErrorBoundary sectionName="AI Insights">
+                  <SectionErrorBoundary sectionName="Review Findings">
                     <AIInsightsSummaryCard
                       insights={aiInsights}
-                      contractSummary={metadata.contract_short_description || overviewData?.summary}
-                      keyTerms={overviewData?.keyTerms}
                       onRefresh={handleRefresh}
                       onViewAll={() => setTab('ai')}
                     />
@@ -1301,7 +1271,6 @@ export default function ContractDetailPage() {
                     linkedAt={contract?.linkedAt}
                     isEditing={isEditing}
                   />
-                <ExtractionAccuracyCard contractId={contractId} />
                 <ContractScoresCard
                     riskInfo={riskInfo}
                     complianceInfo={complianceInfo}
@@ -1310,7 +1279,6 @@ export default function ContractDetailPage() {
                       completeness: healthData?.completeness ?? 0,
                       issues: healthData?.issues || [],
                     }}
-                    extractionConfidence={extractionConfidence}
                     isProcessing={isProcessing}
                     onRefresh={handleRefresh}
                   />

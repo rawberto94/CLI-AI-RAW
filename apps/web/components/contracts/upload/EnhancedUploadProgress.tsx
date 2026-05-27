@@ -87,6 +87,7 @@ export interface UploadProgressProps {
   error?: string;
   isDuplicate?: boolean;
   existingContractId?: string;
+  versionNumber?: number;
   onRetry?: () => void;
   onRemove?: () => void;
   onViewContract?: (contractId: string) => void;
@@ -195,6 +196,7 @@ export function EnhancedUploadProgress({
   error,
   isDuplicate,
   existingContractId,
+  versionNumber,
   onRetry,
   onRemove,
   onViewContract: _onViewContract,
@@ -437,6 +439,43 @@ export function EnhancedUploadProgress({
 
   // Handle duplicate
   if (isDuplicate && existingContractId) {
+    if (versionNumber) {
+      return (
+        <div className="flex items-center gap-3 rounded-2xl border border-emerald-200/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.96),rgba(255,255,255,0.98))] p-4 shadow-[0_18px_40px_-28px_rgba(16,185,129,0.35)] dark:border-emerald-700 dark:bg-[linear-gradient(135deg,rgba(6,78,59,0.35),rgba(30,41,59,0.95))]">
+          <div className="rounded-2xl bg-emerald-100 p-3 dark:bg-emerald-900/60">
+            <Layers className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-medium text-emerald-950 dark:text-emerald-100 truncate">{fileName}</p>
+              <Badge className="border-emerald-200 bg-white/80 text-emerald-700 hover:bg-white/80 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">{fileExtensionLabel}</Badge>
+              <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">v{versionNumber}</Badge>
+            </div>
+            <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-300">
+              Duplicate detected and registered as version {versionNumber}.
+            </p>
+            <p className="mt-1 text-xs text-emerald-700/80 dark:text-emerald-300/80">
+              The existing contract version history was updated.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs border-emerald-300 dark:border-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-800"
+              onClick={() => router.push(`/contracts/${existingContractId}`)}
+            >
+              <Eye className="h-3.5 w-3.5 mr-1" />
+              View Contract
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={onRemove} aria-label="Remove file">
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center gap-3 rounded-2xl border border-amber-200/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.96),rgba(255,255,255,0.98))] p-4 shadow-[0_18px_40px_-28px_rgba(217,119,6,0.45)] dark:border-amber-700 dark:bg-[linear-gradient(135deg,rgba(120,53,15,0.35),rgba(30,41,59,0.95))]">
         <div className="rounded-2xl bg-amber-100 p-3 dark:bg-amber-900/60">

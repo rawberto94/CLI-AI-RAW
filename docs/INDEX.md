@@ -36,6 +36,7 @@ This index organises all ConTigo documentation by audience and purpose.
 | Document | Description | Lines |
 |---|---|---|
 | [AI_ARCHITECTURE_DEEP_ANALYSIS.md](AI_ARCHITECTURE_DEEP_ANALYSIS.md) | Deep dive into multi-agent AI architecture | — |
+| [AI_DATA_QUALITY_RUNBOOK.md](AI_DATA_QUALITY_RUNBOOK.md) | Operational checks for AI-extracted facts, including TCV audit/repair | — |
 | [AI_CHATBOT_IMPROVEMENTS.md](AI_CHATBOT_IMPROVEMENTS.md) | Chatbot enhancement plans | — |
 | [AI_CHATBOT_PRODUCTION_REPORT.md](AI_CHATBOT_PRODUCTION_REPORT.md) | AI chatbot production performance report | — |
 | [ENHANCED_CHATBOT_COMPONENTS.md](ENHANCED_CHATBOT_COMPONENTS.md) | Enhanced chatbot component designs | — |
@@ -55,6 +56,7 @@ This index organises all ConTigo documentation by audience and purpose.
 | [BUSINESS_PLAN.md](BUSINESS_PLAN.md) | Full business plan — market, strategy, financials, exit | ~1,300 |
 | [REVENUE_MODEL.md](REVENUE_MODEL.md) | 5-year P&L, unit economics, scenarios, sensitivity analysis | ~750 |
 | [PRICING_STRATEGY.md](PRICING_STRATEGY.md) | Plan tiers, rate cards, discounts, ROI calculator | ~780 |
+| [DEMO_PLAYBOOK_UPLOAD_RENEWAL_DRAFTING.md](planning/DEMO_PLAYBOOK_UPLOAD_RENEWAL_DRAFTING.md) | Presenter run-of-show for upload, extraction, renewals, and drafting demos | ~360 |
 | [FOUNDERS_AGREEMENT.md](FOUNDERS_AGREEMENT.md) | GmbH founders' pact with full legal protections | ~1,400 |
 
 ## Legal & Compliance (Swiss Law)

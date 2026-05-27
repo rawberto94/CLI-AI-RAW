@@ -44,7 +44,6 @@ interface ContractHealthScoreWidgetProps {
   hasParties: boolean
   riskLevel: 'low' | 'medium' | 'high'
   complianceStatus: 'ok' | 'review'
-  extractionConfidence?: number
   onViewDetails?: () => void
   onFixIssues?: () => void
   className?: string
@@ -60,7 +59,6 @@ export const ContractHealthScoreWidget = memo(function ContractHealthScoreWidget
   hasParties,
   riskLevel,
   complianceStatus: _complianceStatus,
-  extractionConfidence,
   onViewDetails,
   onFixIssues,
   className,
@@ -107,7 +105,7 @@ export const ContractHealthScoreWidget = memo(function ContractHealthScoreWidget
         name: 'Expiration',
         score: hasExpiration ? 100 : 70,
         status: hasExpiration ? 'good' : 'warning',
-        message: hasExpiration ? 'Has defined end date' : 'No expiration date - evergreen',
+        message: hasExpiration ? 'Has defined end date' : 'Expiration date needs review',
         icon: Calendar,
       })
     }
@@ -248,22 +246,6 @@ export const ContractHealthScoreWidget = memo(function ContractHealthScoreWidget
             </div>
           </div>
           
-          {/* AI Confidence Badge */}
-          {extractionConfidence !== undefined && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Badge variant="outline" className="text-[10px] sm:text-xs gap-1 border-violet-200 text-violet-700 bg-violet-50">
-                    <Sparkles className="h-3 w-3" />
-                    {Math.round(extractionConfidence * 100)}% AI
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>AI extraction confidence score</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
         </div>
       </div>
       

@@ -142,7 +142,7 @@ export async function gatherContext(
 async function buildContractProfile(contractId: string, tenantId: string): Promise<string> {
   let context = '';
   try {
-    const [contractProfile, artifacts, contractClauses, contractObligations] = await Promise.all([
+    const [contractProfile, artifacts, contractClauses, contractObligations, contractVersions] = await Promise.all([
       prisma.contract.findFirst({
         where: { id: contractId, tenantId },
         select: {
@@ -174,6 +174,20 @@ async function buildContractProfile(contractId: string, tenantId: string): Promi
         orderBy: { dueDate: 'asc' },
         take: 10,
       }).catch(() => []),
+      prisma.contractVersion.findMany({
+        where: { contractId, tenantId },
+        select: {
+          versionNumber: true,
+          uploadedAt: true,
+          uploadedBy: true,
+          isActive: true,
+          summary: true,
+          changes: true,
+          fileUrl: true,
+        },
+        orderBy: { versionNumber: 'asc' },
+        take: 12,
+      }).catch(() => []),
     ]);
 
     if (contractProfile) {
@@ -200,6 +214,24 @@ async function buildContractProfile(contractId: string, tenantId: string): Promi
         context += `| Risk Flags | ${(cp.riskFlags as string[]).join(', ')} |\n`;
       }
       if (cp.categoryL1) context += `| Category | ${cp.categoryL1}${cp.categoryL2 ? ' > ' + cp.categoryL2 : ''} |\n`;
+
+      if (contractVersions.length > 0) {
+        context += `\n**Contract Version History (${contractVersions.length}):**\n`;
+        for (const version of contractVersions) {
+          const changes = version.changes && typeof version.changes === 'object' && !Array.isArray(version.changes)
+            ? version.changes as Record<string, unknown>
+            : {};
+          const event = typeof changes.event === 'string' ? changes.event.replace(/_/g, ' ') : null;
+          const fileName = typeof changes.fileName === 'string' ? changes.fileName : null;
+          const uploadedAt = new Date(version.uploadedAt).toLocaleDateString();
+          const details = [
+            version.summary || event || 'Version update',
+            fileName ? `file: ${fileName}` : null,
+            version.fileUrl ? 'file stored' : null,
+          ].filter(Boolean).join('; ');
+          context += `- v${version.versionNumber}${version.isActive ? ' (active)' : ''}: ${details}; uploaded ${uploadedAt}${version.uploadedBy ? ` by ${version.uploadedBy}` : ''}\n`;
+        }
+      }
 
       // Include raw document text for direct AI analysis when artifacts are stubs.
       // IMPORTANT: wrap the text in an untrusted-document boundary. OCR'd PDFs

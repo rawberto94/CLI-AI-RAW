@@ -41,6 +41,7 @@ export interface QueuedFile {
   error?: string;
   isDuplicate?: boolean;
   existingContractId?: string;
+  versionNumber?: number;
   startTime?: number;
   endTime?: number;
   position?: number;
@@ -344,6 +345,7 @@ export function UploadQueue({
                         error={file.error}
                         isDuplicate={file.isDuplicate}
                         existingContractId={file.existingContractId}
+                        versionNumber={file.versionNumber}
                         onRetry={() => onRetryFile(file.id)}
                         onRemove={() => onRemoveFile(file.id)}
                         onViewContract={onViewContract}

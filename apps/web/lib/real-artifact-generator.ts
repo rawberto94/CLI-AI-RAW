@@ -11,7 +11,16 @@ import { PrismaClient, ArtifactType } from '@prisma/client';
 import fs from 'fs/promises';
 import path from 'path';
 import pino from 'pino';
-import { assessSignatureEvidence, buildPersistedContractTextFields } from '@repo/utils';
+import {
+  assessCriticalContractEvidence,
+  assessSignatureEvidence,
+  buildPersistedContractTextFields,
+  CONTRACT_DI_QUERY_FIELDS,
+  type ContractFieldEvidence,
+  normalizeDIQueryAnswers,
+  type NormalizedContractFieldEvidence,
+  parseMonetaryAmount,
+} from '@repo/utils';
 import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { categorizeContract } from '@/lib/categorization-service';
 import { queueContractReindex } from '@/lib/rag/reindex-trigger';
@@ -134,6 +143,13 @@ interface BasicContractExtraction {
   paymentTerms: string | null;
   signatureStatus: string | null;
   signatureDate: string | null;
+  initialTerm: string | null;
+  renewalTerm: string | null;
+  autoRenewal: boolean | null;
+  evergreen: boolean | null;
+  noticePeriodDays: number | null;
+  termSource: string | null;
+  financialValidationIssues: string[];
 }
 
 const MONTH_NAMES = '(?:january|february|march|april|may|june|july|august|september|october|november|december)';
@@ -329,31 +345,6 @@ function selectPrimaryParties(parties: ExtractedParty[]): { clientName: string |
   };
 }
 
-function extractExplicitTotalValue(contractText: string): { value: number | null; currency: string | null } {
-  const moneyRegex = /((?:USD|EUR|GBP|CHF)\s*[\d,.]+|[$€£]\s*[\d,.]+)/gi;
-  let match: RegExpExecArray | null;
-
-  while ((match = moneyRegex.exec(contractText)) !== null) {
-    const amountText = match[1];
-    const context = normalizeWhitespace(
-      contractText.slice(Math.max(0, match.index - 100), Math.min(contractText.length, match.index + amountText.length + 100))
-    ).toLowerCase();
-
-    const looksExplicitTotal = /(total|aggregate|overall|contract value|contract amount|total fees?|purchase price|consideration)/.test(context);
-    const excludedContext = /(example|sample|illustrative|unit price|per unit|per order|order quantity|liability|insurance|coverage|discount|interest|penalt|shipment|forecast|warranty)/.test(context);
-    if (!looksExplicitTotal || excludedContext) {
-      continue;
-    }
-
-    const value = parseMonetaryValue(amountText);
-    if (value == null) continue;
-
-    return { value, currency: detectCurrencyCode(amountText) };
-  }
-
-  return { value: null, currency: null };
-}
-
 function extractPrimaryCurrency(contractText: string): string | null {
   const currencyMatches = contractText.match(/\b(?:USD|EUR|GBP|CHF)\b|[$€£]/gi) || [];
   if (currencyMatches.length === 0) return null;
@@ -420,6 +411,21 @@ function buildArtifactGroundingContext(extracted: BasicContractExtraction, contr
   facts.push(`- effectiveDate: ${extracted.startDate || 'unknown'}`);
   facts.push(`- endDate: ${extracted.endDate || 'unknown'}`);
   facts.push(`- totalValue: ${extracted.totalValue != null ? `${extracted.totalValue} ${extracted.currency || ''}`.trim() : 'not explicitly stated'}`);
+  if (extracted.initialTerm) {
+    facts.push(`- initialTerm: ${extracted.initialTerm}`);
+  }
+  if (extracted.renewalTerm) {
+    facts.push(`- renewalTerm: ${extracted.renewalTerm}`);
+  }
+  if (extracted.autoRenewal != null) {
+    facts.push(`- autoRenewal: ${extracted.autoRenewal}`);
+  }
+  if (extracted.noticePeriodDays != null) {
+    facts.push(`- noticePeriodDays: ${extracted.noticePeriodDays}`);
+  }
+  if (extracted.termSource) {
+    facts.push(`- termSource: ${extracted.termSource}`);
+  }
   if (extracted.paymentTerms) {
     facts.push(`- paymentTerms: ${extracted.paymentTerms}`);
   }
@@ -427,7 +433,8 @@ function buildArtifactGroundingContext(extracted: BasicContractExtraction, contr
     facts.push(`- parties: ${extracted.parties.map(party => `${party.name} (${party.role})`).join('; ')}`);
   }
   facts.push('- Use these facts when consistent with the contract text. If the contract is ambiguous, return null instead of guessing.');
-  facts.push('- Do not treat unit prices, example calculations, insurance limits, liability caps, penalties, or forecast volumes as the total contract value unless explicitly labelled as the total or aggregate contract value.');
+  facts.push('- Do not treat unit prices, installments, milestone payments, deposits, invoices, example calculations, insurance limits, liability caps, penalties, or forecast volumes as the total contract value unless explicitly labelled as the total or aggregate contract value.');
+  facts.push('- A missing endDate is not evergreen. Only treat a contract as evergreen/perpetual if the text explicitly says so.');
 
   return facts.join('\n');
 }
@@ -446,6 +453,11 @@ function mergeExtractedFactsWithMetadata(
     supplierName?: string;
     signatureStatus?: string;
     signatureDate?: string;
+    paymentTerms?: string;
+    initialTerm?: string;
+    renewalTerm?: string;
+    noticePeriodDays?: number;
+    autoRenewal?: boolean;
   }
 ): BasicContractExtraction {
   const clientRole = extracted.parties.find(party => isClientRole(party.role))?.role || 'Client';
@@ -474,9 +486,16 @@ function mergeExtractedFactsWithMetadata(
     supplierName: metadata.supplierName || primaryParties.supplierName,
     parties: mergedParties,
     keyPoints: extracted.keyPoints,
-    paymentTerms: extracted.paymentTerms,
+    paymentTerms: metadata.paymentTerms || extracted.paymentTerms,
     signatureStatus: metadata.signatureStatus || extracted.signatureStatus,
     signatureDate: metadata.signatureDate || extracted.signatureDate,
+    initialTerm: metadata.initialTerm || extracted.initialTerm,
+    renewalTerm: metadata.renewalTerm || extracted.renewalTerm,
+    autoRenewal: metadata.autoRenewal ?? extracted.autoRenewal,
+    evergreen: extracted.evergreen,
+    noticePeriodDays: metadata.noticePeriodDays ?? extracted.noticePeriodDays,
+    termSource: extracted.termSource,
+    financialValidationIssues: extracted.financialValidationIssues,
   };
 }
 
@@ -503,7 +522,7 @@ function getDateString(value: unknown): string | null {
 function getNumber(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string' && value.trim()) {
-    const parsed = Number(value);
+    const parsed = parseMonetaryAmount(value);
     return Number.isFinite(parsed) ? parsed : null;
   }
 
@@ -546,14 +565,21 @@ function extractPartiesFromMetadata(value: unknown): ExtractedParty[] {
 function extractPersistedOcrFacts(aiMetadata: unknown): {
   metadata: {
     title?: string;
+    contractType?: string;
     startDate?: string;
     endDate?: string;
+    totalValue?: number;
     currency?: string;
     parties?: string[];
     clientName?: string;
     supplierName?: string;
     signatureStatus?: string;
     signatureDate?: string;
+    paymentTerms?: string;
+    initialTerm?: string;
+    renewalTerm?: string;
+    noticePeriodDays?: number;
+    autoRenewal?: boolean;
   };
   ocrConfidence?: number;
 } {
@@ -565,53 +591,100 @@ function extractPersistedOcrFacts(aiMetadata: unknown): {
   const diStructuredMeta = getObject(aiMeta.ocrStructuredMeta);
   const diContractFields = getObject(aiMeta.diContractFields);
   const contractDates = getObject(diContractFields?.dates);
+  const diFieldMetadata = getObject(aiMeta.diFieldMetadata);
 
   const mergedParties = dedupeParties([
     ...extractPartiesFromMetadata(diContractFields?.parties),
+    ...extractPartiesFromMetadata(diFieldMetadata?.parties),
     ...extractPartiesFromMetadata(aiMeta.external_parties),
   ]);
   const primaryParties = selectPrimaryParties(mergedParties);
 
   const metadata: {
     title?: string;
+    contractType?: string;
     startDate?: string;
     endDate?: string;
+    totalValue?: number;
     currency?: string;
     parties?: string[];
     clientName?: string;
     supplierName?: string;
     signatureStatus?: string;
     signatureDate?: string;
+    paymentTerms?: string;
+    initialTerm?: string;
+    renewalTerm?: string;
+    noticePeriodDays?: number;
   } = {};
 
-  const title = getString(diContractFields?.title) || getString(aiMeta.document_title);
+  const title = getString(diFieldMetadata?.title) || getString(diContractFields?.title) || getString(aiMeta.document_title);
   if (title) metadata.title = title;
 
+  const contractType =
+    getString(diFieldMetadata?.contractType) ||
+    getString(diContractFields?.contractType) ||
+    getString(aiMeta.contractType) ||
+    getString(aiMeta.contract_type);
+  if (contractType) metadata.contractType = contractType;
+
   const startDate =
-    getDateString(contractDates?.effectiveDate) ||
     getDateString(aiMeta.contract_effective_date) ||
-    getDateString(aiMeta.start_date);
+    getDateString(aiMeta.start_date) ||
+    getDateString(diFieldMetadata?.startDate) ||
+    getDateString(contractDates?.effectiveDate);
   if (startDate) metadata.startDate = startDate;
 
   const endDate =
-    getDateString(contractDates?.expirationDate) ||
     getDateString(aiMeta.contract_end_date) ||
-    getDateString(aiMeta.end_date);
+    getDateString(aiMeta.end_date) ||
+    getDateString(diFieldMetadata?.endDate) ||
+    getDateString(contractDates?.expirationDate);
   if (endDate) metadata.endDate = endDate;
 
-  const signatureStatus = getString(aiMeta.signature_status);
+  const signatureStatus = getString(diFieldMetadata?.signatureStatus) || getString(aiMeta.signature_status);
   if (signatureStatus) metadata.signatureStatus = signatureStatus;
 
-  const signatureDate = getDateString(aiMeta.signature_date) || getDateString(contractDates?.executionDate);
+  const signatureDate = getDateString(diFieldMetadata?.signatureDate) || getDateString(aiMeta.signature_date) || getDateString(contractDates?.executionDate);
   if (signatureDate) metadata.signatureDate = signatureDate;
 
-  const currency = getString(aiMeta.currency);
+  const currency = getString(aiMeta.currency) || getString(diFieldMetadata?.currency);
   if (currency) metadata.currency = currency.toUpperCase();
+
+  const totalValue =
+    getNumber(aiMeta.tcv_amount) ??
+    getNumber(aiMeta.totalValue) ??
+    getNumber(aiMeta.total_value) ??
+    getNumber(diFieldMetadata?.totalValue) ??
+    getNumber(diContractFields?.totalValue);
+  if (totalValue != null) metadata.totalValue = totalValue;
+
+  const paymentTerms = getString(aiMeta.payment_terms) || getString(diFieldMetadata?.paymentTerms);
+  if (paymentTerms) metadata.paymentTerms = paymentTerms;
+
+  const initialTerm = getString(diFieldMetadata?.initialTerm);
+  if (initialTerm) metadata.initialTerm = initialTerm;
+
+  const renewalTerm = getString(diFieldMetadata?.renewalTerms);
+  if (renewalTerm) metadata.renewalTerm = renewalTerm;
+
+  const noticePeriodDays = getNumber(diFieldMetadata?.noticePeriodDays);
+  if (noticePeriodDays != null) metadata.noticePeriodDays = noticePeriodDays;
+
+  if (typeof diFieldMetadata?.autoRenewal === 'boolean') metadata.autoRenewal = diFieldMetadata.autoRenewal;
 
   if (mergedParties.length > 0) {
     metadata.parties = mergedParties.map(party => party.name);
     if (primaryParties.clientName) metadata.clientName = primaryParties.clientName;
     if (primaryParties.supplierName) metadata.supplierName = primaryParties.supplierName;
+  }
+
+  const directClientName = getString(diFieldMetadata?.clientName);
+  const directSupplierName = getString(diFieldMetadata?.supplierName);
+  if (directClientName) metadata.clientName = directClientName;
+  if (directSupplierName) metadata.supplierName = directSupplierName;
+  if ((directClientName || directSupplierName) && !metadata.parties) {
+    metadata.parties = [directClientName, directSupplierName].filter((party): party is string => Boolean(party));
   }
 
   const ocrConfidence = getNumber(diStructuredMeta?.confidence) ?? undefined;
@@ -665,6 +738,32 @@ function deriveNarrativeAmount(description: string): number | null {
   return null;
 }
 
+function sumPaymentScheduleValues(value: unknown): number | null {
+  if (!Array.isArray(value)) return null;
+
+  let total = 0;
+  let count = 0;
+  for (const entry of value) {
+    const record = getObject(entry);
+    if (!record) continue;
+
+    const amount = coerceNumericValue(record.amount ?? record.value ?? record.total ?? record.subtotal);
+    if (amount != null && amount > 0 && amount < 1e12) {
+      total += amount;
+      count += 1;
+    }
+  }
+
+  return count >= 2 ? total : null;
+}
+
+function appendValidationIssue(data: Record<string, any>, issue: string): void {
+  const existingIssues = Array.isArray(data.validationIssues) ? data.validationIssues : [];
+  if (!existingIssues.includes(issue)) {
+    data.validationIssues = [...existingIssues, issue];
+  }
+}
+
 function repairArtifactData(
   type: ArtifactType,
   data: Record<string, any>,
@@ -681,6 +780,11 @@ function repairArtifactData(
       if (!repaired.summary && extracted.summary) repaired.summary = extracted.summary;
       if (!repaired.contractType && extracted.contractType) repaired.contractType = extracted.contractType;
       if (!repaired.title && effectiveTitle) repaired.title = effectiveTitle;
+      const overviewTotalValue = coerceNumericValue(repaired.totalValue);
+      if (extracted.totalValue != null && (overviewTotalValue == null || overviewTotalValue < extracted.totalValue * 0.5)) {
+        repaired.totalValue = extracted.totalValue;
+      }
+      if (!repaired.currency && extracted.currency) repaired.currency = extracted.currency;
       if (!repaired.effectiveDate && extracted.startDate) repaired.effectiveDate = extracted.startDate;
       if (!repaired.endDate && extracted.endDate) repaired.endDate = extracted.endDate;
       if (!Array.isArray(repaired.parties) || repaired.parties.length === 0) {
@@ -716,8 +820,26 @@ function repairArtifactData(
         })
         .filter(Boolean);
 
-      if ((repaired.totalValue == null || !Number.isFinite(Number(repaired.totalValue))) && extracted.totalValue != null) {
+      const currentTotalValue = coerceNumericValue(repaired.totalValue);
+      const paymentScheduleTotal = sumPaymentScheduleValues(repaired.paymentSchedule);
+      if (currentTotalValue != null) {
+        repaired.totalValue = currentTotalValue;
+      }
+      if (extracted.totalValue != null && (currentTotalValue == null || currentTotalValue < extracted.totalValue * 0.5)) {
         repaired.totalValue = extracted.totalValue;
+        if (currentTotalValue != null) {
+          appendValidationIssue(repaired, `Adjusted totalValue from ${currentTotalValue} to ${extracted.totalValue} based on stronger aggregate-value evidence.`);
+        }
+      }
+      const resolvedTotalValue = coerceNumericValue(repaired.totalValue);
+      if (paymentScheduleTotal != null && (resolvedTotalValue == null || resolvedTotalValue < paymentScheduleTotal * 0.5)) {
+        repaired.totalValue = paymentScheduleTotal;
+        appendValidationIssue(repaired, `Adjusted totalValue to payment schedule sum ${paymentScheduleTotal}.`);
+      } else if (paymentScheduleTotal != null && resolvedTotalValue != null && paymentScheduleTotal > resolvedTotalValue * 1.2) {
+        appendValidationIssue(repaired, `Payment schedule sum ${paymentScheduleTotal} exceeds totalValue ${resolvedTotalValue}; review required.`);
+      }
+      for (const issue of extracted.financialValidationIssues) {
+        appendValidationIssue(repaired, issue);
       }
       if (!repaired.currency && extracted.currency) repaired.currency = extracted.currency;
       if (!repaired.paymentTerms && extracted.paymentTerms) repaired.paymentTerms = extracted.paymentTerms;
@@ -742,6 +864,8 @@ function repairArtifactData(
     case 'TIMELINE': {
       if (!repaired.effectiveDate && extracted.startDate) repaired.effectiveDate = extracted.startDate;
       if (!repaired.endDate && extracted.endDate) repaired.endDate = extracted.endDate;
+      if (!repaired.expirationDate && extracted.endDate) repaired.expirationDate = extracted.endDate;
+      if (!repaired.duration && extracted.initialTerm) repaired.duration = extracted.initialTerm;
       if (!Array.isArray(repaired.keyDates) || repaired.keyDates.length === 0) {
         repaired.keyDates = [extracted.startDate, extracted.endDate].filter(Boolean);
       }
@@ -895,6 +1019,9 @@ interface DIExtractionResult {
   handwrittenSpans: string[];
   /** Number of pages DI actually processed (may be less than total PDF pages) */
   pagesProcessed: number;
+  queryAnswers?: Record<string, string>;
+  fieldEvidence?: ContractFieldEvidence[];
+  fieldMetadata?: NormalizedContractFieldEvidence['metadata'];
 }
 
 // Per-invocation DI handwriting results — returned from extractTextFromBuffer
@@ -904,12 +1031,22 @@ interface DIHandwritingEvidence {
   handwrittenSpans: string[];
 }
 
+interface ExtractedTextResult {
+  text: string;
+  diHandwriting: DIHandwritingEvidence;
+  ocrProvider?: string;
+  ocrModel?: string;
+  diQueryAnswers?: Record<string, string>;
+  diFieldEvidence?: ContractFieldEvidence[];
+  diFieldMetadata?: NormalizedContractFieldEvidence['metadata'];
+}
+
 const NO_HANDWRITING: DIHandwritingEvidence = { hasHandwriting: false, handwrittenSpans: [] };
 
 async function extractPDFWithDocumentIntelligence(fileContent: Buffer, totalPdfPages?: number): Promise<DIExtractionResult> {
   const empty: DIExtractionResult = { text: '', hasHandwriting: false, handwrittenSpans: [], pagesProcessed: 0 };
   try {
-    const { analyzeLayout, analyzeRead, isDIConfigured, isDIEnabled } = await import('@repo/workers/azure-document-intelligence');
+    const { analyzeLayout, analyzeRead, analyzeWithQueries, isDIConfigured, isDIEnabled } = await import('@repo/workers/azure-document-intelligence');
 
     if (!isDIConfigured() || !isDIEnabled()) {
       logger.info('Azure Document Intelligence not configured or disabled — skipping DI extraction');
@@ -928,6 +1065,38 @@ async function extractPDFWithDocumentIntelligence(fileContent: Buffer, totalPdfP
         }
       }
       return spans;
+    };
+
+    const extractQueryEvidence = async (): Promise<Pick<DIExtractionResult, 'queryAnswers' | 'fieldEvidence' | 'fieldMetadata' | 'text'>> => {
+      if (process.env.AZURE_DI_QUERY_ENRICHMENT === 'false') {
+        return { text: '' };
+      }
+
+      try {
+        const { answers } = await analyzeWithQueries(fileContent, CONTRACT_DI_QUERY_FIELDS);
+        const validAnswers = Object.fromEntries(
+          Object.entries(answers).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
+        );
+        if (Object.keys(validAnswers).length === 0) {
+          return { text: '' };
+        }
+
+        const normalized = normalizeDIQueryAnswers(validAnswers, { confidence: 0.82, source: 'azure-di-query' });
+        const answerBlock = Object.entries(validAnswers)
+          .map(([question, answer]) => `${question}: ${answer}`)
+          .join('\n');
+
+        logger.info({ answerCount: Object.keys(validAnswers).length, evidenceCount: normalized.evidence.length }, 'Azure DI query-field enrichment completed');
+        return {
+          text: `\n\n--- DI QUERY FIELD ANSWERS ---\n${answerBlock}`,
+          queryAnswers: validAnswers,
+          fieldEvidence: normalized.evidence,
+          fieldMetadata: normalized.metadata,
+        };
+      } catch (queryError) {
+        logger.warn({ error: queryError }, 'Azure DI query-field enrichment failed, continuing with layout text');
+        return { text: '' };
+      }
     };
 
     // Helper: call DI layout for a specific page range
@@ -979,10 +1148,12 @@ async function extractPDFWithDocumentIntelligence(fileContent: Buffer, totalPdfP
 
           const combinedText = allTexts.join('\n\n');
           logger.info({ totalProcessed, totalChars: combinedText.length, hasHandwriting }, 'DI multi-batch extraction complete');
-          return { text: combinedText, hasHandwriting, handwrittenSpans: allHandwrittenSpans, pagesProcessed: totalProcessed };
+          const queryEvidence = await extractQueryEvidence();
+          return { ...queryEvidence, text: combinedText + queryEvidence.text, hasHandwriting, handwrittenSpans: allHandwrittenSpans, pagesProcessed: totalProcessed };
         }
 
-        return firstResult;
+        const queryEvidence = await extractQueryEvidence();
+        return { ...firstResult, ...queryEvidence, text: firstResult.text + queryEvidence.text };
       }
     } catch (layoutError) {
       logger.warn({ error: layoutError }, 'Azure Document Intelligence layout extraction failed, trying read model');
@@ -1020,7 +1191,7 @@ async function extractTextFromBuffer(
   fileContent: Buffer,
   fileName: string,
   mimeType: string
-): Promise<{ text: string; diHandwriting: DIHandwritingEvidence; ocrProvider?: string; ocrModel?: string }> {
+): Promise<ExtractedTextResult> {
   const ext = path.extname(fileName).toLowerCase();
 
   // PDF extraction — always prefer Azure Document Intelligence for richer output
@@ -1058,7 +1229,15 @@ async function extractTextFromBuffer(
 
     // 3. Choose the best result — prefer DI when it returned meaningful content
     if (diText && diText.length > 10) {
-      return { text: diText, diHandwriting, ocrProvider: 'azure-document-intelligence', ocrModel: 'prebuilt-layout' };
+      return {
+        text: diText,
+        diHandwriting,
+        ocrProvider: 'azure-document-intelligence',
+        ocrModel: 'prebuilt-layout',
+        diQueryAnswers: diResult.queryAnswers,
+        diFieldEvidence: diResult.fieldEvidence,
+        diFieldMetadata: diResult.fieldMetadata,
+      };
     }
     if (pdfParseText.replace(/\s+/g, ' ').trim().length >= 50) {
       logger.info('DI unavailable or insufficient — using pdf-parse text');
@@ -1128,7 +1307,7 @@ async function extractTextFromBuffer(
 async function extractTextFromFile(
   filePath: string,
   mimeType: string
-): Promise<{ text: string; diHandwriting: DIHandwritingEvidence; ocrProvider?: string; ocrModel?: string }> {
+): Promise<ExtractedTextResult> {
   const fileContent = await fs.readFile(filePath);
   return extractTextFromBuffer(fileContent, filePath, mimeType);
 }
@@ -1215,7 +1394,7 @@ async function extractContractMetadata(
         messages: [
           {
             role: 'system',
-            content: 'You are a contract metadata extractor. Extract only explicit facts from the contract and return valid JSON only. Do not use addresses as party names. Do not infer total contract value from unit prices, example calculations, insurance limits, liability caps, penalties, or forecasts. If a field is not explicit, return null.',
+            content: 'You are a contract metadata extractor. Extract only explicit facts from the contract and return valid JSON only. Do not use addresses as party names. Derive endDate when the contract states an effective/start date plus a fixed duration such as 2 years or 24 months. Do not treat a missing endDate as evergreen. Do not infer total contract value from unit prices, installments, deposits, milestone payments, invoices, example calculations, insurance limits, liability caps, penalties, or forecasts. If a field is not explicit or derivable from explicit date plus duration, return null.',
           },
           {
             role: 'user',
@@ -1223,8 +1402,8 @@ async function extractContractMetadata(
 - title: Contract title or name
 - contractType: Type (e.g., SERVICE, NDA, EMPLOYMENT, LEASE, MSA, SOW, etc.)
 - startDate: Effective/start date (ISO format YYYY-MM-DD or null)
-- endDate: Expiration/end date (ISO format YYYY-MM-DD or null)  
-- totalValue: Total contract value as number (or null)
+- endDate: Expiration/end date (ISO format YYYY-MM-DD or null). If the text states a fixed duration from the effective/start date, calculate the resulting end date.
+- totalValue: Aggregate total contract value as number (or null). Use the total/aggregate/not-to-exceed amount, not a single installment, deposit, invoice, milestone, rate, cap, or payment schedule row.
 - currency: Currency code (e.g., USD, EUR, GBP)
 - parties: Array of all party names as strings (companies/individuals only, no addresses)
 - clientName: Name of the client/buyer/customer party if explicit, otherwise null
@@ -1241,6 +1420,10 @@ Known extracted facts:
 - supplierName: ${basicFields.supplierName || 'unknown'}
 - startDate: ${basicFields.startDate || 'unknown'}
 - endDate: ${basicFields.endDate || 'unknown'}
+- initialTerm: ${basicFields.initialTerm || 'unknown'}
+- renewalTerm: ${basicFields.renewalTerm || 'unknown'}
+- autoRenewal: ${basicFields.autoRenewal ?? 'unknown'}
+- noticePeriodDays: ${basicFields.noticePeriodDays ?? 'unknown'}
 - totalValue: ${basicFields.totalValue != null ? `${basicFields.totalValue} ${basicFields.currency || ''}`.trim() : 'not explicitly stated'}
 - parties: ${basicFields.parties.length > 0 ? basicFields.parties.map(party => `${party.name} (${party.role})`).join('; ') : 'unknown'}
 
@@ -1299,13 +1482,17 @@ ${truncatedText}`,
         const resolvedSignatureDate = resolvedSignatureStatus === 'signed' || resolvedSignatureStatus === 'partially_signed'
           ? (parsed.signatureDate || basicMetadata.signatureDate)
           : undefined;
+        const parsedTotalValue = getNumber(parsed.totalValue);
+        const resolvedTotalValue = basicMetadata.totalValue != null && (parsedTotalValue == null || parsedTotalValue < basicMetadata.totalValue * 0.5)
+          ? basicMetadata.totalValue
+          : parsedTotalValue ?? basicMetadata.totalValue;
 
         return {
           title: parsed.title || basicMetadata.title,
           contractType: parsed.contractType || basicMetadata.contractType,
           startDate: parsed.startDate || basicMetadata.startDate,
           endDate: parsed.endDate || basicMetadata.endDate,
-          totalValue: parsed.totalValue ?? basicMetadata.totalValue,
+          totalValue: resolvedTotalValue,
           currency: parsed.currency || basicMetadata.currency,
           parties: parsedParties || basicMetadata.parties,
           clientName: parsed.clientName || basicMetadata.clientName,
@@ -1326,22 +1513,7 @@ ${truncatedText}`,
  * Extract basic structured fields from contract text using regex patterns
  * Used by generateBasicArtifact to populate artifacts with real data from the document
  */
-function extractBasicFieldsFromText(contractText: string): {
-  title: string | null;
-  contractType: string | null;
-  summary: string | null;
-  totalValue: number | null;
-  currency: string | null;
-  startDate: string | null;
-  endDate: string | null;
-  clientName: string | null;
-  supplierName: string | null;
-  parties: Array<{ name: string; role: string }>;
-  keyPoints: string[];
-  paymentTerms: string | null;
-  signatureStatus: string | null;
-  signatureDate: string | null;
-} {
+function extractBasicFieldsFromText(contractText: string): BasicContractExtraction {
   const result = {
     title: null as string | null,
     contractType: null as string | null,
@@ -1357,6 +1529,13 @@ function extractBasicFieldsFromText(contractText: string): {
     paymentTerms: null as string | null,
     signatureStatus: null as string | null,
     signatureDate: null as string | null,
+    initialTerm: null as string | null,
+    renewalTerm: null as string | null,
+    autoRenewal: null as boolean | null,
+    evergreen: null as boolean | null,
+    noticePeriodDays: null as number | null,
+    termSource: null as string | null,
+    financialValidationIssues: [] as string[],
   };
 
   if (!contractText || contractText.length < 10) return result;
@@ -1395,24 +1574,43 @@ function extractBasicFieldsFromText(contractText: string): {
     }
   }
 
+  const criticalEvidence = assessCriticalContractEvidence(contractText, { effectiveDate: result.startDate });
+  const termEvidence = criticalEvidence.term;
+  if (!result.endDate && termEvidence.derivedEndDate) {
+    result.endDate = termEvidence.derivedEndDate;
+  }
+  result.initialTerm = termEvidence.initialTerm?.text || null;
+  result.renewalTerm = termEvidence.renewalTerm?.text || null;
+  result.autoRenewal = termEvidence.autoRenewal ? true : termEvidence.initialTerm ? false : null;
+  result.evergreen = termEvidence.evergreen ? true : null;
+  result.noticePeriodDays = termEvidence.noticePeriodDays;
+  result.termSource = termEvidence.sourceQuote;
+
   // --- Total Value ---
-  const explicitTotalValue = extractExplicitTotalValue(contractText);
-  result.totalValue = explicitTotalValue.value;
-  result.currency = explicitTotalValue.currency || extractPrimaryCurrency(contractText);
+  const financialEvidence = criticalEvidence.financial;
+  result.totalValue = financialEvidence.totalValue;
+  result.currency = financialEvidence.currency || extractPrimaryCurrency(contractText);
+  result.financialValidationIssues = financialEvidence.validationIssues;
 
   // --- Parties ---
   result.parties = extractRoleAnchoredParties(contractText);
   const primaryParties = selectPrimaryParties(result.parties);
-  result.clientName = primaryParties.clientName;
-  result.supplierName = primaryParties.supplierName;
+  if (result.parties.length === 0 && criticalEvidence.parties.parties.length > 0) {
+    result.parties = criticalEvidence.parties.parties.map((partyName, index) => ({
+      name: partyName,
+      role: partyName === criticalEvidence.parties.clientName ? 'Client' : partyName === criticalEvidence.parties.supplierName ? 'Supplier' : index === 0 ? 'Client' : index === 1 ? 'Supplier' : 'Party',
+    }));
+  }
+  result.clientName = primaryParties.clientName || criticalEvidence.parties.clientName;
+  result.supplierName = primaryParties.supplierName || criticalEvidence.parties.supplierName;
 
   // --- Payment Terms ---
   result.paymentTerms = extractPaymentTerms(contractText);
 
   // --- Signatures ---
   const signatureInfo = extractSignatureInfo(contractText);
-  result.signatureStatus = signatureInfo.signatureStatus;
-  result.signatureDate = signatureInfo.signatureDate;
+  result.signatureStatus = criticalEvidence.signature.status || signatureInfo.signatureStatus;
+  result.signatureDate = criticalEvidence.signature.date || signatureInfo.signatureDate;
 
   // --- Build summary as prose ---
   if (result.clientName && result.supplierName && result.totalValue && result.title) {
@@ -1443,6 +1641,7 @@ function extractBasicFieldsFromText(contractText: string): {
   if (result.totalValue) result.keyPoints.push(`Total Value: ${result.currency ? `${result.currency} ` : ''}${result.totalValue.toLocaleString()}`);
   if (result.startDate) result.keyPoints.push(`Effective: ${result.startDate}`);
   if (result.endDate) result.keyPoints.push(`Expires: ${result.endDate}`);
+  if (result.initialTerm) result.keyPoints.push(`Initial Term: ${result.initialTerm}`);
   if (result.paymentTerms) result.keyPoints.push(`Payment Terms: ${result.paymentTerms}`);
 
   return result;
@@ -1557,14 +1756,40 @@ function generateBasicArtifact(
         note: 'Obligation extraction requires AI analysis',
       };
 
-    case 'RENEWAL':
+    case 'RENEWAL': {
+      const hasRenewalEvidence = Boolean(
+        basicExtracted.initialTerm ||
+        basicExtracted.renewalTerm ||
+        basicExtracted.autoRenewal != null ||
+        basicExtracted.noticePeriodDays != null ||
+        basicExtracted.endDate
+      );
       return {
         ...baseData,
-        renewalTerms: null,
-        autoRenewal: null,
-        noticePeriod: null,
-        note: 'Renewal analysis requires AI processing',
+        renewalTerms: basicExtracted.renewalTerm
+          ? `Renewal period: ${basicExtracted.renewalTerm}`
+          : basicExtracted.initialTerm
+            ? `Initial fixed term: ${basicExtracted.initialTerm}`
+            : null,
+        autoRenewal: basicExtracted.autoRenewal,
+        noticePeriod: basicExtracted.noticePeriodDays != null ? `${basicExtracted.noticePeriodDays} days` : null,
+        noticePeriodDays: basicExtracted.noticePeriodDays,
+        expirationDate: basicExtracted.endDate,
+        currentTermEnd: basicExtracted.endDate,
+        initialTerm: basicExtracted.initialTerm,
+        renewalPeriod: basicExtracted.renewalTerm,
+        termSource: basicExtracted.termSource,
+        summary: hasRenewalEvidence
+          ? [
+              basicExtracted.initialTerm ? `Initial term ${basicExtracted.initialTerm}` : null,
+              basicExtracted.endDate ? `expires ${basicExtracted.endDate}` : null,
+              basicExtracted.autoRenewal ? 'auto-renewal language detected' : null,
+              basicExtracted.noticePeriodDays != null ? `${basicExtracted.noticePeriodDays} days notice` : null,
+            ].filter(Boolean).join('; ')
+          : null,
+        note: hasRenewalEvidence ? undefined : 'Renewal analysis requires AI processing',
       };
+    }
 
     case 'NEGOTIATION_POINTS':
       return {
@@ -1605,9 +1830,14 @@ function generateBasicArtifact(
       return {
         ...baseData,
         milestones: [],
-        keyDates: [],
-        duration: null,
-        note: 'Timeline extraction requires AI processing',
+        keyDates: [basicExtracted.startDate, basicExtracted.endDate].filter(Boolean),
+        effectiveDate: basicExtracted.startDate,
+        endDate: basicExtracted.endDate,
+        expirationDate: basicExtracted.endDate,
+        duration: basicExtracted.initialTerm,
+        note: basicExtracted.startDate || basicExtracted.endDate || basicExtracted.initialTerm
+          ? undefined
+          : 'Timeline extraction requires AI processing',
       };
 
     case 'DELIVERABLES':
@@ -1683,11 +1913,14 @@ async function generateAIArtifact(
       
       FINANCIAL: `Extract financial information from this contract. Return JSON with:
         - amounts: Array of {value, currency, description}
-        - totalValue: Total contract value if stated
+        - totalValue: Aggregate total contract value if stated or explicitly derivable from a payment schedule
         - currency: Primary currency
         - paymentTerms: Payment terms if specified (e.g. "Net 30", "50% upfront / 50% on delivery")
         - billingFrequency: One of "monthly", "quarterly", "annual", "one-time", "milestone", or null if unclear
-        Use numbers only for value fields, with full amounts and no thousands separators in strings.`,
+        - paymentSchedule: Array of {milestone, amount, dueDate} when payments are itemized
+        Use numbers only for value fields, with full amounts and no thousands separators in strings.
+        CRITICAL: totalValue must be the aggregate/total/not-to-exceed value, not an individual installment, deposit, invoice, milestone payment, rate card row, unit price, monthly fee, insurance limit, liability cap, or penalty.
+        If multiple amounts appear, list them in amounts with descriptions and use totalValue only for the aggregate amount. If a payment schedule is itemized and no explicit total is stated, sum the schedule only when all schedule payments are clearly part of this contract.`,
       
       RISK: `Analyze risks in this contract. Return JSON with:
         - riskLevel: 'LOW', 'MEDIUM', 'HIGH', or 'CRITICAL'
@@ -1707,10 +1940,12 @@ async function generateAIArtifact(
       RENEWAL: `Extract renewal information from this contract. Return JSON with:
         - renewalTerms: Description of renewal terms
         - autoRenewal: Boolean if auto-renewal exists
+        - initialTerm: Initial fixed term or duration as written (e.g. "2 years", "24 months")
         - noticePeriod: Notice period for renewal/termination as written (e.g. "60 days", "3 months")
         - noticePeriodDays: Notice period normalised to a whole number of days (e.g. 60, 90), or null if not stated
         - terminationClause: Brief description of the termination-for-convenience clause if any, else null
-        - expirationDate: Contract expiration date if found`,
+        - expirationDate: Contract expiration date if found or explicitly derivable from effective/start date plus initial fixed term
+        CRITICAL: Separate the initial contract term from renewal periods. Derive expirationDate from effective/start date plus fixed duration when both are explicit. Do not call the contract evergreen merely because expirationDate is missing; only set autoRenewal true or describe evergreen/perpetual terms when the text explicitly says so.`,
 
       NEGOTIATION_POINTS: `Identify potential negotiation points in this contract. Return JSON with:
         - negotiationPoints: Array of {area, currentTerm, suggestedChange, priority, rationale}
@@ -1881,6 +2116,13 @@ const ARTIFACT_REQUIRED_FIELDS: Partial<Record<ArtifactType, string[]>> = {
  */
 function validateArtifactData(type: ArtifactType, data: Record<string, unknown>): string[] {
   const issues: string[] = [];
+  if (Array.isArray(data.validationIssues)) {
+    for (const issue of data.validationIssues) {
+      if (typeof issue === 'string' && issue.trim()) {
+        issues.push(issue.trim());
+      }
+    }
+  }
   const requiredFields = ARTIFACT_REQUIRED_FIELDS[type];
   if (requiredFields) {
     for (const field of requiredFields) {
@@ -2180,9 +2422,18 @@ export async function generateRealArtifacts(
 
     // Extract text from the file
     logger.info({ actualPath, mimeType, hasBuffer: !!fileContent }, 'Extracting text from file');
-    const { text: rawExtractedText, diHandwriting: diHandwritingEvidence, ocrProvider, ocrModel } = fileContent 
+    const extractionResult = fileContent
       ? await extractTextFromBuffer(fileContent, filePath, mimeType)
       : await extractTextFromFile(actualPath, mimeType);
+    const {
+      text: rawExtractedText,
+      diHandwriting: diHandwritingEvidence,
+      ocrProvider,
+      ocrModel,
+      diQueryAnswers,
+      diFieldEvidence,
+      diFieldMetadata,
+    } = extractionResult;
     
     if (!rawExtractedText || rawExtractedText.length < 10) {
       throw new Error('Failed to extract meaningful text from file');
@@ -2216,12 +2467,22 @@ export async function generateRealArtifacts(
       select: { metadata: true, aiMetadata: true, fileName: true, originalName: true, contractTitle: true },
     });
     const existingMeta = (existingContract?.metadata as Record<string, unknown>) || {};
-    const persistedOcrFacts = extractPersistedOcrFacts(existingContract?.aiMetadata);
+    const existingAiMetadata = (existingContract?.aiMetadata as Record<string, unknown>) || {};
+    const nextAiMetadata = diFieldEvidence?.length
+      ? {
+          ...existingAiMetadata,
+          diQueryAnswers: diQueryAnswers || {},
+          diFieldEvidence,
+          diFieldMetadata: diFieldMetadata || {},
+        }
+      : existingAiMetadata;
+    const persistedOcrFacts = extractPersistedOcrFacts(nextAiMetadata);
     const updateData: Record<string, unknown> = {
       ...buildPersistedContractTextFields(contractText),
       ocrProcessedAt: new Date(),
       ...(ocrProvider ? { ocrProvider } : {}),
       ...(ocrModel ? { ocrModel } : {}),
+      ...(diFieldEvidence?.length ? { aiMetadata: nextAiMetadata } : {}),
     };
     if (docxHtml) {
       updateData.metadata = { ...existingMeta, docxHtml };
@@ -2501,6 +2762,7 @@ export async function generateRealArtifacts(
             endDate: true,
             keywords: true,
             totalValue: true,
+            currency: true,
           },
         });
 
@@ -2517,6 +2779,10 @@ export async function generateRealArtifacts(
           }
           return null;
         };
+        const sameIsoDate = (left: Date | null | undefined, right: Date | null | undefined): boolean => {
+          if (!left || !right) return false;
+          return left.toISOString().slice(0, 10) === right.toISOString().slice(0, 10);
+        };
 
         if (!current?.paymentTerms) {
           const pt = asStr(fin.paymentTerms);
@@ -2532,11 +2798,20 @@ export async function generateRealArtifacts(
         }
         if (!current?.renewalTerms) {
           const rt = asStr(ren.renewalTerms);
-          if (rt) mirror.renewalTerms = { description: rt.slice(0, 1000), source: 'artifact:RENEWAL' };
+          if (rt) {
+            mirror.renewalTerms = { description: rt.slice(0, 1000), source: 'artifact:RENEWAL' };
+          } else if (artifactGroundingFacts.initialTerm || artifactGroundingFacts.renewalTerm || artifactGroundingFacts.termSource) {
+            mirror.renewalTerms = {
+              initialTerm: artifactGroundingFacts.initialTerm,
+              renewalTerm: artifactGroundingFacts.renewalTerm,
+              autoRenewal: artifactGroundingFacts.autoRenewal,
+              source: artifactGroundingFacts.termSource,
+            };
+          }
         }
-        if (current?.noticePeriodDays == null) {
-          const npd = asInt((ren as Record<string, unknown>).noticePeriodDays) ?? asInt(ren.noticePeriod);
-          if (npd != null && npd > 0 && npd < 3650) mirror.noticePeriodDays = npd;
+        const npd = artifactGroundingFacts.noticePeriodDays ?? asInt((ren as Record<string, unknown>).noticePeriodDays) ?? asInt(ren.noticePeriod);
+        if (npd != null && npd > 0 && npd < 3650 && current?.noticePeriodDays !== npd) {
+          mirror.noticePeriodDays = npd;
         }
         if (!current?.terminationClause) {
           const tc = asStr((ren as Record<string, unknown>).terminationClause);
@@ -2576,7 +2851,7 @@ export async function generateRealArtifacts(
           const d = new Date(s);
           return isNaN(d.getTime()) ? null : d;
         };
-        let computedEnd: Date | null = parseDate((tml as Record<string, unknown>).endDate);
+        let computedEnd: Date | null = parseDate(artifactGroundingFacts.endDate) || parseDate((tml as Record<string, unknown>).endDate);
         if (!computedEnd) {
           const eff = current?.effectiveDate || parseDate((tml as Record<string, unknown>).effectiveDate);
           const dur = parseDuration((tml as Record<string, unknown>).duration);
@@ -2587,8 +2862,8 @@ export async function generateRealArtifacts(
             computedEnd = d;
           }
         }
-        if (computedEnd && !current?.expirationDate) mirror.expirationDate = computedEnd;
-        if (computedEnd && !current?.endDate) mirror.endDate = computedEnd;
+        if (computedEnd && !sameIsoDate(current?.expirationDate, computedEnd)) mirror.expirationDate = computedEnd;
+        if (computedEnd && !sameIsoDate(current?.endDate, computedEnd)) mirror.endDate = computedEnd;
 
         // OVERVIEW.keyPoints → Contract.keywords (jsonb). Used by the search
         // facets and "topics" chips on the contract detail page.
@@ -2603,12 +2878,23 @@ export async function generateRealArtifacts(
           }
         }
 
-        // FINANCIAL → Contract.totalValue. Only mirror when the artifact
-        // surfaced a single explicit aggregate value (not a rate-card array).
-        if (current?.totalValue == null) {
-          const tv = (fin as Record<string, unknown>).totalValue;
-          const n = typeof tv === 'number' ? tv : (typeof tv === 'string' ? parseFloat(tv) : NaN);
-          if (Number.isFinite(n) && n > 0 && n < 1e12) mirror.totalValue = n;
+        // FINANCIAL / deterministic extraction → Contract.totalValue. If a
+        // prior AI metadata pass picked a much smaller expense cap, replace it
+        // with the stronger aggregate-value evidence found in the contract text.
+        const financialTotalValue = coerceNumericValue((fin as Record<string, unknown>).totalValue);
+        const overviewTotalValue = coerceNumericValue((ovr as Record<string, unknown>).totalValue);
+        const deterministicTotalValue = artifactGroundingFacts.totalValue;
+        const strongestArtifactValue = deterministicTotalValue != null && (financialTotalValue == null || financialTotalValue < deterministicTotalValue * 0.5)
+          ? deterministicTotalValue
+          : financialTotalValue ?? overviewTotalValue ?? deterministicTotalValue;
+        const currentTotalValue = coerceNumericValue(current?.totalValue);
+        if (strongestArtifactValue != null && strongestArtifactValue > 0 && strongestArtifactValue < 1e12) {
+          if (currentTotalValue == null || currentTotalValue < strongestArtifactValue * 0.5) {
+            mirror.totalValue = strongestArtifactValue;
+            if (!current?.currency && artifactGroundingFacts.currency) {
+              mirror.currency = artifactGroundingFacts.currency;
+            }
+          }
         }
 
         // Compute daysUntilExpiry from the resolved end date (mirror or current).

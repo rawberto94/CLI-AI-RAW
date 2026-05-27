@@ -7,6 +7,7 @@
 
 import Redis from 'ioredis';
 import pino from 'pino';
+import type { ContractFieldEvidence, NormalizedContractFieldEvidence } from '../contract-extraction';
 
 const logger = pino({ name: 'distributed-cache' });
 
@@ -280,6 +281,9 @@ export interface CachedDIStructuredData {
   barcodes?: Array<{ kind: string; value: string; confidence: number }>;
   formulas?: Array<{ kind: string; value: string; confidence: number }>;
   pageInfo?: Array<{ pageNumber: number; width: number; height: number; unit: string }>;
+  queryAnswers?: Record<string, string>;
+  fieldEvidence?: ContractFieldEvidence[];
+  fieldMetadata?: NormalizedContractFieldEvidence['metadata'];
 }
 
 /**

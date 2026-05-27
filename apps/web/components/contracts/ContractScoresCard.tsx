@@ -16,7 +16,6 @@ import {
   ChevronDown,
   ChevronRight,
   Info,
-  Sparkles,
   HelpCircle,
   RefreshCw,
   Scale,
@@ -67,7 +66,6 @@ export interface ContractScoresCardProps {
   riskInfo?: RiskInfo | null
   complianceInfo?: ComplianceInfo | null
   healthInfo?: HealthInfo | null
-  extractionConfidence?: number
   isProcessing?: boolean
   onRefresh?: () => void
   className?: string
@@ -218,13 +216,12 @@ function CompactTile({ label, value, icon, percent, active, onClick, colorScheme
 
 // ============ MAIN COMPONENT ============
 
-type MetricKey = 'extraction' | 'risk' | 'compliance' | 'health'
+type MetricKey = 'risk' | 'compliance' | 'health'
 
 export function ContractScoresCard({
   riskInfo,
   complianceInfo,
   healthInfo,
-  extractionConfidence,
   isProcessing,
   onRefresh,
   className,
@@ -246,7 +243,6 @@ export function ContractScoresCard({
   const riskColors = getRiskColor(riskLevel)
   const complianceColors = getComplianceColor(isCompliant)
   const healthColors = getHealthColor(healthScore)
-  const extractionColors = { text: 'text-violet-600', bg: 'bg-violet-100', border: 'border-violet-200', progress: 'bg-gradient-to-r from-violet-500 to-purple-500' }
 
   const toggle = (k: MetricKey) => setActive(prev => (prev === k ? null : k))
 
@@ -275,18 +271,7 @@ export function ContractScoresCard({
       </CardHeader>
 
       <CardContent className="p-3">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          {extractionConfidence !== undefined && (
-            <CompactTile
-              label="Extraction"
-              value={`${extractionConfidence}%`}
-              icon={<Sparkles className="h-3.5 w-3.5 text-violet-600" />}
-              percent={extractionConfidence}
-              active={active === 'extraction'}
-              onClick={() => toggle('extraction')}
-              colorScheme={extractionColors}
-            />
-          )}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <CompactTile
             label="Risk"
             value={riskLevel === 'unknown' ? '—' : riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}
@@ -318,17 +303,6 @@ export function ContractScoresCard({
 
         {active && (
           <div className="mt-3 p-3 rounded-lg bg-slate-50 border text-xs text-slate-600 space-y-2">
-            {active === 'extraction' && (
-              <>
-                <p className="font-medium text-slate-700 flex items-center gap-1.5">
-                  <Info className="h-3.5 w-3.5" /> AI Extraction Confidence
-                </p>
-                <p>
-                  Confidence that AI-extracted metadata (parties, dates, values, clauses) is accurate. Low confidence
-                  suggests reviewing extraction results manually.
-                </p>
-              </>
-            )}
             {active === 'risk' && (
               <>
                 <p className="font-medium text-slate-700 flex items-center gap-1.5">

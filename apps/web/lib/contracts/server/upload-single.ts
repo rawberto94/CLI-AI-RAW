@@ -2,6 +2,7 @@ import { createHash } from 'crypto';
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 
+import type { Prisma } from '@prisma/client';
 import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
@@ -235,6 +236,106 @@ function calculateUploadPriority(fileSize: number, requestedPriority: string | n
   return PROCESSING_PRIORITY.BACKGROUND;
 }
 
+async function registerDuplicateUploadAsVersion({
+  contractId,
+  tenantId,
+  uploadedBy,
+  fileName,
+  fileSize,
+  mimeType,
+  checksum,
+}: {
+  contractId: string;
+  tenantId: string;
+  uploadedBy?: string | null;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  checksum: string;
+}) {
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await prisma.$transaction(async (transaction) => {
+        let latestVersion = await transaction.contractVersion.findFirst({
+          where: { contractId, tenantId },
+          orderBy: { versionNumber: 'desc' },
+        });
+
+        if (!latestVersion) {
+          latestVersion = await transaction.contractVersion.create({
+            data: {
+              contractId,
+              tenantId,
+              versionNumber: 1,
+              uploadedBy: null,
+              summary: 'Initial upload',
+              isActive: false,
+              supersededAt: new Date(),
+              changes: {
+                event: 'initial_upload_backfilled',
+                reason: 'Created before registering duplicate upload as a new version',
+              } as Prisma.InputJsonValue,
+            },
+          });
+        } else {
+          await transaction.contractVersion.updateMany({
+            where: { contractId, tenantId, isActive: true },
+            data: { isActive: false, supersededAt: new Date() },
+          });
+        }
+
+        const versionNumber = latestVersion.versionNumber + 1;
+        const version = await transaction.contractVersion.create({
+          data: {
+            contractId,
+            tenantId,
+            versionNumber,
+            parentVersionId: latestVersion.id,
+            uploadedBy: uploadedBy || null,
+            summary: `Duplicate upload registered as version ${versionNumber}`,
+            isActive: true,
+            changes: {
+              event: 'duplicate_upload_registered_as_version',
+              fileName,
+              fileSize,
+              mimeType,
+              checksum,
+              registeredAt: new Date().toISOString(),
+            } as Prisma.InputJsonValue,
+          },
+        });
+
+        await transaction.contract.update({
+          where: { id: contractId },
+          data: { updatedAt: new Date() },
+        });
+
+        return {
+          id: version.id,
+          versionNumber: version.versionNumber,
+          uploadedAt: version.uploadedAt.toISOString(),
+          isActive: version.isActive,
+          summary: version.summary,
+        };
+      });
+    } catch (error) {
+      const isUniqueConflict =
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code?: string }).code === 'P2002';
+
+      if (!isUniqueConflict || attempt === maxAttempts) {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error('Failed to register duplicate upload as a contract version');
+}
+
 export async function postContractUpload(
   request: NextRequest,
   context: AuthenticatedApiContext,
@@ -406,14 +507,34 @@ export async function postContractUpload(
         });
 
         if (existingContract) {
+          let registeredVersion: Awaited<ReturnType<typeof registerDuplicateUploadAsVersion>> | null = null;
+          try {
+            registeredVersion = await registerDuplicateUploadAsVersion({
+              contractId: existingContract.id,
+              tenantId,
+              uploadedBy: context.userId,
+              fileName: file.name,
+              fileSize: file.size,
+              mimeType: file.type || 'application/octet-stream',
+              checksum: contentHash,
+            });
+          } catch (versionError) {
+            logger.error('[ContractUpload] Failed to register duplicate upload as version:', versionError);
+          }
+
           return createSuccessResponse(context, {
             contractId: existingContract.id,
             fileName: file.name,
             fileSize: file.size,
             mimeType: file.type,
             status: existingContract.status,
-            message: 'This file was uploaded recently (within 7 days). You can re-process or view existing.',
+            message: registeredVersion
+              ? `This duplicate upload was registered as version ${registeredVersion.versionNumber}.`
+              : 'This file was uploaded recently (within 7 days). You can view the existing contract.',
             isDuplicate: true,
+            registeredAsVersion: Boolean(registeredVersion),
+            version: registeredVersion,
+            versionNumber: registeredVersion?.versionNumber,
           });
         }
       } catch (error) {

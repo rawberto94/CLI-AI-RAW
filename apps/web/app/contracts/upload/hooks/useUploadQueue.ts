@@ -26,6 +26,7 @@ export interface UploadFile {
   showArtifacts?: boolean;
   isDuplicate?: boolean;
   existingContractId?: string;
+  versionNumber?: number;
   startTime?: number;
   endTime?: number;
   skipDuplicateCheck?: boolean;
@@ -162,8 +163,14 @@ export function useUploadQueue(
 
         const result = responseData.data ?? responseData;
 
-        // Duplicate
+        // Duplicate/version registration response
         if (result.isDuplicate) {
+          const versionNumber = typeof result.versionNumber === 'number'
+            ? result.versionNumber
+            : result.version && typeof result.version === 'object' && 'versionNumber' in result.version
+              ? (result.version as { versionNumber?: number }).versionNumber
+              : undefined;
+
           setFiles(prev =>
             prev.map(f =>
               f.id === uploadFile.id
@@ -174,14 +181,18 @@ export function useUploadQueue(
                     contractId: result.contractId,
                     isDuplicate: true,
                     existingContractId: result.contractId,
+                    versionNumber,
+                    processingStage: versionNumber ? `Registered as v${versionNumber}` : 'Duplicate detected',
                     endTime: Date.now(),
                   }
                 : f,
             ),
           );
-          toast.info(`${uploadFile.file.name} is a duplicate`, {
+          toast.success(versionNumber ? `${uploadFile.file.name} registered as v${versionNumber}` : `${uploadFile.file.name} is a duplicate`, {
             description:
-              'This file was uploaded recently. You can view the existing contract.',
+              versionNumber
+                ? 'The duplicate file was added to the existing contract version history.'
+                : 'This file was uploaded recently. You can view the existing contract.',
             action: {
               label: 'View',
               onClick: () => router.push(`/contracts/${result.contractId}`),

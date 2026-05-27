@@ -15,6 +15,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Bell,
+  ClipboardCheck,
+  ArrowRight,
 } from 'lucide-react'
 import { KeyTermBadge } from '@/components/contracts/detail/KeyTermBadge'
 
@@ -35,20 +37,41 @@ interface Risk {
 
 interface SummaryTabProps {
   summary: string
-  keyTerms?: string[]
+  keyTerms?: Array<string | Record<string, string>>
   parties: Party[]
   signatureDate?: string
+  signatureStatus?: string
   startDate?: string
   endDate?: string
   noticePeriod?: string
+  totalValue?: number | string | null
+  currency?: string | null
   risks?: Risk[]
   riskLevel: 'low' | 'medium' | 'high'
 }
 
-const sectionCardClassName = 'flex h-full flex-col overflow-hidden rounded-[24px] border border-slate-200/90 bg-white shadow-[0_18px_40px_-30px_rgba(15,23,42,0.16)]'
-const sectionHeaderClassName = 'flex min-h-[72px] flex-col justify-center border-b border-slate-100 bg-[linear-gradient(180deg,rgba(248,250,252,0.96),rgba(255,255,255,1))] px-5 py-4'
+const sectionCardClassName = 'flex h-full flex-col overflow-hidden rounded-lg border border-slate-200/90 bg-white shadow-sm'
+const sectionHeaderClassName = 'flex min-h-[56px] flex-col justify-center border-b border-slate-100 bg-slate-50/80 px-4 py-3'
 const sectionTitleClassName = 'flex items-center gap-2 text-sm font-semibold text-slate-800'
-const sectionContentClassName = 'flex flex-1 flex-col px-5 py-5'
+const sectionContentClassName = 'flex flex-1 flex-col px-4 py-4'
+
+function formatCurrencyValue(value?: number | string | null, currency?: string | null): string {
+  if (value == null || value === '') return 'Needs review'
+  if (typeof value === 'string' && /[a-zA-Z]/.test(value.replace(currency || '', '').trim())) return value
+  const numericValue = typeof value === 'number' ? value : Number(String(value).replace(/[^\d.-]/g, ''))
+  if (!Number.isFinite(numericValue)) return String(value)
+  return `${currency || ''} ${numericValue.toLocaleString()}`.trim()
+}
+
+function formatSignatureStatus(status?: string): string {
+  if (!status || status === 'unknown') return 'Needs review'
+  return status.replace(/_/g, ' ')
+}
+
+function formatPartyName(party?: Party): string {
+  if (!party) return 'Needs review'
+  return party.legalName || party.name || 'Needs review'
+}
 
 // Loading skeleton for lazy-loaded content
 const SectionSkeleton = memo(function SectionSkeleton() {
@@ -72,12 +95,12 @@ const SectionSkeleton = memo(function SectionSkeleton() {
 const ExecutiveSummary = memo(function ExecutiveSummary({
   summary,
   keyTerms,
-}: { summary: string; keyTerms?: string[] }) {
+}: { summary: string; keyTerms?: Array<string | Record<string, string>> }) {
   return (
     <Card className={sectionCardClassName}>
-      <CardHeader className="flex min-h-[72px] flex-col justify-center border-b border-violet-100 bg-[linear-gradient(135deg,rgba(245,243,255,0.95),rgba(255,255,255,1))] px-5 py-4">
+      <CardHeader className="flex min-h-[56px] flex-col justify-center border-b border-slate-100 bg-slate-50/80 px-4 py-3">
         <CardTitle className={sectionTitleClassName}>
-          <Sparkles className="h-4 w-4 text-violet-500" />
+          <Sparkles className="h-4 w-4 text-slate-500" />
           Executive Summary
         </CardTitle>
       </CardHeader>
@@ -87,8 +110,8 @@ const ExecutiveSummary = memo(function ExecutiveSummary({
         </p>
         
         {keyTerms && keyTerms.length > 0 && (
-          <div className="mt-5 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wide mb-2">
               Key Terms Identified
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -97,6 +120,108 @@ const ExecutiveSummary = memo(function ExecutiveSummary({
               ))}
             </div>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+})
+
+const DecisionSnapshot = memo(function DecisionSnapshot({
+  parties,
+  signatureStatus,
+  startDate,
+  endDate,
+  noticePeriod,
+  totalValue,
+  currency,
+}: {
+  parties: Party[]
+  signatureStatus?: string
+  startDate?: string
+  endDate?: string
+  noticePeriod?: string
+  totalValue?: number | string | null
+  currency?: string | null
+}) {
+  const client = parties?.find(party => /client|buyer|customer|purchaser/i.test(party.role || '')) || parties?.[0]
+  const supplier = parties?.find(party => /supplier|vendor|provider|seller/i.test(party.role || '')) || parties?.[1]
+  const facts = [
+    { label: 'Client', value: formatPartyName(client), icon: Building },
+    { label: 'Supplier', value: formatPartyName(supplier), icon: Users },
+    { label: 'Value', value: formatCurrencyValue(totalValue, currency), icon: FileText },
+    { label: 'Start', value: startDate ? formatDate(startDate) : 'Needs review', icon: CheckCircle2 },
+    { label: 'End', value: endDate ? formatDate(endDate) : 'Needs review', icon: Calendar },
+    { label: 'Notice', value: noticePeriod || 'Needs review', icon: Bell },
+    { label: 'Signature', value: formatSignatureStatus(signatureStatus), icon: FileText },
+  ]
+
+  return (
+    <Card className={sectionCardClassName}>
+      <CardHeader className={sectionHeaderClassName}>
+        <CardTitle className={sectionTitleClassName}>
+          <ClipboardCheck className="h-4 w-4 text-slate-500" />
+          Decision Snapshot
+        </CardTitle>
+      </CardHeader>
+      <CardContent className={sectionContentClassName}>
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {facts.map(({ label, value, icon: Icon }) => (
+            <div key={label} className="flex min-h-[58px] items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2.5">
+              <Icon className="h-4 w-4 shrink-0 text-slate-500" />
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{label}</p>
+                <p className="truncate text-sm font-medium capitalize text-slate-800">{value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+})
+
+const NextActionsCard = memo(function NextActionsCard({
+  risks,
+  riskLevel,
+  endDate,
+  noticePeriod,
+  signatureStatus,
+}: {
+  risks?: Risk[]
+  riskLevel: 'low' | 'medium' | 'high'
+  endDate?: string
+  noticePeriod?: string
+  signatureStatus?: string
+}) {
+  const daysRemaining = endDate ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null
+  const actions = [
+    ...(!endDate ? ['Confirm contract end date'] : []),
+    ...(daysRemaining !== null && daysRemaining <= 90 ? ['Prepare renewal decision'] : []),
+    ...(!noticePeriod ? ['Confirm notice deadline'] : []),
+    ...(signatureStatus && signatureStatus !== 'signed' ? ['Resolve signature status'] : []),
+    ...(riskLevel !== 'low' || (risks?.length ?? 0) > 0 ? ['Review risk items before approval'] : []),
+  ]
+
+  return (
+    <Card className={sectionCardClassName}>
+      <CardHeader className={sectionHeaderClassName}>
+        <CardTitle className={sectionTitleClassName}>
+          <ArrowRight className="h-4 w-4 text-slate-500" />
+          Next Actions
+        </CardTitle>
+      </CardHeader>
+      <CardContent className={sectionContentClassName}>
+        {actions.length > 0 ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {actions.slice(0, 4).map(action => (
+              <div key={action} className="flex items-center gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2 text-sm text-slate-700">
+                <CheckCircle2 className="h-3.5 w-3.5 text-slate-400" />
+                <span>{action}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">No immediate review actions.</p>
         )}
       </CardContent>
     </Card>
@@ -139,12 +264,12 @@ const PartiesCard = memo(function PartiesCard({ parties }: { parties: Party[] })
               <div 
                 key={party.id || party.legalName || party.name || `party-${i}`}
                 className={cn(
-                  'flex min-h-[80px] items-center gap-3 rounded-2xl border px-4 py-3.5',
+                  'flex min-h-[60px] items-center gap-3 rounded-lg border px-3 py-2.5',
                   isClient ? "bg-violet-50 border-violet-100" : "bg-violet-50 border-violet-100"
                 )}
               >
                 <div className={cn(
-                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl',
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
                   isClient ? "bg-violet-100" : "bg-violet-100"
                 )}>
                   {isClient ? (
@@ -183,7 +308,6 @@ const KeyDatesCard = memo(function KeyDatesCard({
   endDate,
   noticePeriod,
 }: { signatureDate?: string; startDate?: string; endDate?: string; noticePeriod?: string }) {
-  const isEvergreen = !endDate
   const daysRemaining = endDate ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null
   const isExpiringSoon = daysRemaining !== null && daysRemaining > 0 && daysRemaining <= 90
   const isExpired = daysRemaining !== null && daysRemaining < 0
@@ -199,7 +323,7 @@ const KeyDatesCard = memo(function KeyDatesCard({
       <CardContent className={sectionContentClassName}>
         <div className="space-y-3.5">
           {signatureDate && (
-            <div className="flex min-h-[80px] items-center justify-between gap-4 rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3.5">
+            <div className="flex min-h-[58px] items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2.5">
               <div className="flex min-w-0 items-center gap-3">
                 <FileText className="h-4 w-4 text-violet-600" />
                 <span className="text-sm font-medium text-slate-700">Signed</span>
@@ -210,7 +334,7 @@ const KeyDatesCard = memo(function KeyDatesCard({
             </div>
           )}
           
-          <div className="flex min-h-[80px] items-center justify-between gap-4 rounded-2xl border border-violet-100 bg-violet-50 px-4 py-3.5">
+          <div className="flex min-h-[58px] items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2.5">
             <div className="flex min-w-0 items-center gap-3">
               <CheckCircle2 className="h-4 w-4 text-violet-600" />
               <span className="text-sm font-medium text-slate-700">Start Date</span>
@@ -221,8 +345,7 @@ const KeyDatesCard = memo(function KeyDatesCard({
           </div>
           
           <div className={cn(
-            'flex min-h-[80px] items-center justify-between gap-4 rounded-2xl border px-4 py-3.5',
-            isEvergreen ? "bg-violet-50 border-violet-100" :
+            'flex min-h-[58px] items-center justify-between gap-4 rounded-lg border px-3 py-2.5',
             isExpired ? "bg-red-50 border-red-100" :
             isExpiringSoon ? "bg-amber-50 border-amber-200" : 
             "bg-slate-50 border-slate-100"
@@ -238,11 +361,10 @@ const KeyDatesCard = memo(function KeyDatesCard({
               <div>
                 <span className={cn(
                   "text-sm font-medium",
-                  isEvergreen ? "text-violet-700" :
                   isExpired ? "text-red-700" :
                   isExpiringSoon ? "text-amber-700" : "text-slate-600"
                 )}>
-                  {isEvergreen ? 'Evergreen' : 'End Date'}
+                  End Date
                 </span>
                 {daysRemaining !== null && daysRemaining > 0 && (
                   <p className={cn(
@@ -256,16 +378,15 @@ const KeyDatesCard = memo(function KeyDatesCard({
             </div>
             <span className={cn(
               'shrink-0 text-right text-sm font-semibold',
-              isEvergreen ? "text-violet-700" :
               isExpired ? "text-red-700" :
               isExpiringSoon ? "text-amber-700" : "text-slate-700"
             )}>
-              {endDate ? formatDate(endDate) : 'No end date'}
+              {endDate ? formatDate(endDate) : 'Needs review'}
             </span>
           </div>
           
           {noticePeriod && !isExpired && (
-            <div className="flex min-h-[80px] items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-slate-50 px-4 py-3.5">
+            <div className="flex min-h-[58px] items-center justify-between gap-4 rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-2.5">
               <div className="flex min-w-0 items-center gap-3">
                 <Bell className="h-4 w-4 text-slate-500" />
                 <span className="text-sm font-medium text-slate-600">Notice Period</span>
@@ -310,7 +431,7 @@ const RisksCard = memo(function RisksCard({
       <CardContent className={sectionContentClassName}>
         <div className="space-y-3.5">
           {risks.slice(0, 3).map((risk, i) => (
-            <div key={risk.id || `${risk.category}-${i}`} className="flex min-h-[76px] items-start gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3.5">
+            <div key={risk.id || `${risk.category}-${i}`} className="flex min-h-[58px] items-start gap-3 rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
               <div className={cn(
                 "w-1.5 h-1.5 rounded-full mt-1.5 shrink-0",
                 risk.level?.toLowerCase() === 'low' ? 'bg-violet-500' : 
@@ -330,20 +451,25 @@ const RisksCard = memo(function RisksCard({
 
 export const ContractSummaryTab = memo(function ContractSummaryTab(props: SummaryTabProps) {
   return (
-    <div className="space-y-5 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       <ExecutiveSummary summary={props.summary} keyTerms={props.keyTerms} />
-      
-      <div className="grid gap-5 md:grid-cols-2 md:items-stretch">
-        <PartiesCard parties={props.parties} />
-        <KeyDatesCard 
-          signatureDate={props.signatureDate}
-          startDate={props.startDate}
-          endDate={props.endDate}
-          noticePeriod={props.noticePeriod}
-        />
-      </div>
-      
+      <DecisionSnapshot
+        parties={props.parties}
+        signatureStatus={props.signatureStatus}
+        startDate={props.startDate}
+        endDate={props.endDate}
+        noticePeriod={props.noticePeriod}
+        totalValue={props.totalValue}
+        currency={props.currency}
+      />
       <RisksCard risks={props.risks} riskLevel={props.riskLevel} />
+      <NextActionsCard
+        risks={props.risks}
+        riskLevel={props.riskLevel}
+        endDate={props.endDate}
+        noticePeriod={props.noticePeriod}
+        signatureStatus={props.signatureStatus}
+      />
     </div>
   )
 })

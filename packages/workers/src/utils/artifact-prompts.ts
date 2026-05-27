@@ -921,7 +921,9 @@ IMPORTANT EXTRACTION RULES:
 8. Look for pricing tables - extract as financialTables with proper column headers.
 9. For tables, preserve the structure with headers and row data.
 10. **CRITICAL: If you find ANY financial information not fitting the schema, add it to additionalFindings. Never discard financial data.**
-11. DO NOT calculate totals or infer pricing not explicitly stated.
+11. totalValue must be the AGGREGATE / TOTAL / NOT-TO-EXCEED value for the contract. Do NOT use an individual installment, deposit, invoice, milestone payment, rate-card row, unit price, recurring monthly amount, insurance limit, liability cap, or penalty as totalValue.
+12. If the contract has a payment schedule, extract the schedule rows and compare them to any stated total contract value. Only calculate a total from schedule rows when every row is clearly part of the same contract consideration.
+13. If multiple plausible totals conflict, return the strongest explicit aggregate value as totalValue and describe the conflict in openEndedNotes/additionalFindings.
 
 Contract text:
 ${truncatedText}`,
@@ -1121,6 +1123,7 @@ ${truncatedText}`,
 }
 
 CRITICAL: Only extract renewal terms EXPLICITLY stated. Calculate optOutDeadline based on noticePeriodDays + currentTermEnd if both available.
+CRITICAL: Separate the initial contract term from renewal periods. If the contract states an effective/start date plus a fixed duration such as 2 years or 24 months, derive currentTermEnd. Do not label a contract evergreen merely because currentTermEnd is missing; only mark autoRenewal/evergreen when the text explicitly says it renews automatically, continues indefinitely, is perpetual, or is evergreen.
 
 Contract text:
 ${truncatedText}`,
