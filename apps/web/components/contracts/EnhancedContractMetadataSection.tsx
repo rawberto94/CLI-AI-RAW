@@ -225,6 +225,27 @@ export const SECTION_LABELS = Object.fromEntries(
   Object.entries(SECTION_CONFIG).map(([k, v]) => [k, v.label])
 ) as Record<string, string>;
 
+function normalizeSignatureMetadataSnapshot(
+  value: Partial<ContractMetadataSchema>,
+): Partial<ContractMetadataSchema> {
+  const signatureStatus = typeof value.signature_status === 'string'
+    ? value.signature_status.toLowerCase()
+    : undefined;
+
+  if (signatureStatus === 'signed') {
+    return { ...value, signature_required_flag: false };
+  }
+
+  if (
+    value.signature_required_flag === undefined &&
+    (signatureStatus === 'unsigned' || signatureStatus === 'partially_signed')
+  ) {
+    return { ...value, signature_required_flag: true };
+  }
+
+  return value;
+}
+
 // ============ ANIMATED PROGRESS RING ============
 
 function ProgressRing({ 
@@ -982,6 +1003,63 @@ interface MetadataFieldProps {
   index?: number;
 }
 
+function toDateInputValue(value: unknown): string {
+  if (value === undefined || value === null || value === '') return '';
+
+  const raw = String(value).trim();
+  if (!raw) return '';
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  const isoDate = raw.match(/^(\d{4}-\d{2}-\d{2})T/);
+  if (isoDate) return isoDate[1];
+
+  const localDate = raw.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+  if (localDate) {
+    const [, day, month, year] = localDate;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().slice(0, 10);
+}
+
+function toArrayFieldValue(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    return value.split(',').map((item) => item.trim()).filter(Boolean);
+  }
+
+  return [];
+}
+
+function normalizeMetadataFieldValue(field: MetadataFieldDefinition, value: unknown): unknown {
+  if (field.type === 'date') {
+    return toDateInputValue(value) || null;
+  }
+
+  if (field.type === 'array_fk') {
+    return toArrayFieldValue(value);
+  }
+
+  if (field.type === 'integer') {
+    if (value === '' || value === undefined || value === null) return 0;
+    const parsed = typeof value === 'number' ? value : Number.parseInt(String(value), 10);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  if (field.type === 'decimal') {
+    if (value === '' || value === undefined || value === null) return 0;
+    const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value));
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  return value;
+}
+
 function MetadataField({ 
   field, 
   value, 
@@ -1047,10 +1125,18 @@ function MetadataField({
   useEffect(() => {
     setFieldValue(value);
   }, [value]);
+
+  const updateDraftValue = (nextValue: unknown) => {
+    setFieldValue(nextValue);
+    if (isEditing) {
+      onChange(normalizeMetadataFieldValue(field, nextValue));
+    }
+  };
   
   const handleSaveField = async () => {
     const previousValue = value;
-    onChange(fieldValue);
+    const valueToSave = normalizeMetadataFieldValue(field, fieldValue);
+    onChange(valueToSave);
 
     if (!onFieldSave) {
       setIsFieldEditing(false);
@@ -1060,7 +1146,7 @@ function MetadataField({
 
     setIsFieldSaving(true);
     try {
-      await onFieldSave(field.key, fieldValue);
+      await onFieldSave(field.key, valueToSave);
       setIsFieldEditing(false);
       toast.success(`${field.label} saved`);
     } catch (error) {
@@ -1232,7 +1318,7 @@ function MetadataField({
         return (
           <Textarea
             value={String(fieldValue || '')}
-            onChange={(e) => setFieldValue(e.target.value)}
+            onChange={(e) => updateDraftValue(e.target.value)}
             placeholder={`Enter ${field.label.toLowerCase()}...`}
             className="min-h-[100px] text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 rounded-xl resize-none"
           />
@@ -1241,7 +1327,7 @@ function MetadataField({
       return (
         <Input
           value={String(fieldValue || '')}
-          onChange={(e) => setFieldValue(e.target.value)}
+          onChange={(e) => updateDraftValue(e.target.value)}
           placeholder={`Enter ${field.label.toLowerCase()}...`}
           className="h-10 text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 rounded-lg"
         />
@@ -1252,10 +1338,24 @@ function MetadataField({
       return (
         <Input
           type="number"
-          value={String(fieldValue || '')}
-          onChange={(e) => setFieldValue(field.type === 'integer' ? parseInt(e.target.value) : parseFloat(e.target.value))}
+          value={String(fieldValue ?? '')}
+          onChange={(e) => {
+            const rawValue = e.target.value;
+            updateDraftValue(rawValue === '' ? '' : field.type === 'integer' ? Number.parseInt(rawValue, 10) : Number.parseFloat(rawValue));
+          }}
           placeholder="0"
           className="h-10 text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 rounded-lg font-mono"
+        />
+      );
+    }
+
+    if (field.type === 'array_fk') {
+      return (
+        <Input
+          value={Array.isArray(fieldValue) ? fieldValue.join(', ') : String(fieldValue || '')}
+          onChange={(e) => updateDraftValue(e.target.value)}
+          placeholder={`Enter ${field.label.toLowerCase()} separated by commas...`}
+          className="h-10 text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 rounded-lg"
         />
       );
     }
@@ -1264,8 +1364,8 @@ function MetadataField({
       return (
         <Input
           type="date"
-          value={String(fieldValue || '')}
-          onChange={(e) => setFieldValue(e.target.value)}
+          value={toDateInputValue(fieldValue)}
+          onChange={(e) => updateDraftValue(e.target.value)}
           className="h-10 text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 rounded-lg"
         />
       );
@@ -1276,7 +1376,7 @@ function MetadataField({
         <div className="flex items-center gap-3 h-10">
           <Switch
             checked={!!fieldValue}
-            onCheckedChange={setFieldValue}
+            onCheckedChange={updateDraftValue}
             className="data-[state=checked]:bg-violet-600"
           />
           <span className="text-sm text-slate-600">{fieldValue ? 'Yes' : 'No'}</span>
@@ -1302,7 +1402,7 @@ function MetadataField({
       };
       
       return (
-        <Select value={String(fieldValue || '')} onValueChange={setFieldValue}>
+        <Select value={String(fieldValue || '')} onValueChange={updateDraftValue}>
           <SelectTrigger className="h-10 text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 rounded-lg">
             <SelectValue placeholder={`Select ${field.label.toLowerCase()}...`} />
           </SelectTrigger>
@@ -1320,7 +1420,7 @@ function MetadataField({
     return (
       <Input 
         value={String(fieldValue || '')} 
-        onChange={(e) => setFieldValue(e.target.value)} 
+        onChange={(e) => updateDraftValue(e.target.value)}
         className="h-10 text-sm bg-white border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/20 rounded-lg" 
       />
     );
@@ -1470,7 +1570,7 @@ export function EnhancedContractMetadataSection({
     if (!data) return;
     const m = data.metadata ?? data.enterpriseMetadata ?? null;
     if (m) {
-      setMetadataFromAPI(m);
+      setMetadataFromAPI(normalizeSignatureMetadataSnapshot(m));
       const validations =
         m._fieldValidations || data.rawMetadata?.customFields?._fieldValidations;
       if (validations) setFieldValidations(validations);
@@ -1515,11 +1615,6 @@ export function EnhancedContractMetadataSection({
   // Merge legacy data with new schema
   const mergedInitial = useMemo(() => {
     const base = getDefaultContractMetadata();
-    
-    // First, use metadata from API if available
-    if (metadataFromAPI) {
-      Object.assign(base, metadataFromAPI);
-    }
     
     // Map fields from API response (high priority)
     if (contract) {
@@ -1579,9 +1674,12 @@ export function EnhancedContractMetadataSection({
       }
       
       // Signature info (from DB columns)
-      if (contract.signature_date) base.signature_date = String(contract.signature_date);
-      if (contract.signature_status) base.signature_status = String(contract.signature_status) as SignatureStatus;
-      if (contract.signature_required_flag !== undefined) base.signature_required_flag = Boolean(contract.signature_required_flag);
+      const contractSignatureDate = contract.signature_date ?? contract.signatureDate;
+      const contractSignatureStatus = contract.signature_status ?? contract.signatureStatus;
+      const contractSignatureRequiredFlag = contract.signature_required_flag ?? contract.signatureRequiredFlag;
+      if (contractSignatureDate) base.signature_date = String(contractSignatureDate);
+      if (contractSignatureStatus) base.signature_status = String(contractSignatureStatus) as SignatureStatus;
+      if (contractSignatureRequiredFlag !== undefined) base.signature_required_flag = Boolean(contractSignatureRequiredFlag);
       
       // Document classification (from DB columns)
       if (contract.document_classification) base.document_classification = String(contract.document_classification) as DocumentClassification;
@@ -1664,8 +1762,12 @@ export function EnhancedContractMetadataSection({
       }
     }
     
-    // Override with explicit initial metadata
-    return { ...base, ...initialMetadata };
+    const withInitialMetadata = { ...base, ...initialMetadata };
+    const withApiMetadata = metadataFromAPI
+      ? { ...withInitialMetadata, ...metadataFromAPI }
+      : withInitialMetadata;
+
+    return normalizeSignatureMetadataSnapshot(withApiMetadata);
   }, [contractId, contract, overviewData, financialData, initialMetadata, metadataFromAPI, unwrapString, unwrapNumber]);
   
   const [metadata, setMetadata] = useState<Partial<ContractMetadataSchema>>(mergedInitial);
@@ -1675,8 +1777,9 @@ export function EnhancedContractMetadataSection({
   
   // Update when initial data changes
   useEffect(() => {
+    if (isEditing || isSaving) return;
     setMetadata(mergedInitial);
-  }, [mergedInitial]);
+  }, [isEditing, isSaving, mergedInitial]);
   
   // Calculate fields needing attention (excluding validated fields)
   const fieldsNeedingAttention = useMemo(() => {
@@ -1861,6 +1964,8 @@ export function EnhancedContractMetadataSection({
     setSaveSuccess(false);
     
     try {
+      let serverMetadata: Partial<ContractMetadataSchema> | null = null;
+
       if (onSave) {
         await onSave(nextMetadata);
       } else {
@@ -1875,19 +1980,33 @@ export function EnhancedContractMetadataSection({
           })
         });
 
+        let responseBody: any = null;
+        try {
+          responseBody = await response.json();
+        } catch { /* non-JSON body */ }
+
         if (!response.ok) {
           // Surface the server's validation message (Zod flatten) instead of
           // a generic toast, so the user sees which field is wrong.
           let detail = `Failed to save metadata (${response.status})`;
-          try {
-            const body = await response.json();
-            detail = body?.error?.message || body?.message || detail;
-          } catch { /* non-JSON body */ }
+          detail = responseBody?.error?.message || responseBody?.message || detail;
           throw new Error(detail);
         }
+
+        serverMetadata =
+          responseBody?.data?.data?.enterpriseMetadata ??
+          responseBody?.data?.enterpriseMetadata ??
+          responseBody?.enterpriseMetadata ??
+          null;
       }
       
-      setMetadata(nextMetadata);
+      const persistedMetadata = normalizeSignatureMetadataSnapshot({
+        ...nextMetadata,
+        ...(serverMetadata || {}),
+      });
+
+      setMetadataFromAPI(persistedMetadata);
+      setMetadata(persistedMetadata);
       setSaveSuccess(true);
       if (closeEditor) setIsEditing(false);
       if (showToast) toast.success('Contract metadata saved successfully');
@@ -1896,6 +2015,11 @@ export function EnhancedContractMetadataSection({
       
       // Refresh the parent contract query so every consumer (header, chatbot,
       // overview, drafting) sees the new metadata without a full page reload.
+      queryClient.setQueryData(metadataQueryKey, (previous: any) => ({
+        ...(previous && typeof previous === 'object' ? previous : {}),
+        metadata: persistedMetadata,
+        enterpriseMetadata: persistedMetadata,
+      }));
       queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) });
       queryClient.invalidateQueries({ queryKey: metadataQueryKey });
 

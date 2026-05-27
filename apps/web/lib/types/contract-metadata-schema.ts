@@ -116,7 +116,7 @@ export interface ContractMetadataSchema {
   document_classification_confidence?: number;
   
   /** Warning message if document is not a proper contract */
-  document_classification_warning?: string;
+  document_classification_warning?: string | null;
   
   /** 1-2 sentence purpose summary */
   contract_short_description: string;

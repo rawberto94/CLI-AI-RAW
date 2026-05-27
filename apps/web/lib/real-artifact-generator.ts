@@ -1716,8 +1716,9 @@ ${truncatedText}`,
 
         const parsedSignatureStatus = typeof parsed.signatureStatus === 'string' ? parsed.signatureStatus : undefined;
         const signatureEvidence = assessSignatureEvidence(contractText);
+        const canTrustPartialSignatureStatus = parsedSignatureStatus === 'partially_signed' && signatureEvidence.hasBlankSignatureMarkers;
         const resolvedSignatureStatus = signatureEvidence.hasActualSignatureEvidence
-          ? (parsedSignatureStatus === 'partially_signed' ? 'partially_signed' : 'signed')
+          ? (canTrustPartialSignatureStatus ? 'partially_signed' : 'signed')
           : signatureEvidence.hasSignatureBlock
             ? 'unsigned'
             : (parsedSignatureStatus || basicMetadata.signatureStatus);

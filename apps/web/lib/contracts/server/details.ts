@@ -533,6 +533,10 @@ export async function getContractDetails(
     };
 
     const enterpriseMetadata = ((contract as any).aiMetadata || {}) as Record<string, any>;
+    const normalizedSignatureStatus = contract.signatureStatus || 'unknown';
+    const normalizedSignatureRequiredFlag = normalizedSignatureStatus === 'signed'
+      ? false
+      : contract.signatureRequiredFlag ?? false;
 
     const enrichedData = {
       ...contractData,
@@ -540,9 +544,9 @@ export async function getContractDetails(
       updatedAt: contract.updatedAt?.toISOString() || null,
       fileName: contract.fileName || null,
       originalName: contract.originalName || contract.fileName || null,
-      signatureStatus: contract.signatureStatus || 'unknown',
+      signatureStatus: normalizedSignatureStatus,
       signatureDate: contract.signatureDate?.toISOString() || null,
-      signatureRequiredFlag: contract.signatureRequiredFlag ?? false,
+      signatureRequiredFlag: normalizedSignatureRequiredFlag,
       totalValue: contract.totalValue ? Number(contract.totalValue) : null,
       tcv_amount: contract.totalValue ? Number(contract.totalValue) : null,
       tcv_text: enterpriseMetadata.tcv_text || null,
@@ -836,8 +840,8 @@ export async function getContractDetails(
       classificationConf: contract.classificationConf || null,
       classificationMeta: contract.classificationMeta || null,
       signature_date: contract.signatureDate?.toISOString() || null,
-      signature_status: contract.signatureStatus || 'unknown',
-      signature_required_flag: contract.signatureRequiredFlag ?? false,
+      signature_status: normalizedSignatureStatus,
+      signature_required_flag: normalizedSignatureRequiredFlag,
       document_classification: contract.documentClassification || 'contract',
       document_classification_warning: (contract as any).documentClassificationWarning || null,
       jurisdiction: contract.jurisdiction || null,

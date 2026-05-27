@@ -540,8 +540,13 @@ export default auth(async (req) => {
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('Referrer-Policy', 'origin-when-cross-origin');
     response.headers.set('X-XSS-Protection', '1; mode=block');
-    // M11: HSTS — enforce HTTPS in production
-    if (process.env.NODE_ENV === 'production') {
+    const host = req.nextUrl.hostname;
+    const forwardedProto = req.headers.get('x-forwarded-proto');
+    const isHttpsRequest = forwardedProto === 'https' || req.nextUrl.protocol === 'https:';
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
+
+    // M11: HSTS — enforce HTTPS in production when the request is actually HTTPS.
+    if (process.env.NODE_ENV === 'production' && isHttpsRequest && !isLocalHost) {
       response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     }
     // M12: Content-Security-Policy — defined in next.config.mjs headers(), not duplicated here

@@ -84,20 +84,8 @@ import type { ContractData, AIExtensionRecommendation, TabValue } from './types'
 const ComprehensiveAIAnalysis = lazy(() =>
   import('@/components/artifacts/ComprehensiveAIAnalysis').then((m) => ({ default: m.ComprehensiveAIAnalysis }))
 )
-const ContractAIAnalyst = lazy(() =>
-  import('@/components/contracts/ContractAIAnalyst').then((m) => ({ default: m.ContractAIAnalyst }))
-)
 const ContractIntelligenceBrief = lazy(() =>
   import('@/components/ai/ContractIntelligenceBrief').then((m) => ({ default: m.ContractIntelligenceBrief }))
-)
-const EnhancedNegotiationPanel = lazy(() =>
-  import('@/components/ai/EnhancedNegotiationPanel').then((m) => ({ default: m.EnhancedNegotiationPanel }))
-)
-const PredictiveInsightsWidget = lazy(() =>
-  import('@/components/ai/PredictiveInsightsWidget').then((m) => ({ default: m.PredictiveInsightsWidget }))
-)
-const AgentStatusWidget = lazy(() =>
-  import('@/components/agents/AgentStatus').then((m) => ({ default: m.AgentStatus }))
 )
 const ActivityTab = lazy(() =>
   import('@/components/contracts/detail/ActivityTab').then((m) => ({ default: m.ActivityTab }))
@@ -1315,29 +1303,6 @@ export default function ContractDetailPage() {
                 <Suspense fallback={<TabFallback />}>
                   {contract?.rawText || contract?.extractedData ? (
                     <>
-                      <ContractAIAnalyst
-                        contract={{
-                          id: contractId,
-                          name: contract?.filename || contract?.document_title || 'Contract',
-                          supplierName: contract?.supplierName || metadata.external_parties?.find((p: { role?: string }) => p.role?.toLowerCase() === 'supplier' || p.role?.toLowerCase() === 'vendor')?.legalName || metadata.external_parties?.[0]?.legalName,
-                          contractType: contract?.category?.name || contract?.contractType || undefined,
-                          totalValue: typeof contract?.totalValue === 'number' ? contract.totalValue : undefined,
-                          startDate: metadata.start_date || undefined,
-                          endDate: metadata.end_date || undefined,
-                          status: contract?.status,
-                          extractedText: contract?.rawText || undefined,
-                          metadata: {
-                            jurisdiction: metadata.jurisdiction,
-                            language: metadata.contract_language,
-                            noticePeriod: metadata.notice_period,
-                            parties: metadata.external_parties,
-                            paymentType: metadata.payment_type,
-                            currency: metadata.currency,
-                          },
-                        }}
-                        defaultExpanded={!contract?.extractedData}
-                        className="mb-6"
-                      />
                       <ComprehensiveAIAnalysis
                         artifacts={contract?.extractedData ?? undefined}
                         contractId={contractId}
@@ -1350,18 +1315,6 @@ export default function ContractDetailPage() {
                           contractId={contractId}
                           contractName={contract?.filename || contract?.document_title || 'Contract'}
                         />
-                      </SectionErrorBoundary>
-                      <SectionErrorBoundary sectionName="Predictive Insights">
-                        <PredictiveInsightsWidget contractId={contractId} />
-                      </SectionErrorBoundary>
-                      <SectionErrorBoundary sectionName="Negotiation Copilot">
-                        <EnhancedNegotiationPanel
-                          contractId={contractId}
-                          contractName={contract?.filename || contract?.document_title || 'Contract'}
-                        />
-                      </SectionErrorBoundary>
-                      <SectionErrorBoundary sectionName="Agent Activity">
-                        <AgentStatusWidget contractId={contractId} />
                       </SectionErrorBoundary>
                     </>
                   ) : (

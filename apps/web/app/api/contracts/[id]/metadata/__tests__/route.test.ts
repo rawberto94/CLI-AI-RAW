@@ -127,6 +127,55 @@ describe('/api/contracts/[id]/metadata', () => {
     expect(data.error.code).toBe('NOT_FOUND');
   });
 
+  it('returns signed metadata without a stale signature-required flag', async () => {
+    mockContractFindFirst.mockResolvedValue({
+      id: 'contract-1',
+      fileName: 'Signed NDA.pdf',
+      contractTitle: 'Signed NDA',
+      contractType: 'NDA',
+      classificationConf: null,
+      contractCategoryId: null,
+      categoryL1: null,
+      categoryL2: null,
+      status: 'COMPLETED',
+      effectiveDate: null,
+      expirationDate: null,
+      startDate: null,
+      endDate: null,
+      totalValue: null,
+      currency: null,
+      supplierName: null,
+      clientName: null,
+      description: null,
+      tags: [],
+      jurisdiction: null,
+      paymentTerms: null,
+      paymentFrequency: null,
+      billingCycle: null,
+      signatureStatus: 'signed',
+      signatureDate: null,
+      signatureRequiredFlag: true,
+      noticePeriodDays: null,
+      terminationClause: null,
+      autoRenewalEnabled: null,
+      metadata: {},
+      aiMetadata: { signature_status: 'signed', signature_required_flag: true },
+      documentClassification: 'contract',
+      documentClassificationConf: null,
+      documentClassificationWarning: null,
+      createdAt: new Date('2026-01-01'),
+      updatedAt: new Date('2026-01-01'),
+      uploadedBy: 'user-1',
+    });
+
+    const response = await GET(createRequest('GET'), routeContext);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.data.metadata.signature_status).toBe('signed');
+    expect(data.data.metadata.signature_required_flag).toBe(false);
+  });
+
   it('rejects invalid metadata payloads before writing', async () => {
     const response = await PUT(createRequest('PUT', {
       metadata: {
@@ -227,6 +276,65 @@ describe('/api/contracts/[id]/metadata', () => {
     }));
   });
 
+  it('clears signature-required flag when signature status is saved as signed', async () => {
+    mockContractFindFirst.mockResolvedValue({
+      aiMetadata: { signature_required_flag: true },
+      metadata: {},
+      signatureStatus: 'partially_signed',
+      signatureRequiredFlag: true,
+    });
+    mockContractUpdate.mockResolvedValue({ id: 'contract-1' });
+
+    const response = await PUT(createRequest('PUT', {
+      metadata: {
+        signature_status: 'signed',
+        signature_required_flag: true,
+      },
+    }), routeContext);
+
+    expect(response.status).toBe(200);
+    expect(mockContractUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'contract-1' },
+      data: expect.objectContaining({
+        signatureStatus: 'signed',
+        signatureRequiredFlag: false,
+        aiMetadata: expect.objectContaining({
+          signature_status: 'signed',
+          signature_required_flag: false,
+        }),
+      }),
+    }));
+  });
+
+  it('accepts metadata round-tripped from GET when editing signature date', async () => {
+    mockContractFindFirst.mockResolvedValue({ aiMetadata: {}, metadata: {} });
+    mockContractUpdate.mockResolvedValue({ id: 'contract-1' });
+
+    const response = await PUT(createRequest('PUT', {
+      metadata: {
+        document_title: 'Round-tripped title',
+        document_classification: 'contract',
+        document_classification_confidence: 0.95,
+        document_classification_warning: null,
+        signature_date: '2026-05-27',
+      },
+    }), routeContext);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(mockContractUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'contract-1' },
+      data: expect.objectContaining({
+        contractTitle: 'Round-tripped title',
+        documentClassification: 'contract',
+        documentClassificationConf: 0.95,
+        documentClassificationWarning: null,
+        signatureDate: new Date('2026-05-27'),
+      }),
+    }));
+  });
+
   it('persists cleared scalar metadata to contract fields', async () => {
     mockContractFindFirst.mockResolvedValue({ aiMetadata: {}, metadata: {} });
     mockContractUpdate.mockResolvedValue({ id: 'contract-1' });
@@ -248,6 +356,29 @@ describe('/api/contracts/[id]/metadata', () => {
         paymentFrequency: null,
         billingCycle: null,
         jurisdiction: null,
+      }),
+    }));
+  });
+
+  it('preserves reminder lead time when reminders are disabled', async () => {
+    mockContractFindFirst.mockResolvedValue({ aiMetadata: {}, metadata: {} });
+    mockContractUpdate.mockResolvedValue({ id: 'contract-1' });
+
+    const response = await PUT(createRequest('PUT', {
+      metadata: {
+        reminder_enabled: false,
+        reminder_days_before_end: 60,
+      },
+    }), routeContext);
+
+    expect(response.status).toBe(200);
+    expect(mockContractUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'contract-1' },
+      data: expect.objectContaining({
+        aiMetadata: expect.objectContaining({
+          reminder_enabled: false,
+          reminder_days_before_end: 60,
+        }),
       }),
     }));
   });

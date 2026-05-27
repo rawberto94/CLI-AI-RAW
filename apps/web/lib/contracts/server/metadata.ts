@@ -95,7 +95,7 @@ const metadataPutSchema = z.object({
   contractType: z.string().optional(),
   document_classification: z.string().optional(),
   document_classification_confidence: z.number().min(0).max(1).optional(),
-  document_classification_warning: z.string().optional(),
+  document_classification_warning: z.string().nullable().optional(),
   contract_short_description: z.string().optional(),
   external_parties: z.array(externalPartySchema).optional(),
   tcv_amount: z.number().nonnegative().optional(),
@@ -487,6 +487,17 @@ export async function getContractMetadata(
     }
   }
 
+  const normalizedSignatureStatus = contract.signatureStatus === 'signed'
+    ? 'signed'
+    : aiMetadata.signature_status || contract.signatureStatus || 'unknown';
+  const normalizedSignatureRequiredFlag = normalizedSignatureStatus === 'signed'
+    ? false
+    : aiMetadata.signature_required_flag ?? contract.signatureRequiredFlag ?? (
+      normalizedSignatureStatus === 'unsigned' ||
+      normalizedSignatureStatus === 'partially_signed' ||
+      (!aiMetadata.signature_date && normalizedSignatureStatus !== 'signed')
+    );
+
   const enterpriseMetadata: EnterpriseMetadata = {
     document_number: aiMetadata.document_number || contract.id,
     document_title: aiMetadata.document_title || contract.contractTitle || contract.fileName || '',
@@ -502,12 +513,8 @@ export async function getContractMetadata(
     periodicity: aiMetadata.periodicity || contract.billingCycle || '',
     currency: aiMetadata.currency || contract.currency || artifactOverview?.currency || 'USD',
     signature_date: aiMetadata.signature_date || contract.signatureDate?.toISOString().split('T')[0] || null,
-    signature_status: aiMetadata.signature_status || contract.signatureStatus || 'unknown',
-    signature_required_flag: aiMetadata.signature_required_flag ?? contract.signatureRequiredFlag ?? (
-      aiMetadata.signature_status === 'unsigned' ||
-      aiMetadata.signature_status === 'partially_signed' ||
-      (!aiMetadata.signature_date && aiMetadata.signature_status !== 'signed')
-    ),
+    signature_status: normalizedSignatureStatus,
+    signature_required_flag: normalizedSignatureRequiredFlag,
     start_date: aiMetadata.start_date || contract.effectiveDate?.toISOString().split('T')[0] || contract.startDate?.toISOString().split('T')[0] || artifactOverview?.effectiveDate || artifactOverview?.effective_date || artifactOverview?.startDate || artifactOverview?.start_date || '',
     end_date: aiMetadata.end_date || contract.expirationDate?.toISOString().split('T')[0] || contract.endDate?.toISOString().split('T')[0] || artifactOverview?.expirationDate || artifactOverview?.expiration_date || artifactOverview?.endDate || artifactOverview?.end_date || null,
     termination_date: aiMetadata.termination_date || null,
@@ -641,13 +648,9 @@ export async function putContractMetadata(
   }
 
   const metadata: Record<string, any> = { ...parsed.data };
-  if (metadata.reminder_enabled === false) {
-    metadata.reminder_days_before_end = null;
-  }
-
   const existingContract = await prisma.contract.findFirst({
     where: { id: contractId, tenantId: context.tenantId },
-    select: { aiMetadata: true, metadata: true },
+    select: { aiMetadata: true, metadata: true, signatureStatus: true, signatureRequiredFlag: true },
   });
 
   if (!existingContract) {
@@ -680,6 +683,15 @@ export async function putContractMetadata(
   }
 
   const existingAiMetadata = (existingContract.aiMetadata as EnterpriseMetadata) || {};
+  const effectiveSignatureStatus = metadata.signature_status !== undefined
+    ? (metadata.signature_status || 'unknown')
+    : (existingContract.signatureStatus === 'signed'
+      ? 'signed'
+      : existingAiMetadata.signature_status || existingContract.signatureStatus || 'unknown');
+  const shouldWriteSignatureRequiredFlag = metadata.signature_required_flag !== undefined || effectiveSignatureStatus === 'signed';
+  const effectiveSignatureRequiredFlag = effectiveSignatureStatus === 'signed'
+    ? false
+    : metadata.signature_required_flag;
   const updatedAiMetadata: EnterpriseMetadata = {
     ...existingAiMetadata,
     ...(metadata.document_number !== undefined && { document_number: metadata.document_number }),
@@ -693,8 +705,8 @@ export async function putContractMetadata(
     ...(metadata.periodicity !== undefined && { periodicity: metadata.periodicity }),
     ...(metadata.currency !== undefined && { currency: metadata.currency }),
     ...(metadata.signature_date !== undefined && { signature_date: metadata.signature_date }),
-    ...(metadata.signature_status !== undefined && { signature_status: metadata.signature_status }),
-    ...(metadata.signature_required_flag !== undefined && { signature_required_flag: metadata.signature_required_flag }),
+    ...(metadata.signature_status !== undefined && { signature_status: effectiveSignatureStatus }),
+    ...(shouldWriteSignatureRequiredFlag && { signature_required_flag: effectiveSignatureRequiredFlag ?? false }),
     ...(metadata.start_date !== undefined && { start_date: metadata.start_date }),
     ...(metadata.end_date !== undefined && { end_date: metadata.end_date }),
     ...(metadata.termination_date !== undefined && { termination_date: metadata.termination_date }),
@@ -725,8 +737,8 @@ export async function putContractMetadata(
   if (metadata.tcv_amount !== undefined) legacyUpdates.totalValue = metadata.tcv_amount;
   if (metadata.currency !== undefined) legacyUpdates.currency = metadata.currency || null;
   if (metadata.signature_date !== undefined) legacyUpdates.signatureDate = toNullableMetadataDate(metadata.signature_date);
-  if (metadata.signature_status !== undefined) legacyUpdates.signatureStatus = metadata.signature_status || 'unknown';
-  if (metadata.signature_required_flag !== undefined) legacyUpdates.signatureRequiredFlag = metadata.signature_required_flag;
+  if (metadata.signature_status !== undefined) legacyUpdates.signatureStatus = effectiveSignatureStatus;
+  if (shouldWriteSignatureRequiredFlag) legacyUpdates.signatureRequiredFlag = effectiveSignatureRequiredFlag ?? false;
   if (metadata.start_date !== undefined) {
     const startDate = toNullableMetadataDate(metadata.start_date);
     legacyUpdates.effectiveDate = startDate;

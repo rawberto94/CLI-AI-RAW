@@ -3334,10 +3334,14 @@ export async function processOCRArtifactJob(
     const aiSignatureStatus = unwrapVal(contactsData.signatureStatus);
     const signatories = Array.isArray(contactsData.signatories) ? contactsData.signatories : [];
     const signedSignatoryCount = signatories.filter((signatory: any) => signatory?.isSigned === true).length;
+    const hasPartiallySignedSignatoryList = signedSignatoryCount > 0 && signedSignatoryCount < signatories.length;
     const hasHandwritingInSignatureDocument = (ocrResult.handwrittenText || []).length > 0 && signatureEvidence.hasSignatureBlock;
     const resolvedSignatureStatus = (() => {
       if (signatureEvidence.hasActualSignatureEvidence || hasHandwritingInSignatureDocument) {
-        if (aiSignatureStatus === 'partially_signed' || (signedSignatoryCount > 0 && signedSignatoryCount < signatories.length)) {
+        if (
+          hasPartiallySignedSignatoryList ||
+          (aiSignatureStatus === 'partially_signed' && signatureEvidence.hasBlankSignatureMarkers)
+        ) {
           return 'partially_signed';
         }
 

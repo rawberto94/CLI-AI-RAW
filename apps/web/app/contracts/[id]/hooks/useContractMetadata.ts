@@ -227,6 +227,19 @@ export function useContractMetadata(contract: ContractData | null) {
     
     // Get executive summary data if available
     const execSummaryData = contract?.extractedData?.executive_summary
+    const rawSignatureStatus = String(
+      contract.signature_status ?? (contract as any).signatureStatus ?? 'unknown'
+    ).toLowerCase()
+    const signatureStatus = ['signed', 'partially_signed', 'unsigned', 'unknown'].includes(rawSignatureStatus)
+      ? rawSignatureStatus as ContractMetadata['signature_status']
+      : 'unknown'
+    const rawSignatureRequiredFlag = contract.signature_required_flag ?? (contract as any).signatureRequiredFlag
+    const signatureRequiredFlag = signatureStatus === 'signed'
+      ? false
+      : rawSignatureRequiredFlag ?? (
+        signatureStatus === 'unsigned' ||
+        signatureStatus === 'partially_signed'
+      )
     
     return {
       // Identification
@@ -270,17 +283,13 @@ export function useContractMetadata(contract: ContractData | null) {
       
       // Dates - handle wrapped values
       signature_date: formatDateStr(
-        contract.signature_date || 
+        contract.signature_date ||
+        (contract as any).signatureDate ||
         unwrapValue(overviewData?.signatureDate) || 
         unwrapValue(overviewData?.signature_date)
       ),
-      signature_status: contract.signature_status || 'unknown',
-      signature_required_flag: contract.signature_required_flag ?? (
-        // Only auto-flag if we have a definitive unsigned or partially_signed status
-        // Don't flag when status is 'unknown' to avoid spurious alerts
-        contract.signature_status === 'unsigned' || 
-        contract.signature_status === 'partially_signed'
-      ),
+      signature_status: signatureStatus,
+      signature_required_flag: signatureRequiredFlag,
       start_date: formatDateStr(
         contract.start_date || 
         (contract as any).startDate ||

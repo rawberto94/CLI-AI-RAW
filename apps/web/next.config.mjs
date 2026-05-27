@@ -58,6 +58,35 @@ const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
+const configuredPublicUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || process.env.NEXTAUTH_URL || '';
+const isHttpsOnlyDeployment = (() => {
+  try {
+    const url = new URL(configuredPublicUrl);
+    return url.protocol === 'https:' && !['localhost', '127.0.0.1', '0.0.0.0'].includes(url.hostname);
+  } catch {
+    return false;
+  }
+})();
+
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.sentry.io https://*.ingest.sentry.io wss: ws:",
+  "manifest-src 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+  ...(isHttpsOnlyDeployment ? ["upgrade-insecure-requests"] : []),
+].join('; ');
+
+const strictTransportSecurityHeader = isHttpsOnlyDeployment
+  ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }]
+  : [];
+
 const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
@@ -402,20 +431,7 @@ const nextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https:",
-              "font-src 'self' data:",
-              "connect-src 'self' https://*.sentry.io https://*.ingest.sentry.io wss: ws:",
-              "manifest-src 'self'",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-              "object-src 'none'",
-              "upgrade-insecure-requests",
-            ].join("; "),
+            value: contentSecurityPolicy,
           },
           {
             key: "X-Frame-Options",
@@ -437,10 +453,7 @@ const nextConfig = {
             key: "X-XSS-Protection",
             value: "1; mode=block",
           },
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=31536000; includeSubDomains",
-          },
+          ...strictTransportSecurityHeader,
           {
             key: "Cross-Origin-Opener-Policy",
             value: "same-origin",
