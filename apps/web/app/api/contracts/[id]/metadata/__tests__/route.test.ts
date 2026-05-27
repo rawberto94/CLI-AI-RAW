@@ -8,6 +8,9 @@ const {
   mockTaxonomyCategoryFindUnique,
   mockTaxonomyCategoryFindFirst,
   mockContractUpdate,
+  mockContractCacheInvalidate,
+  mockApiCacheInvalidate,
+  mockDeleteCachedByPattern,
   mockCheckContractWritePermission,
   mockPublishRealtimeEvent,
   mockSemanticInvalidate,
@@ -19,6 +22,9 @@ const {
   mockTaxonomyCategoryFindUnique: vi.fn(),
   mockTaxonomyCategoryFindFirst: vi.fn(),
   mockContractUpdate: vi.fn(),
+  mockContractCacheInvalidate: vi.fn(),
+  mockApiCacheInvalidate: vi.fn(),
+  mockDeleteCachedByPattern: vi.fn(),
   mockCheckContractWritePermission: vi.fn(),
   mockPublishRealtimeEvent: vi.fn(),
   mockSemanticInvalidate: vi.fn(),
@@ -58,6 +64,19 @@ vi.mock('@/lib/ai/semantic-cache.service', () => ({
   },
 }));
 
+vi.mock('@/lib/cache', () => ({
+  deleteCachedByPattern: mockDeleteCachedByPattern,
+}));
+
+vi.mock('@/lib/cache/etag-cache', () => ({
+  contractCache: {
+    invalidate: mockContractCacheInvalidate,
+  },
+  apiCache: {
+    invalidate: mockApiCacheInvalidate,
+  },
+}));
+
 vi.mock('@repo/utils/queue/contract-queue', () => ({
   getContractQueue: () => ({
     queueRAGIndexing: mockQueueRagIndexing,
@@ -94,6 +113,7 @@ describe('/api/contracts/[id]/metadata', () => {
     mockPublishRealtimeEvent.mockResolvedValue(undefined);
     mockSemanticInvalidate.mockResolvedValue(undefined);
     mockQueueRagIndexing.mockResolvedValue(undefined);
+    mockDeleteCachedByPattern.mockResolvedValue(undefined);
   });
 
   it('returns 404 when the contract is outside the tenant scope', async () => {
@@ -152,6 +172,36 @@ describe('/api/contracts/[id]/metadata', () => {
     expect(data.success).toBe(true);
     expect(data.data.data.ragReindexQueued).toBe(true);
     expect(mockQueueRagIndexing).toHaveBeenCalled();
+    expect(mockContractCacheInvalidate).toHaveBeenCalledWith('contract:tenant-1:contract-1');
+    expect(mockContractCacheInvalidate).toHaveBeenCalledWith('contracts:', true);
+    expect(mockApiCacheInvalidate).toHaveBeenCalledWith('contracts:', true);
+    expect(mockDeleteCachedByPattern).toHaveBeenCalledWith('contracts:list:*');
+  });
+
+  it('mirrors duration metadata to all contract date fields', async () => {
+    mockContractFindFirst.mockResolvedValue({ aiMetadata: {}, metadata: {} });
+    mockContractUpdate.mockResolvedValue({ id: 'contract-1' });
+
+    const response = await PUT(createRequest('PUT', {
+      metadata: {
+        start_date: '2026-06-01',
+        end_date: '2027-06-01',
+      },
+    }), routeContext);
+
+    expect(response.status).toBe(200);
+    expect(mockContractUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'contract-1' },
+      data: expect.objectContaining({
+        effectiveDate: new Date('2026-06-01'),
+        startDate: new Date('2026-06-01'),
+        expirationDate: new Date('2027-06-01'),
+        endDate: new Date('2027-06-01'),
+        isExpired: false,
+        expirationRisk: expect.any(String),
+        daysUntilExpiry: expect.any(Number),
+      }),
+    }));
   });
 
   it('persists document classification and contract type to the contract record', async () => {

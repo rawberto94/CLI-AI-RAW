@@ -7,6 +7,8 @@ import { createOpenAIClient, getOpenAIApiKey, hasAIClientConfig } from '@/lib/op
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { getContractQueue } from '@repo/utils/queue/contract-queue';
 import { semanticCache } from '@/lib/ai/semantic-cache.service';
+import { deleteCachedByPattern } from '@/lib/cache';
+import { apiCache, contractCache } from '@/lib/cache/etag-cache';
 import { checkContractWritePermission } from '@/lib/security/contract-acl';
 import { CONTRACT_METADATA_FIELDS, MetadataFieldDefinition } from '@/lib/types/contract-metadata-schema';
 import { prisma } from '@/lib/prisma';
@@ -132,6 +134,36 @@ const RAG_TRIGGER_FIELDS = [
   'tags',
   'jurisdiction',
 ] as const;
+
+function invalidateContractCaches(tenantId: string, contractId: string) {
+  contractCache.invalidate(`contract:${tenantId}:${contractId}`);
+  contractCache.invalidate('contracts:', true);
+  apiCache.invalidate('contracts:', true);
+}
+
+function toNullableMetadataDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  return new Date(value);
+}
+
+function applyExpirationState(updates: Record<string, any>, expirationDate: Date | null) {
+  if (expirationDate) {
+    const now = new Date();
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const daysUntil = Math.ceil((expirationDate.getTime() - now.getTime()) / msPerDay);
+    updates.daysUntilExpiry = daysUntil;
+    updates.isExpired = daysUntil < 0;
+    if (daysUntil < 0) updates.expirationRisk = 'EXPIRED';
+    else if (daysUntil <= 7) updates.expirationRisk = 'CRITICAL';
+    else if (daysUntil <= 30) updates.expirationRisk = 'HIGH';
+    else if (daysUntil <= 90) updates.expirationRisk = 'MEDIUM';
+    else updates.expirationRisk = 'LOW';
+  } else {
+    updates.daysUntilExpiry = null;
+    updates.isExpired = false;
+    updates.expirationRisk = null;
+  }
+}
 
 interface EnterpriseMetadata {
   document_number?: string;
@@ -689,8 +721,17 @@ export async function putContractMetadata(
   if (metadata.contract_short_description) legacyUpdates.description = metadata.contract_short_description;
   if (metadata.tcv_amount !== undefined) legacyUpdates.totalValue = metadata.tcv_amount;
   if (metadata.currency) legacyUpdates.currency = metadata.currency;
-  if (metadata.start_date) legacyUpdates.effectiveDate = new Date(metadata.start_date);
-  if (metadata.end_date) legacyUpdates.expirationDate = new Date(metadata.end_date);
+  if (metadata.start_date !== undefined) {
+    const startDate = toNullableMetadataDate(metadata.start_date);
+    legacyUpdates.effectiveDate = startDate;
+    legacyUpdates.startDate = startDate;
+  }
+  if (metadata.end_date !== undefined) {
+    const endDate = toNullableMetadataDate(metadata.end_date);
+    legacyUpdates.expirationDate = endDate;
+    legacyUpdates.endDate = endDate;
+    applyExpirationState(legacyUpdates, endDate);
+  }
   if (metadata.jurisdiction) legacyUpdates.jurisdiction = metadata.jurisdiction;
   if (metadata.notice_period_days) legacyUpdates.noticePeriodDays = metadata.notice_period_days;
   if (metadata.billing_frequency_type) legacyUpdates.paymentFrequency = metadata.billing_frequency_type;
@@ -721,6 +762,9 @@ export async function putContractMetadata(
       updatedAt: new Date(),
     },
   });
+
+  invalidateContractCaches(context.tenantId, contractId);
+  await deleteCachedByPattern('contracts:list:*').catch(() => {});
 
   semanticCache.invalidate(context.tenantId, contractId).catch((error) => {
     logger.error('[MetadataUpdate] Semantic cache invalidation error:', error);
