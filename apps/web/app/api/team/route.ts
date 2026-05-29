@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { auditTrailService } from 'data-orchestration/services';
 import { logger } from '@/lib/logger';
+import { randomBytes } from 'crypto';
 
 const TeamInviteSchema = z.object({
   email: z.string().email('Invalid email format').max(255),
@@ -18,6 +19,13 @@ const TeamInviteSchema = z.object({
 
 type UserRole = 'owner' | 'admin' | 'manager' | 'member' | 'viewer';
 type UserStatus = 'active' | 'invited' | 'inactive';
+
+function getInviteBaseUrl(request: NextRequest): string {
+  return process.env.NEXTAUTH_URL
+    || process.env.NEXT_PUBLIC_APP_URL
+    || process.env.NEXT_PUBLIC_URL
+    || new URL(request.url).origin;
+}
 
 interface TeamMemberResponse {
   id: string;
@@ -70,6 +78,23 @@ function transformUser(dbUser: any): TeamMemberResponse {
     lastActive: dbUser.lastLoginAt?.toISOString(),
     contractsAccess: dbUser._count?.createdDrafts || 0,
     department: undefined, // Could add to User model if needed
+  };
+}
+
+function transformInvitation(invitation: {
+  id: string;
+  email: string;
+  role: string;
+  createdAt: Date;
+}): TeamMemberResponse {
+  return {
+    id: invitation.id,
+    name: invitation.email.split('@')[0],
+    email: invitation.email,
+    role: invitation.role as UserRole,
+    status: 'invited',
+    joinedAt: invitation.createdAt.toISOString(),
+    contractsAccess: 0,
   };
 }
 
@@ -127,6 +152,26 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
     let members = dbUsers.map(transformUser);
 
+    if (tenantId && (!status || status === 'invited')) {
+      const pendingInvitations = await prisma.teamInvitation.findMany({
+        where: {
+          tenantId,
+          status: 'PENDING',
+          ...(search ? { email: { contains: search, mode: 'insensitive' } } : {}),
+          ...(role ? { role } : {}),
+        },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      members = [...members, ...pendingInvitations.map(transformInvitation)];
+    }
+
     // Filter by role (done post-fetch since it's derived)
     if (role) {
       members = members.filter(m => m.role === role);
@@ -180,44 +225,49 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     return createErrorResponse(ctx, 'CONFLICT', 'User with this email already exists', 409);
   }
 
-    // Create user with PENDING status (invited)
-    const bcrypt = await import('bcryptjs');
-    const tempPassword = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
+  const existingInvitation = await prisma.teamInvitation.findFirst({
+    where: {
+      email,
+      tenantId,
+      status: 'PENDING',
+    },
+  });
 
-    const dbUser = await prisma.user.create({
+  if (existingInvitation) {
+    return createErrorResponse(ctx, 'CONFLICT', 'There is already a pending invitation for this email', 409);
+  }
+
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    const invitation = await prisma.teamInvitation.create({
       data: {
         email,
         tenantId,
-        passwordHash,
-        status: 'PENDING',
         role: role as string,
-      },
-      include: {
-        roles: {
-          include: {
-            role: true,
-          },
-        },
-        _count: {
-          select: {
-            createdDrafts: true,
-          },
-        },
+        token,
+        invitedBy: ctx.userId,
+        expiresAt,
       },
     });
 
-    const member = transformUser(dbUser);
+    const member = transformInvitation(invitation);
+    const inviteUrl = `${getInviteBaseUrl(request)}/auth/signup?invite=${token}`;
 
     // Send invitation email
     try {
       const { sendEmail } = await import('@/lib/email/email-service');
       const { emailTemplates } = await import('@/lib/email/templates');
+
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { name: true },
+      });
       
       const template = emailTemplates.teamInvitation({
         invitedBy: 'Team Admin',
-        tenantName: 'Your Organization',
-        inviteUrl: `${process.env.NEXT_PUBLIC_URL}/accept-invitation?email=${encodeURIComponent(member.email)}`,
+        tenantName: tenant?.name || 'Your Organization',
+        inviteUrl,
         expiresIn: '7 days',
       });
       
@@ -228,10 +278,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       });
     } catch (emailError) {
       logger.error('Failed to send invitation email:', emailError);
-      // Continue even if email fails - user is created
+      // Continue even if email fails - admins can copy or resend the saved invite.
     }
 
-    return createSuccessResponse(ctx, { member }, { status: 201 });
+    return createSuccessResponse(ctx, { member, inviteLink: inviteUrl }, { status: 201 });
 });
 
 export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {

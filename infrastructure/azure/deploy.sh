@@ -79,12 +79,13 @@ REDIS_KEY=$(az redis list-keys --resource-group $RESOURCE_GROUP --name "redis-co
 STORAGE_KEY=$(az storage account keys list --resource-group $RESOURCE_GROUP --account-name $STORAGE_ACCOUNT --query '[0].value' -o tsv)
 
 # Store secrets
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "postgres-password" --value "$POSTGRES_PASSWORD" > /dev/null
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "database-url" --value "postgresql://contigoadmin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/contigo?sslmode=require" > /dev/null
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "redis-url" --value "rediss://:${REDIS_KEY}@${REDIS_HOST}:6380" > /dev/null
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "azure-storage-key" --value "$STORAGE_KEY" > /dev/null
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "nextauth-secret" --value "$(openssl rand -hex 32)" > /dev/null
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "encryption-key" --value "$(openssl rand -hex 32)" > /dev/null
+SECRET_EXPIRES_ON=$(date -u -d '+180 days' '+%Y-%m-%dT00:00:00Z')
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "postgres-password" --value "$POSTGRES_PASSWORD" --expires "$SECRET_EXPIRES_ON" > /dev/null
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "database-url" --value "postgresql://contigoadmin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/contigo?sslmode=require" --expires "$SECRET_EXPIRES_ON" > /dev/null
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "redis-url" --value "rediss://:${REDIS_KEY}@${REDIS_HOST}:6380" --expires "$SECRET_EXPIRES_ON" > /dev/null
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "azure-storage-key" --value "$STORAGE_KEY" --expires "$SECRET_EXPIRES_ON" > /dev/null
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "nextauth-secret" --value "$(openssl rand -hex 32)" --expires "$SECRET_EXPIRES_ON" > /dev/null
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "encryption-key" --value "$(openssl rand -hex 32)" --expires "$SECRET_EXPIRES_ON" > /dev/null
 
 echo "✅ Secrets stored in Key Vault"
 

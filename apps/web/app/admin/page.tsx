@@ -78,9 +78,12 @@ interface Invitation {
   email: string;
   role: string;
   status: string;
+  token: string;
   expiresAt: string;
   createdAt: string;
 }
+
+type OnboardingMode = 'invite' | 'setup';
 
 interface TenantInfo {
   id: string;
@@ -336,8 +339,11 @@ export default function TenantAdminPage() {
 
   // Invite dialog state
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [onboardingMode, setOnboardingMode] = useState<OnboardingMode>('invite');
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
+  const [inviteFirstName, setInviteFirstName] = useState("");
+  const [inviteLastName, setInviteLastName] = useState("");
   const [inviting, setInviting] = useState(false);
 
   // Edit member state
@@ -386,21 +392,50 @@ export default function TenantAdminPage() {
 
   const handleInvite = async () => {
     if (!inviteEmail) return;
+    if (onboardingMode === 'setup' && !inviteFirstName.trim()) {
+      setError('First name is required');
+      return;
+    }
+
     setInviting(true);
     try {
-      const res = await fetch("/api/admin/team/invitations", {
+      const res = await fetch(onboardingMode === 'setup' ? "/api/admin/team/members" : "/api/admin/team/invitations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+        body: JSON.stringify(
+          onboardingMode === 'setup'
+            ? {
+                email: inviteEmail,
+                role: inviteRole,
+                firstName: inviteFirstName,
+                lastName: inviteLastName,
+                sendSetupEmail: true,
+              }
+            : { email: inviteEmail, role: inviteRole },
+        ),
       });
 
+      const data = await res.json().catch(() => null);
+
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to send invitation");
+        throw new Error(data?.error?.message || data?.error || "Failed to send invitation");
+      }
+
+      const result = data ? unwrapApiResponseData<{ setupLink?: string }>(data) : {};
+      if (onboardingMode === 'setup' && result.setupLink) {
+        void navigator.clipboard?.writeText(result.setupLink).catch(() => undefined);
+        toast.success('Account created and setup link copied');
+      } else if (onboardingMode === 'setup') {
+        toast.success('Account created');
+      } else {
+        toast.success('Invitation sent');
       }
 
       setInviteEmail("");
       setInviteRole("member");
+      setInviteFirstName("");
+      setInviteLastName("");
+      setOnboardingMode('invite');
       setInviteDialogOpen(false);
       loadData();
     } catch (err: any) {
@@ -480,8 +515,8 @@ export default function TenantAdminPage() {
     }
   };
 
-  const copyInviteLink = (invitationId: string) => {
-    const link = `${window.location.origin}/auth/signup?invite=${invitationId}`;
+  const copyInviteLink = (inviteToken: string) => {
+    const link = `${window.location.origin}/auth/signup?invite=${inviteToken}`;
     navigator.clipboard.writeText(link).then(() => {
       // Toast handled by caller if needed
     }).catch(() => {
@@ -659,12 +694,26 @@ export default function TenantAdminPage() {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Invite Team Member</DialogTitle>
+                    <DialogTitle>{onboardingMode === 'setup' ? 'Create User Account' : 'Invite Team Member'}</DialogTitle>
                     <DialogDescription>
-                      Send an invitation to join your organization
+                      {onboardingMode === 'setup'
+                        ? 'Create the account and send a password setup link'
+                        : 'Send an invitation to join your organization'}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
+                    <div>
+                      <Label htmlFor="onboardingMode">Onboarding Method</Label>
+                      <Select value={onboardingMode} onValueChange={(value) => setOnboardingMode(value as OnboardingMode)}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="invite">Invite user</SelectItem>
+                          <SelectItem value="setup">Create account</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div>
                       <Label htmlFor="inviteEmail">Email Address</Label>
                       <Input
@@ -676,6 +725,28 @@ export default function TenantAdminPage() {
                         className="mt-1"
                       />
                     </div>
+                    {onboardingMode === 'setup' && (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <Label htmlFor="inviteFirstName">First Name</Label>
+                          <Input
+                            id="inviteFirstName"
+                            value={inviteFirstName}
+                            onChange={(e) => setInviteFirstName(e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="inviteLastName">Last Name</Label>
+                          <Input
+                            id="inviteLastName"
+                            value={inviteLastName}
+                            onChange={(e) => setInviteLastName(e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                    )}
                     <div>
                       <Label htmlFor="inviteRole">Role</Label>
                       <Select value={inviteRole} onValueChange={setInviteRole}>
@@ -695,7 +766,9 @@ export default function TenantAdminPage() {
                       Cancel
                     </Button>
                     <Button onClick={handleInvite} disabled={inviting || !inviteEmail}>
-                      {inviting ? "Sending..." : "Send Invitation"}
+                      {inviting
+                        ? (onboardingMode === 'setup' ? "Creating..." : "Sending...")
+                        : (onboardingMode === 'setup' ? "Create Account" : "Send Invitation")}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -852,7 +925,7 @@ export default function TenantAdminPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => copyInviteLink(invitation.id)}
+                                onClick={() => copyInviteLink(invitation.token)}
                                 title="Copy invite link"
                               >
                                 <Copy className="h-4 w-4" />

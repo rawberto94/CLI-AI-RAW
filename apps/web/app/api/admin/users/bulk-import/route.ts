@@ -177,7 +177,11 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
         try {
           const { sendEmail } = await import('@/lib/email/email-service');
-          const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/accept-invite?token=${token}`;
+          const baseUrl = process.env.NEXTAUTH_URL
+            || process.env.NEXT_PUBLIC_APP_URL
+            || process.env.NEXT_PUBLIC_URL
+            || new URL(request.url).origin;
+          const inviteUrl = `${baseUrl}/auth/signup?invite=${token}`;
           await sendEmail({
             to: user.email,
             subject: "You've been invited to ConTigo",

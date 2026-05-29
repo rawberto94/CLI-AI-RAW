@@ -32,6 +32,8 @@
     "test:e2e": "turbo run test:e2e --filter=web",
     "test:e2e:ui": "pnpm --filter web run test:e2e:ui",
     "test:rag-integration": "tsx scripts/test-rag-integration.ts",
+    "security:audit": "pnpm audit --prod",
+    "security:audit:critical": "pnpm audit --prod --audit-level critical",
     "audit:tcv": "tsx scripts/audit-tcv-quality.ts",
     "audit:critical-fields": "tsx scripts/audit-critical-fields.ts",
     "lint": "turbo run lint",
@@ -61,7 +63,9 @@
       "zod-to-json-schema": "3.23.5",
       "pino": "^9.5.0",
       "@opentelemetry/semantic-conventions": "^1.28.0",
-      "fast-xml-parser": ">=5.3.5"
+      "fast-xml-parser": ">=5.3.5",
+      "protobufjs": ">=7.5.5",
+      "convict": ">=6.2.5"
     },
     "onlyBuiltDependencies": [
       "@prisma/client",

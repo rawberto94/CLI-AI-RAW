@@ -101,6 +101,24 @@ env:
 
 # Secret values. Azure deployments map Key Vault objects to these runtime env names.
 secrets:
+  requireManualValues: true
+  requiredManualKeys:
+    - DATABASE_URL
+    - DIRECT_DATABASE_URL
+    - REDIS_URL
+    - AUTH_SECRET
+    - NEXTAUTH_SECRET
+    - JWT_SECRET
+    - SESSION_SECRET
+    - AZURE_OPENAI_ENDPOINT
+    - AZURE_OPENAI_API_KEY
+    - AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT
+    - AZURE_DOCUMENT_INTELLIGENCE_KEY
+    - MINIO_ENDPOINT
+    - MINIO_ACCESS_KEY
+    - MINIO_SECRET_KEY
+    - S3_ACCESS_KEY
+    - S3_SECRET_KEY
   keyVaultObjects:
     - objectName: database-url
       keys: [DATABASE_URL]
@@ -141,24 +159,24 @@ secrets:
     - objectName: sentry-dsn
       keys: [SENTRY_DSN]
   manual:
-    DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/contigo"
-    DIRECT_DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/contigo"
-    REDIS_URL: "redis://redis:6379"
+    DATABASE_URL: ""
+    DIRECT_DATABASE_URL: ""
+    REDIS_URL: ""
     REDIS_HOST: "redis"
     REDIS_PASSWORD: ""
-    AUTH_SECRET: "change-me-in-production"
-    NEXTAUTH_SECRET: "change-me-in-production"
-    JWT_SECRET: "change-me-in-production"
-    SESSION_SECRET: "change-me-in-production"
+    AUTH_SECRET: ""
+    NEXTAUTH_SECRET: ""
+    JWT_SECRET: ""
+    SESSION_SECRET: ""
     AZURE_OPENAI_ENDPOINT: ""
     AZURE_OPENAI_API_KEY: ""
     AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT: ""
     AZURE_DOCUMENT_INTELLIGENCE_KEY: ""
     MINIO_ENDPOINT: "minio"
-    MINIO_ACCESS_KEY: "minioadmin"
-    MINIO_SECRET_KEY: "minioadmin"
-    S3_ACCESS_KEY: "minioadmin"
-    S3_SECRET_KEY: "minioadmin"
+    MINIO_ACCESS_KEY: ""
+    MINIO_SECRET_KEY: ""
+    S3_ACCESS_KEY: ""
+    S3_SECRET_KEY: ""
     AZURE_STORAGE_ACCOUNT_NAME: ""
     AZURE_STORAGE_ACCOUNT_KEY: ""
     AZURE_STORAGE_CONTAINER: "contracts"

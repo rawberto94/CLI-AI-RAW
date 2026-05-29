@@ -412,6 +412,16 @@ export default function ContractsPage() {
     return Array.from(terms).filter(Boolean).sort();
   }, [contracts]);
 
+  const availableTags = useMemo(() => {
+    const tags = new Set<string>();
+    contracts.forEach(c => {
+      c.tags?.forEach(tag => {
+        if (tag) tags.add(tag);
+      });
+    });
+    return Array.from(tags).sort();
+  }, [contracts]);
+
   const categoryLabels = useMemo(
     () => Object.fromEntries(categories.map((category) => [category.id, category.name])),
     [categories],
@@ -579,7 +589,7 @@ export default function ContractsPage() {
       isPinned: false,
       completeness: contract.status === 'completed' ? 100 : contract.status === 'processing' ? (contract.processing?.progress || 50) : 0,
       keyTerms: [],
-      tags: [],
+      tags: contract.tags ?? [],
       // Include hierarchy info
       parentContractId: contract.parentContractId ?? undefined,
       parentContract: contract.parentContract ? { ...contract.parentContract, contractType: contract.parentContract.contractType ?? undefined } : undefined,
@@ -632,6 +642,7 @@ export default function ContractsPage() {
     clauses: [],
     attachments: [],
     activities: [],
+    tags: contract.tags ?? [],
     summary: 'Contract summary will be available after processing.',
   }), []);
 
@@ -710,7 +721,7 @@ export default function ContractsPage() {
     (filterState.riskLevels?.length ?? 0) + (filterState.suppliers?.length ?? 0) +
     (filterState.clients?.length ?? 0) + (filterState.contractTypes?.length ?? 0) +
     (filterState.currencies?.length ?? 0) + (filterState.jurisdictions?.length ?? 0) +
-    (filterState.paymentTerms?.length ?? 0),
+    (filterState.paymentTerms?.length ?? 0) + (filterState.tags?.length ?? 0),
   [filterState]);
 
   const applyQuickFilter = useCallback((filter: 'expiring' | 'signature' | 'risk' | 'processing' | 'recent') => {
@@ -1035,6 +1046,7 @@ export default function ContractsPage() {
                 availableCurrencies={availableCurrencies}
                 availableJurisdictions={availableJurisdictions}
                 availablePaymentTerms={availablePaymentTerms}
+                availableTags={availableTags}
               />
             </motion.div>
           )}
@@ -1250,7 +1262,7 @@ export default function ContractsPage() {
               <Card className="overflow-hidden bg-white border-slate-200 shadow-sm rounded-xl" role="table" aria-label="Contracts list">
                 <div className="overflow-x-auto">
                 {/* Table Header */}
-                <div role="row" className="flex items-center gap-3 px-5 py-4 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider sticky top-16 lg:top-0 z-30 min-w-[1180px]">
+                <div role="row" className="flex items-center gap-3 px-5 py-4 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider sticky top-16 lg:top-0 z-30 min-w-[1330px]">
                   <div role="columnheader" className="w-10 flex-shrink-0 flex items-center justify-center">
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -1279,6 +1291,7 @@ export default function ContractsPage() {
                   <div role="columnheader" className="flex-1 min-w-[220px]">Contract</div>
                   <div role="columnheader" className="hidden lg:block w-[120px]">Category</div>
                   <div role="columnheader" className="hidden lg:block w-[110px]">Type</div>
+                  <div role="columnheader" className="hidden xl:block w-[150px]">Tags</div>
                   <div role="columnheader" className="hidden md:block w-[150px]">Party</div>
                   <div role="columnheader" className="hidden lg:block w-[110px] text-right">Value</div>
                   <div role="columnheader" className="hidden md:block w-[110px]">Expires</div>
@@ -1615,6 +1628,7 @@ export default function ContractsPage() {
           status: statusFilter !== 'all' ? [statusFilter] : [],
           riskLevel: riskFilters,
           contractType: typeFilters,
+          tags: filterState.tags,
         }}
         onFiltersChange={(filters) => {
           if (filters.search !== undefined) setSearchQuery(filters.search);
@@ -1623,9 +1637,11 @@ export default function ContractsPage() {
           }
           if (filters.riskLevel) setRiskFilters(filters.riskLevel);
           if (filters.contractType) setTypeFilters(filters.contractType);
+          if (filters.tags) setFilterState(prev => ({ ...prev, tags: filters.tags }));
         }}
         onApply={() => setShowMobileFilters(false)}
         onReset={clearFilters}
+        availableTags={availableTags}
       />
 
       {/* Scroll to Top Button */}

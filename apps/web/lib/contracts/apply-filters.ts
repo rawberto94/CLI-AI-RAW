@@ -45,7 +45,8 @@ function matchesSearch(c: Contract, q: string | undefined): boolean {
     (c.clientName?.toLowerCase().includes(lower) ?? false) ||
     (c.supplierName?.toLowerCase().includes(lower) ?? false) ||
     (c.type?.toLowerCase().includes(lower) ?? false) ||
-    (c.category?.name?.toLowerCase().includes(lower) ?? false)
+    (c.category?.name?.toLowerCase().includes(lower) ?? false) ||
+    (c.tags?.some((tag) => tag.toLowerCase().includes(lower)) ?? false)
   );
 }
 
@@ -207,6 +208,12 @@ function matchesDocumentType(
   return filters.includes(c.documentClassification || 'contract');
 }
 
+function matchesTags(c: Contract, tags: string[] | undefined): boolean {
+  if (!tags?.length) return true;
+  const contractTags = c.tags ?? [];
+  return tags.some((tag) => contractTags.some((contractTag) => contractTag.toLowerCase() === tag.toLowerCase()));
+}
+
 // ── Main filter function ────────────────────────────────────────────
 
 /**
@@ -235,6 +242,7 @@ export function applyContractFilters(
     matchesArrayField(c.currency, f.currencies, c.title) &&
     matchesArrayField(c.jurisdiction, f.jurisdictions, c.title) &&
     matchesArrayField(c.paymentTerms, f.paymentTerms, c.title) &&
+    matchesTags(c, f.tags) &&
     matchesDateRangeAdvanced(c, f.dateRange) &&
     matchesDateRangePreset(c, dateRangePreset, now) &&
     matchesValueRangeSlider(c, f.valueRange) &&

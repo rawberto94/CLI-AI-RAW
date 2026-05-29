@@ -57,6 +57,7 @@ export function ActiveFilterChips({
     (filters.currencies?.length ?? 0) > 0 ||
     (filters.jurisdictions?.length ?? 0) > 0 ||
     (filters.paymentTerms?.length ?? 0) > 0 ||
+    (filters.tags?.length ?? 0) > 0 ||
     searchQuery;
 
   if (!hasActiveFilters) return null;
@@ -221,6 +222,17 @@ export function ActiveFilterChips({
           label={`Payment: ${pt}`}
           onRemove={() => onClearFilter('paymentTerms', pt)}
           color="green"
+        />
+      ))}
+
+      {/* Tag Chips */}
+      {filters.tags?.map(tag => (
+        <FilterChip
+          key={`tag-${tag}`}
+          icon={<Tag className="h-3 w-3" />}
+          label={`Tag: ${tag}`}
+          onRemove={() => onClearFilter('tags', tag)}
+          color="indigo"
         />
       ))}
 

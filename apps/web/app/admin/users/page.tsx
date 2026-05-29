@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { unwrapApiResponseData } from '@/lib/api-fetch';
 import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import {
   Users,
@@ -83,6 +84,8 @@ interface Invitation {
   createdAt: string;
 }
 
+type ProvisionMode = 'invite' | 'setup';
+
 const ROLES = [
   { value: 'owner', label: 'Owner', color: 'bg-violet-100 text-violet-800' },
   { value: 'admin', label: 'Admin', color: 'bg-red-100 text-red-800' },
@@ -109,24 +112,31 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ email: '', role: 'member' });
+  const [provisionMode, setProvisionMode] = useState<ProvisionMode>('invite');
+  const [inviteForm, setInviteForm] = useState({ email: '', role: 'member', firstName: '', lastName: '' });
   const [isInviting, setIsInviting] = useState(false);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
       const [usersRes, invitesRes] = await Promise.all([
-        fetch('/api/users'),
-        fetch('/api/team/invitations'),
+        fetch('/api/admin/team/members'),
+        fetch('/api/admin/team/invitations'),
       ]);
 
       if (usersRes.ok) {
-        const data = await usersRes.json();
-        setUsers(data.users || []);
+        const data = unwrapApiResponseData<{ members?: User[]; users?: User[] }>(await usersRes.json());
+        const users = data.members || data.users || [];
+        setUsers(users.map((user: User) => ({
+          avatar: null,
+          departments: [],
+          groups: [],
+          ...user,
+        })));
       }
 
       if (invitesRes.ok) {
-        const data = await invitesRes.json();
+        const data = unwrapApiResponseData<{ invitations?: Invitation[] }>(await invitesRes.json());
         setInvitations(data.invitations || []);
       }
     } catch (_error) {
@@ -146,22 +156,53 @@ export default function UsersPage() {
       return;
     }
 
+    if (provisionMode === 'setup' && !inviteForm.firstName.trim()) {
+      toast.error('First name is required');
+      return;
+    }
+
     setIsInviting(true);
     try {
-      const response = await fetch('/api/team/invite', {
+      const response = await fetch(
+        provisionMode === 'setup' ? '/api/admin/team/members' : '/api/admin/team/invitations',
+        {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(inviteForm),
-      });
+          body: JSON.stringify(
+            provisionMode === 'setup'
+              ? {
+                  email: inviteForm.email,
+                  role: inviteForm.role,
+                  firstName: inviteForm.firstName,
+                  lastName: inviteForm.lastName,
+                  sendSetupEmail: true,
+                }
+              : { email: inviteForm.email, role: inviteForm.role },
+          ),
+        },
+      );
 
-      if (!response.ok) throw new Error();
+      const data = await response.json().catch(() => null);
 
-      toast.success('Invitation sent');
+      if (!response.ok) {
+        throw new Error(data?.error?.message || data?.error || 'Failed to send invitation');
+      }
+
+      const result = data ? unwrapApiResponseData<{ setupLink?: string }>(data) : {};
+      if (provisionMode === 'setup') {
+        if (result.setupLink) {
+          void navigator.clipboard?.writeText(result.setupLink).catch(() => undefined);
+        }
+        toast.success(result.setupLink ? 'Account created and setup link copied' : 'Account created');
+      } else {
+        toast.success('Invitation sent');
+      }
       setShowInviteDialog(false);
-      setInviteForm({ email: '', role: 'member' });
+      setInviteForm({ email: '', role: 'member', firstName: '', lastName: '' });
+      setProvisionMode('invite');
       fetchUsers();
-    } catch {
-      toast.error('Failed to send invitation');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to provision user');
     } finally {
       setIsInviting(false);
     }
@@ -207,7 +248,7 @@ export default function UsersPage() {
 
   const handleRevokeInvitation = async (invitationId: string) => {
     try {
-      const response = await fetch(`/api/team/invitations/${invitationId}`, {
+      const response = await fetch(`/api/admin/team/invitations/${invitationId}`, {
         method: 'DELETE',
       });
 
@@ -221,8 +262,10 @@ export default function UsersPage() {
 
   const handleResendInvitation = async (invitationId: string) => {
     try {
-      const response = await fetch(`/api/team/invitations/${invitationId}/resend`, {
+      const response = await fetch(`/api/admin/team/invitations/${invitationId}`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'resend' }),
       });
 
       if (!response.ok) throw new Error();
@@ -282,17 +325,31 @@ export default function UsersPage() {
             <DialogTrigger asChild>
               <Button>
                 <UserPlus className="h-4 w-4 mr-2" />
-                Invite User
+                Add User
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Invite Team Member</DialogTitle>
+                <DialogTitle>{provisionMode === 'setup' ? 'Create User Account' : 'Invite Team Member'}</DialogTitle>
                 <DialogDescription>
-                  Send an invitation to join your organization
+                  {provisionMode === 'setup'
+                    ? 'Create the account and send a password setup link'
+                    : 'Send an invitation to join your organization'}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Onboarding Method</Label>
+                  <Select value={provisionMode} onValueChange={(value) => setProvisionMode(value as ProvisionMode)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="invite">Invite user</SelectItem>
+                      <SelectItem value="setup">Create account</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label>Email Address</Label>
                   <Input
@@ -302,6 +359,24 @@ export default function UsersPage() {
                     onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
                   />
                 </div>
+                {provisionMode === 'setup' && (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>First Name</Label>
+                      <Input
+                        value={inviteForm.firstName}
+                        onChange={(e) => setInviteForm(prev => ({ ...prev, firstName: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Last Name</Label>
+                      <Input
+                        value={inviteForm.lastName}
+                        onChange={(e) => setInviteForm(prev => ({ ...prev, lastName: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Role</Label>
                   <Select
@@ -326,7 +401,9 @@ export default function UsersPage() {
                   Cancel
                 </Button>
                 <Button onClick={handleInvite} disabled={isInviting}>
-                  {isInviting ? 'Sending...' : 'Send Invitation'}
+                  {isInviting
+                    ? (provisionMode === 'setup' ? 'Creating...' : 'Sending...')
+                    : (provisionMode === 'setup' ? 'Create Account' : 'Send Invitation')}
                 </Button>
               </DialogFooter>
             </DialogContent>

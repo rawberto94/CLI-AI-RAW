@@ -34,6 +34,7 @@ const DEFAULT_FILTER_STATE: FilterState = {
   currencies: [],
   jurisdictions: [],
   paymentTerms: [],
+  tags: [],
 };
 
 const UI_STATUS_TO_API_STATUS = {
@@ -74,6 +75,7 @@ function normalizeFilterState(filters: FilterState): FilterState {
   return {
     ...filters,
     statuses: normalizeStatuses(filters.statuses),
+    tags: filters.tags ?? [],
   };
 }
 
@@ -200,6 +202,7 @@ export function useContractsPageFilters() {
       currency: filterState.currencies?.length ? filterState.currencies : undefined,
       jurisdiction: filterState.jurisdictions?.length ? filterState.jurisdictions : undefined,
       paymentTerms: filterState.paymentTerms?.length ? filterState.paymentTerms : undefined,
+      tags: filterState.tags?.length ? filterState.tags : undefined,
       signatureStatus: signatureFilters.length > 0 ? signatureFilters : undefined,
       documentClassification: documentTypeFilters.length > 0 ? documentTypeFilters : undefined,
       expirationFilter: expirationFilters.length > 0 ? expirationFilters : undefined,
@@ -245,7 +248,8 @@ export function useContractsPageFilters() {
       (filterState.contractTypes?.length ?? 0) > 0 ||
       (filterState.currencies?.length ?? 0) > 0 ||
       (filterState.jurisdictions?.length ?? 0) > 0 ||
-      (filterState.paymentTerms?.length ?? 0) > 0,
+        (filterState.paymentTerms?.length ?? 0) > 0 ||
+        (filterState.tags?.length ?? 0) > 0,
   );
 
   const activeFilterCount = [
@@ -267,6 +271,7 @@ export function useContractsPageFilters() {
     filterState.currencies?.length ?? 0,
     filterState.jurisdictions?.length ?? 0,
     filterState.paymentTerms?.length ?? 0,
+    filterState.tags?.length ?? 0,
   ].reduce((a, b) => a + b, 0);
 
   // ── Auto-reset page on filter change ───────────────────────────────
@@ -297,7 +302,8 @@ export function useContractsPageFilters() {
         case "contractTypes":
         case "currencies":
         case "jurisdictions":
-        case "paymentTerms": {
+        case "paymentTerms":
+        case "tags": {
           const arr = prev[filterKey] as string[];
           if (value !== undefined) {
             return { ...prev, [filterKey]: arr.filter((v) => v !== value) };

@@ -100,10 +100,15 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         select: { name: true },
       });
       
+      const baseUrl = process.env.NEXTAUTH_URL
+        || process.env.NEXT_PUBLIC_APP_URL
+        || process.env.NEXT_PUBLIC_URL
+        || new URL(request.url).origin;
+
       const template = emailTemplates.teamInvitation({
         invitedBy: 'Admin',
         tenantName: tenant?.name || 'Contigo',
-        inviteUrl: `${process.env.NEXT_PUBLIC_URL}/accept-invitation?token=${invitation.token}`,
+        inviteUrl: `${baseUrl}/auth/signup?invite=${invitation.token}`,
         expiresIn: '7 days',
       });
       

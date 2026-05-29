@@ -84,9 +84,10 @@ function SignUpForm() {
           return res.json();
         })
         .then((data) => {
-          if (data.valid) {
-            setInviteInfo(data);
-            setFormData((prev) => ({ ...prev, email: data.email }));
+          const inviteData = data.data ?? data;
+          if (inviteData.valid) {
+            setInviteInfo(inviteData);
+            setFormData((prev) => ({ ...prev, email: inviteData.email }));
           }
         })
         .catch(() => {});

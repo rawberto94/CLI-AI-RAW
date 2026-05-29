@@ -2,17 +2,46 @@
  * Unit Tests for Admin Team Members API
  * Tests /api/admin/team/members endpoint
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockFindMany } = vi.hoisted(() => ({
+const {
+  mockFindMany,
+  mockUserFindUnique,
+  mockInvitationFindFirst,
+  mockTransaction,
+  mockUserCreate,
+  mockRoleFindFirst,
+  mockRoleCreate,
+  mockUserRoleCreate,
+  mockPasswordResetTokenCreate,
+  mockAuditLogCreate,
+  mockHash,
+  mockSendEmail,
+} = vi.hoisted(() => ({
   mockFindMany: vi.fn(),
+  mockUserFindUnique: vi.fn(),
+  mockInvitationFindFirst: vi.fn(),
+  mockTransaction: vi.fn(),
+  mockUserCreate: vi.fn(),
+  mockRoleFindFirst: vi.fn(),
+  mockRoleCreate: vi.fn(),
+  mockUserRoleCreate: vi.fn(),
+  mockPasswordResetTokenCreate: vi.fn(),
+  mockAuditLogCreate: vi.fn(),
+  mockHash: vi.fn(),
+  mockSendEmail: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
+    $transaction: mockTransaction,
     user: {
       findMany: mockFindMany,
+      findUnique: mockUserFindUnique,
+    },
+    teamInvitation: {
+      findFirst: mockInvitationFindFirst,
     },
   },
 }));
@@ -21,7 +50,15 @@ vi.mock('data-orchestration/services', () => ({
   monitoringService: {},
 }));
 
-import { GET } from '../route';
+vi.mock('bcryptjs', () => ({
+  hash: mockHash,
+}));
+
+vi.mock('@/lib/email/email-service', () => ({
+  sendEmail: mockSendEmail,
+}));
+
+import { GET, POST } from '../route';
 
 function createAuthenticatedRequest(url: string): NextRequest {
   return new NextRequest(url, {
@@ -42,6 +79,19 @@ function createMemberRequest(url: string): NextRequest {
       'x-tenant-id': 'tenant-1',
       'x-user-role': 'member',
     },
+  });
+}
+
+function createPostRequest(url: string, role: string, body: object): NextRequest {
+  return new NextRequest(url, {
+    method: 'POST',
+    headers: {
+      'x-user-id': 'user-1',
+      'x-tenant-id': 'tenant-1',
+      'x-user-role': role,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
   });
 }
 
@@ -83,8 +133,38 @@ const mockMembers = [
 ];
 
 describe('Admin Team Members API', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUserFindUnique.mockResolvedValue(null);
+    mockInvitationFindFirst.mockResolvedValue(null);
+    mockHash.mockResolvedValue('hashed-random-password');
+    mockUserCreate.mockResolvedValue({
+      id: 'user-created',
+      email: 'client@example.com',
+      firstName: 'Client',
+      lastName: 'Person',
+      role: 'viewer',
+      status: 'ACTIVE',
+      lastLoginAt: null,
+      createdAt: new Date('2026-05-29T08:00:00.000Z'),
+    });
+    mockRoleFindFirst.mockResolvedValue({ id: 'role-viewer', name: 'viewer' });
+    mockRoleCreate.mockResolvedValue({ id: 'role-viewer', name: 'viewer' });
+    mockUserRoleCreate.mockResolvedValue({});
+    mockPasswordResetTokenCreate.mockResolvedValue({});
+    mockAuditLogCreate.mockResolvedValue({});
+    mockTransaction.mockImplementation(async (callback) => callback({
+      user: { create: mockUserCreate },
+      role: { findFirst: mockRoleFindFirst, create: mockRoleCreate },
+      userRole: { create: mockUserRoleCreate },
+      passwordResetToken: { create: mockPasswordResetTokenCreate },
+      auditLog: { create: mockAuditLogCreate },
+    }));
+    mockSendEmail.mockResolvedValue(true);
   });
 
   describe('GET /api/admin/team/members', () => {
@@ -279,6 +359,79 @@ describe('Admin Team Members API', () => {
 
       expect(data.data.members).toHaveLength(1);
       expect(data.data.members[0].status).toBe('INACTIVE');
+    });
+  });
+
+  describe('POST /api/admin/team/members', () => {
+    it('returns 403 for non-admin member setup', async () => {
+      const response = await POST(createPostRequest('http://localhost:3000/api/admin/team/members', 'member', {
+        email: 'client@example.com',
+        firstName: 'Client',
+        role: 'viewer',
+      }));
+      const data = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(data.error.code).toBe('FORBIDDEN');
+      expect(mockTransaction).not.toHaveBeenCalled();
+    });
+
+    it('creates an active member with a password setup link', async () => {
+      vi.stubEnv('NEXTAUTH_URL', 'https://app.contigo.ch');
+
+      const response = await POST(createPostRequest('http://localhost:3000/api/admin/team/members', 'owner', {
+        email: 'Client@Example.com',
+        firstName: 'Client',
+        lastName: 'Person',
+        role: 'viewer',
+      }));
+      const data = await response.json();
+
+      expect(response.status).toBe(201);
+      expect(data.success).toBe(true);
+      expect(data.data.member).toMatchObject({
+        id: 'user-created',
+        email: 'client@example.com',
+        role: 'viewer',
+        status: 'ACTIVE',
+      });
+      expect(data.data.setupLink).toMatch(/^https:\/\/app\.contigo\.ch\/auth\/reset-password\?token=[a-f0-9]{64}$/);
+      expect(mockUserCreate).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          email: 'client@example.com',
+          firstName: 'Client',
+          lastName: 'Person',
+          tenantId: 'tenant-1',
+          role: 'viewer',
+          status: 'ACTIVE',
+          passwordHash: 'hashed-random-password',
+        }),
+      }));
+      expect(mockPasswordResetTokenCreate).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          userId: 'user-created',
+          token: expect.stringMatching(/^[a-f0-9]{64}$/),
+        }),
+      }));
+      expect(mockSendEmail).toHaveBeenCalledWith(expect.objectContaining({
+        to: 'client@example.com',
+        subject: 'Set up your ConTigo account',
+      }));
+    });
+
+    it('rejects existing users in the same tenant', async () => {
+      mockUserFindUnique.mockResolvedValue({ id: 'existing-user', tenantId: 'tenant-1' });
+
+      const response = await POST(createPostRequest('http://localhost:3000/api/admin/team/members', 'admin', {
+        email: 'client@example.com',
+        firstName: 'Client',
+        role: 'member',
+      }));
+      const data = await response.json();
+
+      expect(response.status).toBe(409);
+      expect(data.error.message).toBe('User with this email is already a team member');
+      expect(mockTransaction).not.toHaveBeenCalled();
     });
   });
 });

@@ -108,7 +108,11 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     select: { name: true },
   });
 
-  const inviteLink = `${process.env.NEXTAUTH_URL}/auth/signup?invite=${token}`;
+  const baseUrl = process.env.NEXTAUTH_URL
+    || process.env.NEXT_PUBLIC_APP_URL
+    || process.env.NEXT_PUBLIC_URL
+    || new URL(request.url).origin;
+  const inviteLink = `${baseUrl}/auth/signup?invite=${token}`;
 
   const template = emailTemplates.teamInvitation({
     invitedBy: 'Admin',
@@ -128,7 +132,10 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       id: invitation.id,
       email: invitation.email,
       role: invitation.role,
+      status: invitation.status,
+      token: invitation.token,
       expiresAt: invitation.expiresAt,
+      createdAt: invitation.createdAt,
     },
     inviteLink,
   });

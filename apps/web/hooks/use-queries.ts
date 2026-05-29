@@ -51,6 +51,7 @@ export interface Contract {
   } | null;
   type?: string;
   createdAt?: string;
+  tags?: string[];
   // Financial fields
   currency?: string;
   totalValue?: number;

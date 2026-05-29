@@ -180,12 +180,18 @@ export default function PlatformAdminPage() {
         throw new Error(errorMessage);
       }
 
-      toast.success("Client organization created successfully");
+      const data = unwrapApiResponseData<{ setupLink?: string }>(await res.json());
+      if (data.setupLink) {
+        void navigator.clipboard?.writeText(data.setupLink).catch(() => undefined);
+        toast.success("Client organization created and setup link copied");
+      } else {
+        toast.success("Client organization created successfully");
+      }
       setCreateDialogOpen(false);
       setNewTenant({ name: "", slug: "", adminEmail: "", adminFirstName: "", adminLastName: "" });
       loadTenants();
-    } catch {
-      toast.error('Failed to create organization. Please try again.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create organization. Please try again.');
     } finally {
       setCreating(false);
     }

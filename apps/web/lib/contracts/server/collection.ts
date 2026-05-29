@@ -132,6 +132,13 @@ function mapContractStatusToUi(status: ContractStatus): string {
   }
 }
 
+function normalizeTags(value: Prisma.JsonValue | null | undefined): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((tag): tag is string => typeof tag === 'string' && tag.trim().length > 0)
+    .map((tag) => tag.trim());
+}
+
 export async function getContractsCollection(
   request: NextRequest,
   context: ContractApiContext,
@@ -169,6 +176,10 @@ export async function getContractsCollection(
     const currencies = searchParams.getAll('currency');
     const jurisdictions = searchParams.getAll('jurisdiction');
     const paymentTerms = searchParams.getAll('paymentTerms');
+    const tags = searchParams
+      .getAll('tags')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
     const signatureStatuses = searchParams.getAll('signatureStatus');
     const documentClassifications = searchParams.getAll('documentClassification');
     const expirationFilters = searchParams.getAll('expirationFilter');
@@ -207,6 +218,7 @@ export async function getContractsCollection(
       tenantId,
       isDeleted: false,
     };
+    const andFilters: Prisma.ContractWhereInput[] = [];
 
     if (search) {
       where.OR = [
@@ -259,6 +271,13 @@ export async function getContractsCollection(
     if (paymentTerms.length > 0) {
       where.paymentTerms = { in: paymentTerms };
     }
+    if (tags.length > 0) {
+      andFilters.push({
+        OR: tags.map((tag) => ({
+          tags: { array_contains: [tag] },
+        })),
+      });
+    }
     if (signatureStatuses.length > 0) {
       where.signatureStatus = { in: signatureStatuses };
     }
@@ -283,8 +302,6 @@ export async function getContractsCollection(
       if (uploadedAfter) where.uploadedAt.gte = new Date(uploadedAfter);
       if (uploadedBefore) where.uploadedAt.lte = new Date(uploadedBefore);
     }
-
-    const andFilters: Prisma.ContractWhereInput[] = [];
 
     if (riskLevels.length > 0) {
       const riskClauses: Prisma.ContractWhereInput[] = [];
@@ -402,6 +419,7 @@ export async function getContractsCollection(
       currencies,
       jurisdictions,
       paymentTerms,
+      tags,
       signatureStatuses,
       documentClassifications,
       expirationFilters,
@@ -606,6 +624,7 @@ export async function getContractsCollection(
               if (staleIdSet.has(contract.id)) {
                 effectiveStatus = failedIdSet.has(contract.id) ? 'failed' : 'completed';
               }
+              const normalizedTags = normalizeTags(contract.tags);
 
               return {
                 id: contract.id,
@@ -644,7 +663,7 @@ export async function getContractsCollection(
                 effectiveDate: contract.effectiveDate?.toISOString(),
                 expirationDate: contract.expirationDate?.toISOString(),
                 description: contract.description,
-                tags: contract.tags,
+                tags: normalizedTags,
                 viewCount: contract.viewCount,
                 updatedAt: contract.updatedAt?.toISOString() || null,
                 fileName: contract.fileName,

@@ -35,6 +35,7 @@ import {
   Coins,
   MapPin,
   CreditCard,
+  Tag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -61,6 +62,7 @@ export interface FilterState {
   currencies: string[];
   jurisdictions: string[];
   paymentTerms: string[];
+  tags: string[];
 }
 
 interface AdvancedFilterPanelProps {
@@ -75,6 +77,7 @@ interface AdvancedFilterPanelProps {
   availableCurrencies?: string[];
   availableJurisdictions?: string[];
   availablePaymentTerms?: string[];
+  availableTags?: string[];
 }
 
 const STATUS_OPTIONS = [
@@ -103,6 +106,7 @@ export function AdvancedFilterPanel({
   availableCurrencies = [],
   availableJurisdictions = [],
   availablePaymentTerms = [],
+  availableTags = [],
 }: AdvancedFilterPanelProps) {
   const [localFilters, setLocalFilters] = useState<FilterState>(filters);
 
@@ -140,7 +144,7 @@ export function AdvancedFilterPanel({
     updateFilter('categories', updated);
   };
 
-  const toggleArrayFilter = (key: 'riskLevels' | 'suppliers' | 'clients' | 'contractTypes' | 'currencies' | 'jurisdictions' | 'paymentTerms', value: string) => {
+  const toggleArrayFilter = (key: 'riskLevels' | 'suppliers' | 'clients' | 'contractTypes' | 'currencies' | 'jurisdictions' | 'paymentTerms' | 'tags', value: string) => {
     const current = localFilters[key] ?? [];
     const updated = current.includes(value)
       ? current.filter((v: string) => v !== value)
@@ -164,6 +168,7 @@ export function AdvancedFilterPanel({
       currencies: [],
       jurisdictions: [],
       paymentTerms: [],
+      tags: [],
     };
     setLocalFilters(reset);
     onChange(reset);
@@ -183,7 +188,8 @@ export function AdvancedFilterPanel({
     (localFilters.contractTypes?.length || 0) +
     (localFilters.currencies?.length || 0) +
     (localFilters.jurisdictions?.length || 0) +
-    (localFilters.paymentTerms?.length || 0);
+    (localFilters.paymentTerms?.length || 0) +
+    (localFilters.tags?.length || 0);
 
   return (
     <Card className="border-2 shadow-xl">
@@ -423,6 +429,42 @@ export function AdvancedFilterPanel({
                   </Badge>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Tags Filter */}
+        {availableTags.length > 0 && (
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold flex items-center gap-2">
+              <Tag className="h-4 w-4 text-slate-600" />
+              Tags
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {availableTags.slice(0, 24).map(tag => {
+                const isSelected = (localFilters.tags ?? []).includes(tag);
+                return (
+                  <Badge
+                    key={tag}
+                    variant={isSelected ? 'default' : 'outline'}
+                    className={cn(
+                      'cursor-pointer transition-all',
+                      isSelected
+                        ? 'bg-slate-800 hover:bg-slate-700 text-white'
+                        : 'hover:border-slate-400'
+                    )}
+                    onClick={() => toggleArrayFilter('tags', tag)}
+                  >
+                    {tag}
+                    {isSelected && <X className="ml-1 h-3 w-3" />}
+                  </Badge>
+                );
+              })}
+              {availableTags.length > 24 && (
+                <Badge variant="outline" className="text-slate-400">
+                  +{availableTags.length - 24} more
+                </Badge>
+              )}
             </div>
           </div>
         )}

@@ -6,9 +6,20 @@
  */
 
 import { NextRequest } from 'next/server';
+import { randomBytes } from 'crypto';
+import { hash } from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { monitoringService } from 'data-orchestration/services';
+import { logger } from '@/lib/logger';
+
+function getSetupBaseUrl(request: NextRequest): string {
+  return process.env.NEXTAUTH_URL
+    || process.env.NEXT_PUBLIC_APP_URL
+    || process.env.NEXT_PUBLIC_URL
+    || new URL(request.url).origin;
+}
+
 // Check if user is a platform admin
 async function _isPlatformAdmin(userId: string): Promise<boolean> {
   const user = await prisma.user.findUnique({
@@ -122,8 +133,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   const body = await request.json();
   const { name, slug, adminEmail, adminFirstName, adminLastName } = body;
+  const normalizedAdminEmail = typeof adminEmail === 'string' ? adminEmail.toLowerCase() : '';
 
-  if (!name || !slug || !adminEmail) {
+  if (!name || !slug || !normalizedAdminEmail) {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Name, slug, and admin email are required', 400);
   }
 
@@ -136,45 +148,154 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     return createErrorResponse(ctx, 'CONFLICT', 'A tenant with this slug already exists', 409);
   }
 
-  // Create tenant with admin user
-  const tenant = await prisma.tenant.create({
-    data: {
-      name,
-      slug,
-      status: 'ACTIVE',
-      users: {
-        create: {
-          email: adminEmail,
-          firstName: adminFirstName || 'Admin',
-          lastName: adminLastName || '',
-          role: 'owner',
-          passwordHash: '', // Will be set on first login/invitation
-          status: 'PENDING',
+  const existingAdminUser = await prisma.user.findUnique({
+    where: { email: normalizedAdminEmail },
+    select: { id: true },
+  });
+
+  if (existingAdminUser) {
+    return createErrorResponse(ctx, 'CONFLICT', 'An account with this admin email already exists', 409);
+  }
+
+  const setupToken = randomBytes(32).toString('hex');
+  const setupExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const passwordHash = await hash(randomBytes(32).toString('hex'), 12);
+
+  const result = await prisma.$transaction(async (tx) => {
+    const tenant = await tx.tenant.create({
+      data: {
+        name,
+        slug,
+        status: 'ACTIVE',
+        configuration: {
+          create: {
+            aiModels: {},
+            securitySettings: {},
+            integrations: {},
+            workflowSettings: {},
+          },
+        },
+        subscription: {
+          create: {
+            plan: 'FREE',
+            status: 'ACTIVE',
+            billingCycle: 'MONTHLY',
+            startDate: new Date(),
+          },
+        },
+        usage: {
+          create: {
+            resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          },
         },
       },
-    },
-    include: {
-      users: true,
-      _count: {
-        select: {
-          users: true,
-          contracts: true,
-        },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        status: true,
+        createdAt: true,
       },
-    },
-  }) as any; // Type assertion needed due to complex include
+    });
+
+    const adminUser = await tx.user.create({
+      data: {
+        email: normalizedAdminEmail,
+        firstName: adminFirstName || 'Admin',
+        lastName: adminLastName || '',
+        role: 'owner',
+        passwordHash,
+        status: 'ACTIVE',
+        emailVerified: false,
+        tenantId: tenant.id,
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        status: true,
+      },
+    });
+
+    let roleRecord = await tx.role.findFirst({ where: { name: 'owner' } });
+    if (!roleRecord) {
+      roleRecord = await tx.role.create({
+        data: {
+          name: 'owner',
+          description: 'Owner role',
+          isSystem: true,
+        },
+      });
+    }
+
+    await tx.userRole.create({
+      data: { userId: adminUser.id, roleId: roleRecord.id },
+    });
+
+    await tx.passwordResetToken.create({
+      data: {
+        userId: adminUser.id,
+        token: setupToken,
+        expiresAt: setupExpiresAt,
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        tenantId: tenant.id,
+        userId: adminUser.id,
+        action: 'USER_CREATED',
+        entityType: 'USER',
+        entityId: adminUser.id,
+        metadata: { email: normalizedAdminEmail, role: 'owner', method: 'platform_tenant_setup', createdBy: ctx.userId },
+      },
+    });
+
+    return { tenant, adminUser };
+  });
+
+  const setupLink = `${getSetupBaseUrl(request)}/auth/reset-password?token=${setupToken}`;
+  let emailSent = false;
+
+  try {
+    const { sendEmail } = await import('@/lib/email/email-service');
+    emailSent = await sendEmail({
+      to: normalizedAdminEmail,
+      subject: 'Set up your ConTigo workspace',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #1a1a1a;">Welcome to ConTigo</h2>
+          <p>Your ConTigo workspace is ready. Set your password to access ${name}.</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${setupLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+              Set Password
+            </a>
+          </div>
+          <p style="color: #666; font-size: 14px;">This link expires in 24 hours.</p>
+        </div>
+      `,
+      text: `Your ConTigo workspace is ready. Set your password to access ${name}: ${setupLink}\n\nThis link expires in 24 hours.`,
+    });
+  } catch (emailError) {
+    logger.error('Failed to send tenant owner setup email:', emailError);
+  }
 
   return createSuccessResponse(ctx, {
     success: true,
     tenant: {
-      id: tenant.id,
-      name: tenant.name,
-      slug: tenant.slug,
-      status: tenant.status,
-      createdAt: tenant.createdAt,
-      usersCount: tenant._count?.users || 0,
-      contractsCount: tenant._count?.contracts || 0,
-      adminUser: tenant.users?.[0],
+      id: result.tenant.id,
+      name: result.tenant.name,
+      slug: result.tenant.slug,
+      status: result.tenant.status,
+      createdAt: result.tenant.createdAt,
+      usersCount: 1,
+      contractsCount: 0,
+      adminUser: result.adminUser,
     },
+    setupLink,
+    setupLinkExpiresAt: setupExpiresAt,
+    emailSent,
   });
 });

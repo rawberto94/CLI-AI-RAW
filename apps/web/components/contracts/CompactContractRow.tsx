@@ -2,6 +2,7 @@
 
 import { memo, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
@@ -86,6 +87,7 @@ export const CompactContractRow = memo(function CompactContractRow({
   const isFailed = normalizedStatus === 'failed';
   const isProcessing = ['uploaded', 'queued', 'processing'].includes(normalizedStatus);
   const isHighRisk = (contract.riskScore ?? 0) >= 70;
+  const tags = contract.tags ?? [];
   const needsSignature = contract.signatureStatus === 'unsigned'
     || contract.signatureStatus === 'partially_signed'
     || (contract.signatureRequiredFlag && contract.signatureStatus !== 'signed');
@@ -116,7 +118,7 @@ export const CompactContractRow = memo(function CompactContractRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 px-5 py-4 cursor-pointer transition-colors duration-150 group border-b border-slate-100 dark:border-slate-700 relative min-w-[1180px]",
+        "flex items-center gap-3 px-5 py-4 cursor-pointer transition-colors duration-150 group border-b border-slate-100 dark:border-slate-700 relative min-w-[1330px]",
         isSelected 
           ? "bg-slate-50 dark:bg-slate-800 ring-1 ring-slate-300 dark:ring-slate-600" 
           : "hover:bg-slate-50/80 dark:hover:bg-slate-800/50",
@@ -270,6 +272,27 @@ export const CompactContractRow = memo(function CompactContractRow({
         ) : (
           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700">
             General
+          </span>
+        )}
+      </div>
+
+      {/* Tags */}
+      <div className="hidden xl:flex w-[150px] min-w-0 items-center gap-1.5 overflow-hidden">
+        {tags.length > 0 ? (
+          <>
+            {tags.slice(0, 2).map((tag) => (
+              <Badge key={tag} variant="secondary" className="max-w-[72px] truncate rounded-md bg-slate-100 px-1.5 py-0 text-[10px] font-medium text-slate-600">
+                {tag}
+              </Badge>
+            ))}
+            {tags.length > 2 && (
+              <span className="text-[11px] font-medium text-slate-400">+{tags.length - 2}</span>
+            )}
+          </>
+        ) : (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700">
+            <Tag className="h-3 w-3" />
+            No tags
           </span>
         )}
       </div>

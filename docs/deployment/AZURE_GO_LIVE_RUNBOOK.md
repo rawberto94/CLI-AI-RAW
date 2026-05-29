@@ -367,7 +367,9 @@ az keyvault create \
   --resource-group rg-contigo-prod \
   --name kv-contigo-prod \
   --location switzerlandnorth \
-  --enable-rbac-authorization true
+  --enable-rbac-authorization true \
+  --enable-purge-protection true \
+  --retention-days 90
 ```
 
 Minimum secrets:
@@ -394,6 +396,8 @@ azure-storage-container, if Azure Blob is used
 sentry-dsn, if enabled
 sendgrid-api-key, if email is enabled
 ```
+
+Manual Kubernetes Secret mode is guarded for production. When `azure.enabled=false` and `NODE_ENV=production`, the Helm chart requires explicit non-empty values for the core runtime secrets in `secrets.requiredManualKeys`; do not bypass this for client environments.
 
 Generate strong app secrets:
 
