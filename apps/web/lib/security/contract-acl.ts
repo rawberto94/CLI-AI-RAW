@@ -4,13 +4,15 @@
  * Rules (apply to both read and write):
  *   1. Tenant admins / owners / super_admins → always allowed.
  *   2. Contract uploader (contract.uploadedBy === userId) → always allowed.
- *   3. A user with an active, non-expired DocumentShare whose `permission`
+ *   3. A user with an active, non-expired ContractUserAccess / ContractGroupAccess
+ *      whose `accessLevel` satisfies the required level → allowed.
+ *   4. A user with an active, non-expired DocumentShare whose `permission`
  *      satisfies the required level → allowed.
  *
- * If no DocumentShare rows exist for the contract at all, we fall back to
- * "any tenant member can access" so we don't regress tenants that never used
- * the sharing feature. The moment an owner creates even one share, the ACL
- * becomes authoritative.
+ * If no explicit ContractUserAccess / ContractGroupAccess / DocumentShare rows
+ * exist for the contract at all, we fall back to "any tenant member can access"
+ * so we don't regress tenants that never used access controls. The moment an
+ * owner creates even one explicit grant/share, the ACL becomes authoritative.
  *
  * Caller is responsible for the tenant scope check (Contract.tenantId); this
  * helper assumes you've already verified the contract belongs to ctx.tenantId.
@@ -21,6 +23,7 @@ import { auditLog, AuditAction } from '@/lib/security/audit';
 import { logger } from '@/lib/logger';
 
 type Permission = 'VIEW' | 'COMMENT' | 'EDIT' | 'ADMIN';
+type ContractAccessLevel = 'view' | 'edit' | 'manage' | 'admin';
 
 const LEVEL: Record<Permission, number> = {
   VIEW: 0,
@@ -29,9 +32,82 @@ const LEVEL: Record<Permission, number> = {
   ADMIN: 3,
 };
 
+const CONTRACT_ACCESS_LEVEL: Record<ContractAccessLevel, number> = {
+  view: LEVEL.VIEW,
+  edit: LEVEL.EDIT,
+  manage: LEVEL.ADMIN,
+  admin: LEVEL.ADMIN,
+};
+
 export type AclDecision =
-  | { allowed: true; reason: 'owner' | 'role' | 'share' | 'no-shares' }
+  | { allowed: true; reason: 'owner' | 'role' | 'contract-access' | 'share' | 'no-shares' }
   | { allowed: false; reason: 'forbidden' };
+
+function contractAccessMeetsRequired(accessLevel: string | null | undefined, required: Permission): boolean {
+  const normalized = String(accessLevel || '').toLowerCase() as ContractAccessLevel;
+  const have = CONTRACT_ACCESS_LEVEL[normalized];
+  return typeof have === 'number' && have >= LEVEL[required];
+}
+
+async function checkExplicitContractAccess(args: {
+  contractId: string;
+  userId: string;
+  required: Permission;
+}): Promise<{ hasExplicitAccessRows: boolean; allowed: boolean }> {
+  const { contractId, userId, required } = args;
+  const now = new Date();
+
+  const [anyUserAccess, anyGroupAccess, directAccess, groupMemberships] = await Promise.all([
+    prisma.contractUserAccess.findFirst({
+      where: { contractId },
+      select: { id: true },
+    }),
+    prisma.contractGroupAccess.findFirst({
+      where: { contractId },
+      select: { id: true },
+    }),
+    prisma.contractUserAccess.findFirst({
+      where: {
+        contractId,
+        userId,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: now } },
+        ],
+      },
+      select: { accessLevel: true },
+    }),
+    prisma.userGroupMember.findMany({
+      where: { userId },
+      select: { groupId: true },
+    }),
+  ]);
+
+  if (contractAccessMeetsRequired(directAccess?.accessLevel, required)) {
+    return { hasExplicitAccessRows: true, allowed: true };
+  }
+
+  const groupIds = groupMemberships.map((membership) => membership.groupId);
+  if (groupIds.length > 0) {
+    const groupAccess = await prisma.contractGroupAccess.findMany({
+      where: {
+        contractId,
+        groupId: { in: groupIds },
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: now } },
+        ],
+      },
+      select: { accessLevel: true },
+    });
+
+    if (groupAccess.some((access) => contractAccessMeetsRequired(access.accessLevel, required))) {
+      return { hasExplicitAccessRows: true, allowed: true };
+    }
+  }
+
+  return { hasExplicitAccessRows: Boolean(anyUserAccess || anyGroupAccess), allowed: false };
+}
 
 async function checkPermission(args: {
   contractId: string;
@@ -58,6 +134,11 @@ async function checkPermission(args: {
     return { allowed: true, reason: 'owner' };
   }
 
+  const explicitAccess = await checkExplicitContractAccess({ contractId, userId, required });
+  if (explicitAccess.allowed) {
+    return { allowed: true, reason: 'contract-access' };
+  }
+
   const shares = await prisma.documentShare.findMany({
     where: {
       tenantId,
@@ -68,7 +149,7 @@ async function checkPermission(args: {
     select: { sharedWith: true, permission: true, expiresAt: true },
   });
 
-  if (shares.length === 0) {
+  if (!explicitAccess.hasExplicitAccessRows && shares.length === 0) {
     return { allowed: true, reason: 'no-shares' };
   }
 

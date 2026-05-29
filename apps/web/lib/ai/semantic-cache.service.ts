@@ -44,6 +44,12 @@ export interface CachedResponse {
     contractName: string;
     score: number;
     text: string;
+    snippet?: string;
+    heading?: string;
+    section?: string;
+    startOffset?: number;
+    endOffset?: number;
+    matchType?: string;
   }>;
   metadata: {
     intent?: string;

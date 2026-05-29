@@ -87,6 +87,9 @@ export const CompactContractRow = memo(function CompactContractRow({
   const isFailed = normalizedStatus === 'failed';
   const isProcessing = ['uploaded', 'queued', 'processing'].includes(normalizedStatus);
   const isHighRisk = (contract.riskScore ?? 0) >= 70;
+  const metadataCompleteness = contract.metadataCompleteness ?? 100;
+  const metadataIssueCount = contract.metadataIssues?.length ?? 0;
+  const needsMetadataReview = metadataIssueCount > 0 || metadataCompleteness < 90;
   const tags = contract.tags ?? [];
   const needsSignature = contract.signatureStatus === 'unsigned'
     || contract.signatureStatus === 'partially_signed'
@@ -233,6 +236,15 @@ export const CompactContractRow = memo(function CompactContractRow({
                 <span className="inline-flex items-center gap-0.5 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-600 flex-shrink-0" title="Analysis in progress">
                   <RefreshCw className="h-3 w-3" />
                   Processing
+                </span>
+              )}
+              {needsMetadataReview && !isProcessing && !isFailed && (
+                <span
+                  className="inline-flex items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 flex-shrink-0"
+                  title={contract.metadataIssues?.map((issue) => issue.label).join(', ') || 'Metadata review recommended'}
+                >
+                  <AlertCircle className="h-3 w-3" />
+                  Metadata {metadataCompleteness}%
                 </span>
               )}
             </div>

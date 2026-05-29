@@ -51,13 +51,12 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   ]);
 
   return createSuccessResponse(ctx, {
-    data: {
-      messages,
-      pagination: {
-        total,
-        limit,
-        offset,
-        hasMore: offset + messages.length < total } } });
+    messages,
+    pagination: {
+      total,
+      limit,
+      offset,
+      hasMore: offset + messages.length < total } });
 })
 
 // POST /api/chat/conversations/[id]/messages - Add message
@@ -101,8 +100,13 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       model: model || null,
       tokensUsed: tokensUsed || null,
       processingTime: responseTimeMs || null,
-      // Store tool calls and results in sources JSON field
-      sources: toolCalls || toolResults ? JSON.stringify({ toolCalls, toolResults }) : undefined } });
+      confidence: typeof _metadata?.confidence === 'number' ? _metadata.confidence : null,
+      suggestions: Array.isArray(_metadata?.suggestions) ? _metadata.suggestions as any : undefined,
+      sources: Array.isArray(_metadata?.ragSources)
+        ? _metadata.ragSources as any
+        : toolCalls || toolResults
+          ? { toolCalls, toolResults } as any
+          : undefined } });
 
   // Update conversation's lastMessageAt and messageCount
   await prisma.chatConversation.update({
@@ -112,6 +116,5 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       messageCount: { increment: 1 },
     } });
 
-  return createSuccessResponse(ctx, {
-    data: { message } });
+  return createSuccessResponse(ctx, message);
 })

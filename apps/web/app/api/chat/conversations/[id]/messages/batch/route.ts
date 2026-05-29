@@ -82,11 +82,11 @@ export const POST = withAuthApiHandler(
         processingTime: msg.processingTime || null,
         confidence: msg.confidence ?? null,
         sources: msg.sources
-          ? JSON.stringify(msg.sources)
+          ? msg.sources as any
           : msg.toolCalls || msg.toolResults
-            ? JSON.stringify({ toolCalls: msg.toolCalls, toolResults: msg.toolResults })
-            : '[]',
-        suggestions: msg.suggestions ? JSON.stringify(msg.suggestions) : '[]',
+            ? { toolCalls: msg.toolCalls, toolResults: msg.toolResults } as any
+            : [],
+        suggestions: msg.suggestions ? msg.suggestions as any : [],
       })),
     });
 
@@ -104,11 +104,9 @@ export const POST = withAuthApiHandler(
     });
 
     return createSuccessResponse(ctx, {
-      data: {
-        conversationId,
-        messagesCreated: created.count,
-        totalMessages,
-      },
+      conversationId,
+      messagesCreated: created.count,
+      totalMessages,
     });
   }
 );

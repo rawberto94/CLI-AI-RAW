@@ -18,6 +18,7 @@ import {
   CreditCard,
   FileStack,
   Coins,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -58,6 +59,7 @@ export function ActiveFilterChips({
     (filters.jurisdictions?.length ?? 0) > 0 ||
     (filters.paymentTerms?.length ?? 0) > 0 ||
     (filters.tags?.length ?? 0) > 0 ||
+    (filters.metadataIssues?.length ?? 0) > 0 ||
     searchQuery;
 
   if (!hasActiveFilters) return null;
@@ -236,6 +238,17 @@ export function ActiveFilterChips({
         />
       ))}
 
+      {/* Metadata Quality Chips */}
+      {filters.metadataIssues?.map(issue => (
+        <FilterChip
+          key={`metadata-${issue}`}
+          icon={<AlertCircle className="h-3 w-3" />}
+          label={`Metadata: ${formatMetadataIssue(issue)}`}
+          onRemove={() => onClearFilter('metadataIssues', issue)}
+          color="amber"
+        />
+      ))}
+
       {/* Clear All Button */}
       <Button
         variant="ghost"
@@ -347,4 +360,17 @@ function formatValueRange(min: number, max: number): string {
     return `Max $${(max / 1000).toFixed(0)}K`;
   }
   return 'Value Range';
+}
+
+function formatMetadataIssue(issue: string): string {
+  const issueMap: Record<string, string> = {
+    'missing-title': 'Missing title',
+    'missing-party': 'Missing counterparty',
+    'missing-value': 'Missing value',
+    'missing-dates': 'Missing key dates',
+    'missing-category': 'Missing category',
+    'missing-tags': 'Missing tags',
+    'low-confidence': 'Low AI confidence',
+  };
+  return issueMap[issue] || issue;
 }

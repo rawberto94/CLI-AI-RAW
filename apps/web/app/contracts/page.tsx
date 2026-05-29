@@ -587,7 +587,7 @@ export default function ContractsPage() {
           ] : [],
       isFavorite: favoriteIds.has(contract.id),
       isPinned: false,
-      completeness: contract.status === 'completed' ? 100 : contract.status === 'processing' ? (contract.processing?.progress || 50) : 0,
+      completeness: contract.metadataCompleteness ?? (contract.status === 'completed' ? 100 : contract.status === 'processing' ? (contract.processing?.progress || 50) : 0),
       keyTerms: [],
       tags: contract.tags ?? [],
       // Include hierarchy info

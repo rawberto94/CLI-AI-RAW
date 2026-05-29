@@ -70,6 +70,9 @@ export interface Contract {
   documentClassification?: DocumentClassification;
   documentClassificationConfidence?: number;
   documentClassificationWarning?: string;
+  metadataCompleteness?: number;
+  metadataCompletenessLabel?: 'ready' | 'review' | 'incomplete';
+  metadataIssues?: Array<{ key: string; label: string; severity: string }>;
   // Contract hierarchy fields
   parentContractId?: string | null;
   parentContract?: {

@@ -28,6 +28,8 @@ import {
   Loader2,
   List,
   History,
+  FileJson,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -47,11 +49,18 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useAuditLogs, type AuditLogEntry } from '@/hooks/use-monitoring-queries';
 import { DataFreshnessIndicator } from '@/components/shared/DataFreshnessIndicator';
 import { AuditLogTimeline } from './AuditLogTimeline';
+import { getTenantId } from '@/lib/tenant';
 
 interface AuditLogViewerProps {
   className?: string;
@@ -105,6 +114,8 @@ export const AuditLogViewer = memo(function AuditLogViewer({
   const [successFilter, setSuccessFilter] = useState<string>('all');
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'csv' | 'json'>('csv');
 
   const filteredLogs = useMemo(() => logs.filter((log: AuditLogEntry) => {
     if (categoryFilter !== 'all' && log.category !== categoryFilter) return false;
@@ -133,28 +144,36 @@ export const AuditLogViewer = memo(function AuditLogViewer({
     });
   };
 
-  const exportLogs = () => {
-    const csv = [
-      ['Timestamp', 'Action', 'Category', 'Actor', 'Resource', 'Success', 'IP Address'].join(','),
-      ...filteredLogs.map(log => [
-        log.timestamp.toISOString(),
-        log.action,
-        log.category,
-        log.actor.email,
-        log.resource?.name || '',
-        log.success ? 'Yes' : 'No',
-        log.ipAddress || '',
-      ].map(v => `"${v}"`).join(',')),
-    ].join('\n');
+  const exportLogs = async (exportFmt: 'csv' | 'json') => {
+    setIsExporting(true);
+    setExportFormat(exportFmt);
+    try {
+      const params = new URLSearchParams({ export: exportFmt, limit: '10000' });
+      if (categoryFilter !== 'all') params.set('category', categoryFilter);
+      if (successFilter !== 'all') params.set('success', successFilter === 'success' ? 'true' : 'false');
+      if (searchQuery.trim()) params.set('search', searchQuery.trim());
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `audit-logs-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Audit logs exported');
+      const response = await fetch(`/api/audit-logs?${params.toString()}`, {
+        headers: { 'x-tenant-id': getTenantId() },
+      });
+
+      if (!response.ok) {
+        throw new Error('Audit log export failed');
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `audit-logs-${format(new Date(), 'yyyy-MM-dd')}.${exportFmt}`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Audit logs exported as ${exportFmt.toUpperCase()}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Audit log export failed');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const getActionParts = (action: string) => {
@@ -211,10 +230,28 @@ export const AuditLogViewer = memo(function AuditLogViewer({
               <RefreshCw className={cn('h-3.5 w-3.5 mr-2', isFetching && 'animate-spin')} />
               Refresh
             </Button>
-            <Button variant="outline" size="sm" onClick={exportLogs}>
-              <Download className="h-3.5 w-3.5 mr-2" />
-              Export
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={isExporting}>
+                  {isExporting ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5 mr-2" />
+                  )}
+                  {isExporting ? 'Exporting' : 'Export'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => exportLogs('csv')} disabled={isExporting}>
+                  <FileSpreadsheet className="h-3.5 w-3.5 mr-2" />
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportLogs('json')} disabled={isExporting}>
+                  <FileJson className="h-3.5 w-3.5 mr-2" />
+                  Export JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </CardHeader>

@@ -5,10 +5,8 @@
  * POST /api/chat/conversations - Create a new conversation
  */
 
-import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
-import { aiCopilotService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,11 +67,10 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
       updatedAt: conv.updatedAt }));
 
     return createSuccessResponse(ctx, {
-      data: {
-        conversations: formattedConversations,
-        total,
-        limit,
-        offset } });
+      conversations: formattedConversations,
+      total,
+      limit,
+      offset });
   });
 
 // POST /api/chat/conversations - Create conversation
@@ -95,6 +92,5 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         contextType,
         messageCount: 0 } });
 
-    return createSuccessResponse(ctx, {
-      data: { conversation } });
+    return createSuccessResponse(ctx, conversation);
   });

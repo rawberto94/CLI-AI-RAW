@@ -54,6 +54,24 @@ export interface ConversationListItem {
   updatedAt: Date | string;
 }
 
+interface PersistedChatMessage {
+  id?: string;
+  role?: 'user' | 'assistant' | 'system';
+  content?: string;
+  timestamp?: Date | string;
+  createdAt?: Date | string;
+  metadata?: Record<string, unknown>;
+  reaction?: 'like' | 'dislike';
+  feedback?: string | null;
+  suggestions?: unknown;
+  actions?: Array<{ label: string; action: string }>;
+  contractPreviews?: ChatMessage['contractPreviews'];
+  sources?: unknown;
+  confidence?: number | null;
+  processingTime?: number | null;
+  model?: string | null;
+}
+
 export interface ChatPersistenceOptions {
   /** Context identifier (e.g., contract ID) */
   context?: string;
@@ -116,6 +134,88 @@ const DEFAULT_OPTIONS: Required<ChatPersistenceOptions> = {
   autoSave: true,
   saveDebounce: 1000,
 };
+
+function unwrapApiData<T = unknown>(payload: unknown): T | null {
+  if (!payload || typeof payload !== 'object') return null;
+
+  const response = payload as Record<string, unknown>;
+  const data = response.data;
+  if (data && typeof data === 'object' && 'data' in data) {
+    return (data as Record<string, unknown>).data as T;
+  }
+
+  return (data ?? response) as T;
+}
+
+function parseJsonArray(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string') return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function isStructuredRagSource(value: unknown): value is Record<string, unknown> {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    typeof (value as Record<string, unknown>).contractId === 'string' &&
+    typeof (value as Record<string, unknown>).contractName === 'string'
+  );
+}
+
+function normalizeRagSources(values: unknown[]): Array<Record<string, unknown>> {
+  return values
+    .filter(isStructuredRagSource)
+    .map((source) => ({
+      contractId: source.contractId,
+      contractName: source.contractName,
+      score: typeof source.score === 'number' ? source.score : 0,
+      snippet: typeof source.snippet === 'string' ? source.snippet : undefined,
+      heading: typeof source.heading === 'string' ? source.heading : undefined,
+      section: typeof source.section === 'string' ? source.section : undefined,
+      startOffset: typeof source.startOffset === 'number' ? source.startOffset : undefined,
+      endOffset: typeof source.endOffset === 'number' ? source.endOffset : undefined,
+      matchType: typeof source.matchType === 'string' ? source.matchType : undefined,
+    }));
+}
+
+function normalizePersistedMessage(message: PersistedChatMessage): ChatMessage {
+  const sourceItems = parseJsonArray(message.sources);
+  const storedRagSources = normalizeRagSources(sourceItems);
+  const metadataRagSources = Array.isArray(message.metadata?.ragSources)
+    ? normalizeRagSources(message.metadata.ragSources)
+    : [];
+  const ragSources = storedRagSources.length > 0 ? storedRagSources : metadataRagSources;
+  const legacySourceNames = sourceItems.filter((source): source is string => typeof source === 'string');
+
+  const metadata: Record<string, unknown> = {
+    ...(message.metadata || {}),
+  };
+
+  if (message.confidence != null) metadata.confidence = message.confidence;
+  if (message.processingTime != null) metadata.processingTime = message.processingTime;
+  if (message.model) metadata.model = message.model;
+  if (ragSources.length > 0) metadata.ragSources = ragSources;
+  if (legacySourceNames.length > 0) metadata.sourceNames = legacySourceNames;
+  if (ragSources.length > 0 || legacySourceNames.length > 0) metadata.usedRAG = true;
+
+  return {
+    id: message.id || `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    role: message.role || 'assistant',
+    content: message.content || '',
+    timestamp: new Date(message.timestamp || message.createdAt || Date.now()),
+    metadata,
+    reaction: message.reaction || (message.feedback === 'positive' ? 'like' : message.feedback === 'negative' ? 'dislike' : undefined),
+    suggestions: parseJsonArray(message.suggestions).filter((suggestion): suggestion is string => typeof suggestion === 'string'),
+    actions: message.actions || [],
+    contractPreviews: message.contractPreviews || [],
+  };
+}
 
 export function useChatPersistence(
   options: ChatPersistenceOptions = {}
@@ -194,8 +294,8 @@ export function useChatPersistence(
       const res = await fetch(`/api/chat/conversations?${params}`);
       if (!res.ok) return [];
 
-      const data = await res.json();
-      return (data.data?.conversations || []).map((c: Conversation) => ({
+      const payload = unwrapApiData<{ conversations?: Conversation[] }>(await res.json());
+      return (payload?.conversations || []).map((c: Conversation) => ({
         ...c,
         lastMessageAt: new Date(c.lastMessageAt),
         createdAt: new Date(c.createdAt),
@@ -210,8 +310,14 @@ export function useChatPersistence(
       const res = await fetch(`/api/chat/conversations/${id}?messageLimit=100`);
       if (!res.ok) return null;
 
-      const data = await res.json();
-      return data.data;
+      const payload = unwrapApiData<{ conversation?: Conversation & { messages?: PersistedChatMessage[] } } | (Conversation & { messages?: PersistedChatMessage[] })>(await res.json());
+      const conversation = payload && 'conversation' in payload ? payload.conversation : payload;
+      if (!conversation) return null;
+
+      return {
+        ...conversation,
+        messages: (conversation.messages || []).map(normalizePersistedMessage),
+      };
     } catch {
       return null;
     }
@@ -243,8 +349,9 @@ export function useChatPersistence(
 
       if (!res.ok) throw new Error('Failed to create conversation');
 
-      const data = await res.json();
-      const newConversationId = data.data.id;
+      const payload = unwrapApiData<{ id?: string; conversation?: { id?: string } }>(await res.json());
+      const newConversationId = payload?.id || payload?.conversation?.id;
+      if (!newConversationId) throw new Error('Conversation response missing id');
       
       setConversationId(newConversationId);
       setMessages([]);
@@ -285,10 +392,11 @@ export function useChatPersistence(
         });
 
         if (res.ok) {
-          const data = await res.json();
+          const payload = unwrapApiData<{ id?: string; message?: { id?: string } }>(await res.json());
+          const serverMessageId = payload?.id || payload?.message?.id;
           // Update message with server ID
-          setMessages(prev => prev.map(m => 
-            m.id === newMessage.id ? { ...m, id: data.data.id } : m
+          if (serverMessageId) setMessages(prev => prev.map(m =>
+            m.id === newMessage.id ? { ...m, id: serverMessageId } : m
           ));
         }
       } catch {

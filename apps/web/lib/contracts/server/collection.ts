@@ -139,6 +139,129 @@ function normalizeTags(value: Prisma.JsonValue | null | undefined): string[] {
     .map((tag) => tag.trim());
 }
 
+const METADATA_ISSUE_DEFINITIONS = {
+  'missing-title': { label: 'Missing title', severity: 'warning' },
+  'missing-party': { label: 'Missing counterparty', severity: 'critical' },
+  'missing-value': { label: 'Missing value', severity: 'warning' },
+  'missing-dates': { label: 'Missing key dates', severity: 'critical' },
+  'missing-category': { label: 'Missing category', severity: 'warning' },
+  'missing-tags': { label: 'Missing tags', severity: 'info' },
+  'low-confidence': { label: 'Low AI confidence', severity: 'warning' },
+} as const;
+
+type MetadataIssueKey = keyof typeof METADATA_ISSUE_DEFINITIONS;
+
+const VALID_METADATA_ISSUES = new Set<MetadataIssueKey>(Object.keys(METADATA_ISSUE_DEFINITIONS) as MetadataIssueKey[]);
+
+function hasText(value: unknown): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function getAiMetadataObject(value: Prisma.JsonValue | null | undefined): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function hasExternalParties(aiMetadata: Record<string, unknown>): boolean {
+  const parties = aiMetadata.external_parties;
+  return Array.isArray(parties) && parties.some((party) => {
+    if (!party || typeof party !== 'object') return false;
+    const record = party as Record<string, unknown>;
+    return hasText(record.legalName) || hasText(record.name);
+  });
+}
+
+function getOverallConfidence(aiMetadata: Record<string, unknown>): number | null {
+  const confidence = aiMetadata._confidence;
+  if (!confidence || typeof confidence !== 'object' || Array.isArray(confidence)) return null;
+  const overall = (confidence as Record<string, unknown>).overall;
+  return typeof overall === 'number' ? overall : null;
+}
+
+function buildMetadataQuality(contract: {
+  contractTitle: string | null;
+  clientName: string | null;
+  supplierName: string | null;
+  totalValue: Prisma.Decimal | number | null;
+  effectiveDate: Date | null;
+  expirationDate: Date | null;
+  contractCategoryId: string | null;
+  category: string | null;
+  categoryL1: string | null;
+  tags: Prisma.JsonValue | null;
+  aiMetadata: Prisma.JsonValue | null;
+  documentClassificationConf: number | null;
+  documentClassificationWarning: string | null;
+}) {
+  const aiMetadata = getAiMetadataObject(contract.aiMetadata);
+  const normalizedTags = normalizeTags(contract.tags);
+  const issues: Array<{ key: MetadataIssueKey; label: string; severity: string }> = [];
+
+  if (!hasText(contract.contractTitle)) issues.push({ key: 'missing-title', ...METADATA_ISSUE_DEFINITIONS['missing-title'] });
+  if (!hasText(contract.clientName) && !hasText(contract.supplierName) && !hasExternalParties(aiMetadata)) {
+    issues.push({ key: 'missing-party', ...METADATA_ISSUE_DEFINITIONS['missing-party'] });
+  }
+  if (contract.totalValue == null) issues.push({ key: 'missing-value', ...METADATA_ISSUE_DEFINITIONS['missing-value'] });
+  if (!contract.effectiveDate || !contract.expirationDate) issues.push({ key: 'missing-dates', ...METADATA_ISSUE_DEFINITIONS['missing-dates'] });
+  if (!hasText(contract.contractCategoryId) && !hasText(contract.category) && !hasText(contract.categoryL1)) {
+    issues.push({ key: 'missing-category', ...METADATA_ISSUE_DEFINITIONS['missing-category'] });
+  }
+  if (normalizedTags.length === 0) issues.push({ key: 'missing-tags', ...METADATA_ISSUE_DEFINITIONS['missing-tags'] });
+
+  const overallConfidence = getOverallConfidence(aiMetadata);
+  const classificationConfidence = contract.documentClassificationConf;
+  if (
+    hasText(contract.documentClassificationWarning) ||
+    (overallConfidence != null && overallConfidence < 0.7) ||
+    (classificationConfidence != null && classificationConfidence < 0.7)
+  ) {
+    issues.push({ key: 'low-confidence', ...METADATA_ISSUE_DEFINITIONS['low-confidence'] });
+  }
+
+  const requiredIssueCount = issues.filter((issue) => issue.key !== 'low-confidence').length;
+  const baseCompleteness = Math.max(0, Math.round(((6 - requiredIssueCount) / 6) * 100));
+  const metadataCompleteness = issues.some((issue) => issue.key === 'low-confidence')
+    ? Math.min(baseCompleteness, 85)
+    : baseCompleteness;
+
+  return {
+    metadataCompleteness,
+    metadataCompletenessLabel: metadataCompleteness >= 90 ? 'ready' : metadataCompleteness >= 70 ? 'review' : 'incomplete',
+    metadataIssues: issues,
+  };
+}
+
+function buildMetadataIssueFilter(issue: MetadataIssueKey): Prisma.ContractWhereInput {
+  switch (issue) {
+    case 'missing-title':
+      return { OR: [{ contractTitle: null }, { contractTitle: '' }] };
+    case 'missing-party':
+      return {
+        AND: [
+          { OR: [{ clientName: null }, { clientName: '' }] },
+          { OR: [{ supplierName: null }, { supplierName: '' }] },
+        ],
+      };
+    case 'missing-value':
+      return { totalValue: null };
+    case 'missing-dates':
+      return { OR: [{ effectiveDate: null }, { expirationDate: null }] };
+    case 'missing-category':
+      return { AND: [{ contractCategoryId: null }, { category: null }, { categoryL1: null }] };
+    case 'missing-tags':
+      return { OR: [{ tags: null }, { tags: { equals: [] as Prisma.InputJsonValue[] } }] };
+    case 'low-confidence':
+      return {
+        OR: [
+          { documentClassificationConf: null },
+          { documentClassificationConf: { lt: 0.7 } },
+          { documentClassificationWarning: { not: null } },
+        ],
+      };
+  }
+}
+
 export async function getContractsCollection(
   request: NextRequest,
   context: ContractApiContext,
@@ -183,6 +306,9 @@ export async function getContractsCollection(
     const signatureStatuses = searchParams.getAll('signatureStatus');
     const documentClassifications = searchParams.getAll('documentClassification');
     const expirationFilters = searchParams.getAll('expirationFilter');
+    const metadataIssues = searchParams
+      .getAll('metadataIssue')
+      .filter((issue): issue is MetadataIssueKey => VALID_METADATA_ISSUES.has(issue as MetadataIssueKey));
     const minValue = searchParams.get('minValue') ? Number(searchParams.get('minValue')) : undefined;
     const maxValue = searchParams.get('maxValue') ? Number(searchParams.get('maxValue')) : undefined;
     const expiringBefore = searchParams.get('expiringBefore');
@@ -350,6 +476,12 @@ export async function getContractsCollection(
       }
     }
 
+    if (metadataIssues.length > 0) {
+      andFilters.push({
+        OR: metadataIssues.map(buildMetadataIssueFilter),
+      });
+    }
+
     if (hasDeadline) {
       andFilters.push({ expirationDate: { not: null } });
     }
@@ -423,6 +555,7 @@ export async function getContractsCollection(
       signatureStatuses,
       documentClassifications,
       expirationFilters,
+      metadataIssues,
       minValue,
       maxValue,
       expiringBefore,
@@ -625,6 +758,21 @@ export async function getContractsCollection(
                 effectiveStatus = failedIdSet.has(contract.id) ? 'failed' : 'completed';
               }
               const normalizedTags = normalizeTags(contract.tags);
+              const metadataQuality = buildMetadataQuality({
+                contractTitle: contract.contractTitle,
+                clientName: contract.clientName,
+                supplierName: contract.supplierName,
+                totalValue: contract.totalValue,
+                effectiveDate: contract.effectiveDate,
+                expirationDate: contract.expirationDate,
+                contractCategoryId: contract.contractCategoryId,
+                category: contract.category,
+                categoryL1: (contract as any).categoryL1,
+                tags: contract.tags,
+                aiMetadata: contract.aiMetadata,
+                documentClassificationConf: (contract as any).documentClassificationConf,
+                documentClassificationWarning: (contract as any).documentClassificationWarning,
+              });
 
               return {
                 id: contract.id,
@@ -718,6 +866,9 @@ export async function getContractsCollection(
                 documentClassification: (contract as any).documentClassification || (contract.aiMetadata as any)?.document_classification || 'contract',
                 documentClassificationConfidence: (contract as any).documentClassificationConf || null,
                 documentClassificationWarning: (contract as any).documentClassificationWarning || (contract.aiMetadata as any)?.document_classification_warning || null,
+                metadataCompleteness: metadataQuality.metadataCompleteness,
+                metadataCompletenessLabel: metadataQuality.metadataCompletenessLabel,
+                metadataIssues: metadataQuality.metadataIssues,
               };
             }),
             pagination: {
@@ -750,6 +901,7 @@ export async function getContractsCollection(
                 signatureStatuses,
                 documentClassifications,
                 expirationFilters,
+                metadataIssues,
                 hasDeadline: hasDeadline || null,
                 isExpiring: isExpiring || null,
                 valueRange: minValue || maxValue ? { min: minValue, max: maxValue } : null,

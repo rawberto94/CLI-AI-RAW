@@ -189,6 +189,85 @@ describe('GET /api/contracts', () => {
     expect(data.data.filters.applied.search).toBe('acme');
   });
 
+  it('filters by metadata quality issues and returns completeness signals', async () => {
+    const now = new Date();
+    mockFindMany.mockResolvedValue([
+      {
+        id: 'c-missing',
+        tenantId: 'test-tenant',
+        fileName: 'incomplete.pdf',
+        originalName: 'incomplete.pdf',
+        fileSize: BigInt(2048),
+        mimeType: 'application/pdf',
+        createdAt: now,
+        updatedAt: now,
+        uploadedAt: now,
+        status: 'COMPLETED',
+        contractType: null,
+        contractTitle: null,
+        contractCategoryId: null,
+        documentRole: null,
+        clientName: null,
+        supplierName: null,
+        category: null,
+        categoryL1: null,
+        categoryL2: null,
+        totalValue: null,
+        currency: null,
+        effectiveDate: null,
+        expirationDate: null,
+        description: null,
+        tags: [],
+        viewCount: 0,
+        lastViewedAt: null,
+        jurisdiction: null,
+        paymentTerms: null,
+        paymentFrequency: null,
+        aiMetadata: { _confidence: { overall: 0.55 } },
+        parentContractId: null,
+        relationshipType: null,
+        signatureStatus: 'unknown',
+        signatureDate: null,
+        signatureRequiredFlag: false,
+        documentClassification: 'contract',
+        documentClassificationConf: 0.5,
+        documentClassificationWarning: 'Low confidence classification',
+        parentContract: null,
+        contractMetadata: { riskScore: null },
+        _count: { childContracts: 0, artifacts: 0 },
+      },
+    ]);
+    mockContractCount.mockResolvedValue(1);
+
+    const url = new URL('http://localhost:3000/api/contracts');
+    url.searchParams.append('metadataIssue', 'missing-party');
+    url.searchParams.append('metadataIssue', 'low-confidence');
+    const request = createAuthenticatedRequest('GET', url.toString());
+
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.data.filters.applied.metadataIssues).toEqual(['missing-party', 'low-confidence']);
+    expect(data.data.contracts[0].metadataCompletenessLabel).toBe('incomplete');
+    expect(data.data.contracts[0].metadataIssues.map((issue: { key: string }) => issue.key)).toEqual(expect.arrayContaining([
+      'missing-title',
+      'missing-party',
+      'missing-value',
+      'missing-dates',
+      'missing-category',
+      'missing-tags',
+      'low-confidence',
+    ]));
+    expect(mockFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        AND: expect.arrayContaining([
+          expect.objectContaining({ OR: expect.any(Array) }),
+        ]),
+      }),
+    }));
+  });
+
   it('returns 400 for an invalid cursor', async () => {
     const request = createAuthenticatedRequest('GET', 'http://localhost:3000/api/contracts', {
       searchParams: { cursor: 'not-base64' },

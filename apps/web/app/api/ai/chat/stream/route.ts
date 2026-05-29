@@ -44,6 +44,7 @@ import { countTokens } from '@/lib/ai/token-counter';
 import { logger } from '@/lib/logger';
 import { getCircuitBreaker } from '@/lib/ai/circuit-breaker';
 import { auditLog, AuditAction } from '@/lib/security/audit';
+import { checkContractReadPermission } from '@/lib/security/contract-acl';
 
 // ─── Decomposed modules ─────────────────────────────────────────────────
 import {
@@ -139,6 +140,33 @@ function buildCitationSources(
       matchType: result.matchType,
     };
   });
+}
+
+function buildCachedCitationSources(
+  ragResults: Array<{
+    contractId: string;
+    contractName: string;
+    score: number;
+    text?: string;
+    snippet?: string;
+    heading?: string;
+    section?: string;
+    startOffset?: number;
+    endOffset?: number;
+    matchType?: string;
+  }> = [],
+) {
+  return ragResults.slice(0, 5).map((result) => ({
+    contractId: result.contractId,
+    contractName: result.contractName,
+    score: result.score,
+    snippet: (result.snippet || result.text || '').slice(0, 320).trim(),
+    heading: result.heading,
+    section: result.section,
+    startOffset: result.startOffset,
+    endOffset: result.endOffset,
+    matchType: result.matchType,
+  }));
 }
 
 // ─── Main Handler ───────────────────────────────────────────────────────
@@ -246,13 +274,15 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   // STEP 1 — SEMANTIC CACHE CHECK
   // ═══════════════════════════════════════════════════════════════════════
 
-  // Explicit tenant-scoped authorization check on contractId before cache or data fetching
+  // Explicit tenant + ACL authorization check on contractId before cache or data fetching
   if (contextContractId) {
-    const contractExists = await prisma.contract.findFirst({
-      where: { id: contextContractId, tenantId },
-      select: { id: true },
+    const contractAccess = await checkContractReadPermission({
+      contractId: contextContractId,
+      tenantId,
+      userId,
+      userRole: userRole ?? undefined,
     });
-    if (!contractExists) {
+    if (!contractAccess.allowed) {
       return new NextResponse(JSON.stringify({ error: 'Contract not found or access denied' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json' },
@@ -271,12 +301,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'metadata',
           sources: cached.sources,
-          ragSources: (cached.ragResults || []).map((r: { contractId: string; contractName: string; score: number; text: string }) => ({
-            contractId: r.contractId,
-            contractName: r.contractName,
-            score: r.score,
-            snippet: r.text.slice(0, 320).trim(),
-          })),
+          ragSources: buildCachedCitationSources(cached.ragResults),
           cached: true,
           confidence: cached.metadata.confidence,
           suggestedActions: [
@@ -308,6 +333,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
     searchResults, ragSources, ragContext, memoryContext,
     contractProfileContext, learningContextStr, memories, ragResults,
   } = await gatherContext(message, tenantId, userId, effectiveHistory, contextContractId);
+  const citationSources = buildCitationSources(searchResults);
 
   // ═══════════════════════════════════════════════════════════════════════
   // STEP 3 — SYSTEM PROMPT (Agentic) + PERSONA DETECTION
@@ -384,7 +410,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             type: 'metadata',
             sources: ragSources,
-            ragSources: buildCitationSources(searchResults),
+            ragSources: citationSources,
             agentUsed: true,
             agentSteps: agentResponse.steps,
             toolsUsed: agentResponse.toolsUsed,
@@ -481,7 +507,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({
           type: 'metadata',
           sources: ragSources,
-          ragSources: buildCitationSources(searchResults),
+          ragSources: citationSources,
           confidence: initialConfidence.confidence,
           confidenceTier: initialConfidence.tier,
           queryVariations: ragResults.queryVariations?.slice(0, 3),
@@ -1054,11 +1080,17 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
             .set(message, {
               content: fullContent,
               sources: ragSources,
-              ragResults: searchResults.map(r => ({
-                contractId: r.contractId,
-                contractName: r.contractName,
-                score: r.score,
-                text: r.text.slice(0, 300),
+              ragResults: citationSources.map(source => ({
+                contractId: source.contractId,
+                contractName: source.contractName,
+                score: source.score,
+                text: source.snippet || '',
+                snippet: source.snippet,
+                heading: source.heading,
+                section: source.section,
+                startOffset: source.startOffset,
+                endOffset: source.endOffset,
+                matchType: source.matchType,
               })),
               metadata: {
                 intent: context.intent?.type,
@@ -1115,7 +1147,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
                   model: usedModel,
                   tokensUsed: countTokens(fullContent).tokens,
                   confidence: finalAdjustedConfidence,
-                  sources: ragSources.slice(0, 10) as any,
+                  sources: citationSources.slice(0, 10) as any,
                 },
               ],
             });

@@ -40,6 +40,7 @@ import {
   EnhancedContractMetadataSection,
   ContractRelationshipsCard,
   ContractScoresCard,
+  ContractAccessControl,
 } from '@/components/contracts'
 import { RobustPDFViewer } from '@/components/contracts/RobustPDFViewer'
 import { VersionManager } from '@/components/contracts/VersionManager'
@@ -1269,6 +1270,10 @@ export default function ContractDetailPage() {
                     }}
                     isProcessing={isProcessing}
                     onRefresh={handleRefresh}
+                  />
+                <ContractAccessControl
+                    contractId={contractId}
+                    contractName={contract?.contractTitle || contract?.filename || contractId}
                   />
               </TabsContent>
 

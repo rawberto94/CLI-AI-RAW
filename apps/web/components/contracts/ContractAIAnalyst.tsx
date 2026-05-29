@@ -22,6 +22,10 @@ import {
   History,
   Maximize2,
   Minimize2,
+  FileText,
+  ExternalLink,
+  CheckCircle2,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -84,6 +88,11 @@ interface SourceReference {
   pageNumber?: number;
   excerpt: string;
   relevance: number;
+  contractId?: string;
+  contractName?: string;
+  clauseType?: string;
+  verified?: boolean;
+  sourceType?: 'clause' | 'metadata' | 'obligation' | 'renewal' | 'general';
 }
 
 interface ConversationMessage {
@@ -220,39 +229,99 @@ const QueryButton: React.FC<{
   );
 };
 
+const SourceTypeIcon = ({ type }: { type?: string }) => {
+  switch (type) {
+    case 'clause': return <FileText className="w-3 h-3" />;
+    case 'metadata': return <Info className="w-3 h-3" />;
+    case 'obligation': return <CheckCircle2 className="w-3 h-3" />;
+    case 'renewal': return <RefreshCw className="w-3 h-3" />;
+    default: return <BookOpen className="w-3 h-3" />;
+  }
+};
+
 const SourceCard: React.FC<{ source: SourceReference; index: number }> = ({ source, index }) => {
   const confidenceColor = source.relevance >= 0.8 
     ? 'bg-green-500' 
     : source.relevance >= 0.6 
     ? 'bg-amber-500' 
     : 'bg-slate-400';
-  
+
+  const confidenceLabel = source.relevance >= 0.8 
+    ? 'High confidence' 
+    : source.relevance >= 0.6 
+    ? 'Medium confidence' 
+    : 'Review recommended';
+
   return (
     <motion.div 
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.1 }}
-      className="text-xs p-3 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-850 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-violet-600 transition-colors group"
+      className="text-xs p-3.5 bg-white dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-600 transition-all shadow-sm hover:shadow-md group"
     >
+      {/* Header row with trust signals */}
       <div className="flex items-center gap-2 mb-2">
+        <div className={cn(
+          'p-1 rounded-md',
+          source.relevance >= 0.8 ? 'bg-green-50 text-green-600 dark:bg-green-900/30' :
+          source.relevance >= 0.6 ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30' :
+          'bg-slate-50 text-slate-500 dark:bg-slate-700/50'
+        )}>
+          <SourceTypeIcon type={source.sourceType} />
+        </div>
         {source.section && (
-          <Badge variant="secondary" className="text-xs font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-indigo-300">
+          <Badge variant="secondary" className="text-[10px] font-semibold bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-indigo-300 uppercase tracking-wide">
             {source.section}
           </Badge>
         )}
-        {source.pageNumber && (
-          <Badge variant="outline" className="text-xs">
-            Page {source.pageNumber}
+        {source.clauseType && (
+          <Badge variant="outline" className="text-[10px]">
+            {source.clauseType}
           </Badge>
         )}
-        <div className="ml-auto flex items-center gap-1.5">
+        {source.verified && (
+          <Badge className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-0">
+            <CheckCircle2 className="w-2.5 h-2.5 mr-1" />
+            Verified
+          </Badge>
+        )}
+        <div className="ml-auto flex items-center gap-1.5" title={confidenceLabel}>
           <div className={cn("w-2 h-2 rounded-full", confidenceColor)} />
-          <span className="text-slate-500 font-medium">{Math.round(source.relevance * 100)}% match</span>
+          <span className="text-slate-500 font-medium">{Math.round(source.relevance * 100)}%</span>
         </div>
       </div>
-      <p className="text-slate-600 dark:text-slate-400 leading-relaxed italic">
-        &ldquo;{source.excerpt}&rdquo;
-      </p>
+
+      {/* Contract name link if available */}
+      {source.contractName && (
+        <div className="flex items-center gap-1.5 mb-1.5 text-[10px] text-slate-500">
+          <FileText className="w-3 h-3" />
+          <span className="font-medium truncate">{source.contractName}</span>
+          {source.contractId && (
+            <a 
+              href={`/contracts/${source.contractId}`}
+              className="text-violet-600 hover:text-violet-700 dark:text-indigo-400 inline-flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View <ExternalLink className="w-2.5 h-2.5" />
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Page reference */}
+      {source.pageNumber && (
+        <div className="text-[10px] text-slate-400 mb-1.5">
+          Page {source.pageNumber}
+        </div>
+      )}
+
+      {/* Excerpt with quotation styling */}
+      <div className="relative pl-3 border-l-2 border-violet-200 dark:border-violet-800">
+        <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-[11px] font-medium">
+          &ldquo;{source.excerpt}&rdquo;
+        </p>
+      </div>
     </motion.div>
   );
 };
@@ -335,17 +404,33 @@ const MessageBubble: React.FC<{
             
             <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
             
-            {/* Sources */}
+            {/* Sources — Evidence Panel */}
             {message.sources && message.sources.length > 0 && (
               <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
                 <button 
                   onClick={() => setShowSources(!showSources)}
                   className="flex items-center gap-2 text-xs font-medium text-violet-600 dark:text-indigo-400 hover:text-violet-700 dark:hover:text-indigo-300 transition-colors"
                 >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  {showSources ? 'Hide' : 'Show'} {message.sources.length} source{message.sources.length > 1 ? 's' : ''}
+                  <Shield className="w-3.5 h-3.5" />
+                  {showSources ? 'Hide' : 'Show'} {message.sources.length} evidence citation{message.sources.length > 1 ? 's' : ''}
                   <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", showSources && "rotate-180")} />
                 </button>
+                
+                {/* Evidence quality summary */}
+                <div className="flex items-center gap-2 mt-1.5 mb-2">
+                  {message.sources.some(s => s.relevance >= 0.8) && (
+                    <span className="text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-2.5 h-2.5" />
+                      High-confidence sources
+                    </span>
+                  )}
+                  {message.sources.some(s => s.verified) && (
+                    <span className="text-[10px] text-violet-600 dark:text-violet-400 flex items-center gap-1">
+                      <Check className="w-2.5 h-2.5" />
+                      Verified extracts
+                    </span>
+                  )}
+                </div>
                 
                 <AnimatePresence>
                   {showSources && (
@@ -355,14 +440,9 @@ const MessageBubble: React.FC<{
                       exit={{ opacity: 0, height: 0 }}
                       className="mt-2 space-y-2"
                     >
-                      {message.sources.slice(0, 3).map((source, idx) => (
+                      {message.sources.map((source, idx) => (
                         <SourceCard key={idx} source={source} index={idx} />
                       ))}
-                      {message.sources.length > 3 && (
-                        <p className="text-xs text-slate-500 text-center py-1">
-                          +{message.sources.length - 3} more sources
-                        </p>
-                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>

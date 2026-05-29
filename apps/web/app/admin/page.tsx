@@ -2,16 +2,17 @@
 
 import { useState, useEffect, useCallback as _useCallback } from "react";
 import { unwrapApiResponseData } from '@/lib/api-fetch';
+import { UserGroupsManagement } from '@/components/admin/user-groups-management';
 import { toast } from 'sonner';
 import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Building2, 
-  Users, 
-  Settings as _Settings, 
-  Shield as _Shield, 
-  Mail, 
+import {
+  Building2,
+  Users,
+  Settings as _Settings,
+  Shield,
+  Mail,
   Plus as _Plus, 
   Trash2, 
   UserPlus,
@@ -667,6 +668,10 @@ export default function TenantAdminPage() {
                   </Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="groups" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+                <Shield className="h-4 w-4" />
+                Access Groups
+              </TabsTrigger>
               <TabsTrigger value="organization" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Building2 className="h-4 w-4" />
                 Organization
@@ -948,6 +953,11 @@ export default function TenantAdminPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Access Groups Tab */}
+        <TabsContent value="groups">
+          <UserGroupsManagement />
         </TabsContent>
 
         {/* Organization Tab */}

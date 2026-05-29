@@ -35,6 +35,7 @@ const DEFAULT_FILTER_STATE: FilterState = {
   jurisdictions: [],
   paymentTerms: [],
   tags: [],
+  metadataIssues: [],
 };
 
 const UI_STATUS_TO_API_STATUS = {
@@ -76,6 +77,7 @@ function normalizeFilterState(filters: FilterState): FilterState {
     ...filters,
     statuses: normalizeStatuses(filters.statuses),
     tags: filters.tags ?? [],
+    metadataIssues: filters.metadataIssues ?? [],
   };
 }
 
@@ -203,6 +205,7 @@ export function useContractsPageFilters() {
       jurisdiction: filterState.jurisdictions?.length ? filterState.jurisdictions : undefined,
       paymentTerms: filterState.paymentTerms?.length ? filterState.paymentTerms : undefined,
       tags: filterState.tags?.length ? filterState.tags : undefined,
+      metadataIssue: filterState.metadataIssues?.length ? filterState.metadataIssues : undefined,
       signatureStatus: signatureFilters.length > 0 ? signatureFilters : undefined,
       documentClassification: documentTypeFilters.length > 0 ? documentTypeFilters : undefined,
       expirationFilter: expirationFilters.length > 0 ? expirationFilters : undefined,
@@ -249,7 +252,8 @@ export function useContractsPageFilters() {
       (filterState.currencies?.length ?? 0) > 0 ||
       (filterState.jurisdictions?.length ?? 0) > 0 ||
         (filterState.paymentTerms?.length ?? 0) > 0 ||
-        (filterState.tags?.length ?? 0) > 0,
+          (filterState.tags?.length ?? 0) > 0 ||
+          (filterState.metadataIssues?.length ?? 0) > 0,
   );
 
   const activeFilterCount = [
@@ -272,6 +276,7 @@ export function useContractsPageFilters() {
     filterState.jurisdictions?.length ?? 0,
     filterState.paymentTerms?.length ?? 0,
     filterState.tags?.length ?? 0,
+    filterState.metadataIssues?.length ?? 0,
   ].reduce((a, b) => a + b, 0);
 
   // ── Auto-reset page on filter change ───────────────────────────────
@@ -303,7 +308,8 @@ export function useContractsPageFilters() {
         case "currencies":
         case "jurisdictions":
         case "paymentTerms":
-        case "tags": {
+        case "tags":
+        case "metadataIssues": {
           const arr = prev[filterKey] as string[];
           if (value !== undefined) {
             return { ...prev, [filterKey]: arr.filter((v) => v !== value) };

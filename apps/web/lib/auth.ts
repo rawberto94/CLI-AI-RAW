@@ -190,8 +190,42 @@ providers.push(
     credentials: {
       email: { label: "Email", type: "email" },
       password: { label: "Password", type: "password" },
+      samlToken: { label: "SAML Token", type: "text" },
     },
     async authorize(credentials) {
+      // SAML token exchange
+      if (credentials?.samlToken) {
+        try {
+          const { samlTokenStore } = await import('@/lib/auth/saml-token-store');
+          const token = credentials.samlToken as string;
+          const samlData = samlTokenStore.get(token);
+          if (!samlData) return null;
+
+          // Consume token (one-time use)
+          samlTokenStore.delete(token);
+
+          const user = await prisma.user.findUnique({
+            where: { email: samlData.email },
+            include: { tenant: true },
+          });
+
+          if (user && user.status === 'ACTIVE') {
+            return {
+              id: user.id,
+              email: user.email,
+              name: `${user.firstName} ${user.lastName}`,
+              tenantId: user.tenantId,
+              role: user.role,
+              image: user.avatar || undefined,
+              mfaRequired: false, // SSO users bypass MFA
+            };
+          }
+          return null;
+        } catch {
+          return null;
+        }
+      }
+
       if (!credentials?.email || !credentials?.password) {
         return null;
       }

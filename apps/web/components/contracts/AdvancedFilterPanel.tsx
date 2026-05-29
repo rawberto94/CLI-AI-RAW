@@ -36,6 +36,7 @@ import {
   MapPin,
   CreditCard,
   Tag,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -63,6 +64,7 @@ export interface FilterState {
   jurisdictions: string[];
   paymentTerms: string[];
   tags: string[];
+  metadataIssues: string[];
 }
 
 interface AdvancedFilterPanelProps {
@@ -94,6 +96,16 @@ const DOCUMENT_ROLE_OPTIONS = [
   { value: 'AMENDMENT', label: 'Amendment', color: 'bg-violet-100 text-violet-700' },
   { value: 'RENEWAL', label: 'Renewal', color: 'bg-amber-100 text-amber-700' },
 ];
+
+const METADATA_ISSUE_OPTIONS = [
+  { value: 'missing-title', label: 'Missing title' },
+  { value: 'missing-party', label: 'Missing counterparty' },
+  { value: 'missing-value', label: 'Missing value' },
+  { value: 'missing-dates', label: 'Missing key dates' },
+  { value: 'missing-category', label: 'Missing category' },
+  { value: 'missing-tags', label: 'Missing tags' },
+  { value: 'low-confidence', label: 'Low AI confidence' },
+] as const;
 
 export function AdvancedFilterPanel({
   filters,
@@ -144,7 +156,7 @@ export function AdvancedFilterPanel({
     updateFilter('categories', updated);
   };
 
-  const toggleArrayFilter = (key: 'riskLevels' | 'suppliers' | 'clients' | 'contractTypes' | 'currencies' | 'jurisdictions' | 'paymentTerms' | 'tags', value: string) => {
+  const toggleArrayFilter = (key: 'riskLevels' | 'suppliers' | 'clients' | 'contractTypes' | 'currencies' | 'jurisdictions' | 'paymentTerms' | 'tags' | 'metadataIssues', value: string) => {
     const current = localFilters[key] ?? [];
     const updated = current.includes(value)
       ? current.filter((v: string) => v !== value)
@@ -169,6 +181,7 @@ export function AdvancedFilterPanel({
       jurisdictions: [],
       paymentTerms: [],
       tags: [],
+      metadataIssues: [],
     };
     setLocalFilters(reset);
     onChange(reset);
@@ -189,7 +202,8 @@ export function AdvancedFilterPanel({
     (localFilters.currencies?.length || 0) +
     (localFilters.jurisdictions?.length || 0) +
     (localFilters.paymentTerms?.length || 0) +
-    (localFilters.tags?.length || 0);
+    (localFilters.tags?.length || 0) +
+    (localFilters.metadataIssues?.length || 0);
 
   return (
     <Card className="border-2 shadow-xl">
@@ -724,6 +738,35 @@ export function AdvancedFilterPanel({
               />
               <span className="text-sm font-medium">Expiring within 30 days</span>
             </label>
+          </div>
+        </div>
+
+        {/* Metadata Quality */}
+        <div className="space-y-3 pt-3 border-t">
+          <Label className="text-sm font-semibold flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            Metadata Quality
+          </Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {METADATA_ISSUE_OPTIONS.map(option => {
+              const isSelected = (localFilters.metadataIssues ?? []).includes(option.value);
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => toggleArrayFilter('metadataIssues', option.value)}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium text-left',
+                    isSelected
+                      ? 'border-amber-500 bg-amber-50 text-amber-700 shadow-sm'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                  )}
+                >
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                  {isSelected && <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />}
+                </button>
+              );
+            })}
           </div>
         </div>
       </CardContent>

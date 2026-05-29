@@ -81,6 +81,7 @@ function SignInForm() {
   const [ssoLoading, setSsoLoading] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
   const [providers, setProviders] = useState<string[]>(["credentials"]);
+  const [ssoProviders, setSsoProviders] = useState<Array<{ id: string; name: string; protocol: string }>>([]);
 
   useEffect(() => {
     fetch("/api/auth/providers-list")
@@ -90,6 +91,14 @@ function SignInForm() {
       })
       .then((data) => setProviders(data.providers || ["credentials"]))
       .catch(() => setProviders(["credentials"]));
+
+    fetch("/api/auth/sso-providers")
+      .then((res) => {
+        if (!res.ok) throw new Error("Not OK");
+        return res.json();
+      })
+      .then((data) => setSsoProviders(data.data?.providers || []))
+      .catch(() => setSsoProviders([]));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,7 +142,7 @@ function SignInForm() {
     }
   };
 
-  const hasSSO = providers.some((p) => p !== "credentials");
+  const hasSSO = providers.some((p) => p !== "credentials") || ssoProviders.length > 0;
 
   const clearError = () => {
     if (error) setError("");
@@ -293,6 +302,31 @@ function SignInForm() {
                       : "Continue with GitHub"}
                   </Button>
                 )}
+                {/* Dynamic SAML/OIDC providers from admin config */}
+                {ssoProviders
+                  .filter((p) => !providers.includes(p.id))
+                  .map((provider) => (
+                    <Button
+                      key={provider.id}
+                      type="button"
+                      variant="outline"
+                      className="w-full h-10 justify-center gap-2.5 rounded-lg text-sm font-medium"
+                      onClick={() => {
+                        if (provider.protocol === 'saml') {
+                          // SAML: redirect to IdP SSO URL (simplified)
+                          window.location.href = `/api/auth/saml/init?id=${provider.id}`;
+                        } else {
+                          handleSSOSignIn(provider.id);
+                        }
+                      }}
+                      disabled={ssoLoading !== null}
+                    >
+                      <Shield className="h-4 w-4" />
+                      {ssoLoading === provider.id
+                        ? "Signing in…"
+                        : `Continue with ${provider.name}`}
+                    </Button>
+                  ))}
               </div>
 
               <div className="relative my-6">

@@ -34,8 +34,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     return createErrorResponse(ctx, 'NOT_FOUND', 'Conversation not found', 404);
   }
 
-  return createSuccessResponse(ctx, {
-    data: { conversation } });
+  return createSuccessResponse(ctx, conversation);
 })
 
 // PATCH /api/chat/conversations/[id] - Update conversation
@@ -64,8 +63,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     where: { id },
     data: updateData });
 
-  return createSuccessResponse(ctx, {
-    data: { conversation } });
+  return createSuccessResponse(ctx, conversation);
 })
 
 // DELETE /api/chat/conversations/[id] - Delete conversation

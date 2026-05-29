@@ -86,6 +86,9 @@ export { ContractRelationshipsCard } from './ContractRelationshipsCard';
 // Contract Scores Card (Risk, Compliance, Health with explanations)
 export { ContractScoresCard } from './ContractScoresCard';
 
+// Contract Access Control (user/group baskets for confidential contracts)
+export { ContractAccessControl } from './contract-access-control';
+
 // Contract Family Health Assessment
 export { ContractFamilyHealth } from './ContractFamilyHealth';
 
