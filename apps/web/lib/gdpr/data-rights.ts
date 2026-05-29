@@ -129,9 +129,8 @@ interface DeletionRequest {
   completedAt?: Date;
 }
 
-// In-memory stores (replace with Redis/database in production)
-const pendingExportRequests = new Map<string, DataExportRequest>();
-const pendingDeletionRequests = new Map<string, DeletionRequest>();
+// NOTE: All GDPR request state is persisted in Prisma (DataExportRequest, DeletionRequest).
+// Previous in-memory Maps removed — state now survives restarts and horizontal scaling.
 
 // =============================================================================
 // Data Export Handler
@@ -367,12 +366,15 @@ export async function cancelAccountDeletion(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('token');
     
-    // Find deletion request in memory storage
-    const deletionRequest = Array.from(pendingDeletionRequests.values()).find(
-      (req) => req.userId === session.user.id && 
-               req.status === 'scheduled' && 
-               (!token || req.confirmationToken === token)
-    );
+    // Find deletion request in Prisma
+    const deletionRequest = await prisma.deletionRequest.findFirst({
+      where: {
+        userId: session.user.id,
+        status: { in: [DeletionRequestStatus.SCHEDULED, DeletionRequestStatus.PENDING] },
+        ...(token ? { confirmationToken: token } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+    });
     
     if (!deletionRequest) {
       return NextResponse.json(
@@ -381,10 +383,11 @@ export async function cancelAccountDeletion(request: NextRequest) {
       );
     }
     
-    // Update in-memory storage
-    deletionRequest.status = 'cancelled';
-    deletionRequest.completedAt = new Date();
-    pendingDeletionRequests.set(deletionRequest.id, deletionRequest);
+    // Update in Prisma
+    await prisma.deletionRequest.update({
+      where: { id: deletionRequest.id },
+      data: { status: DeletionRequestStatus.CANCELLED, completedAt: new Date() },
+    });
     
     // Log for audit - get user's tenantId first
     const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { tenantId: true } });
@@ -426,19 +429,17 @@ export async function getExportStatus(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const requestId = searchParams.get('requestId');
   
-  // Find export request in memory storage
-  let exportRequest: DataExportRequest | undefined;
+  // Find export request in Prisma
+  let exportRequest;
   if (requestId) {
-    exportRequest = pendingExportRequests.get(requestId);
-    if (exportRequest && exportRequest.userId !== session.user.id) {
-      exportRequest = undefined;
-    }
+    exportRequest = await prisma.dataExportRequest.findFirst({
+      where: { id: requestId, userId: session.user.id },
+    });
   } else {
-    // Get most recent request for user
-    const userRequests = Array.from(pendingExportRequests.values())
-      .filter((req) => req.userId === session.user.id)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    exportRequest = userRequests[0];
+    exportRequest = await prisma.dataExportRequest.findFirst({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: 'desc' },
+    });
   }
   
   if (!exportRequest) {
@@ -450,11 +451,11 @@ export async function getExportStatus(request: NextRequest) {
   
   return NextResponse.json({
     id: exportRequest.id,
-    status: exportRequest.status,
+    status: exportRequest.status.toLowerCase(),
     format: exportRequest.format,
     createdAt: exportRequest.createdAt,
     completedAt: exportRequest.completedAt,
-    downloadUrl: exportRequest.status === 'completed' ? exportRequest.downloadUrl : null,
+    downloadUrl: exportRequest.status === 'COMPLETED' ? exportRequest.downloadUrl : null,
     expiresAt: exportRequest.expiresAt,
   });
 }
@@ -472,12 +473,11 @@ export async function processDataExport(jobData: {
   const { exportRequestId, userId, format, options } = jobData;
   
   try {
-    // Update status to processing (in-memory)
-    const exportReq = pendingExportRequests.get(exportRequestId);
-    if (exportReq) {
-      exportReq.status = 'processing';
-      pendingExportRequests.set(exportRequestId, exportReq);
-    }
+    // Update status to processing in Prisma
+    await prisma.dataExportRequest.update({
+      where: { id: exportRequestId },
+      data: { status: 'PROCESSING' },
+    });
     
     // Collect user data
     const userData: Record<string, any> = {};
@@ -557,15 +557,16 @@ export async function processDataExport(jobData: {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
     
-    // Update request with download URL (in-memory)
-    const completedReq = pendingExportRequests.get(exportRequestId);
-    if (completedReq) {
-      completedReq.status = 'completed';
-      completedReq.downloadUrl = downloadUrl;
-      completedReq.expiresAt = expiresAt;
-      completedReq.completedAt = new Date();
-      pendingExportRequests.set(exportRequestId, completedReq);
-    }
+    // Update request with download URL in Prisma
+    await prisma.dataExportRequest.update({
+      where: { id: exportRequestId },
+      data: {
+        status: 'COMPLETED',
+        downloadUrl,
+        expiresAt,
+        completedAt: new Date(),
+      },
+    });
     
     // Send notification email
     if (user?.email) {
@@ -581,13 +582,11 @@ export async function processDataExport(jobData: {
     }
     
   } catch (error) {
-    // Update status to failed (in-memory)
-    const failedReq = pendingExportRequests.get(exportRequestId);
-    if (failedReq) {
-      failedReq.status = 'failed';
-      failedReq.completedAt = new Date();
-      pendingExportRequests.set(exportRequestId, failedReq);
-    }
+    // Update status to failed in Prisma
+    await prisma.dataExportRequest.update({
+      where: { id: exportRequestId },
+      data: { status: 'FAILED', completedAt: new Date() },
+    }).catch(() => { /* ignore if record missing */ });
     throw error;
   }
 }
@@ -603,16 +602,20 @@ export async function processAccountDeletion(jobData: {
   const { deletionRequestId, userId } = jobData;
   
   try {
-    // Verify deletion is still scheduled (in-memory)
-    const deletionRequest = pendingDeletionRequests.get(deletionRequestId);
+    // Verify deletion is still scheduled in Prisma
+    const deletionRequest = await prisma.deletionRequest.findUnique({
+      where: { id: deletionRequestId },
+    });
     
-    if (!deletionRequest || deletionRequest.status !== 'scheduled') {
+    if (!deletionRequest || deletionRequest.status !== 'SCHEDULED') {
       return; // Deletion was cancelled
     }
     
-    // Update status to processing (in-memory)
-    deletionRequest.status = 'processing';
-    pendingDeletionRequests.set(deletionRequestId, deletionRequest);
+    // Update status to processing in Prisma
+    await prisma.deletionRequest.update({
+      where: { id: deletionRequestId },
+      data: { status: 'PROCESSING' },
+    });
     
     // Get user's tenantId for audit log
     const userForTenant = await prisma.user.findUnique({ where: { id: userId }, select: { tenantId: true } });
@@ -665,10 +668,11 @@ export async function processAccountDeletion(jobData: {
       });
     });
     
-    // Update deletion request (in-memory)
-    deletionRequest.status = 'completed';
-    deletionRequest.completedAt = new Date();
-    pendingDeletionRequests.set(deletionRequestId, deletionRequest);
+    // Update deletion request in Prisma
+    await prisma.deletionRequest.update({
+      where: { id: deletionRequestId },
+      data: { status: 'COMPLETED', completedAt: new Date() },
+    });
     
     // Log completion (without user reference since deleted)
     await prisma.auditLog.create({
@@ -686,12 +690,11 @@ export async function processAccountDeletion(jobData: {
     });
     
   } catch (error) {
-    // Update status to failed (in-memory)
-    const failedReq = pendingDeletionRequests.get(deletionRequestId);
-    if (failedReq) {
-      failedReq.status = 'failed';
-      pendingDeletionRequests.set(deletionRequestId, failedReq);
-    }
+    // Update status to failed in Prisma
+    await prisma.deletionRequest.update({
+      where: { id: deletionRequestId },
+      data: { status: 'FAILED' },
+    }).catch(() => { /* ignore if record missing */ });
     throw error;
   }
 }

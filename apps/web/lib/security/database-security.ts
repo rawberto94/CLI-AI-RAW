@@ -630,7 +630,7 @@ export function createEncryptionMiddleware(
  * Prisma middleware for RLS context setting
  */
 export function createRLSMiddleware(dbSecurity: DatabaseSecurityService) {
-  return async (params: { action: string; model?: string; args: Record<string, unknown> }, next: (params: unknown) => Promise<unknown>) => {
+  return async (params: any, next: (params: any) => Promise<any>) => {
     const context = (global as Record<string, unknown>).__dbContext as Parameters<DatabaseSecurityService['setSessionContext']>[0] | undefined;
 
     if (context) {

@@ -100,7 +100,7 @@ services:
       MINIO_SECRET_KEY: ${S3_SECRET_KEY:?S3_SECRET_KEY must be set}
       MINIO_BUCKET: ${S3_BUCKET:-contracts}
       MINIO_USE_SSL: "false"
-      AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production}
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
       AUTH_TRUST_HOST: "true"
       NEXTAUTH_URL: ${NEXTAUTH_URL:-https://mycontigo.app}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}

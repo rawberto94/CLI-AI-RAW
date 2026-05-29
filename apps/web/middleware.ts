@@ -15,6 +15,7 @@ import NextAuth from "next-auth";
 import { authConfig } from "@/lib/auth.config";
 import { BLANK_DRAFTING_PATH, buildTemplateLibraryPath } from "@/lib/drafting/template-routing";
 import { isTenantSessionExpired } from "@/lib/security/tenant-session-policy";
+import { wafMiddleware } from "@/lib/security/waf";
 
 // Edge-compatible auth wrapper (no Prisma/DB dependencies)
 const { auth } = NextAuth(authConfig);
@@ -360,7 +361,7 @@ const publicApiPaths = [
   "/api/csrf", // CSRF token must be obtainable before/during login
   "/api/taxonomy/presets", // Industry preset templates (read-only, public)
   "/api/portal/validate-token", // Portal token validation
-  "/api/debug", // Debug endpoints (temporary, remove in production)
+  // NOTE: /api/debug removed from public paths — requires auth in production
 ];
 
 // Public auth API endpoints. Keep this explicit: a broad "/api/auth" prefix would
@@ -482,6 +483,12 @@ export default auth(async (req) => {
   
   // Generate or use existing request ID for tracing
   const requestId = req.headers.get('x-request-id') || generateRequestId();
+
+  // WAF protection — run before all other checks
+  const wafResult = await wafMiddleware(req);
+  if (wafResult.blocked) {
+    return wafResult.response!;
+  }
 
   // Rate limiting for API routes with tiered limits
   // Only skip rate limiting for NextAuth's own internal routes (session, csrf, callback, providers)
