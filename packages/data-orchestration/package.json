@@ -58,6 +58,10 @@
       "types": "./dist/services/knowledge-graph.service.d.ts",
       "default": "./dist/services/knowledge-graph.service.js"
     },
+    "./services/graph/neo4j-graph.service": {
+      "types": "./dist/services/graph/neo4j-graph.service.d.ts",
+      "default": "./dist/services/graph/neo4j-graph.service.js"
+    },
     "./services/workflow-auto-start.service": {
       "types": "./dist/services/workflow-auto-start.service.d.ts",
       "default": "./dist/services/workflow-auto-start.service.js"
