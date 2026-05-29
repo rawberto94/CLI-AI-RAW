@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSpMetadata } from '@/lib/auth/saml-service';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(_request: NextRequest) {
   try {

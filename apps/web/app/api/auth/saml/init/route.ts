@@ -10,6 +10,7 @@ import { logger } from '@/lib/logger';
 import { loadSamlProvider, createLoginRequest } from '@/lib/auth/saml-service';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   try {

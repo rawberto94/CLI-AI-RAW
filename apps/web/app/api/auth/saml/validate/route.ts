@@ -11,6 +11,7 @@ import { samlTokenStore } from '@/lib/auth/saml-token-store';
 import { createSuccessResponse, createErrorResponse, getPublicApiContext } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   const ctx = getPublicApiContext(request);

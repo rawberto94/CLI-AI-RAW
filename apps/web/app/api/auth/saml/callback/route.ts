@@ -14,6 +14,7 @@ import { samlTokenStore } from '@/lib/auth/saml-token-store';
 import { loadSamlProvider, parseSamlResponse } from '@/lib/auth/saml-service';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 async function createSamlToken(payload: { email: string; name: string; tenantId?: string; role?: string }): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');

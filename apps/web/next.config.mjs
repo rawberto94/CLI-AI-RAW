@@ -139,6 +139,9 @@ const nextConfig = {
     'archiver',
     'lazystream',
     'readable-stream',
+    // SAML 2.0 libraries — Node.js only, cannot bundle for Edge
+    'samlify',
+    '@authenio/samlify-xsd-schema-validator',
   ],
   
   // Enable gzip/brotli response compression
