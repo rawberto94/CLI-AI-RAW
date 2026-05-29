@@ -1,10 +1,10 @@
 import { NextRequest } from 'next/server';
-import { withAuthApiHandler, createSuccessResponse } from '@/lib/api-middleware';
+import { withScimHandler, createSuccessResponse } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
 // GET /api/scim/v2/ServiceProviderConfig
-export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+export const GET = withScimHandler(async (_request: NextRequest, ctx) => {
   return createSuccessResponse(ctx, {
     schemas: ['urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig'],
     documentationUri: 'https://docs.contigo.app/scim',

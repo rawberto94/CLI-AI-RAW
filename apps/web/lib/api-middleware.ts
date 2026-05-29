@@ -575,6 +575,84 @@ export function withCronHandler(
   };
 }
 
+/**
+ * Wrapper for SCIM v2 route handlers.
+ * Validates Bearer token against tenantConfig.securitySettings.scimToken.
+ * Injects the resolved tenantId into context.
+ */
+export function withScimHandler(
+  handler: (request: NextRequest, context: ApiContext) => Promise<NextResponse>
+) {
+  return async (request: NextRequest, routeContext?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
+    const context = getApiContext(request);
+    const authHeader = request.headers.get('authorization') || '';
+    const match = authHeader.match(/^Bearer\s+(\S+)$/i);
+    const token = match?.[1];
+
+    if (!token) {
+      return createErrorResponse(context, 'UNAUTHORIZED', 'SCIM Bearer token required', 401, {
+        retryable: false,
+      });
+    }
+
+    try {
+      const { prisma } = await import('@/lib/prisma');
+      const configs = await prisma.$queryRaw<Array<{ tenantId: string; securitySettings: unknown }>>`
+        SELECT tenant_id as "tenantId", security_settings as "securitySettings"
+        FROM tenant_config
+        WHERE security_settings->>'scimToken' = ${token}
+           OR security_settings->>'scimTokenHash' IS NOT NULL
+        LIMIT 1
+      `;
+
+      let matchedTenantId: string | null = null;
+      for (const config of configs || []) {
+        const settings = (config.securitySettings as Record<string, string>) || {};
+        // Legacy plaintext token
+        if (settings.scimToken && settings.scimToken === token) {
+          matchedTenantId = config.tenantId;
+          break;
+        }
+        // Hashed token
+        if (settings.scimTokenHash && settings.scimTokenSalt) {
+          try {
+            const derived = crypto.scryptSync(token, settings.scimTokenSalt, 32).toString('hex');
+            if (crypto.timingSafeEqual(Buffer.from(settings.scimTokenHash), Buffer.from(derived))) {
+              matchedTenantId = config.tenantId;
+              break;
+            }
+          } catch {
+            // Continue checking other configs (unlikely with LIMIT 1, but safe)
+          }
+        }
+      }
+
+      if (!matchedTenantId) {
+        return createErrorResponse(context, 'UNAUTHORIZED', 'Invalid SCIM token', 401, {
+          retryable: false,
+        });
+      }
+
+      const scimContext: ApiContext = {
+        ...context,
+        tenantId: matchedTenantId,
+      };
+
+      const mergedContext = routeContext?.params
+        ? Object.assign(scimContext, { params: routeContext.params })
+        : scimContext;
+
+      try {
+        return await handler(request, mergedContext);
+      } catch (error) {
+        return handleApiError(scimContext, error);
+      }
+    } catch {
+      return createErrorResponse(context, 'INTERNAL_ERROR', 'SCIM authentication error', 500);
+    }
+  };
+}
+
 // ============================================================================
 // HELPERS
 // ============================================================================

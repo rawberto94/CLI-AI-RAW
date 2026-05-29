@@ -89,6 +89,20 @@ export default function SSOConfigManager({ className }: { className?: string }) 
   const [samlMetadataXml, setSamlMetadataXml] = useState('');
   const [parsingMetadata, setParsingMetadata] = useState(false);
 
+  // SCIM config state
+  const [scimConfig, setScimConfig] = useState<{ baseUrl: string; token: string | null; preview: string } | null>(null);
+  const [loadingScim, setLoadingScim] = useState(false);
+  const [showScimToken, setShowScimToken] = useState(false);
+  const [revealedToken, setRevealedToken] = useState<string | null>(null);
+
+  // Global settings state
+  const [globalSettings, setGlobalSettings] = useState({
+    passwordFallback: true,
+    enforceSSO: false,
+    sessionDuration: '24h',
+  });
+  const [loadingGlobalSettings, setLoadingGlobalSettings] = useState(false);
+
   const spEntityId = typeof window !== 'undefined' ? `${window.location.origin}/api/auth/saml/metadata` : '';
   const acsUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/auth/saml/callback` : '';
   const sloCallbackUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/auth/saml/slo` : '';
@@ -111,6 +125,52 @@ export default function SSOConfigManager({ className }: { className?: string }) 
       }
     }
     loadProviders();
+  }, []);
+
+  // Load SCIM config
+  useEffect(() => {
+    async function loadScim() {
+      setLoadingScim(true);
+      try {
+        const res = await fetch('/api/admin/sso/scim');
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.baseUrl) {
+            setScimConfig(data);
+            if (data.token) {
+              setRevealedToken(data.token);
+            }
+          }
+        }
+      } catch {
+        // Failed to load SCIM config
+      } finally {
+        setLoadingScim(false);
+      }
+    }
+    loadScim();
+  }, []);
+
+  // Load global settings
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/admin/sso/settings');
+        if (res.ok) {
+          const data = await res.json();
+          if (data) {
+            setGlobalSettings({
+              passwordFallback: data.passwordFallback ?? true,
+              enforceSSO: data.enforceSSO ?? false,
+              sessionDuration: data.sessionDuration ?? '24h',
+            });
+          }
+        }
+      } catch {
+        // Failed to load settings
+      }
+    }
+    loadSettings();
   }, []);
 
   const openEditor = (provider?: SSOProvider) => {
@@ -237,6 +297,47 @@ export default function SSOConfigManager({ className }: { className?: string }) 
     }
   };
 
+  const regenerateScimToken = async () => {
+    setLoadingScim(true);
+    try {
+      const res = await fetch('/api/admin/sso/scim', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.token) {
+          setScimConfig(prev => prev ? { ...prev, token: data.token, preview: data.preview } : { baseUrl: '', token: data.token, preview: data.preview });
+          setRevealedToken(data.token);
+          toast.success('SCIM token regenerated');
+        }
+      } else {
+        toast.error('Failed to regenerate SCIM token');
+      }
+    } catch {
+      toast.error('Failed to regenerate SCIM token');
+    } finally {
+      setLoadingScim(false);
+    }
+  };
+
+  const saveGlobalSettings = async () => {
+    setLoadingGlobalSettings(true);
+    try {
+      const res = await fetch('/api/admin/sso/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(globalSettings),
+      });
+      if (res.ok) {
+        toast.success('Global settings saved');
+      } else {
+        toast.error('Failed to save global settings');
+      }
+    } catch {
+      toast.error('Failed to save global settings');
+    } finally {
+      setLoadingGlobalSettings(false);
+    }
+  };
+
   const toggleProviderStatus = async (id: string) => {
     const provider = providers.find(p => p.id === id);
     if (!provider) return;
@@ -313,6 +414,7 @@ export default function SSOConfigManager({ className }: { className?: string }) 
         <TabsList>
           <TabsTrigger value="providers">Providers ({providers.length})</TabsTrigger>
           <TabsTrigger value="sp-info">Service Provider Info</TabsTrigger>
+          <TabsTrigger value="scim">SCIM Provisioning</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -432,6 +534,67 @@ export default function SSOConfigManager({ className }: { className?: string }) 
           </Card>
         </TabsContent>
 
+        {/* SCIM Provisioning */}
+        <TabsContent value="scim" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">SCIM 2.0 Provisioning</CardTitle>
+              <CardDescription>Provide these values to your Identity Provider for automatic user provisioning</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {loadingScim ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading SCIM configuration...
+                </div>
+              ) : scimConfig ? (
+                <>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">SCIM Base URL</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input value={scimConfig.baseUrl} readOnly className="font-mono text-xs" />
+                      <Button size="icon" variant="outline" onClick={() => { navigator.clipboard.writeText(scimConfig.baseUrl); toast.info('Copied'); }}>
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Bearer Token</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        value={showScimToken && revealedToken ? revealedToken : (scimConfig.preview || '••••••••••••')}
+                        readOnly
+                        className="font-mono text-xs"
+                      />
+                      <Button size="icon" variant="outline" onClick={() => setShowScimToken(s => !s)}>
+                        {showScimToken ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      </Button>
+                      <Button size="icon" variant="outline" onClick={() => { if (revealedToken) { navigator.clipboard.writeText(revealedToken); toast.info('Copied'); } }}>
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    {!revealedToken && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Token is hidden for security. Regenerate to reveal a new token.
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={regenerateScimToken}
+                    disabled={loadingScim}
+                  >
+                    {loadingScim ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                    Regenerate Token
+                  </Button>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">SCIM configuration unavailable.</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Global Settings */}
         <TabsContent value="settings" className="mt-4">
           <Card>
@@ -444,7 +607,10 @@ export default function SSOConfigManager({ className }: { className?: string }) 
                   <Label>Allow password login fallback</Label>
                   <p className="text-xs text-muted-foreground">Users with SSO can still log in with email/password</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch
+                  checked={globalSettings.passwordFallback}
+                  onCheckedChange={(v) => setGlobalSettings(s => ({ ...s, passwordFallback: v }))}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -452,7 +618,10 @@ export default function SSOConfigManager({ className }: { className?: string }) 
                   <Label>Enforce SSO for managed domains</Label>
                   <p className="text-xs text-muted-foreground">Block email/password for domains with active SSO</p>
                 </div>
-                <Switch />
+                <Switch
+                  checked={globalSettings.enforceSSO}
+                  onCheckedChange={(v) => setGlobalSettings(s => ({ ...s, enforceSSO: v }))}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -460,7 +629,10 @@ export default function SSOConfigManager({ className }: { className?: string }) 
                   <Label>Session duration after SSO</Label>
                   <p className="text-xs text-muted-foreground">How long the session lasts after SSO login</p>
                 </div>
-                <Select defaultValue="24h">
+                <Select
+                  value={globalSettings.sessionDuration}
+                  onValueChange={(v) => setGlobalSettings(s => ({ ...s, sessionDuration: v }))}
+                >
                   <SelectTrigger className="w-32">
                     <SelectValue />
                   </SelectTrigger>
@@ -472,6 +644,15 @@ export default function SSOConfigManager({ className }: { className?: string }) 
                   </SelectContent>
                 </Select>
               </div>
+              <Button
+                size="sm"
+                onClick={saveGlobalSettings}
+                disabled={loadingGlobalSettings}
+                className="mt-2"
+              >
+                {loadingGlobalSettings ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Save Settings
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
