@@ -1,5 +1,7 @@
 import { PrismaClient, ContractStatus, ObligationStatus, ObligationType, ObligationPriority } from '@prisma/client';
 import { hash } from 'bcryptjs';
+import { promises as fs, constants as fsConstants } from 'fs';
+import path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -261,12 +263,46 @@ async function main() {
     await prisma.contract.deleteMany({ where: { tenantId: tenant.id } });
   }
 
+  // Ensure uploads directory exists for demo contract PDFs
+  const uploadsDir = path.join(process.cwd(), 'apps', 'web', 'uploads', 'contracts', tenant.id);
+  await fs.mkdir(uploadsDir, { recursive: true });
+
+  // Check for template PDF
+  const templatePaths = [
+    path.join(process.cwd(), 'public', 'realistic_contract.pdf'),
+    path.join(process.cwd(), 'apps', 'web', 'public', 'realistic_contract.pdf'),
+  ];
+  let templatePdfPath: string | null = null;
+  for (const tp of templatePaths) {
+    try {
+      await fs.access(tp, fsConstants.R_OK);
+      templatePdfPath = tp;
+      break;
+    } catch { /* ignore */ }
+  }
+
   const contractsData = generateContracts(contractCount, tenant.id, user.id);
   const createdContracts = [];
 
-  for (const data of contractsData) {
+  for (let i = 0; i < contractsData.length; i++) {
+    const data = contractsData[i];
     const contract = await prisma.contract.create({ data });
     createdContracts.push(contract);
+
+    // Generate a demo PDF file for this contract
+    const pdfFileName = `demo-contract-${i + 1}.pdf`;
+    const pdfPath = path.join(uploadsDir, pdfFileName);
+    try {
+      if (templatePdfPath) {
+        await fs.copyFile(templatePdfPath, pdfPath);
+      } else {
+        // Minimal valid PDF fallback
+        const minimalPdf = `%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 50 >>\nstream\nBT /F1 12 Tf 50 700 Td (${data.contractTitle}) Tj ET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000052 00000 n\n0000000101 00000 n\n0000000191 00000 n\ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n292\n%%EOF\n`;
+        await fs.writeFile(pdfPath, minimalPdf);
+      }
+    } catch (pdfErr) {
+      console.warn(`Warning: Could not create PDF for contract ${contract.id}:`, pdfErr);
+    }
   }
 
   console.log(`Created ${createdContracts.length} contracts.`);

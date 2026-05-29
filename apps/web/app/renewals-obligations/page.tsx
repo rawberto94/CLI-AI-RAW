@@ -27,6 +27,7 @@ import {
   ArrowRight,
   ShieldAlert,
   Timer,
+  Download,
 } from 'lucide-react';
 import { PageBreadcrumb } from '@/components/navigation';
 import { formatCurrency } from '@/components/ui/design-system';
@@ -206,10 +207,38 @@ export default function RenewalsObligationsDashboard() {
               Track expiring contracts and upcoming obligations — your daily value dashboard
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchData}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => {
+              if (!data) return;
+              const csv = [
+                ['Contract Title', 'Supplier', 'Type', 'Expiry Date', 'Days Until', 'Value', 'Currency', 'Urgency'].join(','),
+                ...data.renewals.map(r => [
+                  `"${r.contractTitle?.replace(/"/g, '""')}"`,
+                  r.supplierName || '',
+                  r.contractType || '',
+                  r.expiryDate ? new Date(r.expiryDate).toLocaleDateString() : '',
+                  r.daysUntil ?? '',
+                  r.totalValue ?? '',
+                  r.currency || '',
+                  r.urgency,
+                ].join(',')),
+              ].join('\n');
+              const blob = new Blob([csv], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `renewals-obligations-${new Date().toISOString().split('T')[0]}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}>
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+            <Button variant="outline" size="sm" onClick={fetchData}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* KPI Cards */}

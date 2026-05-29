@@ -220,6 +220,15 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       });
     }
 
+    // Check for duplicates before importing
+    const existingContracts = await prisma.contract.findMany({
+      where: { tenantId: ctx.tenantId },
+      select: { contractTitle: true, supplierName: true, effectiveDate: true },
+    });
+    const existingKeys = new Set(
+      existingContracts.map(c => `${c.contractTitle}|${c.supplierName}|${c.effectiveDate?.toISOString().split('T')[0]}`)
+    );
+
     // Validate and import rows
     const validationErrors: string[] = [];
     const imported: Array<{ id: string; title: string }> = [];
@@ -231,6 +240,13 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       if (!validation.valid) {
         validationErrors.push(...validation.errors);
         skipped.push({ index: i, reason: validation.errors.join('; ') });
+        continue;
+      }
+
+      // Duplicate detection by title + supplier + effectiveDate
+      const dupKey = `${row.contractTitle}|${row.supplierName}|${row.effectiveDate?.toISOString().split('T')[0]}`;
+      if (existingKeys.has(dupKey)) {
+        skipped.push({ index: i, reason: `Duplicate contract detected (title + supplier + effective date)` });
         continue;
       }
 

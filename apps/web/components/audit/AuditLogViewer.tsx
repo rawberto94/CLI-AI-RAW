@@ -116,6 +116,8 @@ export const AuditLogViewer = memo(function AuditLogViewer({
   const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
   const [isExporting, setIsExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<'csv' | 'json'>('csv');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
   const filteredLogs = useMemo(() => logs.filter((log: AuditLogEntry) => {
     if (categoryFilter !== 'all' && log.category !== categoryFilter) return false;
@@ -152,6 +154,8 @@ export const AuditLogViewer = memo(function AuditLogViewer({
       if (categoryFilter !== 'all') params.set('category', categoryFilter);
       if (successFilter !== 'all') params.set('success', successFilter === 'success' ? 'true' : 'false');
       if (searchQuery.trim()) params.set('search', searchQuery.trim());
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
 
       const response = await fetch(`/api/audit-logs?${params.toString()}`, {
         headers: { 'x-tenant-id': getTenantId() },
@@ -292,6 +296,22 @@ export const AuditLogViewer = memo(function AuditLogViewer({
               <SelectItem value="failed">Failed</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-slate-500">Date range:</span>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="h-9 px-3 text-sm rounded-md border border-slate-300 bg-white"
+          />
+          <span className="text-xs text-slate-400">to</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="h-9 px-3 text-sm rounded-md border border-slate-300 bg-white"
+          />
         </div>
 
         {/* Stats */}

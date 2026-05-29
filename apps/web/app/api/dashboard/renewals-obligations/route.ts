@@ -8,13 +8,29 @@
 
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { redis } from "@/lib/redis";
 import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+const CACHE_TTL_SECONDS = 60; // 1 minute cache for dashboard data
+
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const tenantId = ctx.tenantId;
+  const cacheKey = `dashboard:renewals-obligations:${tenantId}`;
+
+  // Try cache first
+  const cached = await redis.get(cacheKey);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      return createSuccessResponse(ctx, { ...parsed, cached: true });
+    } catch {
+      // Cache parse error, fall through to DB
+    }
+  }
+
   const now = new Date();
   const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
@@ -182,7 +198,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     },
   };
 
-  return createSuccessResponse(ctx, {
+  const response = {
     renewals,
     obligations: urgentObligations.map(o => ({
       id: o.id,
@@ -196,5 +212,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     })),
     metrics,
     generatedAt: now.toISOString(),
-  });
+  };
+
+  // Cache response
+  await redis.set(cacheKey, JSON.stringify(response), 'EX', CACHE_TTL_SECONDS);
+
+  return createSuccessResponse(ctx, response);
 });

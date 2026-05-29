@@ -86,6 +86,8 @@ export default function SSOConfigManager({ className }: { className?: string }) 
   const [loadingProviders, setLoadingProviders] = useState(true);
   const [newDomain, setNewDomain] = useState('');
   const [showSecret, setShowSecret] = useState(false);
+  const [samlMetadataXml, setSamlMetadataXml] = useState('');
+  const [parsingMetadata, setParsingMetadata] = useState(false);
 
   const spEntityId = typeof window !== 'undefined' ? `${window.location.origin}/api/auth/saml/metadata` : '';
   const acsUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/auth/saml/callback` : '';
@@ -182,13 +184,57 @@ export default function SSOConfigManager({ className }: { className?: string }) 
 
   const testConnection = async () => {
     setTestResult(null);
-    await new Promise(r => setTimeout(r, 1500));
-    const success = (editingProvider?.protocol === 'saml' && editingProvider?.ssoUrl && editingProvider?.certificate) ||
-                    (editingProvider?.protocol === 'oidc' && editingProvider?.clientId && editingProvider?.discoveryUrl);
-    setTestResult({
-      success: !!success,
-      message: success ? 'Connection successful! IdP metadata validated.' : 'Connection failed. Please check your configuration.',
-    });
+    setSaving(true);
+    try {
+      const response = await fetch('/api/admin/sso/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingProvider),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setTestResult({ success: true, message: data.message || 'Connection successful! IdP metadata validated.' });
+      } else {
+        setTestResult({ success: false, message: data.error || 'Connection failed. Please check your configuration.' });
+      }
+    } catch {
+      setTestResult({ success: false, message: 'Connection test request failed. Please try again.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const parseSamlMetadata = async () => {
+    if (!samlMetadataXml.trim()) {
+      toast.error('Please paste SAML metadata XML first');
+      return;
+    }
+    setParsingMetadata(true);
+    try {
+      const response = await fetch('/api/admin/sso/parse-metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metadata: samlMetadataXml }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || 'Failed to parse metadata');
+        return;
+      }
+      setEditingProvider(p => p ? {
+        ...p,
+        entityId: data.entityId || p.entityId,
+        ssoUrl: data.ssoUrl || p.ssoUrl,
+        sloUrl: data.sloUrl || p.sloUrl,
+        certificate: data.certificate || p.certificate,
+      } : p);
+      toast.success('Metadata parsed successfully');
+      setSamlMetadataXml('');
+    } catch {
+      toast.error('Failed to parse metadata');
+    } finally {
+      setParsingMetadata(false);
+    }
   };
 
   const toggleProviderStatus = async (id: string) => {
@@ -470,6 +516,36 @@ export default function SSOConfigManager({ className }: { className?: string }) 
                 {editingProvider.protocol === 'saml' && (
                   <div className="space-y-4">
                     <h4 className="text-sm font-medium flex items-center gap-2"><Key className="h-4 w-4" /> SAML Configuration</h4>
+
+                    {/* Metadata XML Import */}
+                    <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                      <Label className="text-xs font-medium">Import from Metadata XML</Label>
+                      <Textarea
+                        value={samlMetadataXml}
+                        onChange={(e) => setSamlMetadataXml(e.target.value)}
+                        placeholder="Paste SAML 2.0 IdP metadata XML here..."
+                        rows={3}
+                        className="font-mono text-xs"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="text-xs h-7"
+                          onClick={parseSamlMetadata}
+                          disabled={parsingMetadata}
+                        >
+                          {parsingMetadata ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
+                          Parse &amp; Import
+                        </Button>
+                        {samlMetadataXml && (
+                          <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setSamlMetadataXml('')}>
+                            <X className="h-3 w-3 mr-1" /> Clear
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
                     <div>
                       <Label>IdP Entity ID</Label>
                       <Input
@@ -504,10 +580,10 @@ export default function SSOConfigManager({ className }: { className?: string }) 
                         className="font-mono text-xs"
                       />
                       <div className="flex gap-2 mt-1">
-                        <Button size="sm" variant="outline" className="text-xs h-7">
+                        <Button size="sm" variant="outline" className="text-xs h-7" disabled>
                           <Upload className="h-3 w-3 mr-1" /> Upload .pem
                         </Button>
-                        <Button size="sm" variant="outline" className="text-xs h-7">
+                        <Button size="sm" variant="outline" className="text-xs h-7" disabled>
                           <Link2 className="h-3 w-3 mr-1" /> Import from URL
                         </Button>
                       </div>
