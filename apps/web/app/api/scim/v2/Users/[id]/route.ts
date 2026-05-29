@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withScimHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { auditLog, AuditAction } from '@/lib/security/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,8 +26,8 @@ const ScimUserUpdateSchema = z.object({
 function scimUserResponse(record: any) {
   return {
     schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
-    id: record.scim_id,
-    externalId: record.internal_id,
+    id: record.id,
+    externalId: record.scim_id,
     userName: record.email,
     displayName: record.display_name,
     active: record.active,
@@ -35,7 +36,7 @@ function scimUserResponse(record: any) {
 }
 
 // GET /api/scim/v2/Users/{id}
-export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+export const GET = withScimHandler(async (_request: NextRequest, ctx) => {
   const params = await (ctx as any).params as { id: string };
   const id = params?.id;
   if (!id) {
@@ -46,7 +47,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
     const { prisma } = await import('@/lib/prisma');
     const users = await prisma.$queryRaw`
       SELECT * FROM scim_sync_records
-      WHERE tenant_id = ${ctx.tenantId} AND resource_type = 'User' AND scim_id = ${id}
+      WHERE tenant_id = ${ctx.tenantId} AND resource_type = 'User' AND id = ${id}
       LIMIT 1
     `;
     const user = (users as any[])[0];
@@ -60,7 +61,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
 });
 
 // PUT /api/scim/v2/Users/{id}
-export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
+export const PUT = withScimHandler(async (request: NextRequest, ctx) => {
   const params = await (ctx as any).params as { id: string };
   const id = params?.id;
   if (!id) {
@@ -83,7 +84,7 @@ export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
       UPDATE scim_sync_records
       SET display_name = ${displayName}, email = ${email}, active = ${body.active ?? true},
           raw_attributes = ${JSON.stringify(body)}, last_synced_at = NOW(), updated_at = NOW()
-      WHERE tenant_id = ${ctx.tenantId} AND resource_type = 'User' AND scim_id = ${id}
+      WHERE tenant_id = ${ctx.tenantId} AND resource_type = 'User' AND id = ${id}
       RETURNING *
     `;
     const updated = (result as any[])[0];
@@ -92,12 +93,21 @@ export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     // Also update the actual user record
-    if (email) {
+    if (updated.internal_id) {
       await prisma.user.updateMany({
         where: { tenantId: ctx.tenantId, id: updated.internal_id },
         data: { firstName: displayName, status: body.active === false ? 'INACTIVE' : 'ACTIVE' },
       });
     }
+
+    await auditLog({
+      action: body.active === false ? AuditAction.USER_DEACTIVATED : AuditAction.USER_UPDATED,
+      tenantId: ctx.tenantId,
+      resourceType: 'user',
+      resourceId: updated.internal_id,
+      metadata: { scimId: id, email, source: 'scim', active: body.active },
+      request,
+    });
 
     return createSuccessResponse(ctx, scimUserResponse(updated));
   } catch {
@@ -106,7 +116,7 @@ export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
 });
 
 // PATCH /api/scim/v2/Users/{id}
-export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
+export const PATCH = withScimHandler(async (request: NextRequest, ctx) => {
   const params = await (ctx as any).params as { id: string };
   const id = params?.id;
   if (!id) {
@@ -137,7 +147,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
           display_name = COALESCE(${displayName}, display_name),
           email = COALESCE(${email}, email),
           updated_at = NOW()
-      WHERE tenant_id = ${ctx.tenantId} AND resource_type = 'User' AND scim_id = ${id}
+      WHERE tenant_id = ${ctx.tenantId} AND resource_type = 'User' AND id = ${id}
       RETURNING *
     `;
     const updated = (result as any[])[0];
@@ -152,6 +162,15 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
       });
     }
 
+    await auditLog({
+      action: active === false ? AuditAction.USER_DEACTIVATED : AuditAction.USER_UPDATED,
+      tenantId: ctx.tenantId,
+      resourceType: 'user',
+      resourceId: updated.internal_id,
+      metadata: { scimId: id, source: 'scim', active },
+      request,
+    });
+
     return createSuccessResponse(ctx, scimUserResponse(updated));
   } catch {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM patch error. Please try again.', 500);
@@ -159,7 +178,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
 });
 
 // DELETE /api/scim/v2/Users/{id}
-export const DELETE = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+export const DELETE = withScimHandler(async (_request: NextRequest, ctx) => {
   const params = await (ctx as any).params as { id: string };
   const id = params?.id;
   if (!id) {
@@ -169,12 +188,33 @@ export const DELETE = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
     const { prisma } = await import('@/lib/prisma');
 
+    const records = await prisma.$queryRaw<Array<{ internal_id: string }>>`
+      SELECT internal_id FROM scim_sync_records
+      WHERE tenant_id = ${ctx.tenantId} AND resource_type = 'User' AND id = ${id}
+      LIMIT 1
+    `;
+
     // Soft-delete: mark inactive instead of hard delete
     await prisma.$queryRaw`
       UPDATE scim_sync_records
       SET active = false, updated_at = NOW()
-      WHERE tenant_id = ${ctx.tenantId} AND resource_type = 'User' AND scim_id = ${id}
+      WHERE tenant_id = ${ctx.tenantId} AND resource_type = 'User' AND id = ${id}
     `;
+
+    if (records && records.length > 0 && records[0].internal_id) {
+      await prisma.user.updateMany({
+        where: { tenantId: ctx.tenantId, id: records[0].internal_id },
+        data: { status: 'INACTIVE' },
+      });
+
+      await auditLog({
+        action: AuditAction.USER_DEACTIVATED,
+        tenantId: ctx.tenantId,
+        resourceType: 'user',
+        resourceId: records[0].internal_id,
+        metadata: { scimId: id, source: 'scim' },
+      });
+    }
 
     return new NextResponse(null, { status: 204 });
   } catch {

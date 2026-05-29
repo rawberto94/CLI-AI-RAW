@@ -97,13 +97,23 @@ export const POST = withCronHandler(async (request, ctx) => {
           }
         }
 
+        // Resolve owner email for audit trail
+        let ownerEmail: string | null = null;
+        if (owner) {
+          const ownerUser = await prisma.user.findUnique({
+            where: { id: owner },
+            select: { email: true },
+          });
+          ownerEmail = ownerUser?.email ?? null;
+        }
+
         // Mark alert as sent
         await prisma.expirationAlert.update({
           where: { id: alert.id },
           data: {
             status: 'SENT',
             sentAt: new Date(),
-            sentTo: owner ? [{ email: owner }] : [],
+            sentTo: ownerEmail ? [{ email: ownerEmail }] : [],
           },
         });
 

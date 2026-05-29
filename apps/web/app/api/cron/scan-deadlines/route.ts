@@ -121,65 +121,91 @@ export const POST = withCronHandler(async (request, ctx) => {
     // Store or update deadline records
     // This would typically go to a ContractDeadline table
 
-    // Send email notifications for high-priority items
+    // Send batched email notifications for high-priority items (one digest per owner)
     const criticalDeadlines = deadlines.filter(d => d.riskLevel === 'high' || d.daysUntilExpiry <= 7);
     if (criticalDeadlines.length > 0) {
       const { sendEmail } = await import('@/lib/email/email-service');
-      const { emailTemplates } = await import('@/lib/email/templates');
       
+      // Resolve owner emails and group deadlines by owner
+      const deadlinesByOwner = new Map<string, typeof criticalDeadlines>();
       for (const deadline of criticalDeadlines) {
-        const template = emailTemplates.contractExpiring({
-          contractTitle: deadline.contractTitle,
-          expirationDate: deadline.expirationDate.toLocaleDateString(),
-          daysUntilExpiration: deadline.daysUntilExpiry,
-          contractId: deadline.contractId,
-          contractUrl: `${process.env.NEXT_PUBLIC_URL}/contracts/${deadline.contractId}`,
-        });
-        
-        // Get owner email from contract uploadedBy or fallback to admin
-        let ownerEmail = process.env.ADMIN_EMAIL || '';
+        let ownerEmail: string | null = null;
         if (deadline.uploadedBy) {
           const owner = await prisma.user.findUnique({
             where: { id: deadline.uploadedBy },
             select: { email: true },
           });
-          if (owner?.email) {
-            ownerEmail = owner.email;
-          }
+          ownerEmail = owner?.email ?? null;
         }
-        
-        await sendEmail({
-          to: ownerEmail,
-          subject: template.subject,
-          html: template.html,
-        });
+        if (!ownerEmail) {
+          ownerEmail = process.env.ADMIN_EMAIL || '';
+        }
+        if (!ownerEmail) continue;
+        if (!deadlinesByOwner.has(ownerEmail)) {
+          deadlinesByOwner.set(ownerEmail, []);
+        }
+        deadlinesByOwner.get(ownerEmail)!.push(deadline);
       }
+
+      // Send one digest email per owner
+      const emailPromises = Array.from(deadlinesByOwner.entries()).map(async ([ownerEmail, ownerDeadlines]) => {
+        if (ownerDeadlines.length === 0) return;
+
+        const itemsHtml = ownerDeadlines.map(d => `
+          <li style="margin-bottom: 12px;">
+            <strong>${d.contractTitle}</strong> — expires in <strong>${d.daysUntilExpiry}</strong> days
+            (${d.expirationDate.toLocaleDateString()})
+            <br/>
+            <a href="${process.env.NEXT_PUBLIC_URL}/contracts/${d.contractId}" style="color: #0066CC;">View contract →</a>
+          </li>
+        `).join('');
+
+        const subject = ownerDeadlines.length === 1
+          ? `⚠️ Contract Expiring Soon: ${ownerDeadlines[0].contractTitle}`
+          : `⚠️ ${ownerDeadlines.length} Contracts Expiring Soon`;
+
+        const html = `
+          <!DOCTYPE html>
+          <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+              <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #0066CC 0%, #0052A3 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0;">
+                  <h2>Contract Deadline Alert</h2>
+                </div>
+                <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
+                  <p>The following contracts require attention:</p>
+                  <ul>${itemsHtml}</ul>
+                  <p style="color: #666; font-size: 12px; margin-top: 20px;">You are receiving this because you are the contract owner or an administrator.</p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `;
+
+        await sendEmail({ to: ownerEmail, subject, html });
+      });
+
+      await Promise.allSettled(emailPromises);
     }
 
-    // Create in-app notifications for all deadlines
-    if (deadlines.length > 0) {
-      const notificationsData = await Promise.all(
-        deadlines.map(async deadline => {
-          // Get the actual user ID (owner or uploader)
-          const userId = deadline.uploadedBy || 'admin';
-          
-          return {
-            tenantId: deadline.tenantId,
-            userId,
-            type: deadline.riskLevel === 'high' ? 'CONTRACT_DEADLINE' : 'SYSTEM',
-            title: deadline.riskLevel === 'high'
-              ? 'Contract Expiring Soon'
-              : 'Contract Deadline Approaching',
-            message: `${deadline.contractTitle} expires in ${deadline.daysUntilExpiry} days`,
-            link: `/contracts/${deadline.contractId}`,
-            metadata: {
-              contractId: deadline.contractId,
-              riskLevel: deadline.riskLevel,
-              daysUntilExpiry: deadline.daysUntilExpiry,
-            },
-          };
-        })
-      );
+    // Create in-app notifications for all deadlines (skip if no valid user)
+    const validDeadlines = deadlines.filter(d => d.uploadedBy);
+    if (validDeadlines.length > 0) {
+      const notificationsData = validDeadlines.map(deadline => ({
+        tenantId: deadline.tenantId,
+        userId: deadline.uploadedBy!,
+        type: deadline.riskLevel === 'high' ? 'CONTRACT_DEADLINE' : 'SYSTEM',
+        title: deadline.riskLevel === 'high'
+          ? 'Contract Expiring Soon'
+          : 'Contract Deadline Approaching',
+        message: `${deadline.contractTitle} expires in ${deadline.daysUntilExpiry} days`,
+        link: `/contracts/${deadline.contractId}`,
+        metadata: {
+          contractId: deadline.contractId,
+          riskLevel: deadline.riskLevel,
+          daysUntilExpiry: deadline.daysUntilExpiry,
+        },
+      }));
 
       try {
         await prisma.notification.createMany({

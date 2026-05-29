@@ -9,7 +9,7 @@
       "schedule": "0 * * * *"
     },
     {
-      "path": "/api/cron/daily-report?secret=${CRON_SECRET}&tenantId=demo",
+      "path": "/api/cron/daily-report?secret=${CRON_SECRET}",
       "schedule": "0 6 * * *"
     },
     {
@@ -23,6 +23,30 @@
     {
       "path": "/api/cron/retention-cleanup?secret=${CRON_SECRET}",
       "schedule": "0 3 * * 0"
+    },
+    {
+      "path": "/api/cron/lifecycle-scan",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/obligation-tracker",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/renewal-alerts",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/send-renewal-reminders",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/storage-cleanup",
+      "schedule": "0 4 * * 0"
+    },
+    {
+      "path": "/api/cron/webhook-retry",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
