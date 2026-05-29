@@ -1,14 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/integrations/connectors/encryption', () => ({
-  encryptCredentials: vi.fn((data) => ({
-    encrypted: JSON.stringify(data),
-    iv: 'iv',
-    authTag: 'tag',
-    version: 1,
-  })),
-  decryptCredentials: vi.fn((data) => JSON.parse(data.encrypted)),
-  isEncrypted: vi.fn((data) => Boolean(data && typeof data === 'object' && 'encrypted' in data && 'iv' in data && 'authTag' in data && 'version' in data)),
+  encryptCredentials: vi.fn(),
+  decryptCredentials: vi.fn(),
+  isEncrypted: vi.fn(),
 }));
 
 import {
@@ -16,6 +11,21 @@ import {
   encryptDataConnectionConfig,
   sanitizeDataConnectionForClient,
 } from '../data-connection-config';
+
+import { encryptCredentials, decryptCredentials, isEncrypted } from '@/lib/integrations/connectors/encryption';
+
+beforeEach(() => {
+  vi.mocked(encryptCredentials).mockImplementation((data: any) => ({
+    encrypted: JSON.stringify(data),
+    iv: 'iv',
+    authTag: 'tag',
+    version: 1,
+  }));
+  vi.mocked(decryptCredentials).mockImplementation((data: any) => JSON.parse(data.encrypted));
+  vi.mocked(isEncrypted).mockImplementation((data: any) =>
+    Boolean(data && typeof data === 'object' && 'encrypted' in data && 'iv' in data && 'authTag' in data && 'version' in data)
+  );
+});
 
 describe('data connection config helpers', () => {
   it('round-trips encrypted configs through the connector encryption helper', () => {

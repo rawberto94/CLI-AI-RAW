@@ -187,7 +187,12 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     }
 
     // Initialize OpenAI
-    const apiKey = getOpenAIApiKey();
+    let apiKey: string | undefined;
+    try {
+      apiKey = getOpenAIApiKey();
+    } catch {
+      apiKey = undefined;
+    }
     if (!apiKey) {
       return createErrorResponse(ctx, 'INTERNAL_ERROR', 'AI service not configured', 503);
     }

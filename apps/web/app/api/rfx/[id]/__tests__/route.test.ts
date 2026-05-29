@@ -53,6 +53,37 @@ vi.mock('data-orchestration/services', () => ({
   contractService: {},
 }));
 
+vi.mock('@/lib/openai-client', () => ({
+  createOpenAIClient: () => ({
+    chat: {
+      completions: {
+        create: vi.fn().mockResolvedValue({
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                scores: { 'Vendor A': { total: 85, criteria: { Price: 90, Technical: 80 } } },
+                rankings: [{ vendorName: 'Vendor A', totalScore: 85, rank: 1 }],
+                priceAnalysis: { lowest: 100000, highest: 100000, average: 100000, range: 0 },
+                recommendation: { winner: 'Vendor A', confidence: 0.9, justification: 'Best fit', risks: [] },
+                suggestions: [{ title: 'Extra Req', description: 'Desc', category: 'security', priority: 'should-have', source: 'ai', rationale: 'Important' }],
+                justification: 'Vendor A demonstrated the strongest technical capability.',
+                openingPosition: 'Start at $90K',
+                keyLevers: ['Volume discount'],
+                concessionStrategy: ['Quality tier'],
+                walkAwayPrice: 95000,
+                counterOffers: [{ scenario: 'Price push', response: 'Counter with value' }],
+                estimatedSavings: '10%',
+                suggestedTimeline: '2 weeks',
+              }),
+            },
+          }],
+        }),
+      },
+    },
+  }),
+  hasAIClientConfig: () => true,
+}));
+
 import { GET, PATCH } from '../route';
 
 // ── Helpers ───────────────────────────────────────────────────────────

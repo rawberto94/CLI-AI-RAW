@@ -98,9 +98,9 @@ describe('GET /api/drafts', () => {
 
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.data.data.drafts).toHaveLength(1);
-    expect(data.data.data.total).toBe(1);
-    expect(data.data.data.metrics.draft).toBe(1);
+    expect(data.data.drafts).toHaveLength(1);
+    expect(data.data.total).toBe(1);
+    expect(data.data.metrics.draft).toBe(1);
   });
 
   it('filters by status', async () => {
@@ -144,8 +144,8 @@ describe('GET /api/drafts', () => {
     const res = await GET(authReq('GET', BASE), {} as never);
     const data = await res.json();
 
-    expect(data.data.data.drafts).toEqual([]);
-    expect(data.data.data.total).toBe(0);
+    expect(data.data.drafts).toEqual([]);
+    expect(data.data.total).toBe(0);
   });
 });
 
@@ -182,7 +182,7 @@ describe('POST /api/drafts', () => {
 
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.data.data.draft.title).toBe('New Draft');
+    expect(data.data.draft.title).toBe('New Draft');
     expect(mockDraftCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ title: 'New Draft', tenantId: 'tenant-1', status: 'DRAFT' }),

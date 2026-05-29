@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
       create: vi.fn(),
       delete: vi.fn(),
     },
+    webhookDelivery: {
+      groupBy: vi.fn().mockResolvedValue([]),
+    },
   },
   mockWebhookService: { deliverWebhook: vi.fn() },
 }));
@@ -25,7 +28,7 @@ function req(method = 'GET', url = 'http://localhost:3000/api/webhooks', body?: 
 }
 
 describe('GET /api/webhooks', () => {
-  beforeEach(() => { vi.clearAllMocks(); webhookStore.clear(); mocks.mockPrisma.webhookConfig.findMany.mockRejectedValue(new Error('no db')); });
+  beforeEach(() => { vi.clearAllMocks(); webhookStore.clear(); mocks.mockPrisma.webhookConfig.findMany.mockRejectedValue(new Error('no db')); mocks.mockPrisma.webhookDelivery.groupBy.mockResolvedValue([]); });
 
   it('should return 401 without x-user-id', async () => {
     const r = new NextRequest('http://localhost:3000/api/webhooks', { method: 'GET', headers: { 'x-tenant-id': 't' } } as any);

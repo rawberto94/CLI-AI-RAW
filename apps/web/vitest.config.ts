@@ -66,6 +66,9 @@ export default defineConfig({
       'schemas': path.resolve(__dirname, '../../packages/schemas/src'),
       '@repo/workers': path.resolve(__dirname, '../../packages/workers/src'),
       '@repo/agents': path.resolve(__dirname, '../../packages/agents/src'),
+      '@repo/db': path.resolve(__dirname, '../../packages/clients/db'),
+      '@repo/utils': path.resolve(__dirname, '../../packages/utils/src'),
+      'clients-rag': path.resolve(__dirname, '../../packages/clients/rag'),
     },
   },
 });

@@ -21,6 +21,130 @@ vi.mock('next/navigation', () => ({
   notFound: vi.fn(),
 }));
 
+// Mock Prisma for tests (avoid requiring real DB connection)
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    $queryRaw: vi.fn().mockResolvedValue([{ 1: 1 }]),
+    $transaction: vi.fn(async (fn) => await fn({})),
+    user: {
+      findUnique: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+      count: vi.fn().mockResolvedValue(0),
+    },
+    contract: {
+      findUnique: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      create: vi.fn(),
+      deleteMany: vi.fn(),
+      count: vi.fn().mockResolvedValue(0),
+    },
+    tenant: {
+      findUnique: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    auditLog: {
+      create: vi.fn().mockResolvedValue({}),
+      findMany: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(0),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    dataExportRequest: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    deletionRequest: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    obligation: {
+      findMany: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(0),
+    },
+    notification: {
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    webhook: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    integrationEvent: {
+      findMany: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(0),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    apiTokenUsageBucket: {
+      count: vi.fn().mockResolvedValue(0),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    webhookDelivery: {
+      count: vi.fn().mockResolvedValue(0),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    chatConversation: {
+      findMany: vi.fn().mockResolvedValue([]),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    chatMessage: {
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    userSession: {
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    draft: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      count: vi.fn().mockResolvedValue(0),
+    },
+    rfx: {
+      findUnique: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    rfxBid: {
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+    },
+    rfxRequirement: {
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+    },
+    rfxEvent: {
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+    },
+    share: {
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+    },
+  },
+  getDb: vi.fn().mockResolvedValue({}),
+  checkDatabaseConnection: vi.fn().mockResolvedValue(true),
+}));
+
 // Mock Next.js server-side modules
 vi.mock('next/server', async () => {
   const actual = await vi.importActual('next/server');

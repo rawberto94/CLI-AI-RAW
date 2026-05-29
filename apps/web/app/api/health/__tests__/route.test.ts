@@ -17,7 +17,7 @@ vi.mock('data-orchestration/services', () => ({
 
 import { GET } from '../route';
 
-function createRequest(url = 'http://localhost:3000/api/health'): NextRequest {
+function createRequest(url = 'http://localhost:3000/api/health?ready=1'): NextRequest {
   return new NextRequest(url, { method: 'GET' });
 }
 

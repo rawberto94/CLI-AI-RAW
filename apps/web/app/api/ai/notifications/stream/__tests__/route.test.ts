@@ -17,7 +17,7 @@ vi.mock('@/lib/ai/agent-notifications', () => ({
 }));
 
 vi.mock('@/lib/api-middleware', () => ({
-  getAuthenticatedApiContext: mocks.mockGetAuthContext,
+  getAuthenticatedApiContextWithSessionFallback: mocks.mockGetAuthContext,
 }));
 
 // ── Import route AFTER mocks ──────────────────────────────────────────

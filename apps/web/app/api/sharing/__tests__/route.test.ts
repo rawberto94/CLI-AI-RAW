@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => ({
       update: vi.fn(),
     },
     notification: { create: vi.fn() },
+    contract: { findFirst: vi.fn() },
+    user: { findFirst: vi.fn() },
+    $transaction: vi.fn(async (fn) => await fn(mocks.mockPrisma)),
   },
   mockContractService: {},
 }));
@@ -62,7 +65,10 @@ describe('GET /api/sharing', () => {
 });
 
 describe('POST /api/sharing', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.mockPrisma.$transaction.mockImplementation(async (fn) => await fn(mocks.mockPrisma));
+  });
 
   it('should return 400 without documentId/recipients', async () => {
     const res = await POST(req('POST', 'http://localhost:3000/api/sharing', { documentId: '' }));
@@ -71,6 +77,8 @@ describe('POST /api/sharing', () => {
   });
 
   it('should create shares for recipients', async () => {
+    mocks.mockPrisma.contract.findFirst.mockResolvedValue({ id: 'd1' });
+    mocks.mockPrisma.user.findFirst.mockResolvedValue({ id: 'u2' });
     mocks.mockPrisma.documentShare.create.mockResolvedValue({
       id: 'sh1', documentId: 'd1', documentType: 'contract', sharedWith: 'u2', sharedBy: 'user-1',
       permission: 'VIEW', expiresAt: null, isActive: true, createdAt: new Date(),

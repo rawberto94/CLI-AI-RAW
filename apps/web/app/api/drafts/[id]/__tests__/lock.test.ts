@@ -108,7 +108,7 @@ describe('POST /api/drafts/[id]/lock', () => {
       ...UNLOCKED_DRAFT,
       isLocked: true,
       lockedBy: 'user-other',
-      lockedAt: new Date(Date.now() - 10 * 60 * 1000), // 10 mins ago (expired)
+      lockedAt: new Date(Date.now() - 31 * 60 * 1000), // 31 mins ago (expired)
     });
     mockDraftUpdate.mockResolvedValue({
       id: 'd1', isLocked: true, lockedBy: 'user-1', lockedAt: new Date(),
