@@ -20,10 +20,10 @@ import type { ApiTokenAuth } from './auth';
 const LIMIT = Number(process.env.API_V1_RATE_LIMIT || 600);
 const WINDOW = Number(process.env.API_V1_RATE_WINDOW_SECONDS || 60);
 
-let redis: Redis | null = null;
+let redis: InstanceType<typeof Redis> | null = null;
 let redisDisabled = false;
 
-function getRedis(): Redis | null {
+function getRedis(): InstanceType<typeof Redis> | null {
   if (redisDisabled) return null;
   if (redis) return redis;
   const url = process.env.REDIS_URL;

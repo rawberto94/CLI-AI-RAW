@@ -90,7 +90,7 @@ export async function GET(request: Request) {
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     select: {
       id: true,
-      title: true,
+      contractTitle: true,
       fileName: true,
       contractType: true,
       status: true,

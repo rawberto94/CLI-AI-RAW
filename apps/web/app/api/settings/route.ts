@@ -28,7 +28,7 @@ const DEFAULT_SETTINGS = {
     sessionTimeout: 8,
     requireMFA: false,
     passwordMinLength: 8,
-    ipWhitelist: [],
+    ipWhitelist: [] as string[],
   },
   display: {
     defaultDashboard: 'overview',

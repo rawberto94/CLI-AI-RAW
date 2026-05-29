@@ -298,7 +298,7 @@ export async function POST(
         contractId: sigRequest.contractId,
         requestId: sigRequest.id,
         signerEmail: tokenData.email,
-        completedAt: now.toISOString(),
+        completedAt: now,
       };
       import('@/lib/webhook-triggers')
         .then(({ triggerWebhook }) =>

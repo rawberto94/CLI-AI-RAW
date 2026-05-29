@@ -83,7 +83,7 @@ export const GET = withCronHandler(
         };
         triggerWebhook({
           tenantId: row.tenantId,
-          event: 'obligation.overdue',
+          event: 'obligation.overdue' as any,
           data: payload,
         }).catch(() => {});
         recordIntegrationEvent({

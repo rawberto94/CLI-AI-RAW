@@ -4,7 +4,7 @@
  * Allows platform owners to view, update, or switch context to a specific tenant
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { monitoringService } from 'data-orchestration/services';
@@ -18,7 +18,7 @@ async function verifyPlatformAdminAccess(
   ctx: ReturnType<typeof getApiContext>,
   userId: string,
   targetTenantId: string,
-): Promise<Response | null> {
+): Promise<NextResponse | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { role: true, tenantId: true },

@@ -171,7 +171,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
           if (settings.notifications) setNotificationSettings(s => ({ ...s, ...settings.notifications }));
           if (settings.security) setSecuritySettings(s => ({ ...s, ...settings.security }));
           if (settings.display) setDisplaySettings(s => ({ ...s, ...settings.display }));
-          if (settings.processing) setProcessingSettings(s => ({ ...s, ...settings.processing }));
+          if ((settings as any).processing) setProcessingSettings(s => ({ ...s, ...(settings as any).processing }));
 
           if (canManageOutbound) {
             const outboundRes = await fetch('/api/admin/outbound-overview').catch(() => null);

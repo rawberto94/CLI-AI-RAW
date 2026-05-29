@@ -128,10 +128,10 @@ export default function UsersPage() {
         const data = unwrapApiResponseData<{ members?: User[]; users?: User[] }>(await usersRes.json());
         const users = data.members || data.users || [];
         setUsers(users.map((user: User) => ({
-          avatar: null,
-          departments: [],
-          groups: [],
           ...user,
+          avatar: (user as any).avatar ?? null,
+          departments: (user as any).departments ?? [],
+          groups: (user as any).groups ?? [],
         })));
       }
 

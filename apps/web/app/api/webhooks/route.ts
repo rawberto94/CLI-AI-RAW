@@ -40,6 +40,10 @@ export const WEBHOOK_EVENTS = [
   'document.non_contract_detected',
   'document.signature_status_changed',
   'document.reclassified',
+  // Obligation events
+  'obligation.created',
+  'obligation.completed',
+  'obligation.overdue',
 ] as const;
 
 export type WebhookEvent = typeof WEBHOOK_EVENTS[number];

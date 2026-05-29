@@ -13,7 +13,7 @@ import {
   BatchDownloadRequest,
 } from "@/lib/integrations/services/batch-operations.service";
 import { withRateLimit } from "@/lib/integrations/middleware/rate-limit";
-import { getAuthenticatedApiContextWithSessionFallback, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { getAuthenticatedApiContextWithSessionFallback, getApiContext, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
 
 // Validation schemas
@@ -38,7 +38,7 @@ const batchDeleteSchema = z.object({
  * POST /api/contract-sources/batch/download
  * Batch download files from a contract source
  */
-async function handleDownload(req: NextRequest, ctx: Awaited<ReturnType<typeof getAuthenticatedApiContextWithSessionFallback>>): Promise<NextResponse> {
+async function handleDownload(req: NextRequest, ctx: AuthenticatedApiContext): Promise<NextResponse> {
   try {
     if (!ctx.tenantId) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
@@ -73,7 +73,7 @@ async function handleDownload(req: NextRequest, ctx: Awaited<ReturnType<typeof g
  * POST /api/contract-sources/batch/import
  * Batch import files to create contracts
  */
-async function handleImport(req: NextRequest, ctx: Awaited<ReturnType<typeof getAuthenticatedApiContextWithSessionFallback>>): Promise<NextResponse> {
+async function handleImport(req: NextRequest, ctx: AuthenticatedApiContext): Promise<NextResponse> {
   try {
     if (!ctx.tenantId || !ctx.userId) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
@@ -109,7 +109,7 @@ async function handleImport(req: NextRequest, ctx: Awaited<ReturnType<typeof get
  * POST /api/contract-sources/batch/delete
  * Batch delete files from a contract source
  */
-async function handleDelete(req: NextRequest, ctx: Awaited<ReturnType<typeof getAuthenticatedApiContextWithSessionFallback>>): Promise<NextResponse> {
+async function handleDelete(req: NextRequest, ctx: AuthenticatedApiContext): Promise<NextResponse> {
   try {
     if (!ctx.tenantId) {
       return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);

@@ -169,5 +169,5 @@ export async function createLoginRequest(provider: SamlProviderConfig): Promise<
 
 export function getSpMetadata(): string {
   const sp = ServiceProvider(getSpConfig());
-  return sp.getEntityMetadata();
+  return sp.getMetadata();
 }

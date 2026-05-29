@@ -7,7 +7,7 @@
  * It extracts text from the contract file and generates AI-powered artifacts.
  */
 
-import { PrismaClient, ArtifactType } from '@prisma/client';
+import { PrismaClient, ArtifactType, Prisma } from '@prisma/client';
 import { execFile } from 'child_process';
 import fs from 'fs/promises';
 import os from 'os';
@@ -620,6 +620,7 @@ function extractPersistedOcrFacts(aiMetadata: unknown): {
     initialTerm?: string;
     renewalTerm?: string;
     noticePeriodDays?: number;
+    autoRenewal?: boolean;
   } = {};
 
   const title = getString(diFieldMetadata?.title) || getString(diContractFields?.title) || getString(aiMeta.document_title);
@@ -675,7 +676,7 @@ function extractPersistedOcrFacts(aiMetadata: unknown): {
   const noticePeriodDays = getNumber(diFieldMetadata?.noticePeriodDays);
   if (noticePeriodDays != null) metadata.noticePeriodDays = noticePeriodDays;
 
-  if (typeof diFieldMetadata?.autoRenewal === 'boolean') metadata.autoRenewal = diFieldMetadata.autoRenewal;
+  if (typeof (diFieldMetadata as any)?.autoRenewal === 'boolean') metadata.autoRenewal = (diFieldMetadata as any).autoRenewal;
 
   if (mergedParties.length > 0) {
     metadata.parties = mergedParties.map(party => party.name);
@@ -3242,7 +3243,9 @@ export async function generateRealArtifacts(
         ...(finalStatus === 'COMPLETED'
           ? { processedAt: new Date(), lastAnalyzedAt: new Date() }
           : {}),
-        ...(mergedMetadata ? { metadata: mergedMetadata } : {}),
+        ...(typeof mergedMetadata === 'object' && mergedMetadata !== null
+          ? { metadata: mergedMetadata as Prisma.InputJsonValue }
+          : {}),
       },
     });
 

@@ -99,11 +99,11 @@ export async function queueContractReindex(
     triggerContractReindex(contractId, { tenantId })
       .then((res) => {
         if (!res.success) {
-          logger.warn({ contractId, tenantId, error: res.error }, 'Background reindex returned no embeddings');
+          logger.warn('Background reindex returned no embeddings', { contractId, tenantId, error: res.error });
         }
       })
       .catch((err: unknown) => {
-        logger.error({ contractId, tenantId, err }, 'Background reindex threw');
+        logger.error('Background reindex threw', err);
       });
 
     return { queued: true, message: 'Reindex queued for background processing' };

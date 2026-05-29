@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { Prisma } from '@prisma/client';
 
 import { getContractQueue } from '@repo/utils/queue/contract-queue';
 
@@ -59,7 +60,7 @@ async function clearRegeneratedArtifactFailureState(
   await prisma.contract.update({
     where: { id: contractId },
     data: {
-      metadata: nextMetadata,
+      metadata: nextMetadata as Prisma.InputJsonValue,
       updatedAt: new Date(),
     },
   });

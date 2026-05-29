@@ -27,6 +27,7 @@ import {
   isAdminNavigationRole,
   type NavigationAudience,
 } from '@/lib/navigation/visibility';
+import { Target } from 'lucide-react';
 import {
   LayoutDashboard,
   FileText,

@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { Prisma } from '@prisma/client';
 
 import { createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
 
@@ -184,7 +185,7 @@ export async function postContractVersion(
       versionNumber: newVersionNumber,
       parentVersionId: latestVersion?.id || null,
       summary,
-      changes: changes as Record<string, unknown>,
+      changes: changes as Prisma.InputJsonValue,
       fileUrl,
       uploadedBy,
       isActive: true,
@@ -328,7 +329,7 @@ export async function getContractVersionComparison(
     return createErrorResponse(context, 'NOT_FOUND', 'One or both versions not found', 404);
   }
 
-  const differences = (version2.changes || []) as VersionDifference[];
+  const differences = ((version2.changes || []) as unknown) as VersionDifference[];
 
   return createSuccessResponse(context, {
     success: true,

@@ -3,7 +3,7 @@
  * List and manage team members
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { hash } from 'bcryptjs';
 import { z } from 'zod';
@@ -33,7 +33,7 @@ function getSetupBaseUrl(request: NextRequest): string {
 
 export const GET = withAuthApiHandler(async (_request, ctx) => {
   if (!canManageTeam(ctx.userRole)) {
-    return new Response(JSON.stringify({
+    return NextResponse.json({
       success: false,
       error: {
         code: 'FORBIDDEN',
@@ -44,7 +44,7 @@ export const GET = withAuthApiHandler(async (_request, ctx) => {
         requestId: ctx.requestId,
         timestamp: new Date().toISOString(),
       },
-    }), {
+    }, {
       status: 403,
       headers: {
         'Content-Type': 'application/json',

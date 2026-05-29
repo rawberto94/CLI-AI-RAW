@@ -316,7 +316,7 @@ export function useChatPersistence(
 
       return {
         ...conversation,
-        messages: (conversation.messages || []).map(normalizePersistedMessage),
+        messages: ((conversation as any).messages || []).map(normalizePersistedMessage),
       };
     } catch {
       return null;

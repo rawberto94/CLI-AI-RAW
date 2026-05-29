@@ -240,7 +240,7 @@ export async function triggerObligationCreated(
 ) {
   return triggerWebhook({
     tenantId,
-    event: 'obligation.created',
+    event: 'obligation.created' as WebhookEvent,
     data: { obligationId, ...data },
   });
 }
@@ -255,7 +255,7 @@ export async function triggerObligationCompleted(
 ) {
   return triggerWebhook({
     tenantId,
-    event: 'obligation.completed',
+    event: 'obligation.completed' as WebhookEvent,
     data: { obligationId, ...data },
   });
 }

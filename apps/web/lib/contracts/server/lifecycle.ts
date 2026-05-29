@@ -177,7 +177,7 @@ export async function postContractLifecycle(
       isNewContract: false,
       markedAsExistingAt: new Date().toISOString(),
     };
-    if (contract.status === 'DRAFT') {
+    if ((contract.status as string) === 'DRAFT') {
       updateData.status = 'ACTIVE';
     }
   }

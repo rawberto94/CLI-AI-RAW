@@ -1022,7 +1022,7 @@ export async function postContractHealthScoreSync(
         ...(requestedContractIds && requestedContractIds.length > 0
           ? {
               id: {
-                in: requestedContractIds,
+                in: requestedContractIds as string[],
               },
             }
           : {}),
@@ -1035,8 +1035,8 @@ export async function postContractHealthScoreSync(
         totalValue: true,
         expirationDate: true,
         endDate: true,
-        artifacts: { select: { type: true, data: true } },
-        contractMetadata: { select: { riskScore: true, complianceStatus: true, dataQualityScore: true } },
+        artifacts: { select: { type: true, data: true } } as any,
+        contractMetadata: { select: { riskScore: true, complianceStatus: true, dataQualityScore: true } } as any,
       },
     });
 

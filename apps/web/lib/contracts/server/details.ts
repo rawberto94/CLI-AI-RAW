@@ -983,27 +983,27 @@ export async function putContractDetails(
     if (updates.clientName !== undefined) prismaUpdates.clientName = updates.clientName;
     if (updates.supplierName !== undefined) prismaUpdates.supplierName = updates.supplierName;
     if (updates.contractType !== undefined) prismaUpdates.contractType = updates.contractType;
-    if (updates.jurisdiction !== undefined) prismaUpdates.jurisdiction = updates.jurisdiction;
+    if ((updates as any).jurisdiction !== undefined) (prismaUpdates as any).jurisdiction = (updates as any).jurisdiction;
     if (updates.paymentTerms !== undefined) prismaUpdates.paymentTerms = updates.paymentTerms;
     if (updates.paymentFrequency !== undefined) prismaUpdates.paymentFrequency = updates.paymentFrequency;
-    if (updates.billingCycle !== undefined) prismaUpdates.billingCycle = updates.billingCycle;
+    if ((updates as any).billingCycle !== undefined) (prismaUpdates as any).billingCycle = (updates as any).billingCycle;
     if (updates.autoRenewalEnabled !== undefined) prismaUpdates.autoRenewalEnabled = updates.autoRenewalEnabled;
     if (updates.noticePeriodDays !== undefined) prismaUpdates.noticePeriodDays = updates.noticePeriodDays;
     if (updates.annualValue !== undefined) prismaUpdates.annualValue = updates.annualValue;
     if (updates.monthlyValue !== undefined) prismaUpdates.monthlyValue = updates.monthlyValue;
 
-    if (updates.notes !== undefined) {
+    if ((updates as any).notes !== undefined) {
       const existingMetadata = (existingContract.metadata as JsonRecord) || {};
-      prismaUpdates.metadata = { ...existingMetadata, notes: updates.notes };
+      prismaUpdates.metadata = { ...existingMetadata, notes: (updates as any).notes };
     }
 
-    if (updates.category !== undefined || updates.priority !== undefined) {
+    if (updates.category !== undefined || (updates as any).priority !== undefined) {
       const existingMetadata = (existingContract.metadata as JsonRecord) || {};
       prismaUpdates.metadata = {
         ...existingMetadata,
         ...(prismaUpdates.metadata as JsonRecord | undefined),
         ...(updates.category !== undefined && { category: updates.category }),
-        ...(updates.priority !== undefined && { priority: updates.priority }),
+        ...((updates as any).priority !== undefined && { priority: (updates as any).priority }),
       };
     }
 

@@ -501,9 +501,9 @@ export async function getContractMetadata(
   const enterpriseMetadata: EnterpriseMetadata = {
     document_number: aiMetadata.document_number || contract.id,
     document_title: aiMetadata.document_title || contract.contractTitle || contract.fileName || '',
-    document_classification: aiMetadata.document_classification || contract.documentClassification || 'contract',
+    document_classification: (aiMetadata.document_classification || contract.documentClassification || 'contract') as EnterpriseMetadata['document_classification'],
     document_classification_confidence: aiMetadata.document_classification_confidence ?? contract.documentClassificationConf ?? contract.classificationConf ?? undefined,
-    document_classification_warning: aiMetadata.document_classification_warning || contract.documentClassificationWarning,
+    document_classification_warning: (aiMetadata.document_classification_warning || contract.documentClassificationWarning) ?? undefined,
     contract_short_description: aiMetadata.contract_short_description || contract.description || artifactOverview?.summary || '',
     external_parties: normalizedParties,
     tcv_amount: aiMetadata.tcv_amount || (contract.totalValue ? Number(contract.totalValue) : 0) || (artifactOverview?.totalValue ? Number(artifactOverview.totalValue) : 0),
@@ -513,7 +513,7 @@ export async function getContractMetadata(
     periodicity: aiMetadata.periodicity || contract.billingCycle || '',
     currency: aiMetadata.currency || contract.currency || artifactOverview?.currency || 'USD',
     signature_date: aiMetadata.signature_date || contract.signatureDate?.toISOString().split('T')[0] || null,
-    signature_status: normalizedSignatureStatus,
+    signature_status: normalizedSignatureStatus as EnterpriseMetadata['signature_status'],
     signature_required_flag: normalizedSignatureRequiredFlag,
     start_date: aiMetadata.start_date || contract.effectiveDate?.toISOString().split('T')[0] || contract.startDate?.toISOString().split('T')[0] || artifactOverview?.effectiveDate || artifactOverview?.effective_date || artifactOverview?.startDate || artifactOverview?.start_date || '',
     end_date: aiMetadata.end_date || contract.expirationDate?.toISOString().split('T')[0] || contract.endDate?.toISOString().split('T')[0] || artifactOverview?.expirationDate || artifactOverview?.expiration_date || artifactOverview?.endDate || artifactOverview?.end_date || null,
@@ -643,7 +643,7 @@ export async function putContractMetadata(
       'VALIDATION_ERROR',
       'Invalid metadata payload',
       400,
-      { details: parsed.error.flatten() },
+      { details: JSON.stringify(parsed.error.flatten()) },
     );
   }
 
@@ -952,7 +952,7 @@ export async function putContractMetadataValidation(
       await prisma.contractMetadata.update({
         where: { contractId },
         data: {
-          customFields: customFields as Prisma.InputJsonValue,
+          customFields: customFields as any,
           lastUpdated: new Date(),
           updatedBy: 'human-validator',
         },
@@ -987,7 +987,7 @@ export async function putContractMetadataValidation(
         await prisma.contractMetadata.update({
           where: { contractId },
           data: {
-            customFields,
+            customFields: customFields as Prisma.InputJsonValue,
             lastUpdated: now,
             updatedBy: 'human-validator',
           },
@@ -1075,7 +1075,7 @@ export async function putContractMetadataValidation(
         data: {
           contractId,
           tenantId: context.tenantId,
-          customFields,
+          customFields: customFields as any,
           systemFields: {},
           tags: [],
           lastUpdated: new Date(),

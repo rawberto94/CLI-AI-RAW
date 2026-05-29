@@ -87,7 +87,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     let config: ConnectionConfig = {};
     if (connection.encryptedConfig) {
       try {
-        config = decryptDataConnectionConfig<ConnectionConfig>(connection.encryptedConfig);
+        config = decryptDataConnectionConfig<ConnectionConfig & Record<string, unknown>>(connection.encryptedConfig);
       } catch {
         return createErrorResponse(ctx, 'CONFIGURATION_ERROR', 'Failed to decode connection configuration', 500);
       }

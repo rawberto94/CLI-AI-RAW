@@ -5,7 +5,7 @@
  * Returns confidence scores and suggestions for each field.
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { withContractApiHandler } from '@/lib/contracts/server/context';
 import {
   optionsContractMetadataValidation,

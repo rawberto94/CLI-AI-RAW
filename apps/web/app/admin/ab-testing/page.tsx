@@ -28,6 +28,7 @@ import {
   FlaskConical,
   Play,
   Pause,
+  RefreshCw,
   CheckCircle2,
   TrendingUp,
   BarChart3,

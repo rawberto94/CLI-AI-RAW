@@ -39,7 +39,7 @@ export async function GET(
     where: { id, tenantId: auth.tenantId },
     select: {
       id: true,
-      title: true,
+      contractTitle: true,
       fileName: true,
       contractType: true,
       status: true,
@@ -58,7 +58,7 @@ export async function GET(
       ...(includeArtifacts
         ? {
             artifacts: {
-              select: { id: true, type: true, content: true, createdAt: true },
+              select: { id: true, type: true, data: true, createdAt: true },
             },
           }
         : {}),

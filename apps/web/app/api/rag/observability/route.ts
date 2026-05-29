@@ -123,7 +123,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       mmrLambda: 0.7,
     };
 
-    return createSuccessResponse(authCtx, {
+    return createSuccessResponse(ctx, {
       ok: true,
       timestamp: new Date().toISOString(),
       cache: cacheStats,

@@ -250,7 +250,7 @@ function buildMetadataIssueFilter(issue: MetadataIssueKey): Prisma.ContractWhere
     case 'missing-category':
       return { AND: [{ contractCategoryId: null }, { category: null }, { categoryL1: null }] };
     case 'missing-tags':
-      return { OR: [{ tags: null }, { tags: { equals: [] as Prisma.InputJsonValue[] } }] };
+      return { OR: [{ tags: { equals: null } as any }, { tags: { equals: [] as Prisma.InputJsonValue[] } }] };
     case 'low-confidence':
       return {
         OR: [
@@ -1111,7 +1111,7 @@ export async function getContractsOrganized(
       );
     } else {
       const grouped = await prisma.contract.groupBy({
-        by: [groupField as never],
+        by: [groupField as any],
         where: { tenantId, isDeleted: false },
         _count: { id: true },
         _sum: { totalValue: true },

@@ -429,7 +429,7 @@ export default function TemplatesPage() {
             ? `"${toDelete.name}" will be permanently removed. This cannot be undone.`
             : ''
         }
-        confirmText="Delete"
+        confirmLabel="Delete"
         variant="destructive"
         onConfirm={handleDelete}
         isLoading={deleteMutation.isPending}

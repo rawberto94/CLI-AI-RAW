@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
 import { getContractLifecycle, requiresApprovalWorkflow } from '@/lib/contract-helpers';
 import { prisma } from '@/lib/prisma';
-import { evaluateContractPreApprovalGates, formatUnmetPreApprovalGates } from '@/lib/governance/pre-approval-gates';
+import { evaluateContractPreApprovalGates, formatUnmetPreApprovalGates, type PreApprovalGateSummary } from '@/lib/governance/pre-approval-gates';
 
 import type { ContractApiContext } from '@/lib/contracts/server/context';
 
@@ -267,7 +267,7 @@ function getWorkflowApplicabilityError(
 
 function getWorkflowGovernanceError(
   context: ContractApiContext,
-  unmetGates: Array<{ gateId?: string; gateName?: string }>,
+  unmetGates: PreApprovalGateSummary[],
 ) {
   return createErrorResponse(
     context,
