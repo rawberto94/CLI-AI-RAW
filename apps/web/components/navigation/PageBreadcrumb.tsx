@@ -99,6 +99,9 @@ const ROUTE_CONFIG: Record<string, { label: string; icon: React.ComponentType<{ 
   '/jobs': { label: 'Jobs', icon: Activity },
   '/runs': { label: 'Runs', icon: Activity },
   '/obligations': { label: 'Obligations', icon: Target },
+  '/renewals-obligations': { label: 'Renewals & Obligations', icon: Calendar },
+  '/migration': { label: 'Contract Migration', icon: Upload },
+  '/admin/sso': { label: 'SSO Configuration', icon: Shield },
   '/drafting/copilot': { label: 'AI Copilot', icon: Sparkles },
   '/contracts/upload': { label: 'Upload', icon: Upload },
   // Contract-specific routes (dynamic)

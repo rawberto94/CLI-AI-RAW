@@ -198,11 +198,11 @@ providers.push(
         try {
           const { samlTokenStore } = await import('@/lib/auth/saml-token-store');
           const token = credentials.samlToken as string;
-          const samlData = samlTokenStore.get(token);
+          const samlData = await samlTokenStore.get(token);
           if (!samlData) return null;
 
           // Consume token (one-time use)
-          samlTokenStore.delete(token);
+          await samlTokenStore.delete(token);
 
           const user = await prisma.user.findUnique({
             where: { email: samlData.email },

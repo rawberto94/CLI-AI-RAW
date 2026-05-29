@@ -1,8 +1,10 @@
 /**
- * In-memory SAML token store for SSO bridge authentication.
+ * Redis-backed SAML token store for SSO bridge authentication.
  *
- * In production, replace with Redis or a database-backed store.
+ * Survives process restarts and works across multiple App Service instances.
  */
+
+import { redis } from '@/lib/redis';
 
 export interface SamlTokenPayload {
   email: string;
@@ -12,33 +14,54 @@ export interface SamlTokenPayload {
   expiresAt: number;
 }
 
-const store = new Map<string, SamlTokenPayload>();
+const REDIS_KEY_PREFIX = 'saml:token:';
+const DEFAULT_TTL_SECONDS = 5 * 60; // 5 minutes
 
-const CLEANUP_INTERVAL_MS = 60_000;
-
-function cleanup() {
-  const now = Date.now();
-  for (const [token, data] of store.entries()) {
-    if (data.expiresAt < now) store.delete(token);
-  }
+function key(token: string): string {
+  return `${REDIS_KEY_PREFIX}${token}`;
 }
 
-setInterval(cleanup, CLEANUP_INTERVAL_MS).unref();
-
 export const samlTokenStore = {
-  set(token: string, payload: Omit<SamlTokenPayload, 'expiresAt'>, ttlMs = 5 * 60 * 1000) {
-    store.set(token, { ...payload, expiresAt: Date.now() + ttlMs });
+  async set(token: string, payload: Omit<SamlTokenPayload, 'expiresAt'>, ttlSeconds = DEFAULT_TTL_SECONDS) {
+    const data: SamlTokenPayload = {
+      ...payload,
+      expiresAt: Date.now() + ttlSeconds * 1000,
+    };
+    await redis.set(key(token), JSON.stringify(data), 'EX', ttlSeconds);
   },
-  get(token: string): SamlTokenPayload | undefined {
-    cleanup();
-    return store.get(token);
+
+  async get(token: string): Promise<SamlTokenPayload | undefined> {
+    const raw = await redis.get(key(token));
+    if (!raw) return undefined;
+    try {
+      const data = JSON.parse(raw) as SamlTokenPayload;
+      if (data.expiresAt < Date.now()) {
+        await redis.del(key(token));
+        return undefined;
+      }
+      return data;
+    } catch {
+      await redis.del(key(token));
+      return undefined;
+    }
   },
-  delete(token: string) {
-    store.delete(token);
+
+  async delete(token: string) {
+    await redis.del(key(token));
   },
-  has(token: string): boolean {
-    cleanup();
-    const data = store.get(token);
-    return !!data && data.expiresAt > Date.now();
+
+  async has(token: string): Promise<boolean> {
+    const raw = await redis.get(key(token));
+    if (!raw) return false;
+    try {
+      const data = JSON.parse(raw) as SamlTokenPayload;
+      if (data.expiresAt < Date.now()) {
+        await redis.del(key(token));
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
   },
 };

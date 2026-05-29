@@ -64,6 +64,8 @@ import {
   PenTool,
   ScrollText,
   Gavel,
+  Key,
+  ArrowLeftRight,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -138,11 +140,12 @@ const navigationGroups: NavigationGroup[] = [
       },
       {
         name: 'Obligations & Renewals',
-        href: '/obligations',
+        href: '/renewals-obligations',
         icon: Calendar,
         description: 'Post-signature commitments and milestones',
         audiences: ['all'],
         children: [
+          { name: 'Obligations', href: '/obligations', icon: Target, description: 'Post-signature commitments', audiences: ['all'] },
           { name: 'Renewals', href: '/renewals', icon: RefreshCcw, description: 'Upcoming renewals', audiences: ['all'] },
           { name: 'Deadlines', href: '/deadlines', icon: Clock, description: 'Critical dates', audiences: ['all'] },
         ],
@@ -190,6 +193,7 @@ const navigationGroups: NavigationGroup[] = [
     label: 'Platform',
     items: [
       { name: 'Governance', href: '/governance', icon: Shield, description: 'Policies, routing, and controls', audiences: ['legal'] },
+      { name: 'Contract Migration', href: '/migration', icon: Upload, description: 'Bulk import existing contracts', audiences: ['all'], isNew: true },
       { name: 'Settings', href: '/settings', icon: Settings, description: 'Personal and platform settings', audiences: ['all'] },
     ],
   },
@@ -209,6 +213,7 @@ const navigationGroups: NavigationGroup[] = [
         requiresAdmin: true,
         children: [
           { name: 'Audit Logs', href: '/audit-logs', icon: ScrollText, description: 'Audit trail', audiences: ['admin'] },
+          { name: 'SSO', href: '/admin/sso', icon: Key, description: 'SAML & OIDC providers', audiences: ['admin'] },
           { name: 'Queue', href: '/admin/queue', icon: Activity, description: 'Processing queues', audiences: ['admin'] },
           { name: 'Integrations', href: '/admin/integrations', icon: Database, description: 'Data connections', audiences: ['admin'] },
         ],

@@ -2,37 +2,14 @@
  * SAML Initiation Endpoint
  * GET /api/auth/saml/init?id={providerId}
  *
- * Redirects the browser to the configured IdP SSO URL with a SAML AuthnRequest.
+ * Creates a signed AuthnRequest (via samlify) and redirects to the IdP.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import crypto from 'crypto';
-import { deflateRawSync } from 'zlib';
+import { loadSamlProvider, createLoginRequest } from '@/lib/auth/saml-service';
 
 export const dynamic = 'force-dynamic';
-
-function buildAuthnRequest(entityId: string, acsUrl: string, idpSsoUrl: string): string {
-  const id = `_${crypto.randomBytes(16).toString('hex')}`;
-  const issueInstant = new Date().toISOString();
-
-  const requestXml = `<?xml version="1.0" encoding="UTF-8"?>
-<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
-  xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
-  ID="${id}"
-  Version="2.0"
-  IssueInstant="${issueInstant}"
-  Destination="${idpSsoUrl}"
-  AssertionConsumerServiceURL="${acsUrl}"
-  ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST">
-  <saml:Issuer>${entityId}</saml:Issuer>
-  <samlp:NameIDPolicy Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress" AllowCreate="true"/>
-</samlp:AuthnRequest>`;
-
-  const deflated = deflateRawSync(Buffer.from(requestXml, 'utf-8'));
-  return deflated.toString('base64');
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,42 +21,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/auth/error?error=SAMLProviderIdMissing', request.url));
     }
 
-    // For demo/bridge purposes, we use a generic redirect.
-    // In a full implementation, load the provider config from tenantConfig,
-    // build a signed AuthnRequest, and redirect to the IdP.
-    const baseUrl = process.env.NEXTAUTH_URL || `https://${request.headers.get('host')}`;
-    const entityId = `${baseUrl}/api/auth/saml/metadata`;
-    const acsUrl = `${baseUrl}/api/auth/saml/callback`;
-
-    // Load provider config to get SSO URL
     const tenantId = request.headers.get('x-tenant-id') || 'default';
-    const config = await prisma.tenantConfig.findUnique({
-      where: { tenantId },
-      select: { securitySettings: true },
-    });
+    const provider = await loadSamlProvider(tenantId, providerId);
 
-    const securitySettings = (config?.securitySettings || {}) as {
-      ssoProviders?: Array<{
-        id: string;
-        ssoUrl?: string;
-        protocol: 'saml' | 'oidc';
-      }>;
-    };
-
-    const provider = securitySettings.ssoProviders?.find(p => p.id === providerId && p.protocol === 'saml');
-    const idpSsoUrl = provider?.ssoUrl;
-
-    if (!idpSsoUrl) {
-      logger.warn('[SAML] No SSO URL configured for provider', { providerId });
+    if (!provider) {
+      logger.warn('[SAML] No provider config found', { tenantId, providerId });
       return NextResponse.redirect(new URL('/auth/error?error=SAMLConfigMissing', request.url));
     }
 
-    const samlRequest = buildAuthnRequest(entityId, acsUrl, idpSsoUrl);
+    const { context } = await createLoginRequest(provider);
 
-    // Build redirect URL with SAMLRequest and RelayState
-    const redirectUrl = new URL(idpSsoUrl);
-    redirectUrl.searchParams.set('SAMLRequest', encodeURIComponent(samlRequest));
-    redirectUrl.searchParams.set('RelayState', callbackUrl);
+    // Encode provider info into RelayState
+    const relayState = Buffer.from(JSON.stringify({ providerId, callbackUrl })).toString('base64');
+
+    const redirectUrl = new URL(context);
+    redirectUrl.searchParams.set('RelayState', relayState);
 
     return NextResponse.redirect(redirectUrl);
   } catch (err) {

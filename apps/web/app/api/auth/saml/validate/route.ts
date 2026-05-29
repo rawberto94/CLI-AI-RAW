@@ -22,13 +22,13 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Token required', 400);
     }
 
-    const data = samlTokenStore.get(token);
+    const data = await samlTokenStore.get(token);
     if (!data) {
       return createSuccessResponse(ctx, { valid: false, reason: 'Token not found or expired' });
     }
 
     // Consume token (one-time use)
-    samlTokenStore.delete(token);
+    await samlTokenStore.delete(token);
 
     return createSuccessResponse(ctx, {
       valid: true,

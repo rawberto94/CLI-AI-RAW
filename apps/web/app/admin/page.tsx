@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback as _useCallback } from "react";
 import { unwrapApiResponseData } from '@/lib/api-fetch';
 import { UserGroupsManagement } from '@/components/admin/user-groups-management';
+import SSOConfigManager from '@/components/admin/SSOConfigManager';
 import { toast } from 'sonner';
 import { useConfirm, confirmPresets } from '@/components/dialogs/ConfirmDialog';
 import { useSession } from "next-auth/react";
@@ -26,6 +27,7 @@ import {
   FileText,
   Zap,
   BarChart3,
+  Key,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -679,6 +681,10 @@ export default function TenantAdminPage() {
               <TabsTrigger value="ai-accuracy" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Zap className="h-4 w-4" />
                 AI Accuracy
+              </TabsTrigger>
+              <TabsTrigger value="sso" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+                <Key className="h-4 w-4" />
+                SSO
               </TabsTrigger>
             </TabsList>
 

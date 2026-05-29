@@ -2,9 +2,8 @@
  * SAML Assertion Consumer Service (ACS)
  * POST /api/auth/saml/callback
  *
- * Receives SAML assertions from IdP and creates/updates user session.
- * This is a bridge endpoint: it validates the SAML response and then
- * redirects to the NextAuth credentials flow with a secure token.
+ * Receives SAML assertions from IdP, verifies XML signatures,
+ * extracts attributes, and creates/updates user session.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -12,12 +11,13 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';
 import { samlTokenStore } from '@/lib/auth/saml-token-store';
+import { loadSamlProvider, parseSamlResponse } from '@/lib/auth/saml-service';
 
 export const dynamic = 'force-dynamic';
 
-function createSamlToken(payload: { email: string; name: string; tenantId?: string; role?: string }): string {
+async function createSamlToken(payload: { email: string; name: string; tenantId?: string; role?: string }): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
-  samlTokenStore.set(token, payload);
+  await samlTokenStore.set(token, payload);
   return token;
 }
 
@@ -31,18 +31,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.redirect(new URL('/auth/error?error=SAMLResponseMissing', request.url));
     }
 
-    // Decode base64 SAML response (minimal parsing for demo/bridge)
-    const decoded = Buffer.from(samlResponse, 'base64').toString('utf-8');
+    // Determine tenant and provider from RelayState or headers
+    // In production, the RelayState should contain encoded tenant+provider info
+    const tenantId = request.headers.get('x-tenant-id') || 'default';
+    // For multi-tenant SAML, the providerId should be passed via RelayState
+    const relayData = (() => {
+      try {
+        return relayState ? JSON.parse(Buffer.from(relayState, 'base64').toString()) : null;
+      } catch {
+        return null;
+      }
+    })();
+    const providerId = relayData?.providerId;
 
-    // Extract email from assertion (naive XML extraction)
-    const emailMatch = decoded.match(/<saml?:?NameID[^>]*>([^<]+)<\/saml?:?NameID>/i) ||
-                       decoded.match(/<saml?:?Attribute[^>]*Name="[^"]*email[^"]*"[^>]*>\s*<saml?:?AttributeValue[^>]*>([^<]+)<\/saml?:?AttributeValue>/i);
-    const email = emailMatch?.[1]?.trim();
+    if (!providerId) {
+      logger.error('[SAML] Provider ID missing from RelayState');
+      return NextResponse.redirect(new URL('/auth/error?error=SAMLProviderMissing', request.url));
+    }
 
-    if (!email) {
-      logger.error('[SAML] Could not extract email from SAML response');
+    // Load provider config
+    const provider = await loadSamlProvider(tenantId, providerId);
+    if (!provider) {
+      logger.error('[SAML] Provider not found', { tenantId, providerId });
+      return NextResponse.redirect(new URL('/auth/error?error=SAMLProviderNotFound', request.url));
+    }
+
+    // Parse and verify SAML response using samlify
+    const assertion = await parseSamlResponse(samlResponse, provider);
+
+    if (!assertion.email) {
+      logger.error('[SAML] Could not extract email from verified assertion');
       return NextResponse.redirect(new URL('/auth/error?error=SAMLEmailExtractionFailed', request.url));
     }
+
+    const email = assertion.email.toLowerCase().trim();
 
     // Resolve tenant mapping
     const existingUser = await prisma.user.findUnique({
@@ -50,34 +72,34 @@ export async function POST(request: NextRequest) {
       select: { id: true, tenantId: true, role: true, status: true },
     });
 
-    let tenantId: string | undefined;
+    let userTenantId: string | undefined;
     let role: string | undefined;
 
     if (existingUser) {
       if (existingUser.status !== 'ACTIVE') {
         return NextResponse.redirect(new URL('/auth/error?error=AccountInactive', request.url));
       }
-      tenantId = existingUser.tenantId;
+      userTenantId = existingUser.tenantId;
       role = existingUser.role;
     } else {
-      // Check for pending invitation
       const invitations = await prisma.teamInvitation.findMany({
         where: { email, status: 'PENDING', expiresAt: { gt: new Date() } },
         select: { tenantId: true, role: true },
       });
 
       if (invitations.length === 1) {
-        tenantId = invitations[0].tenantId;
+        userTenantId = invitations[0].tenantId;
         role = invitations[0].role;
       } else if (process.env.SSO_AUTO_PROVISION === 'true' && process.env.SSO_DEFAULT_TENANT_ID) {
-        tenantId = process.env.SSO_DEFAULT_TENANT_ID;
+        userTenantId = process.env.SSO_DEFAULT_TENANT_ID;
         role = 'member';
 
-        // Create user
         await prisma.user.create({
           data: {
             email,
-            tenantId,
+            firstName: assertion.firstName || null,
+            lastName: assertion.lastName || null,
+            tenantId: userTenantId,
             role,
             status: 'ACTIVE',
             emailVerified: true,
@@ -86,27 +108,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!tenantId) {
+    if (!userTenantId) {
       return NextResponse.redirect(new URL('/auth/error?error=SSOAccessDenied', request.url));
     }
 
     // Create secure exchange token
-    const token = createSamlToken({ email, name: email.split('@')[0], tenantId, role });
+    const token = await createSamlToken({
+      email,
+      name: assertion.firstName || email.split('@')[0],
+      tenantId: userTenantId,
+      role,
+    });
 
-    // Redirect to callback with token
-    const callbackUrl = relayState || '/dashboard';
+    const callbackUrl = relayData?.callbackUrl || '/dashboard';
     const redirectUrl = new URL('/auth/saml/success', request.url);
     redirectUrl.searchParams.set('token', token);
     redirectUrl.searchParams.set('callbackUrl', callbackUrl);
 
     return NextResponse.redirect(redirectUrl);
-  } catch (err) {
-    logger.error('[SAML] ACS processing error', { error: err });
+  } catch (error) {
+    logger.error('[SAML] ACS processing error', { error });
     return NextResponse.redirect(new URL('/auth/error?error=SAMLProcessingError', request.url));
   }
 }
 
 export async function GET(request: NextRequest) {
-  // Some IdPs send GET to ACS — redirect to error or handle accordingly
   return NextResponse.redirect(new URL('/auth/error?error=SAMLMethodNotAllowed', request.url));
 }
