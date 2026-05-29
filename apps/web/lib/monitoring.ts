@@ -120,8 +120,17 @@ class MonitoringService {
       startTime,
       end: () => {
         const duration = performance.now() - startTime;
-        // Performance tracking - slow query threshold check
-        void duration;
+        // Log slow operations (>1s) for profiling
+        if (duration > 1000) {
+          console.warn(`[Performance] Slow operation: ${name} took ${duration.toFixed(2)}ms`);
+        }
+        // Send to Sentry if configured
+        if (this.sentryDsn) {
+          this.captureMessage(
+            `span:${name}:${Math.round(duration)}ms`,
+            duration > 1000 ? 'warning' : 'info'
+          ).catch(() => {});
+        }
       },
     };
   }
@@ -130,11 +139,17 @@ class MonitoringService {
    * Track API request metrics
    */
   trackRequest(route: string, method: string, statusCode: number, duration: number): void {
-    // Request tracking - data available for external monitoring
-    void route;
-    void method;
-    void statusCode;
-    void duration;
+    // Log slow requests (>2s) for profiling
+    if (duration > 2000) {
+      console.warn(`[Performance] Slow request: ${method} ${route} ${statusCode} took ${duration.toFixed(2)}ms`);
+    }
+    // Send to Sentry if configured
+    if (this.sentryDsn) {
+      this.captureMessage(
+        `request:${method}:${route}:${statusCode}:${Math.round(duration)}ms`,
+        duration > 2000 || statusCode >= 500 ? 'warning' : 'info'
+      ).catch(() => {});
+    }
   }
 }
 

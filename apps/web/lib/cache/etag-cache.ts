@@ -196,6 +196,95 @@ export class ETagCache {
 // Singleton instances – one per cache domain
 // ---------------------------------------------------------------------------
 
+/**
+ * Redis-backed ETag cache for multi-instance deployments.
+ * Provides the same interface as ETagCache but with async methods
+ * and Redis backing for cross-instance consistency.
+ */
+export class RedisETagCache {
+  private fallback = new ETagCache();
+  private redisPrefix: string;
+  private defaultTTL: number;
+
+  constructor(options: ETagCacheOptions & { redisPrefix?: string } = {}) {
+    this.redisPrefix = options.redisPrefix || 'etag:';
+    this.defaultTTL = options.defaultTTL ?? 5 * 60 * 1000;
+  }
+
+  generateETag(data: unknown): string {
+    return this.fallback.generateETag(data);
+  }
+
+  async get<T = unknown>(key: string): Promise<ETagHitResult<T> | null> {
+    try {
+      const { redis } = await import('@/lib/redis');
+      const raw = await redis.get(`${this.redisPrefix}${key}`);
+      if (raw) {
+        const parsed = JSON.parse(raw as string);
+        if (parsed && Date.now() - parsed.timestamp < parsed.ttl) {
+          return { data: parsed.data as T, etag: parsed.etag };
+        }
+      }
+    } catch {
+      // Fall through to in-memory
+    }
+    return this.fallback.get<T>(key);
+  }
+
+  async set<T = unknown>(key: string, data: T, ttl?: number): Promise<string> {
+    const etag = this.fallback.generateETag(data);
+    const resolvedTtl = ttl ?? this.defaultTTL;
+    try {
+      const { redis } = await import('@/lib/redis');
+      await redis.setex(
+        `${this.redisPrefix}${key}`,
+        Math.ceil(resolvedTtl / 1000),
+        JSON.stringify({ data, etag, timestamp: Date.now(), ttl: resolvedTtl })
+      );
+    } catch {
+      // Fall through to in-memory
+    }
+    return this.fallback.set(key, data, ttl);
+  }
+
+  async invalidate(keyOrPrefix: string, prefix = false): Promise<number> {
+    try {
+      const { redis } = await import('@/lib/redis');
+      if (!prefix) {
+        await redis.del(`${this.redisPrefix}${keyOrPrefix}`);
+      } else {
+        const keys = await redis.keys(`${this.redisPrefix}${keyOrPrefix}*`);
+        for (const k of keys) {
+          await redis.del(k);
+        }
+      }
+    } catch {
+      // Fall through
+    }
+    return this.fallback.invalidate(keyOrPrefix, prefix);
+  }
+
+  matches(key: string, ifNoneMatch: string | null): boolean {
+    return this.fallback.matches(key, ifNoneMatch);
+  }
+
+  cleanup(): void {
+    this.fallback.cleanup();
+  }
+
+  clear(): void {
+    this.fallback.clear();
+  }
+
+  get size(): number {
+    return this.fallback.size;
+  }
+
+  dispose(): void {
+    this.fallback.dispose();
+  }
+}
+
 /** General-purpose API response cache (default 5 min TTL). */
 export const apiCache = new ETagCache();
 
@@ -204,6 +293,12 @@ export const contractCache = new ETagCache({ defaultTTL: 3 * 60 * 1000 });
 
 /** Artifact cache with longer TTL since artifacts change infrequently. */
 export const artifactCache = new ETagCache({ defaultTTL: 10 * 60 * 1000 });
+
+/** Multi-instance-safe Redis-backed contract cache (use in production with >1 instance). */
+export const contractCacheDistributed = new RedisETagCache({
+  defaultTTL: 3 * 60 * 1000,
+  redisPrefix: 'etag:contract:',
+});
 
 // ---------------------------------------------------------------------------
 // Helper – build standard cache headers for a Response

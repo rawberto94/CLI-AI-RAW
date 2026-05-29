@@ -328,6 +328,39 @@ providers.push(
 
         // Successful login — reset lockout counter & audit log
         await lockout?.recordSuccessfulLogin(email, 'unknown').catch(() => {});
+
+        // Impossible-travel detection (best-effort via Redis-stored previous login)
+        try {
+          const { detectImpossibleTravel } = await import('@/lib/security/intrusion-detection');
+          const { redis } = await import('@/lib/redis');
+          const currentIp = (credentials as any)?.__clientIp || 'unknown';
+          const prevKey = `login:ip:${user.id}`;
+          const prev = await redis.get(prevKey);
+          if (prev) {
+            const prevData = JSON.parse(prev) as { ip: string; time: number };
+            const timeDiff = Date.now() - prevData.time;
+            const result = detectImpossibleTravel(
+              { ip: currentIp, country: '', latitude: 0, longitude: 0 },
+              { ip: prevData.ip, country: '', latitude: 0, longitude: 0 },
+              timeDiff
+            );
+            if (result.impossible && timeDiff < 24 * 60 * 60 * 1000) {
+              await auditLog({
+                action: AuditAction.SUSPICIOUS_ACTIVITY,
+                userId: user.id,
+                userEmail: email,
+                tenantId: user.tenantId,
+                metadata: { type: 'impossible_travel', previousIp: prevData.ip, currentIp, details: result.details },
+                success: false,
+                errorMessage: `Impossible travel detected: ${result.details}`,
+              }).catch(() => {});
+            }
+          }
+          await redis.setex(prevKey, 30 * 24 * 60 * 60, JSON.stringify({ ip: currentIp, time: Date.now() }));
+        } catch {
+          // Non-blocking: impossible-travel check must not break login
+        }
+
         await auditLog({
           action: AuditAction.LOGIN_SUCCESS,
           userId: user.id,

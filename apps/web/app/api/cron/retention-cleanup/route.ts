@@ -8,12 +8,13 @@
  *   - WebhookDelivery        — terminal (success / dead) older than
  *                              DELIVERY_RETENTION_DAYS (default 30).
  *                              Pending rows are NEVER deleted.
+ *   - AuditLog               — older than AUDIT_LOG_RETENTION_DAYS (default 365).
  *
  * Auth: `Authorization: Bearer <CRON_SECRET>` (handled by withCronHandler).
  *
  * Query params:
  *   - dryRun=1 — count what would be deleted without deleting.
- *   - eventDays / usageDays / deliveryDays — per-target overrides (integers).
+ *   - eventDays / usageDays / deliveryDays / auditDays — per-target overrides (integers).
  */
 
 import { NextRequest } from 'next/server';
@@ -25,6 +26,7 @@ export const dynamic = 'force-dynamic';
 const DEFAULT_EVENT_DAYS = parseInt(process.env.EVENT_RETENTION_DAYS || '90', 10);
 const DEFAULT_USAGE_DAYS = parseInt(process.env.USAGE_RETENTION_DAYS || '30', 10);
 const DEFAULT_DELIVERY_DAYS = parseInt(process.env.DELIVERY_RETENTION_DAYS || '30', 10);
+const DEFAULT_AUDIT_DAYS = parseInt(process.env.AUDIT_LOG_RETENTION_DAYS || '365', 10);
 
 function dayCutoff(days: number): Date {
   return new Date(Date.now() - Math.max(1, days) * 24 * 60 * 60 * 1000);
@@ -41,15 +43,17 @@ export const POST = withCronHandler(async (request: NextRequest, ctx) => {
   const eventDays = parseInt(url.searchParams.get('eventDays') || '', 10) || DEFAULT_EVENT_DAYS;
   const usageDays = parseInt(url.searchParams.get('usageDays') || '', 10) || DEFAULT_USAGE_DAYS;
   const deliveryDays = parseInt(url.searchParams.get('deliveryDays') || '', 10) || DEFAULT_DELIVERY_DAYS;
+  const auditDays = parseInt(url.searchParams.get('auditDays') || '', 10) || DEFAULT_AUDIT_DAYS;
 
   const prisma = await getPrisma();
 
   const eventCutoff = dayCutoff(eventDays);
   const usageCutoff = dayCutoff(usageDays);
   const deliveryCutoff = dayCutoff(deliveryDays);
+  const auditCutoff = dayCutoff(auditDays);
 
   // Count first; for dryRun we stop after the count step.
-  const [eventCandidates, usageCandidates, deliveryCandidates] = await Promise.all([
+  const [eventCandidates, usageCandidates, deliveryCandidates, auditCandidates] = await Promise.all([
     prisma.integrationEvent.count({ where: { createdAt: { lt: eventCutoff } } }),
     prisma.apiTokenUsageBucket.count({ where: { hourBucket: { lt: usageCutoff } } }),
     prisma.webhookDelivery.count({
@@ -58,22 +62,24 @@ export const POST = withCronHandler(async (request: NextRequest, ctx) => {
         updatedAt: { lt: deliveryCutoff },
       },
     }),
+    prisma.auditLog.count({ where: { createdAt: { lt: auditCutoff } } }),
   ]);
 
   if (dryRun) {
     return createSuccessResponse(ctx, {
       success: true,
       dryRun: true,
-      windows: { eventDays, usageDays, deliveryDays },
+      windows: { eventDays, usageDays, deliveryDays, auditDays },
       wouldDelete: {
         integrationEvents: eventCandidates,
         apiTokenUsageBuckets: usageCandidates,
         webhookDeliveries: deliveryCandidates,
+        auditLogs: auditCandidates,
       },
     });
   }
 
-  const [eventResult, usageResult, deliveryResult] = await Promise.all([
+  const [eventResult, usageResult, deliveryResult, auditResult] = await Promise.all([
     prisma.integrationEvent.deleteMany({ where: { createdAt: { lt: eventCutoff } } }),
     prisma.apiTokenUsageBucket.deleteMany({ where: { hourBucket: { lt: usageCutoff } } }),
     prisma.webhookDelivery.deleteMany({
@@ -82,15 +88,17 @@ export const POST = withCronHandler(async (request: NextRequest, ctx) => {
         updatedAt: { lt: deliveryCutoff },
       },
     }),
+    prisma.auditLog.deleteMany({ where: { createdAt: { lt: auditCutoff } } }),
   ]);
 
   return createSuccessResponse(ctx, {
     success: true,
-    windows: { eventDays, usageDays, deliveryDays },
+    windows: { eventDays, usageDays, deliveryDays, auditDays },
     deleted: {
       integrationEvents: eventResult.count,
       apiTokenUsageBuckets: usageResult.count,
       webhookDeliveries: deliveryResult.count,
+      auditLogs: auditResult.count,
     },
   });
 });

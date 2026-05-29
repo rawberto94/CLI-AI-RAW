@@ -134,6 +134,9 @@ function generateRequestId(): string {
 }
 
 // Rate limiting configuration
+// PRODUCTION REQUIREMENT: Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
+// for multi-instance deployments. Without Redis, rate limits are per-instance
+// in-memory only and will NOT be enforced consistently across instances.
 // Uses Redis for multi-instance deployments; falls back to in-memory
 const RATE_LIMIT_WINDOW = 60; // 1 minute (seconds for Redis TTL)
 const RATE_LIMIT_MAX = 100; // requests per window for general users

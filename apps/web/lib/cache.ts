@@ -1,27 +1,69 @@
 /**
  * Redis Cache Utility
  * Provides caching layer for expensive API operations
+ * Supports both Upstash Redis (REST) and standard Redis (ioredis/TCP)
  * Falls back gracefully when Redis is not available
  */
 
-import { Redis } from '@upstash/redis';
+import { Redis as UpstashRedis } from '@upstash/redis';
+import IORedis from 'ioredis';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
-// Initialize Redis client (using Upstash for serverless compatibility)
-// Set these in your .env file:
-// REDIS_URL=your_redis_url
-// REDIS_TOKEN=your_redis_token
+// Unified Redis interface — works with Upstash REST or standard TCP Redis
+interface CacheRedis {
+  get<T>(key: string): Promise<T | null>;
+  setex(key: string, seconds: number, value: string): Promise<string | null>;
+  del(key: string): Promise<number>;
+  keys(pattern: string): Promise<string[]>;
+}
 
-let redis: Redis | null = null;
+let redis: CacheRedis | null = null;
 
-try {
-  if (process.env.REDIS_URL && process.env.REDIS_TOKEN) {
-    redis = new Redis({
-      url: process.env.REDIS_URL,
-      token: process.env.REDIS_TOKEN,
+function createUpstashClient(): CacheRedis | null {
+  if (!process.env.REDIS_URL || !process.env.REDIS_TOKEN) return null;
+  const client = new UpstashRedis({
+    url: process.env.REDIS_URL,
+    token: process.env.REDIS_TOKEN,
+  });
+  return {
+    get: async <T>(key: string) => client.get<T>(key),
+    setex: async (key, seconds, value) => { await client.setex(key, seconds, value); return 'OK'; },
+    del: async (key) => { await client.del(key); return 1; },
+    keys: async (pattern) => client.keys(pattern),
+  };
+}
+
+function createIORedisClient(): CacheRedis | null {
+  if (!process.env.REDIS_HOST) return null;
+  try {
+    const client = new IORedis({
+      host: process.env.REDIS_HOST,
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      password: process.env.REDIS_PASSWORD || undefined,
+      db: parseInt(process.env.REDIS_DB || '0', 10),
+      lazyConnect: true,
+      maxRetriesPerRequest: 2,
+      showFriendlyErrorStack: isDev,
     });
+    return {
+      get: async <T>(key: string) => {
+        const val = await client.get(key);
+        if (val === null) return null;
+        try { return JSON.parse(val) as T; } catch { return val as unknown as T; }
+      },
+      setex: async (key, seconds, value) => client.setex(key, seconds, value),
+      del: async (key) => client.del(key),
+      keys: async (pattern) => client.keys(pattern) as Promise<string[]>,
+    };
+  } catch {
+    return null;
   }
+}
+
+// Try Upstash first (REST, serverless-friendly), then fall back to standard Redis
+try {
+  redis = createUpstashClient() || createIORedisClient();
 } catch {
   // Redis initialization failed, running without cache
 }
@@ -96,7 +138,9 @@ export async function deleteCachedByPattern(pattern: string): Promise<void> {
   try {
     const keys = await redis.keys(pattern);
     if (keys.length > 0) {
-      await redis.del(...keys);
+      for (const k of keys) {
+        await redis.del(k);
+      }
     }
   } catch {
     // Cache DELETE pattern error - ignore
