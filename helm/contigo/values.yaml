@@ -71,11 +71,99 @@ autoscaling:
 # Environment variables (non-sensitive)
 env:
   NODE_ENV: production
+  LOG_LEVEL: info
+  PORT: "3000"
   NEXT_TELEMETRY_DISABLED: "1"
+  AUTH_TRUST_HOST: "true"
+  REQUIRE_AUTH: "true"
+  ENABLE_AI_FEATURES: "true"
+  ENABLE_HEALTH_CHECKS: "true"
+  RAG_INTEGRATION_ENABLED: "true"
+  RAG_AUTO_INDEX: "true"
+  RAG_EMBED_MODEL: text-embedding-3-small
+  RAG_EMBED_DIMENSIONS: "1024"
+  RAG_RETRIEVAL_K: "8"
+  AZURE_OPENAI_DEPLOYMENT: gpt-4o
+  AZURE_OPENAI_EMBEDDING_DEPLOYMENT: text-embedding-3-small
+  AZURE_OPENAI_API_VERSION: "2024-02-01"
+  AZURE_DI_DEFAULT_MODEL: layout
+  AZURE_DI_FEATURES: keyValuePairs
+  STORAGE_PROVIDER: minio
+  MINIO_PORT: "9000"
+  MINIO_BUCKET: contracts
+  MINIO_USE_SSL: "false"
+  S3_BUCKET: contracts
+  S3_REGION: us-east-1
+  S3_USE_SSL: "false"
+  AZURE_STORAGE_CONTAINER: contracts
+  AZURE_STORAGE_CONTAINER_NAME: contracts
+  AZURE_STORAGE_REGION: switzerlandnorth
 
-# External secrets (from Key Vault or k8s secrets)
-externalSecrets:
-  enabled: false
+# Secret values. Azure deployments map Key Vault objects to these runtime env names.
+secrets:
+  keyVaultObjects:
+    - objectName: database-url
+      keys: [DATABASE_URL]
+    - objectName: direct-database-url
+      keys: [DIRECT_DATABASE_URL]
+    - objectName: redis-url
+      keys: [REDIS_URL]
+    - objectName: redis-host
+      keys: [REDIS_HOST]
+    - objectName: redis-password
+      keys: [REDIS_PASSWORD]
+    - objectName: auth-secret
+      keys: [AUTH_SECRET, NEXTAUTH_SECRET]
+    - objectName: jwt-secret
+      keys: [JWT_SECRET]
+    - objectName: session-secret
+      keys: [SESSION_SECRET]
+    - objectName: azure-openai-endpoint
+      keys: [AZURE_OPENAI_ENDPOINT]
+    - objectName: azure-openai-api-key
+      keys: [AZURE_OPENAI_API_KEY]
+    - objectName: azure-document-intelligence-endpoint
+      keys: [AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT]
+    - objectName: azure-document-intelligence-key
+      keys: [AZURE_DOCUMENT_INTELLIGENCE_KEY]
+    - objectName: minio-endpoint
+      keys: [MINIO_ENDPOINT]
+    - objectName: minio-access-key
+      keys: [MINIO_ACCESS_KEY, S3_ACCESS_KEY]
+    - objectName: minio-secret-key
+      keys: [MINIO_SECRET_KEY, S3_SECRET_KEY]
+    - objectName: azure-storage-account-name
+      keys: [AZURE_STORAGE_ACCOUNT_NAME]
+    - objectName: azure-storage-account-key
+      keys: [AZURE_STORAGE_ACCOUNT_KEY]
+    - objectName: azure-storage-container
+      keys: [AZURE_STORAGE_CONTAINER, AZURE_STORAGE_CONTAINER_NAME]
+    - objectName: sentry-dsn
+      keys: [SENTRY_DSN]
+  manual:
+    DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/contigo"
+    DIRECT_DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/contigo"
+    REDIS_URL: "redis://redis:6379"
+    REDIS_HOST: "redis"
+    REDIS_PASSWORD: ""
+    AUTH_SECRET: "change-me-in-production"
+    NEXTAUTH_SECRET: "change-me-in-production"
+    JWT_SECRET: "change-me-in-production"
+    SESSION_SECRET: "change-me-in-production"
+    AZURE_OPENAI_ENDPOINT: ""
+    AZURE_OPENAI_API_KEY: ""
+    AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT: ""
+    AZURE_DOCUMENT_INTELLIGENCE_KEY: ""
+    MINIO_ENDPOINT: "minio"
+    MINIO_ACCESS_KEY: "minioadmin"
+    MINIO_SECRET_KEY: "minioadmin"
+    S3_ACCESS_KEY: "minioadmin"
+    S3_SECRET_KEY: "minioadmin"
+    AZURE_STORAGE_ACCOUNT_NAME: ""
+    AZURE_STORAGE_ACCOUNT_KEY: ""
+    AZURE_STORAGE_CONTAINER: "contracts"
+    AZURE_STORAGE_CONTAINER_NAME: "contracts"
+    SENTRY_DSN: ""
 
 # Azure specific
 azure:

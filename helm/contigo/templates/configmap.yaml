@@ -5,12 +5,15 @@ metadata:
   labels:
     {{- include "contigo.labels" . | nindent 4 }}
 data:
-  NODE_ENV: {{ .Values.env.NODE_ENV | quote }}
-  NEXT_TELEMETRY_DISABLED: {{ .Values.env.NEXT_TELEMETRY_DISABLED | quote }}
-  {{- if .Values.azure.enabled }}
-  STORAGE_PROVIDER: "azure"
-  AZURE_STORAGE_ACCOUNT: {{ .Values.azure.storageAccount | quote }}
-  AZURE_STORAGE_CONTAINER: {{ .Values.azure.storageContainer | quote }}
+  {{- range $key, $value := .Values.env }}
+  {{ $key }}: {{ $value | quote }}
   {{- end }}
-  NEXT_PUBLIC_APP_URL: "https://{{ .Values.ingress.host }}"
-  NEXT_PUBLIC_WS_URL: "wss://{{ .Values.ingress.host }}/ws"
+  {{- if not (hasKey .Values.env "NEXTAUTH_URL") }}
+  NEXTAUTH_URL: {{ printf "https://%s" .Values.ingress.host | quote }}
+  {{- end }}
+  {{- if not (hasKey .Values.env "NEXT_PUBLIC_APP_URL") }}
+  NEXT_PUBLIC_APP_URL: {{ printf "https://%s" .Values.ingress.host | quote }}
+  {{- end }}
+  {{- if not (hasKey .Values.env "NEXT_PUBLIC_WS_URL") }}
+  NEXT_PUBLIC_WS_URL: {{ printf "wss://%s/ws" .Values.ingress.host | quote }}
+  {{- end }}

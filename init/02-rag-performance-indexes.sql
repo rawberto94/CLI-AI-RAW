@@ -14,9 +14,9 @@ IF EXISTS (
     FROM information_schema.columns
     WHERE table_name = 'ContractEmbedding'
         AND column_name = 'embedding'
-) THEN -- Ensure the vector column has explicit 1536 dimensions (text-embedding-3-small)
+) THEN -- Ensure the vector column has explicit 1024 dimensions (Azure text-embedding-3-small Matryoshka)
 ALTER TABLE "ContractEmbedding"
-ALTER COLUMN embedding TYPE vector(1536);
+ALTER COLUMN embedding TYPE vector(1024);
 CREATE INDEX idx_contract_embedding_vector_hnsw ON "ContractEmbedding" USING hnsw ("embedding" vector_cosine_ops) WITH (m = 16, ef_construction = 200);
 RAISE NOTICE 'Created HNSW vector index on ContractEmbedding.embedding';
 END IF;

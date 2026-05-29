@@ -721,7 +721,7 @@ export async function hybridSearch(
     
     // Generate embedding for cache lookup (we'll reuse it for search too)
     const embModel = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
-    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1536', 10);
+    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
     const embCreateParams: Record<string, unknown> = { model: embModel, input: [query] };
     if (embDims > 0 && embModel.includes('text-embedding-3')) embCreateParams.dimensions = embDims;
     const cacheEmbResponse = await openai.embeddings.create(embCreateParams as any);
@@ -1435,7 +1435,7 @@ export async function processContractWithSemanticChunking(
     const batch = contextualizedChunks.slice(i, i + BATCH_SIZE);
     const texts = batch.map(c => c.text);
     
-    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1536', 10);
+    const embDims = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
     const embParams: Record<string, unknown> = { model, input: texts };
     if (embDims > 0 && model.includes('text-embedding-3')) embParams.dimensions = embDims;
     const response = await openai.embeddings.create(embParams as any);

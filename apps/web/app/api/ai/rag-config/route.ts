@@ -63,7 +63,7 @@ function getDefaultConfig(): RAGConfig {
       model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small',
       chunkSize: parseInt(process.env.RAG_CHUNK_SIZE || '1000', 10),
       chunkOverlap: parseInt(process.env.RAG_CHUNK_OVERLAP || '200', 10),
-      dimensions: parseInt(process.env.RAG_EMBED_DIMENSIONS || '1536', 10),
+      dimensions: parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10),
     },
     generation: {
       model: process.env.RAG_GENERATION_MODEL || 'gpt-4o-mini',

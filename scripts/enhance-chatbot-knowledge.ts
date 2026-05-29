@@ -24,7 +24,7 @@ const openai = new OpenAI({
 });
 
 const EMBED_MODEL = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
-const EMBED_DIMENSIONS = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1536', 10);
+const EMBED_DIMENSIONS = parseInt(process.env.RAG_EMBED_DIMENSIONS || '1024', 10);
 
 // =============================================================================
 // STEP 1: CLASSIFY CONTRACTS WITH TAXONOMY

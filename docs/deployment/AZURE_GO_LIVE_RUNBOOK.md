@@ -308,6 +308,7 @@ Required variables:
 STORAGE_PROVIDER=azure
 AZURE_STORAGE_ACCOUNT_NAME=stcontigoprod
 AZURE_STORAGE_ACCOUNT_KEY=<storage-key>
+AZURE_STORAGE_CONTAINER=contracts
 AZURE_STORAGE_CONTAINER_NAME=contracts
 AZURE_STORAGE_REGION=switzerlandnorth
 ```
@@ -375,6 +376,7 @@ Minimum secrets:
 database-url
 direct-database-url
 redis-url
+redis-host
 redis-password
 auth-secret
 jwt-secret
@@ -386,7 +388,9 @@ azure-document-intelligence-key
 minio-access-key
 minio-secret-key
 minio-endpoint
-storage-account-key, if Azure Blob is used
+azure-storage-account-name, if Azure Blob is used
+azure-storage-account-key, if Azure Blob is used
+azure-storage-container, if Azure Blob is used
 sentry-dsn, if enabled
 sendgrid-api-key, if email is enabled
 ```
@@ -514,12 +518,13 @@ For immediate live demo:
 
 ## Demo Tenant and Seed Data
 
-Run this after migrations.
+Run this after migrations. Use the production-safe seed command for client-facing environments.
 
 ```bash
+DEMO_USER_PASSWORD="<strong-password>" \
 DATABASE_URL="$DATABASE_URL" \
 DIRECT_DATABASE_URL="$DIRECT_DATABASE_URL" \
-pnpm tsx scripts/create-demo-user.ts
+pnpm db:seed:demo:prod
 ```
 
 The script creates:
@@ -528,10 +533,10 @@ The script creates:
 Tenant ID: demo
 Tenant slug: demo
 User: demo@example.com
-Default password: demo123
+Role: admin
 ```
 
-For a real client demo, immediately change the password or create a client-specific user.
+For a local-only test, you may pass `--allow-default-password`, but do not use the default password for a client demo.
 
 Optional demo renewal data:
 
