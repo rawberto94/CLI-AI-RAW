@@ -2532,6 +2532,15 @@ export async function generateRealArtifacts(
   logger.info({ contractId, tenantId, filePath }, 'Starting artifact generation');
 
   try {
+    const scopedContract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
+      select: { id: true },
+    });
+
+    if (!scopedContract) {
+      throw new Error('Contract not found for tenant');
+    }
+
     // Update contract status to PROCESSING
     await prisma.contract.update({
       where: { id: contractId },
@@ -2648,8 +2657,8 @@ export async function generateRealArtifacts(
           logger.error({ s3Error, filePath }, 'Failed to download from S3/MinIO');
           
           // Last resort - check contract record for storage path
-          const contract = await prisma.contract.findUnique({
-            where: { id: contractId },
+          const contract = await prisma.contract.findFirst({
+            where: { id: contractId, tenantId },
             select: { storagePath: true, storageProvider: true },
           });
           
@@ -2705,8 +2714,8 @@ export async function generateRealArtifacts(
 
     // Persist raw text immediately so it's available for RAG and search
     // Also store formatted HTML in metadata for the redline editor
-    const existingContract = await prisma.contract.findUnique({
-      where: { id: contractId },
+    const existingContract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
       select: { metadata: true, aiMetadata: true, fileName: true, originalName: true, contractTitle: true },
     });
     const existingMeta = (existingContract?.metadata as Record<string, unknown>) || {};
@@ -2979,7 +2988,7 @@ export async function generateRealArtifacts(
     if (artifactIds.length > 0) {
       try {
         const mirrorArtifacts = await prisma.artifact.findMany({
-          where: { contractId, type: { in: ['FINANCIAL', 'COMPLIANCE', 'RENEWAL', 'OVERVIEW', 'TIMELINE'] } },
+          where: { contractId, tenantId, type: { in: ['FINANCIAL', 'COMPLIANCE', 'RENEWAL', 'OVERVIEW', 'TIMELINE'] } },
           select: { type: true, data: true },
         });
         const byType = new Map(mirrorArtifacts.map((a) => [a.type, a.data as Record<string, unknown>]));
@@ -2989,8 +2998,8 @@ export async function generateRealArtifacts(
         const ovr = byType.get('OVERVIEW') || {};
         const tml = byType.get('TIMELINE') || {};
 
-        const current = await prisma.contract.findUnique({
-          where: { id: contractId },
+        const current = await prisma.contract.findFirst({
+          where: { id: contractId, tenantId },
           select: {
             paymentTerms: true,
             jurisdiction: true,

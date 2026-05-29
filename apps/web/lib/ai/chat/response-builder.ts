@@ -28,8 +28,8 @@ export async function getOpenAIResponse(message: string, conversationHistory: Ar
     let ragSearchResults: Array<{ contractId?: string; contractName?: string; score?: number; content?: string }> = []; // Store actual RAG results
 
     // If we have a specific contract ID, fetch its details directly
-    if (context?.contractId) {
-      contractContext = await getContractContext(context.contractId);
+    if (context?.contractId && context?.tenantId) {
+      contractContext = await getContractContext(context.contractId, context.tenantId);
       if (contractContext) {
         ragSources.push(`Contract: ${context.contractId}`);
       }

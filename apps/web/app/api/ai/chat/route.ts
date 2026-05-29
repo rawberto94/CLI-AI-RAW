@@ -48,6 +48,21 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Message is required', 400);
     }
 
+    if (contractId && typeof contractId !== 'string') {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId must be a string', 400);
+    }
+
+    if (contractId) {
+      const contractExists = await prisma.contract.findFirst({
+        where: { id: contractId, tenantId },
+        select: { id: true },
+      });
+
+      if (!contractExists) {
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found or access denied', 404);
+      }
+    }
+
     // P0: Input length validation — prevent cost DoS via oversized messages
     const MAX_MESSAGE_LENGTH = 50_000;
     if (typeof message === 'string' && message.length > MAX_MESSAGE_LENGTH) {
@@ -1406,6 +1421,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
     // Call OpenAI with the enriched context
     const response = await getOpenAIResponse(resolvedMessage, conversationHistory || [], { 
+      tenantId,
       contractId, 
       context,
       intent,

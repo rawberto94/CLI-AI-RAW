@@ -139,8 +139,8 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
   
   // Ensure contract is in PROCESSING state before fire-and-forget
   try {
-    await prisma.contract.update({
-      where: { id: contractId },
+    await prisma.contract.updateMany({
+      where: { id: contractId, tenantId },
       data: { status: 'PROCESSING' },
     });
   } catch { /* may already be PROCESSING */ }
@@ -164,8 +164,8 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
       logger.error('Inline artifact generation failed', err as Error, { contractId });
       // Mark contract as failed so it doesn't stay stuck in PROCESSING
       try {
-        await prisma.contract.update({
-          where: { id: contractId },
+        await prisma.contract.updateMany({
+          where: { id: contractId, tenantId },
           data: { status: 'FAILED' },
         });
       } catch { /* best effort */ }
@@ -183,8 +183,8 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
 function scheduleInlineFallback(options: TriggerOptions, delayMs: number) {
   const timer = setTimeout(async () => {
     try {
-      const contract = await prisma.contract.findUnique({
-        where: { id: options.contractId },
+      const contract = await prisma.contract.findFirst({
+        where: { id: options.contractId, tenantId: options.tenantId },
         select: {
           status: true,
           rawText: true,

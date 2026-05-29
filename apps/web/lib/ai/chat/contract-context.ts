@@ -3,12 +3,15 @@ import { prisma } from '@/lib/prisma';
 // Fetch contract details directly from database when contractId is provided
 // ENHANCED: Now includes ALL artifact types for comprehensive AI context
 // UPDATED: Uses official schema fields (external_parties, tcv_amount, start_date, end_date)
-export async function getContractContext(contractId: string): Promise<string> {
+export async function getContractContext(contractId: string, tenantId: string): Promise<string> {
+  if (!tenantId) return '';
+
   try {
-    const contract = await prisma.contract.findUnique({
-      where: { id: contractId },
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
       include: {
         artifacts: {
+          where: { tenantId },
           select: {
             type: true,
             data: true,
@@ -27,8 +30,10 @@ export async function getContractContext(contractId: string): Promise<string> {
             supplierName: true,
             totalValue: true,
             effectiveDate: true,
+            tenantId: true,
             expirationDate: true } },
         childContracts: {
+          where: { tenantId },
           select: {
             id: true,
             contractTitle: true,
@@ -40,6 +45,7 @@ export async function getContractContext(contractId: string): Promise<string> {
             supplierName: true,
             totalValue: true,
             effectiveDate: true,
+            tenantId: true,
             expirationDate: true },
           orderBy: { createdAt: 'desc' },
           take: 20, // Limit to prevent context overflow
@@ -83,7 +89,9 @@ export async function getContractContext(contractId: string): Promise<string> {
     if (aiMeta.notice_period) context += `• Notice Period: ${aiMeta.notice_period}\n`;
 
     // Contract Hierarchy Context
-    const parentContract = (contract as any).parentContract;
+    const parentContract = (contract as any).parentContract?.tenantId === tenantId
+      ? (contract as any).parentContract
+      : null;
     const childContracts = (contract as any).childContracts || [];
     
     if (parentContract || childContracts.length > 0) {

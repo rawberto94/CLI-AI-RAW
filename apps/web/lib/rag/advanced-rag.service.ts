@@ -697,6 +697,13 @@ export async function hybridSearch(
     rerank: shouldRerank = true,
     expandQuery: shouldExpand = true,
   } = options;
+
+  if (!filters.tenantId) {
+    logger.warn('[RAG] Refusing unscoped hybrid search without tenantId', {
+      hasContractIds: Boolean(filters.contractIds?.length),
+    });
+    return [];
+  }
   
   // Step –1: Intelligent query routing — avoid running both search paths
   // when the query strongly signals one mode.
@@ -1207,15 +1214,18 @@ async function rawTextFallbackSearch(
   k: number
 ): Promise<SearchResult[]> {
   try {
-    const where: any = {
-      rawText: { not: null },
-      NOT: { rawText: '' },
-    };
-    
-    if (filters.tenantId) where.tenantId = filters.tenantId;
-    if (filters.contractIds?.length) where.id = { in: filters.contractIds };
-    if (filters.status?.length) where.status = { in: filters.status };
-    if (filters.contractTypes?.length) where.contractType = { in: filters.contractTypes };
+    if (!filters.tenantId) {
+      logger.warn('[RAG] Refusing rawText fallback search without tenantId');
+      return [];
+    }
+
+    const idRegex = /^[a-zA-Z0-9_-]+$/;
+    const contractIds = (filters.contractIds || []).filter((id) => idRegex.test(id));
+    const validStatuses = ['DRAFT', 'ACTIVE', 'PENDING', 'EXPIRED', 'TERMINATED', 'PROCESSING', 'READY', 'COMPLETED', 'FAILED', 'QUEUED', 'UPLOADED'];
+    const statuses = (filters.status || []).filter((status) => validStatuses.includes(status));
+    const contractTypes = (filters.contractTypes || [])
+      .map((type) => type.trim())
+      .filter((type) => type.length > 0 && type.length <= 100);
     
     // Use PostgreSQL full-text search on rawText
     const contracts = await prisma.$queryRaw<Array<{
@@ -1231,7 +1241,10 @@ async function rawTextFallbackSearch(
       WHERE c."rawText" IS NOT NULL 
         AND length(c."rawText") > 50
         AND to_tsvector('english', c."rawText") @@ plainto_tsquery('english', ${query})
-        ${filters.tenantId ? Prisma.sql`AND c."tenantId" = ${filters.tenantId}` : Prisma.empty}
+        AND c."tenantId" = ${filters.tenantId}
+        ${contractIds.length ? Prisma.sql`AND c.id IN (${Prisma.join(contractIds)})` : Prisma.empty}
+        ${statuses.length ? Prisma.sql`AND c."status" IN (${Prisma.join(statuses)})` : Prisma.empty}
+        ${contractTypes.length ? Prisma.sql`AND c."contractType" IN (${Prisma.join(contractTypes)})` : Prisma.empty}
       ORDER BY rank DESC
       LIMIT ${k}
     `;
