@@ -26,6 +26,7 @@ This index organises all ConTigo documentation by audience and purpose.
 | Document | Description | Lines |
 |---|---|---|
 | [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) | Pre-deployment verification checklist | — |
+| [AZURE_GO_LIVE_RUNBOOK.md](deployment/AZURE_GO_LIVE_RUNBOOK.md) | Azure resources, PostgreSQL setup, migrations, secrets, deployment, and demo tenant go-live checklist | — |
 | [DISASTER_RECOVERY_PLAN.md](DISASTER_RECOVERY_PLAN.md) | DR strategy, RPO/RTO, failover procedures | — |
 | [INCIDENT_RUNBOOKS.md](INCIDENT_RUNBOOKS.md) | Operational runbooks for common incidents | — |
 | [PRODUCTION_READINESS_REPORT.md](PRODUCTION_READINESS_REPORT.md) | Production readiness audit results | — |
