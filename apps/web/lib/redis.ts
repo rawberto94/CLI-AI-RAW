@@ -8,7 +8,16 @@ import Redis from 'ioredis';
 
 type RedisInstance = InstanceType<typeof Redis>;
 
-const redisUrl = process.env.REDIS_URL;
+function getRedisUrl(): string | undefined {
+  if (process.env.REDIS_URL) return process.env.REDIS_URL;
+  if (process.env.REDIS_HOST) {
+    const protocol = process.env.REDIS_TLS === 'true' ? 'rediss' : 'redis';
+    return `${protocol}://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`;
+  }
+  return undefined;
+}
+
+const redisUrl = getRedisUrl();
 
 function isStaticBuild(): boolean {
   return process.env.NEXT_BUILD === 'true' || process.env.NEXT_PHASE === 'phase-production-build';

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { withScimHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 
@@ -49,7 +50,7 @@ async function syncGroupMembers(
   const memberScimIds = members.map(m => m.value);
   const memberRecords = await prisma.$queryRaw<Array<{ scim_id: string; internal_id: string }>>`
     SELECT scim_id, internal_id FROM scim_sync_records
-    WHERE tenant_id = ${tenantId} AND resource_type = 'User' AND scim_id = ANY(${memberScimIds})
+    WHERE tenant_id = ${tenantId} AND resource_type = 'User' AND scim_id IN (${Prisma.join(memberScimIds)})
   `;
   const memberMap = new Map(memberRecords.map(r => [r.scim_id, r.internal_id]));
 
@@ -100,7 +101,8 @@ export const GET = withScimHandler(async (_request: NextRequest, ctx) => {
 
     const members = await getGroupMembers(prisma, group.internal_id);
     return createSuccessResponse(ctx, scimGroupResponse(group, members));
-  } catch {
+  } catch (error: unknown) {
+    console.error('[SCIM] GET Group error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM error. Please try again.', 500);
   }
 });
@@ -160,7 +162,8 @@ export const PUT = withScimHandler(async (request: NextRequest, ctx) => {
     });
 
     return createSuccessResponse(ctx, scimGroupResponse(updated, members));
-  } catch {
+  } catch (error: unknown) {
+    console.error('[SCIM] PUT Group error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM update error. Please try again.', 500);
   }
 });
@@ -223,7 +226,8 @@ export const PATCH = withScimHandler(async (request: NextRequest, ctx) => {
     });
 
     return createSuccessResponse(ctx, scimGroupResponse(updated, currentMembers));
-  } catch {
+  } catch (error: unknown) {
+    console.error('[SCIM] PATCH Group error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM patch error. Please try again.', 500);
   }
 });
@@ -268,7 +272,8 @@ export const DELETE = withScimHandler(async (_request: NextRequest, ctx) => {
     }
 
     return new NextResponse(null, { status: 204 });
-  } catch {
+  } catch (error: unknown) {
+    console.error('[SCIM] DELETE Group error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM delete error. Please try again.', 500);
   }
 });

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { withScimHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 
@@ -56,7 +57,8 @@ export const GET = withScimHandler(async (_request: NextRequest, ctx) => {
       totalResults: (groups as any[]).length,
       Resources: (groups as any[]).map((g: any) => scimGroupResponse(g, membersByGroup.get(g.internal_id))),
     });
-  } catch {
+  } catch (error: unknown) {
+    console.error('[SCIM] GET Groups error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM error. Please try again.', 500);
   }
 });
@@ -116,7 +118,7 @@ export const POST = withScimHandler(async (request: NextRequest, ctx) => {
       const memberScimIds = body.members.map(m => m.value);
       const memberRecords = await prisma.$queryRaw<Array<{ scim_id: string; internal_id: string }>>`
         SELECT scim_id, internal_id FROM scim_sync_records
-        WHERE tenant_id = ${ctx.tenantId} AND resource_type = 'User' AND scim_id = ANY(${memberScimIds})
+        WHERE tenant_id = ${ctx.tenantId} AND resource_type = 'User' AND scim_id IN (${Prisma.join(memberScimIds)})
       `;
       const memberMap = new Map(memberRecords.map(r => [r.scim_id, r.internal_id]));
 
@@ -152,7 +154,8 @@ export const POST = withScimHandler(async (request: NextRequest, ctx) => {
     });
 
     return createSuccessResponse(ctx, scimGroupResponse(groupRecord));
-  } catch {
+  } catch (error: unknown) {
+    console.error('[SCIM] POST Group error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM create error. Please try again.', 500);
   }
 });

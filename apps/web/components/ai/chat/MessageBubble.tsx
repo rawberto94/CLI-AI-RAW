@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { QuickActions, QuickAction } from './QuickActions';
 import { Button } from '@/components/ui/button';
+import { MarkdownContent } from '@/components/ai/MarkdownContent';
 import {
   Tooltip,
   TooltipContent,
@@ -108,92 +109,6 @@ interface MessageBubbleProps {
   showAvatar?: boolean;
 }
 
-// Code block component
-const CodeBlock = memo(({ code, language }: { code: string; language?: string }) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = useCallback(async () => {
-    await navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, [code]);
-
-  return (
-    <div className="relative group my-3 rounded-lg overflow-hidden bg-slate-900 dark:bg-slate-950">
-      <div className="flex items-center justify-between px-4 py-2 bg-slate-800 dark:bg-slate-900 border-b border-slate-700">
-        <span className="text-xs font-mono text-slate-400">
-          {language || 'code'}
-        </span>
-        <button
-          onClick={handleCopy}
-          className="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1"
-        >
-          {copied ? (
-            <>
-              <Check className="h-3 w-3" />
-              Copied!
-            </>
-          ) : (
-            <>
-              <Copy className="h-3 w-3" />
-              Copy
-            </>
-          )}
-        </button>
-      </div>
-      <pre className="p-4 overflow-x-auto text-sm">
-        <code className="text-slate-300 font-mono">{code}</code>
-      </pre>
-    </div>
-  );
-});
-CodeBlock.displayName = 'CodeBlock';
-
-// Table component
-const MessageTable = memo(({ data }: { data: string[][] }) => {
-  if (!data || data.length === 0) return null;
-
-  const headers = data[0] || [];
-  const rows = data.slice(1);
-
-  return (
-    <div className="my-3 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
-      <table className="w-full text-sm">
-        <thead className="bg-slate-50 dark:bg-slate-800">
-          <tr>
-            {headers.map((header, i) => (
-              <th
-                key={i}
-                className="px-4 py-2 text-left font-medium text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700"
-              >
-                {header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr
-              key={i}
-              className="border-b border-slate-100 dark:border-slate-800 last:border-0"
-            >
-              {row.map((cell, j) => (
-                <td
-                  key={j}
-                  className="px-4 py-2 text-slate-600 dark:text-slate-400"
-                >
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-});
-MessageTable.displayName = 'MessageTable';
-
 // Source reference component
 const SourceReference = memo(({ 
   source, 
@@ -251,143 +166,6 @@ const AttachmentPreview = memo(({ attachment }: { attachment: MessageAttachment 
 });
 AttachmentPreview.displayName = 'AttachmentPreview';
 
-// Parse markdown-like content
-function parseMessageContent(content: string) {
-  const parts: React.ReactNode[] = [];
-  let currentIndex = 0;
-
-  // Code block pattern
-  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-  let match;
-
-  while ((match = codeBlockRegex.exec(content)) !== null) {
-    // Add text before code block
-    if (match.index > currentIndex) {
-      parts.push(
-        <span key={`text-${currentIndex}`}>
-          {formatInlineMarkdown(content.slice(currentIndex, match.index))}
-        </span>
-      );
-    }
-
-    // Add code block
-    parts.push(
-      <CodeBlock
-        key={`code-${match.index}`}
-        code={match[2] || ''}
-        language={match[1]}
-      />
-    );
-
-    currentIndex = match.index + match[0].length;
-  }
-
-  // Add remaining text
-  if (currentIndex < content.length) {
-    parts.push(
-      <span key={`text-${currentIndex}`}>
-        {formatInlineMarkdown(content.slice(currentIndex))}
-      </span>
-    );
-  }
-
-  return parts.length > 0 ? parts : formatInlineMarkdown(content);
-}
-
-// Format inline markdown
-function formatInlineMarkdown(text: string): React.ReactNode {
-  // Split by newlines and process each line
-  return text.split('\n').map((line, i, arr) => {
-    let processed: React.ReactNode = line;
-
-    // Bold **text**
-    processed = processPattern(processed, /\*\*(.*?)\*\*/g, (match, content) => (
-      <strong key={match} className="font-semibold">{content}</strong>
-    ));
-
-    // Italic *text*
-    processed = processPattern(processed, /(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, (match, content) => (
-      <em key={match}>{content}</em>
-    ));
-
-    // Inline code `code`
-    processed = processPattern(processed, /`([^`]+)`/g, (match, content) => (
-      <code key={match} className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-sm font-mono text-pink-600 dark:text-pink-400">
-        {content}
-      </code>
-    ));
-
-    // Links [text](url)
-    processed = processPattern(processed, /\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => (
-      <a
-        key={match}
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-violet-600 dark:text-indigo-400 hover:underline"
-      >
-        {text}
-      </a>
-    ));
-
-    // Bullet points
-    if (line.trim().startsWith('• ') || line.trim().startsWith('- ')) {
-      processed = (
-        <span className="flex items-start gap-2">
-          <span className="text-violet-500 mt-1">•</span>
-          <span>{line.trim().slice(2)}</span>
-        </span>
-      );
-    }
-
-    // Numbered lists
-    const numberedMatch = line.trim().match(/^(\d+)\.\s+(.*)$/);
-    if (numberedMatch) {
-      processed = (
-        <span className="flex items-start gap-2">
-          <span className="text-violet-500 font-medium min-w-[1.5rem]">{numberedMatch[1]}.</span>
-          <span>{numberedMatch[2]}</span>
-        </span>
-      );
-    }
-
-    return (
-      <React.Fragment key={i}>
-        {processed}
-        {i < arr.length - 1 && <br />}
-      </React.Fragment>
-    );
-  });
-}
-
-// Process regex pattern and replace with React nodes
-function processPattern(
-  content: React.ReactNode,
-  pattern: RegExp,
-  replacer: (...args: string[]) => React.ReactNode
-): React.ReactNode {
-  if (typeof content !== 'string') return content;
-
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match;
-
-  const regex = new RegExp(pattern.source, pattern.flags);
-  while ((match = regex.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(content.slice(lastIndex, match.index));
-    }
-    parts.push(replacer(match[0], ...match.slice(1)));
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < content.length) {
-    parts.push(content.slice(lastIndex));
-  }
-
-  return parts.length > 0 ? <>{parts}</> : content;
-}
-
 // Main Message Bubble Component
 export const MessageBubble = memo(({
   message,
@@ -417,11 +195,6 @@ export const MessageBubble = memo(({
     onCopy?.(message.content);
     setTimeout(() => setCopied(false), 2000);
   }, [message.content, onCopy]);
-
-  const parsedContent = useMemo(
-    () => parseMessageContent(message.content),
-    [message.content]
-  );
 
   const timeString = useMemo(() => {
     return message.timestamp.toLocaleTimeString([], { 
@@ -489,13 +262,14 @@ export const MessageBubble = memo(({
         >
           {/* Content */}
           <div className={cn(
-            "prose prose-sm max-w-none",
-            isUser 
-              ? "prose-invert" 
-              : "dark:prose-invert prose-slate",
-            "prose-p:my-1 prose-ul:my-2 prose-li:my-0.5"
+            "max-w-none",
+            isUser && "text-[15px] leading-relaxed"
           )}>
-            {parsedContent}
+            {isUser ? (
+              <span className="text-[15px] leading-relaxed">{message.content}</span>
+            ) : (
+              <MarkdownContent content={message.content} className="text-[15px] leading-relaxed" />
+            )}
             {isStreaming && (
               <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1" />
             )}
@@ -640,7 +414,7 @@ export const MessageBubble = memo(({
 
         {/* Actions row */}
         <div className={cn(
-          "flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity",
+          "flex items-center gap-1 mt-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity",
           isUser ? "flex-row-reverse" : "flex-row"
         )}>
           {/* Timestamp */}

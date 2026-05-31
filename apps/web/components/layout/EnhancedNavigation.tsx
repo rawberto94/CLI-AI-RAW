@@ -27,6 +27,7 @@ import {
   isAdminNavigationRole,
   type NavigationAudience,
 } from '@/lib/navigation/visibility';
+import { env } from '@/lib/env';
 import { Target } from 'lucide-react';
 import {
   LayoutDashboard,
@@ -81,6 +82,8 @@ interface NavigationItem {
   isNew?: boolean;
   action?: 'openAIChatbot';
   requiresAdmin?: boolean;
+  /** 'hide' = excluded when NEXT_PUBLIC_DEMO_MODE=true */
+  demo?: 'hide';
 }
 
 interface NavigationGroup {
@@ -116,11 +119,12 @@ const navigationGroups: NavigationGroup[] = [
         icon: PenTool,
         description: 'Author new contracts with templates, AI, and playbooks',
         audiences: ['operator'],
+        demo: 'hide',
         children: [
-          { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Approved starting points', audiences: ['legal'] },
-          { name: 'Playbooks', href: '/playbooks', icon: Gavel, description: 'Legal standards and fallbacks', audiences: ['legal'] },
+          { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Approved starting points', audiences: ['legal'], demo: 'hide' },
+          { name: 'Playbooks', href: '/playbooks', icon: Gavel, description: 'Legal standards and fallbacks', audiences: ['legal'], demo: 'hide' },
         ],
-      },
+      }
     ],
   },
   {
@@ -133,10 +137,11 @@ const navigationGroups: NavigationGroup[] = [
         icon: GitBranch,
         description: 'Requests, approvals, and automation',
         audiences: ['operator'],
+        demo: 'hide',
         children: [
-          { name: 'Approvals', href: '/approvals', icon: CheckCircle2, description: 'Pending approvals', audiences: ['oversight'] },
-          { name: 'Requests', href: '/requests', icon: Zap, description: 'Contract intake pipeline', audiences: ['operator'] },
-          { name: 'My Tasks', href: '/self-service/my-requests', icon: CheckSquare, description: 'Assigned work', audiences: ['operator'] },
+          { name: 'Approvals', href: '/approvals', icon: CheckCircle2, description: 'Pending approvals', audiences: ['oversight'], demo: 'hide' },
+          { name: 'Requests', href: '/requests', icon: Zap, description: 'Contract intake pipeline', audiences: ['operator'], demo: 'hide' },
+          { name: 'My Tasks', href: '/self-service/my-requests', icon: CheckSquare, description: 'Assigned work', audiences: ['operator'], demo: 'hide' },
         ],
       },
       {
@@ -157,11 +162,12 @@ const navigationGroups: NavigationGroup[] = [
         icon: Truck,
         description: 'Supplier performance and commercials',
         audiences: ['commercial'],
+        demo: 'hide',
         children: [
-          { name: 'Rate Cards', href: '/rate-cards/dashboard', icon: Receipt, description: 'Rate monitoring', audiences: ['commercial'] },
-          { name: 'Spend Analysis', href: '/spend', icon: Wallet, description: 'Spend visibility', audiences: ['commercial'] },
+          { name: 'Rate Cards', href: '/rate-cards/dashboard', icon: Receipt, description: 'Rate monitoring', audiences: ['commercial'], demo: 'hide' },
+          { name: 'Spend Analysis', href: '/spend', icon: Wallet, description: 'Spend visibility', audiences: ['commercial'], demo: 'hide' },
         ],
-      },
+      }
     ],
   },
   {
@@ -174,10 +180,11 @@ const navigationGroups: NavigationGroup[] = [
         icon: Lightbulb,
         description: 'AI insights, portfolio health, and risk signals',
         audiences: ['all'],
+        demo: 'hide',
         children: [
-          { name: 'Contract Health', href: '/intelligence/health', icon: ShieldCheck, description: 'Portfolio health scores', audiences: ['all'] },
-          { name: 'Risk', href: '/risk', icon: AlertTriangle, description: 'Risk analysis', audiences: ['all'] },
-          { name: 'Compliance', href: '/compliance', icon: ClipboardCheck, description: 'Compliance tracking', audiences: ['legal'] },
+          { name: 'Contract Health', href: '/intelligence/health', icon: ShieldCheck, description: 'Portfolio health scores', audiences: ['all'], demo: 'hide' },
+          { name: 'Risk', href: '/risk', icon: AlertTriangle, description: 'Risk analysis', audiences: ['all'], demo: 'hide' },
+          { name: 'Compliance', href: '/compliance', icon: ClipboardCheck, description: 'Compliance tracking', audiences: ['legal'], demo: 'hide' },
         ],
       },
       {
@@ -186,14 +193,15 @@ const navigationGroups: NavigationGroup[] = [
         icon: BarChart3,
         description: 'Dashboards and reporting',
         audiences: ['oversight'],
-      },
+        demo: 'hide',
+      }
     ],
   },
   {
     id: 'platform',
     label: 'Platform',
     items: [
-      { name: 'Governance', href: '/governance', icon: Shield, description: 'Policies, routing, and controls', audiences: ['legal'] },
+      { name: 'Governance', href: '/governance', icon: Shield, description: 'Policies, routing, and controls', audiences: ['legal'], demo: 'hide' },
       { name: 'Contract Migration', href: '/migration', icon: Upload, description: 'Bulk import existing contracts', audiences: ['all'], isNew: true },
       { name: 'Settings', href: '/settings', icon: Settings, description: 'Personal and platform settings', audiences: ['all'] },
     ],
@@ -213,10 +221,10 @@ const navigationGroups: NavigationGroup[] = [
         audiences: ['admin'],
         requiresAdmin: true,
         children: [
-          { name: 'Audit Logs', href: '/audit-logs', icon: ScrollText, description: 'Audit trail', audiences: ['admin'] },
-          { name: 'SSO', href: '/admin/sso', icon: Key, description: 'SAML & OIDC providers', audiences: ['admin'] },
-          { name: 'Queue', href: '/admin/queue', icon: Activity, description: 'Processing queues', audiences: ['admin'] },
-          { name: 'Integrations', href: '/admin/integrations', icon: Database, description: 'Data connections', audiences: ['admin'] },
+          { name: 'Audit Logs', href: '/audit-logs', icon: ScrollText, description: 'Audit trail', audiences: ['admin'], demo: 'hide' },
+          { name: 'SSO', href: '/admin/sso', icon: Key, description: 'SAML & OIDC providers', audiences: ['admin'], demo: 'hide' },
+          { name: 'Queue', href: '/admin/queue', icon: Activity, description: 'Processing queues', audiences: ['admin'], demo: 'hide' },
+          { name: 'Integrations', href: '/admin/integrations', icon: Database, description: 'Data connections', audiences: ['admin'], demo: 'hide' },
         ],
       },
     ],
@@ -444,10 +452,18 @@ function EnhancedNavigation() {
   );
 
   const filteredNavigationGroups = useMemo(() => {
+    const isDemo = env.demoMode;
+
     const filterItem = (item: NavigationItem): NavigationItem | null => {
       const visibleChildren = item.children
         ?.map(filterItem)
         .filter((child): child is NavigationItem => child !== null);
+
+      if (isDemo && item.demo === 'hide') {
+        return visibleChildren && visibleChildren.length > 0
+          ? { ...item, children: visibleChildren }
+          : null;
+      }
 
       const canShowItem =
         canAccessNavigationAudience(item.audiences, activeAudiences) &&

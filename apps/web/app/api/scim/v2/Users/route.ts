@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { withScimHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 
@@ -62,6 +63,7 @@ export const GET = withScimHandler(async (request: NextRequest, ctx) => {
       })),
     });
   } catch (error: unknown) {
+    console.error('[SCIM] GET Users error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM error. Please try again.', 500);
   }
 });
@@ -77,6 +79,9 @@ export const POST = withScimHandler(async (request: NextRequest, ctx) => {
     const { prisma } = await import('@/lib/prisma');
 
     const email = body.emails?.[0]?.value || body.userName;
+    if (!email) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Email or userName is required', 400);
+    }
     const displayName = body.displayName || body.name?.formatted || `${body.name?.givenName || ''} ${body.name?.familyName || ''}`.trim();
 
     // Resolve role from SSO provider configuration
@@ -103,11 +108,11 @@ export const POST = withScimHandler(async (request: NextRequest, ctx) => {
       update: { firstName: displayName, role, status: isActive ? 'ACTIVE' : 'INACTIVE' },
       create: {
         email,
-        name: displayName,
+        firstName: displayName,
         tenantId: ctx.tenantId,
         role,
         status: isActive ? 'ACTIVE' : 'INACTIVE',
-      } as any,
+      },
     });
 
     // Store SCIM mapping
@@ -137,6 +142,7 @@ export const POST = withScimHandler(async (request: NextRequest, ctx) => {
       meta: { resourceType: 'User', created: scimUser.created_at, lastModified: scimUser.updated_at },
     });
   } catch (error: unknown) {
+    console.error('[SCIM] POST User error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM create error. Please try again.', 500);
   }
 });

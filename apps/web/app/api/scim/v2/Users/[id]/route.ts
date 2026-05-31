@@ -55,7 +55,8 @@ export const GET = withScimHandler(async (_request: NextRequest, ctx) => {
       return createErrorResponse(ctx, 'NOT_FOUND', 'User not found', 404);
     }
     return createSuccessResponse(ctx, scimUserResponse(user));
-  } catch {
+  } catch (error: unknown) {
+    console.error('[SCIM] GET User error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM error. Please try again.', 500);
   }
 });
@@ -110,7 +111,8 @@ export const PUT = withScimHandler(async (request: NextRequest, ctx) => {
     });
 
     return createSuccessResponse(ctx, scimUserResponse(updated));
-  } catch {
+  } catch (error: unknown) {
+    console.error('[SCIM] PUT User error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM update error. Please try again.', 500);
   }
 });
@@ -172,7 +174,8 @@ export const PATCH = withScimHandler(async (request: NextRequest, ctx) => {
     });
 
     return createSuccessResponse(ctx, scimUserResponse(updated));
-  } catch {
+  } catch (error: unknown) {
+    console.error('[SCIM] PATCH User error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM patch error. Please try again.', 500);
   }
 });
@@ -217,7 +220,8 @@ export const DELETE = withScimHandler(async (_request: NextRequest, ctx) => {
     }
 
     return new NextResponse(null, { status: 204 });
-  } catch {
+  } catch (error: unknown) {
+    console.error('[SCIM] DELETE User error:', error);
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM delete error. Please try again.', 500);
   }
 });

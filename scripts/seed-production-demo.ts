@@ -336,11 +336,93 @@ async function main() {
         newEndDate: new Date(new Date(contract.expirationDate || new Date()).setFullYear(new Date(contract.expirationDate || new Date()).getFullYear() + 1)),
         newValue: contract.totalValue ? (Number(contract.totalValue) * 1.05) : 0,
         valueChangePercent: 5.0,
+        completedAt: new Date(),
       },
     });
   }
 
   console.log(`Created ${renewalCount} renewal history entries.`);
+
+  // ============================================================================
+  // Seed demo access groups (baskets) so the feature is visible on day one
+  // ============================================================================
+
+  // Clean existing demo group access for this tenant to avoid duplication
+  const existingGroups = await prisma.userGroup.findMany({
+    where: { tenantId: tenant.id },
+    select: { id: true },
+  });
+
+  if (existingGroups.length > 0) {
+    console.log(`Cleaning ${existingGroups.length} existing demo groups...`);
+    await prisma.contractGroupAccess.deleteMany({ where: { groupId: { in: existingGroups.map(g => g.id) } } });
+    await prisma.userGroupMember.deleteMany({ where: { groupId: { in: existingGroups.map(g => g.id) } } });
+    await prisma.userGroup.deleteMany({ where: { tenantId: tenant.id } });
+  }
+
+  const groupDefinitions = [
+    {
+      name: 'Legal',
+      description: 'Legal department contract review and compliance oversight.',
+      color: '#EF4444',
+      contractTypes: new Set(['NDA', 'LICENSE AGREEMENT', 'CONSULTING AGREEMENT', 'FRAMEWORK AGREEMENT']),
+    },
+    {
+      name: 'Procurement',
+      description: 'Procurement team managing supplier agreements and sourcing.',
+      color: '#3B82F6',
+      contractTypes: new Set(['SUPPLY AGREEMENT', 'SUBCONTRACT', 'LEASE']),
+    },
+    {
+      name: 'Finance',
+      description: 'Finance team overseeing payment terms, SLAs, and maintenance budgets.',
+      color: '#10B981',
+      contractTypes: new Set(['SERVICE CONTRACT', 'MAINTENANCE CONTRACT', 'SLA']),
+    },
+  ];
+
+  const demoGroups = [];
+  for (const def of groupDefinitions) {
+    const group = await prisma.userGroup.create({
+      data: {
+        tenantId: tenant.id,
+        name: def.name,
+        description: def.description,
+        color: def.color,
+        contractAccessLevel: 'assigned',
+        createdBy: user.id,
+      },
+    });
+    demoGroups.push({ group, contractTypes: def.contractTypes });
+
+    await prisma.userGroupMember.create({
+      data: {
+        groupId: group.id,
+        userId: user.id,
+        role: 'leader',
+        addedBy: user.id,
+      },
+    });
+  }
+
+  // Assign contracts to groups based on contract type
+  let groupAssignmentCount = 0;
+  for (const { group, contractTypes } of demoGroups) {
+    const matchedContracts = createdContracts.filter(c => contractTypes.has(c.contractType));
+    for (const contract of matchedContracts) {
+      await prisma.contractGroupAccess.create({
+        data: {
+          contractId: contract.id,
+          groupId: group.id,
+          accessLevel: 'edit',
+          grantedBy: user.id,
+        },
+      });
+      groupAssignmentCount++;
+    }
+  }
+
+  console.log(`Created ${demoGroups.length} demo access groups with ${groupAssignmentCount} contract assignments.`);
 
   console.log('');
   console.log('Production demo tenant is ready.');

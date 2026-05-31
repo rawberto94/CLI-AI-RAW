@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { canAccessNavigationAudience, getNavigationAudiences, type NavigationAudience } from '@/lib/navigation/visibility';
+import { env } from '@/lib/env';
 
 interface NavItem {
   href: string;
@@ -60,6 +61,8 @@ export function MobileBottomNav() {
   }, []);
 
   const navItems = useMemo<NavItem[]>(() => {
+    const isDemo = env.demoMode;
+
     const primaryItems: NavItem[] = [
       {
         href: '/dashboard',
@@ -77,7 +80,7 @@ export function MobileBottomNav() {
       },
     ];
 
-    if (activeAudiences.has('commercial')) {
+    if (!isDemo && activeAudiences.has('commercial')) {
       primaryItems.push({
         href: '/suppliers',
         label: 'Suppliers',
@@ -85,7 +88,7 @@ export function MobileBottomNav() {
         audiences: ['commercial'],
         activeMatch: (p) => p.startsWith('/suppliers') || p.startsWith('/rate-cards') || p.startsWith('/spend') || p.startsWith('/forecast'),
       });
-    } else if (activeAudiences.has('operator')) {
+    } else if (!isDemo && activeAudiences.has('operator')) {
       primaryItems.push({
         href: '/workflows',
         label: 'Workflows',
@@ -103,7 +106,7 @@ export function MobileBottomNav() {
       });
     }
 
-    if (activeAudiences.has('oversight')) {
+    if (!isDemo && activeAudiences.has('oversight')) {
       primaryItems.push({
         href: '/analytics',
         label: 'Analytics',
@@ -111,7 +114,7 @@ export function MobileBottomNav() {
         audiences: ['oversight'],
         activeMatch: (p) => p.startsWith('/analytics') || p.startsWith('/reports'),
       });
-    } else if (activeAudiences.has('legal')) {
+    } else if (!isDemo && activeAudiences.has('legal')) {
       primaryItems.push({
         href: '/drafting',
         label: 'Drafting',
@@ -119,7 +122,7 @@ export function MobileBottomNav() {
         audiences: ['legal'],
         activeMatch: (p) => p.startsWith('/drafting') || p.startsWith('/playbooks') || p.startsWith('/clauses') || p.startsWith('/templates'),
       });
-    } else {
+    } else if (!isDemo) {
       primaryItems.push({
         href: '/intelligence',
         label: 'Insights',
@@ -133,12 +136,13 @@ export function MobileBottomNav() {
   }, [activeAudiences]);
 
   const quickActions = useMemo<QuickAction[]>(() => {
+    const isDemo = env.demoMode;
     const actions: QuickAction[] = [
       { label: 'Upload Contract', icon: Upload, href: '/upload', audiences: ['operator'], color: 'bg-violet-500' },
-      { label: 'Start Draft', icon: PenTool, href: '/drafting', audiences: ['operator'], color: 'bg-violet-500' },
+      ...(isDemo ? [] : [{ label: 'Start Draft', icon: PenTool, href: '/drafting', audiences: ['operator'], color: 'bg-violet-500' }] as QuickAction[]),
       { label: 'AI Assistant', icon: Sparkles, onClick: openAIAssistant, audiences: ['all'], color: 'bg-violet-500' },
       { label: 'Smart Search', icon: Search, href: '/search', audiences: ['all'], color: 'bg-amber-500' },
-      { label: 'Analytics', icon: BarChart3, href: '/analytics', audiences: ['oversight'], color: 'bg-violet-500' },
+      ...(isDemo ? [] : [{ label: 'Analytics', icon: BarChart3, href: '/analytics', audiences: ['oversight'], color: 'bg-violet-500' }] as QuickAction[]),
     ];
     return actions.filter((action) => canAccessNavigationAudience(action.audiences, activeAudiences));
   }, [activeAudiences, openAIAssistant]);

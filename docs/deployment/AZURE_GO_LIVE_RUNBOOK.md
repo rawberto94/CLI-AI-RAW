@@ -1,678 +1,322 @@
-# Azure Go-Live Runbook
+# Azure Go-Live Runbook — V2
 
-This runbook lists what must be set up in Azure to make ConTigo fully live, including PostgreSQL extensions, Prisma migrations, AI services, storage, secrets, deployment, and demo tenant seeding.
+**Version 2 — May 2026**
+Supersedes `AZURE_GO_LIVE_RUNBOOK.md` for the current ConTigo deployment.
 
-## Scope
+---
 
-ConTigo is a containerized Next.js 15 application with Prisma/PostgreSQL, Redis, object storage, Azure OpenAI, Azure Document Intelligence, and background workers.
+## Why V1 Option A No Longer Applies
 
-The live environment needs these runtime pieces:
+V1 of this runbook presented **Option A (Azure VM + Docker Compose)** as the recommended fast path. That was written for a greenfield deployment with no existing infrastructure. It is now inaccurate because:
 
-| Capability | Required service |
-|---|---|
-| Web UI and API | Containerized `apps/web` service |
-| Background OCR/RAG/artifact processing | Worker container |
-| Database | Azure Database for PostgreSQL Flexible Server with pgvector |
-| Cache and queues | Azure Cache for Redis |
-| Contract files | MinIO/S3-compatible storage, or Azure Blob after worker compatibility is verified |
-| AI extraction/chat/artifacts | Azure OpenAI chat deployment |
-| Embeddings/RAG | Azure OpenAI embedding deployment |
-| OCR/PDF extraction | Azure Document Intelligence |
-| Secrets | Azure Key Vault |
-| Images | Azure Container Registry, or GHCR if intentionally kept |
-| HTTPS/domain | Custom domain, TLS certificate, and ingress/proxy |
-| Logs/metrics | Log Analytics, Application Insights, Sentry, or equivalent |
+- The Azure Container App `contigo` is **already live** in resource group `contigoContainerApps` (Switzerland North) at `https://www.mycontigo.app`.
+- Azure Container Registry (`contigoacr2026`), Key Vault (`contigo`), Azure OpenAI (`contigo-openai`), Document Intelligence (`ConTigoDocumentIntelligence`), Application Insights, and Log Analytics are **already provisioned**.
+- Neon Serverless Postgres is **already connected** and all Prisma migrations are applied.
+- The CI/CD pipeline (`.github/workflows/deploy-container-apps.yml`) deploys directly to the existing Container App via `workflow_dispatch`.
 
-## Deployment Path Decision
+Provisioning a VM and running Docker Compose would create a parallel environment and duplicate cost. Do not follow V1 Option A.
 
-Choose one hosting path before provisioning resources.
+---
 
-### Option A: Fast client demo on Azure VM
+## Current State
 
-Use this for the shortest path to a client demo.
+| Resource | Name | Status |
+|---|---|---|
+| Container App | `contigo` | ✅ Running — `www.mycontigo.app` |
+| Container Registry | `contigoacr2026` | ✅ Running |
+| Azure OpenAI | `contigo-openai` | ✅ Running — `gpt-4o` + `text-embedding-3-small` wired |
+| Document Intelligence | `ConTigoDocumentIntelligence` | ✅ Provisioned — ❌ **not wired to app** |
+| Key Vault | `contigo` | ✅ Running |
+| Application Insights | `contigo-insights` | ✅ Running — wired |
+| Neon DB | `ep-long-wildflower-*` (gwc, Azure) | ✅ Connected — migrations applied |
+| Redis | — | ❌ **Does not exist** |
+| File Storage | — | ❌ **Does not exist** — uploads fall back to ephemeral container disk |
 
-- Run Docker Compose on the Azure VM.
-- Use [docker-compose.vm.yml](../../docker-compose.vm.yml) for web, PostgreSQL, Redis, and MinIO.
-- Fix public ingress with Nginx, Azure Load Balancer/Application Gateway, or Cloudflare Tunnel.
-- Keep MinIO for object storage because the worker code still expects MinIO/S3 variables in production.
-- Seed a demo tenant and user after migrations.
+### What Works Right Now Without the Missing Pieces
 
-This is the least risky near-term route because it matches the current runtime assumptions.
+The app has deliberate fallbacks that explain why processing worked without Redis or storage:
 
-### Option B: Managed Azure production
+- **No Redis**: `queue-init.ts` detects missing `REDIS_HOST`/`REDIS_URL` in production and disables BullMQ, falling back to **inline synchronous processing**. Artifacts are generated directly inside the upload API request. This works but the upload request blocks until all 14 artifacts are done (~30–90 seconds per contract).
+- **No storage**: `upload-single.ts` tries S3/MinIO first and, on failure, writes to the **container's local filesystem** (`uploads/contracts/{tenantId}/`). The contract metadata and extracted text are saved to Neon (durable). The PDF file lands on ephemeral container disk and is **wiped on every redeploy, scale event, or restart**.
 
-Use this for a cleaner production architecture.
+This means existing contract records in the database are safe, but their original PDF files are likely already gone from disk if the container has restarted since upload.
 
-- Host web and worker containers on Azure Container Apps or AKS.
-- Use Azure Database for PostgreSQL Flexible Server.
-- Use Azure Cache for Redis.
-- Use Key Vault for secrets.
-- Use ACR for image hosting.
-- Use Azure OpenAI and Azure Document Intelligence.
-- Decide whether to keep MinIO/S3-compatible storage or complete the Azure Blob migration.
+---
 
-Container Apps is the lower-operations recommendation. AKS is already partially represented by [infrastructure/azure/main.bicep](../../infrastructure/azure/main.bicep) and [helm/contigo](../../helm/contigo), but the Helm secrets and storage settings need cleanup before production use.
+## What Needs to Be Done
 
-## Azure Prerequisites
+Three steps, in order of priority:
 
-1. Confirm subscription and region.
-   - Recommended region: `switzerlandnorth` for Swiss/GDPR alignment.
-   - Confirm Azure OpenAI model availability and quota in the chosen region.
+| Step | What | Time | Cost |
+|---|---|---|---|
+| 1 | Wire Document Intelligence | ~5 min | Free (resource exists) |
+| 2 | Set up Cloudflare R2 for file storage | ~10 min | Free (10 GB / 1M ops) |
+| 3 | Create Redis for fast bulk uploads | ~15 min | ~€16/month |
 
-2. Create a resource group.
+Steps 1 and 2 are **required** before a customer demo. Step 3 is **strongly recommended** if you plan to upload 100 contracts — without it, each upload blocks for 30–90 seconds and bulk uploading 100 contracts would take 2–3 hours of sequential waiting. With Redis, the same batch completes in 15–20 minutes.
 
-   ```bash
-   az group create \
-     --name rg-contigo-prod \
-     --location switzerlandnorth \
-     --tags Environment=prod Project=ConTigo
-   ```
+---
 
-3. Set naming conventions.
-   - Resource group: `rg-contigo-prod`
-   - Container registry: `acrcontigoprod`
-   - PostgreSQL server: `psql-contigo-prod`
-   - Redis: `redis-contigo-prod`
-   - Key Vault: `kv-contigo-prod`
-   - Storage account, if Azure Blob is used: `stcontigoprod`
-   - Container Apps environment or AKS cluster: `cae-contigo-prod` or `aks-contigo-prod`
+## Step 1 — Wire Document Intelligence
 
-4. Decide public domain.
-   - Example: `mycontigo.app` or `app.mycontigo.app`.
-   - Production `NEXTAUTH_URL` must exactly match the public HTTPS origin.
+The `ConTigoDocumentIntelligence` resource exists in `contigoContainerApps` but its credentials are not set on the Container App. Without them, OCR falls back to basic PDF text extraction instead of Azure's layout model.
 
-## Container Registry
-
-Create ACR unless you intentionally keep using GHCR.
+Get the key:
 
 ```bash
-az acr create \
-  --resource-group rg-contigo-prod \
-  --name acrcontigoprod \
-  --sku Basic \
-  --admin-enabled false
-
-az acr login --name acrcontigoprod
+az cognitiveservices account keys list \
+  --name ConTigoDocumentIntelligence \
+  --resource-group contigoContainerApps \
+  --query key1 -o tsv
 ```
 
-Build and push images from the repository root.
+Wire it to the Container App:
 
 ```bash
-export ACR_LOGIN_SERVER="acrcontigoprod.azurecr.io"
-export IMAGE_TAG="$(git rev-parse --short HEAD)"
-
-docker build -f Dockerfile.production -t "$ACR_LOGIN_SERVER/contigo-web:$IMAGE_TAG" .
-docker push "$ACR_LOGIN_SERVER/contigo-web:$IMAGE_TAG"
-
-docker build -f Dockerfile.workers -t "$ACR_LOGIN_SERVER/contigo-workers:$IMAGE_TAG" .
-docker push "$ACR_LOGIN_SERVER/contigo-workers:$IMAGE_TAG"
+az containerapp update \
+  --name contigo \
+  --resource-group contigoContainerApps \
+  --set-env-vars \
+    AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://contigodocumentintelligence.cognitiveservices.azure.com/ \
+    AZURE_DOCUMENT_INTELLIGENCE_KEY=<key-from-above> \
+    AZURE_DI_DEFAULT_MODEL=layout \
+    AZURE_DI_FEATURES=keyValuePairs
 ```
 
-Also tag `latest` only if that is the deployment convention.
+---
 
-## PostgreSQL Flexible Server
+## Step 2 — File Storage with Cloudflare R2
 
-### Create the server
+The app's `storage-service.ts` uses the MinIO S3 client and supports any S3-compatible endpoint. It does **not** have a native Azure Blob write path — the Azure Blob references in V1 were aspirational and would require code changes. Cloudflare R2 is S3-compatible, requires zero code changes, and has a free tier large enough for a demo (10 GB storage, 1 million Class A operations per month).
 
-Use PostgreSQL 16 if pgvector support is available in the target Azure region. Otherwise use PostgreSQL 15, which is what the existing Bicep file currently provisions.
+### Create the R2 bucket
 
-Recommended baseline for production:
+1. Go to [dash.cloudflare.com](https://dash.cloudflare.com) → **R2 Object Storage** → **Create bucket**.
+2. Name it `contracts`.
+3. For jurisdiction, select **European Union** if data residency matters for the demo.
+4. Note your **Account ID** from the R2 overview page URL: `dash.cloudflare.com/<account-id>/r2`.
 
-- SKU: General Purpose for production, Burstable only for demo/low traffic.
-- Storage: start at 64 GB or higher for live use.
-- Backups: at least 7 days, preferably 14-35 days for production.
-- Networking: private access through VNet where possible.
-- High availability: enable for real production, optional for client demo.
+### Create an API token
 
-Example server creation:
+1. In R2 → **Manage R2 API tokens** → **Create API token**.
+2. Set permissions: **Object Read & Write**.
+3. Scope to bucket `contracts`.
+4. Copy the **Access Key ID** and **Secret Access Key** — they are shown only once.
+
+### Wire to the Container App
 
 ```bash
-az postgres flexible-server create \
-  --resource-group rg-contigo-prod \
-  --name psql-contigo-prod \
-  --location switzerlandnorth \
-  --version 16 \
-  --database-name contigo \
-  --admin-user contigoadmin \
-  --sku-name Standard_D2ds_v5 \
-  --tier GeneralPurpose \
-  --storage-size 64 \
-  --backup-retention 14
+az containerapp update \
+  --name contigo \
+  --resource-group contigoContainerApps \
+  --set-env-vars \
+    S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com \
+    S3_ACCESS_KEY=<r2-access-key-id> \
+    S3_SECRET_KEY=<r2-access-key-secret> \
+    S3_BUCKET=contracts \
+    S3_USE_SSL=true \
+    S3_REGION=auto \
+    MINIO_BUCKET=contracts
 ```
 
-For a cheaper demo, use a Burstable SKU and shorter backup retention.
+After this change the Container App restarts. Verify by uploading a test contract and checking the R2 bucket in the Cloudflare dashboard.
 
-### Allow required extensions
+---
 
-Azure PostgreSQL requires the `azure.extensions` server parameter before some extensions can be created.
+## Step 3 — Redis for Fast Bulk Uploads
 
-```bash
-az postgres flexible-server parameter set \
-  --resource-group rg-contigo-prod \
-  --server-name psql-contigo-prod \
-  --name azure.extensions \
-  --value "vector,uuid-ossp,pg_trgm,btree_gin,pgcrypto"
-```
+Without Redis, the app processes each contract inline and the upload request does not return until all 14 artifacts are generated. For 100 contracts this means:
 
-Then connect to the database and create extensions.
+- **Without Redis**: ~30–90 seconds per contract → 50–150 minutes total if uploading sequentially.
+- **With Redis**: uploads return immediately, BullMQ workers process jobs in parallel → ~15–20 minutes total, limited mainly by Azure OpenAI rate limits.
 
-```bash
-psql "$DIRECT_DATABASE_URL" -f init/01-enable-extensions.sql
+The Container App already runs PM2 workers inside the container (4 vCPU / 8 GB). Adding Redis activates them.
 
-psql "$DIRECT_DATABASE_URL" -c 'CREATE EXTENSION IF NOT EXISTS pgcrypto;'
-
-psql "$DIRECT_DATABASE_URL" -c "SELECT extname, extversion FROM pg_extension WHERE extname IN ('vector', 'uuid-ossp', 'pg_trgm', 'btree_gin', 'pgcrypto') ORDER BY extname;"
-```
-
-Required extensions:
-
-- `vector` for RAG embeddings.
-- `uuid-ossp` for UUID support used by older migrations/scripts.
-- `pg_trgm` for fuzzy/full-text search support.
-- `btree_gin` for composite GIN indexes.
-- `pgcrypto` for older SQL migration support.
-
-### Configure database URLs
-
-The app needs both pooled and direct database URLs.
-
-```text
-DATABASE_URL=postgresql://contigoadmin:<password>@psql-contigo-prod.postgres.database.azure.com:5432/contigo?sslmode=require&connection_limit=20&pool_timeout=10
-DIRECT_DATABASE_URL=postgresql://contigoadmin:<password>@psql-contigo-prod.postgres.database.azure.com:5432/contigo?sslmode=require
-```
-
-If PgBouncer or another pooler is added later, keep `DIRECT_DATABASE_URL` pointed directly at PostgreSQL for migrations and interactive transactions.
-
-### Run Prisma migrations
-
-Run migrations from a trusted machine that can reach the database. If the database is private, run these from a jumpbox, the Azure VM, Cloud Shell with VNet access, or CI with private networking.
-
-```bash
-pnpm install --frozen-lockfile
-pnpm db:generate
-
-DATABASE_URL="$DATABASE_URL" \
-DIRECT_DATABASE_URL="$DIRECT_DATABASE_URL" \
-pnpm db:migrate
-```
-
-Equivalent direct Prisma command:
-
-```bash
-DATABASE_URL="$DATABASE_URL" \
-DIRECT_DATABASE_URL="$DIRECT_DATABASE_URL" \
-pnpm exec prisma migrate deploy --schema packages/clients/db/schema.prisma
-```
-
-### Run RAG indexes
-
-After migrations, run the RAG performance index SQL.
-
-Important: align embedding dimensions before running the vector index scripts.
-
-- Current repo instructions say the active Azure embedding deployment uses `text-embedding-3-small` with `RAG_EMBED_DIMENSIONS=1024`.
-- Some SQL/docs still reference `1536`.
-- Do not bulk-index production contracts until the `ContractEmbedding.embedding` vector dimension and `RAG_EMBED_DIMENSIONS` agree.
-
-Recommended current setting:
-
-```text
-RAG_EMBED_MODEL=text-embedding-3-small
-RAG_EMBED_DIMENSIONS=1024
-```
-
-If using 1024 dimensions, update or parameterize [init/02-rag-performance-indexes.sql](../../init/02-rag-performance-indexes.sql) and [init/03-halfvec-quantization.sql](../../init/03-halfvec-quantization.sql) before running them, because they currently force `1536` in places.
-
-Then run:
-
-```bash
-psql "$DIRECT_DATABASE_URL" -f init/02-rag-performance-indexes.sql
-
-# Optional only after the dimension is aligned and pgvector supports halfvec.
-psql "$DIRECT_DATABASE_URL" -f init/03-halfvec-quantization.sql
-```
-
-Verify tables and migrations:
-
-```bash
-psql "$DIRECT_DATABASE_URL" -c 'SELECT migration_name, finished_at FROM "_prisma_migrations" ORDER BY finished_at DESC LIMIT 10;'
-psql "$DIRECT_DATABASE_URL" -c 'SELECT COUNT(*) FROM "Tenant";'
-psql "$DIRECT_DATABASE_URL" -c 'SELECT COUNT(*) FROM "Contract";'
-```
-
-## Redis
-
-Create Azure Cache for Redis.
+### Create Azure Cache for Redis
 
 ```bash
 az redis create \
-  --resource-group rg-contigo-prod \
-  --name redis-contigo-prod \
+  --resource-group contigoContainerApps \
+  --name redis-contigo \
   --location switzerlandnorth \
   --sku Basic \
   --vm-size c1 \
   --enable-non-ssl-port false
 ```
 
-Get the host and primary key:
+Creation takes about 10–15 minutes. Wait for `provisioningState` to be `Succeeded`:
 
 ```bash
 az redis show \
-  --resource-group rg-contigo-prod \
-  --name redis-contigo-prod \
+  --resource-group contigoContainerApps \
+  --name redis-contigo \
+  --query provisioningState -o tsv
+```
+
+### Get the connection details
+
+```bash
+az redis show \
+  --resource-group contigoContainerApps \
+  --name redis-contigo \
   --query hostName -o tsv
 
 az redis list-keys \
-  --resource-group rg-contigo-prod \
-  --name redis-contigo-prod \
+  --resource-group contigoContainerApps \
+  --name redis-contigo \
   --query primaryKey -o tsv
 ```
 
-Set both URL and host/port variables because different parts of the app use different forms.
-
-```text
-REDIS_URL=rediss://:<primary-key>@redis-contigo-prod.redis.cache.windows.net:6380
-REDIS_HOST=redis-contigo-prod.redis.cache.windows.net
-REDIS_PORT=6380
-REDIS_PASSWORD=<primary-key>
-```
-
-## Object Storage
-
-### Recommended for immediate go-live: keep MinIO/S3-compatible storage
-
-The web app has an Azure Blob adapter, but workers still explicitly expect MinIO/S3 variables in production for OCR file retrieval. For the fastest reliable live demo, keep MinIO or another S3-compatible endpoint.
-
-Set:
-
-```text
-STORAGE_PROVIDER=minio
-MINIO_ENDPOINT=<internal-minio-host>
-MINIO_PORT=9000
-MINIO_ACCESS_KEY=<secure-access-key>
-MINIO_SECRET_KEY=<secure-secret-key>
-MINIO_BUCKET=contracts
-MINIO_USE_SSL=false
-S3_BUCKET=contracts
-```
-
-If MinIO is hosted publicly or separately, enable TLS and set `MINIO_USE_SSL=true`.
-
-### Azure Blob option
-
-Azure Blob can be used after worker compatibility is verified or patched.
-
-Required variables:
-
-```text
-STORAGE_PROVIDER=azure
-AZURE_STORAGE_ACCOUNT_NAME=stcontigoprod
-AZURE_STORAGE_ACCOUNT_KEY=<storage-key>
-AZURE_STORAGE_CONTAINER=contracts
-AZURE_STORAGE_CONTAINER_NAME=contracts
-AZURE_STORAGE_REGION=switzerlandnorth
-```
-
-Before choosing Azure Blob only, verify upload, OCR worker download, artifact generation, deletion, and signed URL flows end to end.
-
-## Azure OpenAI
-
-Create or use an Azure OpenAI resource and deploy:
-
-- Chat deployment: `gpt-4o`
-- Embedding deployment: `text-embedding-3-small`
-
-Required variables:
-
-```text
-AZURE_OPENAI_ENDPOINT=https://<resource>.openai.azure.com
-AZURE_OPENAI_API_KEY=<key>
-AZURE_OPENAI_DEPLOYMENT=gpt-4o
-AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-small
-AZURE_OPENAI_API_VERSION=2024-02-01
-RAG_EMBED_MODEL=text-embedding-3-small
-RAG_EMBED_DIMENSIONS=1024
-```
-
-Confirm quota before the demo. Upload and artifact generation can make many calls.
-
-## Azure Document Intelligence
-
-Create an Azure AI Document Intelligence resource.
-
-Required variables:
-
-```text
-AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://<resource>.cognitiveservices.azure.com/
-AZURE_DOCUMENT_INTELLIGENCE_KEY=<key>
-AZURE_DI_DEFAULT_MODEL=layout
-AZURE_DI_FEATURES=keyValuePairs
-```
-
-If using separate EU variables, set these too:
-
-```text
-AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT_EU=<endpoint>
-AZURE_DOCUMENT_INTELLIGENCE_KEY_EU=<key>
-```
-
-## Key Vault
-
-Store all secrets in Key Vault and grant the hosting identity read access.
-
-Create Key Vault:
+### Wire to the Container App
 
 ```bash
-az keyvault create \
-  --resource-group rg-contigo-prod \
-  --name kv-contigo-prod \
-  --location switzerlandnorth \
-  --enable-rbac-authorization true \
-  --enable-purge-protection true \
-  --retention-days 90
+az containerapp update \
+  --name contigo \
+  --resource-group contigoContainerApps \
+  --set-env-vars \
+    REDIS_URL=rediss://:<primary-key>@redis-contigo.redis.cache.windows.net:6380 \
+    REDIS_HOST=redis-contigo.redis.cache.windows.net \
+    REDIS_PORT=6380 \
+    REDIS_PASSWORD=<primary-key> \
+    REDIS_TLS=true
 ```
 
-Minimum secrets:
+---
 
-```text
-database-url
-direct-database-url
-redis-url
-redis-host
-redis-password
-auth-secret
-jwt-secret
-session-secret
-azure-openai-endpoint
-azure-openai-api-key
-azure-document-intelligence-endpoint
-azure-document-intelligence-key
-minio-access-key
-minio-secret-key
-minio-endpoint
-azure-storage-account-name, if Azure Blob is used
-azure-storage-account-key, if Azure Blob is used
-azure-storage-container, if Azure Blob is used
-sentry-dsn, if enabled
-sendgrid-api-key, if email is enabled
+## Deploying a New Version
+
+Deployments are manual and require confirmation to prevent accidental production pushes. Trigger via GitHub Actions:
+
+1. Go to **Actions** → **Deploy to Azure Container Apps** → **Run workflow**.
+2. Select environment: `production`.
+3. Type `deploy-production` in the confirmation field.
+4. The workflow builds the image, pushes to `contigoacr2026`, and updates the Container App.
+
+The current live image is `contigoacr2026.azurecr.io/contigo:v20260417-admin2` (4 vCPU / 8 GB). Any `az containerapp update --set-env-vars` command triggers an automatic restart with zero downtime.
+
+---
+
+## Customer Onboarding — No Seed Script Required
+
+The signup route (`/auth/signup`) supports open self-registration. Each new registration with an organization name creates an isolated tenant automatically. Customers can register at:
+
+```
+https://www.mycontigo.app/auth/signup
 ```
 
-Manual Kubernetes Secret mode is guarded for production. When `azure.enabled=false` and `NODE_ENV=production`, the Helm chart requires explicit non-empty values for the core runtime secrets in `secrets.requiredManualKeys`; do not bypass this for client environments.
+Pre-seeding a demo tenant (`pnpm db:seed:demo:prod`) is only needed if you want to walk a customer through a pre-loaded environment with sample contracts. For a live evaluation where the customer uploads their own 100 contracts, self-registration is the correct flow.
 
-Generate strong app secrets:
+### Password requirements
+
+The signup route enforces: minimum 8 characters, at least one uppercase, one lowercase, one number, one special character.
+
+---
+
+## Bulk Uploading 100 Contracts
+
+Once Steps 1–3 are complete, upload contracts through the UI using the **Upload** button or in batch using the **New Contract → Batch** flow.
+
+For scripted bulk upload (faster than clicking through the UI):
 
 ```bash
-openssl rand -base64 32
-openssl rand -hex 32
+# 1. Get CSRF token
+CSRF=$(curl -s -c /tmp/cookies.txt https://www.mycontigo.app/api/auth/csrf \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['csrfToken'])")
+
+# 2. Sign in
+curl -s -c /tmp/cookies.txt -b /tmp/cookies.txt \
+  -X POST https://www.mycontigo.app/api/auth/callback/credentials \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "csrfToken=$CSRF&email=user@example.com&password=YourPassword1!&redirect=false"
+
+# 3. Upload all PDFs (the upload endpoint is CSRF-exempt for multipart)
+for f in ./contracts/*.pdf; do
+  curl -s -b /tmp/cookies.txt \
+    -F "file=@$f" \
+    https://www.mycontigo.app/api/contracts/upload
+  echo "Uploaded: $f"
+done
 ```
 
-Never use `change-me-in-production` or demo secrets in Azure.
+With Redis in place, each upload queues immediately and workers process in parallel. Without Redis, add `sleep 5` between uploads to avoid overloading the inline processor.
 
-## Required Application Environment
+---
 
-Set these on the web container and worker container, adjusting storage variables based on the chosen provider.
+## Post-Deploy Verification Checklist
 
-```text
-NODE_ENV=production
-NEXT_TELEMETRY_DISABLED=1
-PORT=3000
-LOG_LEVEL=info
-
-NEXTAUTH_URL=https://<your-domain>
-AUTH_TRUST_HOST=true
-AUTH_SECRET=<secret>
-JWT_SECRET=<secret>
-SESSION_SECRET=<secret>
-REQUIRE_AUTH=true
-
-DATABASE_URL=<pooled-or-direct-db-url>
-DIRECT_DATABASE_URL=<direct-db-url>
-
-REDIS_URL=<redis-url>
-REDIS_HOST=<redis-host>
-REDIS_PORT=6380
-REDIS_PASSWORD=<redis-key>
-
-AZURE_OPENAI_ENDPOINT=<endpoint>
-AZURE_OPENAI_API_KEY=<key>
-AZURE_OPENAI_DEPLOYMENT=gpt-4o
-AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-small
-AZURE_OPENAI_API_VERSION=2024-02-01
-RAG_EMBED_MODEL=text-embedding-3-small
-RAG_EMBED_DIMENSIONS=1024
-RAG_INTEGRATION_ENABLED=true
-RAG_AUTO_INDEX=true
-
-AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=<endpoint>
-AZURE_DOCUMENT_INTELLIGENCE_KEY=<key>
-AZURE_DI_DEFAULT_MODEL=layout
-AZURE_DI_FEATURES=keyValuePairs
-
-STORAGE_PROVIDER=minio
-MINIO_ENDPOINT=<host>
-MINIO_PORT=9000
-MINIO_ACCESS_KEY=<key>
-MINIO_SECRET_KEY=<secret>
-MINIO_BUCKET=contracts
-MINIO_USE_SSL=false
-S3_BUCKET=contracts
-```
-
-Optional but recommended:
-
-```text
-SENTRY_DSN=<dsn>
-ENABLE_HEALTH_CHECKS=true
-ENABLE_AI_FEATURES=true
-SLOW_QUERY_THRESHOLD=1000
-```
-
-## Hosting Setup
-
-### Azure Container Apps recommendation
-
-Create a Container Apps environment with Log Analytics.
-
-Deploy at least two apps:
-
-- `contigo-web`: external ingress enabled, target port `3000`.
-- `contigo-workers`: no external ingress.
-
-Assign a managed identity to both apps and grant:
-
-- Key Vault Secrets User on `kv-contigo-prod`.
-- AcrPull on `acrcontigoprod` if using managed identity image pulls.
-
-For MinIO on Container Apps, either:
-
-- Run MinIO as a separate internal container app with persistent Azure Files mounted, or
-- Use a managed S3-compatible service.
-
-For production, avoid ephemeral filesystem storage for contract files.
-
-### AKS existing path
-
-The repo has AKS-oriented IaC and Helm:
-
-- [infrastructure/azure/main.bicep](../../infrastructure/azure/main.bicep)
-- [infrastructure/azure/deploy.sh](../../infrastructure/azure/deploy.sh)
-- [helm/contigo/values-azure.yaml](../../helm/contigo/values-azure.yaml)
-
-Before using this path:
-
-1. Confirm the Bicep SKU choices and PostgreSQL version.
-2. Add all missing production secrets to [helm/contigo/templates/secrets.yaml](../../helm/contigo/templates/secrets.yaml).
-3. Fix storage mode: the Azure values set `STORAGE_PROVIDER=azure`, while workers still require MinIO/S3 settings.
-4. Add `DIRECT_DATABASE_URL`, Azure OpenAI, Document Intelligence, RAG, Redis host/port, and storage variables to the chart.
-5. Install NGINX ingress and cert-manager.
-6. Configure a `ClusterIssuer` for TLS.
-7. Use immutable image tags instead of only `latest`.
-
-### VM/Docker Compose path
-
-For immediate live demo:
-
-1. Provision or reuse the Azure VM.
-2. Install Docker and Docker Compose.
-3. Copy production env values to the VM.
-4. Start [docker-compose.vm.yml](../../docker-compose.vm.yml).
-5. Add Nginx or Cloudflare Tunnel for HTTPS.
-6. Set `NEXTAUTH_URL` to the final HTTPS domain.
-7. Confirm ports `80` and `443` are reachable through Azure NSG and any Cloudflare settings.
-
-## Demo Tenant and Seed Data
-
-Run this after migrations. Use the production-safe seed command for client-facing environments.
+Run these after completing all three steps.
 
 ```bash
-DEMO_USER_PASSWORD="<strong-password>" \
-DATABASE_URL="$DATABASE_URL" \
-DIRECT_DATABASE_URL="$DIRECT_DATABASE_URL" \
-pnpm db:seed:demo:prod
+# App is healthy
+curl -I https://www.mycontigo.app/api/health
+
+# Upload a test contract and verify processing completes
+# Check in the UI: contract should move from PROCESSING → status shows artifacts
+
+# Verify file is in R2 (not on ephemeral disk)
+# Check Cloudflare R2 dashboard → contracts bucket → should contain the uploaded file
+
+# Verify DI is being used (check Application Insights logs for DI calls)
+az monitor app-insights query \
+  --app contigo-insights \
+  --resource-group contigoContainerApps \
+  --analytics-query "traces | where message contains 'DocumentIntelligence' | order by timestamp desc | take 10"
 ```
 
-The script creates:
+---
 
-```text
-Tenant ID: demo
-Tenant slug: demo
-User: demo@example.com
-Role: admin
-```
+## Cost Summary (Demo)
 
-For a local-only test, you may pass `--allow-default-password`, but do not use the default password for a client demo.
+The Container App runs on the **Consumption plan** with `minReplicas: 0`. This means compute is billed per second only when the app is actually running — when idle it scales to zero and costs nothing. Azure includes a free monthly grant of 180,000 vCPU-seconds and 360,000 GB-seconds, which covers roughly 12 hours of a 4 vCPU replica before any charges begin.
 
-Optional demo renewal data:
+| Item | Cost |
+|---|---|
+| Container App idle (scaled to zero) | €0 |
+| Container App active @ 4 vCPU / 8 GB | ~€0.70/hour per replica |
+| Full demo day (8 hours, minReplicas=1) | ~€5.60 |
+| Azure OpenAI GPT-4o (100 contracts × ~50K tokens) | ~€15–30 one-time |
+| Azure Document Intelligence (100 contracts) | ~€5–15 one-time |
+| Azure Cache for Redis Basic C1 | ~€16/mo |
+| Cloudflare R2 storage | Free (10 GB / 1M ops) |
+| Neon Serverless Postgres (free tier, 0.5 GB) | Free |
+| **Total for a demo day** | **~€25–55** |
+| **Ongoing when idle** | **~€16/mo (Redis only)** |
+
+Neon's 0.5 GB free tier comfortably covers 100 contracts (~14 MB of data). Upgrade to Neon Launch (~€19/mo) only if you exceed the free tier.
+
+### Avoiding cold starts on demo day
+
+With `minReplicas: 0`, the first request after an idle period triggers a cold start (~15–30 seconds blank screen). Before a demo, set the minimum to 1 to keep the app warm, then reset it afterwards:
 
 ```bash
-DATABASE_URL="$DATABASE_URL" \
-DIRECT_DATABASE_URL="$DIRECT_DATABASE_URL" \
-pnpm tsx scripts/seed-renewals-demo.ts
+# Before the demo
+az containerapp update --name contigo --resource-group contigoContainerApps --min-replicas 1
+
+# After the demo
+az containerapp update --name contigo --resource-group contigoContainerApps --min-replicas 0
 ```
 
-Be careful with [scripts/seed-all-demo-data.sql](../../scripts/seed-all-demo-data.sql). It uses tenant ID `demo-tenant`, while the login demo user belongs to tenant ID `demo`. Adapt it before using it for the client demo tenant.
+### Reducing the container size after adding Redis
 
-Verify demo data:
+The current 4 vCPU / 8 GB allocation was sized for inline processing (no Redis). Once Redis is active and workers handle artifact generation asynchronously, the web container only serves HTTP requests and can be safely downsized to 1 vCPU / 2 GB, cutting active compute cost to ~€0.18/hour:
 
 ```bash
-psql "$DIRECT_DATABASE_URL" -c 'SELECT id, name, slug, status FROM "Tenant" ORDER BY "createdAt" DESC LIMIT 10;'
-psql "$DIRECT_DATABASE_URL" -c 'SELECT email, "tenantId", status FROM "User" WHERE email = '\''demo@example.com'\'';'
+az containerapp update \
+  --name contigo \
+  --resource-group contigoContainerApps \
+  --cpu 1 --memory 2Gi
 ```
 
-## DNS and HTTPS
+---
 
-1. Configure the final domain.
-2. Point DNS to the Azure ingress endpoint, VM public IP, Application Gateway, or Cloudflare Tunnel.
-3. Enable TLS.
-4. If Cloudflare is used, prefer Full Strict mode with a valid origin certificate.
-5. Set `NEXTAUTH_URL=https://<domain>`.
-6. Restart the web app after changing auth/domain variables.
+## Known Remaining Gaps
 
-Validation:
+These are not blocking for the demo but should be addressed before a production customer goes live:
 
-```bash
-curl -I https://<domain>/api/health
-curl -I https://<domain>/login
-```
+1. **No persistent Redis if Container App restarts** — Azure Cache for Redis is a separate managed service and is unaffected by Container App restarts. This is fine.
+2. **`NEXTAUTH_URL` must match the exact origin** — currently set to `https://www.mycontigo.app`. If a new custom domain is added, update this env var and restart.
+3. **Secrets stored as plaintext env vars** — `AZURE_OPENAI_API_KEY`, `NEXTAUTH_SECRET`, and `DATABASE_URL` are currently set as plain values on the Container App, not as Key Vault references. For production hardening, migrate them to Key Vault secrets and reference via managed identity.
+4. **No separate workers Container App** — workers run inside the main container via PM2. For high volume (>500 contracts/day), extract workers into a dedicated Container App scaled independently.
 
-## Post-Deploy Verification
-
-Run these checks before giving the client access.
-
-### Health and auth
-
-- `GET /api/health` returns healthy.
-- Login works with the demo user or client-specific user.
-- Session cookies are secure over HTTPS.
-- `NEXTAUTH_URL` matches the browser URL exactly.
-
-### Database
-
-- Prisma migrations are applied.
-- Required extensions exist.
-- `Tenant`, `User`, `Contract`, `Artifact`, and `ContractEmbedding` tables exist.
-- The demo tenant exists.
-
-### Upload and AI pipeline
-
-1. Upload a PDF contract.
-2. Confirm the contract leaves `PROCESSING` status.
-3. Confirm `rawText` and `searchableText` are saved.
-4. Confirm Azure Document Intelligence extracted text.
-5. Confirm Azure OpenAI generated artifacts.
-6. Confirm the 14 expected artifact types are created.
-7. Confirm RAG embeddings are created when enabled.
-8. Ask the chat a question about the uploaded contract.
-
-Useful checks:
-
-```bash
-psql "$DIRECT_DATABASE_URL" -c 'SELECT id, status, filename, "tenantId", "createdAt" FROM "Contract" ORDER BY "createdAt" DESC LIMIT 5;'
-psql "$DIRECT_DATABASE_URL" -c 'SELECT type, COUNT(*) FROM "Artifact" GROUP BY type ORDER BY type;'
-psql "$DIRECT_DATABASE_URL" -c 'SELECT COUNT(*) FROM "ContractEmbedding";'
-```
-
-### Storage
-
-- Uploaded contract files persist after container restart.
-- Workers can download the uploaded file.
-- Delete/archive flows do not leave broken references.
-
-### Redis/workers
-
-- Workers start without missing env errors.
-- Queues process upload/OCR/RAG jobs.
-- Redis TLS settings work in production.
-
-### Observability
-
-- Container logs are visible.
-- Health checks are configured.
-- Error tracking is configured if Sentry is used.
-- Azure Monitor alerts exist for app down, worker failures, database CPU/storage, Redis memory, and AI error spikes.
-
-## Security Checklist
-
-- Rotate demo passwords before client access.
-- Disable or restrict public PostgreSQL access.
-- Disable or restrict public Redis access.
-- Store secrets only in Key Vault or the hosting platform secret store.
-- Enable backups for PostgreSQL.
-- Enable soft delete on Key Vault.
-- Use least-privilege managed identities.
-- Use HTTPS only.
-- Set strong `AUTH_SECRET`, `JWT_SECRET`, and `SESSION_SECRET`.
-- Confirm `REQUIRE_AUTH=true` in production.
-- Confirm no `.env.production` or secrets are committed.
-
-## Known Repo Gaps To Resolve Before Managed Production
-
-1. No `.azure/deployment-plan.md` currently exists. Create one before running the Azure prepare/validate/deploy workflow.
-2. [helm/contigo/templates/secrets.yaml](../../helm/contigo/templates/secrets.yaml) does not expose all required production variables.
-3. [helm/contigo/values-azure.yaml](../../helm/contigo/values-azure.yaml) sets `STORAGE_PROVIDER=azure`, but worker code still requires MinIO/S3 credentials in production.
-4. RAG embedding dimension defaults are inconsistent across docs/scripts. Align `RAG_EMBED_DIMENSIONS`, vector column dimensions, and index SQL before production RAG indexing.
-5. [apps/web/.env.production.example](../../apps/web/.env.production.example) is missing several Azure-specific variables used by the app.
-6. [infrastructure/azure/main.bicep](../../infrastructure/azure/main.bicep) is AKS-oriented. Prefer Container Apps for lower operational load unless AKS is required.
-
-## Minimal Go-Live Order
-
-Use this order for the first live Azure deployment.
-
-1. Choose VM demo or managed Azure hosting.
-2. Create resource group and networking.
-3. Create Key Vault.
-4. Create PostgreSQL Flexible Server.
-5. Enable PostgreSQL extensions.
-6. Create Redis.
-7. Set up storage, preferably MinIO/S3-compatible for the first go-live.
-8. Create or confirm Azure OpenAI deployments.
-9. Create or confirm Document Intelligence.
-10. Build and push container images.
-11. Configure app secrets/env vars.
-12. Run Prisma migrations.
-13. Run RAG index SQL after dimension alignment.
-14. Deploy web and workers.
-15. Configure HTTPS/domain.
-16. Seed demo tenant/user.
-17. Upload a real demo contract and verify OCR/artifacts/RAG/chat.
-18. Rotate demo credentials and hand over the final URL.
+*ConTigo GmbH — Zurich, Switzerland*
+*Last updated: May 2026*

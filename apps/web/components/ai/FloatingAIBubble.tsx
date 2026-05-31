@@ -60,6 +60,7 @@ import {
   BookmarkCheck,
   ChevronDown,
   User,
+  AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
@@ -443,6 +444,10 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
   const [showExamples, setShowExamples] = useState(false);
   const [conversationContext, setConversationContext] = useState<ConversationContext>({});
   const [isTyping, setIsTyping] = useState(false);
+  
+  // Real-time streaming stages for dynamic thinking indicator
+  const [streamingPlanSteps, setStreamingPlanSteps] = useState<Array<{ step: number; description: string; status: 'planned' | 'running' | 'done' }>>([]);
+  const [streamingTools, setStreamingTools] = useState<Array<{ toolName: string; status: 'running' | 'done' | 'error'; summary?: string }>>([]);
   
   // Artifact context state - for real-time updates
   const [artifactVersion, setArtifactVersion] = useState(0);
@@ -1250,6 +1255,8 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
     
     setIsLoading(true);
     setIsTyping(true);
+    setStreamingPlanSteps([]);
+    setStreamingTools([]);
     
     if (retryCount === 0) {
       playSound("send");
@@ -1365,9 +1372,9 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
         // Flag for server-sent error events — checked after loop
         let streamError: string | null = null;
 
+        let hasReceivedContent = false;
+
         if (reader) {
-          setIsTyping(false); // Start showing streaming content
-          
           try {
           while (true) {
             const { done, value } = await reader.read();
@@ -1397,7 +1404,12 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
 
                 try {
                   if (data.type === 'content') {
-                    accumulatedContent += (data.content as string);
+                    const chunkText = (data.content as string) || '';
+                    if (!hasReceivedContent && chunkText.trim().length > 0) {
+                      hasReceivedContent = true;
+                      setIsTyping(false);
+                    }
+                    accumulatedContent += chunkText;
                     setMessages((prev) =>
                       prev.map((m) =>
                         m.id === assistantMessageId
@@ -1407,6 +1419,11 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                     );
                   } else if (data.type === 'tool_start') {
                     // Show tool execution in progress
+                    const toolName = data.toolName as string;
+                    setStreamingTools((prev) => [
+                      ...prev.filter((t) => t.toolName !== toolName),
+                      { toolName, status: 'running' },
+                    ]);
                     setMessages((prev) =>
                       prev.map((m) =>
                         m.id === assistantMessageId
@@ -1414,7 +1431,7 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                               ...m,
                               toolProgress: [
                                 ...(m.toolProgress || []),
-                                { toolName: data.toolName as string, status: 'running' as const },
+                                { toolName, status: 'running' as const },
                               ],
                             } as Message
                           : m
@@ -1422,6 +1439,15 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                     );
                   } else if (data.type === 'tool_done') {
                     // Update tool progress to done
+                    const toolName = data.toolName as string;
+                    const success = data.success as boolean;
+                    setStreamingTools((prev) =>
+                      prev.map((t) =>
+                        t.toolName === toolName
+                          ? { ...t, status: success ? 'done' : 'error', summary: data.summary as string | undefined }
+                          : t
+                      )
+                    );
                     setMessages((prev) =>
                       prev.map((m) =>
                         m.id === assistantMessageId
@@ -1431,7 +1457,7 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                                 tp.toolName === data.toolName
                                   ? {
                                       ...tp,
-                                      status: (data.success ? 'done' : 'error') as 'done' | 'error',
+                                      status: (success ? 'done' : 'error') as 'done' | 'error',
                                       summary: data.summary as string | undefined,
                                       navigation: data.navigation as { route: string; label: string } | undefined,
                                       executionTimeMs: data.executionTimeMs as number | undefined,
@@ -1474,14 +1500,15 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                       ? reasoningArr.map((r: string, i: number) => ({
                           step: i + 1,
                           description: r,
-                          status: 'planned',
+                          status: 'planned' as const,
                         }))
                       : Array.from({ length: stepCount }, (_, i) => ({
                           step: i + 1,
                           description: `Step ${i + 1}`,
-                          status: 'planned',
+                          status: 'planned' as const,
                         }));
                     if (planSteps.length > 0) {
+                      setStreamingPlanSteps(planSteps);
                       setMessages((prev) =>
                         prev.map((m) =>
                           m.id === assistantMessageId
@@ -1801,6 +1828,8 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
       abortControllerRef.current = null;
       setIsLoading(false);
       setIsTyping(false);
+      setStreamingPlanSteps([]);
+      setStreamingTools([]);
     }
     
   }, [input, isLoading, conversationContext, isOpen, playSound, messages, cancelCurrentRequest]);
@@ -2509,7 +2538,14 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                   <div className="relative flex-1 overflow-hidden bg-gray-50/50">
                     <ScrollArea className="h-full">
                       <div ref={scrollRef} className="p-6 space-y-5">
-                        {messages.map((message, msgIndex) => (
+                        {messages.map((message, msgIndex) => {
+                          // Skip rendering the last assistant placeholder while still loading
+                          // (the Thinking indicator is shown separately)
+                          const isLast = msgIndex === messages.length - 1;
+                          const isEmptyAssistant = message.role === 'assistant' && message.content === '';
+                          if (isLoading && isLast && isEmptyAssistant) return null;
+
+                          return (
                           <motion.div
                             key={message.id}
                             id={`chat-msg-${message.id}`}
@@ -2522,7 +2558,7 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                               type: "spring", 
                               damping: 20, 
                               stiffness: 300,
-                              delay: msgIndex === messages.length - 1 ? 0.1 : 0 
+                              delay: isLast ? 0.1 : 0 
                             }}
                             className="space-y-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 rounded-xl"
                           >
@@ -2545,7 +2581,15 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                                   className={`rounded-2xl px-5 py-4 ${
                                     message.role === "user"
                                       ? "bg-gradient-to-br from-violet-500 to-purple-500 text-white rounded-br-md shadow-md"
-                                      : "bg-white text-gray-800 rounded-bl-md shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+                                      : `bg-white text-gray-800 rounded-bl-md shadow-sm border border-gray-200 hover:shadow-md transition-shadow ${
+                                          message.metadata?.confidence != null
+                                            ? message.metadata.confidence >= 0.9
+                                              ? 'border-l-4 border-l-emerald-400'
+                                              : message.metadata.confidence >= 0.7
+                                                ? 'border-l-4 border-l-amber-400'
+                                                : 'border-l-4 border-l-red-400'
+                                            : ''
+                                        }`
                                   }`}
                                 >
                                   {/* Plan Steps Visualization */}
@@ -2906,7 +2950,7 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                                 {message.role === "assistant" && (
                                   <motion.div 
                                     initial={{ opacity: 0, x: 10 }}
-                                    className="absolute -right-2 top-2 opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col gap-1"
+                                    className="absolute -right-2 top-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-200 flex flex-col gap-1"
                                   >
                                     <Tooltip>
                                       <TooltipTrigger asChild>
@@ -3102,7 +3146,7 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                               </motion.div>
                             )}
                           </motion.div>
-                        ))}
+                        );})}
 
                         {/* Enhanced typing indicator with animated thinking status */}
                         {isLoading && (
@@ -3146,24 +3190,52 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: 0.2 }}
                               >
-                                <motion.p 
-                                  className="text-xs text-gray-600 flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5"
-                                  initial={{ opacity: 0, x: -10 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: 0.3 }}
-                                >
-                                  <Search className="w-3 h-3 text-violet-500" />
-                                  Searching contracts with RAG...
-                                </motion.p>
-                                <motion.p 
-                                  className="text-xs text-gray-500 flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5"
-                                  initial={{ opacity: 0, x: -10 }}
-                                  animate={{ opacity: 0.8, x: 0 }}
-                                  transition={{ delay: 0.6 }}
-                                >
-                                  <FileText className="w-3 h-3 text-violet-500" />
-                                  Analyzing relevant clauses...
-                                </motion.p>
+                                {streamingPlanSteps.length > 0 ? (
+                                  streamingPlanSteps.map((ps, i) => (
+                                    <motion.p 
+                                      key={ps.step}
+                                      className="text-xs text-gray-600 flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5"
+                                      initial={{ opacity: 0, x: -10 }}
+                                      animate={{ opacity: 1, x: 0 }}
+                                      transition={{ delay: 0.3 + i * 0.15 }}
+                                    >
+                                      <span className="w-4 h-4 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-[10px] font-bold shrink-0">
+                                        {ps.step}
+                                      </span>
+                                      {ps.description}
+                                    </motion.p>
+                                  ))
+                                ) : streamingTools.length > 0 ? (
+                                  streamingTools.map((tool, i) => (
+                                    <motion.p 
+                                      key={tool.toolName}
+                                      className="text-xs text-gray-600 flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5"
+                                      initial={{ opacity: 0, x: -10 }}
+                                      animate={{ opacity: 1, x: 0 }}
+                                      transition={{ delay: 0.3 + i * 0.15 }}
+                                    >
+                                      {tool.status === 'running' ? (
+                                        <Loader2 className="w-3 h-3 text-violet-500 animate-spin" />
+                                      ) : tool.status === 'done' ? (
+                                        <Check className="w-3 h-3 text-emerald-500" />
+                                      ) : (
+                                        <AlertCircle className="w-3 h-3 text-red-500" />
+                                      )}
+                                      <span className="capitalize">{tool.toolName.replace(/-/g, ' ')}</span>
+                                      {tool.status === 'running' && <span className="text-gray-400">…</span>}
+                                    </motion.p>
+                                  ))
+                                ) : (
+                                  <motion.p 
+                                    className="text-xs text-gray-600 flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5"
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.3 }}
+                                  >
+                                    <Search className="w-3 h-3 text-violet-500" />
+                                    Searching contracts with RAG...
+                                  </motion.p>
+                                )}
                               </motion.div>
                               {/* Cancel button */}
                               <motion.button

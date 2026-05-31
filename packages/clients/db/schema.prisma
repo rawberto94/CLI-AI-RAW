@@ -5463,6 +5463,27 @@ model ContractGroupAccess {
   @@map("contract_group_access")
 }
 
+/// SCIM Sync Record - Maps SCIM identities to internal users and groups
+model ScimSyncRecord {
+  id            String    @id @default(dbgenerated("gen_random_uuid()::text"))
+  tenantId      String    @map("tenant_id")
+  scimId        String    @map("scim_id")
+  resourceType  String    @default("User") @map("resource_type")
+  internalId    String    @map("internal_id")
+  displayName   String?   @map("display_name")
+  email         String?
+  active        Boolean   @default(true)
+  lastSyncedAt  DateTime? @map("last_synced_at")
+  syncSource    String    @default("ENTRA_ID") @map("sync_source")
+  rawAttributes Json      @default("{}") @map("raw_attributes")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([tenantId, scimId], name: "scim_unique")
+  @@index([tenantId], name: "scim_tenant_idx")
+  @@map("scim_sync_records")
+}
+
 /// External Collaborator - External parties with limited access
 model ExternalCollaborator {
   id           String    @id @default(cuid())

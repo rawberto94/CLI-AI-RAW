@@ -61,6 +61,7 @@ const envSchema = z.object({
   REDIS_HOST: optionalString,
   REDIS_PORT: z.coerce.number().default(6379),
   REDIS_PASSWORD: optionalString,
+  REDIS_TLS: z.enum(['true', 'false']).default('false'),
   REDIS_TOKEN: optionalString,
   UPSTASH_REDIS_REST_URL: optionalUrl,
   UPSTASH_REDIS_REST_TOKEN: optionalString,
@@ -279,6 +280,7 @@ const envSchema = z.object({
   NEXT_PUBLIC_ENABLE_REDLINING: boolString,
   NEXT_PUBLIC_ENABLE_SIGNATURES: boolString,
   NEXT_PUBLIC_TENANT_ID: optionalString,
+  NEXT_PUBLIC_DEMO_MODE: boolString,
 
   // ── Rate Limiting ──────────────────────────────────────────────────────
   RATE_LIMIT_ENABLED: z.enum(['true', 'false']).default('true'),
@@ -377,7 +379,10 @@ export const env = {
   get hasReplicas() { return Boolean(getConfig().DATABASE_REPLICA_URLS); },
 
   // ── Redis ──────────────────────────────────────────────────────────────
-  get redisUrl() { return getConfig().REDIS_URL || `redis://${getConfig().REDIS_HOST || 'localhost'}:${getConfig().REDIS_PORT}`; },
+  get redisUrl() {
+    const protocol = getConfig().REDIS_TLS === 'true' ? 'rediss' : 'redis';
+    return getConfig().REDIS_URL || `${protocol}://${getConfig().REDIS_HOST || 'localhost'}:${getConfig().REDIS_PORT}`;
+  },
   get redisPassword() { return getConfig().REDIS_PASSWORD; },
   get hasRedis() { return Boolean(getConfig().REDIS_URL || getConfig().REDIS_HOST); },
   get hasUpstash() { return Boolean(getConfig().UPSTASH_REDIS_REST_URL); },
@@ -492,6 +497,7 @@ export const env = {
   get approvalsEnabled() { return getConfig().NEXT_PUBLIC_ENABLE_APPROVALS === 'true'; },
   get signaturesEnabled() { return getConfig().NEXT_PUBLIC_ENABLE_SIGNATURES === 'true'; },
   get betaEnabled() { return getConfig().NEXT_PUBLIC_ENABLE_BETA === 'true'; },
+  get demoMode() { return getConfig().NEXT_PUBLIC_DEMO_MODE === 'true'; },
 };
 
 // ============================================================================

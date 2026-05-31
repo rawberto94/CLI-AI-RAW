@@ -8,7 +8,10 @@ let publisherConnectPromise: Promise<void> | null = null;
 
 function getRedisUrl(): string | null {
   if (process.env.REDIS_URL) return process.env.REDIS_URL;
-  if (process.env.REDIS_HOST) return `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`;
+  if (process.env.REDIS_HOST) {
+    const protocol = process.env.REDIS_TLS === 'true' ? 'rediss' : 'redis';
+    return `${protocol}://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`;
+  }
   // No Redis configured — return null to skip connection attempts
   return null;
 }

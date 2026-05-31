@@ -90,6 +90,7 @@ export async function checkRedisHealth(): Promise<HealthStatus> {
       host: process.env.REDIS_HOST,
       port: parseInt(process.env.REDIS_PORT || "6379"),
       password: process.env.REDIS_PASSWORD,
+      tls: process.env.REDIS_TLS === 'true' ? {} : undefined,
       maxRetriesPerRequest: 1,
       connectTimeout: 5000,
     });
