@@ -702,47 +702,6 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
           </motion.div>
 
           {/* Risk Score */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.4 }}
-            data-testid="stat-risk"
-            className="group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-md border border-white/10 p-3 md:p-4 hover:bg-white/15 hover:border-white/20 transition-all duration-300"
-          >
-            {/* Background glow effect based on risk level */}
-            <div className={cn(
-              "absolute -inset-px rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500",
-              (stats.avgRiskScore ?? 0) < 30 ? "bg-gradient-to-r from-emerald-500/20 via-transparent to-transparent" :
-              (stats.avgRiskScore ?? 0) < 70 ? "bg-gradient-to-r from-amber-500/20 via-transparent to-transparent" :
-              "bg-gradient-to-r from-red-500/20 via-transparent to-transparent"
-            )} />
-            <div className="absolute top-0 right-0 w-32 h-32 opacity-5 group-hover:opacity-10 transition-opacity">
-              <Shield className="w-full h-full text-white" />
-            </div>
-            <div className="relative">
-              <div className="flex items-start justify-between mb-3">
-                <div className={cn(
-                  "p-2.5 rounded-xl shadow-lg backdrop-blur-sm",
-                  (stats.avgRiskScore ?? 0) < 30 ? "bg-gradient-to-br from-emerald-500 to-green-600 shadow-emerald-500/30" : 
-                  (stats.avgRiskScore ?? 0) < 70 ? "bg-gradient-to-br from-amber-500 to-amber-600 shadow-amber-500/30" : 
-                  "bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/30"
-                )}>
-                  <Shield className="h-5 w-5 text-white" />
-                </div>
-              </div>
-              <h3 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
-                <AnimatedCounter value={stats.avgRiskScore ?? 0} suffix="%" />
-              </h3>
-              <p className="text-sm text-slate-200 mt-1 font-medium">Avg Risk Score</p>
-              <p className={cn(
-                "text-xs font-medium",
-                (stats.avgRiskScore ?? 0) < 30 ? "text-emerald-400" : (stats.avgRiskScore ?? 0) < 70 ? "text-amber-400" : "text-red-400"
-              )}>
-                {(stats.avgRiskScore ?? 0) < 30 ? 'Low risk portfolio' : (stats.avgRiskScore ?? 0) < 70 ? 'Moderate risk' : 'High risk - attention needed'}
-              </p>
-            </div>
-          </motion.div>
-
           {/* Recent Activity */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
