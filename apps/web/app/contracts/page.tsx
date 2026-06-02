@@ -325,8 +325,21 @@ export default function ContractsPage() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if user is typing in an input
+      // Don't trigger if user is typing in an input or interacting with a popover/dialog
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      // Don't trigger when focus is inside an open Radix popover, dialog, or sheet,
+      // or on a select/button — prevents filter chip interactions from misfiring shortcuts.
+      const target = e.target as Element;
+      if (
+        target instanceof HTMLButtonElement ||
+        target instanceof HTMLSelectElement ||
+        target.closest('[data-radix-popper-content-wrapper]') ||
+        target.closest('[role="dialog"]') ||
+        target.closest('[role="menu"]') ||
+        target.closest('[data-state="open"]')
+      ) {
         return;
       }
       
