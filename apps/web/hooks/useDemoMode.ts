@@ -1,15 +1,11 @@
 /**
  * Runtime Demo Mode Hook
  *
- * Priority order:
- * 1. Tenant-level pilotMode flag in session (server-controlled, per-tenant)
- * 2. URL search param ?demo=1 (override for testing)
- * 3. localStorage flag (manual toggle)
- * 4. Build-time env NEXT_PUBLIC_DEMO_MODE
+ * Checks URL search param ?demo=1, localStorage flag, then build-time env.
+ * This allows toggling demo mode without rebuilding the container.
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
 
 const STORAGE_KEY = 'contigo_demo_mode';
 const CHANGE_EVENT = 'contigo-demo-mode-change';
@@ -43,16 +39,23 @@ function checkDemoMode(): boolean {
 }
 
 export function useDemoMode(): boolean {
-  const { data: session } = useSession();
   const [isDemo, setIsDemo] = useState(() => checkDemoMode());
 
   useEffect(() => {
+    // Re-check on mount (for SSR safety)
     setIsDemo(checkDemoMode());
 
+    // Listen for changes from other tabs (storage event)
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) setIsDemo(checkDemoMode());
+      if (e.key === STORAGE_KEY) {
+        setIsDemo(checkDemoMode());
+      }
     };
-    const handleCustom = () => setIsDemo(checkDemoMode());
+
+    // Listen for changes from the same tab (custom event)
+    const handleCustom = () => {
+      setIsDemo(checkDemoMode());
+    };
 
     window.addEventListener('storage', handleStorage);
     window.addEventListener(CHANGE_EVENT, handleCustom);
@@ -61,9 +64,6 @@ export function useDemoMode(): boolean {
       window.removeEventListener(CHANGE_EVENT, handleCustom);
     };
   }, []);
-
-  // Tenant-level pilotMode overrides everything else
-  if ((session?.user as { pilotMode?: boolean } | undefined)?.pilotMode) return true;
 
   return isDemo;
 }

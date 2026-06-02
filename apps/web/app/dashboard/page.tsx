@@ -349,18 +349,16 @@ export default function DashboardPage() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
         >
-          {!isDemo && (
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => setCustomizerOpen(true)}
-              className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
-              aria-label="Customize dashboard layout"
-            >
-              <LayoutGrid className="h-4 w-4 mr-2" aria-hidden="true" />
-              Customize
-            </Button>
-          )}
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => setCustomizerOpen(true)}
+            className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
+            aria-label="Customize dashboard layout"
+          >
+            <LayoutGrid className="h-4 w-4 mr-2" aria-hidden="true" />
+            Customize
+          </Button>
           <Button 
             size="sm" 
             variant="outline" 

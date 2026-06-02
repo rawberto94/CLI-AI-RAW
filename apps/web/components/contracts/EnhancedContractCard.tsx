@@ -52,6 +52,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { getTagStyle } from "@/lib/tag-colors";
 import { formatDistanceToNow, differenceInDays, format, isValid, parseISO } from "date-fns";
 
 // ============================================================================
@@ -698,7 +699,7 @@ const QuickPreview = memo(function QuickPreview({ contract }: QuickPreviewProps)
       {contract.tags && contract.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-4 pt-4 border-t border-slate-100">
           {contract.tags.slice(0, 4).map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 border-0">
+            <Badge key={tag} variant="secondary" className={`text-[10px] px-2 py-0.5 border ${getTagStyle(tag)}`}>
               {tag}
             </Badge>
           ))}
@@ -935,7 +936,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
               <Badge
                 key={tag}
                 variant="secondary"
-                className="text-[10px] px-2 py-0 bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                className={`text-[10px] px-2 py-0 border hover:opacity-80 transition-colors ${getTagStyle(tag)}`}
               >
                 {tag}
               </Badge>

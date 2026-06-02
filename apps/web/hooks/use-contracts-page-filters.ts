@@ -127,6 +127,7 @@ export function useContractsPageFilters() {
   const [pageSize, setPageSize] = useState(25);
   const [sortField, setSortField] = useState<SortField>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [accessScope, setAccessScope] = useState<'all' | 'mine'>("all");
 
   // ── Consolidated filter accessors ──────────────────────────────────
   const statusFilter = filterState.statuses.length > 0 ? filterState.statuses[0] : "all";
@@ -215,6 +216,7 @@ export function useContractsPageFilters() {
       maxValue: effectiveValueRange.max,
       uploadedAfter: effectiveUploadedRange.from?.toISOString(),
       uploadedBefore: effectiveUploadedRange.to?.toISOString(),
+      accessScope,
     }),
     [
       currentPage,
@@ -229,6 +231,7 @@ export function useContractsPageFilters() {
       expirationFilters,
       effectiveValueRange,
       effectiveUploadedRange,
+      accessScope,
     ],
   );
 
@@ -349,6 +352,7 @@ export function useContractsPageFilters() {
     pageSize, setPageSize,
     sortField, setSortField,
     sortDirection, setSortDirection,
+    accessScope, setAccessScope,
     // Derived accessors
     statusFilter, typeFilters, riskFilters, supplierFilters, categoryFilter,
     // Setter callbacks

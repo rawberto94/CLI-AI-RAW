@@ -52,6 +52,10 @@ import {
   Clock,
   PenLine,
   ShieldAlert,
+  Tag,
+  Users,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -76,6 +80,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ContractsPageHeader } from "@/components/contracts/ContractsPageHeader";
 import { StateOfTheArtSearch } from "@/components/contracts/StateOfTheArtSearch";
 import { ScrollToTopButton } from "@/components/fab";
+import { BulkTagDialog } from "@/components/contracts/BulkTagDialog";
+import { BulkAccessDialog } from "@/components/contracts/BulkAccessDialog";
 import { cn } from "@/lib/utils";
 
 // Extracted sub-components
@@ -140,6 +146,7 @@ export default function ContractsPage() {
     signatureFilters, setSignatureFilters, documentTypeFilters,
     currentPage, setCurrentPage, pageSize, setPageSize,
     sortField, setSortField, sortDirection, setSortDirection,
+    accessScope, setAccessScope,
     statusFilter, typeFilters, riskFilters, supplierFilters, categoryFilter,
     setStatusFilter, setTypeFilters, setRiskFilters, setSupplierFilters, setCategoryFilter,
     serverParams,
@@ -244,6 +251,8 @@ export default function ContractsPage() {
     bulkDeleteDialogOpen, setBulkDeleteDialogOpen,
     bulkExportDialogOpen, setBulkExportDialogOpen,
     bulkShareDialogOpen, setBulkShareDialogOpen,
+    bulkTagDialogOpen, setBulkTagDialogOpen,
+    bulkAccessDialogOpen, setBulkAccessDialogOpen,
   } = useContractsPageActions({ dataMode, refetch, refetchStats, crossModule, queryClient });
 
   const contracts: Contract[] = contractsData?.contracts || [];
@@ -431,28 +440,39 @@ export default function ContractsPage() {
 
   // Apply a local safety pass with the same criteria while keeping the
   // server as the source of truth for totals and pagination.
-  const filteredContracts = useMemo(
-    () =>
-      applyContractFilters(contracts, {
-        searchQuery,
-        filterState,
-        dateRangePreset: dateRangeFilter,
-        expirationFilters,
-        signatureFilters,
-        documentTypeFilters,
-        valueRangePreset: valueRangeFilter,
-      }),
-    [
-      contracts,
+  const filteredContracts = useMemo(() => {
+    let result = applyContractFilters(contracts, {
       searchQuery,
       filterState,
-      dateRangeFilter,
+      dateRangePreset: dateRangeFilter,
       expirationFilters,
       signatureFilters,
       documentTypeFilters,
-      valueRangeFilter,
-    ],
-  );
+      valueRangePreset: valueRangeFilter,
+    });
+
+    // Client-side sort for tags since Prisma can't sort JSON arrays
+    if (sortField === 'tags') {
+      result = [...result].sort((a, b) => {
+        const aTags = Array.isArray(a.tags) ? a.tags.join(', ') : '';
+        const bTags = Array.isArray(b.tags) ? b.tags.join(', ') : '';
+        return sortDirection === 'asc' ? aTags.localeCompare(bTags) : bTags.localeCompare(aTags);
+      });
+    }
+
+    return result;
+  }, [
+    contracts,
+    searchQuery,
+    filterState,
+    dateRangeFilter,
+    expirationFilters,
+    signatureFilters,
+    documentTypeFilters,
+    valueRangeFilter,
+    sortField,
+    sortDirection,
+  ]);
 
   // Server already sorts and paginates.
   const effectiveTotal = contractsData?.total ?? filteredContracts.length;
@@ -1150,6 +1170,7 @@ export default function ContractsPage() {
                   { field: 'value' as SortField, label: 'Value' },
                   { field: 'expirationDate' as SortField, label: 'Expiration' },
                   { field: 'status' as SortField, label: 'Status' },
+                  { field: 'tags' as SortField, label: 'Tags' },
                 ].map((option) => (
                   <DropdownMenuItem
                     key={option.field}
@@ -1176,6 +1197,44 @@ export default function ContractsPage() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Access Scope Toggle */}
+            <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setAccessScope('all')}
+                    className={cn(
+                      "h-9 px-3 flex items-center gap-1.5 text-xs font-medium transition-colors",
+                      accessScope === 'all'
+                        ? "bg-slate-800 text-white"
+                        : "bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                    )}
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    All
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="bg-slate-900 text-white border-0">All contracts</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setAccessScope('mine')}
+                    className={cn(
+                      "h-9 px-3 flex items-center gap-1.5 text-xs font-medium transition-colors border-l border-slate-200",
+                      accessScope === 'mine'
+                        ? "bg-slate-800 text-white"
+                        : "bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                    )}
+                  >
+                    <EyeOff className="h-3.5 w-3.5" />
+                    Mine
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="bg-slate-900 text-white border-0">My contracts</TooltipContent>
+              </Tooltip>
+            </div>
 
             {/* View Mode */}
             <div data-tour="view-modes" className="flex items-center border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
@@ -1738,6 +1797,38 @@ export default function ContractsPage() {
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="top">Share selected</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
+                          onClick={() => setBulkTagDialogOpen(true)}
+                          disabled={isProcessingBulk}
+                        >
+                          <Tag className="h-3.5 w-3.5" />
+                          <span className="ml-1.5 text-xs font-medium">Tag</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">Tag selected</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
+                          onClick={() => setBulkAccessDialogOpen(true)}
+                          disabled={isProcessingBulk}
+                        >
+                          <Users className="h-3.5 w-3.5" />
+                          <span className="ml-1.5 text-xs font-medium">Access</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">Manage access</TooltipContent>
                     </Tooltip>
 
                     <div className="w-px h-5 bg-slate-700 mx-0.5" />

@@ -42,6 +42,8 @@ export function useContractsPageActions({
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [bulkExportDialogOpen, setBulkExportDialogOpen] = useState(false);
   const [bulkShareDialogOpen, setBulkShareDialogOpen] = useState(false);
+  const [bulkTagDialogOpen, setBulkTagDialogOpen] = useState(false);
+  const [bulkAccessDialogOpen, setBulkAccessDialogOpen] = useState(false);
 
   // ── Selection ──────────────────────────────────────────────────────
   const toggleSelect = useCallback((contractId: string) => {
@@ -262,5 +264,7 @@ export function useContractsPageActions({
     bulkDeleteDialogOpen, setBulkDeleteDialogOpen,
     bulkExportDialogOpen, setBulkExportDialogOpen,
     bulkShareDialogOpen, setBulkShareDialogOpen,
+    bulkTagDialogOpen, setBulkTagDialogOpen,
+    bulkAccessDialogOpen, setBulkAccessDialogOpen,
   };
 }

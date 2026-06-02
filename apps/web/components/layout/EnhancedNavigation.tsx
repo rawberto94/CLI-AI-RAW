@@ -202,7 +202,7 @@ const navigationGroups: NavigationGroup[] = [
     label: 'Platform',
     items: [
       { name: 'Governance', href: '/governance', icon: Shield, description: 'Policies, routing, and controls', audiences: ['legal'], demo: 'hide' },
-      { name: 'Contract Migration', href: '/migration', icon: Upload, description: 'Bulk import existing contracts', audiences: ['all'], isNew: true, demo: 'hide' },
+      { name: 'Contract Migration', href: '/migration', icon: Upload, description: 'Bulk import existing contracts', audiences: ['all'], isNew: true },
       { name: 'Settings', href: '/settings', icon: Settings, description: 'Personal and platform settings', audiences: ['all'] },
     ],
   },
@@ -231,24 +231,14 @@ const navigationGroups: NavigationGroup[] = [
   },
 ];
 
-// Demo mode toggle button — respects pilotMode (server-enforced)
+// Demo mode toggle button — reads localStorage directly, no hooks needed
 function DemoModeToggle() {
-  const { data: session } = useSession();
-  const isDemo = useDemoMode();
-  const isPilot = (session?.user as { pilotMode?: boolean } | undefined)?.pilotMode ?? false;
-
-  // Pilot tenants cannot toggle demo mode — it is enforced server-side
-  if (isPilot) {
-    return (
-      <div
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-900/20 dark:text-violet-300 dark:border-violet-800 cursor-not-allowed"
-        title="Demo mode is locked by your administrator"
-      >
-        <Monitor className="h-4 w-4" />
-        <span>Demo Mode: Locked</span>
-      </div>
-    );
-  }
+  const isDemo =
+    (typeof window !== 'undefined' &&
+      (window.localStorage.getItem('contigo_demo_mode') === 'true' ||
+        new URLSearchParams(window.location.search).get('demo') === '1' ||
+        new URLSearchParams(window.location.search).get('demo') === 'true')) ||
+    false;
 
   return (
     <button

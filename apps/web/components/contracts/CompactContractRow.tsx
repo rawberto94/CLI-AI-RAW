@@ -39,6 +39,7 @@ import { ContractHoverPreview } from "@/components/contracts/ContractHoverPrevie
 import { SignatureStatusBadge } from "@/components/contracts/SignatureStatusBadge";
 import { DocumentTypeBadge } from "@/components/contracts/DocumentTypeBadge";
 import { cn } from "@/lib/utils";
+import { getTagStyle } from "@/lib/tag-colors";
 import { useRouter } from "next/navigation";
 import type { Contract } from "@/hooks/use-queries";
 import type { DocumentClassification } from "@/lib/types/contract-metadata-schema";
@@ -293,7 +294,7 @@ export const CompactContractRow = memo(function CompactContractRow({
         {tags.length > 0 ? (
           <>
             {tags.slice(0, 2).map((tag) => (
-              <Badge key={tag} variant="secondary" className="max-w-[72px] truncate rounded-md bg-slate-100 px-1.5 py-0 text-[10px] font-medium text-slate-600">
+              <Badge key={tag} variant="secondary" className={`max-w-[72px] truncate rounded-md px-1.5 py-0 text-[10px] font-medium border ${getTagStyle(tag)}`}>
                 {tag}
               </Badge>
             ))}

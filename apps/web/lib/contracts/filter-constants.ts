@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 // ============ SORT OPTIONS ============
-export type SortField = 'title' | 'createdAt' | 'value' | 'expirationDate' | 'status';
+export type SortField = 'title' | 'createdAt' | 'value' | 'expirationDate' | 'status' | 'tags';
 export type SortDirection = 'asc' | 'desc';
 
 export const SORT_OPTIONS: { value: SortField; label: string }[] = [
@@ -30,6 +30,7 @@ export function mapSortFieldToApi(field: SortField): string {
     case 'title': return 'contractTitle';
     case 'value': return 'totalValue';
     case 'status': return 'createdAt'; // status not sortable on API
+    case 'tags': return 'tags';
     default: return field;
   }
 }

@@ -1,4 +1,5 @@
 import { ContractStatus, type Prisma } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 
 import {
@@ -283,7 +284,7 @@ export async function getContractsCollection(
     const validSortFields = [
       'createdAt', 'updatedAt', 'uploadedAt', 'totalValue',
       'expirationDate', 'effectiveDate', 'contractTitle',
-      'clientName', 'supplierName', 'viewCount', 'lastViewedAt',
+      'clientName', 'supplierName', 'viewCount', 'lastViewedAt', 'tags',
     ];
     const requestedSortBy = searchParams.get('sortBy') || 'createdAt';
     const sortBy = validSortFields.includes(requestedSortBy) ? requestedSortBy : 'createdAt';
@@ -317,6 +318,7 @@ export async function getContractsCollection(
     const uploadedBefore = searchParams.get('uploadedBefore');
     const hasDeadline = searchParams.get('hasDeadline') === 'true';
     const isExpiring = searchParams.get('isExpiring') === 'true';
+    const accessScope = searchParams.get('accessScope') || 'all';
 
     if (page < 1) {
       return createErrorResponse(context, 'VALIDATION_ERROR', 'Page must be greater than 0', 400);
@@ -345,6 +347,41 @@ export async function getContractsCollection(
       isDeleted: false,
     };
     const andFilters: Prisma.ContractWhereInput[] = [];
+
+    // Access scope filtering
+    if (accessScope === 'mine') {
+      const now = new Date();
+      const userGroupIds = await prisma.userGroupMember.findMany({
+        where: { userId: context.userId },
+        select: { groupId: true },
+      }).then((members) => members.map((m) => m.groupId));
+
+      andFilters.push({
+        OR: [
+          { uploadedBy: context.userId },
+          {
+            userAccess: {
+              some: {
+                userId: context.userId,
+                OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+              },
+            },
+          },
+          ...(userGroupIds.length > 0
+            ? [
+                {
+                  groupAccess: {
+                    some: {
+                      groupId: { in: userGroupIds },
+                      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+                    },
+                  },
+                } as Prisma.ContractWhereInput,
+              ]
+            : []),
+        ],
+      });
+    }
 
     if (search) {
       where.OR = [
@@ -531,8 +568,13 @@ export async function getContractsCollection(
       }
     }
 
-    const orderBy: Record<string, string> = {};
-    orderBy[sortBy] = sortOrder;
+    let orderBy: Record<string, string> | Array<Record<string, string>> = {};
+    if (sortBy === 'tags') {
+      // Prisma can't sort JSON arrays directly; sort by title as tie-breaker
+      orderBy = [{ contractTitle: sortOrder }, { createdAt: 'desc' }];
+    } else {
+      orderBy[sortBy] = sortOrder;
+    }
 
     const cacheKey = CacheKeys.contractsList({
       tenantId,
