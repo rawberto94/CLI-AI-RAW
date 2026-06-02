@@ -32,7 +32,7 @@ interface ConfettiParticleProps {
 }
 
 function ConfettiParticle({ delay, x }: ConfettiParticleProps) {
-  const colors = ['#8B5CF6', '#3B82F6', '#EC4899', '#F59E0B', '#10B981', '#6366F1'];
+  const colors = ['#8B5CF6', '#3B82F6', '#EC4899', '#F59E0B', '#10B981', '#6366F1', '#E3001B', '#DC2626'];
   const color = colors[Math.floor(Math.random() * colors.length)];
   const size = 6 + Math.random() * 6;
   

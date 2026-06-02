@@ -36,28 +36,28 @@ const features = [
   {
     icon: Brain,
     title: 'AI Analysis',
-    description: 'Instant insights from any contract',
+    description: 'Instant insights from supplier & maintenance contracts',
     color: 'from-violet-500 to-purple-500',
     bgColor: 'bg-violet-100 dark:bg-violet-900/30',
   },
   {
     icon: Shield,
     title: 'Risk Detection',
-    description: 'AI-powered risk identification',
+    description: 'Spot liability caps, renewal gaps, and compliance risks',
     color: 'from-violet-500 to-violet-500',
     bgColor: 'bg-violet-100 dark:bg-violet-900/30',
   },
   {
     icon: MessageSquare,
     title: 'Smart Q&A',
-    description: 'Ask questions in plain English',
+    description: 'Ask questions in plain English — no legal training needed',
     color: 'from-violet-500 to-purple-500',
     bgColor: 'bg-violet-100 dark:bg-violet-900/30',
   },
   {
     icon: Zap,
     title: 'Auto Extract',
-    description: 'Key terms extracted automatically',
+    description: 'Parties, dates, values & terms pulled automatically',
     color: 'from-amber-500 to-orange-500',
     bgColor: 'bg-amber-100 dark:bg-amber-900/30',
   },
@@ -263,16 +263,16 @@ export function WelcomeModal() {
                   transition={{ delay: 0.15 }}
                   className="text-3xl md:text-4xl font-bold text-white mb-2"
                 >
-                  Welcome to ConTigo!
+                  Welcome to ConTigo, Stadler
                 </motion.h1>
-                
+
                 <motion.p
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
                   className="text-lg text-white/80"
                 >
-                  Your AI-powered contract intelligence platform
+                  AI-powered contract intelligence — built for rail, manufacturing, and precision engineering
                 </motion.p>
               </div>
               
@@ -296,9 +296,9 @@ export function WelcomeModal() {
                   className="flex-1 bg-white text-violet-700 hover:bg-white/90 shadow-lg gap-2 h-12 text-base font-semibold"
                 >
                   <Play className="w-5 h-5" />
-                  Take the Tour
+                  Start the Demo Tour
                   <span className="text-violet-500/70 text-sm font-normal ml-1">
-                    ~2 min
+                    ~90 sec
                   </span>
                 </Button>
                 

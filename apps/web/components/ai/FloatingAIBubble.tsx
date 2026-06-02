@@ -2029,7 +2029,7 @@ export function FloatingAIBubble({ mode = 'floating' }: FloatingAIBubbleProps) {
         {/* Floating Bubble Button - Draggable with better animations */}
         <AnimatePresence>
           {!isEmbedded && !isOpen && (
-            <motion.div key="FloatingAIBubble-ap-1"
+            <motion.div key="FloatingAIBubble-ap-1" data-tour="ai-assistant"
               initial={{ scale: 0, opacity: 0, rotate: -180 }}
               animate={{ scale: 1, opacity: 1, rotate: 0 }}
               exit={{ scale: 0, opacity: 0, rotate: 180 }}

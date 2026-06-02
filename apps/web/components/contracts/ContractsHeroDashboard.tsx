@@ -586,7 +586,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             transition={{ duration: 0.4, delay: 0.2 }}
             className="flex items-center gap-2 md:gap-3"
           >
-            <Link href="/contracts/upload">
+            <Link href="/contracts/upload" data-tour="upload">
               <Button 
                 onClick={onUploadClick}
                 className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-semibold bg-white text-slate-900 hover:bg-slate-100 shadow-lg shadow-black/20 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] active:scale-[0.98]"
