@@ -595,22 +595,6 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
                 <span className="hidden sm:inline">Upload</span>
               </Button>
             </Link>
-            <Link href="/contracts/generate">
-              <Button 
-                onClick={onGenerateClick}
-                className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-semibold bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white shadow-lg shadow-violet-500/30 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] active:scale-[0.98]"
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Generate</span>
-              </Button>
-            </Link>
-            <Button 
-              onClick={onAskAIClick}
-              className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-semibold bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white shadow-lg shadow-violet-500/30 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] active:scale-[0.98]"
-            >
-              <Target className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Ask AI</span>
-            </Button>
           </motion.div>
         </div>
 
