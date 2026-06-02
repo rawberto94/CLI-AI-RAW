@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useDataMode } from '@/contexts/DataModeContext'
+import { useDemoMode } from '@/hooks/useDemoMode'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -86,6 +87,7 @@ function formatDuration(ms: number): string {
 // ── Page Component ───────────────────────────────────────────────────────────
 
 export default function UploadPage() {
+  const isDemo = useDemoMode()
   const router = useRouter()
   const { dataMode } = useDataMode()
   const [files, setFiles] = useState<UploadFile[]>([])
@@ -533,7 +535,7 @@ export default function UploadPage() {
         {/* Drop Zone */}
         <UploadDropZone onDrop={onDrop} disabled={isUploading} />
 
-        {reviewQueue.length > 0 && !activeReview && !skipAllMetadataReview && (
+        {!isDemo && reviewQueue.length > 0 && !activeReview && !skipAllMetadataReview && (
           <Card className="border-blue-200 bg-blue-50/80 shadow-sm dark:border-blue-900/60 dark:bg-blue-950/30">
             <CardContent className="p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -618,7 +620,7 @@ export default function UploadPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {completedCount > 0 && (
+                  {!isDemo && completedCount > 0 && (
                     <Button variant="ghost" size="sm" onClick={clearCompleted} className="h-9 rounded-full gap-1 px-3 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                       <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                       Clear Done
@@ -630,13 +632,13 @@ export default function UploadPage() {
                       Upload All ({pendingCount})
                     </Button>
                   )}
-                  {isUploading && !isPaused && (
+                  {!isDemo && isUploading && !isPaused && (
                     <Button onClick={handlePauseAll} variant="outline" size="sm" className="h-9 rounded-full gap-1 px-4">
                       <Pause className="h-3.5 w-3.5" aria-hidden="true" />
                       Pause
                     </Button>
                   )}
-                  {isPaused && (
+                  {!isDemo && isPaused && (
                     <Button onClick={handleUploadAll} size="sm" className="h-9 rounded-full gap-1 px-4">
                       <Play className="h-3.5 w-3.5" aria-hidden="true" />
                       Resume

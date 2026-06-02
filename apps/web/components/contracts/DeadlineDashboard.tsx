@@ -29,6 +29,7 @@ import {
   Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useDemoMode } from '@/hooks/useDemoMode'
 
 interface Deadline {
   id: string
@@ -58,6 +59,7 @@ export function DeadlineDashboard({
   clientFilter,
   typeFilter,
 }: DeadlineDashboardProps) {
+  const isDemo = useDemoMode();
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'timeline' | 'list' | 'calendar'>('timeline')
@@ -190,10 +192,12 @@ export function DeadlineDashboard({
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
-            <Bell className="h-4 w-4 mr-2" />
-            Configure Alerts
-          </Button>
+          {!isDemo && (
+            <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
+              <Bell className="h-4 w-4 mr-2" />
+              Configure Alerts
+            </Button>
+          )}
         </div>
       </div>
 
@@ -440,9 +444,11 @@ export function DeadlineDashboard({
                         </div>
                       </div>
                       
-                      <Button variant="outline" size="sm" className="hover:bg-violet-50">
-                        View Contract
-                      </Button>
+                      {!isDemo && (
+                        <Button variant="outline" size="sm" className="hover:bg-violet-50">
+                          View Contract
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )
@@ -465,14 +471,18 @@ export function DeadlineDashboard({
                 Configure email alerts for upcoming deadlines. Get notified 30, 14, and 7 days before any deadline.
               </p>
               <div className="flex items-center gap-3">
-                <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Setup Email Alerts
-                </Button>
-                <Button variant="outline" className="hover:bg-white">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export to Calendar
-                </Button>
+                {!isDemo && (
+                  <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
+                    <Mail className="h-4 w-4 mr-2" />
+                    Setup Email Alerts
+                  </Button>
+                )}
+                {!isDemo && (
+                  <Button variant="outline" className="hover:bg-white">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export to Calendar
+                  </Button>
+                )}
               </div>
             </div>
           </div>

@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useDemoMode } from '@/hooks/useDemoMode';
 import { PageBreadcrumb } from '@/components/navigation';
 import { unwrapApiResponseData } from '@/lib/api-fetch';
 import { Badge } from "@/components/ui/badge";
@@ -114,6 +115,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const isDemo = useDemoMode();
   const [requeueingIssueId, setRequeueingIssueId] = useState<string | null>(null);
   const [bulkRequeueingIssues, setBulkRequeueingIssues] = useState(false);
   
@@ -334,42 +336,42 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
 
   const tabs = [
     { id: "general", name: "General", icon: <Settings className="w-4 h-4" /> },
-    { id: "security", name: "Security", icon: <Shield className="w-4 h-4" /> },
+    ...(!isDemo ? [{ id: "security", name: "Security", icon: <Shield className="w-4 h-4" /> }] : []),
     {
       id: "notifications",
       name: "Notifications",
       icon: <Bell className="w-4 h-4" />,
     },
-    { id: "processing", name: "Processing", icon: <Zap className="w-4 h-4" /> },
-    {
+    ...(!isDemo ? [{ id: "processing", name: "Processing", icon: <Zap className="w-4 h-4" /> }] : []),
+    ...(!isDemo ? [{
       id: "integrations",
       name: "Integrations",
       icon: <Globe className="w-4 h-4" />,
-    },
-    {
+    }] : []),
+    ...(!isDemo ? [{
       id: "contract-sources",
       name: "Contract Sources",
       icon: <FolderSync className="w-4 h-4" />,
       href: "/settings/contract-sources",
-    },
-    {
+    }] : []),
+    ...(!isDemo ? [{
       id: "metadata",
       name: "Metadata Schema",
       icon: <FileText className="w-4 h-4" />,
       href: "/settings/metadata",
-    },
+    }] : []),
     {
       id: "tags",
       name: "Tags",
       icon: <Tag className="w-4 h-4" />,
       href: "/settings/tags",
     },
-    {
+    ...(!isDemo ? [{
       id: "taxonomy",
       name: "Taxonomy",
       icon: <FolderTree className="w-4 h-4" />,
       href: "/settings/taxonomy",
-    },
+    }] : []),
   ];
 
   const outboundCardBadges = outboundOverview
@@ -748,16 +750,19 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Link href="/tour">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="bg-white border-violet-300 text-violet-700 hover:bg-violet-100"
-                        >
-                          <Play className="w-4 h-4 mr-2" />
-                          Open Tour
-                        </Button>
-                      </Link>
+                      {!isDemo && (
+                        <Link href="/tour">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-white border-violet-300 text-violet-700 hover:bg-violet-100"
+                          >
+                            <Play className="w-4 h-4 mr-2" />
+                            Open Tour
+                          </Button>
+                        </Link>
+                      )}
+                      {!isDemo && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -772,6 +777,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
                       >
                         Restart
                       </Button>
+                      )}
                     </div>
                   </div>
                   <div className="text-sm text-slate-600">
@@ -791,7 +797,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
           )}
 
           {/* Security Settings */}
-          {activeTab === "security" && (
+          {activeTab === "security" && !isDemo && (
             canManageTenantSettings ? (
               <>
                 <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
@@ -985,7 +991,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
           )}
 
           {/* Processing Settings */}
-          {activeTab === "processing" && (
+          {activeTab === "processing" && !isDemo && (
             canManageTenantSettings ? (
               <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
                 <CardHeader>
@@ -1075,7 +1081,7 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
           )}
 
           {/* Integrations Settings */}
-          {activeTab === "integrations" && (
+          {activeTab === "integrations" && !isDemo && (
             <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">

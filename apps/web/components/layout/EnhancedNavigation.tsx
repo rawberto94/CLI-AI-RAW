@@ -27,7 +27,7 @@ import {
   isAdminNavigationRole,
   type NavigationAudience,
 } from '@/lib/navigation/visibility';
-import { env } from '@/lib/env';
+import { useDemoMode } from '@/hooks/useDemoMode';
 import { Target } from 'lucide-react';
 import {
   LayoutDashboard,
@@ -58,7 +58,7 @@ import {
   Lightbulb,
   Truck,
   Receipt,
-  Wallet,
+  Monitor,  Wallet,
   ShieldCheck,
   ClipboardCheck,
   AlertTriangle,
@@ -109,8 +109,8 @@ const navigationGroups: NavigationGroup[] = [
         description: 'Repository of executed and in-flight contracts',
         audiences: ['all'],
         children: [
-          { name: 'Upload', href: '/upload', icon: Upload, description: 'Ingest documents', audiences: ['operator'] },
-          { name: 'Clauses', href: '/clauses', icon: BookOpen, description: 'Clause library', audiences: ['legal'] },
+          { name: 'Upload', href: '/upload', icon: Upload, description: 'Ingest documents', audiences: ['operator'], demo: 'hide' },
+          { name: 'Clauses', href: '/clauses', icon: BookOpen, description: 'Clause library', audiences: ['legal'], demo: 'hide' },
         ],
       },
       {
@@ -202,7 +202,7 @@ const navigationGroups: NavigationGroup[] = [
     label: 'Platform',
     items: [
       { name: 'Governance', href: '/governance', icon: Shield, description: 'Policies, routing, and controls', audiences: ['legal'], demo: 'hide' },
-      { name: 'Contract Migration', href: '/migration', icon: Upload, description: 'Bulk import existing contracts', audiences: ['all'], isNew: true },
+      { name: 'Contract Migration', href: '/migration', icon: Upload, description: 'Bulk import existing contracts', audiences: ['all'], isNew: true, demo: 'hide' },
       { name: 'Settings', href: '/settings', icon: Settings, description: 'Personal and platform settings', audiences: ['all'] },
     ],
   },
@@ -230,6 +230,64 @@ const navigationGroups: NavigationGroup[] = [
     ],
   },
 ];
+
+// Demo mode toggle button — respects pilotMode (server-enforced)
+function DemoModeToggle() {
+  const { data: session } = useSession();
+  const isDemo = useDemoMode();
+  const isPilot = (session?.user as { pilotMode?: boolean } | undefined)?.pilotMode ?? false;
+
+  // Pilot tenants cannot toggle demo mode — it is enforced server-side
+  if (isPilot) {
+    return (
+      <div
+        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-900/20 dark:text-violet-300 dark:border-violet-800 cursor-not-allowed"
+        title="Demo mode is locked by your administrator"
+      >
+        <Monitor className="h-4 w-4" />
+        <span>Demo Mode: Locked</span>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => {
+        if (isDemo) {
+          window.localStorage.removeItem('contigo_demo_mode');
+        } else {
+          window.localStorage.setItem('contigo_demo_mode', 'true');
+        }
+        window.location.reload();
+      }}
+      className={cn(
+        'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors border',
+        isDemo
+          ? 'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100 dark:bg-violet-900/20 dark:text-violet-300 dark:border-violet-800'
+          : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+      )}
+      title={isDemo ? 'Demo mode is ON — click to restore full navigation' : 'Demo mode is OFF — click to show demo view'}
+    >
+      <span className="flex items-center gap-2">
+        <Monitor className="h-4 w-4" />
+        {isDemo ? 'Demo Mode: ON' : 'Demo Mode: OFF'}
+      </span>
+      <span
+        className={cn(
+          'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
+          isDemo ? 'bg-violet-500' : 'bg-gray-300 dark:bg-slate-600'
+        )}
+      >
+        <span
+          className={cn(
+            'inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm',
+            isDemo ? 'translate-x-[18px]' : 'translate-x-0.5'
+          )}
+        />
+      </span>
+    </button>
+  );
+}
 
 // Render a single navigation item
 function NavItem({ 
@@ -451,9 +509,9 @@ function EnhancedNavigation() {
     [userRole, isViewingAsClient]
   );
 
-  const filteredNavigationGroups = useMemo(() => {
-    const isDemo = env.demoMode;
+  const isDemo = useDemoMode();
 
+  const filteredNavigationGroups = useMemo(() => {
     const filterItem = (item: NavigationItem): NavigationItem | null => {
       const visibleChildren = item.children
         ?.map(filterItem)
@@ -489,7 +547,7 @@ function EnhancedNavigation() {
           .filter((item): item is NavigationItem => item !== null),
       }))
       .filter((group) => group.items.length > 0);
-  }, [activeAudiences, isAdmin]);
+  }, [activeAudiences, isAdmin, isDemo]);
 
   // Keyboard shortcut for search (Cmd/Ctrl + K)
   useEffect(() => {
@@ -594,7 +652,14 @@ function EnhancedNavigation() {
     <TooltipProvider>
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-gray-200/60 dark:border-slate-700/60 px-4 py-3 flex items-center justify-between">
-        <ConTigoLogoSVG size="md" />
+        <div className="flex items-center gap-2">
+          <ConTigoLogoSVG size="md" />
+          {isDemo && (
+            <span className="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+              DEMO
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <NotificationBell />
@@ -625,6 +690,11 @@ function EnhancedNavigation() {
           {/* Logo */}
           <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100 dark:border-slate-700">
             <ConTigoLogoSVG size="lg" />
+            {isDemo && (
+              <span className="ml-auto inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+                DEMO
+              </span>
+            )}
           </div>
 
           {/* Search */}
@@ -653,6 +723,11 @@ function EnhancedNavigation() {
                 </kbd>
               </div>
             </form>
+          </div>
+
+          {/* Demo Mode Toggle */}
+          <div className="px-3 pb-2">
+            <DemoModeToggle />
           </div>
 
           {/* Navigation Groups */}

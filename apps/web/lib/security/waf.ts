@@ -134,15 +134,14 @@ const PATTERNS = {
 
   // Command injection patterns
   commandInjection: [
-    /[;&|`$]/,
-    /\$\([^)]+\)/,
-    /`[^`]+`/,
-    /\|\s*\w+/,
-    /;\s*\w+/,
-    /&&\s*\w+/,
-    /\|\|\s*\w+/,
-    />\s*\/\w+/,
-    /<\s*\/\w+/,
+    // Specific command substitution patterns (not single chars — too many false positives)
+    /\$\([^)]+\)/,    // $(command)
+    /`[^`]+`/,        // `command`
+    /;\s*\w+/,        // ; command
+    /\|\s*\w+/,       // | command
+    /&&\s*\w+/,       // && command
+    /\|\|\s*\w+/,     // || command
+    />\s*\/\w+/,      // redirect to path
     /\beval\s*\(/i,
     /\bexec\s*\(/i,
     /\bsystem\s*\(/i,
@@ -388,6 +387,7 @@ const DEFAULT_CONFIG: WAFConfig = {
     '/favicon.ico',
     '/api/health',
     '/api/webhooks', // Webhooks might have special content
+    '/api/auth',     // NextAuth handles its own CSRF + origin validation
   ],
   rateLimit: {
     enabled: true,

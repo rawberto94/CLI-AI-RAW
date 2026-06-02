@@ -21,6 +21,7 @@ import { PresenceIndicator } from '@/components/collaboration/PresenceIndicator'
 import { CopyableId } from '@/components/contracts/detail/CopyableId'
 import { StatusBadge } from '@/components/contracts/detail/StatusBadge'
 import { cn } from '@/lib/utils'
+import { useDemoMode } from '@/hooks/useDemoMode'
 import {
   ArrowLeft,
   RefreshCw,
@@ -108,6 +109,7 @@ export const ContractHeader = memo(function ContractHeader({
   onExtendContract,
   onRename,
 }: ContractHeaderProps) {
+  const isDemo = useDemoMode()
   const [isRenaming, setIsRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(filename || '')
   const renameInputRef = useRef<HTMLInputElement>(null)
@@ -368,15 +370,19 @@ export const ContractHeader = memo(function ContractHeader({
                   Download
                   <span className="ml-auto text-xs text-slate-400">⌘D</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onShare} className="cursor-pointer">
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onCompare} className="cursor-pointer">
-                  <GitCompare className="h-4 w-4 mr-2" />
-                  Compare Versions
-                </DropdownMenuItem>
-                {onCreateRenewal && (
+                {!isDemo && (
+                  <DropdownMenuItem onClick={onShare} className="cursor-pointer">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </DropdownMenuItem>
+                )}
+                {!isDemo && (
+                  <DropdownMenuItem onClick={onCompare} className="cursor-pointer">
+                    <GitCompare className="h-4 w-4 mr-2" />
+                    Compare Versions
+                  </DropdownMenuItem>
+                )}
+                {onCreateRenewal && !isDemo && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
@@ -386,13 +392,15 @@ export const ContractHeader = memo(function ContractHeader({
                       <RefreshCcw className="h-4 w-4 mr-2" />
                       {isExpiredOrExpiring ? 'Initiate Renewal' : 'Create Renewal'}
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={onExtendContract}
-                      className="cursor-pointer text-blue-600 dark:text-blue-400 focus:text-blue-600 dark:focus:text-blue-400 focus:bg-blue-50 dark:focus:bg-blue-900/30"
-                    >
-                      <CalendarPlus className="h-4 w-4 mr-2" />
-                      Extend Contract
-                    </DropdownMenuItem>
+                    {!isDemo && (
+                      <DropdownMenuItem
+                        onClick={onExtendContract}
+                        className="cursor-pointer text-blue-600 dark:text-blue-400 focus:text-blue-600 dark:focus:text-blue-400 focus:bg-blue-50 dark:focus:bg-blue-900/30"
+                      >
+                        <CalendarPlus className="h-4 w-4 mr-2" />
+                        Extend Contract
+                      </DropdownMenuItem>
+                    )}
                   </>
                 )}
                 <DropdownMenuSeparator />
@@ -418,20 +426,24 @@ export const ContractHeader = memo(function ContractHeader({
                     <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
-                  <Link href={`/contracts/${contractId}/legal-review`}>
-                    <Scale className="h-4 w-4 mr-2 text-violet-600" />
-                    Legal Review
-                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
-                  <Link href={`/contracts/${contractId}/redline`}>
-                    <Edit3 className="h-4 w-4 mr-2 text-violet-600" />
-                    Redline Editor
-                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
-                  </Link>
-                </DropdownMenuItem>
+                {!isDemo && (
+                  <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
+                    <Link href={`/contracts/${contractId}/legal-review`}>
+                      <Scale className="h-4 w-4 mr-2 text-violet-600" />
+                      Legal Review
+                      <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {!isDemo && (
+                  <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
+                    <Link href={`/contracts/${contractId}/redline`}>
+                      <Edit3 className="h-4 w-4 mr-2 text-violet-600" />
+                      Redline Editor
+                      <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
                   <Link href={`/obligations?contract=${contractId}`}>
                     <Target className="h-4 w-4 mr-2 text-violet-600" />

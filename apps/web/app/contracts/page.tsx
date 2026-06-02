@@ -56,6 +56,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDataMode } from "@/contexts/DataModeContext";
+import { useDemoMode } from "@/hooks/useDemoMode";
 import { useContracts, useContractStats, useCrossModuleInvalidation, useTaxonomyCategories, type Contract } from "@/hooks/use-queries";
 import { useContractsPageFilters } from "@/hooks/use-contracts-page-filters";
 import { useContractsPageActions } from "@/hooks/use-contracts-page-actions";
@@ -161,6 +162,7 @@ export default function ContractsPage() {
   }, [router, searchQuery]);
 
   // UI toggle state (not part of filter logic)
+  const isDemo = useDemoMode();
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // View mode: 'compact' for table-like rows, 'cards' for detailed cards
@@ -930,7 +932,7 @@ export default function ContractsPage() {
         </div>
 
         {/* AI Search Results */}
-        {(isAISearching || aiSearchResults) && (
+        {!isDemo && (isAISearching || aiSearchResults) && (
           <Card className="border-violet-200 bg-gradient-to-r from-violet-50/50 to-purple-50/50">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
@@ -1066,15 +1068,16 @@ export default function ContractsPage() {
             categoryLabels={categoryLabels}
           />
           
-          {/* Saved Search Presets */}
-          <SavedSearchPresets
-            currentFilters={filterState}
-            currentQuery={searchQuery}
-            onLoadPreset={handleLoadPreset}
-          />
+          {!isDemo && (
+            <SavedSearchPresets
+              currentFilters={filterState}
+              currentQuery={searchQuery}
+              onLoadPreset={handleLoadPreset}
+            />
+          )}
           
-          {/* Advanced Filter Button */}
-          <Button
+          {!isDemo && (
+            <Button
               variant={showAdvancedFilters ? "default" : "outline"}
               size="sm"
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -1097,6 +1100,7 @@ export default function ContractsPage() {
                 </Badge>
               )}
             </Button>
+          )}
         </div>
 
         {/* View Mode Toggle, Sort & Results Count */}
@@ -1199,8 +1203,8 @@ export default function ContractsPage() {
               ))}
             </div>
 
-            {/* Export */}
-            <DropdownMenu>
+            {!isDemo && (
+              <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button 
                   className="inline-flex items-center gap-2 px-3.5 py-2 text-xs border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors text-slate-700 font-medium bg-white focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1 outline-none"
@@ -1221,6 +1225,7 @@ export default function ContractsPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            )}
           </div>
         </div>
 
@@ -1649,7 +1654,7 @@ export default function ContractsPage() {
 
       {/* Bulk Actions Bar — fixed bottom so it's always visible */}
       <AnimatePresence>
-        {selectedContracts.size > 0 && (
+        {!isDemo && selectedContracts.size > 0 && (
           <motion.div
             key="bulk-actions-bar"
             initial={{ opacity: 0, y: 20 }}

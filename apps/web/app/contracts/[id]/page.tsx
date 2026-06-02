@@ -4,6 +4,7 @@ import React, { useEffect, useCallback, lazy, Suspense } from 'react'
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useDataMode } from '@/contexts/DataModeContext'
+import { useDemoMode } from '@/hooks/useDemoMode'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -173,6 +174,7 @@ export default function ContractDetailPage() {
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const { data: session } = useSession()
+  const isDemo = useDemoMode()
   const { dataMode } = useDataMode()
   const wsContext = useWebSocket()
   const crossModule = useCrossModuleInvalidation()
@@ -1124,9 +1126,9 @@ export default function ContractDetailPage() {
               onAction={() => setTab('overview')}
               onInitiateRenewal={() => router.push(`/contracts/${contractId}/renew`)}
               onSetReminder={() => openDialog('reminder')}
-              onStartReview={() => router.push(`/contracts/${contractId}/legal-review`)}
-              onStartRedline={() => router.push(`/contracts/${contractId}/redline`)}
-              onRequestSignature={handleRequestSignature}
+              onStartReview={isDemo ? undefined : () => router.push(`/contracts/${contractId}/legal-review`)}
+              onStartRedline={isDemo ? undefined : () => router.push(`/contracts/${contractId}/redline`)}
+              onRequestSignature={isDemo ? undefined : handleRequestSignature}
               onRetryArtifactType={(artifactType) => { void retryArtifactType(artifactType) }}
               onRetryAllArtifacts={() => { void retryAllArtifactTypes() }}
             />
@@ -1163,13 +1165,13 @@ export default function ContractDetailPage() {
                   {aiCategorize.isPending ? 'Categorizing…' : 'Auto-categorize'}
                 </button>
               )}
-              {contract?.signature_status === 'unsigned' && (
+              {!isDemo && contract?.signature_status === 'unsigned' && (
                 <button onClick={handleRequestSignature} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 transition-colors" aria-label="Request e-signature for this contract">
                   <PenTool className="h-3 w-3" />
                   Request Signature
                 </button>
               )}
-              {contract?.signature_status === 'signed' && (
+              {!isDemo && contract?.signature_status === 'signed' && (
                 <button onClick={handleDownloadSignedCopy} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 border border-green-200 hover:bg-green-100 text-green-700 transition-colors" aria-label="Download signed copy of this contract">
                   <CheckCircle2 className="h-3 w-3" />
                   Download Signed
@@ -1259,17 +1261,6 @@ export default function ContractDetailPage() {
                     relationshipNote={contract?.relationshipNote}
                     linkedAt={contract?.linkedAt}
                     isEditing={isEditing}
-                  />
-                <ContractScoresCard
-                    riskInfo={riskInfo}
-                    complianceInfo={complianceInfo}
-                    healthInfo={{
-                      score: healthData?.healthScore ?? 100,
-                      completeness: healthData?.completeness ?? 0,
-                      issues: healthData?.issues || [],
-                    }}
-                    isProcessing={isProcessing}
-                    onRefresh={handleRefresh}
                   />
                 <ContractAccessControl
                     contractId={contractId}

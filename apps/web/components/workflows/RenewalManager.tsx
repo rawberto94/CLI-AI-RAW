@@ -34,6 +34,7 @@ import {
 import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal';
 import { useCrossModuleInvalidation, useRenewals } from '@/hooks/use-queries';
 import { getTenantId } from '@/lib/tenant';
+import { useDemoMode } from '@/hooks/useDemoMode';
 import { RenewalsCalendar } from '@/components/calendar/RenewalsCalendar';
 
 // ============================================================================
@@ -184,6 +185,7 @@ const getApprovalStatusConfig = (status?: RenewalContract['approvalStatus']) => 
 };
 
 const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect, onSubmitForApproval }) => {
+  const isDemo = useDemoMode();
   const status = getStatusConfig(renewal.status);
   const StatusIcon = status.icon;
   const rec = getRecommendationConfig(renewal.recommendation);
@@ -327,7 +329,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
           
           <div className="flex items-center gap-1">
             {/* Start Renewal Wizard - Primary Action */}
-            {(renewal.status === 'upcoming' || renewal.status === 'urgent' || renewal.status === 'pending-review' || renewal.status === 'in-negotiation') && (
+            {!isDemo && (renewal.status === 'upcoming' || renewal.status === 'urgent' || renewal.status === 'pending-review' || renewal.status === 'in-negotiation') && (
               <Link
                 href={getRenewalWizardHref(renewal.contractId)}
                 onClick={(e) => e.stopPropagation()}
@@ -338,7 +340,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
               </Link>
             )}
             {/* Draft Renewal in AI Copilot */}
-            {(renewal.status === 'upcoming' || renewal.status === 'urgent' || renewal.status === 'pending-review' || renewal.status === 'in-negotiation') && (
+            {!isDemo && (renewal.status === 'upcoming' || renewal.status === 'urgent' || renewal.status === 'pending-review' || renewal.status === 'in-negotiation') && (
               <Link
                 href={getRenewalCopilotHref(renewal.contractId)}
                 onClick={(e) => e.stopPropagation()}
@@ -348,7 +350,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
                 <FileEdit className="w-4 h-4" />
               </Link>
             )}
-            {(!renewal.approvalStatus || renewal.approvalStatus === 'none' || renewal.approvalStatus === 'rejected') && (
+            {!isDemo && (!renewal.approvalStatus || renewal.approvalStatus === 'none' || renewal.approvalStatus === 'rejected') && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -360,7 +362,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
                 <SendHorizonal className="w-4 h-4" />
               </button>
             )}
-            {renewal.approvalStatus === 'pending' && (
+            {!isDemo && renewal.approvalStatus === 'pending' && (
               <Link
                 href="/approvals"
                 onClick={(e) => e.stopPropagation()}
@@ -390,6 +392,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
 // ============================================================================
 
 export const RenewalManager: React.FC = () => {
+  const isDemo = useDemoMode();
   const router = useRouter();
   const crossModule = useCrossModuleInvalidation();
   const { data: queryData, isLoading: loading, refetch } = useRenewals();
@@ -679,13 +682,15 @@ export const RenewalManager: React.FC = () => {
               <Bell className="w-4 h-4" />
               Refresh
             </button>
-            <button 
-              onClick={handleInitiateRenewal}
-              className="px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white rounded-xl hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 transition-all duration-200 font-medium flex items-center gap-2"
-            >
-              <Play className="w-4 h-4" />
-              Initiate Renewal
-            </button>
+            {!isDemo && (
+              <button 
+                onClick={handleInitiateRenewal}
+                className="px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white rounded-xl hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 transition-all duration-200 font-medium flex items-center gap-2"
+              >
+                <Play className="w-4 h-4" />
+                Initiate Renewal
+              </button>
+            )}
           </div>
         </div>
 
@@ -841,29 +846,34 @@ export const RenewalManager: React.FC = () => {
             Showing {filteredRenewals.length} of {renewals.length} renewals
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              href="/approvals"
-              className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium flex items-center gap-2"
-            >
-              <ClipboardCheck className="w-4 h-4" />
-              View Approvals
-            </Link>
-            <button
-              onClick={handleSendReminders}
-              disabled={sendingReminders}
-              className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium flex items-center gap-2 disabled:opacity-50"
-            >
-              {sendingReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-              Send Reminders
-            </button>
-            <div className="relative">
-              <button
-                onClick={() => setBulkMenuOpen(!bulkMenuOpen)}
-                className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors font-medium flex items-center gap-2"
+            {!isDemo && (
+              <Link
+                href="/approvals"
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium flex items-center gap-2"
               >
-                <Zap className="w-4 h-4" />
-                Bulk Actions{selectedIds.size > 0 && ` (${selectedIds.size})`}
+                <ClipboardCheck className="w-4 h-4" />
+                View Approvals
+              </Link>
+            )}
+            {!isDemo && (
+              <button
+                onClick={handleSendReminders}
+                disabled={sendingReminders}
+                className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium flex items-center gap-2 disabled:opacity-50"
+              >
+                {sendingReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                Send Reminders
               </button>
+            )}
+            {!isDemo && (
+              <div className="relative">
+                <button
+                  onClick={() => setBulkMenuOpen(!bulkMenuOpen)}
+                  className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors font-medium flex items-center gap-2"
+                >
+                  <Zap className="w-4 h-4" />
+                  Bulk Actions{selectedIds.size > 0 && ` (${selectedIds.size})`}
+                </button>
               <AnimatePresence>
                 {bulkMenuOpen && (
                   <motion.div
@@ -911,6 +921,7 @@ export const RenewalManager: React.FC = () => {
                 )}
               </AnimatePresence>
             </div>
+          )}
           </div>
         </div>
       </div>

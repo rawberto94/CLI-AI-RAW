@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { canAccessNavigationAudience, getNavigationAudiences, type NavigationAudience } from '@/lib/navigation/visibility';
-import { env } from '@/lib/env';
+import { useDemoMode } from '@/hooks/useDemoMode';
 
 interface NavItem {
   href: string;
@@ -50,6 +50,7 @@ export function MobileBottomNav() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const isDemo = useDemoMode();
 
   const userRole = session?.user?.role || 'member';
   const activeAudiences = useMemo(() => getNavigationAudiences(userRole), [userRole]);
@@ -61,7 +62,6 @@ export function MobileBottomNav() {
   }, []);
 
   const navItems = useMemo<NavItem[]>(() => {
-    const isDemo = env.demoMode;
 
     const primaryItems: NavItem[] = [
       {
@@ -133,15 +133,14 @@ export function MobileBottomNav() {
     }
 
     return primaryItems.filter((item) => canAccessNavigationAudience(item.audiences, activeAudiences)).slice(0, 4);
-  }, [activeAudiences]);
+  }, [activeAudiences, isDemo]);
 
   const quickActions = useMemo<QuickAction[]>(() => {
-    const isDemo = env.demoMode;
     const actions: QuickAction[] = [
       { label: 'Upload Contract', icon: Upload, href: '/upload', audiences: ['operator'], color: 'bg-violet-500' },
       ...(isDemo ? [] : [{ label: 'Start Draft', icon: PenTool, href: '/drafting', audiences: ['operator'], color: 'bg-violet-500' }] as QuickAction[]),
-      { label: 'AI Assistant', icon: Sparkles, onClick: openAIAssistant, audiences: ['all'], color: 'bg-violet-500' },
-      { label: 'Smart Search', icon: Search, href: '/search', audiences: ['all'], color: 'bg-amber-500' },
+      ...(isDemo ? [] : [{ label: 'AI Assistant', icon: Sparkles, onClick: openAIAssistant, audiences: ['all'], color: 'bg-violet-500' }] as QuickAction[]),
+      ...(isDemo ? [] : [{ label: 'Smart Search', icon: Search, href: '/search', audiences: ['all'], color: 'bg-amber-500' }] as QuickAction[]),
       ...(isDemo ? [] : [{ label: 'Analytics', icon: BarChart3, href: '/analytics', audiences: ['oversight'], color: 'bg-violet-500' }] as QuickAction[]),
     ];
     return actions.filter((action) => canAccessNavigationAudience(action.audiences, activeAudiences));

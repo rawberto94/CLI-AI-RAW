@@ -520,11 +520,11 @@ function SignInForm() {
             </span>
             <span className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
             <span className="flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3" /> SSO &amp; MFA
+              <CheckCircle2 className="h-3 w-3" /> Secure Login
             </span>
             <span className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
             <span className="flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3" /> Audit Logs
+              <CheckCircle2 className="h-3 w-3" /> Encrypted
             </span>
           </div>
         </motion.div>

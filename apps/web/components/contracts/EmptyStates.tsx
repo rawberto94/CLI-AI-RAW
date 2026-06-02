@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useDemoMode } from '@/hooks/useDemoMode';
 
 // ============================================================================
 // Types
@@ -93,6 +94,7 @@ export const NoContracts = memo(function NoContracts({
   additionalActions,
   className,
 }: NoContractsProps) {
+  const isDemo = useDemoMode();
   return (
     <motion.div
       variants={containerVariants}
@@ -167,16 +169,18 @@ export const NoContracts = memo(function NoContracts({
             Upload Contract
           </Button>
         </Link>
-        <Link href="/contracts/generate">
-          <Button 
-            variant="outline" 
-            size="lg"
-            className="h-12 px-8 border-2 border-slate-200 dark:border-slate-600 hover:border-violet-300 dark:hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/30 text-base font-semibold gap-3"
-          >
-            <Sparkles className="h-5 w-5 text-violet-600" />
-            Generate with AI
-          </Button>
-        </Link>
+        {!isDemo && (
+          <Link href="/contracts/generate">
+            <Button 
+              variant="outline" 
+              size="lg"
+              className="h-12 px-8 border-2 border-slate-200 dark:border-slate-600 hover:border-violet-300 dark:hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/30 text-base font-semibold gap-3"
+            >
+              <Sparkles className="h-5 w-5 text-violet-600" />
+              Generate with AI
+            </Button>
+          </Link>
+        )}
         {additionalActions}
       </motion.div>
       

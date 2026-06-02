@@ -12,6 +12,7 @@ import OpenAI from 'openai';
 import { prisma } from '@/lib/prisma';
 import { hybridSearch } from '@/lib/rag/advanced-rag.service';
 import { validateToolArgs } from '@/lib/ai/tool-validation';
+import { generateSmartComparison } from '@/lib/ai/smart-comparison.service';
 
 // Re-export for consumers that imported from this module
 export { validateToolArgs } from '@/lib/ai/tool-validation';
@@ -66,13 +67,41 @@ export const STREAMING_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: 'function',
     function: {
       name: 'get_contract_details',
-      description: 'Get detailed information about a specific contract by ID or name, including payment terms, jurisdiction, and termination clauses. Use when the user references a particular contract.',
+      description: 'Get FULL comprehensive information about a specific contract by ID or name. Returns everything: core metadata, parties, financials, dates, renewal terms, risk flags, AI-extracted artifacts (clauses, risks, financial analysis, obligations), all clauses with text and risk levels, obligations with status, version history, signature requests, workflow executions, financial analysis, alerts, contract hierarchy (parent/child), and AI metadata. Use whenever the user asks about ANY aspect of a specific contract.',
       parameters: {
         type: 'object',
         properties: {
           contractId: { type: 'string', description: 'Exact contract ID' },
           contractName: { type: 'string', description: 'Contract name/title to search for' },
-          includeArtifacts: { type: 'boolean', description: 'Include extracted artifacts', default: true },
+        },
+      },
+    },
+  },
+
+  {
+    type: 'function',
+    function: {
+      name: 'get_contract_hierarchy',
+      description: 'Get the contract hierarchy: parent contract, child contracts (SOWs, amendments, addendums), and related contracts. Use when the user asks about relationships, "what SOWs belong to this MSA", "amendments", "related contracts", or contract family.',
+      parameters: {
+        type: 'object',
+        properties: {
+          contractId: { type: 'string', description: 'Exact contract ID' },
+          contractName: { type: 'string', description: 'Contract name/title to search for' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_signature_status',
+      description: 'Get signature status for a contract: whether signed, signature requests sent, signers, completion dates, and provider (DocuSign, Adobe Sign, etc.). Use when the user asks "is this signed", "who signed", "signature status", or "send for signature".',
+      parameters: {
+        type: 'object',
+        properties: {
+          contractId: { type: 'string', description: 'Exact contract ID' },
+          contractName: { type: 'string', description: 'Contract name/title to search for' },
         },
       },
     },
@@ -463,6 +492,23 @@ export const STREAMING_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'deep_compare_contracts',
+      description: 'Perform a deep AI-powered clause-level semantic comparison between two contracts. Analyzes practical business impact, risk differential, clause alignment, missing protections, and consolidation opportunities. Use when the user asks for a thorough analysis, detailed comparison, clause-by-clause review, risk comparison, or wants to know which contract is better.',
+      parameters: {
+        type: 'object',
+        properties: {
+          contractIdA: { type: 'string', description: 'ID of the first contract' },
+          contractIdB: { type: 'string', description: 'ID of the second contract' },
+          contractNameA: { type: 'string', description: 'Name of the first contract (alternative to ID)' },
+          contractNameB: { type: 'string', description: 'Name of the second contract (alternative to ID)' },
+        },
+        required: [],
+      },
+    },
+  },
 
   // ── Clause Extraction ─────────────────────────────────────────────────
   {
@@ -533,6 +579,10 @@ export async function executeTool(
         return await executeSearchContracts(validArgs, tenantId, start);
       case 'get_contract_details':
         return await executeGetContractDetails(validArgs, tenantId, start);
+      case 'get_contract_hierarchy':
+        return await executeGetContractHierarchy(validArgs, tenantId, start);
+      case 'get_signature_status':
+        return await executeGetSignatureStatus(validArgs, tenantId, start);
       case 'list_expiring_contracts':
         return await executeListExpiring(validArgs, tenantId, start);
       case 'get_spend_analysis':
@@ -581,6 +631,8 @@ export async function executeTool(
         return await executeRateResponse(validArgs, tenantId, userId, start);
       case 'compare_contracts':
         return await executeCompareContracts(validArgs, tenantId, start);
+      case 'deep_compare_contracts':
+        return await executeDeepCompareContracts(validArgs, tenantId, start);
       case 'extract_clauses':
         return await executeExtractClauses(validArgs, tenantId, start);
       case 'list_obligations':
@@ -641,7 +693,6 @@ async function executeGetContractDetails(args: Record<string, unknown>, tenantId
   const contractId = args.contractId as string | undefined;
   const contractName = args.contractName as string | undefined;
 
-  // T24: Require at least one identifier
   if (!contractId && !contractName) {
     return { toolName: 'get_contract_details', success: false, data: null, error: 'Please provide either a contractId or contractName to look up.', executionTimeMs: Date.now() - start };
   }
@@ -656,9 +707,25 @@ async function executeGetContractDetails(args: Record<string, unknown>, tenantId
   const contract = await prisma.contract.findFirst({
     where,
     include: {
-      artifacts: { take: 5 },
-      clauses: true,
-      _count: { select: { versions: true } },
+      artifacts: { orderBy: { createdAt: 'desc' }, take: 10 },
+      clauses: { orderBy: { position: 'asc' }, take: 50 },
+      obligations: { orderBy: { createdAt: 'desc' }, take: 20 },
+      versions: { orderBy: { versionNumber: 'desc' }, take: 5 },
+      signatureRequests: { orderBy: { createdAt: 'desc' }, take: 5 },
+      workflowExecutions: { orderBy: { createdAt: 'desc' }, take: 5 },
+      financialAnalysis: { orderBy: { createdAt: 'desc' }, take: 2 },
+      alerts: { orderBy: { scheduledDate: 'asc' }, take: 10 },
+      contractMetadata: true,
+      childContracts: { select: { id: true, contractTitle: true, relationshipType: true, status: true }, take: 10 },
+      parentContract: { select: { id: true, contractTitle: true, relationshipType: true } },
+      _count: {
+        select: {
+          versions: true,
+          clauses: true,
+          obligations: true,
+          childContracts: true,
+        },
+      },
     },
   });
 
@@ -666,28 +733,356 @@ async function executeGetContractDetails(args: Record<string, unknown>, tenantId
     return { toolName: 'get_contract_details', success: false, data: null, error: 'Contract not found', executionTimeMs: Date.now() - start };
   }
 
+  // Helper to safely stringify artifact data with size cap
+  const stringifyArtifact = (data: unknown): string => {
+    try {
+      const json = JSON.stringify(data);
+      return json.length > 4000 ? json.slice(0, 4000) + '...[truncated]' : json;
+    } catch {
+      return String(data);
+    }
+  };
+
+  // Helper to cap text length
+  const cap = (text: string | null, max = 2000): string | null => {
+    if (!text) return null;
+    return text.length > max ? text.slice(0, max) + '...[truncated]' : text;
+  };
+
+  const daysUntilExpiry = contract.expirationDate
+    ? Math.ceil((new Date(contract.expirationDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
+
   return {
     toolName: 'get_contract_details',
     success: true,
     data: {
+      // ── Core Metadata ──
       id: contract.id,
       title: contract.contractTitle,
+      description: contract.description,
+      fileName: contract.fileName,
+      status: contract.status,
+      contractType: contract.contractType,
+      documentClassification: contract.documentClassification,
+      documentClassificationConf: contract.documentClassificationConf,
+
+      // ── Parties ──
       supplier: contract.supplierName,
       client: contract.clientName,
-      status: contract.status,
-      value: contract.totalValue,
+      supplierId: contract.supplierId,
+      clientId: contract.clientId,
+
+      // ── Financials ──
+      totalValue: contract.totalValue,
+      currency: contract.currency,
+      annualValue: contract.annualValue,
+      monthlyValue: contract.monthlyValue,
+      paymentTerms: contract.paymentTerms,
+      paymentFrequency: contract.paymentFrequency,
+      billingCycle: contract.billingCycle,
+
+      // ── Dates & Lifecycle ──
       effectiveDate: contract.effectiveDate,
       expirationDate: contract.expirationDate,
+      startDate: contract.startDate,
+      endDate: contract.endDate,
+      daysUntilExpiry,
+      expirationRisk: contract.expirationRisk,
+      isExpired: contract.isExpired,
+      uploadedAt: contract.uploadedAt,
+      lastAnalyzedAt: contract.lastAnalyzedAt,
+      lastViewedAt: contract.lastViewedAt,
+      viewCount: contract.viewCount,
+
+      // ── Renewal ──
       autoRenewal: contract.autoRenewalEnabled,
-      contractType: contract.contractType,
+      renewalTerms: contract.renewalTerms,
+      renewalStatus: contract.renewalStatus,
+      noticePeriodDays: contract.noticePeriodDays,
+      terminationClause: cap(contract.terminationClause),
+
+      // ── Jurisdiction & Terms ──
       jurisdiction: contract.jurisdiction,
-      paymentTerms: contract.paymentTerms,
-      terminationClause: contract.terminationClause,
-      daysUntilExpiry: contract.expirationDate
-        ? Math.ceil((new Date(contract.expirationDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-        : null,
-      clauseCount: contract.clauses?.length || 0,
-      versionsCount: contract._count.versions,
+      category: contract.category,
+      procurementCategoryId: contract.procurementCategoryId,
+      categoryL1: contract.categoryL1,
+      categoryL2: contract.categoryL2,
+      spendType: contract.spendType,
+
+      // ── Risk & Flags ──
+      riskFlags: contract.riskFlags,
+      expirationAlertSent: contract.expirationAlertSent,
+
+      // ── Signature ──
+      signatureStatus: contract.signatureStatus,
+      signatureDate: contract.signatureDate,
+      signatureRequiredFlag: contract.signatureRequiredFlag,
+
+      // ── Source & Processing ──
+      importSource: contract.importSource,
+      externalId: contract.externalId,
+      externalUrl: contract.externalUrl,
+      ocrProvider: contract.ocrProvider,
+      ocrModel: contract.ocrModel,
+      ocrProcessedAt: contract.ocrProcessedAt,
+      rawTextExcerpt: cap(contract.rawText, 3000),
+
+      // ── AI Metadata ──
+      aiMetadata: contract.aiMetadata,
+      classificationConf: contract.classificationConf,
+      classificationMeta: contract.classificationMeta,
+      keywords: contract.keywords,
+      tags: contract.tags,
+      pricingModels: contract.pricingModels,
+      deliveryModels: contract.deliveryModels,
+      dataProfiles: contract.dataProfiles,
+
+      // ── Contract Metadata Record ──
+      contractMetadata: contract.contractMetadata ? {
+        tags: contract.contractMetadata.tags,
+        customFields: contract.contractMetadata.customFields,
+        systemFields: contract.contractMetadata.systemFields,
+        artifactSummary: contract.contractMetadata.artifactSummary,
+        relatedContracts: contract.contractMetadata.relatedContracts,
+        dataQualityScore: contract.contractMetadata.dataQualityScore,
+      } : null,
+
+      // ── AI Extracted Artifacts (the intelligence) ──
+      artifacts: (contract.artifacts || []).map(a => ({
+        type: a.type,
+        title: a.title,
+        status: a.status,
+        confidence: a.confidence,
+        createdAt: a.createdAt,
+        data: stringifyArtifact(a.data),
+      })),
+
+      // ── Clauses ──
+      clauses: (contract.clauses || []).map(c => ({
+        category: c.category,
+        text: cap(c.text, 1500),
+        riskLevel: c.riskLevel,
+        position: c.position,
+        similarity: c.similarity,
+      })),
+
+      // ── Obligations ──
+      obligations: (contract.obligations || []).map(o => ({
+        title: o.title,
+        description: cap(o.description, 500),
+        type: o.type,
+        status: o.status,
+        priority: o.priority,
+        owner: o.owner,
+        dueDate: o.dueDate,
+        completedAt: o.completedAt,
+      })),
+
+      // ── Versions ──
+      versions: (contract.versions || []).map(v => ({
+        versionNumber: v.versionNumber,
+        summary: v.summary,
+        changes: v.changes,
+        uploadedBy: v.uploadedBy,
+        uploadedAt: v.uploadedAt,
+        isActive: v.isActive,
+      })),
+
+      // ── Signature Requests ──
+      signatureRequests: (contract.signatureRequests || []).map(s => ({
+        status: s.status,
+        signers: s.signers,
+        sentAt: s.sentAt,
+        completedAt: s.completedAt,
+        expiresAt: s.expiresAt,
+        message: s.message,
+      })),
+
+      // ── Workflow Executions ──
+      workflowExecutions: (contract.workflowExecutions || []).map(w => ({
+        status: w.status,
+        workflowId: w.workflowId,
+        startedAt: w.startedAt,
+        completedAt: w.completedAt,
+        initiatedBy: w.initiatedBy,
+      })),
+
+      // ── Financial Analysis ──
+      financialAnalysis: (contract.financialAnalysis || []).map(f => ({
+        totalValue: f.totalValue,
+        paymentTerms: f.paymentTerms,
+        costBreakdown: f.costBreakdown,
+        pricingTables: f.pricingTables,
+        discounts: f.discounts,
+        escalationClauses: f.escalationClauses,
+        financialRisks: f.financialRisks,
+        recommendations: f.recommendations,
+        confidence: f.confidence,
+        createdAt: f.createdAt,
+      })),
+
+      // ── Alerts ──
+      alerts: (contract.alerts || []).map(a => ({
+        type: a.type,
+        priority: a.priority,
+        status: a.status,
+        scheduledDate: a.scheduledDate,
+        sentAt: a.sentAt,
+        message: a.message,
+      })),
+
+      // ── Hierarchy ──
+      parentContract: contract.parentContract,
+      childContracts: contract.childContracts,
+
+      // ── Counts ──
+      counts: contract._count,
+    },
+    executionTimeMs: Date.now() - start,
+    navigation: { url: `/contracts/${contract.id}`, label: contract.contractTitle || 'View Contract' },
+  };
+}
+
+// ── Contract Hierarchy ─────────────────────────────────────────────────
+
+async function executeGetContractHierarchy(args: Record<string, unknown>, tenantId: string, start: number): Promise<ToolResult> {
+  const contractId = args.contractId as string | undefined;
+  const contractName = args.contractName as string | undefined;
+
+  if (!contractId && !contractName) {
+    return { toolName: 'get_contract_hierarchy', success: false, data: null, error: 'Please provide either a contractId or contractName.', executionTimeMs: Date.now() - start };
+  }
+
+  const where = contractId
+    ? { id: contractId, tenantId }
+    : { tenantId, OR: [
+        { contractTitle: { contains: contractName || '', mode: 'insensitive' as const } },
+        { fileName: { contains: contractName || '', mode: 'insensitive' as const } },
+      ] };
+
+  const contract = await prisma.contract.findFirst({
+    where,
+    select: {
+      id: true,
+      contractTitle: true,
+      parentContractId: true,
+      relationshipType: true,
+      parentContract: { select: { id: true, contractTitle: true, relationshipType: true, status: true } },
+      childContracts: { select: { id: true, contractTitle: true, relationshipType: true, status: true, contractType: true }, take: 20 },
+    },
+  });
+
+  if (!contract) {
+    return { toolName: 'get_contract_hierarchy', success: false, data: null, error: 'Contract not found', executionTimeMs: Date.now() - start };
+  }
+
+  // Also fetch relationships from ContractRelationship table
+  const [sourceRels, targetRels] = await Promise.all([
+    prisma.contractRelationship.findMany({
+      where: { sourceContractId: contract.id, tenantId },
+      select: { targetContractId: true, relationshipType: true, direction: true, confidence: true, status: true },
+      take: 20,
+    }),
+    prisma.contractRelationship.findMany({
+      where: { targetContractId: contract.id, tenantId },
+      select: { sourceContractId: true, relationshipType: true, direction: true, confidence: true, status: true },
+      take: 20,
+    }),
+  ]);
+
+  return {
+    toolName: 'get_contract_hierarchy',
+    success: true,
+    data: {
+      contract: { id: contract.id, title: contract.contractTitle },
+      parent: contract.parentContract,
+      children: contract.childContracts,
+      sourceRelationships: sourceRels,
+      targetRelationships: targetRels,
+    },
+    executionTimeMs: Date.now() - start,
+    navigation: { url: `/contracts/${contract.id}`, label: contract.contractTitle || 'View Contract' },
+  };
+}
+
+// ── Signature Status ───────────────────────────────────────────────────
+
+async function executeGetSignatureStatus(args: Record<string, unknown>, tenantId: string, start: number): Promise<ToolResult> {
+  const contractId = args.contractId as string | undefined;
+  const contractName = args.contractName as string | undefined;
+
+  if (!contractId && !contractName) {
+    return { toolName: 'get_signature_status', success: false, data: null, error: 'Please provide either a contractId or contractName.', executionTimeMs: Date.now() - start };
+  }
+
+  const where = contractId
+    ? { id: contractId, tenantId }
+    : { tenantId, OR: [
+        { contractTitle: { contains: contractName || '', mode: 'insensitive' as const } },
+        { fileName: { contains: contractName || '', mode: 'insensitive' as const } },
+      ] };
+
+  const contract = await prisma.contract.findFirst({
+    where,
+    select: {
+      id: true,
+      contractTitle: true,
+      signatureStatus: true,
+      signatureDate: true,
+      signatureRequiredFlag: true,
+      signatureRequests: {
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          status: true,
+          provider: true,
+          subject: true,
+          message: true,
+          signers: true,
+          sentAt: true,
+          completedAt: true,
+          expiresAt: true,
+          documentUrl: true,
+          signedDocumentUrl: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+
+  if (!contract) {
+    return { toolName: 'get_signature_status', success: false, data: null, error: 'Contract not found', executionTimeMs: Date.now() - start };
+  }
+
+  const completedRequests = contract.signatureRequests.filter(r => r.status === 'signed');
+  const pendingRequests = contract.signatureRequests.filter(r => ['draft', 'sent', 'viewed'].includes(r.status));
+
+  return {
+    toolName: 'get_signature_status',
+    success: true,
+    data: {
+      contract: { id: contract.id, title: contract.contractTitle },
+      overallStatus: contract.signatureStatus,
+      signatureDate: contract.signatureDate,
+      signatureRequired: contract.signatureRequiredFlag,
+      totalRequests: contract.signatureRequests.length,
+      completedRequests: completedRequests.length,
+      pendingRequests: pendingRequests.length,
+      requests: contract.signatureRequests.map(r => ({
+        id: r.id,
+        status: r.status,
+        provider: r.provider,
+        subject: r.subject,
+        message: r.message ? (r.message.length > 200 ? r.message.slice(0, 200) + '...' : r.message) : null,
+        signers: r.signers,
+        sentAt: r.sentAt,
+        completedAt: r.completedAt,
+        expiresAt: r.expiresAt,
+        documentUrl: r.documentUrl,
+        signedDocumentUrl: r.signedDocumentUrl,
+      })),
     },
     executionTimeMs: Date.now() - start,
     navigation: { url: `/contracts/${contract.id}`, label: contract.contractTitle || 'View Contract' },
@@ -2026,6 +2421,85 @@ async function executeCompareContracts(args: Record<string, unknown>, tenantId: 
       { label: `📄 View ${contractB.contractTitle?.slice(0, 20) || 'Contract B'}`, action: `navigate:/contracts/${contractB.id}` },
     ],
   };
+}
+
+// ── Deep Compare Contracts ─────────────────────────────────────────────
+
+async function executeDeepCompareContracts(args: Record<string, unknown>, tenantId: string, start: number): Promise<ToolResult> {
+  const contractIdA = args.contractIdA as string | undefined;
+  const contractIdB = args.contractIdB as string | undefined;
+  const contractNameA = args.contractNameA as string | undefined;
+  const contractNameB = args.contractNameB as string | undefined;
+
+  // Resolve contract IDs from names if needed
+  let resolvedIdA = contractIdA;
+  let resolvedIdB = contractIdB;
+
+  if (!resolvedIdA && contractNameA) {
+    const match = await prisma.contract.findFirst({
+      where: {
+        tenantId,
+        OR: [
+          { contractTitle: { contains: contractNameA, mode: 'insensitive' as const } },
+          { fileName: { contains: contractNameA, mode: 'insensitive' as const } },
+        ],
+      },
+      select: { id: true },
+    });
+    resolvedIdA = match?.id;
+  }
+
+  if (!resolvedIdB && contractNameB) {
+    const match = await prisma.contract.findFirst({
+      where: {
+        tenantId,
+        OR: [
+          { contractTitle: { contains: contractNameB, mode: 'insensitive' as const } },
+          { fileName: { contains: contractNameB, mode: 'insensitive' as const } },
+        ],
+      },
+      select: { id: true },
+    });
+    resolvedIdB = match?.id;
+  }
+
+  if (!resolvedIdA || !resolvedIdB) {
+    return {
+      toolName: 'deep_compare_contracts',
+      success: false,
+      data: null,
+      error: 'Two contracts required. Provide contractIdA+contractIdB or contractNameA+contractNameB.',
+      executionTimeMs: Date.now() - start,
+    };
+  }
+
+  try {
+    const report = await generateSmartComparison({
+      contractId1: resolvedIdA,
+      contractId2: resolvedIdB,
+      tenantId,
+    });
+
+    return {
+      toolName: 'deep_compare_contracts',
+      success: true,
+      data: report,
+      executionTimeMs: Date.now() - start,
+      suggestedActions: [
+        { label: '🔍 Open side-by-side compare', action: `navigate:/compare?contracts=${resolvedIdA},${resolvedIdB}` },
+        { label: '📄 View Contract A', action: `navigate:/contracts/${resolvedIdA}` },
+        { label: '📄 View Contract B', action: `navigate:/contracts/${resolvedIdB}` },
+      ],
+    };
+  } catch (error) {
+    return {
+      toolName: 'deep_compare_contracts',
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Deep comparison failed',
+      executionTimeMs: Date.now() - start,
+    };
+  }
 }
 
 // ── Extract Clauses ────────────────────────────────────────────────────

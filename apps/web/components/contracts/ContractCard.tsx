@@ -381,52 +381,6 @@ export function ContractCard({
               </div>
             )}
 
-            {/* Risk & Compliance Scores */}
-            {(contract.riskScore !== undefined ||
-              contract.complianceScore !== undefined) && (
-              <div className="flex gap-4 pt-2">
-                {contract.riskScore !== undefined && (
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-500">Risk</span>
-                      <span className="text-xs font-medium text-gray-900">
-                        {contract.riskScore}%
-                      </span>
-                    </div>
-                    <div className="h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div
-                        className={cn(
-                          "h-full rounded-full transition-all duration-300",
-                          contract.riskScore < 30
-                            ? "bg-green-500"
-                            : contract.riskScore < 70
-                            ? "bg-yellow-500"
-                            : "bg-red-500"
-                        )}
-                        style={{ width: `${contract.riskScore}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {contract.complianceScore !== undefined && (
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-500">Compliance</span>
-                      <span className="text-xs font-medium text-gray-900">
-                        {contract.complianceScore}%
-                      </span>
-                    </div>
-                    <div className="h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-violet-500 rounded-full transition-all duration-300"
-                        style={{ width: `${contract.complianceScore}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Tags */}
             {contract.tags && contract.tags.length > 0 && (

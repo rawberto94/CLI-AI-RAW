@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { 
   Home, 
-  Search, 
+  LayoutDashboard,
+  Settings,
   FileText, 
   ArrowLeft,
   HelpCircle,
@@ -76,32 +77,32 @@ export default function NotFound() {
           </h2>
           <nav className="grid grid-cols-2 gap-3" aria-label="Popular pages">
             <Link 
-              href="/upload" 
+              href="/dashboard" 
               className="flex items-center gap-2 p-3 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors text-sm text-slate-600 dark:text-slate-400 hover:text-violet-700 dark:hover:text-violet-300"
             >
-              <RefreshCw className="w-4 h-4" aria-hidden="true" />
-              Upload Contract
+              <LayoutDashboard className="w-4 h-4" aria-hidden="true" />
+              Dashboard
             </Link>
             <Link 
-              href="/workflows" 
+              href="/contracts" 
               className="flex items-center gap-2 p-3 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors text-sm text-slate-600 dark:text-slate-400 hover:text-violet-700 dark:hover:text-violet-300"
             >
               <FileText className="w-4 h-4" aria-hidden="true" />
-              Workflows
+              Contracts
             </Link>
             <Link 
-              href="/rate-cards" 
+              href="/renewals" 
               className="flex items-center gap-2 p-3 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors text-sm text-slate-600 dark:text-slate-400 hover:text-violet-700 dark:hover:text-violet-300"
             >
-              <Search className="w-4 h-4" aria-hidden="true" />
-              Rate Cards
+              <RefreshCw className="w-4 h-4" aria-hidden="true" />
+              Renewals
             </Link>
             <Link 
-              href="/analytics" 
+              href="/settings" 
               className="flex items-center gap-2 p-3 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors text-sm text-slate-600 dark:text-slate-400 hover:text-violet-700 dark:hover:text-violet-300"
             >
-              <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-              Analytics
+              <Settings className="w-4 h-4" aria-hidden="true" />
+              Settings
             </Link>
           </nav>
         </div>

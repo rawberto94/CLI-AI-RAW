@@ -1032,14 +1032,15 @@ export default function ObligationsDashboardPage() {
                                       Mark At Risk
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem>
+                                    {/* Set Reminder and Reassign are not wired — hide to avoid broken UI */}
+                                    {/* <DropdownMenuItem>
                                       <Bell className="w-4 h-4 mr-2" />
                                       Set Reminder
                                     </DropdownMenuItem>
                                     <DropdownMenuItem>
                                       <Users className="w-4 h-4 mr-2" />
                                       Reassign
-                                    </DropdownMenuItem>
+                                    </DropdownMenuItem> */}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
@@ -1084,7 +1085,7 @@ export default function ObligationsDashboardPage() {
                           </li>
                           <li className="flex items-start gap-2">
                             <span className="flex-shrink-0 w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs flex items-center justify-center font-medium">2</span>
-                            Click &quot;Legal Review&quot; from the Actions menu
+                            Click &quot;Extract Obligations&quot; from the Actions menu
                           </li>
                           <li className="flex items-start gap-2">
                             <span className="flex-shrink-0 w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs flex items-center justify-center font-medium">3</span>

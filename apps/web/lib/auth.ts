@@ -51,6 +51,7 @@ interface AuthJWT {
   mfaRequired?: boolean;
   mfaVerified?: boolean;
   lastValidated?: number;
+  pilotMode?: boolean;
   [key: string]: unknown;
 }
 
@@ -139,6 +140,20 @@ async function resolveTenantSessionExpiresAt(
   } catch (error) {
     console.warn('[Auth] Failed to load tenant session policy:', error instanceof Error ? error.message : error);
     return calculateTenantSessionExpiry(undefined, issuedAt);
+  }
+}
+
+async function resolveTenantPilotMode(tenantId: string | undefined): Promise<boolean> {
+  if (!tenantId) return false;
+  try {
+    const tenantConfig = await prisma.tenantConfig.findUnique({
+      where: { tenantId },
+      select: { securitySettings: true },
+    });
+    const settings = tenantConfig?.securitySettings as Record<string, unknown> | undefined;
+    return settings?.pilotMode === true;
+  } catch {
+    return false;
   }
 }
 
@@ -520,6 +535,7 @@ export const authOptions: NextAuthConfig = {
         token.tenantId = user.tenantId;
         token.role = user.role;
         token.provider = account?.provider;
+        token.pilotMode = await resolveTenantPilotMode(user.tenantId);
         const activityAt = new Date();
         const sessionExpiresAt = await resolveTenantSessionExpiresAt(user.tenantId, activityAt);
         token.lastActiveAt = activityAt.getTime();
@@ -629,6 +645,7 @@ export const authOptions: NextAuthConfig = {
         // C1 FIX: Expose MFA state in session
         session.user.mfaRequired = token.mfaRequired ?? false;
         session.user.mfaVerified = token.mfaVerified ?? true;
+        (session.user as unknown as { pilotMode: boolean }).pilotMode = token.pilotMode ?? false;
       }
       return session;
     },

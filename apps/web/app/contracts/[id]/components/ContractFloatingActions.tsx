@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
+import { useDemoMode } from '@/hooks/useDemoMode'
 import {
   Star,
   Bell,
@@ -73,6 +74,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
   onExport,
   onPrint,
 }: ContractFloatingActionsProps) {
+  const isDemo = useDemoMode()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showArchiveDialog, setShowArchiveDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -256,19 +258,25 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                   <FileText className="h-4 w-4 mr-2 text-red-500" />
                   Export as PDF
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('docx')} className="cursor-pointer">
-                  <FileText className="h-4 w-4 mr-2 text-violet-500" />
-                  Export as Word
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('xlsx')} className="cursor-pointer">
-                  <FileSpreadsheet className="h-4 w-4 mr-2 text-green-500" />
-                  Export as Excel
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleExport('json')} className="cursor-pointer">
-                  <FileText className="h-4 w-4 mr-2 text-slate-500" />
-                  Export as JSON
-                </DropdownMenuItem>
+                {!isDemo && (
+                  <DropdownMenuItem onClick={() => handleExport('docx')} className="cursor-pointer">
+                    <FileText className="h-4 w-4 mr-2 text-violet-500" />
+                    Export as Word
+                  </DropdownMenuItem>
+                )}
+                {!isDemo && (
+                  <DropdownMenuItem onClick={() => handleExport('xlsx')} className="cursor-pointer">
+                    <FileSpreadsheet className="h-4 w-4 mr-2 text-green-500" />
+                    Export as Excel
+                  </DropdownMenuItem>
+                )}
+                {!isDemo && <DropdownMenuSeparator />}
+                {!isDemo && (
+                  <DropdownMenuItem onClick={() => handleExport('json')} className="cursor-pointer">
+                    <FileText className="h-4 w-4 mr-2 text-slate-500" />
+                    Export as JSON
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -311,31 +319,35 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Open in new tab
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => setShowArchiveDialog(true)}
-                  className="cursor-pointer"
-                >
-                  {isArchived ? (
-                    <>
-                      <ArchiveRestore className="h-4 w-4 mr-2" />
-                      Restore from archive
-                    </>
-                  ) : (
-                    <>
-                      <Archive className="h-4 w-4 mr-2" />
-                      Archive contract
-                    </>
-                  )}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete contract
-                </DropdownMenuItem>
+                {!isDemo && <DropdownMenuSeparator />}
+                {!isDemo && (
+                  <DropdownMenuItem 
+                    onClick={() => setShowArchiveDialog(true)}
+                    className="cursor-pointer"
+                  >
+                    {isArchived ? (
+                      <>
+                        <ArchiveRestore className="h-4 w-4 mr-2" />
+                        Restore from archive
+                      </>
+                    ) : (
+                      <>
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archive contract
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                )}
+                {!isDemo && <DropdownMenuSeparator />}
+                {!isDemo && (
+                  <DropdownMenuItem 
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete contract
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </TooltipProvider>

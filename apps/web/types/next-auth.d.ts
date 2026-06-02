@@ -14,6 +14,7 @@ declare module "next-auth" {
       sessionExpiresAt?: string;
       mfaRequired: boolean;
       mfaVerified: boolean;
+      pilotMode: boolean;
     };
   }
 
@@ -36,5 +37,6 @@ declare module "@auth/core/jwt" {
     mfaRequired?: boolean;
     mfaVerified?: boolean;
     lastValidated?: number;
+    pilotMode?: boolean;
   }
 }

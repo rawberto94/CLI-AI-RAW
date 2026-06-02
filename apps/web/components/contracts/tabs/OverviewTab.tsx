@@ -188,17 +188,6 @@ export function OverviewTab({
           alert={daysUntilExpiry < 90}
         />
 
-        {/* Risk Score */}
-        {contract.riskScore !== undefined && (
-          <MetricCard
-            icon={AlertCircle}
-            label="Risk Score"
-            value={`${contract.riskScore}/100`}
-            iconColor={getRiskColor(contract.riskScore)}
-            bgColor={contract.riskScore >= 80 ? 'bg-red-50' : contract.riskScore >= 50 ? 'bg-yellow-50' : 'bg-green-50'}
-            alert={contract.riskScore >= 80}
-          />
-        )}
       </motion.div>
 
       {/* Contract Details */}
@@ -231,39 +220,6 @@ export function OverviewTab({
         </DetailCard>
       </motion.div>
 
-      {/* Compliance Score */}
-      {contract.complianceScore !== undefined && (
-        <motion.div variants={fadeIn}>
-          <DetailCard title="Compliance Status" icon={CheckCircle}>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">
-                  Overall Compliance Score
-                </span>
-                <span className={cn(
-                  'text-2xl font-bold',
-                  contract.complianceScore >= 80 ? 'text-green-600' :
-                  contract.complianceScore >= 60 ? 'text-yellow-600' : 'text-red-600'
-                )}>
-                  {contract.complianceScore}%
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <motion.div
-                  className={cn(
-                    'h-3 rounded-full',
-                    contract.complianceScore >= 80 ? 'bg-green-600' :
-                    contract.complianceScore >= 60 ? 'bg-yellow-600' : 'bg-red-600'
-                  )}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${contract.complianceScore}%` }}
-                  transition={{ duration: 1, delay: 0.5 }}
-                />
-              </div>
-            </div>
-          </DetailCard>
-        </motion.div>
-      )}
 
       {/* Related Documents */}
       <motion.div variants={fadeIn}>

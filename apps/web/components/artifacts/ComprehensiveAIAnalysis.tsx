@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import { useDemoMode } from '@/hooks/useDemoMode'
 import {
   Brain,
   FileText,
@@ -511,6 +512,7 @@ export function ComprehensiveAIAnalysis({
   onRequestAnalysis,
   documentText
 }: ComprehensiveAIAnalysisProps) {
+  const isDemo = useDemoMode()
   const [activeView, setActiveView] = useState<'overview' | 'detailed' | 'discovered'>('overview')
   const [isRunningDeepAnalysis, setIsRunningDeepAnalysis] = useState(false)
   const [deepAnalysisResult, setDeepAnalysisResult] = useState<IntelligentAnalysisResult | null>(null)
@@ -703,14 +705,18 @@ export function ComprehensiveAIAnalysis({
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Share2 className="h-4 w-4" />
-            Share
-          </Button>
+          {!isDemo && (
+            <Button variant="outline" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+          )}
+          {!isDemo && (
+            <Button variant="outline" size="sm" className="gap-2">
+              <Share2 className="h-4 w-4" />
+              Share
+            </Button>
+          )}
           {documentText && (
             <Button 
               size="sm" 

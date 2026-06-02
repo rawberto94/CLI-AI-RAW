@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { QuickUploadModal } from "./QuickUploadModal";
 import { cn } from "@/lib/utils";
+import { useDemoMode } from "@/hooks/useDemoMode";
 
 // ============================================================================
 // TYPES
@@ -69,6 +70,7 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
   isRefreshing = false,
   onQuickUploadComplete,
 }: ContractsPageHeaderProps) {
+  const isDemo = useDemoMode();
   const router = useRouter();
   const [showRefreshSuccess, setShowRefreshSuccess] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
@@ -176,7 +178,7 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
             </Button>
             )}
             
-            {showTaxonomyLink && (
+            {showTaxonomyLink && !isDemo && (
               <Button 
                 variant="outline" 
                 size="sm"
@@ -214,49 +216,57 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
                   </div>
                 </DropdownMenuItem>
                 
-                <DropdownMenuItem asChild>
-                  <Link href="/upload">
-                    <Upload className="h-4 w-4 mr-2 text-indigo-500" />
-                    <div>
-                      <p className="font-medium">Advanced Upload</p>
-                      <p className="text-xs text-slate-500">Full upload with AI analysis</p>
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
+                {!isDemo && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/upload">
+                      <Upload className="h-4 w-4 mr-2 text-indigo-500" />
+                      <div>
+                        <p className="font-medium">Advanced Upload</p>
+                        <p className="text-xs text-slate-500">Full upload with AI analysis</p>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 
-                <DropdownMenuSeparator />
+                {!isDemo && <DropdownMenuSeparator />}
                 
-                <DropdownMenuItem asChild>
-                  <Link href="/contracts/new">
-                    <FilePlus className="h-4 w-4 mr-2 text-slate-500" />
-                    <div>
-                      <p className="font-medium">Create Manually</p>
-                      <p className="text-xs text-slate-500">Enter contract details by hand</p>
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
+                {!isDemo && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/contracts/new">
+                      <FilePlus className="h-4 w-4 mr-2 text-slate-500" />
+                      <div>
+                        <p className="font-medium">Create Manually</p>
+                        <p className="text-xs text-slate-500">Enter contract details by hand</p>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 
-                <DropdownMenuItem asChild>
-                  <Link href="/contracts/generate">
-                    <LayoutTemplate className="h-4 w-4 mr-2 text-teal-500" />
-                    <div>
-                      <p className="font-medium">Generate from Template</p>
-                      <p className="text-xs text-slate-500">Use a contract template</p>
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
+                {!isDemo && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/contracts/generate">
+                      <LayoutTemplate className="h-4 w-4 mr-2 text-teal-500" />
+                      <div>
+                        <p className="font-medium">Generate from Template</p>
+                        <p className="text-xs text-slate-500">Use a contract template</p>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 
-                <DropdownMenuSeparator />
+                {!isDemo && <DropdownMenuSeparator />}
                 
-                <DropdownMenuItem asChild>
-                  <Link href="/contracts/ai-draft">
-                    <Sparkles className="h-4 w-4 mr-2 text-amber-500" />
-                    <div>
-                      <p className="font-medium">AI Draft Assistant</p>
-                      <p className="text-xs text-slate-500">Let AI help you draft</p>
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
+                {!isDemo && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/contracts/ai-draft">
+                      <Sparkles className="h-4 w-4 mr-2 text-amber-500" />
+                      <div>
+                        <p className="font-medium">AI Draft Assistant</p>
+                        <p className="text-xs text-slate-500">Let AI help you draft</p>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
