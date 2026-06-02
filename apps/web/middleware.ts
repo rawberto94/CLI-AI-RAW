@@ -360,6 +360,7 @@ const publicApiPaths = [
   "/api/health",
   "/api/health/detailed",
   "/api/monitoring/health",
+  "/api/demo/health", // Demo status endpoint
   "/api/cron", // Allow cron endpoints (protected by CRON_SECRET)
   "/api/csrf", // CSRF token must be obtainable before/during login
   "/api/taxonomy/presets", // Industry preset templates (read-only, public)
