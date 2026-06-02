@@ -24,6 +24,8 @@
     "build:workers": "turbo run build --filter=@repo/workers",
     "build:clients": "bash scripts/build-clients.sh",
     "start": "pnpm --filter web run start",
+    "demo": "pnpm build:web && pnpm start",
+    "demo:quick": "pnpm --filter web run demo",
     "websocket": "pnpm --filter web run ws:server",
     "workers:start": "pnpm --filter @repo/workers run start",
     "api": "cd packages/data-orchestration && node api-server.js",
