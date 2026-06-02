@@ -23,6 +23,10 @@ RUN pnpm --filter @repo/data-orchestration exec tsc --noEmitOnError false || tru
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=8192"
+# Optional: lock demo mode so the toggle is hidden for all users (e.g. client demos).
+# Pass --build-arg NEXT_PUBLIC_DEMO_MODE=true to activate.
+ARG NEXT_PUBLIC_DEMO_MODE=false
+ENV NEXT_PUBLIC_DEMO_MODE=$NEXT_PUBLIC_DEMO_MODE
 RUN cd apps/web && pnpm build
 
 # Stage 2: Runner (minimal production image)

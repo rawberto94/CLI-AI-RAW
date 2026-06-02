@@ -233,6 +233,10 @@ const navigationGroups: NavigationGroup[] = [
 
 // Demo mode toggle button — reads localStorage directly, no hooks needed
 function DemoModeToggle() {
+  // When NEXT_PUBLIC_DEMO_MODE=true is baked into the build, demo mode is locked
+  // by the operator (e.g. Stadler demo). Hide the toggle so users can't disable it.
+  if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') return null;
+
   const isDemo =
     (typeof window !== 'undefined' &&
       (window.localStorage.getItem('contigo_demo_mode') === 'true' ||
