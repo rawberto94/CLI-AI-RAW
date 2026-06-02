@@ -239,9 +239,9 @@ export function applyContractFilters(
     matchesContractTypes(c, f.contractTypes) &&
     matchesArrayField(c.parties?.supplier ?? c.supplierName, f.suppliers) &&
     matchesArrayField(c.parties?.client ?? c.clientName, f.clients) &&
-    matchesArrayField(c.currency, f.currencies, c.title) &&
-    matchesArrayField(c.jurisdiction, f.jurisdictions, c.title) &&
-    matchesArrayField(c.paymentTerms, f.paymentTerms, c.title) &&
+    matchesArrayField(c.currency, f.currencies) &&
+    matchesArrayField(c.jurisdiction, f.jurisdictions) &&
+    matchesArrayField(c.paymentTerms, f.paymentTerms) &&
     matchesTags(c, f.tags) &&
     matchesDateRangeAdvanced(c, f.dateRange) &&
     matchesDateRangePreset(c, dateRangePreset, now) &&

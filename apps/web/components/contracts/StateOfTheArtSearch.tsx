@@ -94,6 +94,8 @@ interface StateOfTheArtSearchProps {
   onDateRangeFilterChange: (value: string | null) => void;
   suppliers: string[];
   categories: { id: string; name: string; color: string }[];
+  accessScope: 'all' | 'mine';
+  onAccessScopeChange: (scope: 'all' | 'mine') => void;
   onClearFilters: () => void;
   onAISearchClick?: (query: string) => void;
   activeFilterCount: number;
@@ -112,6 +114,7 @@ const STATUS_OPTIONS: FilterOption[] = [
   { id: 'processing', label: 'Processing', value: 'processing', color: 'blue' },
   { id: 'uploaded', label: 'Uploaded', value: 'uploaded', color: 'amber' },
   { id: 'failed', label: 'Failed', value: 'failed', color: 'red' },
+  { id: 'archived', label: 'Archived', value: 'archived', color: 'slate' },
 ];
 
 const RISK_OPTIONS: FilterOption[] = [
@@ -697,6 +700,8 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
   onDateRangeFilterChange,
   suppliers,
   categories,
+  accessScope,
+  onAccessScopeChange,
   onClearFilters,
   onAISearchClick,
   activeFilterCount,
@@ -826,6 +831,58 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
       }
     });
 
+    supplierFilters.forEach((supplier) => {
+      filters.push({
+        id: `supplier-${supplier}`,
+        label: supplier,
+        color: 'violet',
+        onRemove: () => onSupplierFiltersChange(supplierFilters.filter((s) => s !== supplier)),
+      });
+    });
+
+    if (categoryFilter) {
+      const cat = categories.find((c) => c.id === categoryFilter);
+      filters.push({
+        id: `category-${categoryFilter}`,
+        label: cat?.name || categoryFilter,
+        color: 'emerald',
+        onRemove: () => onCategoryFilterChange(null),
+      });
+    }
+
+    if (valueRangeFilter) {
+      const option = VALUE_RANGES.find((r) => r.value === valueRangeFilter);
+      if (option) {
+        filters.push({
+          id: `value-${valueRangeFilter}`,
+          label: option.label,
+          color: 'amber',
+          onRemove: () => onValueRangeFilterChange(null),
+        });
+      }
+    }
+
+    if (dateRangeFilter) {
+      const option = DATE_PRESETS.find((r) => r.value === dateRangeFilter);
+      if (option) {
+        filters.push({
+          id: `date-${dateRangeFilter}`,
+          label: option.label,
+          color: 'blue',
+          onRemove: () => onDateRangeFilterChange(null),
+        });
+      }
+    }
+
+    if (accessScope === 'mine') {
+      filters.push({
+        id: 'access-scope',
+        label: 'My Contracts',
+        color: 'slate',
+        onRemove: () => onAccessScopeChange('all'),
+      });
+    }
+
     return filters;
   }, [
     searchQuery,
@@ -833,11 +890,22 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
     riskFilters,
     typeFilters,
     expirationFilters,
+    supplierFilters,
+    categoryFilter,
+    categories,
+    valueRangeFilter,
+    dateRangeFilter,
+    accessScope,
     onSearchChange,
     onStatusChange,
     onRiskFiltersChange,
     onTypeFiltersChange,
     onExpirationFiltersChange,
+    onSupplierFiltersChange,
+    onCategoryFilterChange,
+    onValueRangeFilterChange,
+    onDateRangeFilterChange,
+    onAccessScopeChange,
   ]);
 
   const handleAISearch = useCallback(
@@ -1081,6 +1149,57 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                     ))}
                   </div>
                 </FilterChip>
+
+                {/* Category Filter */}
+                {categories.length > 0 && (
+                  <FilterChip
+                    label="Category"
+                    icon={Hash}
+                    color="emerald"
+                    count={categoryFilter ? 1 : 0}
+                    isActive={!!categoryFilter}
+                    onClick={() => {}}
+                  >
+                    <div className="space-y-0.5 max-h-48 overflow-y-auto">
+                      {categories.map((option) => (
+                        <FilterOptionItem
+                          key={option.id}
+                          option={{ id: option.id, label: option.name, value: option.id }}
+                          isSelected={categoryFilter === option.id}
+                          onToggle={() =>
+                            onCategoryFilterChange(categoryFilter === option.id ? null : option.id)
+                          }
+                        />
+                      ))}
+                    </div>
+                  </FilterChip>
+                )}
+
+                {/* Access Scope Toggle */}
+                <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => onAccessScopeChange('all')}
+                    className={cn(
+                      "px-2.5 py-1.5 text-xs font-medium transition-colors",
+                      accessScope === 'all'
+                        ? "bg-slate-800 text-white"
+                        : "bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => onAccessScopeChange('mine')}
+                    className={cn(
+                      "px-2.5 py-1.5 text-xs font-medium transition-colors border-l border-slate-200 dark:border-slate-700",
+                      accessScope === 'mine'
+                        ? "bg-slate-800 text-white"
+                        : "bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                  >
+                    Mine
+                  </button>
+                </div>
 
                 {/* Supplier Filter */}
                 {suppliers.length > 0 && (

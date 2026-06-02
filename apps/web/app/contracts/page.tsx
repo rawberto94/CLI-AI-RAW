@@ -54,8 +54,6 @@ import {
   ShieldAlert,
   Tag,
   Users,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -943,6 +941,8 @@ export default function ContractsPage() {
             onDateRangeFilterChange={setDateRangeFilter}
             suppliers={Array.from(new Set(contracts?.map(c => c.parties?.supplier).filter(Boolean) || [])).sort() as string[]}
             categories={categories.map(cat => ({ id: cat.id, name: cat.name, color: cat.color }))}
+            accessScope={accessScope}
+            onAccessScopeChange={setAccessScope}
             onClearFilters={clearFilters}
             activeFilterCount={activeFilterCount}
             totalResults={effectiveTotal}
@@ -1197,44 +1197,6 @@ export default function ContractsPage() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-
-            {/* Access Scope Toggle */}
-            <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setAccessScope('all')}
-                    className={cn(
-                      "h-9 px-3 flex items-center gap-1.5 text-xs font-medium transition-colors",
-                      accessScope === 'all'
-                        ? "bg-slate-800 text-white"
-                        : "bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                    )}
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                    All
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="bg-slate-900 text-white border-0">All contracts</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setAccessScope('mine')}
-                    className={cn(
-                      "h-9 px-3 flex items-center gap-1.5 text-xs font-medium transition-colors border-l border-slate-200",
-                      accessScope === 'mine'
-                        ? "bg-slate-800 text-white"
-                        : "bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                    )}
-                  >
-                    <EyeOff className="h-3.5 w-3.5" />
-                    Mine
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="bg-slate-900 text-white border-0">My contracts</TooltipContent>
-              </Tooltip>
-            </div>
 
             {/* View Mode */}
             <div data-tour="view-modes" className="flex items-center border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">

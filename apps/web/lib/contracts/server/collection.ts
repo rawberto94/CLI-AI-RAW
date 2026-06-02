@@ -435,9 +435,14 @@ export async function getContractsCollection(
       where.paymentTerms = { in: paymentTerms };
     }
     if (tags.length > 0) {
+      // Case-insensitive tag matching using raw text search as fallback
       andFilters.push({
         OR: tags.map((tag) => ({
-          tags: { array_contains: [tag] },
+          OR: [
+            { tags: { array_contains: [tag] } },
+            { tags: { array_contains: [tag.toLowerCase()] } },
+            { tags: { array_contains: [tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase()] } },
+          ],
         })),
       });
     }
@@ -606,6 +611,7 @@ export async function getContractsCollection(
       uploadedBefore,
       hasDeadline,
       isExpiring,
+      accessScope,
     });
 
     const cachedResult = await withCache(
