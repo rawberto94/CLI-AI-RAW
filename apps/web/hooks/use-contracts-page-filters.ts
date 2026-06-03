@@ -307,6 +307,7 @@ export function useContractsPageFilters() {
     const params = filtersToParams(
       filterState,
       searchQuery,
+      searchScope,
       accessScope,
       sortField,
       sortDirection,
@@ -319,6 +320,7 @@ export function useContractsPageFilters() {
   }, [
     filterState,
     searchQuery,
+    searchScope,
     accessScope,
     sortField,
     sortDirection,

@@ -1027,7 +1027,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
     if (searchQuery) {
       filters.push({
         id: 'search',
-        label: scope !== 'all' ? `"${searchQuery}" in ${scopeLabel}` : `"${searchQuery}"`,
+        label: searchScope !== 'all' && searchScopeLabel ? `"${searchQuery}" in ${searchScopeLabel}` : `"${searchQuery}"`,
         color: 'slate',
         onRemove: () => onSearchChange(''),
       });
@@ -1877,12 +1877,13 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                             <CalendarComponent
                               mode="single"
                               selected={filterState.dateRange.from}
-                              onSelect={(date) =>
+                              onSelect={(date) => {
+                                const d = Array.isArray(date) ? date[0] : (date && 'from' in date ? undefined : date as Date | undefined);
                                 onFilterStateChange((prev) => ({
                                   ...prev,
-                                  dateRange: { ...prev.dateRange, from: date || undefined },
-                                }))
-                              }
+                                  dateRange: { ...prev.dateRange, from: d },
+                                }));
+                              }}
                             />
                           </PopoverContent>
                         </Popover>
@@ -1897,12 +1898,13 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                             <CalendarComponent
                               mode="single"
                               selected={filterState.dateRange.to}
-                              onSelect={(date) =>
+                              onSelect={(date) => {
+                                const d = Array.isArray(date) ? date[0] : (date && 'from' in date ? undefined : date as Date | undefined);
                                 onFilterStateChange((prev) => ({
                                   ...prev,
-                                  dateRange: { ...prev.dateRange, to: date || undefined },
-                                }))
-                              }
+                                  dateRange: { ...prev.dateRange, to: d },
+                                }));
+                              }}
                             />
                           </PopoverContent>
                         </Popover>
