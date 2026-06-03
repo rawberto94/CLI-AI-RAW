@@ -388,6 +388,8 @@ const DEFAULT_CONFIG: WAFConfig = {
     '/api/health',
     '/api/webhooks', // Webhooks might have special content
     '/api/auth',     // NextAuth handles its own CSRF + origin validation
+    '/api/ai/chat',  // AI chat — natural language contains apostrophes, has own guardrails
+    '/api/ai/safety-appeal', // Safety appeal endpoint
   ],
   rateLimit: {
     enabled: true,
