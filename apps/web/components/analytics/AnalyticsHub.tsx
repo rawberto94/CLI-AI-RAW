@@ -87,8 +87,8 @@ export function AnalyticsHub() {
         const response = await fetch('/api/analytics/metrics', {
           headers: { 'x-data-mode': dataMode }
         })
-        const data = await response.json()
-        setMetrics(data)
+        const json = await response.json()
+        setMetrics(json.data ?? json)
       } else {
         setMetrics({
           totalContracts: 247,
