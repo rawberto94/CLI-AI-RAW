@@ -376,6 +376,7 @@ export function useContracts(
     refetchOnWindowFocus: true,  // Refresh data when user returns to tab
     refetchInterval: pollingEnabled ? pollingInterval : false,
     refetchIntervalInBackground: false, // Don't poll when tab is not active
+    placeholderData: (previousData: { contracts: unknown[]; total: number; lastUpdated: string } | undefined) => previousData,
   });
   
   // Detect new contracts and trigger callback

@@ -1043,7 +1043,7 @@ export default function ContractsPage() {
             onClearFilters={clearFilters}
             activeFilterCount={activeFilterCount}
             totalResults={effectiveTotal}
-            isLoading={isRefetching}
+            isLoading={loading}
             onAISearchClick={handleAISearchClick}
           />
         </div>
