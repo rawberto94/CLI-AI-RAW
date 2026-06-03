@@ -27,6 +27,7 @@ import Link from 'next/link'
 
 import { UploadDropZone } from './components'
 import { UploadMetadataReviewDialog } from './components'
+import { generateUUID } from '@/lib/utils'
 
 // ── Types & Utilities ────────────────────────────────────────────────────────
 
@@ -156,7 +157,7 @@ export default function UploadPage() {
     if (validFiles.length === 0) return
 
     const newFiles: UploadFile[] = validFiles.map(file => ({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       file,
       status: 'pending',
       progress: 0,

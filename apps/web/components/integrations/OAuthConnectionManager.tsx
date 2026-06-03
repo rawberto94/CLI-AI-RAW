@@ -14,7 +14,7 @@ import {
   Settings,
   Key,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, generateUUID } from "@/lib/utils";
 import { oauthProviders, type OAuthProvider } from "@/lib/oauth-providers";
 
 interface ConnectionStatus {
@@ -64,8 +64,8 @@ export function OAuthConnectionManager({
 
       try {
         // Build OAuth URL
-        const state = crypto.randomUUID();
-        const codeVerifier = crypto.randomUUID() + crypto.randomUUID();
+        const state = generateUUID();
+        const codeVerifier = generateUUID() + generateUUID();
 
         // Store state for CSRF protection
         sessionStorage.setItem(`oauth_state_${providerId}`, state);

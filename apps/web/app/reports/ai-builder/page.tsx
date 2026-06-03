@@ -109,7 +109,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { cn, generateUUID } from '@/lib/utils';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 
@@ -319,7 +319,7 @@ export default function AIReportBuilderPage() {
     if (!newPresetName.trim()) return;
     
     const newPreset: SavedPreset = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name: newPresetName.trim(),
       filters,
       createdAt: new Date().toISOString(),
@@ -365,7 +365,7 @@ export default function AIReportBuilderPage() {
   // Add to report history
   const addToHistory = useCallback((reportData: ReportResult) => {
     const historyItem: ReportHistoryItem = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       filters: { ...filters },
       generatedAt: new Date().toISOString(),
       summary: {
