@@ -72,8 +72,11 @@ export interface WAFResult {
 const PATTERNS = {
   // SQL Injection patterns
   sqlInjection: [
-    /(\%27)|(\')|(\-\-)|(\%23)|(#)/i,
-    /((\%3D)|(=))[^\n]*((\%27)|(\')|(\-\-)|(\%3B)|(;))/i,
+    // Bare apostrophe / double-dash patterns are too broad (matches "I'm", filenames, etc.)
+    // Only flag apostrophes in clearly SQL-injection contexts
+    /(\%27|\')(\s*)(OR|AND|UNION|SELECT|INSERT|DELETE|DROP|UPDATE|EXEC|SLEEP|BENCHMARK)(\s)/i,
+    /(\-\-)(\s|$)/,   // SQL comment -- at end of value
+    /((\%3D)|(=))[^\n]*((\%27)|(\')\s*(OR|AND)\s)/i,
     /\w*((\%27)|(\'))((\%6F)|o|(\%4F))((\%72)|r|(\%52))/i,
     /((\%27)|(\'))union/i,
     /union.+select/i,
@@ -390,6 +393,7 @@ const DEFAULT_CONFIG: WAFConfig = {
     '/api/auth',     // NextAuth handles its own CSRF + origin validation
     '/api/ai/chat',  // AI chat — natural language contains apostrophes, has own guardrails
     '/api/ai/safety-appeal', // Safety appeal endpoint
+    '/api/contracts/upload', // File upload — multipart, filenames may contain apostrophes
   ],
   rateLimit: {
     enabled: true,
