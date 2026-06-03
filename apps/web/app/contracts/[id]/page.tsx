@@ -811,7 +811,7 @@ export default function ContractDetailPage() {
   }, [aiCategorize, crossModule])
 
   const handleAnalyzeWithAI = useCallback(() => {
-    const partyNames = metadata.external_parties
+    const partyNames = (metadata.external_parties ?? [])
       .filter((p: any) => p.legalName)
       .map((p: any) => p.legalName)
       .join(' and ')
@@ -1139,7 +1139,7 @@ export default function ContractDetailPage() {
               currency={metadata.currency}
               paymentType={metadata.payment_type}
               periodicity={metadata.periodicity}
-              parties={metadata.external_parties}
+              parties={metadata.external_parties ?? []}
               startDate={metadata.start_date}
               endDate={metadata.end_date}
               noticePeriod={metadata.notice_period}
@@ -1205,7 +1205,7 @@ export default function ContractDetailPage() {
                 <ContractSummaryTab
                     summary={metadata.contract_short_description || overviewData?.summary || ''}
                     keyTerms={overviewData?.keyTerms}
-                    parties={metadata.external_parties}
+                    parties={metadata.external_parties ?? []}
                     signatureDate={metadata.signature_date}
                     signatureStatus={metadata.signature_status}
                     startDate={metadata.start_date}
