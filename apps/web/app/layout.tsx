@@ -4,7 +4,6 @@ import "../styles/accessibility.css";
 import { Inter } from "next/font/google";
 import { Suspense } from "react";
 
-import { HealthBanner } from "./health-banner";
 import { ConditionalLayout } from "@/components/layout/ConditionalLayout";
 import { DataModeProvider } from "@/contexts/DataModeContext";
 import { ToastProvider } from "@/components/ui/toast-provider";
@@ -18,7 +17,6 @@ import { FeedbackProvider } from "@/components/feedback/FeedbackSystem";
 import { QueryProvider } from "@/lib/query-client";
 import { WebSocketProvider } from "@/contexts/websocket-context";
 import { RealTimeSyncProvider } from "@/components/providers/RealTimeSyncProvider";
-import { TenantContextBanner } from "@/components/platform/TenantContextBanner";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { UndoToastProvider } from "@/components/ui/undo-toast";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
@@ -103,10 +101,6 @@ export default function RootLayout({
                                     <WelcomeTourProvider autoShowForNewUsers={true} showDelay={1500}>
                                     <GlobalKeyboardShortcuts>
                                     <GlobalKeyboardShortcutsProvider>
-                                    <Suspense fallback={null}>
-                                      <TenantContextBanner />
-                                    </Suspense>
-                                    <HealthBanner />
                                     <ConditionalLayout>
                                       {children}
                                     </ConditionalLayout>
