@@ -98,14 +98,14 @@ export default function RootLayout({
                                 <CommandPaletteProvider>
                                   <ConfirmProvider>
                                     <AnnouncerProvider>
-                                    <WelcomeTourProvider autoShowForNewUsers={true} showDelay={1500}>
+                                    <WelcomeTourProvider autoShowForNewUsers={process.env.NEXT_PUBLIC_DEMO_MODE !== 'true'} showDelay={1500}>
                                     <GlobalKeyboardShortcuts>
                                     <GlobalKeyboardShortcutsProvider>
                                     <ConditionalLayout>
                                       {children}
                                     </ConditionalLayout>
                                     <WelcomeModal />
-                                    <WelcomeTourOverlay />
+                                    {process.env.NEXT_PUBLIC_DEMO_MODE !== 'true' && <WelcomeTourOverlay />}
                                     </GlobalKeyboardShortcutsProvider>
                                     </GlobalKeyboardShortcuts>
                                     </WelcomeTourProvider>
