@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { FilterState } from './AdvancedFilterPanel';
+import { FilterState } from '@/lib/contracts/filter-state';
 
 interface ActiveFilterChipsProps {
   filters: FilterState;

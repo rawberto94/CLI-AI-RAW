@@ -77,8 +77,8 @@ export interface Contract {
   parentContractId?: string | null;
   parentContract?: {
     id: string;
-    fileName: string;
-    contractType?: string | null;
+    title: string;
+    type?: string | null;
   } | null;
   childContracts?: Array<{
     id: string;
@@ -86,6 +86,7 @@ export interface Contract {
     contractType?: string | null;
     relationshipType?: string;
   }>;
+  childContractCount?: number;
   hasHierarchy?: boolean;
   relationshipType?: string;
 }

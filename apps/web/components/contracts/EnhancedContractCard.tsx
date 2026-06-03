@@ -131,7 +131,9 @@ export interface EnhancedContract {
   parentContractId?: string;
   parentContract?: { id: string; fileName: string; contractType?: string };
   childContracts?: Array<{ id: string; fileName: string; contractType?: string; relationshipType?: string }>;
+  childContractCount?: number;
   hasHierarchy?: boolean;
+  relationshipType?: string;
 }
 
 export interface EnhancedContractCardProps {
@@ -526,13 +528,13 @@ interface HierarchyBadgeProps {
 
 const HierarchyBadge = memo(function HierarchyBadge({ contract }: HierarchyBadgeProps) {
   const hasParent = contract.parentContractId || contract.parentContract || contract.hierarchy?.parentContract;
-  const childCount = contract.childContracts?.length || contract.hierarchy?.childContracts?.length || contract.hierarchy?.childCount || 0;
+  const childCount = contract.childContractCount ?? contract.childContracts?.length ?? contract.hierarchy?.childCount ?? 0;
   const hasHierarchy = hasParent || childCount > 0 || contract.hasHierarchy;
   
   if (!hasHierarchy) return null;
 
   const parentName = contract.parentContract?.fileName || contract.hierarchy?.parentContract?.fileName;
-  const relationshipType = contract.hierarchy?.relationshipType;
+  const relationshipType = contract.relationshipType || contract.hierarchy?.relationshipType;
   
   // Format relationship type for display
   const formatRelationship = (type?: string) => {

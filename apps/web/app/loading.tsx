@@ -1,45 +1,56 @@
-export default function Loading() {
+export default function RootLoading() {
   return (
-    <div className="min-h-[60vh] flex items-center justify-center bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
-      <div className="flex flex-col items-center gap-6" role="status" aria-live="polite">
-        {/* Logo with pulse animation */}
-        <div className="relative motion-safe:animate-pulse">
-          <div className="absolute inset-0 bg-gradient-to-r from-violet-400 to-purple-500 rounded-3xl blur-2xl opacity-20 dark:opacity-30 scale-150" />
-          {/* Inline SVG Logo - Stacked Bars */}
-          <svg 
-            width="120" 
-            height="120" 
-            viewBox="0 0 48 48" 
-            className="relative z-10"
-            aria-hidden="true"
-          >
-            <g transform="translate(4, 8)">
-              <rect x="0" y="0" width="40" height="9" rx="4.5" fill="#6D28D9" />
-              <rect x="0" y="13" width="40" height="9" rx="4.5" fill="#8B5CF6" />
-              <rect x="0" y="26" width="40" height="9" rx="4.5" fill="#C4B5FD" />
-            </g>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <div className="flex flex-col items-center gap-4">
+        {/* ConTigo logo mark */}
+        <div className="relative h-12 w-12 animate-pulse">
+          <svg viewBox="0 0 48 48" fill="none" className="h-12 w-12 text-violet-600">
+            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" className="opacity-20" />
+            <path
+              d="M24 8a16 16 0 0 1 0 32"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              className="origin-center"
+              style={{ animation: 'spin 1.2s linear infinite' }}
+            />
           </svg>
         </div>
-        
-        {/* ConTigo Text */}
         <div className="text-center">
-          <h1 className="text-3xl tracking-tight">
-            <span className="font-bold text-violet-700 dark:text-violet-400">con</span>
-            <span className="font-light text-slate-800 dark:text-slate-200">tigo</span>
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Loading your contract intelligence...</p>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            ConTigo
+          </h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Loading your contract intelligence platform…
+          </p>
         </div>
-        
-        {/* Loading dots with reduced motion support */}
-        <div className="flex items-center gap-1.5" aria-hidden="true">
-          <span className="w-2 h-2 rounded-full bg-violet-500 motion-safe:animate-bounce motion-reduce:opacity-75" style={{ animationDelay: '0ms' }} />
-          <span className="w-2 h-2 rounded-full bg-violet-600 motion-safe:animate-bounce motion-reduce:opacity-75" style={{ animationDelay: '150ms' }} />
-          <span className="w-2 h-2 rounded-full bg-violet-500 motion-safe:animate-bounce motion-reduce:opacity-75" style={{ animationDelay: '300ms' }} />
+        {/* Progress bar */}
+        <div className="w-48 h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-violet-600 rounded-full"
+            style={{
+              width: '30%',
+              animation: 'loading-bar 2s ease-in-out infinite',
+            }}
+          />
         </div>
-        
-        {/* Screen reader text */}
-        <span className="sr-only">Loading content, please wait...</span>
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          First load may take a moment through the preview tunnel
+        </p>
       </div>
+      {/* Inline keyframes via standard style tag (not styled-jsx) */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            @keyframes loading-bar { 
+              0% { transform: translateX(-100%); } 
+              50% { transform: translateX(100%); } 
+              100% { transform: translateX(300%); } 
+            }
+          `,
+        }}
+      />
     </div>
   );
 }

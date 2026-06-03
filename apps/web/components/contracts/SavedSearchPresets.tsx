@@ -31,7 +31,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { FilterState } from './AdvancedFilterPanel';
+import { FilterState } from '@/lib/contracts/filter-state';
 
 export interface SavedSearch {
   id: string;

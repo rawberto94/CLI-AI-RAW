@@ -13,8 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
-import { AdvancedFilterPanel } from "@/components/contracts/AdvancedFilterPanel";
-import { ActiveFilterChips } from "@/components/contracts/ActiveFilterChips";
 import { SavedSearchPresets } from "@/components/contracts/SavedSearchPresets";
 import {
   DropdownMenu,
@@ -137,16 +135,11 @@ export default function ContractsPage() {
   // ── Extracted hooks ──────────────────────────────────────────────────
   const {
     searchQuery, setSearchQuery,
+    searchScope, setSearchScope, searchScopeLabel,
     filterState, setFilterState,
-    valueRangeFilter, setValueRangeFilter,
-    dateRangeFilter, setDateRangeFilter,
-    expirationFilters, setExpirationFilters,
-    signatureFilters, setSignatureFilters, documentTypeFilters,
     currentPage, setCurrentPage, pageSize, setPageSize,
     sortField, setSortField, sortDirection, setSortDirection,
     accessScope, setAccessScope,
-    statusFilter, typeFilters, riskFilters, supplierFilters, categoryFilter,
-    setStatusFilter, setTypeFilters, setRiskFilters, setSupplierFilters, setCategoryFilter,
     serverParams,
     hasActiveFilters, activeFilterCount,
     clearFilters, handleClearFilter, handleLoadPreset,
@@ -168,7 +161,6 @@ export default function ContractsPage() {
 
   // UI toggle state (not part of filter logic)
   const isDemo = useDemoMode();
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // View mode: 'compact' for table-like rows, 'cards' for detailed cards
   const [viewMode, setViewMode] = useState<'compact' | 'cards'>(() => {
@@ -191,6 +183,114 @@ export default function ContractsPage() {
   // AI Search state
   const [aiSearchResults, setAiSearchResults] = useState<Array<{ contractId: string; contractName: string; text: string; score: number; relevance: string; highlights?: string[] }> | null>(null);
   const [isAISearching, setIsAISearching] = useState(false);
+
+  // Pre-seed demo saved searches on first load
+  useEffect(() => {
+    if (!isDemo) return;
+    try {
+      const key = 'contigo_saved_searches';
+      const existing = localStorage.getItem(key);
+      if (existing) return;
+      const demoSearches = [
+        {
+          id: 'demo-1',
+          name: 'SBB Maintenance 2024',
+          query: '',
+          filters: {
+            statuses: ['completed'],
+            clients: ['SBB CFF FFS'],
+            categories: [],
+            contractTypes: ['Maintenance'],
+            riskLevels: [],
+            suppliers: [],
+            currencies: [],
+            jurisdictions: [],
+            paymentTerms: [],
+            tags: [],
+            metadataIssues: [],
+            documentRoles: [],
+            documentTypeFilters: [],
+            expirationFilters: [],
+            signatureFilters: [],
+            relationshipType: [],
+            valueRangePreset: null,
+            dateRangePreset: null,
+            dateRange: {},
+            valueRange: { min: 0, max: 1000000 },
+            hasDeadline: null,
+            isExpiring: null,
+          },
+          createdAt: new Date().toISOString(),
+          isPinned: true,
+        },
+        {
+          id: 'demo-2',
+          name: 'High-Value CHF Suppliers',
+          query: '',
+          filters: {
+            statuses: [],
+            clients: [],
+            categories: [],
+            contractTypes: [],
+            riskLevels: [],
+            suppliers: [],
+            currencies: ['CHF'],
+            jurisdictions: [],
+            paymentTerms: [],
+            tags: [],
+            metadataIssues: [],
+            documentRoles: [],
+            documentTypeFilters: [],
+            expirationFilters: [],
+            signatureFilters: [],
+            relationshipType: [],
+            valueRangePreset: 'over500k',
+            dateRangePreset: null,
+            dateRange: {},
+            valueRange: { min: 0, max: 1000000 },
+            hasDeadline: null,
+            isExpiring: null,
+          },
+          createdAt: new Date().toISOString(),
+          isPinned: true,
+        },
+        {
+          id: 'demo-3',
+          name: 'Expiring Siemens Agreements',
+          query: '',
+          filters: {
+            statuses: [],
+            clients: [],
+            categories: [],
+            contractTypes: [],
+            riskLevels: [],
+            suppliers: ['Siemens Mobility'],
+            currencies: [],
+            jurisdictions: [],
+            paymentTerms: [],
+            tags: [],
+            metadataIssues: [],
+            documentRoles: [],
+            documentTypeFilters: [],
+            expirationFilters: ['expiring-90'],
+            signatureFilters: [],
+            relationshipType: [],
+            valueRangePreset: null,
+            dateRangePreset: null,
+            dateRange: {},
+            valueRange: { min: 0, max: 1000000 },
+            hasDeadline: null,
+            isExpiring: null,
+          },
+          createdAt: new Date().toISOString(),
+          isPinned: false,
+        },
+      ];
+      localStorage.setItem(key, JSON.stringify(demoSearches));
+    } catch {
+      // ignore
+    }
+  }, [isDemo]);
 
   // Favorites state — fetched from /api/user/favorites on mount
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -365,6 +465,13 @@ export default function ContractsPage() {
         setViewMode(prev => prev === 'compact' ? 'cards' : 'compact');
       }
       
+      // F - toggle filter panel
+      if (e.key === 'f' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        const filterBtn = document.querySelector('[data-testid="filter-toggle-btn"]') as HTMLButtonElement;
+        filterBtn?.click();
+      }
+      
       // N - new contract (go to upload)
       if (e.key === 'n' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
@@ -444,22 +551,13 @@ export default function ContractsPage() {
     return Array.from(tags).sort();
   }, [contracts]);
 
-  const categoryLabels = useMemo(
-    () => Object.fromEntries(categories.map((category) => [category.id, category.name])),
-    [categories],
-  );
-
   // Apply a local safety pass with the same criteria while keeping the
   // server as the source of truth for totals and pagination.
   const filteredContracts = useMemo(() => {
     let result = applyContractFilters(contracts, {
       searchQuery,
+      searchScope,
       filterState,
-      dateRangePreset: dateRangeFilter,
-      expirationFilters,
-      signatureFilters,
-      documentTypeFilters,
-      valueRangePreset: valueRangeFilter,
     });
 
     // Client-side sort for tags since Prisma can't sort JSON arrays
@@ -475,12 +573,8 @@ export default function ContractsPage() {
   }, [
     contracts,
     searchQuery,
+    searchScope,
     filterState,
-    dateRangeFilter,
-    expirationFilters,
-    signatureFilters,
-    documentTypeFilters,
-    valueRangeFilter,
     sortField,
     sortDirection,
   ]);
@@ -625,9 +719,11 @@ export default function ContractsPage() {
       tags: contract.tags ?? [],
       // Include hierarchy info
       parentContractId: contract.parentContractId ?? undefined,
-      parentContract: contract.parentContract ? { ...contract.parentContract, contractType: contract.parentContract.contractType ?? undefined } : undefined,
+      parentContract: contract.parentContract ? { id: contract.parentContract.id, fileName: contract.parentContract.title, contractType: contract.parentContract.type ?? undefined } : undefined,
       childContracts: contract.childContracts?.map(c => ({ ...c, contractType: c.contractType ?? undefined })),
+      childContractCount: contract.childContractCount ?? 0,
       hasHierarchy: contract.hasHierarchy,
+      relationshipType: contract.relationshipType ?? undefined,
       // Include signature status
       signatureStatus: contract.signatureStatus,
       signatureRequiredFlag: contract.signatureRequiredFlag,
@@ -746,71 +842,62 @@ export default function ContractsPage() {
     return paginatedContracts.every(c => selectedContracts.has(c.id));
   }, [paginatedContracts, selectedContracts]);
 
-  // Precompute advanced filter badge count
-  const advancedFilterCount = useMemo(() =>
-    (filterState.statuses?.length ?? 0) + (filterState.documentRoles?.length ?? 0) +
-    (filterState.categories?.length ?? 0) + (filterState.hasDeadline != null ? 1 : 0) +
-    (filterState.isExpiring != null ? 1 : 0) +
-    (filterState.riskLevels?.length ?? 0) + (filterState.suppliers?.length ?? 0) +
-    (filterState.clients?.length ?? 0) + (filterState.contractTypes?.length ?? 0) +
-    (filterState.currencies?.length ?? 0) + (filterState.jurisdictions?.length ?? 0) +
-    (filterState.paymentTerms?.length ?? 0) + (filterState.tags?.length ?? 0),
-  [filterState]);
 
-  const applyQuickFilter = useCallback((filter: 'expiring' | 'signature' | 'risk' | 'processing' | 'recent') => {
+
+  const applyQuickFilter = useCallback((filter: string) => {
     clearFilters();
 
     switch (filter) {
       case 'expiring':
-        setExpirationFilters(['expiring-30']);
+        setFilterState((prev) => ({ ...prev, expirationFilters: ['expiring-30'] }));
         break;
       case 'signature':
-        setSignatureFilters(['unsigned', 'partially_signed']);
+        setFilterState((prev) => ({ ...prev, signatureFilters: ['unsigned', 'partially_signed'] }));
         break;
       case 'risk':
-        setRiskFilters(['high']);
+        setFilterState((prev) => ({ ...prev, riskLevels: ['high'] }));
         break;
-      case 'processing':
-        setStatusFilter('processing');
+      case 'sow':
+        setFilterState((prev) => ({ ...prev, relationshipType: ['SOW_UNDER_MSA'] }));
         break;
-      case 'recent':
-        setDateRangeFilter('week');
+      case 'high-value':
+        setFilterState((prev) => ({ ...prev, valueRangePreset: 'over500k' }));
         break;
     }
-  }, [clearFilters, setDateRangeFilter, setExpirationFilters, setRiskFilters, setSignatureFilters, setStatusFilter]);
+  }, [clearFilters, setFilterState]);
 
   const quickFilters = useMemo(() => [
     {
       id: 'expiring' as const,
       label: 'Expiring soon',
       icon: Clock,
-      active: expirationFilters.includes('expiring-30'),
+      active: filterState.expirationFilters.includes('expiring-30'),
     },
     {
       id: 'signature' as const,
       label: 'Needs signature',
       icon: PenLine,
-      active: signatureFilters.includes('unsigned') || signatureFilters.includes('partially_signed'),
+      active: filterState.signatureFilters.includes('unsigned') || filterState.signatureFilters.includes('partially_signed'),
     },
     {
       id: 'risk' as const,
       label: 'High risk',
       icon: ShieldAlert,
-      active: riskFilters.includes('high'),
+      active: filterState.riskLevels.includes('high'),
     },
     {
-      id: 'processing' as const,
-      label: 'Processing',
-      icon: Sparkles,
-      active: statusFilter === 'processing',
+      id: 'sow' as const,
+      label: 'SOWs under MSA',
+      icon: GitBranch,
+      active: filterState.relationshipType?.includes('SOW_UNDER_MSA') ?? false,
     },
     {
-      id: 'recent' as const,
-      label: 'Recent uploads',
-      icon: AlertCircle,
-      active: dateRangeFilter === 'week',
+      id: 'high-value' as const,
+      label: 'High value',
+      icon: DollarSign,
+      active: filterState.valueRangePreset === 'over500k' || filterState.valueRange.min >= 500000,
     },
-  ], [dateRangeFilter, expirationFilters, riskFilters, signatureFilters, statusFilter]);
+  ], [filterState]);
 
   // Surface list-fetch failures — previously `useContracts`' error field was
   // unused, so a failed GET /api/contracts (500, network, auth drop) left the
@@ -936,24 +1023,19 @@ export default function ContractsPage() {
           <StateOfTheArtSearch
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
-            statusFilter={statusFilter}
-            onStatusChange={setStatusFilter}
-            riskFilters={riskFilters}
-            onRiskFiltersChange={setRiskFilters}
-            typeFilters={typeFilters}
-            onTypeFiltersChange={setTypeFilters}
-            expirationFilters={expirationFilters}
-            onExpirationFiltersChange={setExpirationFilters}
-            supplierFilters={supplierFilters}
-            onSupplierFiltersChange={setSupplierFilters}
-            categoryFilter={categoryFilter}
-            onCategoryFilterChange={(cat) => setCategoryFilter(cat)}
-            valueRangeFilter={valueRangeFilter}
-            onValueRangeFilterChange={(val) => setValueRangeFilter(val)}
-            dateRangeFilter={dateRangeFilter}
-            onDateRangeFilterChange={setDateRangeFilter}
-            suppliers={Array.from(new Set(contracts?.map(c => c.parties?.supplier).filter(Boolean) || [])).sort() as string[]}
+            searchScope={searchScope}
+            onSearchScopeChange={setSearchScope}
+            searchScopeLabel={searchScopeLabel}
+            filterState={filterState}
+            onFilterStateChange={setFilterState}
+            suppliers={availableSuppliers}
             categories={categories.map(cat => ({ id: cat.id, name: cat.name, color: cat.color }))}
+            clients={availableClients}
+            contractTypes={availableContractTypes}
+            currencies={availableCurrencies}
+            jurisdictions={availableJurisdictions}
+            paymentTerms={availablePaymentTerms}
+            tags={availableTags}
             accessScope={accessScope}
             onAccessScopeChange={setAccessScope}
             onClearFilters={clearFilters}
@@ -1059,82 +1141,16 @@ export default function ContractsPage() {
           )}
         </div>
 
-        {/* Advanced Filter Panel - Inline & Collapsible */}
-        <AnimatePresence>
-          {showAdvancedFilters && (
-            <motion.div
-              key="advanced-filter-panel"
-              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-              animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
-              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              style={{ overflow: 'hidden' }}
-            >
-              <AdvancedFilterPanel
-                filters={filterState}
-                onChange={setFilterState}
-                onClose={() => setShowAdvancedFilters(false)}
-                availableCategories={categories.map(cat => ({ id: cat.id, name: cat.name }))}
-                availableSuppliers={availableSuppliers}
-                availableClients={availableClients}
-                availableContractTypes={availableContractTypes}
-                availableCurrencies={availableCurrencies}
-                availableJurisdictions={availableJurisdictions}
-                availablePaymentTerms={availablePaymentTerms}
-                availableTags={availableTags}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        {/* Advanced Filter Controls */}
-        <div className="flex items-center justify-end gap-2">
-          {/* Active Filter Chips - only shows when filters are active */}
-          <ActiveFilterChips
-            filters={filterState}
-            searchQuery={searchQuery}
-            onClearFilter={handleClearFilter}
-            onClearSearch={() => setSearchQuery('')}
-            onClearAll={() => {
-              clearFilters();
-            }}
-            categoryLabels={categoryLabels}
-          />
-          
-          {!isDemo && (
+        {/* Saved Search Presets */}
+        {!isDemo && (
+          <div className="flex justify-end">
             <SavedSearchPresets
               currentFilters={filterState}
               currentQuery={searchQuery}
               onLoadPreset={handleLoadPreset}
             />
-          )}
-          
-          {!isDemo && (
-            <Button
-              variant={showAdvancedFilters ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={cn(
-                "transition-all duration-200 h-8 text-xs font-medium",
-                showAdvancedFilters 
-                  ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-800" 
-                  : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
-              )}
-            >
-              {showAdvancedFilters ? <X className="h-3.5 w-3.5 mr-1.5" /> : <Filter className="h-3.5 w-3.5 mr-1.5" />}
-              <span className="hidden sm:inline">Advanced Filters</span>
-              <span className="sm:hidden">Filters</span>
-              {advancedFilterCount > 0 && (
-                <Badge className={cn(
-                  "ml-1.5",
-                  showAdvancedFilters ? "bg-white text-slate-800" : "bg-slate-800 text-white"
-                )} variant="secondary">
-                  {advancedFilterCount}
-                </Badge>
-              )}
-            </Button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* View Mode Toggle, Sort & Results Count */}
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -1275,10 +1291,10 @@ export default function ContractsPage() {
             >
               <Card className="bg-white border-slate-200">
                 <CardContent className="p-0">
-                  {(searchQuery || statusFilter !== "all" || hasActiveFilters) ? (
+                  {(searchQuery || filterState.statuses.length > 0 || hasActiveFilters) ? (
                     <NoResults
                       searchTerm={searchQuery || undefined}
-                      hasFilters={statusFilter !== 'all' || Boolean(hasActiveFilters)}
+                      hasFilters={filterState.statuses.length > 0 || Boolean(hasActiveFilters)}
                       onClearSearch={searchQuery ? () => setSearchQuery('') : undefined}
                       onClearFilters={clearFilters}
                     />
@@ -1664,18 +1680,16 @@ export default function ContractsPage() {
         onOpenChange={setShowMobileFilters}
         filters={{
           search: searchQuery,
-          status: statusFilter !== 'all' ? [statusFilter] : [],
-          riskLevel: riskFilters,
-          contractType: typeFilters,
+          status: filterState.statuses,
+          riskLevel: filterState.riskLevels,
+          contractType: filterState.contractTypes,
           tags: filterState.tags,
         }}
         onFiltersChange={(filters) => {
           if (filters.search !== undefined) setSearchQuery(filters.search);
-          if (filters.status) {
-            setStatusFilter(filters.status.length > 0 ? filters.status[0] : 'all');
-          }
-          if (filters.riskLevel) setRiskFilters(filters.riskLevel);
-          if (filters.contractType) setTypeFilters(filters.contractType);
+          if (filters.status) setFilterState(prev => ({ ...prev, statuses: filters.status }));
+          if (filters.riskLevel) setFilterState(prev => ({ ...prev, riskLevels: filters.riskLevel }));
+          if (filters.contractType) setFilterState(prev => ({ ...prev, contractTypes: filters.contractType }));
           if (filters.tags) setFilterState(prev => ({ ...prev, tags: filters.tags }));
         }}
         onApply={() => setShowMobileFilters(false)}

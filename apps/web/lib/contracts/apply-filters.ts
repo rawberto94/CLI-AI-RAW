@@ -10,44 +10,59 @@
  */
 
 import type { Contract } from '@/hooks/use-queries';
-import type { FilterState } from '@/components/contracts/AdvancedFilterPanel';
+import type { FilterState } from '@/lib/contracts/filter-state';
+import type { SearchScope } from '@/hooks/use-contracts-page-filters';
 import { DATE_PRESETS, VALUE_RANGES } from './filter-constants';
 
 // ── Public criteria type ────────────────────────────────────────────
 export interface ContractFilterCriteria {
   /** Free-text search (title, filename, parties, type, category) */
   searchQuery?: string;
-  /** AdvancedFilterPanel state (status, roles, risk, supplier, client, …).
-   *  Partial is accepted — omitted dimensions are treated as "match all". */
-  filterState: Partial<FilterState>;
-  /** Preset-based date range key (e.g. 'week', 'month', 'quarter') */
-  dateRangePreset?: string | null;
-  /** Expiration bucket filters (e.g. ['expired', 'expiring-30']) */
-  expirationFilters?: string[];
-  /** Signature status filters */
-  signatureFilters?: string[];
-  /** Document classification filters */
-  documentTypeFilters?: string[];
-  /** Preset-based value range key (e.g. 'under10k', '10k-50k') */
-  valueRangePreset?: string | null;
+  /** Which field to search in — 'all' searches every field */
+  searchScope?: SearchScope;
+  /** Unified filter state */
+  filterState: FilterState;
 }
 
 // ── Matchers (private helpers) ──────────────────────────────────────
 
-function matchesSearch(c: Contract, q: string | undefined): boolean {
+function matchesSearch(c: Contract, q: string | undefined, scope: SearchScope = 'all'): boolean {
   if (!q) return true;
   const lower = q.toLowerCase();
-  return (
-    (c.title?.toLowerCase().includes(lower) ?? false) ||
-    (c.filename?.toLowerCase().includes(lower) ?? false) ||
-    (c.parties?.client?.toLowerCase().includes(lower) ?? false) ||
-    (c.parties?.supplier?.toLowerCase().includes(lower) ?? false) ||
-    (c.clientName?.toLowerCase().includes(lower) ?? false) ||
-    (c.supplierName?.toLowerCase().includes(lower) ?? false) ||
-    (c.type?.toLowerCase().includes(lower) ?? false) ||
-    (c.category?.name?.toLowerCase().includes(lower) ?? false) ||
-    (c.tags?.some((tag) => tag.toLowerCase().includes(lower)) ?? false)
-  );
+
+  switch (scope) {
+    case 'title':
+      return (c.title?.toLowerCase().includes(lower) ?? false) ||
+             (c.filename?.toLowerCase().includes(lower) ?? false);
+    case 'supplier':
+      return (c.parties?.supplier?.toLowerCase().includes(lower) ?? false) ||
+             (c.supplierName?.toLowerCase().includes(lower) ?? false);
+    case 'client':
+      return (c.parties?.client?.toLowerCase().includes(lower) ?? false) ||
+             (c.clientName?.toLowerCase().includes(lower) ?? false);
+    case 'type':
+      return (c.type?.toLowerCase().includes(lower) ?? false);
+    case 'tags':
+      return (c.tags?.some((tag) => tag.toLowerCase().includes(lower)) ?? false);
+    case 'jurisdiction':
+      return (c.jurisdiction?.toLowerCase().includes(lower) ?? false);
+    case 'all':
+    default:
+      return (
+        (c.title?.toLowerCase().includes(lower) ?? false) ||
+        (c.filename?.toLowerCase().includes(lower) ?? false) ||
+        (c.parties?.client?.toLowerCase().includes(lower) ?? false) ||
+        (c.parties?.supplier?.toLowerCase().includes(lower) ?? false) ||
+        (c.clientName?.toLowerCase().includes(lower) ?? false) ||
+        (c.supplierName?.toLowerCase().includes(lower) ?? false) ||
+        (c.type?.toLowerCase().includes(lower) ?? false) ||
+        (c.category?.name?.toLowerCase().includes(lower) ?? false) ||
+        (c.tags?.some((tag) => tag.toLowerCase().includes(lower)) ?? false) ||
+        (c.jurisdiction?.toLowerCase().includes(lower) ?? false) ||
+        (c.currency?.toLowerCase().includes(lower) ?? false) ||
+        (c.paymentTerms?.toLowerCase().includes(lower) ?? false)
+      );
+  }
 }
 
 function matchesStatuses(c: Contract, statuses: string[] | undefined): boolean {
@@ -208,6 +223,14 @@ function matchesDocumentType(
   return filters.includes(c.documentClassification || 'contract');
 }
 
+function matchesRelationshipType(
+  c: Contract,
+  filters: string[] | undefined,
+): boolean {
+  if (!filters?.length) return true;
+  return filters.includes(c.relationshipType || 'NEW_CONTRACT');
+}
+
 function matchesTags(c: Contract, tags: string[] | undefined): boolean {
   if (!tags?.length) return true;
   const contractTags = c.tags ?? [];
@@ -226,12 +249,11 @@ export function applyContractFilters(
 ): Contract[] {
   if (!Array.isArray(contracts)) return [];
 
-  const { filterState: f, searchQuery, dateRangePreset, expirationFilters,
-    signatureFilters, documentTypeFilters, valueRangePreset } = criteria;
+  const { filterState: f, searchQuery, searchScope } = criteria;
   const now = new Date();
 
   return contracts.filter((c) =>
-    matchesSearch(c, searchQuery) &&
+    matchesSearch(c, searchQuery, searchScope) &&
     matchesStatuses(c, f.statuses) &&
     matchesDocumentRoles(c, f.documentRoles) &&
     matchesRiskLevels(c, f.riskLevels) &&
@@ -244,13 +266,14 @@ export function applyContractFilters(
     matchesArrayField(c.paymentTerms, f.paymentTerms) &&
     matchesTags(c, f.tags) &&
     matchesDateRangeAdvanced(c, f.dateRange) &&
-    matchesDateRangePreset(c, dateRangePreset, now) &&
+    matchesDateRangePreset(c, f.dateRangePreset, now) &&
     matchesValueRangeSlider(c, f.valueRange) &&
-    matchesValueRangePreset(c, valueRangePreset) &&
-    matchesExpiration(c, expirationFilters, now) &&
+    matchesValueRangePreset(c, f.valueRangePreset) &&
+    matchesExpiration(c, f.expirationFilters, now) &&
     matchesHasDeadline(c, f.hasDeadline) &&
     matchesIsExpiring(c, f.isExpiring, now) &&
-    matchesSignature(c, signatureFilters) &&
-    matchesDocumentType(c, documentTypeFilters),
+    matchesSignature(c, f.signatureFilters) &&
+    matchesDocumentType(c, f.documentTypeFilters) &&
+    matchesRelationshipType(c, f.relationshipType),
   );
 }

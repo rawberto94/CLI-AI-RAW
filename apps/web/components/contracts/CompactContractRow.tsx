@@ -55,7 +55,7 @@ export interface CompactContractRowProps {
   onDelete: () => void;
   onDownload: () => void;
   onApproval: () => void;
-  formatCurrency: (value?: number) => string;
+  formatCurrency: (value?: number, currency?: string) => string;
   formatDate: (date?: string) => string;
 }
 
@@ -210,9 +210,21 @@ export const CompactContractRow = memo(function CompactContractRow({
                 showWarning={!!contract.documentClassificationWarning}
               />
               {contract.hasHierarchy && (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-50 text-violet-600 flex-shrink-0" title={contract.parentContractId ? 'Linked to parent contract' : `${contract.childContracts?.length || 0} linked contract(s)`}>
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-50 text-violet-600 flex-shrink-0" title={contract.parentContractId ? `Under: ${contract.parentContract?.title || 'Parent contract'}` : `${contract.childContractCount || 0} linked contract(s)`}>
                   <Link2 className="h-3 w-3" />
-                  {contract.parentContractId ? 'Linked' : contract.childContracts?.length || 0}
+                  {contract.parentContractId ? (contract.parentContract?.title ? `Under: ${contract.parentContract.title}` : 'Linked') : (contract.childContractCount || 0)}
+                </span>
+              )}
+              {contract.relationshipType && contract.relationshipType !== 'NEW_CONTRACT' && (
+                <span className={cn(
+                  "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium flex-shrink-0",
+                  contract.relationshipType === 'SOW_UNDER_MSA' && "bg-sky-50 text-sky-600",
+                  contract.relationshipType === 'AMENDMENT' && "bg-amber-50 text-amber-600",
+                  contract.relationshipType === 'ADDENDUM' && "bg-purple-50 text-purple-600",
+                  contract.relationshipType === 'RENEWAL' && "bg-emerald-50 text-emerald-600",
+                  contract.relationshipType === 'CHANGE_ORDER' && "bg-orange-50 text-orange-600",
+                )}>
+                  {contract.relationshipType === 'SOW_UNDER_MSA' ? 'SOW' : contract.relationshipType.replace(/_/g, ' ')}
                 </span>
               )}
               {isFailed && (
@@ -310,16 +322,23 @@ export const CompactContractRow = memo(function CompactContractRow({
         )}
       </div>
 
-      {/* Party */}
+      {/* Party + Jurisdiction */}
       <div className="hidden md:block w-[150px] overflow-hidden">
-        {(contract.parties?.supplier || contract.parties?.client) ? (
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center flex-shrink-0">
-              <Building2 className="h-3 w-3 text-slate-500" />
+        {(contract.parties?.supplier || contract.parties?.client || contract.supplierName || contract.clientName) ? (
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center flex-shrink-0">
+                <Building2 className="h-3 w-3 text-slate-500" />
+              </div>
+              <span className="text-[13px] text-slate-600 truncate" title={contract.parties?.supplier || contract.supplierName || contract.parties?.client || contract.clientName}>
+                {contract.parties?.supplier || contract.supplierName || contract.parties?.client || contract.clientName}
+              </span>
             </div>
-            <span className="text-[13px] text-slate-600 truncate" title={contract.parties?.supplier || contract.parties?.client}>
-              {contract.parties?.supplier || contract.parties?.client}
-            </span>
+            {contract.jurisdiction && (
+              <span className="text-[10px] text-slate-400 truncate ml-8">
+                {contract.jurisdiction}
+              </span>
+            )}
           </div>
         ) : (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700">
@@ -333,7 +352,7 @@ export const CompactContractRow = memo(function CompactContractRow({
       <div className="hidden lg:block w-[110px] text-right">
         {contract.value ? (
           <span className="text-[13px] font-medium tabular-nums text-slate-800">
-            {formatCurrency(contract.value)}
+            {formatCurrency(contract.value, contract.currency)}
           </span>
         ) : (
           <span className="text-[11px] text-slate-400">—</span>
