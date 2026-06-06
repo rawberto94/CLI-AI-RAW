@@ -19,144 +19,130 @@
 
 ---
 
-## ❌ Still Missing — 3 Steps for You
+## ✅ Resolved — Azure Infra Status (updated 2026-06-06)
 
-These must be done by someone with **Azure Contributor/Owner** on the correct subscription/resource group.
+| Step | Status | Notes |
+|---|---|---|
+| Roberto's access | ✅ Fixed | Contributor granted on `contigoContainerApps` RG |
+| Container App warmed | ✅ Done | `minReplicas=1` — no cold start |
+| Document Intelligence | ✅ Wired | `AZURE_DI_ENABLED=true`, key injected |
+| Cloudflare R2 storage | ❌ Needs browser | Must be done manually in dash.cloudflare.com (see Step 4) |
+| Redis | ⏳ Provisioning | Started — takes ~10–15 min, then wire keys (see Step 5) |
 
-> **Current blocker:** The Azure CLI session in the codespace (`roberto.ostojic94@gmail.com`) cannot read or modify the Container App. It gets `AuthorizationFailed`. We need either the role assignment fixed or you to run the commands directly.
+**Actual resource names (confirmed):**
+- Resource group: `contigoContainerApps`
+- Container App: `contigo`
+- Document Intelligence: `ConTigoDocumentIntelligence`
+- Subscription ID: `42f90129-b16b-4416-8785-eed869e76361`
 
----
-
-## Step 1 — Find the Real Azure Resource Names
-
-The runbook assumes names that may not match reality. Run these first and **note the output**.
-
-```bash
-# 1. Confirm subscription
-az account show --query '{name:name, id:id}' -o json
-
-# 2. Find the Container App
-az containerapp list \
-  --query '[].{name:name, resourceGroup:resourceGroup, fqdn:properties.configuration.ingress.fqdn}' \
-  -o table
-
-# 3. Find the Document Intelligence resource
-az cognitiveservices account list \
-  --query "[?kind=='FormRecognizer' || kind=='DocumentIntelligence'].{name:name, rg:resourceGroup, kind:kind}" \
-  -o table
-
-# 4. List resource groups
-az group list --query '[].name' -o table
-```
-
-**Write down:**
-- Resource group name: `_________________`
-- Container App name: `_________________`
-- Document Intelligence name: `_________________`
+> ⚠️ **`ConTigoVM` is still running** in resource group `ConTigoVM_group` (Standard_B2ats_v2). This VM appears unused — verify and deallocate it to stop billing: `az vm deallocate --name ConTigoVM --resource-group ConTigoVM_group`
 
 ---
 
-## Step 2 — Warm the Container App (prevents cold start)
+## Steps Remaining for Roberto
 
-Before the demo, set `minReplicas: 1` so the first page load isn't a 15–30 second blank screen.
+---
+
+## Step 1 — ✅ Done — Resource Names Confirmed
+
+All resource names are known. No discovery needed.
+
+| Resource | Name | Resource Group |
+|---|---|---|
+| Container App | `contigo` | `contigoContainerApps` |
+| Document Intelligence | `ConTigoDocumentIntelligence` | `contigoContainerApps` |
+| Azure OpenAI | `contigo-openai` | `contigoContainerApps` |
+| Key Vault | `contigo` | `contigoContainerApps` |
+
+---
+
+## Step 2 — ✅ Done — Container App Warmed
+
+`minReplicas=1` is already set. The app will not cold-start.
+
+After the demo, scale back to save money:
 
 ```bash
 az containerapp update \
-  --name <CONTAINER-APP-NAME> \
-  --resource-group <RESOURCE-GROUP-NAME> \
-  --min-replicas 1
-```
-
-> After the demo you can scale back to `0` to save money.
-
----
-
-## Step 3 — Wire Azure Document Intelligence
-
-The resource exists but its key is **not set** on the Container App. Without this, OCR falls back to basic PDF text extraction.
-
-```bash
-# Get the key
-DI_KEY=$(az cognitiveservices account keys list \
-  --name <DOCUMENT-INTELLIGENCE-NAME> \
-  --resource-group <RESOURCE-GROUP-NAME> \
-  --query key1 -o tsv)
-
-# Inject into the Container App
-az containerapp update \
-  --name <CONTAINER-APP-NAME> \
-  --resource-group <RESOURCE-GROUP-NAME> \
-  --set-env-vars \
-    AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://<DOCUMENT-INTELLIGENCE-NAME>.cognitiveservices.azure.com/ \
-    AZURE_DOCUMENT_INTELLIGENCE_KEY="$DI_KEY" \
-    AZURE_DI_DEFAULT_MODEL=layout \
-    AZURE_DI_FEATURES=keyValuePairs \
-    AZURE_DI_ENABLED=true
+  --name contigo \
+  --resource-group contigoContainerApps \
+  --min-replicas 0
 ```
 
 ---
 
-## Step 4 — Set Up Cloudflare R2 for File Storage
+## Step 3 — ✅ Done — Document Intelligence Wired
 
-**Why:** Right now uploaded PDFs are saved to the container's ephemeral disk. If the container restarts, the PDFs are gone (the database records survive, but the files don't). R2 fixes this.
+The following env vars are now live on the Container App:
+- `AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://contigodocumentintelligence.cognitiveservices.azure.com/`
+- `AZURE_DOCUMENT_INTELLIGENCE_KEY` — injected
+- `AZURE_DI_DEFAULT_MODEL=layout`
+- `AZURE_DI_FEATURES=keyValuePairs`
+- `AZURE_DI_ENABLED=true`
 
-**You must do this in Cloudflare:**
+---
+
+## Step 4 — ❌ TODO — Cloudflare R2 File Storage (browser required)
+
+**Why:** Uploaded PDFs currently land on ephemeral container disk. A container restart wipes them. R2 makes them persistent.
+
+**In the Cloudflare dashboard:**
 
 1. Go to [dash.cloudflare.com](https://dash.cloudflare.com) → **R2 Object Storage** → **Create bucket**
-2. Name it `contracts`
-3. Jurisdiction: **European Union** (recommended for Swiss demos)
-4. Go to **Manage R2 API Tokens** → **Create API token**
-   - Permissions: **Object Read & Write**
-   - Scope: bucket `contracts`
-5. Copy the **Access Key ID** and **Secret Access Key** (shown only once)
+2. Name: `contracts`, Jurisdiction: **European Union**
+3. **Manage R2 API Tokens** → **Create API token**
+   - Permissions: **Object Read & Write**, Scope: bucket `contracts`
+4. Copy **Access Key ID** and **Secret Access Key** (shown only once)
+5. Copy your **Account ID** from the URL: `dash.cloudflare.com/<account-id>/r2`
 
-**Then wire it to the Container App:**
+**Then wire it (Roberto can now run this):**
 
 ```bash
 az containerapp update \
-  --name <CONTAINER-APP-NAME> \
-  --resource-group <RESOURCE-GROUP-NAME> \
+  --name contigo \
+  --resource-group contigoContainerApps \
   --set-env-vars \
-    S3_ENDPOINT=https://<YOUR-ACCOUNT-ID>.r2.cloudflarestorage.com \
-    S3_ACCESS_KEY=<paste-access-key-id> \
-    S3_SECRET_KEY=<paste-secret-access-key> \
+    S3_ENDPOINT=https://<ACCOUNT-ID>.r2.cloudflarestorage.com \
+    S3_ACCESS_KEY=<access-key-id> \
+    S3_SECRET_KEY=<secret-access-key> \
     S3_BUCKET=contracts \
     S3_USE_SSL=true \
-    S3_REGION=auto
+    S3_REGION=auto \
+    MINIO_BUCKET=contracts
 ```
-
-> Your Cloudflare **Account ID** is in the URL when you're in the R2 dashboard: `dash.cloudflare.com/<account-id>/r2`
 
 ---
 
-## Step 5 — Optional: Redis (only for bulk uploads)
+## Step 5 — ⏳ Redis Provisioning Started (wire keys when ready)
 
-If Stadler will upload 100+ contracts, Redis queues the work so uploads return instantly. Without it, each upload blocks for 30–90 seconds.
+Redis creation was kicked off (`redis-contigo`, Basic C1, Switzerland North). Takes ~10–15 min.
 
-For a pilot demo with 5–10 contracts, **skip this**.
+Check if it's ready:
 
 ```bash
-az redis create \
-  --resource-group <RESOURCE-GROUP-NAME> \
+az redis show \
+  --resource-group contigoContainerApps \
   --name redis-contigo \
-  --location switzerlandnorth \
-  --sku Basic --vm-size c1 \
-  --enable-non-ssl-port false
+  --query provisioningState -o tsv
+# Should return: Succeeded
+```
 
-# Wait for provisioningState = Succeeded, then get keys
+Once `Succeeded`, wire the keys:
+
+```bash
 REDIS_HOST=$(az redis show \
-  --resource-group <RESOURCE-GROUP-NAME> \
+  --resource-group contigoContainerApps \
   --name redis-contigo \
   --query hostName -o tsv)
 
 REDIS_KEY=$(az redis list-keys \
-  --resource-group <RESOURCE-GROUP-NAME> \
+  --resource-group contigoContainerApps \
   --name redis-contigo \
   --query primaryKey -o tsv)
 
 az containerapp update \
-  --name <CONTAINER-APP-NAME> \
-  --resource-group <RESOURCE-GROUP-NAME> \
+  --name contigo \
+  --resource-group contigoContainerApps \
   --set-env-vars \
     REDIS_HOST="$REDIS_HOST" \
     REDIS_PORT=6380 \
@@ -166,32 +152,39 @@ az containerapp update \
 
 ---
 
-## Verification After Steps 2–4
+## Verification
 
 ```bash
 # App is reachable
 curl -I https://www.mycontigo.app/api/health
 
-# Check env vars were applied
+# Check all expected env vars are present
 az containerapp show \
-  --name <CONTAINER-APP-NAME> \
-  --resource-group <RESOURCE-GROUP-NAME> \
+  --name contigo \
+  --resource-group contigoContainerApps \
   --query 'properties.template.containers[0].env[*].{name:name}' \
   -o table
 ```
 
-Then log in as `stadler@contigodemo.com` / `Stadler123!` and upload a test PDF. It should process with Azure DI and the file should land in the R2 bucket.
+Expected env vars to see: `AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT`, `AZURE_DOCUMENT_INTELLIGENCE_KEY`, `AZURE_DI_ENABLED`, `S3_ENDPOINT`, `S3_ACCESS_KEY`, `REDIS_HOST` (after Redis is wired).
+
+Then log in as `stadler@contigodemo.com` / `Stadler123!` and upload a test PDF. It should:
+1. Return without a 30–90 second wait (Redis queued)
+2. Process with Azure DI full layout extraction (not basic)
+3. Show all 14 artifact types in the contract view
+4. Have the PDF file appear in the R2 `contracts` bucket
 
 ---
 
-## Context: Why the Runbook Names Might Be Wrong
+## ⚠️ ConTigoVM — Unused VM Billing
 
-The `AZURE_GO_LIVE_RUNBOOK_V2.md` assumes:
-- Container App: `contigo`
-- Resource Group: `contigoContainerApps`
-- Document Intelligence: `ConTigoDocumentIntelligence`
+`ConTigoVM` (Standard_B2ats_v2) in resource group `ConTigoVM_group` is **currently running** and being billed. If it is not in use, deallocate it:
 
-Your screenshot showed `The containerapp 'contigo' does not exist`, so **at least one of those names is different in the actual subscription**. That's why Step 1 (discovery) is mandatory.
+```bash
+az vm deallocate --name ConTigoVM --resource-group ConTigoVM_group
+```
+
+This stops compute billing while preserving the disk.
 
 ---
 
