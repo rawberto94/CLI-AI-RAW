@@ -17,6 +17,9 @@ function buildTimeDemoMode(): boolean {
 }
 
 function checkDemoMode(): boolean {
+  // When the operator locks demo mode at build time, no client-side override is allowed.
+  if (buildTimeDemoMode()) return true;
+
   // 1. URL search param (highest priority)
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
@@ -34,8 +37,7 @@ function checkDemoMode(): boolean {
     if (stored === 'false') return false;
   }
 
-  // 3. Build-time env (fallback)
-  return buildTimeDemoMode();
+  return false;
 }
 
 export function useDemoMode(): boolean {
@@ -69,6 +71,7 @@ export function useDemoMode(): boolean {
 }
 
 export function setDemoMode(enabled: boolean): void {
+  if (buildTimeDemoMode()) return; // locked by operator
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(STORAGE_KEY, String(enabled));
     window.dispatchEvent(new Event(CHANGE_EVENT));
@@ -76,6 +79,7 @@ export function setDemoMode(enabled: boolean): void {
 }
 
 export function clearDemoMode(): void {
+  if (buildTimeDemoMode()) return; // locked by operator
   if (typeof window !== 'undefined') {
     window.localStorage.removeItem(STORAGE_KEY);
     window.dispatchEvent(new Event(CHANGE_EVENT));

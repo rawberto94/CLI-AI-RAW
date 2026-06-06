@@ -77,6 +77,7 @@ RUN DATABASE_URL="$DATABASE_URL" \
     MINIO_SECRET_KEY="dummy-minio-secret" \
     MINIO_ENDPOINT="$MINIO_ENDPOINT" \
     MINIO_PORT="$MINIO_PORT" \
+    NEXT_PUBLIC_DEMO_MODE="true" \
     pnpm build
 
 # Stage 3: Runner

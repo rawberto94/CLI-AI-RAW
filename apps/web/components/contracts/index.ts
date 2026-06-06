@@ -13,6 +13,9 @@ export type { ContractContext as ContractAIAnalystContext } from './ContractAIAn
 // Enhanced Metadata Section
 export { EnhancedContractMetadataSection } from './EnhancedContractMetadataSection';
 
+// Tags
+export { ContractTagsCard } from './ContractTagsCard';
+
 // Visualization Components
 export { ContractTimeline } from './ContractTimeline';
 

@@ -567,12 +567,6 @@ export async function postContractUpload(
       if (!uploadResult.success) {
         throw new Error(uploadResult.error || 'Upload failed');
       }
-
-      const localUploadDir = join(process.cwd(), 'uploads', 'contracts', tenantId);
-      await mkdir(localUploadDir, { recursive: true });
-      const localCopyPath = join(localUploadDir, storedFileName);
-      await writeFile(localCopyPath, buffer);
-      logger.info(`[ContractUpload] Local copy saved at ${localCopyPath}`);
     } catch (error) {
       logger.error('[ContractUpload] S3/MinIO upload failed, falling back to local:', error);
       const uploadDir = join(process.cwd(), 'uploads', 'contracts', tenantId);

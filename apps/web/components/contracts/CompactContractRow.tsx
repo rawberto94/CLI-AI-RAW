@@ -1,9 +1,10 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +12,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   FileText,
   Eye,
@@ -31,6 +37,9 @@ import {
   User,
   PenTool,
   Link2,
+  Plus,
+  X,
+  Loader2,
 } from "lucide-react";
 import { ContractStatusBadge } from "@/components/contracts/ContractStatusBadge";
 import { CategoryBadge } from "@/components/contracts/CategoryComponents";
@@ -40,6 +49,8 @@ import { SignatureStatusBadge } from "@/components/contracts/SignatureStatusBadg
 import { DocumentTypeBadge } from "@/components/contracts/DocumentTypeBadge";
 import { cn } from "@/lib/utils";
 import { getTagStyle } from "@/lib/tag-colors";
+import { getTenantId } from "@/lib/tenant";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import type { Contract } from "@/hooks/use-queries";
 import type { DocumentClassification } from "@/lib/types/contract-metadata-schema";
@@ -55,6 +66,7 @@ export interface CompactContractRowProps {
   onDelete: () => void;
   onDownload: () => void;
   onApproval: () => void;
+  onTagsChange?: () => void;
   formatCurrency: (value?: number, currency?: string) => string;
   formatDate: (date?: string) => string;
 }
@@ -70,10 +82,53 @@ export const CompactContractRow = memo(function CompactContractRow({
   onDelete,
   onDownload,
   onApproval,
+  onTagsChange,
   formatCurrency,
   formatDate,
 }: CompactContractRowProps) {
   const router = useRouter();
+  const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  const [localTags, setLocalTags] = useState<string[]>(() => contract.tags ?? []);
+  const [tagInput, setTagInput] = useState('');
+  const [tagBusy, setTagBusy] = useState<string | null>(null);
+
+  const handleAddTag = useCallback(async (raw: string) => {
+    const tag = raw.trim().toLowerCase().replace(/\s+/g, '-');
+    if (!tag || localTags.includes(tag)) return;
+    setTagBusy('add');
+    try {
+      const res = await fetch(`/api/contracts/${contract.id}/metadata/tags`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
+        body: JSON.stringify({ tags: [tag] }),
+      });
+      if (!res.ok) throw new Error();
+      setLocalTags(prev => [...prev, tag]);
+      setTagInput('');
+      onTagsChange?.();
+    } catch {
+      toast.error('Failed to add tag');
+    } finally {
+      setTagBusy(null);
+    }
+  }, [contract.id, localTags, onTagsChange]);
+
+  const handleRemoveTag = useCallback(async (tag: string) => {
+    setTagBusy(tag);
+    try {
+      const res = await fetch(
+        `/api/contracts/${contract.id}/metadata/tags/${encodeURIComponent(tag)}`,
+        { method: 'DELETE', headers: { 'x-tenant-id': getTenantId() } },
+      );
+      if (!res.ok) throw new Error();
+      setLocalTags(prev => prev.filter(t => t !== tag));
+      onTagsChange?.();
+    } catch {
+      toast.error('Failed to remove tag');
+    } finally {
+      setTagBusy(null);
+    }
+  }, [contract.id, onTagsChange]);
   const { isExpiringSoon, isNew, isExpired } = useMemo(() => {
     const now = Date.now();
     return {
@@ -91,7 +146,6 @@ export const CompactContractRow = memo(function CompactContractRow({
   const metadataCompleteness = contract.metadataCompleteness ?? 100;
   const metadataIssueCount = contract.metadataIssues?.length ?? 0;
   const needsMetadataReview = metadataIssueCount > 0 || metadataCompleteness < 90;
-  const tags = contract.tags ?? [];
   const needsSignature = contract.signatureStatus === 'unsigned'
     || contract.signatureStatus === 'partially_signed'
     || (contract.signatureRequiredFlag && contract.signatureStatus !== 'signed');
@@ -303,23 +357,84 @@ export const CompactContractRow = memo(function CompactContractRow({
 
       {/* Tags */}
       <div className="hidden xl:flex w-[150px] min-w-0 items-center gap-1.5 overflow-hidden">
-        {tags.length > 0 ? (
-          <>
-            {tags.slice(0, 2).map((tag) => (
-              <Badge key={tag} variant="secondary" className={`max-w-[72px] truncate rounded-md px-1.5 py-0 text-[10px] font-medium border ${getTagStyle(tag)}`}>
-                {tag}
-              </Badge>
-            ))}
-            {tags.length > 2 && (
-              <span className="text-[11px] font-medium text-slate-400">+{tags.length - 2}</span>
-            )}
-          </>
-        ) : (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700">
-            <Tag className="h-3 w-3" />
-            No tags
-          </span>
-        )}
+        <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
+          <PopoverTrigger asChild>
+            <button
+              onClick={e => { e.stopPropagation(); setTagPopoverOpen(true); }}
+              className="flex items-center gap-1.5 overflow-hidden group"
+              title="Edit tags"
+            >
+              {localTags.length > 0 ? (
+                <>
+                  {localTags.slice(0, 2).map((tag) => (
+                    <Badge key={tag} variant="secondary" className={`max-w-[72px] truncate rounded-md px-1.5 py-0 text-[10px] font-medium border group-hover:opacity-80 ${getTagStyle(tag)}`}>
+                      {tag}
+                    </Badge>
+                  ))}
+                  {localTags.length > 2 && (
+                    <span className="text-[11px] font-medium text-slate-400">+{localTags.length - 2}</span>
+                  )}
+                </>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700 group-hover:border-violet-300 group-hover:text-violet-500 transition-colors">
+                  <Tag className="h-3 w-3" />
+                  Add tags
+                </span>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-72 p-3 space-y-2.5"
+            align="start"
+            onClick={e => e.stopPropagation()}
+          >
+            <p className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+              <Tag className="h-3.5 w-3.5 text-violet-500" />
+              Tags
+            </p>
+            <div className="flex flex-wrap gap-1.5 min-h-[24px]">
+              {localTags.length === 0 && (
+                <span className="text-xs text-slate-400">No tags yet</span>
+              )}
+              {localTags.map(tag => (
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className={cn('px-2 py-0.5 flex items-center gap-1 text-[11px] font-medium border', getTagStyle(tag))}
+                >
+                  {tag}
+                  <button
+                    onClick={() => handleRemoveTag(tag)}
+                    disabled={tagBusy === tag}
+                    className="hover:text-red-500 transition-colors disabled:opacity-40 ml-0.5"
+                  >
+                    {tagBusy === tag
+                      ? <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                      : <X className="h-2.5 w-2.5" />}
+                  </button>
+                </Badge>
+              ))}
+            </div>
+            <div className="flex gap-1.5">
+              <Input
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(tagInput); } }}
+                placeholder="Add tag…"
+                className="h-7 text-xs flex-1"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleAddTag(tagInput)}
+                disabled={!tagInput.trim() || tagBusy === 'add'}
+                className="h-7 w-7 p-0"
+              >
+                {tagBusy === 'add' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Party + Jurisdiction */}

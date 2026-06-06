@@ -1380,6 +1380,7 @@ export default function ContractsPage() {
                         onDelete={() => handleRowDelete(contract.id, contract.title || 'Contract')}
                         onDownload={() => handleRowDownload(contract.id)}
                         onApproval={() => handleRowApproval(contract.id, contract.title || 'Contract')}
+                        onTagsChange={() => refetch()}
                         formatCurrency={formatCurrency}
                         formatDate={formatDate}
                       />

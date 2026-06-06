@@ -42,6 +42,7 @@ import {
   ContractRelationshipsCard,
   ContractScoresCard,
   ContractAccessControl,
+  ContractTagsCard,
 } from '@/components/contracts'
 import { RobustPDFViewer } from '@/components/contracts/RobustPDFViewer'
 import { VersionManager } from '@/components/contracts/VersionManager'
@@ -1250,6 +1251,12 @@ export default function ContractDetailPage() {
                     onVerificationChange={() => {
                       queryClient.invalidateQueries({ queryKey: contractKeys.health(contractId) })
                     }}
+                  />
+                <ContractTagsCard
+                    contractId={contractId}
+                    tenantId={getTenantId()}
+                    initialTags={(contract as any)?.tags ?? []}
+                    onChanged={() => queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) })}
                   />
                 <ContractRelationshipsCard
                     contractId={contractId}

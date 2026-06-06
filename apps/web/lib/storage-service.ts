@@ -242,8 +242,8 @@ export class StorageService {
    */
   public async getFileUrl(fileName: string): Promise<string> {
     const protocol = this.config.useSSL ? 'https' : 'http';
-    const port = this.config.port ? `:${this.config.port}` : '';
-    
+    const defaultPort = this.config.useSSL ? 443 : 80;
+    const port = this.config.port && this.config.port !== defaultPort ? `:${this.config.port}` : '';
     return `${protocol}://${this.config.endPoint}${port}/${this.bucket}/${fileName}`;
   }
 
@@ -345,10 +345,17 @@ export function initializeStorage(): StorageService | null {
       return null;
     }
     
+    const useSSL = (process.env.S3_USE_SSL || process.env.MINIO_USE_SSL) === 'true';
+    // Strip protocol prefix — MinIO SDK expects hostname only, not a full URL.
+    const rawEndpoint = process.env.S3_ENDPOINT || process.env.MINIO_ENDPOINT || 'localhost';
+    const endPoint = rawEndpoint.replace(/^https?:\/\//, '');
+    // Default port: 443 when SSL is enabled (R2, hosted S3), 9000 for local MinIO.
+    const defaultPort = useSSL ? '443' : '9000';
+
     const config: StorageConfig = {
-      endPoint: process.env.S3_ENDPOINT || process.env.MINIO_ENDPOINT || 'localhost',
-      port: parseInt(process.env.S3_PORT || process.env.MINIO_PORT || '9000'),
-      useSSL: (process.env.S3_USE_SSL || process.env.MINIO_USE_SSL) === 'true',
+      endPoint,
+      port: parseInt(process.env.S3_PORT || process.env.MINIO_PORT || defaultPort),
+      useSSL,
       accessKey: accessKey || process.env.MINIO_ACCESS_KEY || '',
       secretKey: secretKey || process.env.MINIO_SECRET_KEY || '',
       region: process.env.S3_REGION || 'us-east-1',
