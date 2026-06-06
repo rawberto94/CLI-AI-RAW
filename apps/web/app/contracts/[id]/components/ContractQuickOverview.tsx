@@ -66,7 +66,7 @@ const ValueSection = memo(function ValueSection({
       </div>
       <p className="mb-3 min-w-0 break-words text-xl font-bold leading-tight text-slate-900 sm:text-2xl">
         {tcvAmount != null && tcvAmount > 0 
-          ? formatCurrency(tcvAmount, currency || 'USD')
+          ? formatCurrency(tcvAmount, currency || 'CHF')
           : <span className="text-slate-400 text-base sm:text-lg">Not specified</span>}
       </p>
       <div className="mt-auto flex flex-wrap items-center gap-1.5">

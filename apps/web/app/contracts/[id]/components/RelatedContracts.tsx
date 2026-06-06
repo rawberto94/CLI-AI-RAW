@@ -93,7 +93,7 @@ const ContractCard = memo(function ContractCard({ contract }: { contract: Relate
               {contract.totalValue && (
                 <span className="flex items-center gap-1">
                   <DollarSign className="h-3 w-3" />
-                  {formatCurrency(contract.totalValue, contract.currency || 'USD')}
+                  {formatCurrency(contract.totalValue, contract.currency || 'CHF')}
                 </span>
               )}
               {contract.expirationDate && (

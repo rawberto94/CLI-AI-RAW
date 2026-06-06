@@ -97,7 +97,7 @@ const contractFormSchema = z.object({
   
   // Step 4: Financials
   totalValue: z.number().min(0).optional(),
-  currency: z.string().default('USD'),
+  currency: z.string().default('CHF'),
   paymentTerms: z.string().optional(),
   
   // Step 5: Additional
@@ -254,7 +254,7 @@ export default function CreateContractPage() {
       autoRenew: false,
       renewalNoticeDays: 30,
       totalValue: undefined,
-      currency: 'USD',
+      currency: 'CHF',
       paymentTerms: '',
       tags: [],
       priority: 'medium',

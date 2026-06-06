@@ -42,7 +42,7 @@ const DEFAULT_SETTINGS = {
     timezone: 'America/New_York',
     language: 'en',
     dateFormat: 'MM/DD/YYYY',
-    currency: 'USD',
+    currency: 'CHF',
     theme: 'system',
   },
   notifications: {

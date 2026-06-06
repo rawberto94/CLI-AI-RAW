@@ -212,7 +212,7 @@ export function useContractMetadata(contract: ContractData | null) {
         payment_type: 'none',
         billing_frequency_type: 'none',
         periodicity: 'none',
-        currency: 'USD',
+        currency: 'CHF',
         signature_date: '',
         signature_status: 'unknown' as const,
         signature_required_flag: false,

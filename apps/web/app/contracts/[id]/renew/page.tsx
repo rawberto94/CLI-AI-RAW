@@ -492,7 +492,7 @@ export default function ContractRenewalPage() {
           effectiveDate: data.effectiveDate || data.start_date,
           expirationDate: data.expirationDate || data.end_date,
           totalValue: typeof data.totalValue === 'string' ? parseFloat(data.totalValue) : data.totalValue,
-          currency: data.currency || 'USD',
+          currency: data.currency || 'CHF',
           clientName: data.clientName,
           supplierName: data.supplierName,
           description: data.description || data.contract_short_description,
@@ -549,7 +549,7 @@ export default function ContractRenewalPage() {
           effectiveDate: newEffective,
           expirationDate: newExpiration,
           totalValue: data.totalValue || 0,
-          currency: data.currency || 'USD',
+          currency: data.currency || 'CHF',
           parties,
           clauses,
           notes: '',
@@ -1582,6 +1582,7 @@ function TermsStep({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="CHF">CHF</SelectItem>
                     <SelectItem value="USD">USD</SelectItem>
                     <SelectItem value="EUR">EUR</SelectItem>
                     <SelectItem value="GBP">GBP</SelectItem>
