@@ -109,7 +109,7 @@ const navigationGroups: NavigationGroup[] = [
         description: 'Repository of executed and in-flight contracts',
         audiences: ['all'],
         children: [
-          { name: 'Upload', href: '/upload', icon: Upload, description: 'Ingest documents', audiences: ['operator'], demo: 'hide' },
+          { name: 'Upload', href: '/upload', icon: Upload, description: 'Ingest documents', audiences: ['operator'] },
           { name: 'Clauses', href: '/clauses', icon: BookOpen, description: 'Clause library', audiences: ['legal'], demo: 'hide' },
         ],
       },

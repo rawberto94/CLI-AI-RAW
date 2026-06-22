@@ -251,15 +251,31 @@ export async function postChunkedUploadFinalize(
     source: 'api:contracts/upload/finalize',
   });
 
-  await triggerArtifactGeneration({
-    contractId: contract.id,
-    tenantId,
-    filePath: storagePath,
-    mimeType,
-    useQueue: true,
-  });
+  const isDemoMode = process.env.DEMO_MODE === 'true';
+  const skipArtifactGeneration = isDemoMode && process.env.DEMO_SKIP_OCR === 'true';
+
+  if (skipArtifactGeneration) {
+    logger.info('Demo mode: skipping artifact generation (DEMO_SKIP_OCR=true)', {
+      contractId: contract.id,
+      tenantId,
+    });
+    await prisma.contract.update({
+      where: { id: contract.id },
+      data: { status: 'UPLOADED' },
+    });
+  } else {
+    await triggerArtifactGeneration({
+      contractId: contract.id,
+      tenantId,
+      filePath: storagePath,
+      mimeType,
+      useQueue: !isDemoMode,
+    });
+  }
 
   await cleanupUploadArtifacts(tenantId, uploadId, sortedChunkKeys, false);
+
+  const finalStatus = skipArtifactGeneration ? 'UPLOADED' : 'PROCESSING';
 
   return createSuccessResponse(context, {
     contractId: contract.id,
@@ -268,8 +284,10 @@ export async function postChunkedUploadFinalize(
     fileSize,
     contentHash,
     processingJobId: processingJob.id,
-    status: 'PROCESSING',
-    message: 'Upload completed successfully',
+    status: finalStatus,
+    message: skipArtifactGeneration
+      ? 'Upload completed (demo mode — processing skipped)'
+      : 'Upload completed successfully',
   });
 }
 
