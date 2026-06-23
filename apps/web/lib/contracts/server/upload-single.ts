@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { mkdir, writeFile } from 'fs/promises';
-import { join } from 'path';
+import { dirname, join } from 'path';
 
 import type { Prisma } from '@prisma/client';
 import { nanoid } from 'nanoid';
@@ -569,17 +569,17 @@ export async function postContractUpload(
       }
     } catch (error) {
       logger.error('[ContractUpload] S3/MinIO upload failed, falling back to local:', error);
-      const uploadDir = join(process.cwd(), 'uploads', 'contracts', tenantId);
+      const localRelativePath = join('uploads', 'contracts', tenantId, storedFileName);
+      const uploadDir = join(process.cwd(), dirname(localRelativePath));
       await mkdir(uploadDir, { recursive: true });
-      const localPath = join(uploadDir, storedFileName);
+      const localPath = join(process.cwd(), localRelativePath);
       await writeFile(localPath, buffer);
 
-      // Store the relative storage key so workers can resolve it against their own
-      // LOCAL_STORAGE_ROOT or default uploads directory, whether they run inside a
-      // container or directly on the host.
-      filePath = objectKey;
+      // Store the relative local path so the file API and workers can resolve it
+      // against their own LOCAL_STORAGE_ROOT or default uploads directory.
+      filePath = localRelativePath;
       storageProvider = 'local';
-      logger.warn(`[ContractUpload] File stored locally at ${localPath} with relative key ${objectKey} — workers should set LOCAL_STORAGE_ROOT if needed`);
+      logger.warn(`[ContractUpload] File stored locally at ${localPath} with relative key ${localRelativePath} — workers should set LOCAL_STORAGE_ROOT if needed`);
     }
 
     const metadata = {

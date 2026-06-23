@@ -225,7 +225,23 @@ export async function GET(
         await fs.access(localPath);
         fileBuffer = await fs.readFile(localPath);
       } catch (_localError) {
-        return handleApiError(ctx, _localError);
+        // Defensive fallback: some legacy/local uploads stored the file under
+        // uploads/ while the recorded storagePath starts with contracts/.
+        if (contract.storagePath && !contract.storagePath.startsWith('uploads/')) {
+          const underUploads = path.resolve(process.cwd(), 'uploads', contract.storagePath);
+          if (isUnderAllowedRoot(underUploads)) {
+            try {
+              await fs.access(underUploads);
+              fileBuffer = await fs.readFile(underUploads);
+            } catch {
+              // fall through to error response
+            }
+          }
+        }
+
+        if (!fileBuffer) {
+          return handleApiError(ctx, _localError);
+        }
       }
     }
 
