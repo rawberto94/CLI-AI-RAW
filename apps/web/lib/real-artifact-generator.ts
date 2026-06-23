@@ -18,11 +18,15 @@ import {
   assessCriticalContractEvidence,
   assessSignatureEvidence,
   buildPersistedContractTextFields,
-  CONTRACT_DI_QUERY_FIELDS,
+  CONTRACT_DI_QUERY_FIELD_DEFINITIONS,
+  CONTRACT_DI_QUERY_IDENTIFIERS,
+  CONTRACT_DI_QUERY_ID_TO_QUESTION,
   type ContractFieldEvidence,
   normalizeDIQueryAnswers,
   type NormalizedContractFieldEvidence,
   parseMonetaryAmount,
+  resolveLocalStoragePath,
+  validateDIQueryAnswers,
 } from '@repo/utils';
 import { createOpenAIClient, getOpenAIApiKey } from '@/lib/openai-client';
 import { categorizeContract } from '@/lib/categorization-service';
@@ -692,7 +696,10 @@ function extractPersistedOcrFacts(aiMetadata: unknown): {
     metadata.parties = [directClientName, directSupplierName].filter((party): party is string => Boolean(party));
   }
 
-  const ocrConfidence = getNumber(diStructuredMeta?.confidence) ?? undefined;
+  const ocrConfidence =
+    getNumber(aiMeta.ocrConfidence) ??
+    getNumber(diStructuredMeta?.confidence) ??
+    undefined;
   return { metadata, ocrConfidence };
 }
 
@@ -1247,9 +1254,12 @@ interface DIExtractionResult {
   handwrittenSpans: string[];
   /** Number of pages DI actually processed (may be less than total PDF pages) */
   pagesProcessed: number;
+  /** Aggregate OCR confidence from DI word-level confidence (0-1). */
+  ocrConfidence?: number;
   queryAnswers?: Record<string, string>;
   fieldEvidence?: ContractFieldEvidence[];
   fieldMetadata?: NormalizedContractFieldEvidence['metadata'];
+  validationIssues?: string[];
 }
 
 // Per-invocation DI handwriting results — returned from extractTextFromBuffer
@@ -1264,17 +1274,125 @@ interface ExtractedTextResult {
   diHandwriting: DIHandwritingEvidence;
   ocrProvider?: string;
   ocrModel?: string;
+  ocrConfidence?: number;
   diQueryAnswers?: Record<string, string>;
   diFieldEvidence?: ContractFieldEvidence[];
   diFieldMetadata?: NormalizedContractFieldEvidence['metadata'];
+  diValidationIssues?: string[];
 }
 
 const NO_HANDWRITING: DIHandwritingEvidence = { hasHandwriting: false, handwrittenSpans: [] };
 
+function computeDIConfidence(pages: Array<{ words?: Array<{ confidence?: number }> }>): number {
+  if (!pages || pages.length === 0) return 0;
+  let totalConf = 0;
+  let wordCount = 0;
+  for (const page of pages) {
+    for (const word of page.words || []) {
+      totalConf += word.confidence ?? 0.9;
+      wordCount++;
+    }
+  }
+  return wordCount > 0 ? totalConf / wordCount : 0;
+}
+
+async function renderPDFPageRangeToPng(fileContent: Buffer, startPage: number, endPage: number): Promise<string[]> {
+  if (startPage < 1 || endPage < startPage) return [];
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'contigo-page-render-'));
+  try {
+    const inputPath = path.join(tempDir, 'document.pdf');
+    const outputPrefix = path.join(tempDir, 'page');
+    await fs.writeFile(inputPath, fileContent);
+    await execFileAsync('pdftoppm', ['-r', '144', '-png', '-f', String(startPage), '-l', String(endPage), inputPath, outputPrefix], { timeout: 45_000 });
+    const files = (await fs.readdir(tempDir))
+      .filter((name) => name.startsWith('page-') && name.endsWith('.png'))
+      .sort();
+    const images: string[] = [];
+    for (const file of files) {
+      const image = await fs.readFile(path.join(tempDir, file));
+      images.push(image.toString('base64'));
+    }
+    return images;
+  } catch (error) {
+    logger.warn({ error }, 'Failed to render PDF page range to PNG');
+    return [];
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
+async function crossValidateWithVisionFirstPage(
+  fileContent: Buffer,
+  knownFields: NormalizedContractFieldEvidence['metadata']
+): Promise<NormalizedContractFieldEvidence['metadata'] | null> {
+  let apiKey = '';
+  try {
+    apiKey = getOpenAIApiKey();
+  } catch {
+    return null;
+  }
+
+  const images = await renderPDFPageRangeToPng(fileContent, 1, 1);
+  if (images.length === 0) return null;
+
+  try {
+    const openai = createOpenAIClient(apiKey);
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `You are verifying OCR-extracted contract fields against the first page image. Return strict JSON only with the same keys as the input. Only change a value if the image clearly contradicts the OCR value or if the OCR value is obviously wrong. Keys: title, contractType, startDate (YYYY-MM-DD), endDate (YYYY-MM-DD), clientName, supplierName, totalValue (number), currency (3-letter code). Return unchanged values when uncertain.`,
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `OCR-extracted facts to verify against the first page image:\n${JSON.stringify(knownFields, null, 2)}\n\nReturn only JSON with the same keys.`,
+            },
+            ...images.map((base64) => ({
+              type: 'image_url' as const,
+              image_url: { url: `data:image/png;base64,${base64}` },
+            })),
+          ],
+        },
+      ],
+      response_format: { type: 'json_object' },
+      max_tokens: 500,
+      temperature: 0,
+    }, { signal: AbortSignal.timeout(60_000) });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) return null;
+    const parsed = JSON.parse(content);
+    const corrections: NormalizedContractFieldEvidence['metadata'] = {};
+    const copyIfString = (key: keyof typeof corrections, srcKey: string) => {
+      if (typeof parsed[srcKey] === 'string' && parsed[srcKey] !== (knownFields as any)[srcKey]) {
+        (corrections as any)[key] = parsed[srcKey];
+      }
+    };
+    copyIfString('title', 'title');
+    copyIfString('contractType', 'contractType');
+    copyIfString('startDate', 'startDate');
+    copyIfString('endDate', 'endDate');
+    copyIfString('clientName', 'clientName');
+    copyIfString('supplierName', 'supplierName');
+    copyIfString('currency', 'currency');
+    if (typeof parsed.totalValue === 'number' && parsed.totalValue !== knownFields.totalValue) {
+      corrections.totalValue = parsed.totalValue;
+    }
+    return corrections;
+  } catch (error) {
+    logger.warn({ error }, 'GPT-4o first-page cross-validation failed');
+    return null;
+  }
+}
+
 async function extractPDFWithDocumentIntelligence(fileContent: Buffer, totalPdfPages?: number): Promise<DIExtractionResult> {
   const empty: DIExtractionResult = { text: '', hasHandwriting: false, handwrittenSpans: [], pagesProcessed: 0 };
   try {
-    const { analyzeLayout, analyzeRead, analyzeWithQueries, isDIConfigured, isDIEnabled } = await import('@repo/workers/azure-document-intelligence');
+    const { analyzeLayout, analyzeRead, analyzeContract, analyzeWithQueries, isDIConfigured, isDIEnabled } = await import('@repo/workers/azure-document-intelligence');
 
     if (!isDIConfigured() || !isDIEnabled()) {
       logger.info('Azure Document Intelligence not configured or disabled — skipping DI extraction');
@@ -1295,65 +1413,44 @@ async function extractPDFWithDocumentIntelligence(fileContent: Buffer, totalPdfP
       return spans;
     };
 
-    const extractQueryEvidence = async (): Promise<Pick<DIExtractionResult, 'queryAnswers' | 'fieldEvidence' | 'fieldMetadata' | 'text'>> => {
-      if (process.env.AZURE_DI_QUERY_ENRICHMENT === 'false') {
-        return { text: '' };
-      }
-
-      try {
-        const { answers } = await analyzeWithQueries(fileContent, CONTRACT_DI_QUERY_FIELDS);
-        const validAnswers = Object.fromEntries(
-          Object.entries(answers).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
-        );
-        if (Object.keys(validAnswers).length === 0) {
-          return { text: '' };
-        }
-
-        const normalized = normalizeDIQueryAnswers(validAnswers, { confidence: 0.82, source: 'azure-di-query' });
-        const answerBlock = Object.entries(validAnswers)
-          .map(([question, answer]) => `${question}: ${answer}`)
-          .join('\n');
-
-        logger.info({ answerCount: Object.keys(validAnswers).length, evidenceCount: normalized.evidence.length }, 'Azure DI query-field enrichment completed');
-        return {
-          text: `\n\n--- DI QUERY FIELD ANSWERS ---\n${answerBlock}`,
-          queryAnswers: validAnswers,
-          fieldEvidence: normalized.evidence,
-          fieldMetadata: normalized.metadata,
-        };
-      } catch (queryError) {
-        logger.warn({ error: queryError }, 'Azure DI query-field enrichment failed, continuing with layout text');
-        return { text: '' };
-      }
-    };
-
     // Helper: call DI layout for a specific page range
-    const analyzePageRange = async (pages?: string): Promise<DIExtractionResult> => {
+    const analyzePageRange = async (pages?: string): Promise<{ text: string; hasHandwriting: boolean; handwrittenSpans: string[]; pagesProcessed: number; pages: Array<{ words?: Array<{ confidence?: number }> }>; content: string; styles?: Array<{ isHandwritten?: boolean; confidence?: number; spans?: Array<{ offset: number; length: number }> }> }> => {
       const layoutResult = await analyzeLayout(fileContent, { extractKeyValuePairs: true, pages });
       const layoutText = buildDocumentIntelligenceOcrText(layoutResult);
       const handwrittenSpans = extractHandwritten(layoutResult.content || '', (layoutResult as any).styles);
       const diPageCount = layoutResult.metadata?.pageCount || layoutResult.pages?.length || 0;
-      return { text: layoutText, hasHandwriting: handwrittenSpans.length > 0, handwrittenSpans, pagesProcessed: diPageCount };
+      return { text: layoutText, hasHandwriting: handwrittenSpans.length > 0, handwrittenSpans, pagesProcessed: diPageCount, pages: layoutResult.pages, content: layoutResult.content || '', styles: (layoutResult as any).styles };
     };
+
+    let firstLayoutResult: Awaited<ReturnType<typeof analyzePageRange>> | null = null;
 
     try {
       // First call — let DI process without page range (covers first N pages, limited by tier)
-      const firstResult = await analyzePageRange();
-      if (firstResult.text.length <= 10) {
+      firstLayoutResult = await analyzePageRange();
+      if (firstLayoutResult.text.length <= 10) {
         logger.warn('Azure Document Intelligence layout extraction returned insufficient text');
       } else {
-        const diPages = firstResult.pagesProcessed;
-        logger.info({ textLength: firstResult.text.length, pagesProcessed: diPages, handwrittenSpans: firstResult.handwrittenSpans.length }, 'Azure Document Intelligence layout extraction completed');
+        const diPages = firstLayoutResult.pagesProcessed;
+        const baseOcrConfidence = computeDIConfidence(firstLayoutResult.pages);
+        const validationIssues: string[] = [];
+        if (baseOcrConfidence < 0.75) {
+          validationIssues.push(`Low DI OCR confidence (${Math.round(baseOcrConfidence * 100)}%). Key fields may need review.`);
+          logger.warn({ confidence: baseOcrConfidence }, 'Low DI OCR confidence detected');
+        }
+
+        logger.info({ textLength: firstLayoutResult.text.length, pagesProcessed: diPages, handwrittenSpans: firstLayoutResult.handwrittenSpans.length, ocrConfidence: baseOcrConfidence }, 'Azure Document Intelligence layout extraction completed');
+
+        // Build the full document text (with optional remaining-page batches)
+        let combinedText = firstLayoutResult.text;
+        let allHandwrittenSpans = [...firstLayoutResult.handwrittenSpans];
+        let hasHandwriting = firstLayoutResult.hasHandwriting;
+        let totalProcessed = diPages;
 
         // If DI processed fewer pages than the PDF total (e.g. free tier 2-page limit),
         // make additional DI calls for remaining page ranges in batches of 2
         if (totalPdfPages && totalPdfPages > diPages && diPages > 0) {
           logger.info({ diPages, totalPdfPages, remaining: totalPdfPages - diPages }, 'DI tier page limit detected — making additional DI calls for remaining pages');
-          const allTexts = [firstResult.text];
-          let allHandwrittenSpans = [...firstResult.handwrittenSpans];
-          let hasHandwriting = firstResult.hasHandwriting;
-          let totalProcessed = diPages;
-          const batchSize = diPages; // Use same batch size as initial result (usually 2 for free tier)
+          const batchSize = diPages;
 
           for (let startPage = diPages + 1; startPage <= totalPdfPages; startPage += batchSize) {
             const endPage = Math.min(startPage + batchSize - 1, totalPdfPages);
@@ -1361,7 +1458,7 @@ async function extractPDFWithDocumentIntelligence(fileContent: Buffer, totalPdfP
             try {
               const batchResult = await analyzePageRange(pageRange);
               if (batchResult.text.length > 0) {
-                allTexts.push(batchResult.text);
+                combinedText += '\n\n' + batchResult.text;
                 totalProcessed += batchResult.pagesProcessed;
                 if (batchResult.hasHandwriting) {
                   hasHandwriting = true;
@@ -1374,14 +1471,129 @@ async function extractPDFWithDocumentIntelligence(fileContent: Buffer, totalPdfP
             }
           }
 
-          const combinedText = allTexts.join('\n\n');
           logger.info({ totalProcessed, totalChars: combinedText.length, hasHandwriting }, 'DI multi-batch extraction complete');
-          const queryEvidence = await extractQueryEvidence();
-          return { ...queryEvidence, text: combinedText + queryEvidence.text, hasHandwriting, handwrittenSpans: allHandwrittenSpans, pagesProcessed: totalProcessed };
         }
 
-        const queryEvidence = await extractQueryEvidence();
-        return { ...firstResult, ...queryEvidence, text: firstResult.text + queryEvidence.text };
+        // ── Structured contract extraction via prebuilt-contract model ──
+        // This provides higher-quality parties/dates/jurisdiction/title than query fields.
+        const contractAnswers: Record<string, string> = {};
+        let contractMetadata: NormalizedContractFieldEvidence['metadata'] = {};
+        try {
+          const { contract } = await analyzeContract(fileContent);
+          if (contract.title) {
+            contractAnswers.contractTitle = String(contract.title);
+            contractMetadata.title = String(contract.title);
+          }
+          if (contract.dates.effectiveDate) {
+            contractAnswers.effectiveDate = String(contract.dates.effectiveDate);
+            contractMetadata.startDate = String(contract.dates.effectiveDate);
+          }
+          if (contract.dates.expirationDate) {
+            contractAnswers.expirationDate = String(contract.dates.expirationDate);
+            contractMetadata.endDate = String(contract.dates.expirationDate);
+          }
+          if (contract.jurisdiction) {
+            contractAnswers.governingLaw = String(contract.jurisdiction);
+            contractMetadata.jurisdiction = String(contract.jurisdiction);
+          }
+          if (contract.parties.length > 0) {
+            const partyNames = contract.parties.map((p) => p.name).filter(Boolean);
+            contractAnswers.contractingParties = partyNames.join('; ');
+            contractMetadata.parties = partyNames;
+            // Use the first two parties as client/supplier fallback; avoid signatory names.
+            if (partyNames[0]) {
+              contractAnswers.clientName = partyNames[0];
+              contractMetadata.clientName = partyNames[0];
+            }
+            if (partyNames[1]) {
+              contractAnswers.supplierName = partyNames[1];
+              contractMetadata.supplierName = partyNames[1];
+            }
+          }
+          logger.info({ contractTitle: contract.title, parties: contract.parties.length, confidence: contract.confidence }, 'Azure DI prebuilt-contract extraction completed');
+        } catch (contractError) {
+          logger.warn({ error: contractError }, 'Azure DI prebuilt-contract extraction failed, falling back to query fields');
+        }
+
+        // ── Query-field extraction only for fields the contract model did not return ──
+        const missingIdentifiers = CONTRACT_DI_QUERY_IDENTIFIERS.filter((id) => !contractAnswers[id] || contractAnswers[id].trim().length === 0);
+        let queryAnswers: Record<string, string> = {};
+        let queryEvidence: ContractFieldEvidence[] = [];
+        let queryMetadata: NormalizedContractFieldEvidence['metadata'] = {};
+
+        if (process.env.AZURE_DI_QUERY_ENRICHMENT !== 'false' && missingIdentifiers.length > 0) {
+          try {
+            const { answers } = await analyzeWithQueries(fileContent, missingIdentifiers);
+            const validAnswers = Object.fromEntries(
+              Object.entries(answers).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
+            );
+            if (Object.keys(validAnswers).length > 0) {
+              const validation = validateDIQueryAnswers(validAnswers, combinedText);
+              const fieldValidations = Object.fromEntries(
+                validation.flags.map((flag) => [flag.field, { issue: flag.issue, confidencePenalty: flag.confidencePenalty }])
+              );
+              const normalized = normalizeDIQueryAnswers(validation.answers, {
+                confidence: 0.82,
+                source: 'azure-di-query',
+                fieldValidations,
+              });
+              queryAnswers = validation.answers;
+              queryEvidence = normalized.evidence;
+              queryMetadata = normalized.metadata;
+              for (const flag of validation.flags) {
+                validationIssues.push(flag.issue);
+              }
+              logger.info({ answerCount: Object.keys(queryAnswers).length, evidenceCount: queryEvidence.length, flags: validation.flags.length }, 'Azure DI query-field enrichment completed');
+            }
+          } catch (queryError) {
+            logger.warn({ error: queryError }, 'Azure DI query-field enrichment failed, continuing with contract/layout fields');
+          }
+        }
+
+        // Merge contract and query metadata (contract model wins for overlapping fields)
+        const mergedMetadata: NormalizedContractFieldEvidence['metadata'] = { ...queryMetadata, ...contractMetadata };
+        const mergedEvidence = [...queryEvidence];
+        // Add synthetic evidence entries for contract model fields so downstream callers see them
+        for (const [id, answer] of Object.entries(contractAnswers)) {
+          const definition = CONTRACT_DI_QUERY_FIELD_DEFINITIONS.find((d) => d.identifier === id);
+          if (!definition) continue;
+          mergedEvidence.push({
+            field: definition.field,
+            value: answer,
+            source: 'azure-di-query',
+            confidence: 0.9,
+            question: definition.question,
+            sourceQuote: answer,
+          });
+        }
+
+        // Low-confidence cross-validation with GPT-4o Vision on the first page
+        if (baseOcrConfidence < 0.6) {
+          const corrections = await crossValidateWithVisionFirstPage(fileContent, mergedMetadata);
+          if (corrections && Object.keys(corrections).length > 0) {
+            Object.assign(mergedMetadata, corrections);
+            validationIssues.push('Low DI confidence triggered first-page Vision cross-validation; some fields were corrected.');
+            logger.info({ corrections }, 'Applied Vision cross-validation corrections');
+          } else {
+            validationIssues.push('Low DI confidence triggered first-page Vision cross-validation, but no corrections were made.');
+          }
+        }
+
+        const answerBlock = Object.entries({ ...queryAnswers, ...contractAnswers })
+          .map(([id, answer]) => `${CONTRACT_DI_QUERY_ID_TO_QUESTION[id] || id}: ${answer}`)
+          .join('\n');
+
+        return {
+          text: combinedText + (answerBlock ? `\n\n--- DI QUERY FIELD ANSWERS ---\n${answerBlock}` : ''),
+          hasHandwriting,
+          handwrittenSpans: allHandwrittenSpans,
+          pagesProcessed: totalProcessed,
+          ocrConfidence: baseOcrConfidence,
+          queryAnswers: { ...queryAnswers, ...contractAnswers },
+          fieldEvidence: mergedEvidence,
+          fieldMetadata: mergedMetadata,
+          validationIssues,
+        };
       }
     } catch (layoutError) {
       logger.warn({ error: layoutError }, 'Azure Document Intelligence layout extraction failed, trying read model');
@@ -1467,9 +1679,11 @@ async function extractTextFromBuffer(
         diHandwriting,
         ocrProvider: 'azure-document-intelligence',
         ocrModel: 'prebuilt-layout',
+        ocrConfidence: diResult.ocrConfidence,
         diQueryAnswers: diResult.queryAnswers,
         diFieldEvidence: diResult.fieldEvidence,
         diFieldMetadata: diResult.fieldMetadata,
+        diValidationIssues: diResult.validationIssues,
       };
     }
     if (pdfParseText.replace(/\s+/g, ' ').trim().length >= 50) {
@@ -1751,6 +1965,63 @@ ${truncatedText}`,
   }
 
   return basicMetadata;
+}
+
+function buildInternalFieldConfidence(
+  basic: BasicContractExtraction,
+  extracted: {
+    title?: string;
+    contractType?: string;
+    startDate?: string;
+    endDate?: string;
+    totalValue?: number;
+    currency?: string;
+    clientName?: string;
+    supplierName?: string;
+    signatureStatus?: string;
+    signatureDate?: string;
+  },
+  ocrConfidence: number,
+): Record<string, { value: number; source: string; needsVerification: boolean; signal?: string }> {
+  const compareText = (left?: string | null, right?: string | null) => {
+    if (!left || !right) return false;
+    return normalizeWhitespace(left).toLowerCase() === normalizeWhitespace(right).toLowerCase();
+  };
+
+  const compareNumber = (left?: number | null, right?: number | null) => {
+    if (left == null || right == null) return false;
+    return Math.abs(left - right) <= Math.max(1, Math.abs(left) * 0.01);
+  };
+
+  const base = Math.max(0.35, Math.min(0.95, ocrConfidence || 0.7));
+  const scoreFromAgreement = (agrees: boolean, hasValue: boolean) => {
+    if (!hasValue) return Math.max(0.3, base - 0.2);
+    return Math.max(0.3, Math.min(0.98, agrees ? base + 0.1 : base - 0.18));
+  };
+
+  const map: Record<string, { value: number; source: string; needsVerification: boolean; signal?: string }> = {};
+
+  const add = (key: string, score: number, signal: string) => {
+    map[key] = {
+      value: Number(score.toFixed(2)),
+      source: 'internal-ensemble',
+      needsVerification: score < 0.75,
+      signal,
+    };
+  };
+
+  add('document_title', scoreFromAgreement(compareText(basic.title, extracted.title), Boolean(extracted.title)), 'regex-ai-match');
+  add('contractType', scoreFromAgreement(compareText(basic.contractType, extracted.contractType), Boolean(extracted.contractType)), 'regex-ai-match');
+  add('start_date', scoreFromAgreement(compareText(basic.startDate, extracted.startDate), Boolean(extracted.startDate)), 'regex-ai-match');
+  add('end_date', scoreFromAgreement(compareText(basic.endDate, extracted.endDate), Boolean(extracted.endDate)), 'regex-ai-match');
+  add('tcv_amount', scoreFromAgreement(compareNumber(basic.totalValue, extracted.totalValue), extracted.totalValue != null), 'regex-ai-match');
+  add('currency', scoreFromAgreement(compareText(basic.currency, extracted.currency), Boolean(extracted.currency)), 'regex-ai-match');
+  add('client_name', scoreFromAgreement(compareText(basic.clientName, extracted.clientName), Boolean(extracted.clientName)), 'regex-ai-match');
+  add('supplier_name', scoreFromAgreement(compareText(basic.supplierName, extracted.supplierName), Boolean(extracted.supplierName)), 'regex-ai-match');
+  add('signature_status', scoreFromAgreement(compareText(basic.signatureStatus, extracted.signatureStatus), Boolean(extracted.signatureStatus)), 'regex-ai-match');
+  add('signature_date', scoreFromAgreement(compareText(basic.signatureDate, extracted.signatureDate), Boolean(extracted.signatureDate)), 'regex-ai-match');
+
+  return map;
 }
 
 /**
@@ -2563,47 +2834,23 @@ export async function generateRealArtifacts(
     let actualPath = filePath;
     let fileContent: Buffer | null = null;
     
-    // Check if it's a relative path from storage (S3/MinIO path)
-    if (!filePath.startsWith('/')) {
-      // Try local uploads directory first — upload route saves a local copy here
-      const localPath = path.join(process.cwd(), 'uploads', filePath);
-      const webLocalPath = path.join(process.cwd(), 'apps', 'web', 'uploads', filePath);
-      const rootLocalPath = path.join(process.cwd(), '..', '..', 'uploads', filePath);
-      // Also check the "uploads/contracts/..." pattern used by upload route (process.cwd() is apps/web)
-      const webCwdUploads = path.join(process.cwd(), 'uploads', 'contracts');
-      // filePath looks like "contracts/acme/timestamp-file.pdf" — try stripping "contracts/" prefix
-      const strippedPath = filePath.replace(/^contracts\//, '');
-      const cwdStripped = path.join(process.cwd(), 'uploads', 'contracts', strippedPath);
-      const rootStripped = path.join(process.cwd(), '..', '..', 'uploads', 'contracts', strippedPath);
-      
-      // Try paths in order of likelihood
-      const pathsToTry = [
-        { p: localPath, label: 'local uploads' },
-        { p: cwdStripped, label: 'cwd uploads/contracts (stripped)' },
-        { p: webLocalPath, label: 'web uploads' },
-        { p: rootLocalPath, label: 'root uploads' },
-        { p: rootStripped, label: 'root uploads/contracts (stripped)' },
-      ];
-      
-      let found = false;
-      for (const { p, label } of pathsToTry) {
-        if (await fs.access(p).then(() => true).catch(() => false)) {
-          actualPath = p;
-          found = true;
-          logger.info({ actualPath, label }, 'Found file locally');
-          break;
-        }
-      }
-      
-      if (!found) {
-        // File is in S3/MinIO - try to download it
-        logger.info({ filePath }, 'File appears to be in S3/MinIO, attempting download');
+    if (filePath.startsWith('/')) {
+      // Legacy absolute path (local filesystem)
+      actualPath = filePath;
+    } else {
+      // Relative storage key (e.g. contracts/{tenantId}/{filename}). Resolve to the
+      // local uploads root configured for this runtime (web container or host worker).
+      const localPath = resolveLocalStoragePath(filePath);
+      if (await fs.access(localPath).then(() => true).catch(() => false)) {
+        actualPath = localPath;
+        logger.info({ actualPath, storageKey: filePath }, 'Resolved relative storage key to local file');
+      } else {
+        // File is in S3/MinIO - try to download it using the relative key
+        logger.info({ filePath }, 'Local file not found for storage key, attempting S3/MinIO download');
         
         try {
-          // Try to use the S3 client to download
           const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
           
-          // Build the endpoint URL from components
           let endpoint = process.env.S3_ENDPOINT;
           if (!endpoint) {
             const minioHost = process.env.MINIO_ENDPOINT || 'localhost';
@@ -2619,7 +2866,6 @@ export async function generateRealArtifacts(
           const accessKeyId = process.env.S3_ACCESS_KEY || process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID;
           const secretAccessKey = process.env.S3_SECRET_KEY || process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY;
           
-          // In production, require explicit credentials
           if (isProduction && (!accessKeyId || !secretAccessKey)) {
             throw new Error('S3/MinIO credentials required in production');
           }
@@ -2631,7 +2877,7 @@ export async function generateRealArtifacts(
               accessKeyId: accessKeyId || process.env.MINIO_ACCESS_KEY || '',
               secretAccessKey: secretAccessKey || process.env.MINIO_SECRET_KEY || '',
             },
-            forcePathStyle: true, // Required for MinIO
+            forcePathStyle: true,
           });
           
           const bucket = process.env.S3_BUCKET || process.env.MINIO_BUCKET || 'contracts';
@@ -2656,19 +2902,7 @@ export async function generateRealArtifacts(
           }
         } catch (s3Error) {
           logger.error({ s3Error, filePath }, 'Failed to download from S3/MinIO');
-          
-          // Last resort - check contract record for storage path
-          const contract = await prisma.contract.findFirst({
-            where: { id: contractId, tenantId },
-            select: { storagePath: true, storageProvider: true },
-          });
-          
-          if (contract?.storageProvider === 'local' && contract.storagePath) {
-            actualPath = contract.storagePath;
-            logger.info({ actualPath }, 'Using storage path from contract record');
-          } else {
-            throw new Error(`Cannot access file: ${filePath}. S3 download failed and no local fallback available.`);
-          }
+          throw new Error(`Cannot access file: ${filePath}. Local resolution (${localPath}) and S3 download both failed.`);
         }
       }
     }
@@ -2683,9 +2917,11 @@ export async function generateRealArtifacts(
       diHandwriting: diHandwritingEvidence,
       ocrProvider,
       ocrModel,
+      ocrConfidence: diOcrConfidence,
       diQueryAnswers,
       diFieldEvidence,
       diFieldMetadata,
+      diValidationIssues,
     } = extractionResult;
     
     if (!rawExtractedText || rawExtractedText.length < 10) {
@@ -2727,6 +2963,8 @@ export async function generateRealArtifacts(
           diQueryAnswers: diQueryAnswers || {},
           diFieldEvidence,
           diFieldMetadata: diFieldMetadata || {},
+          ocrConfidence: diOcrConfidence,
+          diValidationIssues: diValidationIssues || [],
         }
       : existingAiMetadata;
     const persistedOcrFacts = extractPersistedOcrFacts(nextAiMetadata);
@@ -2765,6 +3003,11 @@ export async function generateRealArtifacts(
     try {
       const preSignatureEvidence = assessSignatureEvidence(contractText);
       const preMetadata = await extractContractMetadata(contractText, contractId, extractedContractFacts);
+      const internalFieldConfidence = buildInternalFieldConfidence(
+        extractedContractFacts,
+        preMetadata,
+        diOcrConfidence ?? persistedOcrFacts.ocrConfidence ?? estimateTextConfidence(contractText),
+      );
       const preUpdateData: Record<string, any> = {};
       if (preMetadata.title && shouldApplyExtractedContractTitle(existingContract)) {
         preUpdateData.contractTitle = preMetadata.title;
@@ -2870,6 +3113,25 @@ export async function generateRealArtifacts(
       }
 
       if (Object.keys(preUpdateData).length > 0) {
+        const mergedAiMetadata = {
+          ...nextAiMetadata,
+          document_title: preMetadata.title ?? nextAiMetadata.document_title,
+          contractType: preMetadata.contractType ?? nextAiMetadata.contractType,
+          start_date: preMetadata.startDate ?? nextAiMetadata.start_date,
+          end_date: preMetadata.endDate ?? nextAiMetadata.end_date,
+          tcv_amount: preMetadata.totalValue ?? nextAiMetadata.tcv_amount,
+          currency: preMetadata.currency ?? nextAiMetadata.currency,
+          client_name: preMetadata.clientName ?? (nextAiMetadata as Record<string, unknown>).client_name,
+          supplier_name: preMetadata.supplierName ?? (nextAiMetadata as Record<string, unknown>).supplier_name,
+          signature_status: preMetadata.signatureStatus ?? nextAiMetadata.signature_status,
+          signature_date: preMetadata.signatureDate ?? nextAiMetadata.signature_date,
+          field_confidence: {
+            ...((nextAiMetadata as Record<string, any>).field_confidence || {}),
+            ...internalFieldConfidence,
+          },
+        };
+        preUpdateData.aiMetadata = mergedAiMetadata;
+
         await prisma.contract.update({ where: { id: contractId }, data: preUpdateData });
         logger.info({ contractId, fields: Object.keys(preUpdateData) }, 'Pre-artifact metadata written');
       }

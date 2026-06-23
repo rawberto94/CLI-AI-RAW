@@ -11,7 +11,7 @@
 
 import { DetectedIntent, ActionResponse, ChatContext } from '../types';
 import { prisma } from '@/lib/prisma';
-import { queueRAGReindex } from '@/lib/rag/reindex-helper';
+import { applyContractChangeSideEffects } from '@/lib/contracts/server/contract-change-side-effects';
 import { redis } from '@/lib/redis';
 
 const PENDING_ACTION_PREFIX = 'pending_action:';
@@ -239,17 +239,19 @@ async function executeAction(action: PendingAction): Promise<ActionResponse> {
       data: updateData,
     });
     
-    // Queue RAG re-indexing
-    await queueRAGReindex({
-      contractId: action.contractId,
+    // Propagate cache invalidation, events, webhooks, and RAG re-indexing.
+    const sideEffects = await applyContractChangeSideEffects({
       tenantId: action.tenantId,
-      reason: `chatbot update: ${action.field}`,
+      contractId: action.contractId,
+      userId: action.userId,
+      changedFields: [action.field, dbField],
+      source: 'chatbot:update-action',
     });
-    
+
     // Mark action as approved and remove from pending
     action.status = 'approved';
     await redis.del(`${PENDING_ACTION_PREFIX}${action.id}`);
-    
+
     return {
       success: true,
       message: `✅ Successfully updated ${action.field}. The RAG index will be refreshed automatically.`,
@@ -258,7 +260,7 @@ async function executeAction(action: PendingAction): Promise<ActionResponse> {
         field: action.field,
         oldValue: action.oldValue,
         newValue: action.newValue,
-        ragReindexQueued: true,
+        ragReindexQueued: sideEffects.ragReindexQueued,
       },
     };
   } catch (error: unknown) {

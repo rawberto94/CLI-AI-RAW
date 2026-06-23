@@ -18,6 +18,7 @@
  */
 
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { getDIRegionInfo } from '@repo/utils';
 import { optionalImport } from '@/lib/server/optional-module';
 
 // ============================================================================
@@ -144,6 +145,7 @@ export async function performAzureSwitzerlandOCR(
   }
 
   const useDIv4 = !!(diEndpoint && diKey);
+  const regionInfo = getDIRegionInfo(endpoint || undefined);
   const languageHint = options.language === 'auto' ? undefined : options.language;
 
   // ── Determine which DI model to use ──
@@ -302,11 +304,11 @@ export async function performAzureSwitzerlandOCR(
     text: resultText,
     confidence: calculateAverageConfidence(pages),
     provider: useDIv4 ? 'azure-document-intelligence-v4' : 'azure-document-intelligence',
-    region: 'switzerland-north',
+    region: regionInfo.region,
     pages,
     tables,
     processingTime,
-    dataResidency: 'switzerland',
+    dataResidency: regionInfo.dataResidency as OCRResult['dataResidency'],
   };
 }
 
@@ -341,6 +343,7 @@ export async function performAzureEUOCR(
   }
 
   const useDIv4 = !!(diEndpoint && diKey);
+  const regionInfo = getDIRegionInfo(endpoint || undefined);
   const modelMap: Record<string, string> = {
     layout: 'prebuilt-layout',
     contract: 'prebuilt-contract',
@@ -434,11 +437,11 @@ export async function performAzureEUOCR(
     text: fullText,
     confidence: calculateAverageConfidence(pages),
     provider: useDIv4 ? 'azure-document-intelligence-v4-eu' : 'azure-document-intelligence',
-    region: 'west-europe',
+    region: regionInfo.region,
     pages,
     tables,
     processingTime: Date.now() - startTime,
-    dataResidency: 'eu',
+    dataResidency: regionInfo.dataResidency as OCRResult['dataResidency'],
   };
 }
 
@@ -970,8 +973,8 @@ export function getAvailableProviders(): {
     {
       provider: 'azure-di',
       configured: !!(process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY),
-      region: 'Switzerland North (Zurich) — Document Intelligence v4.0',
-      dataResidency: 'Switzerland',
+      region: getDIRegionInfo(process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT).region,
+      dataResidency: getDIRegionInfo(process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT).dataResidency,
     },
     {
       provider: 'azure-ch',

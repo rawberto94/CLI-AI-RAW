@@ -282,7 +282,7 @@ export { MarketIntelligenceService, MarketIntelligenceService as marketIntellige
 export { StrategicRecommendationsService, StrategicRecommendationsService as strategicRecommendationsService } from './strategic-recommendations.service';
 export { AnomalyExplainerService, AnomalyExplainerService as anomalyExplainerService } from './anomaly-explainer.service';
 export { AIInsightsGeneratorService, AIInsightsGeneratorService as aiInsightsGeneratorService } from './ai-insights-generator.service';
-// export { ragIntegrationService } from './rag-integration.service'; // Excluded in tsconfig
+export { ragIntegrationService } from './rag-integration.service';
 
 // Agent Context Enrichment (for Contigo Lab)
 export {

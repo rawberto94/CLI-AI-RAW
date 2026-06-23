@@ -64,8 +64,14 @@ module.exports = {
       script: 'dist/index.js',
       instances: 2, // Run 2 worker instances
       exec_mode: 'cluster',
+      env: {
+        // Development default: workers run from packages/workers, web uploads are at ../../apps/web/uploads
+        LOCAL_STORAGE_ROOT: '../../apps/web/uploads'
+      },
       env_production: {
-        NODE_ENV: 'production'
+        NODE_ENV: 'production',
+        // Container default: web stores uploads at /app/uploads (process.cwd() /app + uploads)
+        LOCAL_STORAGE_ROOT: '/app/uploads'
       },
       autorestart: true,
       max_restarts: 100, // Workers can restart more frequently
@@ -112,9 +118,13 @@ module.exports = {
       cwd: './packages/workers',
       script: 'dist/contract-source-sync-worker.js',
       instances: 1, // Single instance for sync operations
+      env: {
+        LOCAL_STORAGE_ROOT: '../../apps/web/uploads'
+      },
       env_production: {
         NODE_ENV: 'production',
-        REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379'
+        REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
+        LOCAL_STORAGE_ROOT: '/app/uploads'
       },
       autorestart: true,
       max_restarts: 50,

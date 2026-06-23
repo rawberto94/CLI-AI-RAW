@@ -13,6 +13,7 @@ import {
 } from '@/lib/webhook-triggers'
 import { withContractApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { auditLog, AuditAction } from '@/lib/security/audit';
+import { applyContractChangeSideEffects } from '@/lib/contracts/server/contract-change-side-effects';
 import { logger } from '@/lib/logger';
 
 export const POST = withContractApiHandler(async (request, ctx) => {
@@ -163,15 +164,20 @@ export const POST = withContractApiHandler(async (request, ctx) => {
         }
       })
 
-      await Promise.all(
-        contractIds.map((contractId: string) =>
-          publishRealtimeEvent({
-            event: 'contract:updated',
-            data: { tenantId, contractId, status: 'ARCHIVED' },
-            source: 'api:contracts/bulk',
-          })
-        )
-      )
+      // Trigger side effects for each contract
+      for (const contractId of contractIds) {
+        applyContractChangeSideEffects({
+          tenantId,
+          contractId,
+          userId: ctx.userId,
+          changedFields: ['status'],
+          source: 'api:contracts/bulk/archive',
+          audit: {
+            action: AuditAction.CONTRACT_UPDATED,
+            changes: { status: 'ARCHIVED' },
+          },
+        }).catch(() => {})
+      }
 
       await auditLog({
         action: AuditAction.CONTRACT_UPDATED,
@@ -280,22 +286,25 @@ export const POST = withContractApiHandler(async (request, ctx) => {
         where: { id: { in: contractIds }, tenantId },
         data: {
           category: category.name,
+          contractCategoryId: category.id,
           updatedAt: new Date()
         }
       })
 
-      // Log activity for each contract
-      await Promise.all(
-        contractIds.map((contractId: string) =>
-          addActivityLogEntry({
-            tenantId,
-            contractId,
-            action: 'CATEGORY_UPDATED',
-            performedBy: userId,
-            details: { categoryId: category!.id, categoryName: category!.name, bulk: true }
-          })
-        )
-      )
+      // Trigger side effects for each contract
+      for (const contractId of contractIds) {
+        applyContractChangeSideEffects({
+          tenantId,
+          contractId,
+          userId: ctx.userId,
+          changedFields: ['category', 'contractCategoryId'],
+          source: 'api:contracts/bulk/categorize',
+          audit: {
+            action: AuditAction.CONTRACT_UPDATED,
+            changes: { category: category.name, contractCategoryId: category.id },
+          },
+        }).catch(() => {})
+      }
 
       return createSuccessResponse(ctx, {
         message: `Categorized ${contractIds.length} contracts as "${category.name}"`
@@ -483,15 +492,20 @@ export const POST = withContractApiHandler(async (request, ctx) => {
         }
       })
 
-      await Promise.all(
-        contractIds.map((contractId: string) =>
-          publishRealtimeEvent({
-            event: 'contract:updated',
-            data: { tenantId, contractId, status: newStatus },
-            source: 'api:contracts/bulk',
-          })
-        )
-      )
+      // Trigger side effects (cache invalidation, realtime events, RAG re-indexing) for each contract
+      for (const contractId of contractIds) {
+        applyContractChangeSideEffects({
+          tenantId,
+          contractId,
+          userId: ctx.userId,
+          changedFields: ['status'],
+          source: 'api:contracts/bulk/status',
+          audit: {
+            action: AuditAction.CONTRACT_UPDATED,
+            changes: { status: newStatus },
+          },
+        }).catch(() => {})
+      }
 
       return createSuccessResponse(ctx, {
         message: `Updated status to ${newStatus} for ${contractIds.length} contracts`
@@ -542,39 +556,24 @@ export const POST = withContractApiHandler(async (request, ctx) => {
         data: reclassifyData
       })
 
-      // Log activity for each contract
-      await Promise.all(
-        contractIds.map((contractId: string) =>
-          addActivityLogEntry({
-            action: 'DOCUMENT_RECLASSIFIED',
-            entityType: 'contract',
-            entityId: contractId,
-            userId,
-            metadata: {
-              classification,
-              signatureUpdate: signatureUpdate || 'unchanged',
-              bulk: true,
-              totalInBatch: contractIds.length
-            }
-          })
-        )
-      )
-
-      // Publish realtime events
-      await Promise.all(
-        contractIds.map((contractId: string) =>
-          publishRealtimeEvent({
-            event: 'contract:updated',
-            data: {
-              tenantId,
-              contractId,
-              documentClassification: classification,
-              signatureStatus: signatureUpdate || undefined
-            },
-            source: 'api:contracts/bulk',
-          })
-        )
-      )
+      // Trigger side effects for each contract
+      const changedReclassifyFields = ['documentClassification'];
+      if (signatureUpdate && signatureUpdate !== 'no_change') {
+        changedReclassifyFields.push('signatureStatus');
+      }
+      for (const contractId of contractIds) {
+        applyContractChangeSideEffects({
+          tenantId,
+          contractId,
+          userId: ctx.userId,
+          changedFields: changedReclassifyFields,
+          source: 'api:contracts/bulk/reclassify',
+          audit: {
+            action: AuditAction.CONTRACT_UPDATED,
+            changes: reclassifyData,
+          },
+        }).catch(() => {})
+      }
 
       // Trigger webhooks for reclassification
       const nonContractTypes = ['purchase_order', 'invoice', 'quote', 'work_order', 'letter_of_intent', 'memorandum']
@@ -587,7 +586,7 @@ export const POST = withContractApiHandler(async (request, ctx) => {
             newClassification: classification,
             signatureStatusUpdated: !!(signatureUpdate && signatureUpdate !== 'no_change'),
             newSignatureStatus: signatureUpdate !== 'no_change' ? signatureUpdate : undefined,
-            changedBy: userId,
+            changedBy: ctx.userId,
             bulk: true,
           })
 
@@ -595,7 +594,7 @@ export const POST = withContractApiHandler(async (request, ctx) => {
           if (isNonContract) {
             await triggerNonContractDetected(tenantId, contractId, {
               documentClassification: classification,
-              uploadedBy: userId,
+              uploadedBy: ctx.userId,
             })
           }
         })
@@ -619,34 +618,27 @@ export const POST = withContractApiHandler(async (request, ctx) => {
         }
       })
 
-      await Promise.all(
-        contractIds.map((contractId: string) =>
-          addActivityLogEntry({
-            action: 'SIGNATURE_STATUS_UPDATED',
-            entityType: 'contract',
-            entityId: contractId,
-            userId,
-            metadata: { signatureStatus: 'signed', bulk: true }
-          })
-        )
-      )
-
-      await Promise.all(
-        contractIds.map((contractId: string) =>
-          publishRealtimeEvent({
-            event: 'contract:updated',
-            data: { tenantId, contractId, signatureStatus: 'signed' },
-            source: 'api:contracts/bulk',
-          })
-        )
-      )
+      // Trigger side effects (cache invalidation, realtime events, RAG re-indexing) for each contract
+      for (const contractId of contractIds) {
+        applyContractChangeSideEffects({
+          tenantId,
+          contractId,
+          userId: ctx.userId,
+          changedFields: ['signatureStatus'],
+          source: 'api:contracts/bulk/mark-signed',
+          audit: {
+            action: AuditAction.CONTRACT_UPDATED,
+            changes: { signatureStatus: 'signed' },
+          },
+        }).catch(() => {})
+      }
 
       // Trigger webhook for signature status change
       await Promise.all(
         contractIds.map((contractId: string) =>
           triggerSignatureStatusChanged(tenantId, contractId, {
             newStatus: 'signed',
-            changedBy: userId,
+            changedBy: ctx.userId,
             bulk: true,
           })
         )
@@ -667,34 +659,27 @@ export const POST = withContractApiHandler(async (request, ctx) => {
         }
       })
 
-      await Promise.all(
-        contractIds.map((contractId: string) =>
-          addActivityLogEntry({
-            action: 'SIGNATURE_STATUS_UPDATED',
-            entityType: 'contract',
-            entityId: contractId,
-            userId,
-            metadata: { signatureStatus: 'unsigned', bulk: true }
-          })
-        )
-      )
-
-      await Promise.all(
-        contractIds.map((contractId: string) =>
-          publishRealtimeEvent({
-            event: 'contract:updated',
-            data: { tenantId, contractId, signatureStatus: 'unsigned' },
-            source: 'api:contracts/bulk',
-          })
-        )
-      )
+      // Trigger side effects (cache invalidation, realtime events, RAG re-indexing) for each contract
+      for (const contractId of contractIds) {
+        applyContractChangeSideEffects({
+          tenantId,
+          contractId,
+          userId: ctx.userId,
+          changedFields: ['signatureStatus'],
+          source: 'api:contracts/bulk/mark-unsigned',
+          audit: {
+            action: AuditAction.CONTRACT_UPDATED,
+            changes: { signatureStatus: 'unsigned' },
+          },
+        }).catch(() => {})
+      }
 
       // Trigger webhook for signature status change
       await Promise.all(
         contractIds.map((contractId: string) =>
           triggerSignatureStatusChanged(tenantId, contractId, {
             newStatus: 'unsigned',
-            changedBy: userId,
+            changedBy: ctx.userId,
             bulk: true,
           })
         )

@@ -7,5 +7,7 @@ export * from './contract-text';
 export * from './signature-evidence';
 export * from './contract-extraction';
 export * from './cache';
-// Note: tracing export disabled due to verbatimModuleSyntax incompatibility with OpenTelemetry Resource import
+export * from './azure-di-region';
+export * from './storage';
+// Note: tracing export disabled due to verbatimModuleStyle incompatibility with OpenTelemetry Resource import
 // export * from './tracing';

@@ -98,6 +98,8 @@ export interface ContractFieldEvidence {
   confidence: number;
   question?: string;
   sourceQuote?: string;
+  /** Human-readable review flags raised during validation. */
+  reviewIssues?: string[];
 }
 
 export interface NormalizedContractFieldEvidence {
@@ -127,29 +129,49 @@ export interface NormalizedContractFieldEvidence {
   };
 }
 
-export const CONTRACT_DI_QUERY_FIELD_DEFINITIONS: Array<{ field: ContractEvidenceField; question: string }> = [
-  { field: 'contractTitle', question: 'What is the contract title or agreement name?' },
-  { field: 'contractType', question: 'What type of contract is this?' },
-  { field: 'effectiveDate', question: 'What is the contract effective date?' },
-  { field: 'expirationDate', question: 'What is the contract expiration date or end date?' },
-  { field: 'initialTerm', question: 'What is the initial contract term or duration?' },
-  { field: 'renewalTerms', question: 'What are the renewal terms or renewal period?' },
-  { field: 'noticePeriod', question: 'What is the termination or renewal notice period?' },
-  { field: 'totalContractValue', question: 'What is the total contract value or aggregate fee?' },
-  { field: 'paymentTerms', question: 'What are the payment terms?' },
-  { field: 'governingLaw', question: 'What is the governing law or jurisdiction?' },
-  { field: 'contractingParties', question: 'Who are the contracting parties?' },
-  { field: 'clientName', question: 'Who is the client, buyer, or customer?' },
-  { field: 'supplierName', question: 'Who is the supplier, vendor, or service provider?' },
-  { field: 'signatureStatus', question: 'Is the contract signed, partially signed, unsigned, or unknown?' },
-  { field: 'signatureDate', question: 'What is the signature or execution date?' },
-  { field: 'autoRenewal', question: 'Does the contract automatically renew?' },
-  { field: 'terminationClause', question: 'What is the termination clause or termination right?' },
-  { field: 'liabilityCap', question: 'What is the liability cap or limitation of liability amount?' },
-  { field: 'keyObligations', question: 'What are the key deliverables, service levels, or obligations?' },
+export interface ContractDIQueryFieldDefinition {
+  /** API-compliant identifier passed to Azure DI queryFields (matches field name). */
+  identifier: string;
+  field: ContractEvidenceField;
+  /** Human-readable question stored as metadata. */
+  question: string;
+}
+
+export const CONTRACT_DI_QUERY_FIELD_DEFINITIONS: ContractDIQueryFieldDefinition[] = [
+  { identifier: 'contractTitle', field: 'contractTitle', question: 'What is the contract title or agreement name?' },
+  { identifier: 'contractType', field: 'contractType', question: 'What type of contract is this?' },
+  { identifier: 'effectiveDate', field: 'effectiveDate', question: 'What is the contract effective date?' },
+  { identifier: 'expirationDate', field: 'expirationDate', question: 'What is the contract expiration date or end date?' },
+  { identifier: 'initialTerm', field: 'initialTerm', question: 'What is the initial contract term or duration?' },
+  { identifier: 'renewalTerms', field: 'renewalTerms', question: 'What are the renewal terms or renewal period?' },
+  { identifier: 'noticePeriod', field: 'noticePeriod', question: 'What is the termination or renewal notice period?' },
+  { identifier: 'totalContractValue', field: 'totalContractValue', question: 'What is the total contract value or aggregate fee?' },
+  { identifier: 'paymentTerms', field: 'paymentTerms', question: 'What are the payment terms?' },
+  { identifier: 'governingLaw', field: 'governingLaw', question: 'What is the governing law or jurisdiction?' },
+  { identifier: 'contractingParties', field: 'contractingParties', question: 'Who are the contracting parties?' },
+  { identifier: 'clientName', field: 'clientName', question: 'Who is the client, buyer, or customer?' },
+  { identifier: 'supplierName', field: 'supplierName', question: 'Who is the supplier, vendor, or service provider?' },
+  { identifier: 'signatureStatus', field: 'signatureStatus', question: 'Is the contract signed, partially signed, unsigned, or unknown?' },
+  { identifier: 'signatureDate', field: 'signatureDate', question: 'What is the signature or execution date?' },
+  { identifier: 'autoRenewal', field: 'autoRenewal', question: 'Does the contract automatically renew?' },
+  { identifier: 'terminationClause', field: 'terminationClause', question: 'What is the termination clause or termination right?' },
+  { identifier: 'liabilityCap', field: 'liabilityCap', question: 'What is the liability cap or limitation of liability amount?' },
+  { identifier: 'keyObligations', field: 'keyObligations', question: 'What are the key deliverables, service levels, or obligations?' },
 ];
 
-export const CONTRACT_DI_QUERY_FIELDS = CONTRACT_DI_QUERY_FIELD_DEFINITIONS.map(definition => definition.question);
+/** Array of API-compliant identifiers to pass to Azure DI queryFields. */
+export const CONTRACT_DI_QUERY_IDENTIFIERS = CONTRACT_DI_QUERY_FIELD_DEFINITIONS.map(definition => definition.identifier);
+
+/** @deprecated Use CONTRACT_DI_QUERY_IDENTIFIERS. Kept for callers that previously passed questions. */
+export const CONTRACT_DI_QUERY_FIELDS = CONTRACT_DI_QUERY_IDENTIFIERS;
+
+/** Map from DI query identifier back to the original human-readable question. */
+export const CONTRACT_DI_QUERY_ID_TO_QUESTION: Record<string, string> = Object.fromEntries(
+  CONTRACT_DI_QUERY_FIELD_DEFINITIONS.map(definition => [definition.identifier, definition.question])
+);
+
+/** Confidence threshold below which a field should be flagged for human review. */
+export const REVIEW_FLAG_THRESHOLD = 0.7;
 
 const NUMBER_WORDS: Record<string, number> = {
   one: 1,
@@ -313,6 +335,217 @@ function parseLiabilityCap(value: string): { amount: number | null; currency: st
     amount: amount != null && amount > 0 && amount < 1e12 ? amount : null,
     currency: detectCurrency(value),
   };
+}
+
+const LEGAL_ENTITY_SUFFIXES = '(?:Inc\\.?|LLC|Ltd\\.?|Limited|Corp(?:oration)?\\.?|Co\\.?|LP|LLP|PLC|GmbH|AG|SA|SAS|BV|NV|SARL|S\\.r\\.l\\.?|Oy|AB)';
+const LEGAL_ENTITY_STOP_WORDS = new Set(['this', 'that', 'the', 'a', 'an', 'each', 'every', 'any', 'such', 'one', 'two', 'and', '&']);
+
+function isPlausibleLegalEntityName(name: string): boolean {
+  const normalized = normalizeWhitespace(name);
+  if (normalized.length < 3 || normalized.length > 140) return false;
+  const words = normalized.split(/\s+/);
+  const firstWord = words[0]?.toLowerCase();
+  if (!firstWord || LEGAL_ENTITY_STOP_WORDS.has(firstWord)) return false;
+  // Each non-connector word should start with an uppercase letter.
+  for (const word of words) {
+    if (word === '&' || word.toLowerCase() === 'and') continue;
+    if (!/^[A-Z]/.test(word)) return false;
+  }
+  return true;
+}
+
+const QUERY_REJECT_WORDS = /\b(?:late|pending|approx|approximately|estimated|example|sample|illustrative|tbd|tbc|n\/a|not\s+applicable|unknown|unspecified)\b/i;
+
+function hasLegalEntitySuffix(value: string): boolean {
+  return new RegExp(`\\b${LEGAL_ENTITY_SUFFIXES}(?:,|$|\\s)`, 'i').test(value);
+}
+
+function findNearestLegalEntity(text: string, nearIndex = 0): string | null {
+  const searchWindow = text.slice(0, 2000);
+  const suffixPattern = new RegExp(`\\b${LEGAL_ENTITY_SUFFIXES}\\b`, 'gi');
+  let best: { name: string; distance: number } | null = null;
+
+  for (const match of searchWindow.matchAll(suffixPattern)) {
+    const suffixStart = match.index ?? 0;
+    const before = searchWindow.slice(0, suffixStart);
+    const tokens = before.split(/\s+/);
+    const nameParts: string[] = [match[0]];
+    let collected = 0;
+
+    // Walk backwards from the suffix to collect the preceding capitalized words.
+    for (let i = tokens.length - 1; i >= 0 && collected < 10; i--) {
+      const rawToken = tokens[i];
+      const token = rawToken.replace(/[,;:.]+$/g, '');
+      if (!token) continue;
+      if (token === '&' || token.toLowerCase() === 'and') {
+        nameParts.unshift(token);
+        continue;
+      }
+      if (!/^[A-Z]/.test(token)) break;
+      if (LEGAL_ENTITY_STOP_WORDS.has(token.toLowerCase())) break;
+      nameParts.unshift(token);
+      collected++;
+    }
+
+    const name = nameParts.join(' ');
+    if (!isPlausibleLegalEntityName(name)) continue;
+    const distance = Math.abs(suffixStart - nearIndex);
+    if (!best || distance < best.distance) {
+      best = { name, distance };
+    }
+  }
+
+  return best?.name ?? null;
+}
+
+function findMostMentionedCurrency(text: string): string | null {
+  const matches = text.match(/\b(?:USD|EUR|GBP|CHF)\b|[$€£]/gi) || [];
+  if (matches.length === 0) return null;
+  const counts = new Map<string, number>();
+  for (const match of matches) {
+    const code = match.toUpperCase();
+    const currency = code === 'USD' || code === '$' ? 'USD'
+      : code === 'EUR' || code === '€' ? 'EUR'
+      : code === 'GBP' || code === '£' ? 'GBP'
+      : code === 'CHF' ? 'CHF'
+      : null;
+    if (!currency) continue;
+    counts.set(currency, (counts.get(currency) || 0) + 1);
+  }
+  let top: string | null = null;
+  let topCount = 0;
+  for (const [currency, count] of counts.entries()) {
+    if (count > topCount) {
+      top = currency;
+      topCount = count;
+    }
+  }
+  return top;
+}
+
+function extractJurisdictionName(value: string): string | null {
+  const normalized = normalizeWhitespace(value);
+  if (normalized.length <= 80 && !/[.!?]/.test(normalized)) {
+    return normalized;
+  }
+  const patterns = [
+    /(?:laws?\s+of|governed\s+(?:by|in\s+accordance\s+with)|jurisdiction\s+of|courts?\s+of)\s+([^,.;\n]{2,80})/i,
+    /(?:the\s+)?(?:state|country|laws?)\s+(?:of\s+)?([^,.;\n]{2,80})/i,
+    /(?:governing\s+law|jurisdiction)[:\-]?\s*([^,.;\n]{2,80})/i,
+  ];
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (match?.[1]) {
+      const candidate = normalizeWhitespace(match[1]);
+      if (candidate.length >= 2 && candidate.length <= 80) return candidate;
+    }
+  }
+  return null;
+}
+
+export interface DIQueryValidationResult {
+  /** Answers after validation/correction. */
+  answers: Record<string, string>;
+  /** Per-field review flags with suggested confidence penalty. */
+  flags: Array<{ field: string; issue: string; confidencePenalty: number }>;
+  /** Identifiers that were removed because validation failed. */
+  rejected: string[];
+}
+
+/**
+ * Validate and correct Azure DI query-field answers before normalization.
+ *
+ * Rules:
+ * - Currency amounts must parse to a number and must not contain reject words (e.g. "Late").
+ * - Parties should contain a legal-entity suffix; otherwise we look for the nearest legal entity
+ *   in the first 2,000 characters of the document text.
+ * - Dates must be parseable by Date.parse/parseIsoDate.
+ * - Governing law / jurisdiction answers are trimmed to a short location name.
+ * - If a contractCurrency answer is missing, we fall back to the most-mentioned currency code.
+ */
+export function validateDIQueryAnswers(
+  answers: Record<string, string>,
+  fullText: string
+): DIQueryValidationResult {
+  const validated: Record<string, string> = {};
+  const flags: Array<{ field: string; issue: string; confidencePenalty: number }> = [];
+  const rejected: string[] = [];
+
+  for (const [key, value] of Object.entries(answers)) {
+    const normalized = normalizeWhitespace(value);
+    if (!normalized) continue;
+    validated[key] = normalized;
+  }
+
+  for (const definition of CONTRACT_DI_QUERY_FIELD_DEFINITIONS) {
+    const id = definition.identifier;
+    const value = validated[id];
+    if (!value) continue;
+
+    if (id === 'totalContractValue' || id === 'liabilityCap') {
+      if (QUERY_REJECT_WORDS.test(value)) {
+        flags.push({ field: id, issue: `${id} answer contains non-aggregate/example wording: "${value}"`, confidencePenalty: 0.35 });
+        delete validated[id];
+        rejected.push(id);
+        continue;
+      }
+      const amount = parseMonetaryAmount(value);
+      if (amount == null || amount <= 0 || amount >= 1e12) {
+        flags.push({ field: id, issue: `${id} answer is not a parseable positive number: "${value}"`, confidencePenalty: 0.35 });
+        delete validated[id];
+        rejected.push(id);
+        continue;
+      }
+    }
+
+    if (id === 'effectiveDate' || id === 'expirationDate' || id === 'signatureDate') {
+      const parsed = parseIsoDate(value);
+      if (!parsed) {
+        flags.push({ field: id, issue: `${id} answer is not a parseable date: "${value}"`, confidencePenalty: 0.3 });
+        delete validated[id];
+        rejected.push(id);
+        continue;
+      }
+      // Replace with ISO-normalized date for consistency.
+      validated[id] = parsed;
+    }
+
+    if (id === 'clientName' || id === 'supplierName') {
+      const original = value;
+      if (!hasLegalEntitySuffix(original)) {
+        const entity = findNearestLegalEntity(fullText, 0);
+        if (entity) {
+          validated[id] = entity;
+          flags.push({ field: id, issue: `${id} replaced "${original}" with nearest legal entity "${entity}"`, confidencePenalty: 0.15 });
+        } else {
+          flags.push({ field: id, issue: `${id} answer does not contain a legal entity suffix: "${original}"`, confidencePenalty: 0.2 });
+        }
+      }
+    }
+
+    if (id === 'governingLaw') {
+      const jurisdiction = extractJurisdictionName(value);
+      if (!jurisdiction) {
+        flags.push({ field: id, issue: `governingLaw answer is not a concise jurisdiction: "${value}"`, confidencePenalty: 0.25 });
+        delete validated[id];
+        rejected.push(id);
+      } else if (jurisdiction !== value) {
+        validated[id] = jurisdiction;
+        flags.push({ field: id, issue: `governingLaw trimmed from "${value}" to "${jurisdiction}"`, confidencePenalty: 0.1 });
+      }
+    }
+  }
+
+  // Fallback currency when DI did not return one.
+  if (!validated.contractCurrency) {
+    const mostMentioned = findMostMentionedCurrency(fullText);
+    if (mostMentioned) {
+      validated.contractCurrency = mostMentioned;
+      flags.push({ field: 'contractCurrency', issue: `contractCurrency inferred from document text as ${mostMentioned}`, confidencePenalty: 0.1 });
+    }
+  }
+
+  return { answers: validated, flags, rejected };
 }
 
 function parseNumberText(value: string | undefined): number | null {
@@ -519,18 +752,26 @@ function detectCurrency(value: string): string | null {
 
 export function normalizeDIQueryAnswers(
   answers: Record<string, string>,
-  options: { confidence?: number; source?: ContractFieldEvidenceSource } = {}
+  options: {
+    confidence?: number;
+    source?: ContractFieldEvidenceSource;
+    /** Per-field validation results used to lower confidence and attach review flags. */
+    fieldValidations?: Record<string, { issue?: string; confidencePenalty?: number }>;
+  } = {}
 ): NormalizedContractFieldEvidence {
   const evidence: ContractFieldEvidence[] = [];
   const metadata: NormalizedContractFieldEvidence['metadata'] = {};
-  const confidence = options.confidence ?? 0.8;
+  const baseConfidence = options.confidence ?? 0.8;
   const source = options.source ?? 'azure-di-query';
+  const fieldValidations = options.fieldValidations ?? {};
 
   for (const definition of CONTRACT_DI_QUERY_FIELD_DEFINITIONS) {
-    const rawAnswer = answers[definition.question] ?? answers[definition.field];
+    const rawAnswer = answers[definition.identifier] ?? answers[definition.field] ?? answers[definition.question];
     if (!rawAnswer || normalizeWhitespace(rawAnswer).length === 0) continue;
 
     const value = normalizeWhitespace(rawAnswer);
+    const validation = fieldValidations[definition.identifier] ?? fieldValidations[definition.field];
+    const confidence = Math.max(0, Math.min(1, baseConfidence - (validation?.confidencePenalty ?? 0)));
     const item: ContractFieldEvidence = {
       field: definition.field,
       value,
@@ -538,6 +779,7 @@ export function normalizeDIQueryAnswers(
       confidence,
       question: definition.question,
       sourceQuote: value,
+      ...(validation?.issue ? { reviewIssues: [validation.issue] } : {}),
     };
 
     if (definition.field === 'contractTitle') {
@@ -620,6 +862,12 @@ export function normalizeDIQueryAnswers(
     }
 
     evidence.push(item);
+  }
+
+  // Currency may come from a dedicated query field or from validation fallback.
+  const currencyAnswer = answers.contractCurrency ?? answers.currency;
+  if (currencyAnswer && !metadata.currency) {
+    metadata.currency = normalizeWhitespace(String(currencyAnswer)).toUpperCase().slice(0, 3);
   }
 
   if (!metadata.endDate && metadata.startDate) {

@@ -9,10 +9,12 @@ const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as an
 import {
   assessSignatureEvidence,
   buildPersistedContractTextFields,
-  CONTRACT_DI_QUERY_FIELDS,
+  CONTRACT_DI_QUERY_IDENTIFIERS,
   type ContractFieldEvidence,
   normalizeDIQueryAnswers,
   type NormalizedContractFieldEvidence,
+  resolveLocalStoragePath,
+  validateDIQueryAnswers,
 } from '@repo/utils';
 import {
   CircuitBreaker,
@@ -1311,22 +1313,30 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number, 
           try {
             const { analyzeWithQueries } = await import('./azure-document-intelligence');
             const fileBuffer = await fs.readFile(filePath);
-            const { answers } = await analyzeWithQueries(fileBuffer, CONTRACT_DI_QUERY_FIELDS);
+            const { answers } = await analyzeWithQueries(fileBuffer, CONTRACT_DI_QUERY_IDENTIFIERS);
             const validAnswers = Object.entries(answers).filter(([, v]) => v && v.trim().length > 0);
             if (validAnswers.length > 0) {
-              const queryAnswers = Object.fromEntries(validAnswers);
-              const normalized = normalizeDIQueryAnswers(queryAnswers, { confidence: 0.82, source: 'azure-di-query' });
+              const rawQueryAnswers = Object.fromEntries(validAnswers);
+              const validation = validateDIQueryAnswers(rawQueryAnswers, structuredResult.text);
+              const fieldValidations = Object.fromEntries(
+                validation.flags.map((flag) => [flag.field, { issue: flag.issue, confidencePenalty: flag.confidencePenalty }])
+              );
+              const normalized = normalizeDIQueryAnswers(validation.answers, {
+                confidence: 0.82,
+                source: 'azure-di-query',
+                fieldValidations,
+              });
               // Merge answers into keyValuePairs for downstream artifact generation
-              for (const [key, value] of validAnswers) {
+              for (const [key, value] of Object.entries(validation.answers)) {
                 structuredResult.keyValuePairs.push({ key, value, confidence: 0.8 } as any);
               }
-              structuredResult.queryAnswers = queryAnswers;
+              structuredResult.queryAnswers = validation.answers;
               structuredResult.fieldEvidence = normalized.evidence;
               structuredResult.fieldMetadata = normalized.metadata;
               // Append answers to the text for RAG indexing
-              const answerBlock = validAnswers.map(([k, v]) => `${k}: ${v}`).join('\n');
+              const answerBlock = Object.entries(validation.answers).map(([k, v]) => `${k}: ${v}`).join('\n');
               structuredResult.text += `\n\n--- DI QUERY FIELD ANSWERS ---\n${answerBlock}`;
-              logger.info({ answerCount: validAnswers.length, evidenceCount: normalized.evidence.length }, 'DI analyzeWithQueries enrichment added');
+              logger.info({ answerCount: Object.keys(validation.answers).length, evidenceCount: normalized.evidence.length, flags: validation.flags.length }, 'DI analyzeWithQueries enrichment added');
             }
           } catch (queryErr) {
             logger.warn({ error: (queryErr as Error).message }, 'DI analyzeWithQueries enrichment failed, continuing without');
@@ -2139,9 +2149,10 @@ export async function processOCRArtifactJob(
       isTempFile = true;
       jobLogger.info({ localFilePath, size: fileBuffer.length }, 'File downloaded');
     } else {
-      // Local file system
-      localFilePath = contract.storagePath!;
-      jobLogger.info({ localFilePath }, 'Using local file');
+      // Local file system — storagePath is a relative key such as contracts/{tenantId}/{filename}.
+      // Resolve it against the runtime-local uploads root (LOCAL_STORAGE_ROOT or process cwd).
+      localFilePath = resolveLocalStoragePath(contract.storagePath);
+      jobLogger.info({ localFilePath, storagePath: contract.storagePath }, 'Resolved local storage key to file');
     }
 
     // Compute content hash for collision-resistant OCR cache key

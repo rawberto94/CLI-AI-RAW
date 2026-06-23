@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { getContractQueue } from '@repo/utils/queue/contract-queue';
 
 import { createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
+import { applyContractChangeSideEffects } from '@/lib/contracts/server/contract-change-side-effects';
 
 import type { ContractApiContext } from '@/lib/contracts/server/context';
 
@@ -225,33 +226,23 @@ export async function putContractArtifact(
     // Learning record insert is non-critical.
   }
 
-  let ragReindexQueued = false;
-  if (RAG_TRIGGER_ARTIFACT_TYPES.includes(updatedArtifact.artifactType as (typeof RAG_TRIGGER_ARTIFACT_TYPES)[number])) {
-    try {
-      const contractQueue = getContractQueue();
-      await contractQueue.queueRAGIndexing(
-        {
-          contractId,
-          tenantId: context.tenantId,
-          artifactIds: [artifactId],
-        },
-        {
-          priority: 15,
-          delay: 2000,
-        },
-      );
-      ragReindexQueued = true;
-    } catch {
-      // RAG re-indexing failures are non-critical.
-    }
-  }
+  const sideEffects = await applyContractChangeSideEffects({
+    tenantId: context.tenantId,
+    contractId,
+    userId: context.userId,
+    changedFields: ['artifact', updatedArtifact.artifactType],
+    source: 'api:contracts/[id]/artifacts',
+    artifactIds: RAG_TRIGGER_ARTIFACT_TYPES.includes(updatedArtifact.artifactType as (typeof RAG_TRIGGER_ARTIFACT_TYPES)[number])
+      ? [artifactId]
+      : [],
+  });
 
   return createSuccessResponse(context, {
     artifact: updatedArtifact,
-    message: ragReindexQueued
+    message: sideEffects.ragReindexQueued
       ? 'Artifact updated successfully. AI search index will be updated shortly.'
       : 'Artifact updated successfully',
-    ragReindexQueued,
+    ragReindexQueued: sideEffects.ragReindexQueued,
   });
 }
 

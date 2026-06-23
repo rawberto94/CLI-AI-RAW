@@ -574,9 +574,12 @@ export async function postContractUpload(
       const localPath = join(uploadDir, storedFileName);
       await writeFile(localPath, buffer);
 
-      filePath = localPath;
+      // Store the relative storage key so workers can resolve it against their own
+      // LOCAL_STORAGE_ROOT or default uploads directory, whether they run inside a
+      // container or directly on the host.
+      filePath = objectKey;
       storageProvider = 'local';
-      logger.warn(`[ContractUpload] File stored locally at ${localPath} — worker must run on same host`);
+      logger.warn(`[ContractUpload] File stored locally at ${localPath} with relative key ${objectKey} — workers should set LOCAL_STORAGE_ROOT if needed`);
     }
 
     const metadata = {

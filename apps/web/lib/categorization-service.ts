@@ -14,7 +14,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { openai } from "@/lib/openai-client";
-import { queueRAGReindex } from "@/lib/rag/reindex-helper";
+import { applyContractChangeSideEffects } from "@/lib/contracts/server/contract-change-side-effects";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -949,11 +949,12 @@ export async function categorizeContract(
       },
     });
 
-    // Queue RAG re-indexing when category is updated
-    await queueRAGReindex({
-      contractId,
+    // Propagate category change to caches, real-time consumers, webhooks, and RAG.
+    await applyContractChangeSideEffects({
       tenantId,
-      reason: 'category updated via categorization service',
+      contractId,
+      changedFields: ['contractCategoryId', 'category'],
+      source: 'categorization-service',
     });
 
     return {

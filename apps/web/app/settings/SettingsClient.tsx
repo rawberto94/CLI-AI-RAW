@@ -367,6 +367,18 @@ export default function SettingsClient({ initialTab = "general" }: SettingsClien
       href: "/settings/tags",
     },
     ...(!isDemo ? [{
+      id: "contract-groups",
+      name: "Contract Groups",
+      icon: <FolderTree className="w-4 h-4" />,
+      href: "/settings/contract-groups",
+    }] : []),
+    ...(!isDemo ? [{
+      id: "tag-rules",
+      name: "Tag Rules",
+      icon: <Zap className="w-4 h-4" />,
+      href: "/settings/tag-rules",
+    }] : []),
+    ...(!isDemo ? [{
       id: "taxonomy",
       name: "Taxonomy",
       icon: <FolderTree className="w-4 h-4" />,

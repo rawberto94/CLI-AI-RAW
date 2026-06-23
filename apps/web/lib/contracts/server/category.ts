@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
 import { auditLog, AuditAction } from '@/lib/security/audit';
+import { applyContractChangeSideEffects } from '@/lib/contracts/server/contract-change-side-effects';
 
 import type { ContractApiContext } from '@/lib/contracts/server/context';
 
@@ -217,6 +218,15 @@ export async function putContractCategory(
     tenantId,
     metadata: { action: 'category_changed', categoryId, feedbackType: feedbackType || 'manual' },
   }).catch((error) => logger.error('[Category] Audit log failed:', error));
+
+  // Trigger side effects (cache invalidation, realtime events, RAG re-indexing) for the contract
+  applyContractChangeSideEffects({
+    tenantId,
+    contractId,
+    userId: context.userId,
+    changedFields: ['contractCategoryId', 'categoryL1', 'categoryL2'],
+    source: 'api:contracts/[id]/category',
+  }).catch(() => {});
 
   return createSuccessResponse(context, {
     success: true,

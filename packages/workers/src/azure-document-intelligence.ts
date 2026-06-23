@@ -16,6 +16,7 @@
  */
 
 import pino from 'pino';
+import { getDIRegionInfo } from '@repo/utils';
 import { startSpan, endSpan, setSpanAttributes, addSpanEvent } from './observability/opentelemetry';
 import { RateLimiter } from './resilience/backpressure';
 
@@ -377,19 +378,24 @@ function getDIConfig(): DIConfig {
     );
   }
 
-  // Determine region from endpoint
-  let region = 'unknown';
-  if (endpoint.includes('switzerland')) region = 'switzerland-north';
-  else if (endpoint.includes('westeurope') || endpoint.includes('west-europe')) region = 'west-europe';
-  else if (endpoint.includes('northeurope') || endpoint.includes('north-europe')) region = 'north-europe';
-  else if (endpoint.includes('francecentral') || endpoint.includes('france-central')) region = 'france-central';
+  const regionInfo = getDIRegionInfo(endpoint);
 
-  return { endpoint: endpoint.replace(/\/$/, ''), apiKey, region };
+  return { endpoint: endpoint.replace(/\/$/, ''), apiKey, region: regionInfo.region };
 }
 
 function getDataResidency(region: string): string {
-  if (region.includes('switzerland')) return 'switzerland';
-  if (region.includes('europe') || region.includes('france')) return 'eu';
+  if (region.startsWith('switzerland')) return 'switzerland';
+  if (
+    region.endsWith('-europe') ||
+    region.startsWith('france-') ||
+    region.startsWith('germany-') ||
+    region.startsWith('sweden-') ||
+    region.startsWith('poland-') ||
+    region.startsWith('norway-') ||
+    region.startsWith('uk-')
+  ) {
+    return 'eu';
+  }
   return 'other';
 }
 
@@ -952,6 +958,16 @@ export async function analyzeInvoice(
   const doc = analysis.documents[0];
   const f = doc?.fields || {};
 
+  // DI returns currency fields as { amount, currencyCode }; unwrap the numeric amount.
+  function getCurrencyValue(field: DIField | undefined): number | undefined {
+    if (!field) return undefined;
+    const value = field.value ?? field.content;
+    if (value && typeof value === 'object' && 'amount' in value) {
+      return typeof value.amount === 'number' ? value.amount : undefined;
+    }
+    return typeof value === 'number' ? value : undefined;
+  }
+
   // Parse line items
   const lineItems: InvoiceLineItem[] = [];
   const itemsField = f['Items'];
@@ -962,8 +978,8 @@ export async function analyzeInvoice(
         description: iv?.Description?.value || iv?.Description?.content,
         quantity: iv?.Quantity?.value,
         unit: iv?.Unit?.value || iv?.Unit?.content,
-        unitPrice: iv?.UnitPrice?.value,
-        amount: iv?.Amount?.value,
+        unitPrice: getCurrencyValue(iv?.UnitPrice),
+        amount: getCurrencyValue(iv?.Amount),
         tax: iv?.Tax?.value,
         productCode: iv?.ProductCode?.value || iv?.ProductCode?.content,
       });
@@ -979,12 +995,20 @@ export async function analyzeInvoice(
     invoiceDate: f['InvoiceDate']?.value,
     dueDate: f['DueDate']?.value,
     purchaseOrder: f['PurchaseOrder']?.value || f['PurchaseOrder']?.content,
-    subtotal: f['SubTotal']?.value,
-    totalTax: f['TotalTax']?.value,
-    invoiceTotal: f['InvoiceTotal']?.value,
-    amountDue: f['AmountDue']?.value,
-    currency: f['CurrencyCode']?.value || f['CurrencyCode']?.content,
-    paymentTerms: f['PaymentTerm']?.value || f['PaymentTerm']?.content,
+    subtotal: getCurrencyValue(f['SubTotal']),
+    totalTax: getCurrencyValue(f['TotalTax']),
+    invoiceTotal: getCurrencyValue(f['InvoiceTotal']),
+    amountDue: getCurrencyValue(f['AmountDue']),
+    currency:
+      f['CurrencyCode']?.value ||
+      f['CurrencyCode']?.content ||
+      (f['InvoiceTotal']?.value as { currencyCode?: string } | undefined)?.currencyCode ||
+      (f['AmountDue']?.value as { currencyCode?: string } | undefined)?.currencyCode,
+    paymentTerms:
+      f['PaymentTerms']?.value ||
+      f['PaymentTerms']?.content ||
+      f['PaymentTerm']?.value ||
+      f['PaymentTerm']?.content,
     lineItems,
     confidence: doc?.confidence ?? 0.8,
     rawFields: f,

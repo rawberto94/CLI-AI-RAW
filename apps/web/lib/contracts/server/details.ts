@@ -6,8 +6,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { createErrorResponse, createSuccessResponse, handleApiError } from '@/lib/api-middleware';
 import { checkETagMatch, CacheDuration } from '@/lib/api-cache-headers';
-import { semanticCache } from '@/lib/ai/semantic-cache.service';
-import { deleteCachedByPattern } from '@/lib/cache';
 import { apiCache, contractCache, etagHeaders } from '@/lib/cache/etag-cache';
 import { logger } from '@/lib/logger';
 import { prisma } from '@/lib/prisma';
@@ -16,6 +14,8 @@ import { auditLog, AuditAction } from '@/lib/security/audit';
 import { safeDeleteContract } from '@/lib/services/contract-deletion.service';
 import { getErrorMessage, type JsonRecord } from '@/lib/types/common';
 import { contractUpdateSchema } from '@/lib/validation/contract.validation';
+import { applyContractChangeSideEffects } from '@/lib/contracts/server/contract-change-side-effects';
+import type { EnterpriseMetadata } from '@/lib/contracts/server/metadata';
 
 import type { ContractApiContext } from '@/lib/contracts/server/context';
 
@@ -101,12 +101,6 @@ interface FinancialDataInput {
   benchmarkingResults?: BenchmarkResult[];
   insights?: unknown;
   [key: string]: unknown;
-}
-
-function invalidateContractCaches(tenantId: string, contractId: string) {
-  contractCache.invalidate(`contract:${tenantId}:${contractId}`);
-  contractCache.invalidate('contracts:', true);
-  apiCache.invalidate('contracts:', true);
 }
 
 function toJsonSafeContract(contract: Record<string, unknown>) {
@@ -1041,6 +1035,27 @@ export async function putContractDetails(
       }
     }
 
+    // Keep the enterprise metadata (aiMetadata) in sync with scalar edits so the
+    // metadata endpoint does not return stale data.
+    const aiMetadataUpdates: Record<string, unknown> = {};
+    const existingAiMetadata = (existingContract.aiMetadata as Record<string, unknown>) || {};
+    const metadataDate = (d: Date | undefined): string | null =>
+      d ? d.toISOString().split('T')[0] : null;
+
+    if (updates.contractTitle !== undefined) aiMetadataUpdates.document_title = updates.contractTitle || null;
+    if (updates.description !== undefined) aiMetadataUpdates.contract_short_description = updates.description || null;
+    if (updates.totalValue !== undefined) aiMetadataUpdates.tcv_amount = updates.totalValue ?? null;
+    if (updates.currency !== undefined) aiMetadataUpdates.currency = updates.currency || null;
+    if (updates.effectiveDate !== undefined) aiMetadataUpdates.start_date = metadataDate(updates.effectiveDate);
+    if (updates.startDate !== undefined) aiMetadataUpdates.start_date = metadataDate(updates.startDate);
+    if (updates.expirationDate !== undefined) aiMetadataUpdates.end_date = metadataDate(updates.expirationDate);
+    if (updates.endDate !== undefined) aiMetadataUpdates.end_date = metadataDate(updates.endDate);
+    if (updates.tags !== undefined) aiMetadataUpdates.tags = updates.tags;
+
+    if (Object.keys(aiMetadataUpdates).length > 0) {
+      prismaUpdates.aiMetadata = { ...existingAiMetadata, ...aiMetadataUpdates } as any;
+    }
+
     const updatedContract = await prisma.contract.update({
       where: { id: contractId },
       data: {
@@ -1049,11 +1064,29 @@ export async function putContractDetails(
       },
     });
 
-    invalidateContractCaches(tenantId, contractId);
-    await deleteCachedByPattern('contracts:list:*').catch(() => {});
-    semanticCache.invalidate(tenantId, contractId).catch((error) => {
-      logger.error('[ContractUpdate] Semantic cache invalidation error:', error);
-    });
+    // Sync ContractMetadata.tags when tags are edited through the legacy endpoint.
+    if (updates.tags !== undefined) {
+      try {
+        await prisma.contractMetadata.upsert({
+          where: { contractId },
+          create: {
+            contractId,
+            tenantId,
+            tags: updates.tags || [],
+            updatedBy: context.userId ?? 'system',
+          },
+          update: {
+            tags: updates.tags || [],
+            updatedBy: context.userId ?? 'system',
+            lastUpdated: new Date(),
+          },
+        });
+      } catch (error) {
+        logger.warn('Failed to sync ContractMetadata.tags from details update', { error: (error as Error).message, contractId });
+      }
+    }
+
+    const changedFields = Object.keys(prismaUpdates).filter((k) => k !== 'updatedAt');
 
     await auditLog({
       action: AuditAction.CONTRACT_UPDATED,
@@ -1064,32 +1097,13 @@ export async function putContractDetails(
       metadata: { changes: prismaUpdates },
     }).catch((error) => logger.error('[ContractUpdate] Audit log failed:', error));
 
-    // Fire-and-forget: emit contract.updated to webhooks + integration event log.
-    // Strip metadata blob (often huge) from the changedFields summary; downstream
-    // consumers re-read the contract via /api/v1 if they need the full state.
-    {
-      const changedFields = Object.keys(prismaUpdates).filter((k) => k !== 'updatedAt');
-      const payload = {
-        contractId,
-        changedFields,
-        updatedBy: context.userId ?? null,
-      };
-      import('@/lib/webhook-triggers')
-        .then(({ triggerContractUpdated }) =>
-          triggerContractUpdated(tenantId, contractId, { changedFields, updatedBy: context.userId ?? null }),
-        )
-        .catch(() => {});
-      import('@/lib/events/integration-events')
-        .then(({ recordIntegrationEvent }) =>
-          recordIntegrationEvent({
-            tenantId,
-            eventType: 'contract.updated',
-            resourceId: contractId,
-            payload,
-          }),
-        )
-        .catch(() => {});
-    }
+    await applyContractChangeSideEffects({
+      tenantId,
+      contractId,
+      userId: context.userId,
+      changedFields,
+      source: 'api:contracts/[id]',
+    });
 
     const aiFields = [
       'contractType',
@@ -1170,11 +1184,12 @@ export async function deleteContractDetails(
       return createErrorResponse(context, 'BAD_REQUEST', result.error || 'Delete failed', 400);
     }
 
-    invalidateContractCaches(tenantId, contractId);
-    await deleteCachedByPattern('contracts:list:*').catch(() => {});
-    await deleteCachedByPattern('contracts:stats').catch(() => {});
-    semanticCache.invalidate(tenantId, contractId).catch((error) => {
-      logger.error('[ContractDelete] Semantic cache invalidation error:', error);
+    await applyContractChangeSideEffects({
+      tenantId,
+      contractId,
+      userId: context.userId,
+      changedFields: ['deleted'],
+      source: 'api:contracts/[id]',
     });
 
     try {

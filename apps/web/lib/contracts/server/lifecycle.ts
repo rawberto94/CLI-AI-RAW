@@ -10,7 +10,7 @@ import {
 } from '@/lib/contract-helpers';
 import { logger } from '@/lib/logger';
 import { prisma } from '@/lib/prisma';
-import { queueRAGReindex } from '@/lib/rag/reindex-helper';
+import { applyContractChangeSideEffects } from '@/lib/contracts/server/contract-change-side-effects';
 
 import type { ContractApiContext } from '@/lib/contracts/server/context';
 
@@ -202,15 +202,13 @@ export async function postContractLifecycle(
   const lifecycle = resolveContractLifecycle(updatedContract);
   const needsApproval = requiresApprovalWorkflow(updatedContract);
 
-  try {
-    await queueRAGReindex({
-      contractId,
-      tenantId,
-      reason: 'lifecycle/status updated',
-    });
-  } catch {
-    // Non-critical background work.
-  }
+  await applyContractChangeSideEffects({
+    tenantId,
+    contractId,
+    userId: context.userId,
+    changedFields: ['status'],
+    source: 'api:contracts/[id]/lifecycle',
+  });
 
   return createSuccessResponse(context, {
     success: true,
@@ -561,6 +559,19 @@ export async function patchContractStatus(
       notifyStakeholders,
     });
   }
+
+  // Trigger side effects (cache invalidation, realtime events, RAG re-indexing) for the contract
+  applyContractChangeSideEffects({
+    tenantId: context.tenantId,
+    contractId,
+    userId: context.userId,
+    changedFields: ['status'],
+    source: 'api:contracts/[id]/status',
+    audit: {
+      action: 'CONTRACT_UPDATED',
+      changes: { status: normalizedStatus },
+    },
+  }).catch(() => {});
 
   return createSuccessResponse(context, {
     contractId: updated.id,

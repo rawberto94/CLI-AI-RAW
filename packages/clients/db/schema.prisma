@@ -97,6 +97,77 @@ model TenantSettings {
   @@index([tenantId])
 }
 
+// First-class tenant tag registry (replaces tenantSettings.customFields.predefinedTags over time)
+model TenantTag {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  slug        String
+  color       String   @default("#8B5CF6")
+  description String?
+  category    String?
+  isSystem    Boolean  @default(false)
+  usageCount  Int      @default(0)
+  parentTagId String?
+  relatedTags String[] @default([])
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([tenantId, category])
+  @@index([tenantId, usageCount(sort: Desc)])
+  @@index([tenantId, parentTagId])
+  @@map("tenant_tags")
+}
+
+// Named static/smart contract collections
+model ContractGroup {
+  id             String   @id @default(cuid())
+  tenantId       String
+  name           String
+  slug           String
+  description    String?
+  color          String?
+  groupType      String   @default("static") // static | smart
+  contractIds    String[] @default([])
+  query          Json?    @default("{}")
+  requireAllTags String[] @default([])
+  requireAnyTags String[] @default([])
+  contractCount  Int      @default(0)
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([tenantId, groupType])
+  @@index([tenantId, updatedAt])
+  @@map("contract_groups")
+}
+
+// Tag automation rules
+model TagRule {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  trigger     String   @default("contract_updated")
+  condition   Json     @default("{}")
+  action      Json     @default("{}")
+  enabled     Boolean  @default(true)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([tenantId, enabled])
+  @@index([tenantId, trigger])
+  @@map("tag_rules")
+}
+
 // IP Allowlist for tenant security
 model IpAllowlist {
   id          String    @id @default(cuid())
@@ -482,6 +553,9 @@ model Contract {
   documentClassification        String?   @default("contract") // contract, purchase_order, invoice, quote, proposal, etc.
   documentClassificationConf    Float? // Classification confidence 0-1
   documentClassificationWarning String? // Warning message if not a proper contract
+
+  // Optimistic Locking for Metadata
+  metadataVersion               Int       @default(1) // Version number for optimistic locking on metadata updates
 
   artifacts           Artifact[]
   clauses             Clause[]

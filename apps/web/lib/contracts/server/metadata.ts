@@ -4,16 +4,19 @@ import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
 import { createOpenAIClient, getOpenAIApiKey, hasAIClientConfig } from '@/lib/openai-client';
-import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { getContractQueue } from '@repo/utils/queue/contract-queue';
-import { semanticCache } from '@/lib/ai/semantic-cache.service';
-import { deleteCachedByPattern } from '@/lib/cache';
-import { apiCache, contractCache } from '@/lib/cache/etag-cache';
 import { checkContractWritePermission } from '@/lib/security/contract-acl';
+import { auditLog, AuditAction } from '@/lib/security/audit';
 import { CONTRACT_METADATA_FIELDS, MetadataFieldDefinition } from '@/lib/types/contract-metadata-schema';
 import { prisma } from '@/lib/prisma';
 import { createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
+import { applyContractChangeSideEffects } from './contract-change-side-effects';
+import {
+  getTenantTagNameSet,
+  normalizeTagName,
+  validateOrRegisterTenantTags,
+} from './tag-registry';
 
 import type { ContractApiContext } from '@/lib/contracts/server/context';
 
@@ -87,7 +90,7 @@ const externalPartySchema = z.object({
   registeredSeat: z.string().optional(),
   contactName: z.string().optional(),
   contactEmail: z.string().email().or(z.literal('')).optional(),
-}).passthrough();
+});
 
 const metadataPutSchema = z.object({
   document_number: z.string().optional(),
@@ -122,24 +125,7 @@ const metadataPutSchema = z.object({
   tags: z.array(z.string()).optional(),
   field_confidence: z.record(z.string(), z.unknown()).optional(),
   contractCategoryId: z.string().optional(),
-}).passthrough();
-
-const RAG_TRIGGER_FIELDS = [
-  'document_title',
-  'contract_short_description',
-  'external_parties',
-  'tcv_amount',
-  'start_date',
-  'end_date',
-  'tags',
-  'jurisdiction',
-] as const;
-
-function invalidateContractCaches(tenantId: string, contractId: string) {
-  contractCache.invalidate(`contract:${tenantId}:${contractId}`);
-  contractCache.invalidate('contracts:', true);
-  apiCache.invalidate('contracts:', true);
-}
+});
 
 function toNullableMetadataDate(value: string | null | undefined): Date | null {
   if (!value) return null;
@@ -165,7 +151,7 @@ function applyExpirationState(updates: Record<string, any>, expirationDate: Date
   }
 }
 
-interface EnterpriseMetadata {
+export interface EnterpriseMetadata {
   document_number?: string;
   document_title?: string;
   document_classification?: 'contract' | 'purchase_order' | 'invoice' | 'quote' | 'proposal' | 'work_order' | 'letter_of_intent' | 'memorandum' | 'amendment' | 'addendum' | 'unknown';
@@ -245,8 +231,32 @@ export async function postBulkContractMetadataUpdate(
     return createErrorResponse(context, 'NOT_FOUND', 'One or more contracts were not found', 404);
   }
 
+  // Enforce EDIT ACL per contract in the batch.
+  const allowedIds: string[] = [];
+  for (const contract of ownedContracts) {
+    const aclDecision = await checkContractWritePermission({
+      contractId: contract.id,
+      tenantId: context.tenantId,
+      userId: context.userId,
+      userRole: context.userRole,
+      required: 'EDIT',
+    });
+    if (aclDecision.allowed) {
+      allowedIds.push(contract.id);
+    }
+  }
+
+  if (allowedIds.length === 0) {
+    return createErrorResponse(
+      context,
+      'FORBIDDEN',
+      'You do not have permission to edit metadata on these contracts',
+      403,
+    );
+  }
+
   const result = await metadataEditorService.bulkUpdateMetadata({
-    contractIds,
+    contractIds: allowedIds,
     updates: {
       ...updates,
       tenantId: context.tenantId,
@@ -254,42 +264,28 @@ export async function postBulkContractMetadataUpdate(
     userId: context.userId,
   });
 
-  // Fire-and-forget: emit contract.updated for each successfully updated contract.
-  if (result.successful && Array.isArray(result.successful) && context.tenantId) {
-    const tenantId = context.tenantId;
-    const updatedBy = context.userId ?? null;
-    const changedFields = Object.keys(updates ?? {});
-    const successfulIds: string[] = result.successful
-      .map((s: unknown) => (typeof s === 'string' ? s : (s as { id?: string })?.id))
-      .filter((id): id is string => typeof id === 'string' && id.length > 0);
-    if (successfulIds.length > 0) {
-      import('@/lib/webhook-triggers')
-        .then(({ triggerContractUpdated }) => {
-          for (const id of successfulIds) {
-            triggerContractUpdated(tenantId, id, { changedFields, updatedBy, bulk: true }).catch(() => {});
-          }
-        })
-        .catch(() => {});
-      import('@/lib/events/integration-events')
-        .then(({ recordIntegrationEvent }) => {
-          for (const id of successfulIds) {
-            recordIntegrationEvent({
-              tenantId,
-              eventType: 'contract.updated',
-              resourceId: id,
-              payload: { contractId: id, changedFields, updatedBy, bulk: true },
-            }).catch(() => {});
-          }
-        })
-        .catch(() => {});
-    }
+  // Propagate side effects for every successfully updated contract.
+  const changedFields = Object.keys(updates ?? {});
+  const successfulIds: string[] = (result.successful || [])
+    .map((s: unknown) => (typeof s === 'string' ? s : (s as { id?: string })?.id))
+    .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+  for (const id of successfulIds) {
+    applyContractChangeSideEffects({
+      tenantId: context.tenantId,
+      contractId: id,
+      userId: context.userId,
+      changedFields,
+      source: 'api:contracts/metadata/bulk-update',
+    }).catch(() => {});
   }
 
   return createSuccessResponse(context, {
     message: 'Bulk metadata update completed',
     successful: result.successful,
     failed: result.failed,
-    totalProcessed: contractIds.length,
+    forbiddenCount: contractIds.length - allowedIds.length,
+    totalProcessed: allowedIds.length,
   });
 }
 
@@ -303,22 +299,27 @@ export async function getContractTagSuggestions(
   }
 
   const normalizedQuery = query.toLowerCase().replace(/\s+/g, '-');
-  const existingTags = await prisma.contract.findMany({
-    where: {
-      tenantId: context.tenantId,
-    },
-    select: {
-      tags: true,
-    },
-    take: 100,
-  }).catch(() => []);
+  const [metadataTags, predefinedTagSet] = await Promise.all([
+    prisma.contractMetadata.findMany({
+      where: { tenantId: context.tenantId },
+      select: { tags: true },
+      take: 500,
+    }).catch(() => []),
+    getTenantTagNameSet(context.tenantId),
+  ]);
 
   const tagCounts = new Map<string, number>();
-  for (const contract of existingTags) {
-    for (const tag of (contract.tags as string[]) || []) {
+  for (const metadataRecord of metadataTags) {
+    for (const tag of metadataRecord.tags || []) {
       if (tag.toLowerCase().includes(normalizedQuery)) {
         tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
       }
+    }
+  }
+
+  for (const predefinedTag of predefinedTagSet) {
+    if (predefinedTag.includes(normalizedQuery)) {
+      tagCounts.set(predefinedTag, Math.max(tagCounts.get(predefinedTag) || 0, 1));
     }
   }
 
@@ -345,6 +346,160 @@ export async function getContractTagSuggestions(
   return createSuccessResponse(context, {
     suggestions,
     query: normalizedQuery,
+  });
+}
+
+function appendRecommendation(
+  target: Map<string, { score: number; reasons: string[] }>,
+  tag: string,
+  score: number,
+  reason: string,
+) {
+  const normalized = normalizeTagName(tag);
+  if (!normalized) return;
+
+  const current = target.get(normalized);
+  if (!current) {
+    target.set(normalized, { score, reasons: [reason] });
+    return;
+  }
+
+  current.score += score;
+  if (!current.reasons.includes(reason)) {
+    current.reasons.push(reason);
+  }
+}
+
+export async function getContractTagRecommendations(
+  context: ContractApiContext,
+  contractId: string,
+  limit = 8,
+) {
+  const contract = await prisma.contract.findFirst({
+    where: {
+      id: contractId,
+      tenantId: context.tenantId,
+    },
+    select: {
+      id: true,
+      status: true,
+      contractType: true,
+      categoryL1: true,
+      categoryL2: true,
+      clientName: true,
+      supplierName: true,
+      totalValue: true,
+      expirationDate: true,
+      signatureStatus: true,
+      aiMetadata: true,
+      metadata: {
+        select: {
+          tags: true,
+        },
+      },
+    },
+  });
+
+  if (!contract) {
+    return createErrorResponse(context, 'NOT_FOUND', 'Contract not found', 404);
+  }
+
+  const existingTagSet = new Set<string>((contract.metadata?.tags || []).map((tag) => normalizeTagName(tag)).filter(Boolean));
+  const recommendations = new Map<string, { score: number; reasons: string[] }>();
+
+  if (contract.contractType) {
+    appendRecommendation(recommendations, contract.contractType, 18, 'contract type');
+  }
+  if (contract.status) {
+    appendRecommendation(recommendations, contract.status, 12, 'status');
+  }
+  if (contract.categoryL1) {
+    appendRecommendation(recommendations, contract.categoryL1, 14, 'category');
+  }
+  if (contract.categoryL2) {
+    appendRecommendation(recommendations, contract.categoryL2, 10, 'subcategory');
+  }
+
+  const aiMetadata = (contract.aiMetadata as EnterpriseMetadata) || {};
+  if (aiMetadata.jurisdiction) {
+    appendRecommendation(recommendations, `jurisdiction-${aiMetadata.jurisdiction}`, 8, 'jurisdiction');
+  }
+  if (aiMetadata.payment_type) {
+    appendRecommendation(recommendations, aiMetadata.payment_type, 6, 'payment type');
+  }
+  if (aiMetadata.billing_frequency_type) {
+    appendRecommendation(recommendations, aiMetadata.billing_frequency_type, 6, 'billing frequency');
+  }
+
+  if (contract.signatureStatus === 'unsigned' || contract.signatureStatus === 'partially_signed') {
+    appendRecommendation(recommendations, 'pending-signature', 12, 'signature status');
+  }
+
+  if (contract.expirationDate) {
+    const daysUntilExpiry = Math.ceil((contract.expirationDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (daysUntilExpiry <= 30) {
+      appendRecommendation(recommendations, 'expiring-soon', 20, 'expiration timeline');
+    } else if (daysUntilExpiry <= 90) {
+      appendRecommendation(recommendations, 'renewal-window', 12, 'expiration timeline');
+    }
+  }
+
+  const totalValue = contract.totalValue ? Number(contract.totalValue) : 0;
+  if (totalValue >= 1_000_000) {
+    appendRecommendation(recommendations, 'high-value', 10, 'contract value');
+  } else if (totalValue > 0 && totalValue <= 50_000) {
+    appendRecommendation(recommendations, 'low-value', 4, 'contract value');
+  }
+
+  const coOccurrenceFilters: Prisma.ContractMetadataWhereInput[] = [];
+  if (contract.contractType) {
+    coOccurrenceFilters.push({ contract: { contractType: contract.contractType } });
+  }
+  if (contract.categoryL1) {
+    coOccurrenceFilters.push({ contract: { categoryL1: contract.categoryL1 } });
+  }
+
+  const metadataTags = await prisma.contractMetadata.findMany({
+    where: {
+      tenantId: context.tenantId,
+      contractId: { not: contractId },
+      ...(coOccurrenceFilters.length > 0 ? { OR: coOccurrenceFilters } : {}),
+    },
+    select: { tags: true },
+    take: 200,
+  }).catch(() => []);
+
+  const coOccurrenceScores = new Map<string, number>();
+  for (const row of metadataTags) {
+    for (const tag of row.tags || []) {
+      const normalized = normalizeTagName(tag);
+      if (!normalized) continue;
+      coOccurrenceScores.set(normalized, (coOccurrenceScores.get(normalized) || 0) + 1);
+    }
+  }
+
+  for (const [tag, score] of coOccurrenceScores.entries()) {
+    if (score < 2) continue;
+    appendRecommendation(recommendations, tag, Math.min(score, 8), 'co-occurrence');
+  }
+
+  const tenantTagNames = await getTenantTagNameSet(context.tenantId);
+
+  const result = Array.from(recommendations.entries())
+    .filter(([tag]) => !existingTagSet.has(tag))
+    .map(([tag, value]) => ({
+      name: tag,
+      score: value.score + (tenantTagNames.has(tag) ? 3 : 0),
+      reasons: value.reasons,
+      source: tenantTagNames.has(tag) ? 'tenant-registry' : 'inference',
+    }))
+    .sort((first, second) => second.score - first.score)
+    .slice(0, Math.max(1, Math.min(20, limit)));
+
+  return createSuccessResponse(context, {
+    contractId,
+    recommendations: result,
+    existingTags: Array.from(existingTagSet),
   });
 }
 
@@ -399,18 +554,15 @@ export async function getContractMetadata(
     return createErrorResponse(context, 'NOT_FOUND', 'Contract not found', 404);
   }
 
+  const metadataRecord = await prisma.contractMetadata.findUnique({
+    where: { contractId },
+    select: { customFields: true, tags: true },
+  }).catch(() => null);
+
   let fieldValidations: Record<string, { status: string; validatedAt?: string }> = {};
-  try {
-    const contractMetadata = await prisma.contractMetadata.findUnique({
-      where: { contractId },
-      select: { customFields: true },
-    });
-    if (contractMetadata?.customFields) {
-      const customFields = contractMetadata.customFields as Record<string, any>;
-      fieldValidations = customFields._fieldValidations || {};
-    }
-  } catch {
-    // Optional enrichment.
+  if (metadataRecord?.customFields) {
+    const customFields = metadataRecord.customFields as Record<string, any>;
+    fieldValidations = customFields._fieldValidations || {};
   }
 
   const aiMetadata = (contract.aiMetadata as EnterpriseMetadata) || {};
@@ -527,7 +679,7 @@ export async function getContractMetadata(
     created_by_user_id: aiMetadata.created_by_user_id || contract.uploadedBy || '',
     contract_owner_user_ids: aiMetadata.contract_owner_user_ids || [],
     access_group_ids: aiMetadata.access_group_ids || [],
-    tags: aiMetadata.tags || (Array.isArray(contract.tags) ? contract.tags as string[] : []),
+    tags: metadataRecord?.tags || aiMetadata.tags || (Array.isArray(contract.tags) ? contract.tags as string[] : []),
     field_confidence: aiMetadata.field_confidence || {},
     last_ai_extraction: aiMetadata.last_ai_extraction || '',
   };
@@ -635,6 +787,7 @@ export async function putContractMetadata(
 ) {
   const body = await request.json();
   const rawMetadata = body.metadata || body;
+  const metadataVersionFromRequest = body.metadataVersion; // Client sends current version for optimistic locking
   const parsed = metadataPutSchema.safeParse(rawMetadata);
 
   if (!parsed.success) {
@@ -648,13 +801,29 @@ export async function putContractMetadata(
   }
 
   const metadata: Record<string, any> = { ...parsed.data };
+  if (metadata.tags !== undefined) {
+    metadata.tags = await validateOrRegisterTenantTags(context.tenantId, metadata.tags, {
+      createdBy: context.userId,
+    });
+  }
   const existingContract = await prisma.contract.findFirst({
     where: { id: contractId, tenantId: context.tenantId },
-    select: { aiMetadata: true, metadata: true, signatureStatus: true, signatureRequiredFlag: true },
+    select: { aiMetadata: true, metadata: true, signatureStatus: true, signatureRequiredFlag: true, metadataVersion: true },
   });
 
   if (!existingContract) {
     return createErrorResponse(context, 'NOT_FOUND', 'Contract not found', 404);
+  }
+
+  // Optimistic locking: check if version matches
+  if (metadataVersionFromRequest !== undefined && metadataVersionFromRequest !== existingContract.metadataVersion) {
+    return createErrorResponse(
+      context,
+      'CONFLICT',
+      'Metadata has been modified by another user. Please refresh and try again.',
+      409,
+      { currentVersion: existingContract.metadataVersion, providedVersion: metadataVersionFromRequest },
+    );
   }
 
   const aclDecision = await checkContractWritePermission({
@@ -772,65 +941,67 @@ export async function putContractMetadata(
     if (supplier) legacyUpdates.supplierName = supplier.legalName;
   }
 
+  if (metadata.contractCategoryId !== undefined) {
+    legacyUpdates.contractCategoryId = metadata.contractCategoryId || null;
+  }
+
   const updatedContract = await prisma.contract.update({
     where: { id: contractId },
     data: {
       aiMetadata: updatedAiMetadata as any,
       ...legacyUpdates,
+      metadataVersion: (existingContract.metadataVersion || 1) + 1, // Increment version on update
       updatedAt: new Date(),
     },
   });
 
-  invalidateContractCaches(context.tenantId, contractId);
-  await deleteCachedByPattern('contracts:list:*').catch(() => {});
-
-  semanticCache.invalidate(context.tenantId, contractId).catch((error) => {
-    logger.error('[MetadataUpdate] Semantic cache invalidation error:', error);
-  });
-
-  await publishRealtimeEvent({
-    event: 'contract:updated',
-    data: {
-      tenantId: context.tenantId,
-      contractId: updatedContract.id,
-    },
-    source: 'api:contracts/[id]/metadata',
-  });
-
-  const updatedFields = Object.keys(metadata);
-  const shouldReindexRag = updatedFields.some((field) =>
-    RAG_TRIGGER_FIELDS.includes(field as typeof RAG_TRIGGER_FIELDS[number]),
-  );
-
-  let ragReindexQueued = false;
-  if (shouldReindexRag) {
+  // Keep ContractMetadata.tags in sync with the scalar tags array.
+  if (metadata.tags !== undefined) {
     try {
-      const contractQueue = getContractQueue();
-      await contractQueue.queueRAGIndexing(
-        {
+      await prisma.contractMetadata.upsert({
+        where: { contractId },
+        create: {
           contractId,
           tenantId: context.tenantId,
-          artifactIds: [],
+          tags: metadata.tags || [],
+          updatedBy: context.userId ?? 'system',
         },
-        {
-          priority: 15,
-          delay: 2000,
+        update: {
+          tags: metadata.tags || [],
+          updatedBy: context.userId ?? 'system',
+          lastUpdated: new Date(),
         },
-      );
-      ragReindexQueued = true;
-    } catch {
-      // Non-fatal queue failure.
+      });
+    } catch (error) {
+      logger.warn('Failed to sync ContractMetadata.tags', { error: (error as Error).message, contractId });
     }
   }
+
+  const updatedFields = Object.keys(metadata).filter((field) =>
+    Object.keys(metadataPutSchema.shape).includes(field),
+  );
+
+  const sideEffects = await applyContractChangeSideEffects({
+    tenantId: context.tenantId,
+    contractId: updatedContract.id,
+    userId: context.userId,
+    changedFields: updatedFields,
+    source: 'api:contracts/[id]/metadata',
+    audit: {
+      action: AuditAction.CONTRACT_UPDATED,
+      changes: legacyUpdates,
+    },
+  });
 
   return createSuccessResponse(context, {
     success: true,
     data: {
       id: updatedContract.id,
       enterpriseMetadata: updatedAiMetadata,
-      ragReindexQueued,
+      metadataVersion: updatedContract.metadataVersion,
+      ragReindexQueued: sideEffects.ragReindexQueued,
     },
-    message: ragReindexQueued
+    message: sideEffects.ragReindexQueued
       ? 'Contract metadata updated successfully. AI search index will be updated shortly.'
       : 'Contract metadata updated successfully',
   });
@@ -849,21 +1020,75 @@ export async function postContractTags(
     return createErrorResponse(context, 'BAD_REQUEST', 'tags array is required', 400);
   }
 
+  const normalizedTags = await validateOrRegisterTenantTags(context.tenantId, tags, {
+    createdBy: context.userId,
+  });
+  if (normalizedTags.length === 0) {
+    return createErrorResponse(context, 'BAD_REQUEST', 'tags array must include at least one valid tag', 400);
+  }
+
   const contract = await findTenantContract(contractId, context.tenantId);
   if (!contract) {
     return createErrorResponse(context, 'NOT_FOUND', 'Contract not found', 404);
   }
 
+  const aclDecision = await checkContractWritePermission({
+    contractId,
+    tenantId: context.tenantId,
+    userId: context.userId,
+    userRole: context.userRole,
+    required: 'EDIT',
+  });
+  if (!aclDecision.allowed) {
+    return createErrorResponse(
+      context,
+      'FORBIDDEN',
+      'You do not have permission to edit tags on this contract',
+      403,
+    );
+  }
+
   await metadataEditorService.addTags(
     contractId,
     context.tenantId,
-    tags,
+    normalizedTags,
     context.userId,
   );
 
+  // Keep the legacy Contract.tags array in sync with ContractMetadata.tags.
+  const metadataRecord = await prisma.contractMetadata.findUnique({
+    where: { contractId },
+    select: { tags: true },
+  });
+  const contractRecord = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: { aiMetadata: true },
+  });
+  const currentAiMetadata = (contractRecord?.aiMetadata as Record<string, unknown>) || {};
+
+  await prisma.contract.update({
+    where: { id: contractId },
+    data: {
+      tags: metadataRecord?.tags || [],
+      aiMetadata: {
+        ...currentAiMetadata,
+        tags: metadataRecord?.tags || [],
+      } as Prisma.InputJsonValue,
+      updatedAt: new Date(),
+    },
+  });
+
+  await applyContractChangeSideEffects({
+    tenantId: context.tenantId,
+    contractId,
+    userId: context.userId,
+    changedFields: ['tags'],
+    source: 'api:contracts/[id]/metadata/tags',
+  });
+
   return createSuccessResponse(context, {
     message: 'Tags added successfully',
-    tags,
+    tags: normalizedTags,
   });
 }
 
@@ -878,12 +1103,59 @@ export async function deleteContractTag(
     return createErrorResponse(context, 'NOT_FOUND', 'Contract not found', 404);
   }
 
+  const aclDecision = await checkContractWritePermission({
+    contractId,
+    tenantId: context.tenantId,
+    userId: context.userId,
+    userRole: context.userRole,
+    required: 'EDIT',
+  });
+  if (!aclDecision.allowed) {
+    return createErrorResponse(
+      context,
+      'FORBIDDEN',
+      'You do not have permission to edit tags on this contract',
+      403,
+    );
+  }
+
+  const tagName = normalizeTagName(decodeURIComponent(rawTagName));
   await metadataEditorService.removeTag(
     contractId,
     context.tenantId,
-    decodeURIComponent(rawTagName),
+    tagName,
     context.userId,
   );
+
+  const metadataRecord = await prisma.contractMetadata.findUnique({
+    where: { contractId },
+    select: { tags: true },
+  });
+  const contractRecord = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: { aiMetadata: true },
+  });
+  const currentAiMetadata = (contractRecord?.aiMetadata as Record<string, unknown>) || {};
+
+  await prisma.contract.update({
+    where: { id: contractId },
+    data: {
+      tags: metadataRecord?.tags || [],
+      aiMetadata: {
+        ...currentAiMetadata,
+        tags: metadataRecord?.tags || [],
+      } as Prisma.InputJsonValue,
+      updatedAt: new Date(),
+    },
+  });
+
+  await applyContractChangeSideEffects({
+    tenantId: context.tenantId,
+    contractId,
+    userId: context.userId,
+    changedFields: ['tags'],
+    source: 'api:contracts/[id]/metadata/tags',
+  });
 
   return createSuccessResponse(context, {
     message: 'Tag removed successfully',
@@ -927,6 +1199,105 @@ export async function postContractMetadataValidation(
   });
 }
 
+async function mirrorValidatedFieldToContract(
+  contractId: string,
+  fieldKey: string,
+  newValue: unknown,
+): Promise<string[]> {
+  const aiUpdates: Record<string, unknown> = {};
+  const legacyUpdates: Record<string, unknown> = {};
+
+  switch (fieldKey) {
+    case 'document_title':
+      aiUpdates.document_title = newValue;
+      legacyUpdates.contractTitle = newValue;
+      break;
+    case 'contract_short_description':
+      aiUpdates.contract_short_description = newValue;
+      legacyUpdates.description = newValue;
+      break;
+    case 'tcv_amount':
+      aiUpdates.tcv_amount = newValue;
+      legacyUpdates.totalValue = newValue;
+      break;
+    case 'currency':
+      aiUpdates.currency = newValue;
+      legacyUpdates.currency = newValue;
+      break;
+    case 'start_date':
+      aiUpdates.start_date = newValue;
+      legacyUpdates.effectiveDate = toNullableMetadataDate(String(newValue));
+      legacyUpdates.startDate = toNullableMetadataDate(String(newValue));
+      break;
+    case 'end_date':
+      aiUpdates.end_date = newValue;
+      legacyUpdates.expirationDate = toNullableMetadataDate(String(newValue));
+      legacyUpdates.endDate = toNullableMetadataDate(String(newValue));
+      break;
+    case 'termination_date':
+      aiUpdates.termination_date = newValue;
+      break;
+    case 'jurisdiction':
+      aiUpdates.jurisdiction = newValue;
+      legacyUpdates.jurisdiction = newValue;
+      break;
+    case 'tags':
+      aiUpdates.tags = Array.isArray(newValue) ? newValue : [];
+      legacyUpdates.tags = Array.isArray(newValue) ? newValue : [];
+      break;
+    case 'signature_date':
+      aiUpdates.signature_date = newValue;
+      legacyUpdates.signatureDate = toNullableMetadataDate(String(newValue));
+      break;
+    case 'signature_status':
+      aiUpdates.signature_status = newValue;
+      legacyUpdates.signatureStatus = newValue;
+      break;
+    case 'notice_period_days':
+      aiUpdates.notice_period_days = newValue;
+      legacyUpdates.noticePeriodDays = newValue;
+      break;
+    case 'contract_language':
+      aiUpdates.contract_language = newValue;
+      break;
+    case 'document_classification':
+      aiUpdates.document_classification = newValue;
+      legacyUpdates.documentClassification = newValue;
+      break;
+    case 'document_classification_confidence':
+      aiUpdates.document_classification_confidence = newValue;
+      legacyUpdates.documentClassificationConf = newValue;
+      break;
+    case 'document_classification_warning':
+      aiUpdates.document_classification_warning = newValue;
+      legacyUpdates.documentClassificationWarning = newValue;
+      break;
+    default:
+      return [];
+  }
+
+  if (Object.keys(aiUpdates).length === 0) return [];
+
+  const existing = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: { aiMetadata: true },
+  });
+
+  await prisma.contract.update({
+    where: { id: contractId },
+    data: {
+      aiMetadata: {
+        ...((existing?.aiMetadata as Record<string, unknown>) || {}),
+        ...aiUpdates,
+      } as Prisma.InputJsonValue,
+      ...legacyUpdates,
+      updatedAt: new Date(),
+    },
+  });
+
+  return Object.keys(legacyUpdates).concat(Object.keys(aiUpdates));
+}
+
 export async function putContractMetadataValidation(
   request: NextRequest,
   context: ContractApiContext,
@@ -938,6 +1309,22 @@ export async function putContractMetadataValidation(
   const contract = await findTenantContract(contractId, context.tenantId);
   if (!contract) {
     return createErrorResponse(context, 'NOT_FOUND', 'Contract not found', 404);
+  }
+
+  const aclDecision = await checkContractWritePermission({
+    contractId,
+    tenantId: context.tenantId,
+    userId: context.userId,
+    userRole: context.userRole,
+    required: 'EDIT',
+  });
+  if (!aclDecision.allowed) {
+    return createErrorResponse(
+      context,
+      'FORBIDDEN',
+      'You do not have permission to validate metadata on this contract',
+      403,
+    );
   }
 
   if (resetAll === true) {
@@ -954,7 +1341,7 @@ export async function putContractMetadataValidation(
         data: {
           customFields: customFields as any,
           lastUpdated: new Date(),
-          updatedBy: 'human-validator',
+          updatedBy: context.userId ?? 'system',
         },
       });
     }
@@ -978,7 +1365,7 @@ export async function putContractMetadataValidation(
         ...allFields,
         _validationStatus: {
           validatedAt: now.toISOString(),
-          validatedBy: 'human',
+          validatedBy: context.userId ?? 'system',
           fieldCount: Object.keys(allFields).length,
         },
       };
@@ -989,7 +1376,7 @@ export async function putContractMetadataValidation(
           data: {
             customFields: customFields as Prisma.InputJsonValue,
             lastUpdated: now,
-            updatedBy: 'human-validator',
+            updatedBy: context.userId ?? 'system',
           },
         });
       } else {
@@ -1001,7 +1388,7 @@ export async function putContractMetadataValidation(
             systemFields: {},
             tags: [],
             lastUpdated: now,
-            updatedBy: 'human-validator',
+            updatedBy: context.userId ?? 'system',
           },
         });
       }
@@ -1028,7 +1415,7 @@ export async function putContractMetadataValidation(
     newValue: action === 'modify' ? newValue : undefined,
     reason,
     timestamp: new Date().toISOString(),
-    validatedBy: 'human',
+    validatedBy: context.userId ?? 'system',
   };
 
   try {
@@ -1051,7 +1438,7 @@ export async function putContractMetadataValidation(
         data: {
           customFields,
           lastUpdated: new Date(),
-          updatedBy: 'human-validator',
+          updatedBy: context.userId ?? 'system',
         },
       });
     } else {
@@ -1079,12 +1466,33 @@ export async function putContractMetadataValidation(
           systemFields: {},
           tags: [],
           lastUpdated: new Date(),
-          updatedBy: 'human-validator',
+          updatedBy: context.userId ?? 'system',
         },
       });
     }
   } catch (dbError) {
     logger.error('Failed to persist field validation:', dbError);
+  }
+
+  // When a validator corrects a known metadata field, mirror the value back to
+  // the contract scalars and aiMetadata so it is visible everywhere.
+  let mirroredFields: string[] = [];
+  if (action === 'modify') {
+    try {
+      mirroredFields = await mirrorValidatedFieldToContract(contractId, fieldKey, newValue);
+    } catch (error) {
+      logger.warn('Failed to mirror validated field to contract', { error: (error as Error).message, contractId, fieldKey });
+    }
+  }
+
+  if (mirroredFields.length > 0) {
+    await applyContractChangeSideEffects({
+      tenantId: context.tenantId,
+      contractId,
+      userId: context.userId,
+      changedFields: mirroredFields,
+      source: 'api:contracts/[id]/metadata/validate',
+    });
   }
 
   return createSuccessResponse(context, {

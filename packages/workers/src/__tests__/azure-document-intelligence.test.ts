@@ -21,6 +21,11 @@ vi.mock('pino', () => ({
   }),
 }));
 
+// ── Case-insensitive fetch Headers mock ────────────────────────────────────
+function mockHeaders(entries: Record<string, string>): Headers {
+  return new Headers(entries);
+}
+
 // ── Environment variables ──────────────────────────────────────────────────
 const TEST_ENDPOINT = 'https://di-contracts-ch.cognitiveservices.azure.com';
 const TEST_KEY = 'test-api-key-12345';
@@ -134,9 +139,9 @@ describe('Azure Document Intelligence', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 202,
-        headers: new Map([
-          ['operation-location', `${TEST_ENDPOINT}/documentintelligence/documentModels/prebuilt-layout/analyzeResults/op-123`],
-        ]),
+        headers: mockHeaders({
+          'operation-location': `${TEST_ENDPOINT}/documentintelligence/documentModels/prebuilt-layout/analyzeResults/op-123`,
+        }),
       });
       // Second call: GET poll → 200 with succeeded result
       mockFetch.mockResolvedValueOnce({
@@ -231,9 +236,10 @@ describe('Azure Document Intelligence', () => {
       });
 
       const [submitUrl, submitOpts] = mockFetch.mock.calls[0]!;
-      expect(submitUrl).toContain('prebuilt-layout');
-      expect(submitUrl).toContain('api-version=2024-11-30');
-      expect(submitUrl).toContain('features=keyValuePairs');
+      const decodedUrl = decodeURIComponent(submitUrl as string);
+      expect(decodedUrl).toContain('prebuilt-layout');
+      expect(decodedUrl).toContain('api-version=2024-11-30');
+      expect(decodedUrl).toContain('features=barcodes,formulas,keyValuePairs');
       expect(submitOpts.headers['Ocp-Apim-Subscription-Key']).toBe(TEST_KEY);
       expect(submitOpts.headers['Content-Type']).toBe('application/octet-stream');
       expect(submitOpts.method).toBe('POST');
@@ -260,9 +266,9 @@ describe('Azure Document Intelligence', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 202,
-        headers: new Map([
-          ['operation-location', `${TEST_ENDPOINT}/documentintelligence/documentModels/prebuilt-contract/analyzeResults/op-456`],
-        ]),
+        headers: mockHeaders({
+          'operation-location': `${TEST_ENDPOINT}/documentintelligence/documentModels/prebuilt-contract/analyzeResults/op-456`,
+        }),
       });
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -331,9 +337,9 @@ describe('Azure Document Intelligence', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 202,
-        headers: new Map([
-          ['operation-location', `${TEST_ENDPOINT}/documentintelligence/documentModels/prebuilt-invoice/analyzeResults/op-789`],
-        ]),
+        headers: mockHeaders({
+          'operation-location': `${TEST_ENDPOINT}/documentintelligence/documentModels/prebuilt-invoice/analyzeResults/op-789`,
+        }),
       });
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -417,9 +423,9 @@ describe('Azure Document Intelligence', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 202,
-        headers: new Map([
-          ['operation-location', `${TEST_ENDPOINT}/documentintelligence/documentModels/prebuilt-read/analyzeResults/op-read`],
-        ]),
+        headers: mockHeaders({
+          'operation-location': `${TEST_ENDPOINT}/documentintelligence/documentModels/prebuilt-read/analyzeResults/op-read`,
+        }),
       });
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -475,9 +481,9 @@ describe('Azure Document Intelligence', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 202,
-        headers: new Map([
-          ['operation-location', `${TEST_ENDPOINT}/documentintelligence/documentModels/prebuilt-layout/analyzeResults/op-fail`],
-        ]),
+        headers: mockHeaders({
+          'operation-location': `${TEST_ENDPOINT}/documentintelligence/documentModels/prebuilt-layout/analyzeResults/op-fail`,
+        }),
       });
       mockFetch.mockResolvedValueOnce({
         ok: true,

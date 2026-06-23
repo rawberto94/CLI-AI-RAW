@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { assessCriticalContractEvidence, assessContractTermEvidence, CONTRACT_DI_QUERY_FIELDS, extractFinancialEvidence, normalizeDIQueryAnswers } from '../src/contract-extraction';
+import { assessCriticalContractEvidence, assessContractTermEvidence, CONTRACT_DI_QUERY_FIELDS, CONTRACT_DI_QUERY_IDENTIFIERS, extractFinancialEvidence, normalizeDIQueryAnswers, validateDIQueryAnswers } from '../src/contract-extraction';
 
 describe('assessContractTermEvidence', () => {
   it('derives an end date from a two-year initial term', () => {
@@ -165,6 +165,39 @@ describe('normalizeDIQueryAnswers', () => {
 
   it('keeps the DI lookup set within a bounded query count', () => {
     expect(CONTRACT_DI_QUERY_FIELDS.length).toBeLessThanOrEqual(20);
+    expect(CONTRACT_DI_QUERY_IDENTIFIERS.length).toBe(CONTRACT_DI_QUERY_FIELDS.length);
+  });
+
+  it('uses API-compliant identifiers, not full sentences', () => {
+    expect(CONTRACT_DI_QUERY_IDENTIFIERS[0]).toBe('contractTitle');
+    expect(CONTRACT_DI_QUERY_IDENTIFIERS.every((id) => /^[\p{L}\p{M}\p{N}_]{1,64}$/u.test(id))).toBe(true);
+  });
+
+  it('rejects non-numeric/example total contract values', () => {
+    const result = validateDIQueryAnswers(
+      {
+        totalContractValue: 'CHF 92,500 Late',
+        clientName: 'Markus Keller',
+      },
+      'This Agreement is between ClientCo AG and Supplier GmbH. Total Contract Value: CHF 92,500.'
+    );
+    expect(result.answers.totalContractValue).toBeUndefined();
+    expect(result.rejected).toContain('totalContractValue');
+    expect(result.flags.some((f) => f.field === 'totalContractValue')).toBe(true);
+    // Party without legal suffix is replaced by nearest legal entity.
+    expect(result.answers.clientName).toBe('ClientCo AG');
+  });
+
+  it('normalizes dates and infers missing currency', () => {
+    const result = validateDIQueryAnswers(
+      {
+        effectiveDate: 'March 9, 2026',
+        totalContractValue: '1,200,000',
+      },
+      'The total consideration is CHF 1,200,000. Effective Date: March 9, 2026.'
+    );
+    expect(result.answers.effectiveDate).toBe('2026-03-09');
+    expect(result.answers.contractCurrency).toBe('CHF');
   });
 });
 

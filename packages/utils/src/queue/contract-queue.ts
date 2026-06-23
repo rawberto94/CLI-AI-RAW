@@ -73,6 +73,10 @@ export interface IndexContractJobData {
   contractId: string;
   tenantId: string;
   artifactIds: string[];
+  /** When true, skip the raw-text idempotency check and re-index metadata/taxonomy chunks. */
+  metadataOnly?: boolean;
+  /** Human-readable reason for the re-index job. */
+  reason?: string;
   traceId?: string;
   requestId?: string;
 }

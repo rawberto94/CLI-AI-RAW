@@ -144,7 +144,37 @@ export async function processRAGIndexingJob(
       status: contract.status,
       message: `Contract status is ${contract.status}, waiting for processing to complete`,
     });
-    
+
+    // Metadata-only re-index: refresh the metadata/taxonomy chunk without
+    // re-embedding the raw text. This keeps RAG in sync with metadata edits.
+    if (job.data.metadataOnly) {
+      jobLogger.info({ reason: job.data.reason }, 'Metadata-only RAG re-index started');
+      try {
+        const { ragIntegrationService } = await import('../../data-orchestration/src/services/rag-integration.service');
+        await ragIntegrationService.reindexContract(contractId);
+        await updateStep({
+          tenantId,
+          contractId,
+          step: 'rag.indexing',
+          status: 'completed',
+          progress: 100,
+          currentStep: 'rag.indexing',
+        });
+        await job.updateProgress(100);
+        return {
+          success: true,
+          contractId,
+          chunksCreated: 0,
+          embeddingsGenerated: 0,
+          processingTime: Date.now() - startTime,
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        jobLogger.error({ error: message }, 'Metadata-only RAG re-index failed');
+        throw error;
+      }
+    }
+
     if (!contract.rawText) {
       throw new RetryableError('No text content available yet');
     }
