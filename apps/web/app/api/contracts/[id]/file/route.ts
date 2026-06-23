@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { initializeStorage } from '@/lib/storage-service';
 import fs from 'fs/promises';
 import path from 'path';
 import { sanitizePath, hasPathTraversal } from '@/lib/security/sanitize';
@@ -21,28 +21,6 @@ import { getStorageConfig, isDocumentAccessible } from '@/lib/storage/retention-
 import { createConnector } from '@/lib/integrations/connectors/factory';
 import { getAuthenticatedApiContextWithSessionFallback, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { logger } from '@/lib/logger';
-
-// Initialize S3 client for MinIO - credentials required in production
-const getS3Client = () => {
-  const isProduction = process.env.NODE_ENV === 'production';
-  
-  // In production, require explicit credentials
-  if (isProduction && (!process.env.MINIO_ACCESS_KEY || !process.env.MINIO_SECRET_KEY)) {
-    throw new Error('MINIO_ACCESS_KEY and MINIO_SECRET_KEY are required in production');
-  }
-  
-  return new S3Client({
-    endpoint: `http://${process.env.MINIO_ENDPOINT || 'localhost'}:${process.env.MINIO_PORT || '9000'}`,
-    region: 'us-east-1',
-    credentials: {
-      accessKeyId: process.env.MINIO_ACCESS_KEY || '',
-      secretAccessKey: process.env.MINIO_SECRET_KEY || '',
-    },
-    forcePathStyle: true,
-  });
-};
-
-const BUCKET_NAME = process.env.MINIO_BUCKET || 'contracts';
 
 // ============================================================================
 // GET - Serve contract file
@@ -172,29 +150,23 @@ export async function GET(
       }
     }
 
-    // Strategy 3: Try local storage (MinIO/S3)
+    // Strategy 3: Try object storage (MinIO/S3/R2)
     if (!fileBuffer && contract.storagePath) {
       try {
         // Handle both s3:// prefix and direct key paths
-        let s3Key = contract.storagePath;
-        if (s3Key.startsWith('s3://')) {
-          s3Key = s3Key.replace(`s3://${BUCKET_NAME}/`, '');
+        let objectKey = contract.storagePath;
+        if (objectKey.startsWith('s3://')) {
+          // Normalize s3://bucket/key to just key; storage service knows the bucket.
+          objectKey = objectKey.replace(/^s3:\/\/[^/]+\//, '');
         }
-        
-        const command = new GetObjectCommand({
-          Bucket: BUCKET_NAME,
-          Key: s3Key,
-        });
-        
-        const s3Client = getS3Client();
-        const response = await s3Client.send(command);
-        const bodyBytes = await response.Body?.transformToByteArray();
-        
-        if (!bodyBytes) {
-          throw new Error('Empty file body from S3');
+
+        const storage = initializeStorage();
+        if (storage) {
+          const buffer = await storage.download(objectKey);
+          if (buffer) {
+            fileBuffer = buffer;
+          }
         }
-        
-        fileBuffer = Buffer.from(bodyBytes);
       } catch {
         // Fall through to try local file
       }
