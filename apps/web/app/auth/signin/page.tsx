@@ -37,19 +37,19 @@ const features = [
     icon: FileText,
     title: "AI-Powered Analysis",
     description:
-      "Extract key terms, clauses, and obligations from any contract in seconds.",
+      "Extract parties, dates, values, and 50+ clause types from any contract in seconds.",
   },
   {
     icon: Sparkles,
     title: "Intelligent Search",
     description:
-      "Find any clause or obligation across your entire repository with natural language.",
+      "Ask in plain language and instantly find any clause or obligation across your repository.",
   },
   {
     icon: BarChart3,
     title: "Risk & Analytics",
     description:
-      "Real-time dashboards, rate-card benchmarking, and renewal tracking.",
+      "Real-time dashboards, rate-card benchmarking, and automatic renewal tracking.",
   },
 ];
 
@@ -179,13 +179,13 @@ function SignInForm() {
         {/* Centre content */}
         <div className="relative z-10 flex-1 flex flex-col justify-center -mt-4">
           <h2 className="text-2xl xl:text-3xl font-bold text-white tracking-tight leading-tight">
-            Contract Intelligence
+            AI That Reads Your
             <br />
-            Platform
+            Contracts For You
           </h2>
           <p className="mt-3 text-violet-100/90 text-sm xl:text-base leading-relaxed max-w-sm">
-            Manage, analyse, and optimise your contracts with AI-powered
-            insights. Streamline procurement and never miss a deadline.
+            Upload any contract and get instant analysis, risk alerts, and
+            actionable insights — no more manual reviews or missed deadlines.
           </p>
 
           {/* Feature list */}
