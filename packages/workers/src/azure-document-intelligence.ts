@@ -818,12 +818,13 @@ export async function analyzeRead(
  */
 export async function analyzeContract(
   fileBuffer: Buffer,
-  options: { locale?: string } = {}
+  options: { locale?: string; pages?: string } = {}
 ): Promise<{ analysis: DIAnalyzeResult; contract: ContractExtractionResult }> {
   const span = startSpan({ name: 'di.analyzeContract', kind: 'client', attributes: { 'di.model': 'prebuilt-contract', 'di.buffer_size': fileBuffer.length } });
   try {
   const raw = await analyzeDocument(fileBuffer, 'prebuilt-contract', {
     locale: options.locale,
+    pages: options.pages,
     features: ['keyValuePairs', 'barcodes', 'formulas'],
   });
 
@@ -1044,7 +1045,7 @@ export async function analyzeInvoice(
 export async function analyzeWithQueries(
   fileBuffer: Buffer,
   queryFields: string[],
-  options: { locale?: string } = {}
+  options: { locale?: string; pages?: string } = {}
 ): Promise<{ analysis: DIAnalyzeResult; answers: Record<string, string> }> {
   const span = startSpan({ name: 'di.analyzeWithQueries', kind: 'client', attributes: { 'di.model': 'prebuilt-layout', 'di.queries': queryFields.length } });
   try {
@@ -1052,6 +1053,7 @@ export async function analyzeWithQueries(
     features: ['queryFields', 'keyValuePairs', 'barcodes', 'formulas'],
     queryFields,
     locale: options.locale,
+    pages: options.pages,
   });
 
   const region = raw._region as string;

@@ -1389,6 +1389,27 @@ async function crossValidateWithVisionFirstPage(
   }
 }
 
+/**
+ * Compute the page range for DI *metadata* passes (prebuilt-contract + query fields).
+ *
+ * Contract metadata — parties, dates, value, signatures, governing law, liability —
+ * lives in the front matter and execution/boilerplate pages, so these passes do not
+ * need to re-OCR the whole document. The full-document `analyzeLayout` pass (used for
+ * clauses and all artifacts) is unaffected. Returns `undefined` (= full document) when
+ * the document is short enough that windowing would save nothing.
+ *
+ * Window is configurable via AZURE_DI_METADATA_FIRST_PAGES / AZURE_DI_METADATA_LAST_PAGES.
+ * Set AZURE_DI_METADATA_WINDOW=off to disable and always scan the full document.
+ */
+function computeMetadataPageRange(totalPages?: number): string | undefined {
+  if (process.env.AZURE_DI_METADATA_WINDOW === 'off') return undefined;
+  const first = Math.max(0, parseInt(process.env.AZURE_DI_METADATA_FIRST_PAGES || '3', 10) || 0);
+  const last = Math.max(0, parseInt(process.env.AZURE_DI_METADATA_LAST_PAGES || '2', 10) || 0);
+  if (!totalPages || totalPages <= first + last || first + last === 0) return undefined;
+  const startLast = totalPages - last + 1;
+  return last > 0 ? `1-${first},${startLast}-${totalPages}` : `1-${first}`;
+}
+
 async function extractPDFWithDocumentIntelligence(fileContent: Buffer, totalPdfPages?: number): Promise<DIExtractionResult> {
   const empty: DIExtractionResult = { text: '', hasHandwriting: false, handwrittenSpans: [], pagesProcessed: 0 };
   try {
@@ -1474,12 +1495,17 @@ async function extractPDFWithDocumentIntelligence(fileContent: Buffer, totalPdfP
           logger.info({ totalProcessed, totalChars: combinedText.length, hasHandwriting }, 'DI multi-batch extraction complete');
         }
 
+        // Metadata passes (contract model + query fields) only need front/back matter,
+        // not the whole document — the full-document layout pass above already covers
+        // clauses and all artifacts. This avoids re-OCRing every page (per-page billing).
+        const metadataPages = computeMetadataPageRange(totalPdfPages || totalProcessed);
+
         // ── Structured contract extraction via prebuilt-contract model ──
         // This provides higher-quality parties/dates/jurisdiction/title than query fields.
         const contractAnswers: Record<string, string> = {};
         let contractMetadata: NormalizedContractFieldEvidence['metadata'] = {};
         try {
-          const { contract } = await analyzeContract(fileContent);
+          const { contract } = await analyzeContract(fileContent, { pages: metadataPages });
           if (contract.title) {
             contractAnswers.contractTitle = String(contract.title);
             contractMetadata.title = String(contract.title);
@@ -1523,7 +1549,7 @@ async function extractPDFWithDocumentIntelligence(fileContent: Buffer, totalPdfP
 
         if (process.env.AZURE_DI_QUERY_ENRICHMENT !== 'false' && missingIdentifiers.length > 0) {
           try {
-            const { answers } = await analyzeWithQueries(fileContent, missingIdentifiers);
+            const { answers } = await analyzeWithQueries(fileContent, missingIdentifiers, { pages: metadataPages });
             const validAnswers = Object.fromEntries(
               Object.entries(answers).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
             );
