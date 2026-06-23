@@ -213,13 +213,17 @@ async function ingestContract(
   let storageProvider = 'external';
   if (normalized.textContent && normalized.textContent.length > 0) {
     try {
+      const rawEndpoint = process.env.S3_ENDPOINT || process.env.MINIO_ENDPOINT || 'localhost';
+      const useSSL = (process.env.S3_USE_SSL || process.env.MINIO_USE_SSL) === 'true';
+      const defaultPort = useSSL ? '443' : '9000';
+
       const storage = new StorageService({
-        endPoint: process.env.MINIO_ENDPOINT || 'localhost',
-        port: parseInt(process.env.MINIO_PORT || '9000'),
-        useSSL: process.env.MINIO_USE_SSL === 'true',
-        accessKey: process.env.MINIO_ACCESS_KEY || '',
-        secretKey: process.env.MINIO_SECRET_KEY || '',
-        bucket: process.env.MINIO_BUCKET || 'contigo-uploads',
+        endPoint: rawEndpoint.replace(/^https?:\/\//, ''),
+        port: parseInt(process.env.S3_PORT || process.env.MINIO_PORT || defaultPort),
+        useSSL,
+        accessKey: process.env.S3_ACCESS_KEY || process.env.MINIO_ACCESS_KEY || '',
+        secretKey: process.env.S3_SECRET_KEY || process.env.MINIO_SECRET_KEY || '',
+        bucket: process.env.S3_BUCKET || process.env.MINIO_BUCKET || 'contigo-uploads',
       });
 
       const fileName = `${normalized.title.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100)}.txt`;

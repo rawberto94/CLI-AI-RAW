@@ -20,19 +20,27 @@ let s3Client: S3Client | null = null
 function getS3Client(): S3Client {
   if (!s3Client) {
     const endpoint = process.env.S3_ENDPOINT || process.env.MINIO_ENDPOINT
-    const region = process.env.AWS_REGION || 'us-east-1'
-    
+    const region = process.env.S3_REGION || process.env.AWS_REGION || 'us-east-1'
+
+    const accessKeyId =
+      process.env.S3_ACCESS_KEY ||
+      process.env.AWS_ACCESS_KEY_ID ||
+      process.env.MINIO_ACCESS_KEY ||
+      ''
+    const secretAccessKey =
+      process.env.S3_SECRET_KEY ||
+      process.env.AWS_SECRET_ACCESS_KEY ||
+      process.env.MINIO_SECRET_KEY ||
+      ''
+
     s3Client = new S3Client({
       region,
       endpoint,
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || process.env.MINIO_ACCESS_KEY || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || process.env.MINIO_SECRET_KEY || '',
-      },
-      forcePathStyle: !!endpoint, // Required for MinIO
+      credentials: { accessKeyId, secretAccessKey },
+      forcePathStyle: !!endpoint, // Required for MinIO / R2 path-style endpoints
     })
   }
-  
+
   return s3Client
 }
 
