@@ -225,7 +225,7 @@ export async function upsertTenantTags(
         customFields: {
           ...customFields,
           predefinedTags,
-        } as Prisma.InputJsonValue,
+        } as unknown as Prisma.InputJsonValue,
       },
     });
 
@@ -281,7 +281,7 @@ export async function deleteTenantTag(tenantId: string, tagName: string): Promis
       customFields: {
         ...customFields,
         predefinedTags: kept,
-      } as Prisma.InputJsonValue,
+      } as unknown as Prisma.InputJsonValue,
     },
   });
 

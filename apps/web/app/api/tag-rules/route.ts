@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, ContractStatus } from '@prisma/client';
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
@@ -33,7 +33,7 @@ const tagRuleSchema = z.object({
 
 type RuleCondition = z.infer<typeof tagRuleSchema>['condition'];
 
-function buildContractWhere(tenantId: string, condition: RuleCondition) {
+function buildContractWhere(tenantId: string, condition: RuleCondition): Prisma.ContractWhereInput {
   const now = new Date();
   const expirationCutoff = condition.expiresWithinDays
     ? new Date(now.getTime() + condition.expiresWithinDays * 24 * 60 * 60 * 1000)
@@ -43,7 +43,7 @@ function buildContractWhere(tenantId: string, condition: RuleCondition) {
     tenantId,
     isDeleted: false,
     ...(condition.statusIn && condition.statusIn.length > 0
-      ? { status: { in: condition.statusIn } }
+      ? { status: { in: condition.statusIn as ContractStatus[] } }
       : {}),
     ...(condition.contractTypeIn && condition.contractTypeIn.length > 0
       ? { contractType: { in: condition.contractTypeIn } }
@@ -68,7 +68,7 @@ function buildContractWhere(tenantId: string, condition: RuleCondition) {
           },
         }
       : {}),
-  } as const;
+  };
 }
 
 function hasRequiredTags(tags: string[], condition: RuleCondition): boolean {
@@ -246,16 +246,14 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     select: {
       id: true,
       aiMetadata: true,
-      metadata: {
-        select: { tags: true },
-      },
+      tags: true,
     },
     take: 500,
   });
 
   let updatedContracts = 0;
   for (const contract of contracts) {
-    const currentTags = (contract.metadata?.tags || []).map((tag) => tag.toLowerCase());
+    const currentTags = (Array.isArray(contract.tags) ? (contract.tags as string[]) : []).map((tag) => tag.toLowerCase());
     if (!hasRequiredTags(currentTags, condition)) {
       continue;
     }

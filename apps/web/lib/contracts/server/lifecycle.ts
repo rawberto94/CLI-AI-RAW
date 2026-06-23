@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { pushAgentNotification } from '@/lib/ai/agent-notifications';
 import { createErrorResponse, createSuccessResponse } from '@/lib/api-middleware';
+import { AuditAction } from '@/lib/security/audit';
 import {
   getContractLifecycle as resolveContractLifecycle,
   requiresApprovalWorkflow,
@@ -568,7 +569,7 @@ export async function patchContractStatus(
     changedFields: ['status'],
     source: 'api:contracts/[id]/status',
     audit: {
-      action: 'CONTRACT_UPDATED',
+      action: AuditAction.CONTRACT_UPDATED,
       changes: { status: normalizedStatus },
     },
   }).catch(() => {});

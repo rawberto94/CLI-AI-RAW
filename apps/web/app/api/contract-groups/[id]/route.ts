@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { type Prisma, ContractStatus } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import {
@@ -58,7 +59,7 @@ async function resolveGroupContracts(tenantId: string, group: {
   requireAllTags: string[];
   requireAnyTags: string[];
 }) {
-  const whereBase: Record<string, unknown> = {
+  const whereBase: Prisma.ContractWhereInput = {
     tenantId,
     isDeleted: false,
   };
@@ -84,25 +85,27 @@ async function resolveGroupContracts(tenantId: string, group: {
 
   const smart = parseSmartQuery(group.query);
 
+  const smartWhere: Prisma.ContractWhereInput = {
+    ...whereBase,
+    ...(smart.status ? { status: { in: smart.status as ContractStatus[] } } : {}),
+    ...(smart.contractType ? { contractType: { in: smart.contractType } } : {}),
+    ...(smart.categoryL1 ? { categoryL1: { in: smart.categoryL1 } } : {}),
+    ...(smart.search
+      ? {
+          OR: [
+            { contractTitle: { contains: smart.search, mode: 'insensitive' } },
+            { fileName: { contains: smart.search, mode: 'insensitive' } },
+            { clientName: { contains: smart.search, mode: 'insensitive' } },
+            { supplierName: { contains: smart.search, mode: 'insensitive' } },
+          ],
+        }
+      : {}),
+    ...(smart.minValue !== undefined ? { totalValue: { gte: smart.minValue } } : {}),
+    ...(smart.maxValue !== undefined ? { totalValue: { lte: smart.maxValue } } : {}),
+  };
+
   const contracts = await prisma.contract.findMany({
-    where: {
-      ...whereBase,
-      ...(smart.status ? { status: { in: smart.status } } : {}),
-      ...(smart.contractType ? { contractType: { in: smart.contractType } } : {}),
-      ...(smart.categoryL1 ? { categoryL1: { in: smart.categoryL1 } } : {}),
-      ...(smart.search
-        ? {
-            OR: [
-              { contractTitle: { contains: smart.search, mode: 'insensitive' } },
-              { fileName: { contains: smart.search, mode: 'insensitive' } },
-              { clientName: { contains: smart.search, mode: 'insensitive' } },
-              { supplierName: { contains: smart.search, mode: 'insensitive' } },
-            ],
-          }
-        : {}),
-      ...(smart.minValue !== undefined ? { totalValue: { gte: smart.minValue } } : {}),
-      ...(smart.maxValue !== undefined ? { totalValue: { lte: smart.maxValue } } : {}),
-    },
+    where: smartWhere,
     select: {
       id: true,
       contractTitle: true,
@@ -110,9 +113,7 @@ async function resolveGroupContracts(tenantId: string, group: {
       contractType: true,
       totalValue: true,
       expirationDate: true,
-      metadata: {
-        select: { tags: true },
-      },
+      tags: true,
     },
     orderBy: { updatedAt: 'desc' },
     take: 500,
@@ -122,7 +123,7 @@ async function resolveGroupContracts(tenantId: string, group: {
   const requireAny = (group.requireAnyTags || []).map((tag) => tag.trim().toLowerCase()).filter(Boolean);
 
   const filtered = contracts.filter((contract) => {
-    const tags = new Set((contract.metadata?.tags || []).map((tag) => tag.toLowerCase()));
+    const tags = new Set((Array.isArray(contract.tags) ? (contract.tags as string[]) : []).map((tag) => tag.toLowerCase()));
 
     if (requireAll.length > 0 && requireAll.some((tag) => !tags.has(tag))) {
       return false;
@@ -230,7 +231,7 @@ export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
       ...(payload.color !== undefined ? { color: payload.color } : {}),
       ...(payload.groupType !== undefined ? { groupType: payload.groupType } : {}),
       ...(verifiedIds !== undefined ? { contractIds: verifiedIds } : {}),
-      ...(payload.query !== undefined ? { query: payload.query } : {}),
+      ...(payload.query !== undefined ? { query: payload.query as Prisma.InputJsonValue } : {}),
       ...(payload.requireAllTags !== undefined
         ? { requireAllTags: payload.requireAllTags.map((tag) => tag.trim().toLowerCase()).filter(Boolean) }
         : {}),

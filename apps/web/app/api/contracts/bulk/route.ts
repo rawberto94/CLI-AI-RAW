@@ -570,7 +570,7 @@ export const POST = withContractApiHandler(async (request, ctx) => {
           source: 'api:contracts/bulk/reclassify',
           audit: {
             action: AuditAction.CONTRACT_UPDATED,
-            changes: reclassifyData,
+            changes: reclassifyData as unknown as Record<string, unknown>,
           },
         }).catch(() => {})
       }

@@ -392,11 +392,7 @@ export async function getContractTagRecommendations(
       expirationDate: true,
       signatureStatus: true,
       aiMetadata: true,
-      metadata: {
-        select: {
-          tags: true,
-        },
-      },
+      tags: true,
     },
   });
 
@@ -404,7 +400,8 @@ export async function getContractTagRecommendations(
     return createErrorResponse(context, 'NOT_FOUND', 'Contract not found', 404);
   }
 
-  const existingTagSet = new Set<string>((contract.metadata?.tags || []).map((tag) => normalizeTagName(tag)).filter(Boolean));
+  const existingTags = Array.isArray(contract.tags) ? (contract.tags as string[]) : [];
+  const existingTagSet = new Set<string>(existingTags.map((tag) => normalizeTagName(tag)).filter(Boolean));
   const recommendations = new Map<string, { score: number; reasons: string[] }>();
 
   if (contract.contractType) {
@@ -822,7 +819,7 @@ export async function putContractMetadata(
       'CONFLICT',
       'Metadata has been modified by another user. Please refresh and try again.',
       409,
-      { currentVersion: existingContract.metadataVersion, providedVersion: metadataVersionFromRequest },
+      { details: JSON.stringify({ currentVersion: existingContract.metadataVersion, providedVersion: metadataVersionFromRequest }) },
     );
   }
 

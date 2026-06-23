@@ -199,7 +199,7 @@ export default function TagRuleDetailPage() {
               items={[
                 { label: 'Settings', href: '/settings' },
                 { label: 'Tag Rules', href: '/settings/tag-rules' },
-                { label: isNew ? 'New Rule' : formData.name },
+                { label: isNew ? 'New Rule' : formData.name, href: '#', current: true },
               ]}
             />
           </div>

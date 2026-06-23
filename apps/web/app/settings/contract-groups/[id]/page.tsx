@@ -223,7 +223,7 @@ export default function ContractGroupDetailPage() {
               items={[
                 { label: 'Settings', href: '/settings' },
                 { label: 'Contract Groups', href: '/settings/contract-groups' },
-                { label: isNew ? 'New Group' : formData.name },
+                { label: isNew ? 'New Group' : formData.name, href: '#', current: true },
               ]}
             />
           </div>

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { type Prisma } from '@prisma/client';
 
 import { prisma } from '@/lib/prisma';
 import {
@@ -87,9 +88,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       color: payload.color || null,
       groupType: payload.groupType,
       contractIds: payload.groupType === 'static' ? verifiedIds : [],
-      query: payload.groupType === 'smart'
+      query: (payload.groupType === 'smart'
         ? (payload.query || {})
-        : {},
+        : {}) as Prisma.InputJsonValue,
       requireAllTags: (payload.requireAllTags || []).map((tag) => tag.trim().toLowerCase()).filter(Boolean),
       requireAnyTags: (payload.requireAnyTags || []).map((tag) => tag.trim().toLowerCase()).filter(Boolean),
       contractCount: payload.groupType === 'static' ? verifiedIds.length : 0,

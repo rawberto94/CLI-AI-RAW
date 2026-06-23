@@ -50,8 +50,6 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       endDate: true,
       clientName: true,
       supplierName: true,
-      metadata: { select: { tags: true } },
-      aiMetadata: { select: { confidence: true } },
     },
   });
 
@@ -128,7 +126,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   // Rule 4: By value
   if (contract.totalValue !== null && contract.totalValue !== undefined) {
-    if (contract.totalValue > 1000000) {
+    if (Number(contract.totalValue) > 1000000) {
       const key = 'high-value';
       const existing = recommendationMap.get(key);
       if (existing) {
