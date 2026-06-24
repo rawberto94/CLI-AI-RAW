@@ -54,10 +54,10 @@ interface UploadMetadataReviewItem {
   fileName: string
 }
 
-const DEFAULT_PROCESSING_OPTIONS: ProcessingOptions = {
+const DEFAULT_PROCESSING_OPTIONS: ProcessingOptions = { // concurrency raised from 2→4 for bulk demo uploads
   aiModel: 'azure-ch',
   processingMode: 'standard',
-  concurrency: 2,
+  concurrency: 4,
   enabledArtifacts: [
     'OVERVIEW', 'CLAUSES', 'FINANCIAL', 'RISK', 'COMPLIANCE',
     'OBLIGATIONS', 'RENEWAL', 'NEGOTIATION_POINTS', 'AMENDMENTS', 'CONTACTS',
