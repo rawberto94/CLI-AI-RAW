@@ -25,8 +25,10 @@ function getRedisConfig() {
         host: process.env['REDIS_HOST'] || parsed.hostname || 'localhost',
         port: parseInt(process.env['REDIS_PORT'] || parsed.port || '6379'),
         password: process.env['REDIS_PASSWORD'] || (parsed.password ? decodeURIComponent(parsed.password) : undefined),
-        tls: process.env['REDIS_TLS'] === 'true' ? {} : undefined,
+        // Auto-detect TLS from redis URL protocol (rediss://), or use explicit flag
+        tls: process.env['REDIS_TLS'] === 'true' || parsed.protocol === 'rediss:' ? {} : undefined,
         maxRetriesPerRequest: null,
+        keepAlive: 10000,
       };
     } catch (error) {
       logger.warn({ error, redisUrl }, 'Invalid REDIS_URL, falling back to REDIS_HOST/REDIS_PORT');
@@ -39,6 +41,7 @@ function getRedisConfig() {
     password: process.env['REDIS_PASSWORD'],
     tls: process.env['REDIS_TLS'] === 'true' ? {} : undefined,
     maxRetriesPerRequest: null,
+    keepAlive: 10000,
   };
 }
 

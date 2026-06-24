@@ -170,6 +170,10 @@ export class QueueService {
   private async testConnection(): Promise<void> {
     try {
       this.redisClient = new Redis(this.connection as any);
+      this.redisClient.on('error', () => {
+        // Redis connection errors are handled by BullMQ internally;
+        // this prevents unhandled error events on the test client.
+      });
       await this.redisClient.ping();
       logger.info('✅ Queue service connected to Redis');
     } catch (error) {
