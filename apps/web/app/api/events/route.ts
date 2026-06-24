@@ -27,9 +27,12 @@ const connections = new Map<string, SSEConnection>();
 let redisSubscriber: InstanceType<typeof Redis> | null = null;
 let subscriberReady = false;
 
-function getRedisUrl(): string {
-  return process.env.REDIS_URL || 
-    `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`;
+function getRedisUrl(): string | null {
+  if (process.env.REDIS_URL) return process.env.REDIS_URL;
+  if (process.env.REDIS_HOST) {
+    return `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`;
+  }
+  return null;
 }
 
 async function ensureRedisSubscriber(): Promise<InstanceType<typeof Redis>> {
@@ -37,11 +40,23 @@ async function ensureRedisSubscriber(): Promise<InstanceType<typeof Redis>> {
     return redisSubscriber;
   }
 
+  const redisUrl = getRedisUrl();
+  if (!redisUrl) {
+    throw new Error('Redis not configured');
+  }
+
   try {
-    redisSubscriber = new Redis(getRedisUrl(), {
+    redisSubscriber = new Redis(redisUrl, {
       maxRetriesPerRequest: 3,
       retryStrategy: (times: number) => Math.min(times * 100, 3000),
       lazyConnect: true,
+    });
+
+    redisSubscriber.on('error', () => {
+      subscriberReady = false;
+    });
+    redisSubscriber.on('close', () => {
+      subscriberReady = false;
     });
 
     await redisSubscriber.connect();
