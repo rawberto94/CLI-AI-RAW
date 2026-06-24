@@ -2885,6 +2885,12 @@ export async function generateRealArtifacts(
             const protocol = useSSL ? 'https' : 'http';
             endpoint = `${protocol}://${minioHost}:${minioPort}`;
           }
+          // AWS SDK requires protocol prefix; MinIO SDK strips it.
+          // If endpoint is a bare hostname (no scheme), prepend https:// in production, http:// otherwise.
+          if (endpoint && !/^https?:\/\//i.test(endpoint)) {
+            const proto = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+            endpoint = `${proto}://${endpoint}`;
+          }
           
           logger.info({ endpoint }, 'Using S3 endpoint');
           

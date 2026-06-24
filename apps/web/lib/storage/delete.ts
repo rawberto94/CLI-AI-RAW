@@ -19,7 +19,12 @@ let s3Client: S3Client | null = null
 
 function getS3Client(): S3Client {
   if (!s3Client) {
-    const endpoint = process.env.S3_ENDPOINT || process.env.MINIO_ENDPOINT
+    let endpoint = process.env.S3_ENDPOINT || process.env.MINIO_ENDPOINT
+    // AWS SDK requires protocol prefix; MinIO SDK strips it.
+    if (endpoint && !/^https?:\/\//i.test(endpoint)) {
+      const proto = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+      endpoint = `${proto}://${endpoint}`;
+    }
     const region = process.env.S3_REGION || process.env.AWS_REGION || 'us-east-1'
 
     const accessKeyId =
