@@ -60,7 +60,7 @@ export const rateLimitConfigs: Record<string, RateLimitConfig> = {
   // Contract upload - strict per-tenant limit
   '/api/contracts/upload': {
     windowMs: 60 * 1000,
-    maxRequests: 10, // 10 uploads per minute per tenant
+    maxRequests: 120, // 120 uploads per minute per tenant (increased from 10 for bulk demo)
     keyPrefix: 'ratelimit:upload:',
   },
   
