@@ -18,6 +18,9 @@
     "types": []
   },
   "include": ["src/**/*"],
+  "references": [
+    { "path": "../clients/db" }
+  ],
   "exclude": [
     "node_modules",
     "dist",
