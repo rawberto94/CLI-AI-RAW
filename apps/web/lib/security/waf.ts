@@ -102,7 +102,7 @@ const PATTERNS = {
     /<script[^>]*>/gi,
     /javascript:/gi,
     /vbscript:/gi,
-    /on\w+\s*=/gi, // onclick=, onerror=, etc.
+    /\bon\w+\s*=/gi, // onclick=, onerror=, etc. (word-boundary anchored so "context=", "condition=" etc. aren't false positives)
     /<iframe[^>]*>/gi,
     /<object[^>]*>/gi,
     /<embed[^>]*>/gi,
