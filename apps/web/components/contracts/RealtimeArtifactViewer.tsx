@@ -31,6 +31,7 @@ interface RealtimeArtifactViewerProps {
   tenantId?: string; // Deprecated: server uses session tenant from middleware
   onComplete?: () => void;
   onContractNotFound?: () => void;  // Called when contract returns 404
+  compact?: boolean; // When true, renders only the progress strip + subtitles (no artifact grid)
 }
 
 interface ArtifactFailureState {
@@ -129,7 +130,8 @@ export function RealtimeArtifactViewer({
   contractId, 
   tenantId: _tenantId, // Deprecated: server uses session tenant from middleware
   onComplete,
-  onContractNotFound
+  onContractNotFound,
+  compact = false
 }: RealtimeArtifactViewerProps) {
   const {
     artifacts: streamArtifacts,
@@ -460,60 +462,81 @@ export function RealtimeArtifactViewer({
 
   return (
     <div className="space-y-4">
-      {/* Compact status strip — connection state + progress in one line */}
+      {/* Status strip — in compact mode show just bar + subtitle; full mode shows rich connection info */}
       {!isEffectivelyComplete && !error && (
-        <div className="rounded-2xl border border-violet-200/70 bg-[linear-gradient(135deg,rgba(245,243,255,0.96),rgba(255,255,255,0.98))] px-4 py-3 shadow-[0_18px_40px_-32px_rgba(79,70,229,0.45)] dark:border-violet-900/60 dark:bg-[linear-gradient(135deg,rgba(49,46,129,0.28),rgba(15,23,42,0.96))]">
-          <div className="flex items-start gap-3">
-            <div className={cn(
-              'flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border shadow-sm',
-              isPollingFallback
-                ? 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
-                : 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-900/40 dark:text-violet-200'
-            )}>
-              {isConnected ? (
-                <Sparkles className="h-4 w-4" aria-hidden="true" />
-              ) : isPollingFallback ? (
-                <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              )}
+        compact ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="truncate font-medium text-slate-800 dark:text-slate-200">
+                {processingStage ? stageLabels[processingStage] : 'AI analysis in progress'}
+              </span>
+              <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                {hasArtifacts ? `${completedCount} / ${totalCount} ready` : 'Starting…'}
+              </span>
             </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-violet-600/80 dark:text-violet-300/80">
-                  Artifact pipeline
-                </span>
-                <Badge className={cn(
-                  'border font-medium hover:bg-transparent',
-                  isPollingFallback
-                    ? 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
-                    : 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-900/40 dark:text-violet-200'
-                )}>
-                  {isPollingFallback ? 'Polling fallback' : isConnected ? 'Live stream' : 'Connecting'}
-                </Badge>
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <Progress value={stripProgress} variant={isPollingFallback ? 'warning' : 'default'} className="h-2" />
+              </div>
+              <span className="shrink-0 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                {Math.round(stripProgress)}%
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-violet-200/70 bg-[linear-gradient(135deg,rgba(245,243,255,0.96),rgba(255,255,255,0.98))] px-4 py-3 shadow-[0_18px_40px_-32px_rgba(79,70,229,0.45)] dark:border-violet-900/60 dark:bg-[linear-gradient(135deg,rgba(49,46,129,0.28),rgba(15,23,42,0.96))]">
+            <div className="flex items-start gap-3">
+              <div className={cn(
+                'flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border shadow-sm',
+                isPollingFallback
+                  ? 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
+                  : 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-900/40 dark:text-violet-200'
+              )}>
+                {isConnected ? (
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
+                ) : isPollingFallback ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                )}
               </div>
 
-              <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-                <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {processingStage ? stageLabels[processingStage] : 'AI analysis in progress'}
-                </span>
-                <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
-                  {hasArtifacts ? `${completedCount} / ${totalCount} ready` : 'Starting…'}
-                </span>
-              </div>
-
-              <div className="mt-3 flex items-center gap-3">
-                <div className="min-w-0 flex-1">
-                  <Progress value={stripProgress} variant={isPollingFallback ? 'warning' : 'default'} className="h-2 bg-white/80 dark:bg-slate-800" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-violet-600/80 dark:text-violet-300/80">
+                    Artifact pipeline
+                  </span>
+                  <Badge className={cn(
+                    'border font-medium hover:bg-transparent',
+                    isPollingFallback
+                      ? 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
+                      : 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-900/40 dark:text-violet-200'
+                  )}>
+                    {isPollingFallback ? 'Polling fallback' : isConnected ? 'Live stream' : 'Connecting'}
+                  </Badge>
                 </div>
-                <span className="shrink-0 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  {Math.round(stripProgress)}%
-                </span>
+
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+                  <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {processingStage ? stageLabels[processingStage] : 'AI analysis in progress'}
+                  </span>
+                  <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                    {hasArtifacts ? `${completedCount} / ${totalCount} ready` : 'Starting…'}
+                  </span>
+                </div>
+
+                <div className="mt-3 flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <Progress value={stripProgress} variant={isPollingFallback ? 'warning' : 'default'} className="h-2 bg-white/80 dark:bg-slate-800" />
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    {Math.round(stripProgress)}%
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )
       )}
 
       {/* Connection-error banner (only when actually broken) */}
@@ -557,7 +580,7 @@ export function RealtimeArtifactViewer({
         </div>
       )}
 
-      {hasPartialFailures && (
+      {hasPartialFailures && !compact && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 dark:border-amber-900/60 dark:bg-amber-950/30">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
@@ -622,8 +645,9 @@ export function RealtimeArtifactViewer({
         </div>
       )}
 
-      {/* Artifacts Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Artifacts Grid — hidden in compact mode */}
+      {!compact && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {sortedArtifacts.map((artifact) => {
           const displayType = artifact.normalizedType;
           const isAnimating = animatingArtifacts.has(artifact.id);
@@ -780,9 +804,10 @@ export function RealtimeArtifactViewer({
           );
         })}
       </div>
+      )}
 
       {/* Completion Summary */}
-      {isEffectivelyComplete && (
+      {isEffectivelyComplete && !compact && (
         <Card className={cn(
           hasPartialFailures
             ? 'border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30'

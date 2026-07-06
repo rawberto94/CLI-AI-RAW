@@ -8,7 +8,6 @@ import { useDemoMode } from '@/hooks/useDemoMode'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { RealtimeArtifactViewer } from '@/components/contracts/RealtimeArtifactViewer'
 import { EnhancedUploadProgress } from '@/components/contracts/upload'
 import type { ProcessingOptions } from '@/components/contracts/upload/ProcessingConfig'
 import {
@@ -39,7 +38,6 @@ interface UploadFile {
   contractId?: string
   error?: string
   processingStage?: string
-  showArtifacts?: boolean
   isDuplicate?: boolean
   existingContractId?: string
   versionNumber?: number
@@ -335,12 +333,12 @@ export default function UploadPage() {
       // Update to processing with artifact viewer enabled
       setFiles(prev => prev.map(f =>
         f.id === uploadFile.id
-          ? { ...f, status: 'processing', progress: 20, contractId, processingStage: 'Processing with AI...', showArtifacts: true }
+          ? { ...f, status: 'processing', progress: 20, contractId, processingStage: 'Processing with AI...' }
           : f
       ))
 
-      // Note: Real-time SSE will handle the rest of the progress updates
-      // The RealtimeArtifactViewer component will show live artifact generation
+      // Note: EnhancedUploadProgress polls status and updates the aggregate
+      // progress bar + per-file subtitles; no per-file artifact grid is shown.
 
     } catch (error: unknown) {
       const errorMsg = error instanceof Error
@@ -591,33 +589,6 @@ export default function UploadPage() {
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     {queueSubtitle}
                   </p>
-
-                  <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
-                    {processingCount > 0 && (
-                      <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-violet-700 dark:border-violet-800 dark:bg-violet-900/30 dark:text-violet-200">
-                        <RefreshCw className="h-3 w-3 animate-spin" aria-hidden="true" />
-                        {processingCount} active
-                      </div>
-                    )}
-                    {pendingCount > 0 && (
-                      <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                        <Play className="h-3 w-3" aria-hidden="true" />
-                        {pendingCount} queued
-                      </div>
-                    )}
-                    {completedCount > 0 && (
-                      <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200">
-                        <Sparkles className="h-3 w-3" aria-hidden="true" />
-                        {completedCount} ready
-                      </div>
-                    )}
-                    {errorCount > 0 && (
-                      <div className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
-                        <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                        {errorCount} failed
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -647,13 +618,34 @@ export default function UploadPage() {
                   )}
                 </div>
               </div>
-              {files.length > 1 && (processingCount > 0 || completedCount > 0 || errorCount > 0) && (
-                <div className="mt-1 rounded-2xl border border-slate-200/80 bg-white/80 p-3 dark:border-slate-800 dark:bg-slate-900/70">
-                  <div className="mb-2 flex justify-between text-xs text-slate-500 dark:text-slate-400">
-                    <span>{completedCount + errorCount} of {files.length}{errorCount > 0 ? ` (${errorCount} failed)` : ''}</span>
-                    <span>{Math.round(queueProgress)}%</span>
+              {hasFiles && (
+                <div className="mt-5 rounded-2xl border border-violet-200/70 bg-white/90 p-4 shadow-sm dark:border-violet-900/40 dark:bg-slate-900/70">
+                  <div className="mb-2 flex items-center justify-between text-sm">
+                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                      {processingCount > 0
+                        ? `Analyzing ${processingCount} of ${files.length} file${files.length !== 1 ? 's' : ''}`
+                        : pendingCount > 0
+                          ? `${pendingCount} file${pendingCount !== 1 ? 's' : ''} waiting to start`
+                          : completedCount > 0 && errorCount === 0
+                            ? `All ${completedCount} file${completedCount !== 1 ? 's' : ''} ready`
+                            : errorCount > 0
+                              ? `${completedCount} ready, ${errorCount} failed`
+                              : `${files.length} file${files.length !== 1 ? 's' : ''} in queue`}
+                    </span>
+                    <span className="font-semibold text-violet-700 dark:text-violet-300">{Math.round(queueProgress)}%</span>
                   </div>
-                  <Progress value={queueProgress} className="h-2 bg-slate-100 dark:bg-slate-800" />
+                  <Progress value={queueProgress} className="h-3 bg-slate-100 dark:bg-slate-800" />
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    {processingCount > 0
+                      ? 'Uploading, reading text, generating AI insights, and indexing.'
+                      : pendingCount > 0
+                        ? 'Click Upload All to start analyzing the queued files.'
+                        : completedCount > 0 && errorCount === 0
+                          ? 'You can now view the analyzed contracts.'
+                          : errorCount > 0
+                            ? 'Some files failed — retry or remove them below.'
+                            : 'Add files to get started.'}
+                  </p>
                 </div>
               )}
             </CardHeader>
@@ -706,31 +698,8 @@ export default function UploadPage() {
                         queueMetadataReview(file.id, file.contractId, file.file.name)
                       }}
                       tenantId={getTenantId()}
+                      minimal
                     />
-                    {file.contractId && file.status === 'processing' && file.showArtifacts && (
-                      <div className="mt-3">
-                        <RealtimeArtifactViewer
-                          contractId={file.contractId}
-                          tenantId={getTenantId()}
-                          onComplete={() => {
-                            setFiles(prev => prev.map(f =>
-                              f.id === file.id
-                                ? { ...f, status: 'completed', progress: 100, endTime: Date.now() }
-                                : f
-                            ))
-                            queueMetadataReview(file.id, file.contractId, file.file.name)
-                          }}
-                          onContractNotFound={() => {
-                            logger.warn('upload_contract_not_found', { fileId: file.id });
-                            setFiles(prev => prev.map(f =>
-                              f.id === file.id
-                                ? { ...f, status: 'error', error: 'Contract not found. Please try uploading again.', endTime: Date.now() }
-                                : f
-                            ));
-                          }}
-                        />
-                      </div>
-                    )}
                   </motion.div>
                 ))}
               </AnimatePresence>

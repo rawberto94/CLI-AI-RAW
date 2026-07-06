@@ -58,12 +58,14 @@ export interface TransactionOperation {
 }
 
 // Default configuration
+// Pool size is critical under upload/analysis load: OCR + artifact workers
+// plus web traffic can exhaust a small pool and cause P2024 timeouts.
 const defaultConfig: DatabaseConfig = {
   connectionPool: {
     min: 2,
-    max: 10,
+    max: parseInt(process.env.DATABASE_POOL_MAX || (process.env.NODE_ENV === 'production' ? '30' : '10'), 10),
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: parseInt(process.env.DATABASE_POOL_TIMEOUT_MS || '10000', 10),
   },
   retryPolicy: {
     maxRetries: 3,

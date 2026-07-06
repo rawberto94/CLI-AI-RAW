@@ -16,8 +16,6 @@ import {
   RefreshCw,
   Eye,
   X,
-  ChevronDown,
-  ChevronUp,
   Copy,
   Layers,
   Check,
@@ -95,6 +93,7 @@ export interface UploadProgressProps {
   onComplete?: (contractId: string) => void;  // Called when processing completes
   tenantId?: string;
   autoNavigate?: boolean;  // Auto-navigate to contract on completion
+  minimal?: boolean;  // Render as a simple list row (no per-file progress bar, no stepper)
 }
 
 // ============================================================================
@@ -204,16 +203,17 @@ export function EnhancedUploadProgress({
   onComplete,
   tenantId = 'demo',
   autoNavigate = false,
+  minimal = false,
 }: UploadProgressProps) {
   const router = useRouter();
   const [stages, setStages] = useState<ProcessingStage[]>(() => 
     STAGES.map(s => ({ ...s, status: 'pending' as const }))
   );
-  const [expanded, setExpanded] = useState(false);
+
   const [elapsedTime, setElapsedTime] = useState(0);
   const [startTime] = useState(Date.now());
   const [apiStatus, setApiStatus] = useState<ContractStatusResponse | null>(null);
-  const [showSuccess, setShowSuccess] = useState(false);
+
   const [isCompleted, setIsCompleted] = useState(false);  // Track internal completion state
   const hasCompletedRef = useRef(false);
 
@@ -225,26 +225,15 @@ export function EnhancedUploadProgress({
     }
   }, [status, startTime, isCompleted]);
 
-  // Auto-expand on error
-  useEffect(() => {
-    if (status === 'error') {
-      setExpanded(true);
-    }
-  }, [status]);
-
-  // Handle completion with animation and optional auto-navigation
+  // Handle completion with optional auto-navigation
   const handleCompletion = useCallback((finalContractId: string) => {
     if (hasCompletedRef.current) return;
     hasCompletedRef.current = true;
     
-    setShowSuccess(true);
     setIsCompleted(true);
     // All stages complete
     setStages(STAGES.map(s => ({ ...s, status: 'completed' as const })));
     if (onComplete) onComplete(finalContractId);
-    
-    // Auto-dismiss success overlay after 3 seconds
-    setTimeout(() => setShowSuccess(false), 3000);
     
     if (autoNavigate) {
       setTimeout(() => router.push(`/contracts/${finalContractId}`), 1500);
@@ -336,7 +325,6 @@ export function EnhancedUploadProgress({
           handleCompletion(contractId);
           return; // Stop polling
         } else if (data.status === 'FAILED') {
-          setExpanded(true);
           return; // Stop polling
         }
 
@@ -520,9 +508,6 @@ export function EnhancedUploadProgress({
     );
   }
 
-  // Get current stage info - already declared above
-  const completedStages = stages.filter(s => s.status === 'completed').length;
-
   return (
     <motion.div 
       initial={{ opacity: 0, y: -10 }}
@@ -531,7 +516,7 @@ export function EnhancedUploadProgress({
         'relative overflow-hidden rounded-[22px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.94))] shadow-[0_20px_45px_-30px_rgba(15,23,42,0.38)] backdrop-blur transition-all dark:border-slate-700/80 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(15,23,42,0.9))]',
         status === 'error' && 'border-red-200/80 bg-[linear-gradient(180deg,rgba(254,242,242,0.96),rgba(255,255,255,0.98))] dark:border-red-700 dark:bg-[linear-gradient(180deg,rgba(127,29,29,0.4),rgba(15,23,42,0.92))]',
         (status === 'completed' || isCompleted) && 'border-emerald-200/80 bg-[linear-gradient(180deg,rgba(236,253,245,0.96),rgba(255,255,255,0.98))] dark:border-emerald-700 dark:bg-[linear-gradient(180deg,rgba(6,78,59,0.35),rgba(15,23,42,0.92))]',
-        showSuccess && 'ring-2 ring-green-400 ring-offset-2'
+        false
       )}
     >
       {/* Main Row */}
@@ -617,7 +602,7 @@ export function EnhancedUploadProgress({
             )}
           </div>
 
-          {(status === 'uploading' || status === 'processing') && !isCompleted && (
+          {!minimal && (status === 'uploading' || status === 'processing') && !isCompleted && (
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
@@ -653,17 +638,6 @@ export function EnhancedUploadProgress({
             </Button>
           )}
 
-          {(status === 'uploading' || status === 'processing') && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-9 w-9 rounded-full border border-slate-200/70 bg-white/70 p-0 text-slate-500 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:bg-slate-800"
-              onClick={() => setExpanded(!expanded)}
-            >
-              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
-          )}
-
           {(status === 'pending' || status === 'error' || status === 'completed' || isCompleted) && (
             <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full p-0 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={onRemove} aria-label="Remove file">
               <X className="h-4 w-4" />
@@ -674,118 +648,6 @@ export function EnhancedUploadProgress({
       </div>
 
       {/* Progress Bar */}
-      {/* Expanded Details */}
-      <AnimatePresence>
-        {expanded && (status === 'uploading' || status === 'processing' || status === 'error') && (
-          <motion.div key="expanded"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-t border-slate-200/80 dark:border-slate-700"
-          >
-            <div className={cn("p-4", status === 'error' ? 'bg-red-50/70 dark:bg-red-900/20' : 'bg-slate-50/80 dark:bg-slate-900/40')}>
-              {/* Error Details */}
-              {status === 'error' && error && (
-                <div className="mb-4 p-3 rounded-lg bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700">
-                  <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">Please try again or contact support if the issue persists.</p>
-                </div>
-              )}
-
-              {/* Stage Progress */}
-              <div className="flex items-center justify-between max-w-sm mx-auto" role="progressbar" aria-label="Processing stages">
-                {stages.map((stage, i) => (
-                  <div key={stage.id} className="flex items-center">
-                    {/* Stage Circle */}
-                    <div className="flex flex-col items-center">
-                      <motion.div 
-                        className={cn(
-                          'w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all',
-                          stage.status === 'completed' && 'bg-green-500 border-green-500 text-white',
-                          stage.status === 'in-progress' && 'bg-violet-500 border-violet-500 text-white',
-                          stage.status === 'error' && 'bg-red-500 border-red-500 text-white',
-                          stage.status === 'pending' && 'bg-white dark:bg-slate-700 border-gray-200 dark:border-slate-600 text-gray-400 dark:text-slate-400'
-                        )}
-                        animate={stage.status === 'in-progress' ? { scale: [1, 1.05, 1] } : {}}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      >
-                        {stage.status === 'completed' ? (
-                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }}>
-                            <Check className="h-4 w-4" />
-                          </motion.div>
-                        ) : stage.status === 'in-progress' ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : stage.status === 'error' ? (
-                          <X className="h-4 w-4" />
-                        ) : (
-                          <span className="text-xs font-medium">{i + 1}</span>
-                        )}
-                      </motion.div>
-                      <span className={cn(
-                        'text-[10px] mt-1.5 font-medium',
-                        stage.status === 'completed' && 'text-green-600',
-                        stage.status === 'in-progress' && 'text-violet-600',
-                        stage.status === 'error' && 'text-red-600',
-                        stage.status === 'pending' && 'text-gray-400 dark:text-slate-500'
-                      )}>
-                        {stage.shortName}
-                      </span>
-                    </div>
-                    
-                    {/* Connector Line */}
-                    {i < stages.length - 1 && (
-                      <div className={cn(
-                        'w-10 h-0.5 mx-2 -mt-4 transition-colors',
-                        stage.status === 'completed' ? 'bg-green-400' :
-                        stage.status === 'in-progress' ? 'bg-violet-200 dark:bg-violet-700' :
-                        'bg-gray-200 dark:bg-slate-600'
-                      )} />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Stats Row */}
-              <div className="flex items-center justify-center gap-6 mt-4 text-xs text-gray-500 dark:text-gray-400">
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>{formatDuration(displayTime)}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>{completedStages}/{stages.length} stages</span>
-                </div>
-                {artifactCount > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <Brain className="h-3.5 w-3.5" />
-                    <span>{artifactCount} insights</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Success Animation Overlay */}
-      <AnimatePresence>
-        {showSuccess && (
-          <motion.div key="success"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-green-50/90 dark:bg-green-900/80 flex items-center justify-center pointer-events-none rounded-lg"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: [0, 1.2, 1] }}
-              transition={{ duration: 0.5 }}
-            >
-              <CheckCircle2 className="h-12 w-12 text-green-500" />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }

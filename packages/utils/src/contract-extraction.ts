@@ -375,6 +375,7 @@ function findNearestLegalEntity(text: string, nearIndex = 0): string | null {
     // Walk backwards from the suffix to collect the preceding capitalized words.
     for (let i = tokens.length - 1; i >= 0 && collected < 10; i--) {
       const rawToken = tokens[i];
+      if (!rawToken) continue;
       const token = rawToken.replace(/[,;:.]+$/g, '');
       if (!token) continue;
       if (token === '&' || token.toLowerCase() === 'and') {

@@ -75,6 +75,13 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
     isReprocess = false,
     ocrMode,
   } = options;
+
+  // Inline fallback is convenient in dev but dangerous in production: it can
+  // consume the Next.js server with long-running AI work. Disable by default in
+  // production unless explicitly enabled via ENABLE_INLINE_ARTIFACT_FALLBACK=true.
+  const isProduction = process.env.NODE_ENV === 'production';
+  const enableInlineFallback = process.env.ENABLE_INLINE_ARTIFACT_FALLBACK === 'true' ||
+    (!isProduction && process.env.ENABLE_INLINE_ARTIFACT_FALLBACK !== 'false');
   
   if (useQueue) {
     try {
@@ -105,8 +112,9 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
       // Safety net: if no worker picks up the job within the timeout, process inline.
       // This handles the common scenario where Redis is running but no BullMQ workers are active.
       // Skip for reprocesses — the worker is already running and artifact generation can take >30s.
+      // Disabled in production by default to prevent the web server from running AI work.
       const fallbackTimeoutMs = parseInt(process.env.BULLMQ_FALLBACK_TIMEOUT_MS || '15000', 10);
-      if (!isReprocess) {
+      if (!isReprocess && enableInlineFallback) {
         scheduleInlineFallback(options, fallbackTimeoutMs);
       }
       
@@ -118,14 +126,35 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
         priority,
         estimatedWaitMs,
       };
-    } catch {
-      // Fallback to direct processing if queue unavailable
-      return triggerLegacyProcessing(options);
+    } catch (error) {
+      // Fallback to direct processing only when inline fallback is enabled.
+      // In production, fail fast so the web server never runs the AI pipeline.
+      if (enableInlineFallback) {
+        logger.warn('Queue unavailable — falling back to inline artifact processing', { contractId, error });
+        return triggerLegacyProcessing(options);
+      }
+      logger.error('Queue unavailable and inline fallback disabled', error, { contractId });
+      return {
+        success: false,
+        contractId,
+        status: 'failed',
+        jobId: null,
+      };
     }
   }
-  
-  // Legacy processing (spawn worker)
-  return triggerLegacyProcessing(options);
+
+  // Legacy processing (spawn worker) — only when inline fallback is enabled
+  if (enableInlineFallback) {
+    return triggerLegacyProcessing(options);
+  }
+
+  logger.error('useQueue=false requested but inline fallback is disabled', { contractId });
+  return {
+    success: false,
+    contractId,
+    status: 'failed',
+    jobId: null,
+  };
 }
 
 /**

@@ -21,6 +21,7 @@ import {
   CircuitBreakerError,
   CircuitState,
   getQueueService,
+  JOB_NAMES,
   ocrCache,
   publishJobProgress,
   QUEUE_NAMES,
@@ -33,6 +34,7 @@ import {
   type JobType,
   type ProcessContractJobData,
 } from './compat/repo-utils';
+import { updateStep } from './workflow/processing-job';
 import pino from 'pino';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
@@ -1119,6 +1121,7 @@ interface OCRArtifactResult {
   extractedText?: string;
   partialSuccess?: boolean;
   failedArtifacts?: string[];
+  message?: string;
 }
 
 /**
@@ -2565,9 +2568,79 @@ export async function processOCRArtifactJob(
       jobLogger.warn({ error: typeUpdateError }, 'Failed to persist contract type, continuing');
     }
 
-    // 4. Generate artifacts using AI with partial success tracking
+    // 4. Offload artifact generation to the dedicated artifact worker so the
+    // OCR worker can immediately start OCR on the next contract.
+    // Fallback: set SPLIT_ARTIFACT_GENERATION=false to run artifacts inline (legacy).
+    let artifactGenerationQueued = false;
+    if (process.env.SPLIT_ARTIFACT_GENERATION !== 'false') {
+      try {
+        const queueService = getQueueService();
+        await queueService.addJob(
+          QUEUE_NAMES.ARTIFACT_GENERATION,
+          JOB_NAMES.GENERATE_ARTIFACTS,
+          {
+            contractId,
+            tenantId,
+            contractText: extractedText,
+            priority: 'high',
+            traceId: trace.traceId,
+            requestId: (job.data as any)?.requestId,
+          },
+          {
+            priority: 5,
+            jobId: `artifacts-${contractId}`,
+          }
+        );
+        artifactGenerationQueued = true;
+        jobLogger.info({ contractId }, 'Queued artifact generation job');
+      } catch (queueError) {
+        jobLogger.error({ error: queueError, contractId }, 'CRITICAL: Failed to queue artifact generation — falling back to inline processing');
+        // Continue to legacy inline block below
+      }
+
+      if (artifactGenerationQueued) {
+        try {
+          await updateStep({
+            tenantId,
+            contractId,
+            step: 'artifacts.generate',
+            status: 'pending',
+            progress: 65,
+            currentStep: 'artifacts.generate',
+          });
+          await prisma.processingJob.findFirst({
+            where: { contractId, tenantId },
+            orderBy: { createdAt: 'desc' },
+          }).then((processingJob: any) => {
+            if (processingJob) {
+              return prisma.processingJob.updateMany({
+                where: { id: processingJob.id, tenantId },
+                data: {
+                  status: 'QUEUED',
+                  progress: 65,
+                  currentStep: 'OCR complete — artifact generation queued',
+                },
+              });
+            }
+          });
+          await publishJobProgress(job.id || '', contractId, tenantId, 65, 'artifacts', 'OCR complete — artifact generation queued');
+        } catch (progressErr) {
+          jobLogger.warn({ error: progressErr }, 'Failed to update progress after queuing artifacts');
+        }
+
+        return {
+          success: true,
+          artifactsCreated: 0,
+          extractedText: extractedText.substring(0, 500),
+          partialSuccess: false,
+          message: 'OCR complete; artifact generation queued',
+        };
+      }
+    }
+
+    // LEGACY FALLBACK: Generate artifacts using AI inline in the OCR worker.
     // Use contract type to determine which artifacts to generate
-    jobLogger.info('Generating AI artifacts (adaptive based on contract type)');
+    jobLogger.info('Generating AI artifacts inline (legacy fallback mode)');
     
     // Load tenant-specific artifact config overrides (P2 #2: respect tenant config)
     let enabledArtifactTypes = SHARED_ARTIFACT_TYPES.filter(c => c.enabled);
@@ -4085,23 +4158,8 @@ export async function processOCRArtifactJob(
       }
     }
 
-    // 9. Re-index artifacts for RAG semantic search (includes artifact summaries)
-    if (!hasCompleteFailure && artifacts.count > 0) {
-      try {
-        const autoReindex = process.env.AUTO_RAG_ARTIFACT_REINDEX !== 'false'; // Default to true
-        if (autoReindex) {
-          jobLogger.info('Triggering RAG artifact reindexing');
-          await publishJobProgress(job.id || '', contractId, tenantId, 95, 'indexing', 'Indexing for semantic search');
-          // Import dynamically to avoid circular dependencies
-          const { ragIntegrationService } = await import('../../data-orchestration/src/services/rag-integration.service');
-          await ragIntegrationService.reindexContract(contractId);
-          jobLogger.info('RAG artifact reindexing completed');
-        }
-      } catch (reindexError) {
-        // Don't fail the job if reindexing fails
-        jobLogger.warn({ error: reindexError }, 'Failed to reindex artifacts for RAG, contract still processed successfully');
-      }
-    }
+    // 9. RAG indexing is now handled by the queued RAG_INDEXING worker (queued above).
+    // Removed duplicate inline reindex here to avoid double-indexing.
 
     try { await job.updateProgress(100); } catch { /* best-effort */ }
     

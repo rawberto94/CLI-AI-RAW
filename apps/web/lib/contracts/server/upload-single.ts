@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import { mkdir, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
+import { Readable } from 'stream';
 
 import type { Prisma } from '@prisma/client';
 import { nanoid } from 'nanoid';
@@ -360,7 +361,9 @@ export async function postContractUpload(
   try {
     const rateLimitResult = await checkUploadRateLimit(tenantId);
     if (!rateLimitResult.allowed) {
-      return createErrorResponse(context, 'RATE_LIMITED', 'Too many uploads. Limit: 10 per minute.', 429, {
+      const uploadLimit = rateLimitConfigs['/api/contracts/upload']?.maxRequests ?? 10;
+      const windowSeconds = Math.round((rateLimitConfigs['/api/contracts/upload']?.windowMs ?? 60000) / 1000);
+      return createErrorResponse(context, 'RATE_LIMITED', `Too many uploads. Limit: ${uploadLimit} per ${windowSeconds} seconds.`, 429, {
         retryAfter: rateLimitResult.retryAfter,
       });
     }
@@ -553,16 +556,30 @@ export async function postContractUpload(
         throw new Error('Storage service not available');
       }
 
-      const uploadResult = await storageService.upload({
-        fileName: objectKey,
-        buffer,
-        contentType: file.type,
-        metadata: {
-          tenantId,
-          originalName: file.name,
-          uploadedAt: new Date().toISOString(),
-        },
-      });
+      // For large files, stream the buffer to storage to avoid extra copies in the SDK.
+      const streamUploadThreshold = parseInt(process.env.STREAM_UPLOAD_THRESHOLD_BYTES || '10485760', 10);
+      const useStream = buffer.length > streamUploadThreshold && typeof (storageService as any).uploadStream === 'function';
+      const uploadResult = useStream
+        ? await (storageService as any).uploadStream(
+            objectKey,
+            Readable.from(buffer),
+            buffer.length,
+            {
+              tenantId,
+              originalName: file.name,
+              uploadedAt: new Date().toISOString(),
+            }
+          )
+        : await storageService.upload({
+            fileName: objectKey,
+            buffer,
+            contentType: file.type,
+            metadata: {
+              tenantId,
+              originalName: file.name,
+              uploadedAt: new Date().toISOString(),
+            },
+          });
 
       if (!uploadResult.success) {
         throw new Error(uploadResult.error || 'Upload failed');

@@ -172,6 +172,28 @@ export async function processCategorizationJob(
 
     await job.updateProgress(10);
 
+    // Skip categorization if the upstream OCR/artifact pipeline already determined
+    // the contract type with reasonable confidence.
+    if (!forceRecategorize && contract.contractType && contract.contractType !== 'OTHER' && contract.contractType !== 'UNKNOWN') {
+      await updateStep({
+        tenantId,
+        contractId,
+        step: 'categorization.run',
+        status: 'skipped',
+        progress: 100,
+        currentStep: 'categorization.run',
+      });
+
+      return {
+        success: true,
+        contractId,
+        contractType: contract.contractType ?? undefined,
+        overallConfidence: 100,
+        autoApplied: false,
+        processingTimeMs: Date.now() - startTime,
+      };
+    }
+
     const rawTextHash = contract.rawText ? sha256(contract.rawText) : undefined;
 
     // Idempotency: if we already categorized the same rawText, skip.

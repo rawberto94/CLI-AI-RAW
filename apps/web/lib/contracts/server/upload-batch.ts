@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
+import { Readable } from 'stream';
 import { NextRequest } from 'next/server';
 
 import {
@@ -95,33 +96,35 @@ export async function postBatchUploadContracts(
 
     const disableDuplicateDetection = process.env.DISABLE_DUPLICATE_DETECTION === 'true';
     const skipDuplicateCheck = request.headers.get('x-skip-duplicate-check') === 'true';
-    const results: BatchFileResult[] = [];
+    const results: (BatchFileResult | undefined)[] = new Array(contractFiles.length);
+    const uploadConcurrency = parseInt(process.env.BATCH_UPLOAD_CONCURRENCY || '5', 10);
 
-    for (let index = 0; index < contractFiles.length; index++) {
-      const file = contractFiles[index];
+    // Process batch files with bounded concurrency to overlap I/O (storage, scan, DB)
+    // without overwhelming the connection pool.
+    await asyncPool(uploadConcurrency, contractFiles, async (file, index) => {
       const fileName = file.name || `file-${index}`;
 
       try {
         if (file.size > BATCH_CONFIG.maxFileSize) {
-          results.push({
+          results[index] = {
             index,
             fileName,
             fileSize: file.size,
             status: 'error',
             error: `File exceeds size limit of ${(BATCH_CONFIG.maxFileSize / (1024 * 1024)).toFixed(0)} MB`,
-          });
-          continue;
+          };
+          return;
         }
 
         if (!BATCH_CONFIG.allowedTypes.has(file.type)) {
-          results.push({
+          results[index] = {
             index,
             fileName,
             fileSize: file.size,
             status: 'error',
             error: `Unsupported file type: ${file.type}`,
-          });
-          continue;
+          };
+          return;
         }
 
         const arrayBuffer = await file.arrayBuffer();
@@ -129,14 +132,14 @@ export async function postBatchUploadContracts(
         const scanResult = await scanBuffer(buffer, fileName);
         if (!scanResult.clean) {
           logger.warn('Batch upload: suspicious file rejected', { fileName, threats: scanResult.threats });
-          results.push({
+          results[index] = {
             index,
             fileName,
             fileSize: file.size,
             status: 'error',
             error: 'File flagged by virus scanner',
-          });
-          continue;
+          };
+          return;
         }
 
         const contentHash = createHash('sha256').update(buffer).digest('hex');
@@ -155,7 +158,7 @@ export async function postBatchUploadContracts(
           });
 
           if (existing) {
-            results.push({
+            results[index] = {
               index,
               fileName,
               fileSize: file.size,
@@ -163,8 +166,8 @@ export async function postBatchUploadContracts(
               contractId: existing.id,
               contentHash,
               error: `Duplicate of existing contract (${existing.fileName})`,
-            });
-            continue;
+            };
+            return;
           }
         }
 
@@ -238,7 +241,7 @@ export async function postBatchUploadContracts(
           },
         }).catch(() => undefined);
 
-        results.push({
+        results[index] = {
           index,
           fileName,
           fileSize: file.size,
@@ -246,22 +249,23 @@ export async function postBatchUploadContracts(
           contractId: contract.id,
           processingJobId: processingJob.id,
           contentHash,
-        });
+        };
       } catch (error) {
         logger.error('Batch file upload failed', error instanceof Error ? error : undefined, { fileName });
-        results.push({
+        results[index] = {
           index,
           fileName,
           fileSize: file.size,
           status: 'error',
           error: error instanceof Error ? error.message : 'Unknown error',
-        });
+        };
       }
-    }
+    });
 
-    const successful = results.filter((result) => result.status === 'success').length;
-    const duplicates = results.filter((result) => result.status === 'duplicate').length;
-    const failed = results.filter((result) => result.status === 'error').length;
+    const finalResults = results.filter((r): r is BatchFileResult => r !== undefined);
+    const successful = finalResults.filter((result) => result.status === 'success').length;
+    const duplicates = finalResults.filter((result) => result.status === 'duplicate').length;
+    const failed = finalResults.filter((result) => result.status === 'error').length;
 
     logger.info('Batch upload completed', {
       tenantId,
@@ -277,11 +281,30 @@ export async function postBatchUploadContracts(
       successful,
       duplicates,
       failed,
-      results,
+      results: finalResults,
     });
   } catch (error) {
     return handleApiError(context, error);
   }
+}
+
+/**
+ * Run async work over an array with bounded concurrency.
+ * Avoids adding a dependency on p-limit; uses a shared iterator so each worker
+ * pulls the next item as soon as it becomes idle.
+ */
+async function asyncPool<T>(
+  concurrency: number,
+  items: T[],
+  fn: (item: T, index: number) => Promise<void>
+): Promise<void> {
+  const iterator = items.entries();
+  const workers = Array.from({ length: concurrency }, async () => {
+    for (const [index, item] of iterator) {
+      await fn(item, index);
+    }
+  });
+  await Promise.all(workers);
 }
 
 let storageService: { upload?: (args: { fileName: string; buffer: Buffer; contentType: string }) => Promise<unknown> } | null = null;
@@ -297,6 +320,10 @@ async function getStorageService() {
   }
 }
 
+// Stream uploads for files above this threshold to reduce memory pressure
+// on the Node.js process when handling large contracts.
+const STREAM_UPLOAD_THRESHOLD_BYTES = parseInt(process.env.STREAM_UPLOAD_THRESHOLD_BYTES || '10485760', 10);
+
 async function storeBatchUploadFile(
   buffer: Buffer,
   tenantId: string,
@@ -310,11 +337,21 @@ async function storeBatchUploadFile(
 
   if (storage?.upload) {
     const key = `contracts/${tenantId}/${timestamp}-${uniquePrefix}-${safeName}`;
-    await storage.upload({
-      fileName: key,
-      buffer,
-      contentType: 'application/octet-stream',
-    });
+    // For large files, stream the already-materialized buffer to storage instead
+    // of passing it as another full copy. This still requires the buffer for
+    // hashing/virus-scan, but avoids duplicating it inside the storage SDK.
+    if (buffer.length > STREAM_UPLOAD_THRESHOLD_BYTES && typeof (storage as any).uploadStream === 'function') {
+      const stream = Readable.from(buffer);
+      await (storage as any).uploadStream(key, stream, buffer.length, {
+        'Content-Type': 'application/octet-stream',
+      });
+    } else {
+      await storage.upload({
+        fileName: key,
+        buffer,
+        contentType: 'application/octet-stream',
+      });
+    }
     return { storagePath: key, storageProvider: 's3' };
   }
 

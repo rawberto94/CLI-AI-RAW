@@ -11,6 +11,9 @@ import {
   getQueueService,
   JOB_NAMES,
   QUEUE_NAMES,
+  publishJobProgress,
+  redisEventBus,
+  RedisEvents,
   type GenerateArtifactsJobData,
   type JobType,
 } from './compat/repo-utils';
@@ -20,6 +23,7 @@ import { getTraceContextFromJobData } from './observability/trace';
 import { CircuitBreaker } from './utils/circuit-breaker';
 import { hashJson } from './utils/hash';
 import { ensureProcessingJob, updateStep } from './workflow/processing-job';
+import { buildProcessingPlan } from './workflow/planner';
 import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime';
 import { ArtifactQualityValidator, selfCritiqueArtifact } from './utils/artifact-quality-validator';
 import { AdaptiveRetryStrategy, chunkTextForModel } from './utils/adaptive-retry-strategy';
@@ -30,6 +34,8 @@ import {
   getContractProfile,
   isArtifactApplicable,
   getEnhancedPromptHints,
+  getMissingMandatoryFields,
+  getTabPriorityOrder,
 } from './contract-type-profiles';
 import {
   DEFAULT_ARTIFACT_TYPES as SHARED_ARTIFACT_TYPES,
@@ -239,6 +245,7 @@ export async function generateArtifactsJob(
   );
 
   const artifactIds: string[] = [];
+  const successfulArtifactTypes: string[] = [];
 
   try {
     await ensureProcessingJob({
@@ -339,32 +346,39 @@ export async function generateArtifactsJob(
       logger.warn({ error: costCheckErr }, 'DB cost check failed — falling back to in-memory tracker');
     }
 
-    // Generate each artifact with retry logic (using tenant config)
-    for (const { type, weight, config } of artifactTypes) {
-      // Budget guard: check per-contract and per-tenant cost limits before each artifact
-      const budgetCheck = costTracker.canProceed(contractId, tenantId);
-      if (!budgetCheck.allowed) {
-        logger.warn({ contractId, tenantId, type, reason: budgetCheck.reason }, '⛔ Artifact generation blocked by cost budget');
-        failedArtifacts.push(type);
-        continue;
-      }
-      if (budgetCheck.warning) {
-        logger.warn({ contractId, tenantId, type, warning: budgetCheck.warning }, '⚠️ Approaching cost limit');
-      }
+    // Generate artifacts in parallel batches for faster processing.
+    // Priority order is preserved within each batch; configurable via ARTIFACT_BATCH_SIZE.
+    const ARTIFACT_BATCH_SIZE = parseInt(process.env.ARTIFACT_BATCH_SIZE || '5', 10);
+    const totalWeight = artifactTypes.reduce((sum, { weight }) => sum + weight, 0);
+    let completedWeight = 0;
 
-      try {
+    for (let batchStart = 0; batchStart < artifactTypes.length; batchStart += ARTIFACT_BATCH_SIZE) {
+      const batch = artifactTypes.slice(batchStart, Math.min(batchStart + ARTIFACT_BATCH_SIZE, artifactTypes.length));
+      logger.info({ batch: Math.floor(batchStart / ARTIFACT_BATCH_SIZE) + 1, batchSize: batch.length, total: artifactTypes.length }, 'Processing artifact batch');
+
+      const batchResults = await Promise.allSettled(batch.map(async ({ type, weight, config }) => {
+        // Budget guard: check per-contract and per-tenant cost limits before each artifact
+        const budgetCheck = costTracker.canProceed(contractId, tenantId);
+        if (!budgetCheck.allowed) {
+          logger.warn({ contractId, tenantId, type, reason: budgetCheck.reason }, '⛔ Artifact generation blocked by cost budget');
+          return { type, success: false, error: 'Budget limit reached' };
+        }
+        if (budgetCheck.warning) {
+          logger.warn({ contractId, tenantId, type, warning: budgetCheck.warning }, '⚠️ Approaching cost limit');
+        }
+
         await updateStep({
           tenantId,
           contractId,
           step: `artifact.${type}`,
           status: 'running',
-          progress: progressBase,
+          progress: progressBase + Math.round((completedWeight / totalWeight) * 80),
           currentStep: `artifact.${type}`,
         });
 
-        logger.info({ 
-          contractId, 
-          type, 
+        logger.info({
+          contractId,
+          type,
           traceId: trace.traceId,
           qualityThreshold: config?.qualityThreshold || 0.7,
           maxRetries: config?.maxRetries || 3,
@@ -379,11 +393,10 @@ export async function generateArtifactsJob(
 
         while (regenerationAttempts <= maxRegenerations) {
           try {
-            // Use adaptive retry strategy with model fallback
             const result = await adaptiveRetry.executeWithRetry(
               async (model) => {
                 modelUsed = model.name;
-                const data = await generateArtifactData(type, contractText, contractId, tenantId, model.name, detectedContractType);
+                const data = await generateArtifactData(type, contractText, contractId, tenantId, model.name, detectedContractType, contract);
                 return { data, model: model.name };
               },
               `Generate ${type} artifact`
@@ -391,7 +404,6 @@ export async function generateArtifactsJob(
 
             artifactData = result.data;
 
-            // Validate quality
             qualityScore = await qualityValidator.validateArtifact(
               type,
               artifactData,
@@ -408,22 +420,19 @@ export async function generateArtifactsJob(
               regenerationAttempt: regenerationAttempts,
             }, '✓ Quality validation complete');
 
-            // If quality meets configured threshold, proceed
             const qualityThreshold = config?.qualityThreshold || 0.7;
             const meetsThreshold = qualityScore.overall >= qualityThreshold;
-            
+
             if (meetsThreshold || qualityScore.passesThreshold) {
               break;
             }
 
-            // Self-critique for low quality (if enabled in config)
             if (!generationConfig.enableSelfCritique) {
-              // Skip self-critique, accept current result
               break;
             }
-            
+
             const critique = await selfCritiqueArtifact(type, artifactData, contractText);
-            
+
             logger.warn({
               contractId,
               type,
@@ -432,13 +441,11 @@ export async function generateArtifactsJob(
               shouldRegenerate: critique.shouldRegenerate,
             }, '⚠️ Low quality detected');
 
-            // Decide if should regenerate
             if (critique.shouldRegenerate && regenerationAttempts < maxRegenerations) {
               regenerationAttempts++;
               logger.info({ contractId, type, attempt: regenerationAttempts }, '🔄 Regenerating artifact due to quality issues');
               continue;
             } else {
-              // Accept despite low quality
               logger.warn({ contractId, type }, '⚠️ Accepting low-quality artifact (max regenerations reached)');
               break;
             }
@@ -461,7 +468,6 @@ export async function generateArtifactsJob(
           throw new Error(`Failed to generate ${type} artifact after ${regenerationAttempts} attempts`);
         }
 
-        // Store artifact with quality metadata
         const artifact = await retryWithBackoff(
           () => createOrUpdateArtifact({
             contractId,
@@ -490,75 +496,81 @@ export async function generateArtifactsJob(
           }
         );
 
-        artifactIds.push(artifact.id);
         logger.info({ contractId, artifactId: artifact.id, type, traceId: trace.traceId }, 'Artifact stored');
-
-        progressBase += weight;
-        await job.updateProgress(progressBase);
 
         await updateStep({
           tenantId,
           contractId,
           step: `artifact.${type}`,
           status: 'completed',
-          progress: progressBase,
+          progress: progressBase + Math.round(((completedWeight + weight) / totalWeight) * 80),
           currentStep: `artifact.${type}`,
         });
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error);
-        logger.error({ error: errorMsg, contractId, type, traceId: trace.traceId }, `Failed to generate ${type} artifact after retries`);
-        failedArtifacts.push(type);
 
-        await updateStep({
-          tenantId,
-          contractId,
-          step: `artifact.${type}`,
-          status: 'failed',
-          progress: progressBase,
-          currentStep: `artifact.${type}`,
-          error: errorMsg,
-        });
-        
-        // If fallback is enabled (from tenant config), try to create a minimal artifact
-        if (generationConfig.enableFallbackOnError) {
-          try {
-            const fallbackData = getFallbackArtifactData(type, contractId);
+        return { type, success: true, artifactId: artifact.id, weight };
+      }));
 
-            // Never overwrite an existing artifact with fallback content.
-            const existing = await prisma.artifact.findUnique({
-              where: {
-                contractId_type: {
-                  contractId,
-                  type: type as any,
-                },
-              },
-              select: { id: true },
-            });
+      // Process batch results and apply fallbacks for failures
+      for (let i = 0; i < batchResults.length; i++) {
+        const result = batchResults[i];
+        const type = batch[i].type;
+        if (result.status === 'fulfilled') {
+          const { success, artifactId, weight: artifactWeight, error } = result.value;
+          if (success && artifactId) {
+            artifactIds.push(artifactId);
+            successfulArtifactTypes.push(type);
+            completedWeight += artifactWeight || 1;
+          } else {
+            logger.warn({ contractId, type, error }, 'Artifact generation skipped');
+            failedArtifacts.push(type);
+          }
+        } else {
+          const errorMsg = result.reason instanceof Error ? result.reason.message : String(result.reason);
+          logger.error({ error: errorMsg, contractId, type, traceId: trace.traceId }, `Failed to generate ${type} artifact after retries`);
+          failedArtifacts.push(type);
 
-            if (!existing) {
-              await createOrUpdateArtifact({
-                contractId,
-                tenantId,
-                type,
-                artifactData: { ...fallbackData, _fallback: true, _error: errorMsg },
-                validationStatus: 'needs_review',
-                modelUsed: null,
-                promptVersion: PROMPT_VERSION,
+          await updateStep({
+            tenantId,
+            contractId,
+            step: `artifact.${type}`,
+            status: 'failed',
+            progress: progressBase + Math.round((completedWeight / totalWeight) * 80),
+            currentStep: `artifact.${type}`,
+            error: errorMsg,
+          });
+
+          // Fallback artifact if enabled
+          if (generationConfig.enableFallbackOnError) {
+            try {
+              const fallbackData = getFallbackArtifactData(type, contractId);
+              const existing = await prisma.artifact.findUnique({
+                where: { contractId_type: { contractId, type: type as any } },
+                select: { id: true },
               });
-              logger.info({ contractId, type, traceId: trace.traceId }, 'Fallback artifact stored');
-            } else {
-              logger.info({ contractId, type, existingArtifactId: existing.id, traceId: trace.traceId }, 'Skipping fallback: artifact already exists');
+              if (!existing) {
+                await createOrUpdateArtifact({
+                  contractId,
+                  tenantId,
+                  type,
+                  artifactData: { ...fallbackData, _fallback: true, _error: errorMsg },
+                  validationStatus: 'needs_review',
+                  modelUsed: null,
+                  promptVersion: PROMPT_VERSION,
+                });
+                logger.info({ contractId, type, traceId: trace.traceId }, 'Fallback artifact stored');
+              }
+            } catch (fallbackError) {
+              logger.warn({ contractId, type, fallbackError }, 'Failed to create fallback artifact');
             }
-          } catch (fallbackError) {
-            logger.warn({ contractId, type, fallbackError }, 'Failed to create fallback artifact');
+          }
+
+          if (!generationConfig.continueOnPartialFailure) {
+            throw result.reason;
           }
         }
-        
-        // Continue with other artifacts if configured (from tenant config)
-        if (!generationConfig.continueOnPartialFailure) {
-          throw error;
-        }
       }
+
+      await job.updateProgress(progressBase + Math.round((completedWeight / totalWeight) * 80));
     }
 
     // Determine final status
@@ -574,6 +586,27 @@ export async function generateArtifactsJob(
         updatedAt: new Date(),
       },
     });
+
+    // Update top-level processing job status
+    try {
+      const processingJob = await prisma.processingJob.findFirst({
+        where: { contractId, tenantId },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (processingJob) {
+        await prisma.processingJob.updateMany({
+          where: { id: processingJob.id, tenantId },
+          data: {
+            status: finalStatus,
+            progress: 100,
+            currentStep: failedArtifacts.length > 0 ? `completed with ${failedArtifacts.length} failed artifacts` : 'completed',
+            updatedAt: new Date(),
+          },
+        });
+      }
+    } catch (processingJobError) {
+      logger.warn({ contractId, error: processingJobError }, 'Failed to update top-level processing job status');
+    }
 
     await job.updateProgress(100);
 
@@ -608,6 +641,188 @@ export async function generateArtifactsJob(
       } catch (ragQueueError) {
         logger.warn({ contractId, ragQueueError }, 'Failed to queue RAG indexing after artifact generation');
       }
+    }
+
+    // ============ ENHANCEMENT: Populate ContractMetadata with AI insights ============
+    try {
+      const artifacts = await prisma.artifact.findMany({
+        where: { contractId, tenantId },
+        select: { type: true, data: true },
+      });
+      const overviewData: any = artifacts.find((a: any) => a.type === 'OVERVIEW')?.data || {};
+      const riskData: any = artifacts.find((a: any) => a.type === 'RISK')?.data || {};
+      const missingFields = getMissingMandatoryFields(detectedContractType, overviewData);
+      const tabOrder = getTabPriorityOrder(detectedContractType);
+
+      const mandatoryFieldsCount = contractTypeProfile.mandatoryFields.length;
+      const foundMandatoryFields = mandatoryFieldsCount - missingFields.length;
+      const completenessScore = mandatoryFieldsCount > 0
+        ? Math.round((foundMandatoryFields / mandatoryFieldsCount) * 100)
+        : 50;
+
+      const complexityScore = Math.min(100, Math.round(
+        (contractTypeProfile.clauseCategories.length * 5) +
+        (contractTypeProfile.financialFields.length * 5) +
+        (contractTypeProfile.riskCategories.length * 5) +
+        (contractText.length > 10000 ? 20 : contractText.length > 5000 ? 10 : 0)
+      ));
+
+      const artifactSuccessRate = successfulArtifactTypes.length / (artifactTypes.length || 1);
+      const dataQualityScore = Math.round(
+        (completenessScore * 0.4) +
+        ((contract.classificationConf || 0) * 100 * 0.3) +
+        (artifactSuccessRate * 100 * 0.3)
+      );
+
+      const riskScore = typeof riskData.riskScore === 'number'
+        ? Math.min(100, Math.max(0, riskData.riskScore))
+        : (riskData.overallRisk === 'high' ? 75 : riskData.overallRisk === 'medium' ? 50 : 25);
+
+      await prisma.contractMetadata.upsert({
+        where: { contractId },
+        create: {
+          contractId,
+          tenantId,
+          updatedBy: 'artifact-generator-worker',
+          dataQualityScore,
+          riskScore,
+          complexityScore,
+          lastAiAnalysis: new Date(),
+          aiAnalysisVersion: 'artifact-generator-v1',
+          aiSummary: overviewData.summary || null,
+          aiKeyInsights: overviewData.smartSuggestions || [],
+          aiRiskFactors: riskData.risks || riskData.riskFactors || [],
+          aiRecommendations: overviewData.smartSuggestions?.filter((s: any) => s.priority === 'high') || [],
+          searchKeywords: overviewData.keyTerms || [],
+          artifactSummary: {
+            tabPriorityOrder: tabOrder,
+            generatedArtifacts: successfulArtifactTypes,
+            failedArtifacts,
+            notApplicableArtifacts: skippedArtifacts,
+            completenessScore,
+            missingMandatoryFields: missingFields,
+            contractType: detectedContractType,
+            contractTypeConfidence: contract.classificationConf || 0,
+            industryInsights: overviewData.industryInsights || null,
+          },
+          systemFields: {
+            extractionVersion: '2.0',
+            ocrMode: contract.ocrProvider || 'unknown',
+            processedAt: new Date().toISOString(),
+          },
+        },
+        update: {
+          dataQualityScore,
+          riskScore,
+          complexityScore,
+          lastAiAnalysis: new Date(),
+          aiAnalysisVersion: 'artifact-generator-v1',
+          aiSummary: overviewData.summary || undefined,
+          aiKeyInsights: overviewData.smartSuggestions || [],
+          aiRiskFactors: riskData.risks || riskData.riskFactors || [],
+          aiRecommendations: overviewData.smartSuggestions?.filter((s: any) => s.priority === 'high') || [],
+          searchKeywords: overviewData.keyTerms || [],
+          artifactSummary: {
+            tabPriorityOrder: tabOrder,
+            generatedArtifacts: successfulArtifactTypes,
+            failedArtifacts,
+            notApplicableArtifacts: skippedArtifacts,
+            completenessScore,
+            missingMandatoryFields: missingFields,
+            contractType: detectedContractType,
+            contractTypeConfidence: contract.classificationConf || 0,
+            industryInsights: overviewData.industryInsights || null,
+          },
+          updatedBy: 'artifact-generator-worker',
+        },
+      });
+
+      logger.info({
+        dataQualityScore,
+        riskScore,
+        complexityScore,
+        completenessScore,
+        missingMandatoryFields: missingFields.length,
+      }, 'ContractMetadata populated with AI insights');
+    } catch (metadataPopulateError) {
+      logger.error({ error: metadataPopulateError }, 'Failed to populate ContractMetadata — AI insights may be missing');
+    }
+
+    // 5.5 Deterministic downstream plan
+    const { plan } = buildProcessingPlan({ extractedText: contractText });
+
+    // 6. Auto-queue downstream processing jobs
+    const queueService = getQueueService();
+    if (!hasCompleteFailure) {
+      if (plan.ragIndexing) {
+        // RAG indexing is already queued above; skip duplicate inline reindex
+      }
+      if (plan.metadataExtraction) {
+        try {
+          await queueService.addJob(
+            QUEUE_NAMES.METADATA_EXTRACTION,
+            JOB_NAMES.EXTRACT_METADATA,
+            {
+              contractId,
+              tenantId,
+              autoApply: true,
+              autoApplyThreshold: 0.85,
+              source: 'upload',
+              priority: 'normal',
+              traceId: trace.traceId,
+              requestId: job.data.requestId,
+            },
+            {
+              priority: 20,
+              delay: 200,
+              jobId: `metadata-${contractId}`,
+            }
+          );
+          logger.info({ contractId, traceId: trace.traceId }, 'Queued metadata extraction after artifact generation');
+        } catch (metadataError) {
+          logger.warn({ contractId, metadataError }, 'Failed to queue metadata extraction');
+        }
+      }
+      if (plan.categorization) {
+        try {
+          await queueService.addJob(
+            QUEUE_NAMES.CATEGORIZATION,
+            JOB_NAMES.CATEGORIZE_CONTRACT,
+            {
+              contractId,
+              tenantId,
+              autoApply: true,
+              autoApplyThreshold: 0.75,
+              source: 'upload',
+              priority: 'normal',
+              traceId: trace.traceId,
+              requestId: job.data.requestId,
+            },
+            {
+              priority: 25,
+              delay: 300,
+              jobId: `categorize-${contractId}`,
+            }
+          );
+          logger.info({ contractId, traceId: trace.traceId }, 'Queued categorization after artifact generation');
+        } catch (categorizationError) {
+          logger.warn({ contractId, categorizationError }, 'Failed to queue categorization');
+        }
+      }
+    }
+
+    // Publish completion event
+    try {
+      await redisEventBus.publish(RedisEvents.PROCESSING_COMPLETED, {
+        contractId,
+        tenantId,
+        jobId: job.id,
+        status: hasCompleteFailure ? 'failed' : (hasPartialSuccess ? 'partial' : 'completed'),
+        artifactsCreated: artifactIds.length,
+        failedArtifacts: failedArtifacts.length > 0 ? failedArtifacts : undefined,
+      }, 'artifact-generator-worker');
+    } catch (eventError) {
+      logger.warn({ contractId, eventError }, 'Failed to publish completion event');
     }
 
     logger.info(
@@ -758,7 +973,8 @@ async function generateArtifactData(
   contractId: string,
   tenantId: string,
   modelName?: string,
-  contractType?: string
+  contractType?: string,
+  contract?: any
 ): Promise<Record<string, any>> {
 
   try {
@@ -796,11 +1012,51 @@ async function generateArtifactData(
       }
     }
 
+    // Inject DI structured data from the upstream OCR worker when available
+    const aiMetadata = contract?.aiMetadata || {};
+    const diSource = aiMetadata?.ocrStructuredMeta?.source;
+    const diConfidence = aiMetadata?.ocrStructuredMeta?.confidence;
+    const diTables = aiMetadata?.diTables;
+    const diKeyValuePairs = aiMetadata?.diKeyValuePairs;
+    const diContractFields = aiMetadata?.diContractFields;
+    const diInvoiceFields = aiMetadata?.diInvoiceFields;
+    const diParagraphs = aiMetadata?.diParagraphs;
+    const diHandwrittenSpans = aiMetadata?.diHandwrittenSpans;
+    const diDetectedLanguages = aiMetadata?.diDetectedLanguages;
+    const diSelectionMarks = aiMetadata?.diSelectionMarks;
+    const diBarcodes = aiMetadata?.diBarcodes;
+    const diFormulas = aiMetadata?.diFormulas;
+
     // Use unified prompt builder from shared module
     const promptCtx: PromptContext = {
       contractText,
       contractType,
       contractTypeHints: contractTypeHints || undefined,
+      ...(diSource ? { diConfidence } : {}),
+      ...(Array.isArray(diTables) && diTables.length > 0 ? { diTables } : {}),
+      ...(Array.isArray(diKeyValuePairs) && diKeyValuePairs.length > 0 ? { diKeyValuePairs } : {}),
+      ...(diContractFields ? { diContractFields } : {}),
+      ...(diInvoiceFields ? { diInvoiceFields } : {}),
+      ...(Array.isArray(diParagraphs) && diParagraphs.length > 0
+        ? {
+            diDocumentStructure: diParagraphs
+              .filter((p: any) => p.role && ['title', 'sectionHeading'].includes(p.role))
+              .map((p: any) => ({ content: (p.content || '').slice(0, 200), role: p.role })),
+          }
+        : {}),
+      ...(Array.isArray(diHandwrittenSpans) && diHandwrittenSpans.length > 0
+        ? {
+            diHandwritingInfo: {
+              hasHandwriting: true,
+              handwrittenSpans: diHandwrittenSpans,
+              handwrittenSpanCount: diHandwrittenSpans.length,
+            },
+          }
+        : {}),
+      ...(Array.isArray(diDetectedLanguages) && diDetectedLanguages.length > 0 ? { diDetectedLanguages } : {}),
+      ...(Array.isArray(diSelectionMarks) && diSelectionMarks.length > 0 ? { diSelectionMarks } : {}),
+      ...(Array.isArray(diBarcodes) && diBarcodes.length > 0 ? { diBarcodes } : {}),
+      ...(Array.isArray(diFormulas) && diFormulas.length > 0 ? { diFormulas } : {}),
     };
 
     const prompt = buildArtifactPrompt(type, promptCtx);
