@@ -223,9 +223,10 @@ export default function UploadPage() {
       // Use XMLHttpRequest for real upload progress tracking
       const { responseData, status: httpStatus } = await new Promise<{ responseData: Record<string, unknown>; status: number }>((resolve, reject) => {
         const xhr = new XMLHttpRequest()
+        let didTimeout = false
         const timer = setTimeout(() => {
+          didTimeout = true
           xhr.abort()
-          reject(new DOMException('Upload timed out. The server took too long to respond. Please try again.', 'AbortError'))
         }, timeoutMs)
 
         xhr.upload.addEventListener('progress', (e) => {
@@ -247,7 +248,13 @@ export default function UploadPage() {
           }
         })
         xhr.addEventListener('error', () => { clearTimeout(timer); reject(new Error('Network error during upload')) })
-        xhr.addEventListener('abort', () => { clearTimeout(timer); reject(new DOMException('Upload was cancelled', 'AbortError')) })
+        xhr.addEventListener('abort', () => {
+          clearTimeout(timer)
+          reject(new DOMException(
+            didTimeout ? 'Upload timed out. The server took too long to respond. Please try again.' : 'Upload was cancelled',
+            'AbortError'
+          ))
+        })
 
         xhr.open('POST', '/api/contracts/upload')
         Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v))
