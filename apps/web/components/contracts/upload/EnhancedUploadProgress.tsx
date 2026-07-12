@@ -184,7 +184,7 @@ function getProcessingMessage(apiStatus: ContractStatusResponse | null, hasContr
 
 function getMissingArtifactLabels(apiStatus: ContractStatusResponse | null): string[] {
   if (!apiStatus) return [];
-  const generated = new Set(apiStatus.artifactTypes.map(t => t.toLowerCase()));
+  const generated = new Set((apiStatus.artifactTypes ?? []).map(t => t.toLowerCase()));
   return EXPECTED_ARTIFACTS.filter(a => !generated.has(a.id)).map(a => a.label);
 }
 
@@ -326,6 +326,9 @@ export function EnhancedUploadProgress({
         const data: ContractStatusResponse = json.data ?? json;
         // Normalize status to uppercase (API may return lowercase)
         if (data.status) data.status = data.status.toUpperCase() as ContractStatusResponse['status'];
+        // Defensive: never trust the envelope shape — a missing array would
+        // crash the render via getMissingArtifactLabels().
+        if (!Array.isArray(data.artifactTypes)) data.artifactTypes = [];
         setApiStatus(data);
 
         if (data.status === 'COMPLETED') {

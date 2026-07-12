@@ -117,8 +117,10 @@ export function UserGroupsManagement() {
       setLoading(true);
       const response = await fetch('/api/admin/groups');
       if (response.ok) {
-        const data = await response.json();
-        setGroups(data.groups);
+        const json = await response.json();
+        // API responds with a { success, data } envelope
+        const payload = json?.data ?? json;
+        setGroups(payload?.groups ?? []);
       }
     } catch (_error) {
       toast.error('Failed to fetch groups');
@@ -131,8 +133,9 @@ export function UserGroupsManagement() {
     try {
       const response = await fetch('/api/users');
       if (response.ok) {
-        const data = await response.json();
-        setAvailableUsers(data.users.map((u: any) => ({
+        const json = await response.json();
+        const payload = json?.data ?? json;
+        setAvailableUsers((payload?.users ?? []).map((u: any) => ({
           id: u.id,
           email: u.email,
           name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
@@ -164,8 +167,8 @@ export function UserGroupsManagement() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to create group');
+        const json = await response.json().catch(() => null);
+        throw new Error(json?.error?.message || json?.error || 'Failed to create group');
       }
 
       toast.success('Group created successfully');

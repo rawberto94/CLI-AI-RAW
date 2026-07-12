@@ -89,11 +89,30 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
     setIsConnected(false);
   }, []);
 
-  const connect = useCallback(() => {
+  // SSE auth requires a real session (the middleware 401s unauthenticated API
+  // requests — e.g. demo mode). Check before connecting so we never open a
+  // stream that is guaranteed to fail and spam the console/retry loop.
+  // Returns false only when we positively know there is no session.
+  const checkSession = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/auth/session', { credentials: 'same-origin' });
+      const sess = await res.json().catch(() => null);
+      return !(res.ok && !sess?.user);
+    } catch {
+      return true; // Can't verify — let the connection attempt decide
+    }
+  }, []);
+
+  const connect = useCallback(async () => {
     if (typeof window === 'undefined') return;
     if (!tenantId) return;
 
     cleanup();
+
+    if (!(await checkSession())) {
+      // Not authenticated — real-time updates are optional; stay silent.
+      return;
+    }
 
     try {
       const params = new URLSearchParams();
@@ -136,7 +155,8 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
         es.close();
         eventSourceRef.current = null;
 
-        // Auto-reconnect logic with session validation
+        // Auto-reconnect for transient failures (session validity is
+        // re-checked inside connect() before the stream is opened).
         if (
           autoReconnect &&
           shouldConnectRef.current &&
@@ -145,20 +165,8 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
           reconnectAttemptsRef.current += 1;
           onErrorRef.current?.(err);
           const delay = reconnectInterval * Math.min(reconnectAttemptsRef.current, 3);
-          reconnectTimerRef.current = setTimeout(async () => {
+          reconnectTimerRef.current = setTimeout(() => {
             if (!shouldConnectRef.current) return;
-            // Verify session is still valid before reconnecting to avoid
-            // noisy retry loops when the user is simply not authenticated.
-            try {
-              const res = await fetch('/api/auth/session');
-              const sess = await res.json();
-              if (!sess?.user) {
-                console.log('[SSE] Session expired, stopping reconnect');
-                return;
-              }
-            } catch {
-              // Can't check session — try reconnect anyway
-            }
             connect();
           }, delay);
         }
@@ -168,7 +176,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
       setError(err);
       onErrorRef.current?.(err);
     }
-  }, [tenantId, userId, autoReconnect, reconnectInterval, maxReconnectAttempts, cleanup]);
+  }, [tenantId, userId, autoReconnect, reconnectInterval, maxReconnectAttempts, cleanup, checkSession]);
 
   const reconnect = useCallback(() => {
     shouldConnectRef.current = true;

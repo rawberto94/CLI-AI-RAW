@@ -120,20 +120,23 @@ export function ContractAccessControl({ contractId, contractName }: ContractAcce
         fetch('/api/users'),
         fetch('/api/admin/groups'),
       ]);
-      
+
       if (usersRes.ok) {
-        const data = await usersRes.json();
-        setAvailableUsers(data.users.map((u: any) => ({
+        const json = await usersRes.json();
+        // API responds with a { success, data } envelope
+        const payload = json?.data ?? json;
+        setAvailableUsers((payload?.users ?? []).map((u: any) => ({
           id: u.id,
           email: u.email,
           name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
           avatar: u.avatar,
         })));
       }
-      
+
       if (groupsRes.ok) {
-        const data = await groupsRes.json();
-        setAvailableGroups(data.groups.map((g: any) => ({
+        const json = await groupsRes.json();
+        const payload = json?.data ?? json;
+        setAvailableGroups((payload?.groups ?? []).map((g: any) => ({
           id: g.id,
           name: g.name,
           color: g.color,
