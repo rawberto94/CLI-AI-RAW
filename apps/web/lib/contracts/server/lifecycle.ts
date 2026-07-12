@@ -298,7 +298,12 @@ export async function getContractStatus(
   const hasCompliance = artifactTypes.includes('compliance');
   const hasClauses = artifactTypes.includes('clauses');
   const artifactsGenerated = contract.artifacts.length;
-  const totalArtifacts = Math.max(artifactsGenerated, 5);
+  // The pipeline generates 11 artifact types by default
+  // (DEFAULT_ARTIFACT_TYPES in packages/data-orchestration). Using a small
+  // floor here hid partial failures — e.g. 10 of 11 artifacts generated would
+  // still report totalArtifacts=10 and render as a full success in the UI.
+  const EXPECTED_ARTIFACT_COUNT = 11;
+  const totalArtifacts = Math.max(artifactsGenerated, EXPECTED_ARTIFACT_COUNT);
 
   let currentStep: ProcessingStage = 'upload';
   let progress = 0;

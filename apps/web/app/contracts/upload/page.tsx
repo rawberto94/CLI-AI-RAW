@@ -7,9 +7,8 @@ import { useDataMode } from '@/contexts/DataModeContext'
 import { useDemoMode } from '@/hooks/useDemoMode'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
 import { EnhancedUploadProgress } from '@/components/contracts/upload'
-import type { ProcessingOptions } from '@/components/contracts/upload/ProcessingConfig'
+import type { UploadCompletionSummary } from '@/components/contracts/upload'
 import {
   AlertTriangle,
   Sparkles,
@@ -26,7 +25,7 @@ import Link from 'next/link'
 
 import { UploadDropZone } from './components'
 import { UploadMetadataReviewDialog } from './components'
-import { generateUUID } from '@/lib/utils'
+import { generateUUID, humanizeUploadError } from '@/lib/utils'
 
 // ── Types & Utilities ────────────────────────────────────────────────────────
 
@@ -44,6 +43,8 @@ interface UploadFile {
   startTime?: number
   endTime?: number
   skipDuplicateCheck?: boolean
+  /** Set when processing completed but some insights were not generated. */
+  partialWarning?: boolean
 }
 
 interface UploadMetadataReviewItem {
@@ -52,35 +53,24 @@ interface UploadMetadataReviewItem {
   fileName: string
 }
 
-const DEFAULT_PROCESSING_OPTIONS: ProcessingOptions = { // concurrency raised from 2→4 for bulk demo uploads
-  aiModel: 'azure-ch',
-  processingMode: 'standard',
-  concurrency: 4,
-  enabledArtifacts: [
-    'OVERVIEW', 'CLAUSES', 'FINANCIAL', 'RISK', 'COMPLIANCE',
-    'OBLIGATIONS', 'RENEWAL', 'NEGOTIATION_POINTS', 'AMENDMENTS', 'CONTACTS',
-  ],
-  enableRagIndexing: true,
-  enableRateCardExtraction: true,
-  enableDuplicateDetection: true,
-  prioritizeRiskAnalysis: false,
-}
+// Fixed pipeline settings (concurrency raised from 2→4 for bulk uploads).
+// The backend generates the full artifact set; these only steer the upload call.
+const UPLOAD_CONCURRENCY = 4
+const OCR_MODEL = 'azure-ch'
+const PROCESSING_MODE = 'standard'
 
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-}
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`
-  const seconds = Math.floor(ms / 1000)
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = seconds % 60
-  return `${minutes}m ${remainingSeconds}s`
+/** Effective per-file progress (0-100) for the aggregate bar. Uploading uses
+ *  real byte-level progress weighted to the upload phase; processing sits at
+ *  the phase boundary until the status API reports completion — no fabricated
+ *  percentages. */
+function effectiveFileProgress(f: UploadFile): number {
+  switch (f.status) {
+    case 'completed': return 100
+    case 'error': return 0
+    case 'processing': return 40
+    case 'uploading': return Math.min(40, (f.progress ?? 0) * 0.4)
+    default: return 0
+  }
 }
 
 // ── Page Component ───────────────────────────────────────────────────────────
@@ -93,7 +83,6 @@ export default function UploadPage() {
   const [isUploading, setIsUploading] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const isPausedRef = useRef(false)
-  const [processingOptions] = useState<ProcessingOptions>(DEFAULT_PROCESSING_OPTIONS)
   const [isMounted, setIsMounted] = useState(false)
   const [shouldAutoStart, setShouldAutoStart] = useState(false)
   const [reviewQueue, setReviewQueue] = useState<UploadMetadataReviewItem[]>([])
@@ -181,8 +170,8 @@ export default function UploadPage() {
     const formData = new FormData()
     formData.append('file', uploadFile.file)
     formData.append('dataMode', dataMode)
-    formData.append('ocrMode', processingOptions.aiModel)
-    formData.append('processingMode', processingOptions.processingMode)
+    formData.append('ocrMode', OCR_MODEL)
+    formData.append('processingMode', PROCESSING_MODE)
 
     try {
       // Update to uploading with 0% progress
@@ -297,20 +286,24 @@ export default function UploadPage() {
               }
             : f
         ))
-        toast.success(
-          versionNumber
-            ? `${uploadFile.file.name} registered as v${versionNumber}`
-            : `${uploadFile.file.name} is a duplicate`,
-          {
-          description: versionNumber
-            ? 'The duplicate file was added to the existing contract version history.'
-            : 'No new copy was created. Open the existing contract or upload it as a fresh analysis.',
-          action: {
-            label: 'View contract',
-            onClick: () => router.push(`/contracts/${result.contractId}`),
-          },
-          duration: 8000,
-        });
+        // Suppress per-file toasts in bulk batches (>3 files) — row states +
+        // the batch summary toast carry the signal; errors always toast.
+        if (files.length <= 3) {
+          toast.success(
+            versionNumber
+              ? `${uploadFile.file.name} registered as v${versionNumber}`
+              : `${uploadFile.file.name} is a duplicate`,
+            {
+            description: versionNumber
+              ? 'The duplicate file was added to the existing contract version history.'
+              : 'No new copy was created. Open the existing contract or upload it as a fresh analysis.',
+            action: {
+              label: 'View contract',
+              onClick: () => router.push(`/contracts/${result.contractId}`),
+            },
+            duration: 8000,
+          });
+        }
         return
       }
 
@@ -337,15 +330,12 @@ export default function UploadPage() {
         return
       }
 
-      // Update to processing with artifact viewer enabled
+      // Update to processing — the row polls the status API from here
       setFiles(prev => prev.map(f =>
         f.id === uploadFile.id
-          ? { ...f, status: 'processing', progress: 20, contractId, processingStage: 'Processing with AI...' }
+          ? { ...f, status: 'processing', progress: 40, contractId, processingStage: 'Processing with AI...' }
           : f
       ))
-
-      // Note: EnhancedUploadProgress polls status and updates the aggregate
-      // progress bar + per-file subtitles; no per-file artifact grid is shown.
 
     } catch (error: unknown) {
       const errorMsg = error instanceof Error
@@ -363,8 +353,9 @@ export default function UploadPage() {
             }
           : f
       ))
+      const friendly = humanizeUploadError(errorMsg)
       toast.error(`Upload failed: ${uploadFile.file.name}`, {
-        description: errorMsg,
+        description: friendly.message,
         action: {
           label: 'Retry',
           onClick: () => retryFile(uploadFile.id),
@@ -380,7 +371,7 @@ export default function UploadPage() {
     const pendingFiles = files.filter(f => f.status === 'pending')
     
     // Process files with concurrency limit
-    const concurrency = processingOptions.concurrency
+    const concurrency = UPLOAD_CONCURRENCY
     for (let i = 0; i < pendingFiles.length; i += concurrency) {
       if (isPausedRef.current) break
       
@@ -390,7 +381,7 @@ export default function UploadPage() {
     }
     
     setIsUploading(false)
-  }, [files, processingOptions.concurrency])
+  }, [files])
 
   // Auto-start upload effect (must be after handleUploadAll is defined)
   useEffect(() => {
@@ -415,7 +406,21 @@ export default function UploadPage() {
 
   const retryFile = useCallback((id: string) => {
     setFiles(prev => prev.map(f =>
-      f.id === id ? { ...f, status: 'pending', progress: 0, error: undefined, isDuplicate: false, existingContractId: undefined, skipDuplicateCheck: true } : f
+      f.id === id
+        ? {
+            ...f,
+            status: 'pending',
+            progress: 0,
+            error: undefined,
+            isDuplicate: false,
+            existingContractId: undefined,
+            partialWarning: undefined,
+            // Only skip duplicate detection if the previous attempt actually
+            // created a contract on the server — otherwise a retried network
+            // failure could create a duplicate contract.
+            skipDuplicateCheck: Boolean(f.contractId),
+          }
+        : f
     ))
     setShouldAutoStart(true)
   }, [])
@@ -428,10 +433,12 @@ export default function UploadPage() {
     const errorFiles = files.filter(f => f.status === 'error')
     if (errorFiles.length === 0) return
     
-    // Reset all error files to pending with skipDuplicateCheck
-    // (partially uploaded files may trigger duplicate detection on retry)
+    // Reset all error files to pending. Only skip duplicate detection for
+    // files that already created a contract on the server (see retryFile).
     setFiles(prev => prev.map(f =>
-      f.status === 'error' ? { ...f, status: 'pending', progress: 0, error: undefined, skipDuplicateCheck: true } : f
+      f.status === 'error'
+        ? { ...f, status: 'pending', progress: 0, error: undefined, partialWarning: undefined, skipDuplicateCheck: Boolean(f.contractId) }
+        : f
     ))
     
     // Start upload process
@@ -467,24 +474,24 @@ export default function UploadPage() {
   const errorCount = files.filter(f => f.status === 'error').length
   const pendingCount = files.filter(f => f.status === 'pending').length
   const processingCount = files.filter(f => ['uploading', 'processing'].includes(f.status)).length
+  const partialWarningCount = files.filter(f => f.status === 'completed' && f.partialWarning).length
   const hasFiles = files.length > 0
-  const queueTitle = processingCount > 0
-    ? `Processing ${processingCount} file${processingCount !== 1 ? 's' : ''}`
-    : pendingCount > 0
-      ? `${pendingCount} file${pendingCount !== 1 ? 's' : ''} ready`
-      : completedCount > 0
-        ? `${completedCount} completed`
-        : errorCount > 0
-          ? `${errorCount} failed`
-          : 'Upload queue'
-  const queueSubtitle = processingCount > 0
-    ? 'Extraction, AI analysis, and artifact generation are running now.'
+  const queueHelperText = processingCount > 0
+    ? 'Extraction, AI analysis, and indexing are running now.'
     : pendingCount > 0
       ? 'Review the files in queue, then start the pipeline when ready.'
-      : completedCount > 0
-        ? 'Processed contracts stay here until you clear them from the queue.'
-        : 'Retry failed uploads or remove them from the current batch.'
-  const queueProgress = files.length > 0 ? ((completedCount + errorCount) / files.length) * 100 : 0
+      : errorCount > 0
+        ? 'Retry failed uploads or remove them from the current batch.'
+        : completedCount > 0
+          ? 'Processed contracts stay here until you clear them from the queue.'
+          : 'Add files to get started.'
+  // Aggregate progress from per-file progress (including in-flight partials).
+  // Failures are excluded from the green fill and shown as a red segment.
+  const settledProgress = files.reduce((sum, f) => sum + effectiveFileProgress(f), 0)
+  const queueProgress = files.length > 0 ? settledProgress / files.length : 0
+  const completedPct = files.length > 0 ? (completedCount / files.length) * 100 : 0
+  const errorPct = files.length > 0 ? (errorCount / files.length) * 100 : 0
+  const inFlightPct = Math.max(0, queueProgress - completedPct)
 
   // ── Batch completion notification ───────────────────────────────────────
   const batchCompleteRef = useRef(false)
@@ -504,18 +511,30 @@ export default function UploadPage() {
     if (completedCount > 0 && errorCount === 0) {
       const completedFiles = files.filter(f => f.status === 'completed')
       const singleContractId = completedFiles.length === 1 ? completedFiles[0].contractId : null
-      toast.success(`All ${completedCount} file${completedCount !== 1 ? 's' : ''} processed successfully`, {
-        description: 'AI analysis is complete. Metadata reviews are waiting in the review queue.',
-        action: { label: singleContractId ? 'View Contract' : 'View Contracts', onClick: () => router.push(singleContractId ? `/contracts/${singleContractId}` : '/contracts?sort=newest') },
-        duration: 8000,
-      })
+      const reviewsWaiting = !isDemo && !skipAllMetadataReview && reviewQueue.length > 0
+      const reviewCopy = reviewsWaiting
+        ? ` ${reviewQueue.length} metadata review${reviewQueue.length === 1 ? ' is' : 's are'} waiting in the review queue.`
+        : ''
+      if (partialWarningCount > 0) {
+        toast.warning(`${completedCount} file${completedCount !== 1 ? 's' : ''} processed — ${partialWarningCount} completed with warnings`, {
+          description: `Some insights could not be generated; check the flagged files below.${reviewCopy}`,
+          action: { label: singleContractId ? 'View Contract' : 'View Contracts', onClick: () => router.push(singleContractId ? `/contracts/${singleContractId}` : '/contracts?sort=newest') },
+          duration: 8000,
+        })
+      } else {
+        toast.success(`All ${completedCount} file${completedCount !== 1 ? 's' : ''} processed successfully`, {
+          description: `AI analysis is complete.${reviewCopy}`,
+          action: { label: singleContractId ? 'View Contract' : 'View Contracts', onClick: () => router.push(singleContractId ? `/contracts/${singleContractId}` : '/contracts?sort=newest') },
+          duration: 8000,
+        })
+      }
     } else if (completedCount > 0 && errorCount > 0) {
       toast.warning(`${completedCount} succeeded, ${errorCount} failed`, {
         description: 'Completed files can still be reviewed; failed files remain in the queue for retry.',
         duration: 8000,
       })
     }
-  }, [files.length, processingCount, pendingCount, completedCount, errorCount, router])
+  }, [files.length, processingCount, pendingCount, completedCount, errorCount, partialWarningCount, reviewQueue.length, skipAllMetadataReview, isDemo, router])
 
   // ── Render ──────────────────────────────────────────────────────────────
 
@@ -582,43 +601,55 @@ export default function UploadPage() {
 
         {/* File Queue */}
         {hasFiles && (
-          <Card className="overflow-hidden border-slate-200/80 bg-white/95 shadow-[0_24px_60px_-36px_rgba(79,70,229,0.4)] backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/90">
-            <CardHeader className="border-b border-slate-100/80 bg-[radial-gradient(circle_at_top_left,rgba(241,245,249,0.9),rgba(245,243,255,0.95),rgba(255,255,255,1))] pb-4 dark:border-slate-800 dark:bg-[radial-gradient(circle_at_top_left,rgba(30,41,59,0.96),rgba(67,56,202,0.18),rgba(15,23,42,1))]">
+          <Card className="overflow-hidden border-slate-200 shadow-sm dark:border-slate-700">
+            <CardHeader className="border-b border-slate-100 pb-4 dark:border-slate-800">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-violet-600/80 dark:text-violet-300/80">
-                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                    Contract Processing
-                  </div>
-                  <CardTitle className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    {queueTitle}
+                  <CardTitle className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    Upload queue
                   </CardTitle>
+                  {/* Fixed stat strip — same place, same order, always */}
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-sm" aria-live="polite">
+                    <span className="text-slate-500 dark:text-slate-400">{pendingCount} queued</span>
+                    <span className="text-slate-300 dark:text-slate-600" aria-hidden="true">·</span>
+                    <span className={processingCount > 0 ? 'font-medium text-violet-700 dark:text-violet-300' : 'text-slate-500 dark:text-slate-400'}>{processingCount} processing</span>
+                    <span className="text-slate-300 dark:text-slate-600" aria-hidden="true">·</span>
+                    <span className={completedCount > 0 ? 'font-medium text-emerald-700 dark:text-emerald-300' : 'text-slate-500 dark:text-slate-400'}>{completedCount} done</span>
+                    <span className="text-slate-300 dark:text-slate-600" aria-hidden="true">·</span>
+                    <span className={errorCount > 0 ? 'font-medium text-red-600 dark:text-red-300' : 'text-slate-500 dark:text-slate-400'}>{errorCount} failed</span>
+                    {partialWarningCount > 0 && (
+                      <>
+                        <span className="text-slate-300 dark:text-slate-600" aria-hidden="true">·</span>
+                        <span className="font-medium text-amber-700 dark:text-amber-300">{partialWarningCount} with warnings</span>
+                      </>
+                    )}
+                  </div>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {queueSubtitle}
+                    {queueHelperText}
                   </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   {!isDemo && completedCount > 0 && (
-                    <Button variant="ghost" size="sm" onClick={clearCompleted} className="h-9 rounded-full gap-1 px-3 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                    <Button variant="ghost" size="sm" onClick={clearCompleted} className="h-9 gap-1 px-3 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                       <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                       Clear Done
                     </Button>
                   )}
                   {pendingCount > 0 && !isUploading && (
-                    <Button onClick={handleUploadAll} size="sm" className="h-9 rounded-full gap-1 px-4">
+                    <Button onClick={handleUploadAll} size="sm" className="h-9 gap-1 px-4">
                       <Play className="h-3.5 w-3.5" aria-hidden="true" />
                       Upload All ({pendingCount})
                     </Button>
                   )}
                   {!isDemo && isUploading && !isPaused && (
-                    <Button onClick={handlePauseAll} variant="outline" size="sm" className="h-9 rounded-full gap-1 px-4">
+                    <Button onClick={handlePauseAll} variant="outline" size="sm" className="h-9 gap-1 px-4">
                       <Pause className="h-3.5 w-3.5" aria-hidden="true" />
-                      Pause
+                      Stop after current files
                     </Button>
                   )}
                   {!isDemo && isPaused && (
-                    <Button onClick={handleUploadAll} size="sm" className="h-9 rounded-full gap-1 px-4">
+                    <Button onClick={handleUploadAll} size="sm" className="h-9 gap-1 px-4">
                       <Play className="h-3.5 w-3.5" aria-hidden="true" />
                       Resume
                     </Button>
@@ -626,7 +657,7 @@ export default function UploadPage() {
                 </div>
               </div>
               {hasFiles && (
-                <div className="mt-5 rounded-2xl border border-violet-200/70 bg-white/90 p-4 shadow-sm dark:border-violet-900/40 dark:bg-slate-900/70">
+                <div className="mt-4">
                   <div className="mb-2 flex items-center justify-between text-sm">
                     <span className="font-medium text-slate-700 dark:text-slate-200">
                       {processingCount > 0
@@ -639,25 +670,39 @@ export default function UploadPage() {
                               ? `${completedCount} ready, ${errorCount} failed`
                               : `${files.length} file${files.length !== 1 ? 's' : ''} in queue`}
                     </span>
-                    <span className="font-semibold text-violet-700 dark:text-violet-300">{Math.round(queueProgress)}%</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{Math.round(queueProgress)}%</span>
                   </div>
-                  <Progress value={queueProgress} className="h-3 bg-slate-100 dark:bg-slate-800" />
-                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                    {processingCount > 0
-                      ? 'Uploading, reading text, generating AI insights, and indexing.'
-                      : pendingCount > 0
-                        ? 'Click Upload All to start analyzing the queued files.'
-                        : completedCount > 0 && errorCount === 0
-                          ? 'You can now view the analyzed contracts.'
-                          : errorCount > 0
-                            ? 'Some files failed — retry or remove them below.'
-                            : 'Add files to get started.'}
-                  </p>
+                  {/* Segmented bar: emerald = done, violet = in-flight partial, red = failed */}
+                  <div
+                    className="flex h-3 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+                    role="progressbar"
+                    aria-label="Batch upload progress"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(queueProgress)}
+                    aria-valuetext={`${completedCount} of ${files.length} done${errorCount > 0 ? `, ${errorCount} failed` : ''}`}
+                  >
+                    {completedPct > 0 && (
+                      <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${completedPct}%` }} />
+                    )}
+                    {inFlightPct > 0 && (
+                      <div className="h-full bg-violet-500 transition-all duration-500" style={{ width: `${inFlightPct}%` }} />
+                    )}
+                    {errorPct > 0 && (
+                      <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${errorPct}%` }} />
+                    )}
+                  </div>
+                  {errorCount > 0 && (
+                    <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                      <span className="inline-block h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />
+                      {errorCount} failed — retry or remove them below.
+                    </p>
+                  )}
                 </div>
               )}
             </CardHeader>
 
-            <CardContent className="space-y-4 bg-slate-50/40 pt-4 dark:bg-slate-950/20">
+            <CardContent className="space-y-3 pt-4">
               <AnimatePresence mode="popLayout">
                 {isMounted && files.map((file, index) => (
                   <motion.div
@@ -674,6 +719,7 @@ export default function UploadPage() {
                       contractId={file.contractId}
                       status={file.status}
                       error={file.error}
+                      uploadProgress={file.status === 'uploading' && !file.contractId ? file.progress : null}
                       isDuplicate={file.isDuplicate}
                       existingContractId={file.existingContractId}
                       versionNumber={file.versionNumber}
@@ -688,24 +734,50 @@ export default function UploadPage() {
                             : f
                         ));
                       }}
-                      onComplete={() => {
+                      onComplete={(completedContractId: string, summary: UploadCompletionSummary) => {
+                        const isPartial = summary.missingArtifactLabels.length > 0
+                          && summary.artifactsGenerated < summary.totalArtifacts;
                         setFiles(prev => prev.map(f =>
                           f.id === file.id
-                            ? { ...f, status: 'completed', progress: 100, endTime: Date.now() }
+                            ? { ...f, status: 'completed', progress: 100, endTime: Date.now(), partialWarning: isPartial || undefined }
                             : f
                         ));
-                        toast.success(`${file.file.name} ready`, {
-                          description: 'AI analysis complete. Metadata review was added to the review queue.',
-                          action: file.contractId ? {
-                            label: 'View',
-                            onClick: () => router.push(`/contracts/${file.contractId}`),
-                          } : undefined,
-                          duration: 5000,
+                        // Suppress per-file success toasts in bulk batches (>3 files);
+                        // row states + the batch summary toast carry the signal.
+                        if (files.length <= 3) {
+                          toast.success(`${file.file.name} ready`, {
+                            description: isPartial
+                              ? `Completed with warnings — ${summary.artifactsGenerated} of ${summary.totalArtifacts} insights generated.`
+                              : 'AI analysis complete.',
+                            action: file.contractId ? {
+                              label: 'View',
+                              onClick: () => router.push(`/contracts/${file.contractId}`),
+                            } : undefined,
+                            duration: 5000,
+                          });
+                        }
+                        if (!isPartial) {
+                          queueMetadataReview(file.id, completedContractId, file.file.name)
+                        }
+                      }}
+                      onFailed={(rawError: string) => {
+                        logger.warn('upload_processing_failed', { fileId: file.id, error: rawError });
+                        setFiles(prev => prev.map(f =>
+                          f.id === file.id
+                            ? { ...f, status: 'error', error: rawError, endTime: Date.now() }
+                            : f
+                        ));
+                        // Errors always toast, even in bulk batches
+                        toast.error(`Processing failed: ${file.file.name}`, {
+                          description: humanizeUploadError(rawError).message,
+                          action: {
+                            label: 'Retry',
+                            onClick: () => retryFile(file.id),
+                          },
+                          duration: 8000,
                         });
-                        queueMetadataReview(file.id, file.contractId, file.file.name)
                       }}
                       tenantId={getTenantId()}
-                      minimal
                     />
                   </motion.div>
                 ))}

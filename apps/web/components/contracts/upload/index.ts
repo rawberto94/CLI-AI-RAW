@@ -1,18 +1,14 @@
 /**
  * Upload Components
- * 
- * Enhanced upload workflow components with:
- * - Detailed stage-by-stage progress tracking
- * - Real-time artifact generation visualization
- * - Queue management with batch processing
+ *
+ * Upload workflow components with:
+ * - Real-time processing status polling with adaptive intervals
+ * - Byte-level upload progress
+ * - Partial-failure visibility (generated vs expected insights)
  * - Duplicate detection with smart options
  * - Error recovery and retry functionality
- * - Processing time estimation
  */
 
 export { EnhancedUploadProgress } from './EnhancedUploadProgress';
-export { UploadQueue } from './UploadQueue';
-export { ProcessingConfig } from './ProcessingConfig';
 
-export type { UploadProgressProps, ProcessingStage } from './EnhancedUploadProgress';
-export type { QueuedFile, UploadQueueProps } from './UploadQueue';
+export type { UploadProgressProps, UploadCompletionSummary } from './EnhancedUploadProgress';

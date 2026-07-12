@@ -1,14 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
-  Upload,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   FileText,
-  Brain,
   CheckCircle2,
   AlertTriangle,
   Loader2,
@@ -18,12 +21,11 @@ import {
   X,
   Copy,
   Layers,
-  Check,
   Sparkles,
-  Zap,
   ExternalLink,
+  Info,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatFileSize, formatDuration, humanizeUploadError } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
 // ============================================================================
@@ -68,12 +70,10 @@ interface ContractStatusResponse {
   error: string | null;
 }
 
-export interface ProcessingStage {
-  id: string;
-  name: string;
-  shortName: string;
-  icon: React.ReactNode;
-  status: 'pending' | 'in-progress' | 'completed' | 'error';
+export interface UploadCompletionSummary {
+  artifactsGenerated: number;
+  totalArtifacts: number;
+  missingArtifactLabels: string[];
 }
 
 export interface UploadProgressProps {
@@ -83,6 +83,8 @@ export interface UploadProgressProps {
   contractId?: string;
   status: 'pending' | 'uploading' | 'processing' | 'completed' | 'error';
   error?: string;
+  /** Real byte-level upload percentage (0-100) from the XHR progress event. */
+  uploadProgress?: number | null;
   isDuplicate?: boolean;
   existingContractId?: string;
   versionNumber?: number;
@@ -90,15 +92,38 @@ export interface UploadProgressProps {
   onRemove?: () => void;
   onViewContract?: (contractId: string) => void;
   onContractNotFound?: () => void;  // Called when contract returns 404
-  onComplete?: (contractId: string) => void;  // Called when processing completes
+  onComplete?: (contractId: string, summary: UploadCompletionSummary) => void;  // Called when processing completes
+  onFailed?: (error: string) => void;  // Called when the status API reports FAILED
   tenantId?: string;
   autoNavigate?: boolean;  // Auto-navigate to contract on completion
-  minimal?: boolean;  // Render as a simple list row (no per-file progress bar, no stepper)
+  /** @deprecated Kept for API compatibility — the row renders the same in both modes. */
+  minimal?: boolean;
 }
 
 // ============================================================================
 // Constants
 // ============================================================================
+
+/**
+ * Artifact types the pipeline generates by default
+ * (mirrors DEFAULT_ARTIFACT_TYPES in packages/data-orchestration).
+ * Ids are lowercase because the status API lowercases artifactTypes.
+ */
+const EXPECTED_ARTIFACTS: Array<{ id: string; label: string }> = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'clauses', label: 'Key Clauses' },
+  { id: 'financial', label: 'Financial Analysis' },
+  { id: 'risk', label: 'Risk Assessment' },
+  { id: 'compliance', label: 'Compliance Check' },
+  { id: 'obligations', label: 'Obligations' },
+  { id: 'renewal', label: 'Renewal Terms' },
+  { id: 'negotiation_points', label: 'Negotiation Points' },
+  { id: 'amendments', label: 'Amendments' },
+  { id: 'contacts', label: 'Contacts' },
+  { id: 'rates', label: 'Rate Cards' },
+];
+
+const MAX_PROCESSING_MS = 300_000; // 5 minutes — after this we show a "still working" note
 
 /**
  * Adaptive polling interval based on processing stage.
@@ -123,42 +148,9 @@ function getPollInterval(apiStep?: string, statusStr?: string): number {
   }
 }
 
-const API_STEP_TO_STAGE: Record<string, string> = {
-  'upload': 'upload',
-  'queued': 'upload',   // Queued stays in upload stage (waiting for worker pickup)
-  'ocr': 'extract',
-  'artifacts': 'analyze',
-  'storage': 'index',
-  'complete': 'index',
-};
-
-const STAGES = [
-  { id: 'upload', name: 'Upload', shortName: 'Upload', icon: <Upload className="h-3.5 w-3.5" /> },
-  { id: 'extract', name: 'Text Extraction', shortName: 'Extract', icon: <FileText className="h-3.5 w-3.5" /> },
-  { id: 'analyze', name: 'AI Analysis', shortName: 'Analyze', icon: <Brain className="h-3.5 w-3.5" /> },
-  { id: 'index', name: 'Indexing', shortName: 'Index', icon: <Layers className="h-3.5 w-3.5" /> },
-];
-
 // ============================================================================
-// Utility Functions
+// Helpers
 // ============================================================================
-
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) return '<1s';
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds}s`;
-}
 
 function getFileExtensionLabel(fileName: string): string {
   const extension = fileName.split('.').pop()?.trim();
@@ -166,20 +158,34 @@ function getFileExtensionLabel(fileName: string): string {
   return extension.length > 4 ? extension.slice(0, 4).toUpperCase() : extension.toUpperCase();
 }
 
-function getProcessingMessage(stage: string, artifactCount: number, apiStatus?: ContractStatusResponse | null): string {
-  // Show queue-specific message when status is QUEUED
-  if (apiStatus?.status === 'QUEUED') {
-    return 'Queued for analysis. We will start as soon as a worker is free.';
+function getProcessingMessage(apiStatus: ContractStatusResponse | null, hasContract: boolean): string {
+  if (!hasContract) return 'Uploading securely…';
+  if (!apiStatus) return 'Preparing analysis…';
+  if (apiStatus.status === 'QUEUED') {
+    return 'Queued for analysis — we will start as soon as a worker is free.';
   }
-  switch (stage) {
-    case 'upload': return 'Uploading securely...';
-    case 'extract': return 'Reading document text...';
-    case 'analyze': return artifactCount > 0 
-      ? `Generating AI analysis (${artifactCount} section${artifactCount === 1 ? '' : 's'} ready)...`
-      : 'Generating AI analysis and metadata...';
-    case 'index': return 'Saving results and search index...';
-    default: return 'Processing document...';
+  switch (apiStatus.currentStep) {
+    case 'queued':
+      return 'Queued for analysis…';
+    case 'ocr':
+      return 'Reading document text…';
+    case 'artifacts':
+      return apiStatus.totalArtifacts > 0
+        ? `Generating AI analysis — ${apiStatus.artifactsGenerated} of ${apiStatus.totalArtifacts} insights ready`
+        : 'Generating AI analysis…';
+    case 'storage':
+      return 'Saving results and search index…';
+    case 'complete':
+      return 'Finishing up…';
+    default:
+      return 'Processing document…';
   }
+}
+
+function getMissingArtifactLabels(apiStatus: ContractStatusResponse | null): string[] {
+  if (!apiStatus) return [];
+  const generated = new Set(apiStatus.artifactTypes.map(t => t.toLowerCase()));
+  return EXPECTED_ARTIFACTS.filter(a => !generated.has(a.id)).map(a => a.label);
 }
 
 // ============================================================================
@@ -193,6 +199,7 @@ export function EnhancedUploadProgress({
   contractId,
   status,
   error,
+  uploadProgress,
   isDuplicate,
   existingContractId,
   versionNumber,
@@ -201,23 +208,26 @@ export function EnhancedUploadProgress({
   onViewContract: _onViewContract,
   onContractNotFound,
   onComplete,
+  onFailed,
   tenantId = 'demo',
   autoNavigate = false,
-  minimal = false,
 }: UploadProgressProps) {
   const router = useRouter();
-  const [stages, setStages] = useState<ProcessingStage[]>(() => 
-    STAGES.map(s => ({ ...s, status: 'pending' as const }))
-  );
 
   const [elapsedTime, setElapsedTime] = useState(0);
   const [startTime] = useState(Date.now());
   const [apiStatus, setApiStatus] = useState<ContractStatusResponse | null>(null);
+  const [isLongRunning, setIsLongRunning] = useState(false);
+  const [longRunningDismissed, setLongRunningDismissed] = useState(false);
 
-  const [isCompleted, setIsCompleted] = useState(false);  // Track internal completion state
+  const [isCompleted, setIsCompleted] = useState(false);
   const hasCompletedRef = useRef(false);
+  const hasFailedRef = useRef(false);
 
-  // Update elapsed time — stop counting once completed
+  const isDone = status === 'completed' || isCompleted;
+  const isFailed = status === 'error';
+
+  // Update elapsed time — stop counting once settled
   useEffect(() => {
     if ((status === 'uploading' || status === 'processing') && !isCompleted) {
       const interval = setInterval(() => setElapsedTime(Date.now() - startTime), 1000);
@@ -226,19 +236,30 @@ export function EnhancedUploadProgress({
   }, [status, startTime, isCompleted]);
 
   // Handle completion with optional auto-navigation
-  const handleCompletion = useCallback((finalContractId: string) => {
+  const handleCompletion = useCallback((finalContractId: string, data: ContractStatusResponse) => {
     if (hasCompletedRef.current) return;
     hasCompletedRef.current = true;
-    
+
     setIsCompleted(true);
-    // All stages complete
-    setStages(STAGES.map(s => ({ ...s, status: 'completed' as const })));
-    if (onComplete) onComplete(finalContractId);
-    
+    if (onComplete) {
+      onComplete(finalContractId, {
+        artifactsGenerated: data.artifactsGenerated,
+        totalArtifacts: data.totalArtifacts,
+        missingArtifactLabels: getMissingArtifactLabels(data),
+      });
+    }
+
     if (autoNavigate) {
       setTimeout(() => router.push(`/contracts/${finalContractId}`), 1500);
     }
   }, [autoNavigate, onComplete, router]);
+
+  // Handle authoritative FAILED status from the status API
+  const handleFailure = useCallback((rawError: string | null) => {
+    if (hasFailedRef.current || hasCompletedRef.current) return;
+    hasFailedRef.current = true;
+    if (onFailed) onFailed(rawError || 'Processing failed');
+  }, [onFailed]);
 
   // Poll contract status with adaptive interval
   useEffect(() => {
@@ -248,8 +269,7 @@ export function EnhancedUploadProgress({
     let pollCount = 0;
     let consecutiveErrors = 0;
     const MAX_NOT_FOUND = 5;
-    const INITIAL_GRACE_POLLS = 5; // Increased grace period for DB commit delay
-    const MAX_PROCESSING_MS = 300_000; // 5 minutes — large contracts with many artifacts can take a while
+    const INITIAL_GRACE_POLLS = 5; // Grace period for DB commit delay
     let timeoutId: NodeJS.Timeout | null = null;
     const pollStartTime = Date.now();
 
@@ -260,11 +280,12 @@ export function EnhancedUploadProgress({
     const poll = async () => {
       pollCount++;
 
-      // ── Processing timeout ──
-      // If we've been polling for a long time, keep waiting for the
-      // authoritative terminal status. Completing here can surface metadata
-      // review before artifact mirroring and categorization finish.
+      // ── Long-running threshold ──
+      // Keep waiting for the authoritative terminal status (completing here
+      // could surface metadata review before artifact mirroring finishes), but
+      // tell the user what is going on instead of polling silently forever.
       if (Date.now() - pollStartTime > MAX_PROCESSING_MS) {
+        setIsLongRunning(true);
         schedulePoll(15_000);
         return;
       }
@@ -273,7 +294,7 @@ export function EnhancedUploadProgress({
         const res = await fetch(`/api/contracts/${contractId}/status`, {
           headers: { 'x-tenant-id': tenantId },
         });
-        
+
         // Handle 404 - contract doesn't exist anymore
         if (res.status === 404) {
           // During initial grace period, don't count 404s (database may not have committed yet)
@@ -290,16 +311,16 @@ export function EnhancedUploadProgress({
           schedulePoll(3000);
           return;
         }
-        
+
         if (!res.ok) {
           schedulePoll(3000);
           return;
         }
-        
+
         // Reset counters on success
         notFoundCount = 0;
         consecutiveErrors = 0;
-        
+
         // API wraps response in { success, data } envelope
         const json = await res.json();
         const data: ContractStatusResponse = json.data ?? json;
@@ -307,24 +328,11 @@ export function EnhancedUploadProgress({
         if (data.status) data.status = data.status.toUpperCase() as ContractStatusResponse['status'];
         setApiStatus(data);
 
-        // Update stages
-        const currentApiStep = data.currentStep;
-        const currentStageId = API_STEP_TO_STAGE[currentApiStep] || 'upload';
-        let stageIndex = STAGES.findIndex(s => s.id === currentStageId);
-        // If API says 'upload'/'queued' but we have a contractId, upload is done — show extract
-        if (stageIndex === 0 && contractId) stageIndex = 1;
-
-        setStages(STAGES.map((s, i) => ({
-          ...s,
-          status: i < stageIndex ? 'completed' as const :
-                  i === stageIndex ? (data.status === 'FAILED' ? 'error' as const : 'in-progress' as const) :
-                  'pending' as const
-        })));
-
         if (data.status === 'COMPLETED') {
-          handleCompletion(contractId);
+          handleCompletion(contractId, data);
           return; // Stop polling
         } else if (data.status === 'FAILED') {
+          handleFailure(data.processingJob?.error || data.error || null);
           return; // Stop polling
         }
 
@@ -343,95 +351,93 @@ export function EnhancedUploadProgress({
     const initialDelay = setTimeout(() => {
       poll();
     }, 1000); // Wait 1 second before first poll
-    
-    return () => { 
+
+    return () => {
       clearTimeout(initialDelay);
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [contractId, status, tenantId, onContractNotFound, handleCompletion]);
+  }, [contractId, status, tenantId, onContractNotFound, handleCompletion, handleFailure]);
 
-  // Update stages for completed/error status
-  useEffect(() => {
-    if (status === 'completed') {
-      setStages(STAGES.map(s => ({ ...s, status: 'completed' as const })));
-    } else if (status === 'error') {
-      setStages(prev => {
-        const inProgress = prev.findIndex(s => s.status === 'in-progress');
-        return prev.map((s, i) => ({
-          ...s,
-          status: i === inProgress || (inProgress === -1 && i === 0) ? 'error' as const : s.status
-        }));
-      });
-    } else if (status === 'uploading' && !contractId) {
-      setStages(STAGES.map((s, i) => ({
-        ...s,
-        status: i === 0 ? 'in-progress' as const : 'pending' as const
-      })));
-    } else if (contractId && (status === 'uploading' || status === 'processing')) {
-      // Upload succeeded (contractId assigned) — mark upload completed, show extract starting
-      setStages(prev => {
-        // Only advance if polling hasn't already moved us beyond upload
-        const hasAdvanced = prev.findIndex(s => s.status === 'completed') > 0;
-        if (hasAdvanced) return prev;
-        return STAGES.map((s, i) => ({
-          ...s,
-          status: i === 0 ? 'completed' as const : i === 1 ? 'in-progress' as const : 'pending' as const
-        }));
-      });
-    }
-  }, [status, contractId]);
-
-  // Simulated progress when API hasn't responded yet
-  const simulatedProgress = (() => {
-    if (isCompleted || status === 'completed') return 100;
-    if (status === 'error') return 0;
-    if (status === 'pending') return 0;
-    // Simulate progress over time: 15% → 95% over 300s (matches MAX_PROCESSING_MS)
-    const elapsed = elapsedTime / 1000;
-    if (elapsed < 2) return 15;
-    if (elapsed < 15) return 15 + (elapsed / 15) * 25;           // 15% → 40%
-    if (elapsed < 60) return 40 + ((elapsed - 15) / 45) * 20;    // 40% → 60%
-    if (elapsed < 120) return 60 + ((elapsed - 60) / 60) * 15;   // 60% → 75%
-    if (elapsed < 200) return 75 + ((elapsed - 120) / 80) * 10;  // 75% → 85%
-    if (elapsed < 300) return 85 + ((elapsed - 200) / 100) * 10; // 85% → 95%
-    return 95 + Math.min(3, (elapsed - 300) / 120);              // Slowly creep to 98%
-  })();
-  const progress = apiStatus?.progress ?? simulatedProgress;
-  const displayTime = apiStatus?.timing?.elapsedMs ?? elapsedTime;
+  // ── Derived display state ─────────────────────────────────────────────
+  const displayTime = elapsedTime;
   const artifactCount = apiStatus?.artifactsGenerated ?? 0;
+  const totalArtifacts = apiStatus?.totalArtifacts ?? 0;
   const estimatedRemaining = apiStatus?.timing?.estimatedRemainingMs;
-  const currentStage = stages.find(s => s.status === 'in-progress');
-  const activeStageId = currentStage?.id || (contractId ? 'extract' : 'upload');
-  const processingMessage = getProcessingMessage(activeStageId, artifactCount, apiStatus);
+  const missingArtifactLabels = isDone ? getMissingArtifactLabels(apiStatus) : [];
+  // Partial completion: fewer insights than the pipeline was expected to generate
+  const isPartial = isDone && totalArtifacts > 0 && artifactCount < totalArtifacts;
+  const processingMessage = getProcessingMessage(apiStatus, !!contractId);
   const fileExtensionLabel = getFileExtensionLabel(fileName);
-  const statusBadge = (() => {
-    if (status === 'error' && !isCompleted) {
-      return { label: 'Needs attention', className: 'border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-200' };
+
+  // Real progress only — never simulated. Until the API reports a number we
+  // show the stage label without a bar; a fake percentage is worse than none.
+  const realProgress: number | null = (() => {
+    if (isDone) return 100;
+    if (isFailed || status === 'pending') return null;
+    if (status === 'uploading' && !contractId) {
+      return typeof uploadProgress === 'number' ? uploadProgress : null;
     }
-    if (status === 'completed' || isCompleted) {
-      return { label: 'Analysis ready', className: 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200' };
+    return typeof apiStatus?.progress === 'number' ? apiStatus.progress : null;
+  })();
+
+  const statusBadge = (() => {
+    if (isFailed) {
+      return {
+        label: 'Needs attention',
+        icon: <AlertTriangle className="mr-1 h-3 w-3" aria-hidden="true" />,
+        className: 'border-red-200 bg-red-100 text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-200',
+      };
+    }
+    if (isDone && isPartial) {
+      return {
+        label: 'Completed with warnings',
+        icon: <AlertTriangle className="mr-1 h-3 w-3" aria-hidden="true" />,
+        className: 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+      };
+    }
+    if (isDone) {
+      return {
+        label: 'Analysis ready',
+        icon: <CheckCircle2 className="mr-1 h-3 w-3" aria-hidden="true" />,
+        className: 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+      };
     }
     if (status === 'pending') {
-      return { label: 'Queued', className: 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300' };
+      return {
+        label: 'Queued',
+        icon: <Clock className="mr-1 h-3 w-3" aria-hidden="true" />,
+        className: 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300',
+      };
     }
     if (apiStatus?.status === 'QUEUED') {
-      return { label: 'Awaiting worker', className: 'border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200' };
+      return {
+        label: 'Awaiting worker',
+        icon: <Clock className="mr-1 h-3 w-3" aria-hidden="true" />,
+        className: 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300',
+      };
     }
-    return { label: apiStatus?.currentStepName || currentStage?.name || 'Processing', className: 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-900/40 dark:text-violet-200' };
+    return {
+      label: apiStatus?.currentStepName || 'Processing',
+      icon: <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden="true" />,
+      className: 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-800 dark:bg-violet-900/40 dark:text-violet-200',
+    };
   })();
-  const progressVariant = status === 'error'
+
+  const progressVariant = isFailed
     ? 'error'
-    : (status === 'completed' || isCompleted)
-      ? 'success'
+    : isDone
+      ? (isPartial ? 'warning' : 'success')
       : 'default';
+
+  const humanizedError = isFailed ? humanizeUploadError(error) : null;
 
   // Handle duplicate
   if (isDuplicate && existingContractId) {
     if (versionNumber) {
       return (
-        <div className="flex items-center gap-3 rounded-2xl border border-emerald-200/80 bg-[linear-gradient(135deg,rgba(236,253,245,0.96),rgba(255,255,255,0.98))] p-4 shadow-[0_18px_40px_-28px_rgba(16,185,129,0.35)] dark:border-emerald-700 dark:bg-[linear-gradient(135deg,rgba(6,78,59,0.35),rgba(30,41,59,0.95))]">
-          <div className="rounded-2xl bg-emerald-100 p-3 dark:bg-emerald-900/60">
-            <Layers className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+        <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/30">
+          <div className="rounded-lg bg-emerald-100 p-3 dark:bg-emerald-900/60">
+            <Layers className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -453,7 +459,7 @@ export function EnhancedUploadProgress({
               className="h-8 text-xs border-emerald-300 dark:border-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-800"
               onClick={() => router.push(`/contracts/${existingContractId}`)}
             >
-              <Eye className="h-3.5 w-3.5 mr-1" />
+              <Eye className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
               View Contract
             </Button>
             <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={onRemove} aria-label="Remove file">
@@ -465,9 +471,9 @@ export function EnhancedUploadProgress({
     }
 
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-amber-200/80 bg-[linear-gradient(135deg,rgba(255,251,235,0.96),rgba(255,255,255,0.98))] p-4 shadow-[0_18px_40px_-28px_rgba(217,119,6,0.45)] dark:border-amber-700 dark:bg-[linear-gradient(135deg,rgba(120,53,15,0.35),rgba(30,41,59,0.95))]">
-        <div className="rounded-2xl bg-amber-100 p-3 dark:bg-amber-900/60">
-          <Copy className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+      <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
+        <div className="rounded-lg bg-amber-100 p-3 dark:bg-amber-900/60">
+          <Copy className="h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -482,22 +488,22 @@ export function EnhancedUploadProgress({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            size="sm" 
-            variant="outline" 
+          <Button
+            size="sm"
+            variant="outline"
             className="h-8 text-xs border-amber-300 dark:border-amber-600 hover:bg-amber-100 dark:hover:bg-amber-800"
             onClick={() => router.push(`/contracts/${existingContractId}`)}
           >
-            <Eye className="h-3.5 w-3.5 mr-1" />
+            <Eye className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
             View Original
           </Button>
-          <Button 
-            size="sm" 
-            variant="ghost" 
+          <Button
+            size="sm"
+            variant="ghost"
             className="h-8 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-800"
             onClick={onRetry}
           >
-            <RefreshCw className="h-3.5 w-3.5 mr-1" />
+            <RefreshCw className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
             Re-process Anyway
           </Button>
           <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={onRemove} aria-label="Remove file">
@@ -509,44 +515,35 @@ export function EnhancedUploadProgress({
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
+    <div
       className={cn(
-        'relative overflow-hidden rounded-[22px] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.94))] shadow-[0_20px_45px_-30px_rgba(15,23,42,0.38)] backdrop-blur transition-all dark:border-slate-700/80 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(15,23,42,0.9))]',
-        status === 'error' && 'border-red-200/80 bg-[linear-gradient(180deg,rgba(254,242,242,0.96),rgba(255,255,255,0.98))] dark:border-red-700 dark:bg-[linear-gradient(180deg,rgba(127,29,29,0.4),rgba(15,23,42,0.92))]',
-        (status === 'completed' || isCompleted) && 'border-emerald-200/80 bg-[linear-gradient(180deg,rgba(236,253,245,0.96),rgba(255,255,255,0.98))] dark:border-emerald-700 dark:bg-[linear-gradient(180deg,rgba(6,78,59,0.35),rgba(15,23,42,0.92))]',
-        false
+        'rounded-lg border bg-white p-4 shadow-sm transition-colors sm:p-5 dark:bg-slate-900',
+        isFailed && 'border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20',
+        isDone && isPartial && 'border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20',
+        isDone && !isPartial && 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20',
+        !isFailed && !isDone && 'border-slate-200 dark:border-slate-700'
       )}
     >
-      {/* Main Row */}
-      <div className="p-4 sm:p-5">
-        <div className="flex items-start gap-4">
-        {/* Icon with pulse animation */}
+      <div className="flex items-start gap-4">
+        {/* Status icon — spinner conveys activity; no idle pulsing */}
         <div className={cn(
-          'relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-sm',
-          (status === 'completed' || isCompleted) ? 'border-emerald-200 bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/30' :
-          status === 'error' ? 'border-red-200 bg-red-100 dark:border-red-800 dark:bg-red-900/30' :
-          status === 'processing' || status === 'uploading' ? 'border-violet-200 bg-violet-100 dark:border-violet-800 dark:bg-violet-900/30' :
-          'border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800'
+          'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border',
+          isDone && !isPartial && 'border-emerald-200 bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/30',
+          isDone && isPartial && 'border-amber-200 bg-amber-100 dark:border-amber-800 dark:bg-amber-900/30',
+          isFailed && 'border-red-200 bg-red-100 dark:border-red-800 dark:bg-red-900/30',
+          !isDone && !isFailed && (status === 'processing' || status === 'uploading') && 'border-violet-200 bg-violet-100 dark:border-violet-800 dark:bg-violet-900/30',
+          !isDone && !isFailed && status === 'pending' && 'border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800'
         )}>
-          {(status === 'processing' || status === 'uploading') && !isCompleted && (
-            <motion.div
-              className="absolute inset-0 rounded-2xl bg-violet-400"
-              animate={{ opacity: [0.15, 0.3, 0.15] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-          )}
-          {(status === 'completed' || isCompleted) ? (
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }}>
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-            </motion.div>
-          ) : status === 'error' ? (
-            <AlertTriangle className="h-4 w-4 text-red-600" />
+          {isDone && !isPartial ? (
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+          ) : isDone && isPartial ? (
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+          ) : isFailed ? (
+            <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" aria-hidden="true" />
           ) : status === 'processing' || status === 'uploading' ? (
-            <Loader2 className="h-4 w-4 text-violet-600 animate-spin relative z-10" />
+            <Loader2 className="h-4 w-4 text-violet-600 animate-spin" aria-hidden="true" />
           ) : (
-            <FileText className="h-4 w-4 text-gray-500" />
+            <FileText className="h-4 w-4 text-slate-500" aria-hidden="true" />
           )}
         </div>
 
@@ -559,27 +556,34 @@ export function EnhancedUploadProgress({
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge className={cn('border font-medium hover:bg-transparent', statusBadge.className)}>{statusBadge.label}</Badge>
-            {artifactCount > 0 && (
-              <Badge className="border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:bg-violet-900/30 dark:text-violet-200">
-                <Sparkles className="mr-1 h-3 w-3" />
-                {artifactCount} insight{artifactCount === 1 ? '' : 's'}
+            <Badge className={cn('border font-medium hover:bg-transparent', statusBadge.className)}>
+              {statusBadge.icon}
+              {statusBadge.label}
+            </Badge>
+            {artifactCount > 0 && !isFailed && (
+              <Badge className="border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                <Sparkles className="mr-1 h-3 w-3" aria-hidden="true" />
+                {isDone && totalArtifacts > 0
+                  ? `${artifactCount} of ${totalArtifacts} insights`
+                  : `${artifactCount} insight${artifactCount === 1 ? '' : 's'}`}
               </Badge>
             )}
           </div>
-          
-          {/* Status Line */}
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-            {status === 'pending' && !isCompleted && (
-              <span className="text-sm text-slate-500 dark:text-slate-400">Waiting to upload...</span>
+
+          {/* Status Line — announced politely on change */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1" aria-live="polite">
+            {status === 'pending' && !isDone && (
+              <span className="text-sm text-slate-500 dark:text-slate-400">Waiting to upload…</span>
             )}
-            {(status === 'uploading' || status === 'processing') && !isCompleted && (
+            {(status === 'uploading' || status === 'processing') && !isDone && (
               <>
                 <span className="text-sm font-medium text-violet-700 dark:text-violet-300">
-                  {processingMessage}
+                  {status === 'uploading' && !contractId && typeof uploadProgress === 'number'
+                    ? `Uploading… ${uploadProgress}%`
+                    : processingMessage}
                 </span>
                 <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-                  <Clock className="h-3 w-3" />
+                  <Clock className="h-3 w-3" aria-hidden="true" />
                   {formatDuration(displayTime)}
                 </span>
                 {estimatedRemaining && estimatedRemaining > 0 && (
@@ -589,66 +593,132 @@ export function EnhancedUploadProgress({
                 )}
               </>
             )}
-            {(status === 'completed' || isCompleted) && (
-              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-1 text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                <Zap className="h-3 w-3" />
-                Contract analysis complete
-              </motion.span>
+            {isDone && isPartial && (
+              <span className="flex items-center gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-300">
+                Completed with warnings — {artifactCount} of {totalArtifacts} insights ready
+                {missingArtifactLabels.length > 0 && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="inline-flex items-center text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200"
+                          aria-label={`Missing insights: ${missingArtifactLabels.join(', ')}`}
+                        >
+                          <Info className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="font-medium">Not generated:</p>
+                        <p>{missingArtifactLabels.join(', ')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </span>
             )}
-            {status === 'error' && !isCompleted && (
-              <span className="text-sm font-medium text-red-600 dark:text-red-300">
-                {error || 'Processing failed'}
+            {isDone && !isPartial && (
+              <span className="flex items-center gap-1 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                Contract analysis complete
+              </span>
+            )}
+            {isFailed && humanizedError && (
+              <span className="text-sm">
+                <span className="font-medium text-red-600 dark:text-red-300">
+                  {humanizedError.message}
+                </span>
+                {humanizedError.detail && humanizedError.detail !== humanizedError.message && (
+                  <details className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    <summary className="cursor-pointer select-none hover:text-slate-700 dark:hover:text-slate-300">
+                      Details
+                    </summary>
+                    <p className="mt-1 break-words font-mono">{humanizedError.detail}</p>
+                  </details>
+                )}
               </span>
             )}
           </div>
 
-          {!minimal && (status === 'uploading' || status === 'processing') && !isCompleted && (
+          {/* Long-running note — replaces silent forever-polling */}
+          {isLongRunning && !longRunningDismissed && !isDone && !isFailed && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+              <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>
+                Taking longer than usual — still working ({formatDuration(displayTime)} elapsed). You can keep waiting or check the contract page.
+              </span>
+              <span className="ml-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  className="font-medium underline-offset-2 hover:underline"
+                  onClick={() => setLongRunningDismissed(true)}
+                >
+                  Keep waiting
+                </button>
+                {contractId && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900/40"
+                    onClick={() => router.push(`/contracts/${contractId}`)}
+                  >
+                    View contract
+                  </Button>
+                )}
+              </span>
+            </div>
+          )}
+
+          {/* Real progress bar — only when we have an authoritative number */}
+          {realProgress !== null && !isDone && !isFailed && (
             <div className="mt-4 space-y-2">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">
-                  Pipeline progress
+                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+                  {status === 'uploading' && !contractId ? 'Upload progress' : 'Pipeline progress'}
                 </span>
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{Math.round(progress)}%</span>
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  {Math.round(realProgress)}%
+                </span>
               </div>
-              <Progress value={progress} variant={progressVariant} className="h-2.5 bg-slate-100/90 dark:bg-slate-800" />
+              <Progress
+                value={realProgress}
+                variant={progressVariant}
+                className="h-2.5"
+                aria-label={`${fileName} ${status === 'uploading' && !contractId ? 'upload' : 'processing'} progress`}
+              />
             </div>
           )}
         </div>
 
         {/* Actions */}
         <div className="flex shrink-0 items-start gap-1.5">
-          {(status === 'completed' || isCompleted) && contractId && (
-            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }}>
-              <Button 
-                size="sm" 
-                className="h-9 rounded-full bg-emerald-600 px-3 text-xs font-medium hover:bg-emerald-700"
-                onClick={() => router.push(`/contracts/${contractId}`)}
-              >
-                <Eye className="h-3.5 w-3.5 mr-1" />
-                View Contract
-                <ExternalLink className="h-3 w-3 ml-1.5 opacity-70" />
-              </Button>
-            </motion.div>
+          {isDone && contractId && (
+            <Button
+              size="sm"
+              className="h-9 px-3 text-xs font-medium"
+              onClick={() => router.push(`/contracts/${contractId}`)}
+            >
+              <Eye className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+              View Contract
+              <ExternalLink className="h-3 w-3 ml-1.5 opacity-70" aria-hidden="true" />
+            </Button>
           )}
-          
-          {status === 'error' && (
-            <Button size="sm" variant="outline" className="h-9 rounded-full border-red-200 px-3 text-xs hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20" onClick={onRetry}>
-              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+
+          {isFailed && (
+            <Button size="sm" variant="outline" className="h-9 px-3 text-xs" onClick={onRetry}>
+              <RefreshCw className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
               Retry
             </Button>
           )}
 
-          {(status === 'pending' || status === 'error' || status === 'completed' || isCompleted) && (
-            <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full p-0 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={onRemove} aria-label="Remove file">
+          {(status === 'pending' || isFailed || isDone) && (
+            <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={onRemove} aria-label="Remove file">
               <X className="h-4 w-4" />
             </Button>
           )}
         </div>
       </div>
-      </div>
-
-      {/* Progress Bar */}
-    </motion.div>
+    </div>
   );
 }
 
