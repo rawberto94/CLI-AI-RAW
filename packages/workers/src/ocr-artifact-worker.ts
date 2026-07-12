@@ -4748,48 +4748,15 @@ export function registerOCRArtifactWorker() {
   return worker;
 }
 
-// Start worker if this file is run directly
-const isMainModule = import.meta.url === `file://${process.argv[1]}`;
-if (isMainModule) {
-  logger.info('Starting OCR + Artifact worker...');
-  
-  // Initialize queue service with config before registering worker
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) {
-    throw new Error('REDIS_URL environment variable must be configured');
-  }
-  getQueueService({
-    redis: { url: redisUrl },
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 2000 },
-      removeOnComplete: { age: 86400, count: 1000 },
-      removeOnFail: { age: 604800, count: 5000 },
-    },
-  });
-  
-  registerOCRArtifactWorker();
-  
-  // Graceful shutdown — wait for in-progress jobs before exiting
-  const shutdown = async (signal: string) => {
-    logger.info({ signal }, 'Received shutdown signal, closing worker gracefully...');
-    const queueService = getQueueService();
-    try {
-      // worker.close() waits for active jobs to finish
-      await Promise.race([
-        queueService.close(),
-        new Promise(resolve => setTimeout(resolve, 30000)), // 30s timeout
-      ]);
-      logger.info('Worker shutdown complete');
-    } catch (err) {
-      logger.error({ err }, 'Error during worker shutdown');
-    }
-    process.exit(0);
-  };
-
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
-}
+// NOTE: this file has no standalone entrypoint. Registration and queue-service
+// initialization happen exclusively in ./index.ts, which is the sole process
+// entrypoint (see Dockerfile.workers, ecosystem.config.cjs). An import.meta.url-based
+// "run directly" guard used to live here, but tsup bundles this file into
+// dist/index.js, so the guard was always true inside the bundle — causing this
+// block to re-initialize the queue service with a broken `{ redis: { url } }`
+// config (ioredis ignores that shape and falls back to an unauthenticated
+// localhost connection, breaking every worker with NOAUTH errors) and to
+// double-register SIGTERM/SIGINT handlers.
 
 /**
  * Get circuit breaker metrics for health monitoring

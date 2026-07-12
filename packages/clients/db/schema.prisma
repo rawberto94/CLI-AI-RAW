@@ -1155,6 +1155,10 @@ model Artifact {
   errorCount     Int       @default(0)
   lastError      String?
   lastErrorAt    DateTime?
+  // Free-form generation metadata (quality/regeneration diagnostics, UI hints
+  // like description/preview/confidence). Written by the artifact generator
+  // worker and read by RealtimeArtifactViewer.
+  metadata       Json?     @default("{}")
 
   // Relations
   contract    Contract                 @relation(fields: [contractId], references: [id], onDelete: Cascade)

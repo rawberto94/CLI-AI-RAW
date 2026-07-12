@@ -182,13 +182,9 @@ function startInterval(): void {
   setInterval(() => refreshForecasts({ batchSize: 50 }), REFRESH_INTERVAL_MS);
 }
 
-// Auto-start when loaded as a standalone worker (ESM compatible)
-const isMainModule = import.meta.url === `file://${process.argv[1]}`;
-if (isMainModule) {
-  start().catch(err => {
-    logger.error({ error: err }, 'Failed to start forecast refresh worker');
-    process.exit(1);
-  });
-}
+// NOTE: this file has no standalone entrypoint — see the equivalent comment in
+// ocr-artifact-worker.ts. ./index.ts calls start() explicitly; a bundled-in
+// "run directly" guard here previously caused a duplicate scheduler loop
+// whenever dist/index.js was executed.
 
 export { refreshForecasts, processJob, start };

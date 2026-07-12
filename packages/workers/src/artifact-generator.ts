@@ -143,6 +143,28 @@ let _openaiSingleton: any = null;
 async function getOpenAIClient(): Promise<any> {
   if (_openaiSingleton) return _openaiSingleton;
   const apiKey = process.env.OPENAI_API_KEY;
+  const isPlaceholderKey = !apiKey || /placeholder/i.test(apiKey);
+
+  // Fall back to Azure OpenAI when OPENAI_API_KEY is unset/placeholder but an
+  // Azure deployment is configured — same chat-completions interface, just
+  // routed through Azure. Keeps artifact generation working in environments
+  // (like this one) that only have Azure credentials provisioned.
+  if (isPlaceholderKey) {
+    const azureKey = process.env.AZURE_OPENAI_API_KEY;
+    const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+    const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT;
+    if (azureKey && azureEndpoint && azureDeployment) {
+      const { AzureOpenAI } = await import('openai');
+      _openaiSingleton = new AzureOpenAI({
+        apiKey: azureKey,
+        endpoint: azureEndpoint,
+        apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-10-21',
+        deployment: azureDeployment,
+      });
+      return _openaiSingleton;
+    }
+  }
+
   if (!apiKey) return null;
   const OpenAI = (await import('openai')).default;
   _openaiSingleton = new OpenAI({ apiKey });

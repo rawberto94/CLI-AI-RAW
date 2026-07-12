@@ -15,11 +15,20 @@ import path from 'path';
  *    `../../apps/web/uploads` on a host PM2 worker).
  */
 export function resolveLocalStoragePath(storagePath: string): string {
+  // Some ingestion paths (e.g. upload-batch's local fallback) store an
+  // already-absolute path; use it as-is rather than joining onto the root.
+  if (path.isAbsolute(storagePath)) {
+    return storagePath;
+  }
+  // Legacy rows may have been written with a leading 'uploads/' segment
+  // already baked into the key (a past bug in the upload route). Strip it so
+  // we don't double up when joining onto the uploads root below.
+  const key = storagePath.startsWith('uploads/') ? storagePath.slice('uploads/'.length) : storagePath;
   const root = process.env.LOCAL_STORAGE_ROOT?.replace(/\/$/, '');
   if (root) {
-    return path.join(root, storagePath);
+    return path.join(root, key);
   }
-  return path.join(process.cwd(), 'uploads', storagePath);
+  return path.join(process.cwd(), 'uploads', key);
 }
 
 /**

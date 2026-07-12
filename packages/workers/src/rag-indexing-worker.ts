@@ -865,34 +865,8 @@ export async function queueRAGIndexing(
   return job?.id || null;
 }
 
-// Start worker if this file is run directly
-const isMainModule = import.meta.url === `file://${process.argv[1]}`;
-if (isMainModule) {
-  logger.info('Starting RAG indexing worker...');
-  
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) {
-    throw new Error('REDIS_URL environment variable must be configured');
-  }
-  getQueueService({
-    redis: { url: redisUrl },
-    defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 3000 },
-      removeOnComplete: { age: 86400, count: 1000 },
-      removeOnFail: { age: 604800, count: 5000 },
-    },
-  });
-  
-  registerRAGIndexingWorker();
-  
-  process.on('SIGTERM', () => {
-    logger.info('SIGTERM received, shutting down gracefully...');
-    process.exit(0);
-  });
-  
-  process.on('SIGINT', () => {
-    logger.info('SIGINT received, shutting down gracefully...');
-    process.exit(0);
-  });
-}
+// NOTE: this file has no standalone entrypoint — see the equivalent comment in
+// ocr-artifact-worker.ts. Registration and queue-service init happen exclusively
+// in ./index.ts; a bundled-in "run directly" guard here previously caused
+// duplicate, unauthenticated Redis connections (NOAUTH) whenever dist/index.js
+// was executed.
