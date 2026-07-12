@@ -27,9 +27,11 @@ export function OpportunityDetails({ opportunityId }: OpportunityDetailsProps) {
     try {
       setLoading(true);
       const response = await fetch(`/api/rate-cards/opportunities/${opportunityId}`);
-      const data = await response.json();
+      const json = await response.json();
+      // API responds with a { success, data } envelope
+      const data = json?.data ?? json;
 
-      if (data.success) {
+      if (data?.opportunity) {
         setOpportunity(data.opportunity);
       }
     } catch {

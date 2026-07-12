@@ -56,11 +56,13 @@ export function OpportunitiesList() {
       if (categoryFilter !== 'all') params.append('category', categoryFilter);
 
       const response = await fetch(`/api/rate-cards/opportunities?${params}`);
-      const data = await response.json();
+      const json = await response.json();
+      // API responds with a { success, data } envelope
+      const data = json?.data ?? json;
 
-      if (data.success) {
-        setOpportunities(data.opportunities);
-        setSummary(data.summary);
+      if (data) {
+        setOpportunities(data.opportunities ?? []);
+        setSummary(data.summary ?? null);
       }
     } catch {
       // Error fetching opportunities

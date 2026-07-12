@@ -30,8 +30,10 @@ export function TopOpportunitiesWidget() {
     try {
       const response = await fetch('/api/rate-cards/opportunities?limit=10&sortBy=annualSavingsPotential&sortOrder=desc');
       if (response.ok) {
-        const data = await response.json();
-        setOpportunities(data.opportunities || []);
+        const json = await response.json();
+        // API responds with a { success, data } envelope
+        const payload = json?.data ?? json;
+        setOpportunities(payload?.opportunities ?? []);
       }
     } catch {
       // Error fetching top opportunities

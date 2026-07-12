@@ -42,8 +42,14 @@ export function DashboardTrendCharts() {
     try {
       const response = await fetch('/api/rate-cards/dashboard/trends');
       if (response.ok) {
-        const trendData = await response.json();
-        setData(trendData);
+        const json = await response.json();
+        // API responds with a { success, data } envelope
+        const payload = json?.data ?? json;
+        setData({
+          rateInflationByCategory: payload?.rateInflationByCategory ?? [],
+          supplierCompetitiveness: payload?.supplierCompetitiveness ?? [],
+          savingsPipeline: payload?.savingsPipeline ?? [],
+        });
       }
     } catch {
       // Error fetching trend data

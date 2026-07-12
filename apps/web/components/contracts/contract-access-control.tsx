@@ -103,9 +103,11 @@ export function ContractAccessControl({ contractId, contractName }: ContractAcce
       setLoading(true);
       const response = await fetch(`/api/contracts/${contractId}/access`);
       if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users);
-        setGroups(data.groups);
+        const json = await response.json();
+        // API responds with a { success, data } envelope
+        const data = json?.data ?? json;
+        setUsers(data?.users ?? []);
+        setGroups(data?.groups ?? []);
       }
     } catch (error) {
       toast.error('Failed to fetch access list');

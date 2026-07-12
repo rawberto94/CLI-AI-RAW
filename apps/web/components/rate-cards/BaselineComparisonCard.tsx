@@ -49,8 +49,10 @@ export function BaselineComparisonCard({ rateCardEntryId }: BaselineComparisonCa
         throw new Error('Failed to fetch baseline comparisons');
       }
 
-      const data = await response.json();
-      setComparisons(data.comparisons);
+      const json = await response.json();
+      // API responds with a { success, data } envelope
+      const data = json?.data ?? json;
+      setComparisons(data?.comparisons ?? []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load comparisons');
     } finally {

@@ -654,11 +654,17 @@ export function useRateCardDashboardMetrics() {
         baselineRes.json(),
         negotiationRes.json(),
       ]);
-      
+
+      // APIs respond with a { success, data } envelope
+      const unwrap = (json: unknown) => {
+        const j = json as { data?: unknown } | null;
+        return j && typeof j === 'object' && 'data' in j ? j.data : json;
+      };
+
       return {
-        clientMetrics: clientData,
-        baselineMetrics: baselineData,
-        negotiationMetrics: negotiationData,
+        clientMetrics: unwrap(clientData),
+        baselineMetrics: unwrap(baselineData),
+        negotiationMetrics: unwrap(negotiationData),
       };
     },
     staleTime: 30 * 1000, // Dashboard can be stale for 30 seconds

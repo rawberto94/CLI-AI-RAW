@@ -66,13 +66,15 @@ export function AuditLogViewer({ tenantId, entityType: initialEntityType, entity
       const params = new URLSearchParams(paramsObj);
 
       const response = await fetch(`/api/rate-cards/audit-logs?${params}`);
-      const data = await response.json();
+      const json = await response.json();
+      // API responds with a { success, data } envelope
+      const data = json?.data ?? json;
 
-      setLogs(data.logs);
+      setLogs(data?.logs ?? []);
       setPagination((prev) => ({
         ...prev,
-        total: data.total,
-        hasMore: data.hasMore,
+        total: data?.total ?? 0,
+        hasMore: data?.hasMore ?? false,
       }));
     } catch {
       // Error handled silently

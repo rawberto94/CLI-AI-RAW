@@ -58,8 +58,10 @@ export function ExtractFromContracts({ onSuccess, tenantId = 'demo' }: ExtractFr
       const response = await fetch('/api/contracts?status=COMPLETED&limit=50');
       if (!response.ok) throw new Error('Failed to fetch contracts');
       
-      const data = await response.json();
-      if (data.contracts?.length > 0) {
+      const json = await response.json();
+      // API responds with a { success, data } envelope
+      const data = json?.data ?? json;
+      if (data?.contracts?.length > 0) {
         setContracts(data.contracts.map((c: any) => ({
           id: c.id,
           fileName: c.fileName || c.originalName || 'Untitled Contract',

@@ -25,8 +25,9 @@ export function DashboardKPICards() {
     try {
       const response = await fetch('/api/rate-cards/dashboard/metrics');
       if (response.ok) {
-        const data = await response.json();
-        setMetrics(data);
+        const json = await response.json();
+        // API responds with a { success, data } envelope
+        setMetrics(json?.data ?? json);
       }
     } catch {
       // Error handled silently

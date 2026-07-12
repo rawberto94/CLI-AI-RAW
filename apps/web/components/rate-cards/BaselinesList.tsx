@@ -55,8 +55,10 @@ export function BaselinesList() {
       const response = await fetch(`/api/rate-cards/baselines?${params}`);
       if (!response.ok) throw new Error('Failed to fetch baselines');
 
-      const data = await response.json();
-      setBaselines(data.baselines);
+      const json = await response.json();
+      // API responds with a { success, data } envelope
+      const data = json?.data ?? json;
+      setBaselines(data?.baselines ?? []);
     } catch {
       // Error handled silently
     } finally {

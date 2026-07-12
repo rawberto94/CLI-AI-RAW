@@ -24,8 +24,9 @@ export function PerformanceIndicators() {
     try {
       const response = await fetch('/api/rate-cards/dashboard/performance');
       if (response.ok) {
-        const data = await response.json();
-        setMetrics(data);
+        const json = await response.json();
+        // API responds with a { success, data } envelope
+        setMetrics(json?.data ?? json);
       }
     } catch {
       // Error fetching performance indicators

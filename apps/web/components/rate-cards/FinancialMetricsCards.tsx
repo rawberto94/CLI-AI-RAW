@@ -24,8 +24,9 @@ export function FinancialMetricsCards() {
     try {
       const response = await fetch('/api/rate-cards/dashboard/financial');
       if (response.ok) {
-        const data = await response.json();
-        setMetrics(data);
+        const json = await response.json();
+        // API responds with a { success, data } envelope
+        setMetrics(json?.data ?? json);
       }
     } catch {
       // Error fetching financial metrics
