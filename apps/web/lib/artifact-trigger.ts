@@ -87,25 +87,35 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
     try {
       // Use shared queue from utils package
       const contractQueue = getContractQueue();
-      
+
       // Calculate delay based on source and whether it's a reprocess
       // Using 2 seconds to ensure DB transaction is committed before worker picks up the job
       const delay = isReprocess ? 200 : 500;
-      
-      // Queue the contract for processing with priority
-      const jobId = await contractQueue.queueContractProcessing(
-        {
-          contractId,
-          tenantId,
-          filePath,
-          originalName: filePath.split('/').pop() || 'unknown',
-          ocrMode, // Pass user's AI model selection
-        },
-        {
-          priority,
-          delay,
-        }
-      );
+
+      // Queue the contract for processing with priority.
+      // Bounded by a hard timeout: if Redis is unreachable, ioredis/BullMQ can
+      // leave this promise neither resolved nor rejected (observed in prod —
+      // the request hung until the platform gateway killed it, and the catch
+      // block below never got a chance to fall back to inline processing).
+      const QUEUE_CALL_TIMEOUT_MS = parseInt(process.env.QUEUE_CALL_TIMEOUT_MS || '5000', 10);
+      const jobId = await Promise.race([
+        contractQueue.queueContractProcessing(
+          {
+            contractId,
+            tenantId,
+            filePath,
+            originalName: filePath.split('/').pop() || 'unknown',
+            ocrMode, // Pass user's AI model selection
+          },
+          {
+            priority,
+            delay,
+          }
+        ),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`Queue call timed out after ${QUEUE_CALL_TIMEOUT_MS}ms`)), QUEUE_CALL_TIMEOUT_MS)
+        ),
+      ]);
       
       const estimatedWaitMs = estimateWaitTime(priority);
       
