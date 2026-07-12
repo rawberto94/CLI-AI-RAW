@@ -19,6 +19,7 @@
     "stop:docker": "bash scripts/stop-all.sh --docker",
     "health": "bash scripts/health-check.sh",
     "preflight": "bash scripts/preflight.sh",
+    "deploy:azure": "bash scripts/deploy-azure.sh",
     "build": "turbo run build",
     "build:web": "turbo run build --filter=web",
     "build:workers": "turbo run build --filter=@repo/workers",
