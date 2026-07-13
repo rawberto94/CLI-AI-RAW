@@ -100,6 +100,7 @@ jobs:
       DIRECT_DATABASE_URL: postgresql://user:pass@localhost:5432/test
       NEXTAUTH_SECRET: ci-build-only-placeholder-secret
       JWT_SECRET: ci-build-only-placeholder-secret
+      OPENAI_API_KEY: sk-ci-build-only-placeholder
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

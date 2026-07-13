@@ -28,6 +28,7 @@
         "REDIS_URL",
         "NEXTAUTH_SECRET",
         "JWT_SECRET",
+        "OPENAI_API_KEY",
         "SKIP_ENV_VALIDATION"
       ]
     },
