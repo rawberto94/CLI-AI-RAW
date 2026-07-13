@@ -33,14 +33,12 @@ export async function getContractIntelligenceBrief(
   }
 
   try {
-    const artifact = (await prisma.artifact.findUnique({
+    const artifact = (await prisma.artifact.findFirst({
       where: {
-        contractId_tenantId_type: {
-          contractId: ownedContractId,
-          tenantId,
-          type: 'INTELLIGENCE_BRIEF',
-        },
-      } as any,
+        contractId: ownedContractId,
+        tenantId,
+        type: 'INTELLIGENCE_BRIEF',
+      },
     })) as any;
 
     if (!artifact) {

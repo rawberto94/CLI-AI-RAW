@@ -656,9 +656,8 @@ export function useRateCardDashboardMetrics() {
       ]);
 
       // APIs respond with a { success, data } envelope
-      const unwrap = (json: unknown) => {
-        const j = json as { data?: unknown } | null;
-        return j && typeof j === 'object' && 'data' in j ? j.data : json;
+      const unwrap = (json: any): any => {
+        return json && typeof json === 'object' && 'data' in json ? json.data : json;
       };
 
       return {
