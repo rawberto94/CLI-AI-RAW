@@ -63,6 +63,7 @@ export default defineConfig({
       '@/app': path.resolve(__dirname, './app'),
       '@/components': path.resolve(__dirname, './components'),
       'data-orchestration': path.resolve(__dirname, '../../packages/data-orchestration/src'),
+      '@repo/data-orchestration': path.resolve(__dirname, '../../packages/data-orchestration/src'),
       'schemas': path.resolve(__dirname, '../../packages/schemas/src'),
       '@repo/workers': path.resolve(__dirname, '../../packages/workers/src'),
       '@repo/agents': path.resolve(__dirname, '../../packages/agents/src'),
