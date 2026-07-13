@@ -211,7 +211,7 @@ export function TemplateVariableForm({
         {allRequiredFilled && !allFilled && (
           <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
             <AlertCircle className="h-4 w-4" />
-            <span>Optional fields will remain as placeholders — that's OK.</span>
+            <span>Optional fields will remain as placeholders — that&apos;s OK.</span>
           </div>
         )}
 

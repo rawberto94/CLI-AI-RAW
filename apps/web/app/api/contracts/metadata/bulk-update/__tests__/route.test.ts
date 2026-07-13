@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockContractFindMany, mockBulkUpdateMetadata } = vi.hoisted(() => ({
+const { mockContractFindMany, mockBulkUpdateMetadata, mockCheckContractWritePermission } = vi.hoisted(() => ({
   mockContractFindMany: vi.fn(),
   mockBulkUpdateMetadata: vi.fn(),
+  mockCheckContractWritePermission: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -12,6 +13,10 @@ vi.mock('@/lib/prisma', () => ({
       findMany: mockContractFindMany,
     },
   },
+}));
+
+vi.mock('@/lib/security/contract-acl', () => ({
+  checkContractWritePermission: mockCheckContractWritePermission,
 }));
 
 vi.mock('data-orchestration/services', () => ({
@@ -40,7 +45,8 @@ describe('/api/contracts/metadata/bulk-update', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockContractFindMany.mockResolvedValue([{ id: 'contract-1' }, { id: 'contract-2' }]);
-    mockBulkUpdateMetadata.mockResolvedValue({ successful: 2, failed: 0 });
+    mockCheckContractWritePermission.mockResolvedValue({ allowed: true });
+    mockBulkUpdateMetadata.mockResolvedValue({ successful: ['contract-1', 'contract-2'], failed: [] });
   });
 
   it('returns 401 without auth headers', async () => {

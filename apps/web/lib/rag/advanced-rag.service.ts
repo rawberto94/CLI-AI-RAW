@@ -417,7 +417,7 @@ async function keywordSearch(
 ): Promise<KeywordResult[]> {
   // Build safe parameterized filter conditions
   const conditions: Prisma.Sql[] = [];
-  let needsJoin = false;
+  const needsJoin = false;
   
   if (filters.contractIds?.length) {
     // Validate IDs are safe (alphanumeric/hyphen/underscore). Prisma.join parameterizes values.
@@ -785,7 +785,7 @@ export async function hybridSearch(
     
     // Step 2: Generate embeddings for additional query variations (reuse primary)
     const additionalQueries = queries.slice(1); // Skip first — we already have it
-    let queryEmbeddings = [primaryQueryEmbedding];
+    const queryEmbeddings = [primaryQueryEmbedding];
     
     if (additionalQueries.length > 0) {
       const multiEmbParams: Record<string, unknown> = { model: embModel, input: additionalQueries };

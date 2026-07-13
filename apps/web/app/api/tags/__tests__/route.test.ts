@@ -4,6 +4,12 @@ import { NextRequest } from 'next/server';
 const mocks = vi.hoisted(() => ({
   mockPrisma: {
     contract: { findMany: vi.fn() },
+    contractMetadata: { findMany: vi.fn() },
+    tenantTag: {
+      findMany: vi.fn(),
+      upsert: vi.fn(),
+      deleteMany: vi.fn(),
+    },
     tenantSettings: {
       findFirst: vi.fn(),
       create: vi.fn(),
@@ -26,7 +32,10 @@ function req(method = 'GET', url = 'http://localhost:3000/api/tags', body?: Reco
 }
 
 describe('GET /api/tags', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.mockPrisma.tenantTag.findMany.mockResolvedValue([]);
+  });
 
   it('should return 401 without auth', async () => {
     const r = new NextRequest('http://localhost:3000/api/tags', { method: 'GET', headers: { 'x-tenant-id': 't' } } as any);
@@ -35,9 +44,9 @@ describe('GET /api/tags', () => {
   });
 
   it('should return tags aggregated from contracts', async () => {
-    mocks.mockPrisma.contract.findMany.mockResolvedValue([
-      { id: 'c1', tags: ['Legal', 'HR'], updatedAt: new Date() },
-      { id: 'c2', tags: ['legal', 'Finance'], updatedAt: new Date() },
+    mocks.mockPrisma.contractMetadata.findMany.mockResolvedValue([
+      { tags: ['Legal', 'HR'] },
+      { tags: ['legal', 'Finance'] },
     ]);
     mocks.mockPrisma.tenantSettings.findFirst.mockResolvedValue(null);
 
@@ -50,7 +59,7 @@ describe('GET /api/tags', () => {
   });
 
   it('should include predefined tags from tenant settings', async () => {
-    mocks.mockPrisma.contract.findMany.mockResolvedValue([]);
+    mocks.mockPrisma.contractMetadata.findMany.mockResolvedValue([]);
     mocks.mockPrisma.tenantSettings.findFirst.mockResolvedValue({
       customFields: { predefinedTags: [{ name: 'Important', color: '#FF0000' }] },
     });
@@ -59,12 +68,13 @@ describe('GET /api/tags', () => {
     const d = await res.json();
     expect(res.status).toBe(200);
     const tags = d.data.data.tags;
-    expect(tags.some((t: any) => t.name === 'Important')).toBe(true);
+    // Registry normalizes names to lowercase
+    expect(tags.some((t: any) => t.name === 'important')).toBe(true);
   });
 
   it('should filter by search query', async () => {
-    mocks.mockPrisma.contract.findMany.mockResolvedValue([
-      { id: 'c1', tags: ['Legal', 'Finance', 'HR'], updatedAt: new Date() },
+    mocks.mockPrisma.contractMetadata.findMany.mockResolvedValue([
+      { tags: ['Legal', 'Finance', 'HR'] },
     ]);
     mocks.mockPrisma.tenantSettings.findFirst.mockResolvedValue(null);
 
@@ -88,13 +98,21 @@ describe('POST /api/tags', () => {
     mocks.mockPrisma.tenantSettings.findFirst.mockResolvedValue({
       id: 'ts1', tenantId: 'tenant-1', customFields: { predefinedTags: [] },
     });
-    mocks.mockPrisma.tenantSettings.update.mockResolvedValue({});
+    // First findMany: registry lookup (empty); second: persisted rows after upsert
+    mocks.mockPrisma.tenantTag.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { name: 'newtag', color: '#00FF00', description: '', createdAt: new Date(), createdBy: 'user-1' },
+      ]);
+    mocks.mockPrisma.tenantTag.upsert.mockResolvedValue({});
 
     const res = await POST(req('POST', 'http://localhost:3000/api/tags', { name: 'NewTag', color: '#00FF00' }));
     const d = await res.json();
     expect(res.status).toBe(200);
     expect(d.success).toBe(true);
-    expect(d.data.data.name).toBe('NewTag');
+    // Tag names are normalized to lowercase by the registry
+    expect(d.data.data.name).toBe('newtag');
+    expect(mocks.mockPrisma.tenantTag.upsert).toHaveBeenCalled();
   });
 
   it('should create tenant settings if not exists', async () => {

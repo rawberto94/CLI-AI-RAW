@@ -164,7 +164,7 @@ describe('POST /api/contracts/[id]/signed-copy', () => {
       id: 'c1', contractTitle: 'Test NDA', signatureStatus: 'unsigned', fileName: 'nda.pdf',
     });
     mockStorageUpload.mockResolvedValue({ success: true, url: 'https://s3/signed/test.pdf' });
-    mockTransaction.mockImplementation(async (fn: Function) => {
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
       const tx = {
         contractVersion: {
           findFirst: vi.fn().mockResolvedValue({ id: 'v1', versionNumber: 1, isActive: true }),
@@ -199,7 +199,7 @@ describe('POST /api/contracts/[id]/signed-copy', () => {
       id: 'c1', contractTitle: 'Test NDA', signatureStatus: 'unsigned', fileName: 'nda.pdf',
     });
     mockStorageUpload.mockRejectedValue(new Error('Storage unavailable'));
-    mockTransaction.mockImplementation(async (fn: Function) => {
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
       const tx = {
         contractVersion: {
           findFirst: vi.fn().mockResolvedValue(null),

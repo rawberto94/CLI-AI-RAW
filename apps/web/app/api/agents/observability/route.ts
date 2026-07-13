@@ -237,7 +237,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
         }
 
         // Circuit breaker status
-        let circuitBreakerStatus: Record<string, { state: string; failures: number }> = {};
+        const circuitBreakerStatus: Record<string, { state: string; failures: number }> = {};
         try {
           const { getCircuitBreaker } = await import('@/lib/ai/circuit-breaker');
           for (const name of ['ai-chat', 'ai-draft']) {

@@ -92,7 +92,7 @@ async function fetchContractNegotiationData(contractId: string): Promise<{
 }> {
   // Fetch contract data for parties
   const contractRes = await fetch(`/api/contracts/${contractId}`);
-  let parties: { initiator: Party; counterparty: Party } = {
+  const parties: { initiator: Party; counterparty: Party } = {
     initiator: { name: 'Your Organization', role: 'initiator', representative: 'You', email: '' },
     counterparty: { name: 'Counterparty', role: 'counterparty', representative: 'TBD', email: '' },
   };

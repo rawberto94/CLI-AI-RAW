@@ -12,6 +12,7 @@
  * still defensively backtick-escaped to prevent injection from a typo.
  */
 
+/* eslint-disable @typescript-eslint/ban-ts-comment -- legacy connector, typed cleanup tracked separately */
 // @ts-nocheck
 
 import {

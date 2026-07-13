@@ -152,7 +152,6 @@ async function handleSingleFeedback(body: FeedbackRequest, tenantId: string, ctx
     invalidateLearnedHintsCache(contractType || contract.contractType || undefined);
 
     try {
-      // @ts-ignore - module may not be available in edge runtime
       const { runLearningFeedback } = await import('@repo/workers/agents/agent-dispatch');
       runLearningFeedback(contractId, tenantId, [
         { field: fieldName, originalValue: String(extractedValue ?? ''), correctedValue: String(correctedValue ?? ''), reason: extractionSource },
@@ -217,7 +216,6 @@ async function handleBatchFeedback(body: BatchFeedbackRequest, tenantId: string,
     invalidateLearnedHintsCache(contractType || contract.contractType || undefined);
 
     try {
-      // @ts-ignore - module may not be available in edge runtime
       const { runLearningFeedback } = await import('@repo/workers/agents/agent-dispatch');
       const corrections = feedback
         .filter(item => !item.wasCorrect && item.correctedValue !== undefined)

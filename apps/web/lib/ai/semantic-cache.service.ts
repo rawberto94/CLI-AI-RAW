@@ -113,17 +113,22 @@ export class SemanticCacheService {
       });
     }
 
-    // Initialize OpenAI for embeddings — use embedding-specific client for Azure
-    if (hasAIClientConfig()) {
-      this.openai = createEmbeddingClient();
-    }
+  }
+
+  // Lazily create the embedding client: constructing the SDK client at import
+  // time (this service is a module-level singleton) breaks non-Node
+  // environments such as jsdom in unit tests.
+  private getOpenAI(): OpenAI | null {
+    if (!hasAIClientConfig()) return null;
+    this.openai ??= createEmbeddingClient();
+    return this.openai;
   }
 
   /**
    * Check cache for semantically similar query
    */
   async get(query: string, tenantId: string, scope?: CacheScope): Promise<CachedResponse | null> {
-    if (!this.config.enabled || !this.openai) {
+    if (!this.config.enabled || !hasAIClientConfig()) {
       return null;
     }
 
@@ -181,7 +186,7 @@ export class SemanticCacheService {
     tenantId: string,
     scope?: CacheScope,
   ): Promise<void> {
-    if (!this.config.enabled || !this.openai) {
+    if (!this.config.enabled || !hasAIClientConfig()) {
       return;
     }
 
@@ -272,10 +277,11 @@ export class SemanticCacheService {
   // =============================================================================
 
   private async getEmbedding(text: string): Promise<number[] | null> {
-    if (!this.openai) return null;
+    const client = this.getOpenAI();
+    if (!client) return null;
 
     try {
-      const response = await this.openai.embeddings.create({
+      const response = await client.embeddings.create({
         model: 'text-embedding-3-small',
         input: text,
         dimensions: 256, // Smaller dimension for cache efficiency

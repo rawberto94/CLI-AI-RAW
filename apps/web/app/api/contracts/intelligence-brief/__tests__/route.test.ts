@@ -3,11 +3,11 @@ import { NextRequest } from 'next/server';
 
 const {
   mockContractFindFirst,
-  mockArtifactFindUnique,
+  mockArtifactFindFirst,
   mockRunIntelligencePipeline,
 } = vi.hoisted(() => ({
   mockContractFindFirst: vi.fn(),
-  mockArtifactFindUnique: vi.fn(),
+  mockArtifactFindFirst: vi.fn(),
   mockRunIntelligencePipeline: vi.fn(),
 }));
 
@@ -17,7 +17,7 @@ vi.mock('@/lib/prisma', () => ({
       findFirst: mockContractFindFirst,
     },
     artifact: {
-      findUnique: mockArtifactFindUnique,
+      findFirst: mockArtifactFindFirst,
     },
   },
 }));
@@ -44,7 +44,7 @@ describe('/api/contracts/intelligence-brief', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockContractFindFirst.mockResolvedValue({ id: 'contract-1' });
-    mockArtifactFindUnique.mockResolvedValue(null);
+    mockArtifactFindFirst.mockResolvedValue(null);
     mockRunIntelligencePipeline.mockResolvedValue({ success: true, brief: 'summary' });
   });
 

@@ -489,7 +489,7 @@ export default function ContractGroupDetailPage() {
                     )}
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-600">Click "Load" to see member contracts</p>
+                  <p className="text-sm text-slate-600">Click &quot;Load&quot; to see member contracts</p>
                 )}
               </CardContent>
             </Card>

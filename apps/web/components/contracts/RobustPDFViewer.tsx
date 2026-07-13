@@ -364,10 +364,6 @@ export function RobustPDFViewer({
     };
   }, [isResizing]);
 
-  if (!isExpanded) {
-    return null;
-  }
-
   // Create a stable blob URL for the embed/iframe fallback. Re-creating
   // it on every render churns memory and — more importantly — the previous
   // URL gets revoked, which can race with the <object>/<iframe> load and
@@ -385,6 +381,10 @@ export function RobustPDFViewer({
       }
     };
   }, [blobUrl]);
+
+  if (!isExpanded) {
+    return null;
+  }
 
   // Fullscreen overlay - renders as a portal-like fixed overlay
   if (isFullscreen) {

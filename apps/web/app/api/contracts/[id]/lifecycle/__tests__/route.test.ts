@@ -6,6 +6,8 @@ const {
   mockGetContract,
   mockUpdateContract,
   mockQueueRAGReindex,
+  mockQueueRAGIndexing,
+  mockShouldTriggerRAGReindex,
   mockRequiresApprovalWorkflow,
   mockGetContractLifecycle,
 } = vi.hoisted(() => ({
@@ -13,6 +15,8 @@ const {
   mockGetContract: vi.fn(),
   mockUpdateContract: vi.fn(),
   mockQueueRAGReindex: vi.fn(),
+  mockQueueRAGIndexing: vi.fn(),
+  mockShouldTriggerRAGReindex: vi.fn(),
   mockRequiresApprovalWorkflow: vi.fn(),
   mockGetContractLifecycle: vi.fn(),
 }));
@@ -39,6 +43,13 @@ vi.mock('@/lib/contract-helpers', () => ({
 
 vi.mock('@/lib/rag/reindex-helper', () => ({
   queueRAGReindex: mockQueueRAGReindex,
+  shouldTriggerRAGReindex: mockShouldTriggerRAGReindex,
+}));
+
+vi.mock('@repo/utils/queue/contract-queue', () => ({
+  getContractQueue: () => ({
+    queueRAGIndexing: mockQueueRAGIndexing,
+  }),
 }));
 
 import { GET, POST } from '../route';
@@ -94,6 +105,8 @@ describe('/api/contracts/[id]/lifecycle', () => {
     mockGetContractLifecycle.mockReturnValue('new');
     mockRequiresApprovalWorkflow.mockReturnValue(true);
     mockQueueRAGReindex.mockResolvedValue(undefined);
+    mockShouldTriggerRAGReindex.mockReturnValue(true);
+    mockQueueRAGIndexing.mockResolvedValue(undefined);
   });
 
   it('returns 401 without auth headers', async () => {
@@ -163,10 +176,12 @@ describe('/api/contracts/[id]/lifecycle', () => {
         }),
       }),
     );
-    expect(mockQueueRAGReindex).toHaveBeenCalledWith({
-      contractId: 'contract-1',
-      tenantId: 'tenant-1',
-      reason: 'lifecycle/status updated',
-    });
+    expect(mockQueueRAGIndexing).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractId: 'contract-1',
+        tenantId: 'tenant-1',
+      }),
+      expect.anything(),
+    );
   });
 });

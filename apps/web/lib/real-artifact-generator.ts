@@ -1503,7 +1503,7 @@ async function extractPDFWithDocumentIntelligence(fileContent: Buffer, totalPdfP
         // ── Structured contract extraction via prebuilt-contract model ──
         // This provides higher-quality parties/dates/jurisdiction/title than query fields.
         const contractAnswers: Record<string, string> = {};
-        let contractMetadata: NormalizedContractFieldEvidence['metadata'] = {};
+        const contractMetadata: NormalizedContractFieldEvidence['metadata'] = {};
         try {
           const { contract } = await analyzeContract(fileContent, { pages: metadataPages });
           if (contract.title) {

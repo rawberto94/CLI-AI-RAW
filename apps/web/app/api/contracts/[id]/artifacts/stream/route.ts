@@ -261,7 +261,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       const maxPolls = MAX_POLL_SECONDS;
       let consecutiveErrors = 0;
       // Track per-artifact status for transition detection
-      let previousArtifactStatuses: Record<string, string> = {};
+      const previousArtifactStatuses: Record<string, string> = {};
       let lastContractStatus = '';
 
       // Helper to build artifact payload with enhanced fields

@@ -117,7 +117,7 @@ export default function ArtifactsAnalyticsPage() {
                 <AlertTriangle className="h-6 w-6 text-rose-600" />
               </div>
               <div className="flex-1">
-                <h2 className="text-lg font-semibold text-slate-900">Couldn't load artifact analytics</h2>
+                <h2 className="text-lg font-semibold text-slate-900">Couldn&apos;t load artifact analytics</h2>
                 <p className="text-sm text-slate-600 mt-1">{loadError}</p>
                 <Button onClick={loadMetrics} className="mt-4" variant="outline">
                   <RefreshCw className="h-4 w-4 mr-2" />

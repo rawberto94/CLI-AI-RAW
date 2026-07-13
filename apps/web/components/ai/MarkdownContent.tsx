@@ -221,8 +221,6 @@ export const MarkdownContent = memo(function MarkdownContent({
   className = '',
   onInternalLinkClick,
 }: MarkdownContentProps) {
-  if (!content) return null;
-
   const markdownComponents = React.useMemo<Components>(() => ({
     ...baseMarkdownComponents,
     a: ({ href, children, ...props }) => {
@@ -261,6 +259,8 @@ export const MarkdownContent = memo(function MarkdownContent({
       );
     },
   }), [onInternalLinkClick]);
+
+  if (!content) return null;
 
   return (
     <div

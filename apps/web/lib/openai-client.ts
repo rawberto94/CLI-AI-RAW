@@ -205,6 +205,20 @@ class OpenAIClient implements TypedOpenAIClient {
   }
 }
 
-export const openai: TypedOpenAIClient | null = getActiveProviderConfig() ? new OpenAIClient() : null;
+// Defer SDK client construction to first use: building it at import time
+// breaks non-Node environments (e.g. jsdom in unit tests) and taxes cold
+// starts for the many modules that import this one without calling AI.
+let lazyClient: OpenAIClient | null = null;
+function getLazyClient(): OpenAIClient {
+  lazyClient ??= new OpenAIClient();
+  return lazyClient;
+}
+
+export const openai: TypedOpenAIClient | null = getActiveProviderConfig()
+  ? {
+      createStructured: (opts) => getLazyClient().createStructured(opts),
+      chat: (opts) => getLazyClient().chat(opts),
+    }
+  : null;
 
 export { OpenAIClient };

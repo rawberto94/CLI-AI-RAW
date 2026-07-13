@@ -735,7 +735,7 @@ export function UnifiedAgentInterface() {
           <DialogHeader>
             <DialogTitle>Review Agent Recommendation</DialogTitle>
             <DialogDescription>
-              Review the agent's recommendation before taking action
+              Review the agent&apos;s recommendation before taking action
             </DialogDescription>
           </DialogHeader>
 

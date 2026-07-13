@@ -230,7 +230,7 @@ export default function ProcurementAnalyticsHub() {
             <div className="col-span-full p-4 bg-white border border-rose-200 rounded-xl flex items-start gap-3 shadow-sm">
               <AlertTriangle className="h-5 w-5 text-rose-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-900">Couldn't load procurement stats</p>
+                <p className="text-sm font-semibold text-slate-900">Couldn&apos;t load procurement stats</p>
                 <p className="text-xs text-slate-600 mt-0.5">{statsError}</p>
               </div>
               <Button size="sm" variant="outline" onClick={fetchStats}>

@@ -384,7 +384,7 @@ export function AgenticDraftDialog({ open, onOpenChange, initialPrompt }: Agenti
                 )}
                 {selectedPlaybookId && (
                   <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">
-                    Draft will follow your selected policy pack's preferred clauses.
+                    Draft will follow your selected policy pack&apos;s preferred clauses.
                   </p>
                 )}
               </div>
@@ -559,7 +559,7 @@ export function AgenticDraftDialog({ open, onOpenChange, initialPrompt }: Agenti
                         )}
                         {f.addendumAppended && (
                           <span className="inline-flex items-center gap-1 rounded-md bg-white/60 dark:bg-gray-800/60 border border-current/20 px-1.5 py-0.5">
-                            <BookOpen className="w-3 h-3" /> Added Schedule A: "User-Requested Terms" at the end of the draft
+                            <BookOpen className="w-3 h-3" /> Added Schedule A: &quot;User-Requested Terms&quot; at the end of the draft
                           </span>
                         )}
                       </div>

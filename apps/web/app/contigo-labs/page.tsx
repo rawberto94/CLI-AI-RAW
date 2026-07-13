@@ -2065,7 +2065,7 @@ function TemplateBuilder({ template, onSave, onPreview }: { template: RFxTemplat
               </div>
               <h3 className="text-xl font-semibold text-slate-900 mb-2">No Section Selected</h3>
               <p className="text-slate-500 leading-relaxed">
-                Select a section from the sidebar to edit its content, or click the "Add" button to create a new section.
+                Select a section from the sidebar to edit its content, or click the &quot;Add&quot; button to create a new section.
               </p>
             </div>
           </div>

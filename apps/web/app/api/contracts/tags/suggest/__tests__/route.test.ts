@@ -1,14 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockContractFindMany } = vi.hoisted(() => ({
-  mockContractFindMany: vi.fn(),
+const { mockMetadataFindMany, mockTenantTagFindMany, mockTenantSettingsFindFirst } = vi.hoisted(() => ({
+  mockMetadataFindMany: vi.fn(),
+  mockTenantTagFindMany: vi.fn(),
+  mockTenantSettingsFindFirst: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
-    contract: {
-      findMany: mockContractFindMany,
+    contractMetadata: {
+      findMany: mockMetadataFindMany,
+    },
+    tenantTag: {
+      findMany: mockTenantTagFindMany,
+    },
+    tenantSettings: {
+      findFirst: mockTenantSettingsFindFirst,
     },
   },
 }));
@@ -30,10 +38,12 @@ function createRequest(withAuth = true, query = '?q=service') {
 describe('/api/contracts/tags/suggest', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockContractFindMany.mockResolvedValue([
+    mockMetadataFindMany.mockResolvedValue([
       { tags: ['service-agreement', 'service-vendor'] },
       { tags: ['service-agreement', 'supplier-risk'] },
     ]);
+    mockTenantTagFindMany.mockResolvedValue([]);
+    mockTenantSettingsFindFirst.mockResolvedValue(null);
   });
 
   it('returns 401 without auth headers', async () => {
@@ -51,7 +61,7 @@ describe('/api/contracts/tags/suggest', () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(mockContractFindMany).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockMetadataFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { tenantId: 'tenant-1' },
     }));
     expect(data.data.query).toBe('service');
@@ -65,6 +75,6 @@ describe('/api/contracts/tags/suggest', () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.data.suggestions).toEqual([]);
-    expect(mockContractFindMany).not.toHaveBeenCalled();
+    expect(mockMetadataFindMany).not.toHaveBeenCalled();
   });
 });

@@ -112,7 +112,7 @@ describe('POST /api/drafts/[id]/finalize', () => {
     const finalizedDraft = { id: 'd1', status: 'FINALIZED', version: 4 };
     const createdContract = { id: 'c1', contractTitle: 'Test Contract Draft', status: 'DRAFT' };
 
-    mockTransaction.mockImplementation(async (cb: Function) => {
+    mockTransaction.mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => {
       // Mock the tx parameter passed to the callback
       const tx = {
         contractDraft: {
@@ -146,7 +146,7 @@ describe('POST /api/drafts/[id]/finalize', () => {
 
     // content is not a string so length < 50 check won't apply with typeof guard
     // Finalization should proceed
-    mockTransaction.mockImplementation(async (cb: Function) => {
+    mockTransaction.mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => {
       const tx = {
         contractDraft: {
           update: vi.fn().mockResolvedValue({ id: 'd1', status: 'FINALIZED', version: 4 }),

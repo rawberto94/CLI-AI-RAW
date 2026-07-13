@@ -6,8 +6,6 @@
  * This module adds AI-powered metadata enrichment on top.
  */
 
-import OpenAI from 'openai';
-import { createOpenAIClient, hasAIClientConfig } from '@/lib/openai-client';
 import {
   semanticChunk as coreSemanticChunk,
   type SemanticChunk as CoreSemanticChunk,
@@ -40,9 +38,6 @@ const SECTION_PATTERNS = {
   definitionBlock: /[""]([^""]+)[""]\s+(?:means|shall mean|refers to)/gi,
   scheduleHeader: /^(?:SCHEDULE|Schedule|EXHIBIT|Exhibit|APPENDIX|Appendix)\s+([A-Z\d]+)/gm,
 };
-
-// OpenAI client for AI-assisted chunking
-const openai = createOpenAIClient();
 
 /**
  * Semantic chunking that respects document structure

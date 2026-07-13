@@ -82,7 +82,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     await migratePlaintextToken(ctx.tenantId, settings);
   }
 
-  let token = settings.scimTokenHash as string | undefined;
+  const token = settings.scimTokenHash as string | undefined;
 
   if (!token) {
     const rawToken = generateScimToken();
