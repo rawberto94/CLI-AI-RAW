@@ -24,7 +24,11 @@
         "NODE_ENV",
         "NEXT_PUBLIC_*",
         "DATABASE_URL",
-        "REDIS_URL"
+        "DIRECT_DATABASE_URL",
+        "REDIS_URL",
+        "NEXTAUTH_SECRET",
+        "JWT_SECRET",
+        "SKIP_ENV_VALIDATION"
       ]
     },
     "lint": {
