@@ -203,7 +203,7 @@ export class DatabaseManager {
   async executeTransaction<T>(operations: TransactionOperation[]): Promise<T> {
     return this.withRetry(async () => {
       return await this.prisma.$transaction(async (tx) => {
-        const results = [];
+        const results: unknown[] = [];
         for (const op of operations) {
           const model = (tx as any)[op.model];
           if (!model || !model[op.operation]) {

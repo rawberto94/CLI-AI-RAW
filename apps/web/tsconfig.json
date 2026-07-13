@@ -52,6 +52,8 @@
       "utils/*": ["../../packages/utils/src/*"],
       "schemas": ["../../packages/schemas/src"],
       "schemas/*": ["../../packages/schemas/src/*"],
+      "clients-db": ["../../packages/clients/db/index.ts"],
+      "clients-db/*": ["../../packages/clients/db/*"],
       "clients-rag": ["../../packages/clients/rag"],
       "clients-rag/*": ["../../packages/clients/rag/*"],
       "clients-openai": ["../../packages/clients/openai"],
