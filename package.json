@@ -42,6 +42,8 @@
     "audit:critical-fields": "tsx scripts/audit-critical-fields.ts",
     "lint": "turbo run lint",
     "typecheck": "turbo run type-check",
+    "type-check:web:strict:core": "pnpm --filter web exec tsc --noEmit -p tsconfig.strict-core.json",
+    "type-check:web:strict:full": "pnpm --filter web exec tsc --noEmit -p tsconfig.strict.json",
     "services": "bash .devcontainer/start-services.sh",
     "services:test": "bash scripts/start-test-services.sh",
     "setup": "bash .devcontainer/setup.sh",

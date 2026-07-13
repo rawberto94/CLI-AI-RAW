@@ -287,7 +287,7 @@ export const AIAssistPanel: React.FC = () => {
     };
     scan();
     return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);  
 
   // Sync detected type to quick-action dropdown
   useEffect(() => {

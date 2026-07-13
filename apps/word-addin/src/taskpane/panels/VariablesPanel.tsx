@@ -264,7 +264,7 @@ export const VariablesPanel: React.FC = () => {
   // Initial scan
   useEffect(() => {
     handleScanDocument();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [handleScanDocument]);
 
   return (

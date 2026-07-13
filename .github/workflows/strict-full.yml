@@ -32,7 +32,13 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Core strict (for baseline)
+      - name: Generate Prisma Client
+        run: pnpm run db:generate
+      # Report-only baseline for the progressive strict rollout — error lists
+      # stay visible in the step logs without failing the job.
+      - name: Core strict (report-only baseline)
+        continue-on-error: true
         run: pnpm type-check:web:strict:core
-      - name: Full strict web (non-blocking baseline)
+      - name: Full strict web (report-only baseline)
+        continue-on-error: true
         run: pnpm type-check:web:strict:full

@@ -66,6 +66,8 @@ jobs:
           cache: 'pnpm'
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm run db:generate
       - name: Type Check
         run: pnpm run typecheck
 
@@ -82,6 +84,8 @@ jobs:
           cache: 'pnpm'
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm run db:generate
       - name: Unit / Workspace Tests
         run: pnpm run test:unit || pnpm run test
 
@@ -98,6 +102,8 @@ jobs:
           cache: 'pnpm'
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm run db:generate
       - name: Build Packages / Apps
         run: pnpm run build
 

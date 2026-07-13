@@ -29,6 +29,8 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm run db:generate
       - name: Build web app
         run: pnpm --filter web build
       - name: Run Lighthouse CI
