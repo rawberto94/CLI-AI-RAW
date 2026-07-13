@@ -31,8 +31,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Generate Prisma Client
         run: pnpm run db:generate
-      - name: Build web app
-        run: pnpm --filter web build
+      - name: Build web app (and workspace package deps)
+        run: pnpm exec turbo run build --filter=web
       - name: Run Lighthouse CI
         run: pnpm lhci autorun
         env:

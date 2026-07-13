@@ -23,6 +23,8 @@
       "data-orchestration": ["../data-orchestration/src"],
       "data-orchestration/*": ["../data-orchestration/src/*"],
       "@repo/db": ["../clients/db"],
+      "@repo/data-orchestration": ["../data-orchestration/src"],
+      "@repo/data-orchestration/*": ["../data-orchestration/src/*"],
       "@repo/db/*": ["../clients/db/*"],
       "@/*": ["../../apps/web/*"],
       "@/lib/*": ["../../apps/web/lib/*"],
