@@ -40,13 +40,18 @@ jobs:
           fi
           echo "✅ Setup scripts are valid"
           
-      - name: Validate docker-compose
+      - name: Validate devcontainer config
         run: |
-          if [ ! -f .devcontainer/docker-compose.codespaces.yml ]; then
-            echo "❌ docker-compose.codespaces.yml not found"
+          if [ ! -f .devcontainer/devcontainer.json ]; then
+            echo "❌ devcontainer.json not found"
             exit 1
           fi
-          echo "✅ Docker compose file exists"
+          python3 -c "import json; json.load(open('.devcontainer/devcontainer.json'))" || {
+            echo "❌ devcontainer.json is not valid JSON"
+            exit 1
+          }
+          # The devcontainer runs on a base image + setup.sh; no compose file is used.
+          echo "✅ devcontainer.json is valid"
           
       - name: Check documentation
         run: |
