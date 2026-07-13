@@ -143,9 +143,11 @@ export const CompactContractRow = memo(function CompactContractRow({
   const isFailed = normalizedStatus === 'failed';
   const isProcessing = ['uploaded', 'queued', 'processing'].includes(normalizedStatus);
   const isHighRisk = (contract.riskScore ?? 0) >= 70;
-  const metadataCompleteness = contract.metadataCompleteness ?? 100;
-  const metadataIssueCount = contract.metadataIssues?.length ?? 0;
-  const needsMetadataReview = metadataIssueCount > 0 || metadataCompleteness < 90;
+  const criticalMetadataIssues = useMemo(
+    () => contract.metadataIssues?.filter((issue) => issue.severity === 'critical') ?? [],
+    [contract.metadataIssues],
+  );
+  const needsMetadataReview = criticalMetadataIssues.length > 0;
   const needsSignature = contract.signatureStatus === 'unsigned'
     || contract.signatureStatus === 'partially_signed'
     || (contract.signatureRequiredFlag && contract.signatureStatus !== 'signed');
@@ -250,19 +252,25 @@ export const CompactContractRow = memo(function CompactContractRow({
             )} />
           </div>
           <div className="min-w-0 flex-1">
+            {/* Line 1: title gets the full available width */}
             <div className="flex items-center gap-2">
               <p className="font-medium text-slate-800 truncate group-hover:text-slate-900 transition-colors text-sm" title={contract.title}>
                 <HighlightText text={contract.title || 'Untitled Contract'} query={searchQuery} />
               </p>
+              <DocumentTypeBadge 
+                classification={contract.documentClassification as DocumentClassification} 
+                showWarning={!!contract.documentClassificationWarning}
+              />
+            </div>
+            {/* Line 2: date + badge rail (wraps instead of truncating the title) */}
+            <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+              <Clock className="h-3 w-3 flex-shrink-0" />
+              <span>{formatDate(contract.createdAt)}</span>
               {isNew && (
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-white flex-shrink-0">
                   New
                 </span>
               )}
-              <DocumentTypeBadge 
-                classification={contract.documentClassification as DocumentClassification} 
-                showWarning={!!contract.documentClassificationWarning}
-              />
               {contract.hasHierarchy && (
                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-50 text-violet-600 flex-shrink-0" title={contract.parentContractId ? `Under: ${contract.parentContract?.title || 'Parent contract'}` : `${contract.childContractCount || 0} linked contract(s)`}>
                   <Link2 className="h-3 w-3" />
@@ -306,19 +314,20 @@ export const CompactContractRow = memo(function CompactContractRow({
                 </span>
               )}
               {needsMetadataReview && !isProcessing && !isFailed && (
-                <span
-                  className="inline-flex items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 flex-shrink-0"
-                  title={contract.metadataIssues?.map((issue) => issue.label).join(', ') || 'Metadata review recommended'}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/contracts/${contract.id}?tab=details`);
+                  }}
+                  className="inline-flex items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 flex-shrink-0 hover:bg-amber-100 transition-colors cursor-pointer"
+                  title={`${criticalMetadataIssues.map((issue) => issue.label).join(', ')} — click to complete`}
                 >
                   <AlertCircle className="h-3 w-3" />
-                  Metadata {metadataCompleteness}%
-                </span>
+                  {criticalMetadataIssues.length} field{criticalMetadataIssues.length === 1 ? '' : 's'} missing
+                </button>
               )}
             </div>
-            <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
-              <Clock className="h-3 w-3" />
-              {formatDate(contract.createdAt)}
-            </p>
           </div>
         </div>
       </ContractHoverPreview>

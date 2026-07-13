@@ -12,6 +12,11 @@ import { checkETagMatch, CacheDuration } from '@/lib/api-cache-headers';
 import { withCache, CacheKeys } from '@/lib/cache';
 import { apiCache, etagHeaders } from '@/lib/cache/etag-cache';
 import { logger } from '@/lib/logger';
+import {
+  isFieldRequired,
+  requiredIssueKeysForType,
+  contractTypesExemptFromIssue,
+} from '@/lib/contracts/metadata-requirements';
 
 const UI_STATUS_ALIASES: Record<string, ContractStatus[]> = {
   uploaded: [ContractStatus.UPLOADED, ContractStatus.PENDING, ContractStatus.DRAFT],
@@ -180,7 +185,7 @@ function getOverallConfidence(aiMetadata: Record<string, unknown>): number | nul
   return typeof overall === 'number' ? overall : null;
 }
 
-function buildMetadataQuality(contract: {
+export function buildMetadataQuality(contract: {
   contractTitle: string | null;
   clientName: string | null;
   supplierName: string | null;
@@ -190,6 +195,7 @@ function buildMetadataQuality(contract: {
   contractCategoryId: string | null;
   category: string | null;
   categoryL1: string | null;
+  contractType: string | null;
   tags: Prisma.JsonValue | null;
   aiMetadata: Prisma.JsonValue | null;
   documentClassificationConf: number | null;
@@ -203,7 +209,10 @@ function buildMetadataQuality(contract: {
   if (!hasText(contract.clientName) && !hasText(contract.supplierName) && !hasExternalParties(aiMetadata)) {
     issues.push({ key: 'missing-party', ...METADATA_ISSUE_DEFINITIONS['missing-party'] });
   }
-  if (contract.totalValue == null) issues.push({ key: 'missing-value', ...METADATA_ISSUE_DEFINITIONS['missing-value'] });
+  // Contract-type-aware: e.g. NDAs legitimately have no contract value.
+  if (contract.totalValue == null && isFieldRequired('tcv_amount', contract.contractType)) {
+    issues.push({ key: 'missing-value', ...METADATA_ISSUE_DEFINITIONS['missing-value'] });
+  }
   if (!contract.effectiveDate || !contract.expirationDate) issues.push({ key: 'missing-dates', ...METADATA_ISSUE_DEFINITIONS['missing-dates'] });
   if (!hasText(contract.contractCategoryId) && !hasText(contract.category) && !hasText(contract.categoryL1)) {
     issues.push({ key: 'missing-category', ...METADATA_ISSUE_DEFINITIONS['missing-category'] });
@@ -220,8 +229,12 @@ function buildMetadataQuality(contract: {
     issues.push({ key: 'low-confidence', ...METADATA_ISSUE_DEFINITIONS['low-confidence'] });
   }
 
-  const requiredIssueCount = issues.filter((issue) => issue.key !== 'low-confidence').length;
-  const baseCompleteness = Math.max(0, Math.round(((6 - requiredIssueCount) / 6) * 100));
+  const requiredIssueKeys = requiredIssueKeysForType(contract.contractType);
+  const requiredIssueCount = issues.filter((issue) => requiredIssueKeys.has(issue.key)).length;
+  const requiredTotal = requiredIssueKeys.size;
+  const baseCompleteness = requiredTotal > 0
+    ? Math.max(0, Math.round(((requiredTotal - requiredIssueCount) / requiredTotal) * 100))
+    : 100;
   const metadataCompleteness = issues.some((issue) => issue.key === 'low-confidence')
     ? Math.min(baseCompleteness, 85)
     : baseCompleteness;
@@ -233,7 +246,7 @@ function buildMetadataQuality(contract: {
   };
 }
 
-function buildMetadataIssueFilter(issue: MetadataIssueKey): Prisma.ContractWhereInput {
+export function buildMetadataIssueFilter(issue: MetadataIssueKey): Prisma.ContractWhereInput {
   switch (issue) {
     case 'missing-title':
       return { OR: [{ contractTitle: null }, { contractTitle: '' }] };
@@ -244,8 +257,14 @@ function buildMetadataIssueFilter(issue: MetadataIssueKey): Prisma.ContractWhere
           { OR: [{ supplierName: null }, { supplierName: '' }] },
         ],
       };
-    case 'missing-value':
-      return { totalValue: null };
+    case 'missing-value': {
+      // Exclude contract types that legitimately have no value (e.g. NDAs),
+      // staying in sync with scoring via the shared requirements module.
+      const exemptTypes = contractTypesExemptFromIssue('missing-value');
+      return exemptTypes.length > 0
+        ? { AND: [{ totalValue: null }, { NOT: { contractType: { in: exemptTypes, mode: 'insensitive' } } }] }
+        : { totalValue: null };
+    }
     case 'missing-dates':
       return { OR: [{ effectiveDate: null }, { expirationDate: null }] };
     case 'missing-category':
@@ -816,6 +835,7 @@ export async function getContractsCollection(
                 contractCategoryId: contract.contractCategoryId,
                 category: contract.category,
                 categoryL1: (contract as any).categoryL1,
+                contractType: contract.contractType,
                 tags: contract.tags,
                 aiMetadata: contract.aiMetadata,
                 documentClassificationConf: (contract as any).documentClassificationConf,

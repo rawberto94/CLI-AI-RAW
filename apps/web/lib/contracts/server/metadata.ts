@@ -544,6 +544,7 @@ export async function getContractMetadata(
       createdAt: true,
       updatedAt: true,
       uploadedBy: true,
+      metadataVersion: true,
     },
   });
 
@@ -557,9 +558,11 @@ export async function getContractMetadata(
   }).catch(() => null);
 
   let fieldValidations: Record<string, { status: string; validatedAt?: string }> = {};
+  let reviewStatus: { reviewedBy: string; reviewedAt: string } | null = null;
   if (metadataRecord?.customFields) {
     const customFields = metadataRecord.customFields as Record<string, any>;
     fieldValidations = customFields._fieldValidations || {};
+    reviewStatus = customFields._reviewStatus || null;
   }
 
   const aiMetadata = (contract.aiMetadata as EnterpriseMetadata) || {};
@@ -763,6 +766,8 @@ export async function getContractMetadata(
       _field_confidence: confidenceMap,
       _fieldValidations: fieldValidations,
     },
+    reviewStatus,
+    metadataVersion: contract.metadataVersion ?? 1,
     classification: {
       contractType: contract.contractType,
       categoryL1: contract.categoryL1,
@@ -972,6 +977,29 @@ export async function putContractMetadata(
     } catch (error) {
       logger.warn('Failed to sync ContractMetadata.tags', { error: (error as Error).message, contractId });
     }
+  }
+
+  // Any metadata edit invalidates a prior contract-level review sign-off —
+  // a stale review must not linger after values change.
+  try {
+    const metadataRecord = await prisma.contractMetadata.findUnique({
+      where: { contractId },
+      select: { customFields: true },
+    });
+    const reviewCustomFields = (metadataRecord?.customFields as Record<string, any>) || null;
+    if (reviewCustomFields && reviewCustomFields._reviewStatus) {
+      delete reviewCustomFields._reviewStatus;
+      await prisma.contractMetadata.update({
+        where: { contractId },
+        data: {
+          customFields: reviewCustomFields as Prisma.InputJsonValue,
+          lastUpdated: new Date(),
+          updatedBy: context.userId ?? 'system',
+        },
+      });
+    }
+  } catch (error) {
+    logger.warn('Failed to clear metadata review status', { error: (error as Error).message, contractId });
   }
 
   const updatedFields = Object.keys(metadata).filter((field) =>
@@ -1301,7 +1329,7 @@ export async function putContractMetadataValidation(
   contractId: string,
 ) {
   const body = await request.json();
-  const { fieldKey, action, newValue, reason, allFields, resetAll } = body;
+  const { fieldKey, action, newValue, reason, allFields, resetAll, fieldKeys, markReviewed } = body;
 
   const contract = await findTenantContract(contractId, context.tenantId);
   if (!contract) {
@@ -1350,21 +1378,84 @@ export async function putContractMetadataValidation(
     });
   }
 
-  if (allFields && typeof allFields === 'object') {
+  // Bulk verify: persist one _fieldValidations entry per key — the only thing
+  // the GET endpoint reads back. `allFields` is accepted for one release for
+  // backward compatibility, but its values are ignored (keys only); field
+  // values are never merged into customFields.
+  const bulkKeys: string[] = Array.isArray(fieldKeys)
+    ? fieldKeys.filter((key): key is string => typeof key === 'string' && key.length > 0)
+    : allFields && typeof allFields === 'object'
+      ? Object.keys(allFields)
+      : [];
+
+  if (bulkKeys.length > 0) {
     try {
       const existing = await prisma.contractMetadata.findUnique({
         where: { contractId },
       });
 
       const now = new Date();
-      const customFields = {
-        ...((existing?.customFields as Record<string, unknown>) || {}),
-        ...allFields,
-        _validationStatus: {
+      const customFields = ((existing?.customFields as Record<string, any>) || {}) as Record<string, any>;
+      const validations = (customFields._fieldValidations || {}) as Record<string, unknown>;
+      for (const key of bulkKeys) {
+        validations[key] = {
+          status: 'validate',
           validatedAt: now.toISOString(),
           validatedBy: context.userId ?? 'system',
-          fieldCount: Object.keys(allFields).length,
-        },
+        };
+      }
+      customFields._fieldValidations = validations;
+
+      if (existing) {
+        await prisma.contractMetadata.update({
+          where: { contractId },
+          data: {
+            customFields: customFields as Prisma.InputJsonValue,
+            lastUpdated: now,
+            updatedBy: context.userId ?? 'system',
+          },
+        });
+      } else {
+        await prisma.contractMetadata.create({
+          data: {
+            contractId,
+            tenantId: context.tenantId,
+            customFields: customFields as Prisma.InputJsonValue,
+            systemFields: {},
+            tags: [],
+            lastUpdated: now,
+            updatedBy: context.userId ?? 'system',
+          },
+        });
+      }
+
+      return createSuccessResponse(context, {
+        success: true,
+        message: 'All validated metadata saved successfully',
+        data: { contractId, fieldCount: bulkKeys.length },
+      });
+    } catch {
+      // Demo mode fallback — continue with non-persistent response below.
+    }
+  }
+
+  // Contract-level review sign-off (exception-based review model): records
+  // that a human reviewed all flagged fields. Cleared server-side by
+  // putContractMetadata() whenever metadata is edited afterwards.
+  if (markReviewed === true) {
+    try {
+      const existing = await prisma.contractMetadata.findUnique({
+        where: { contractId },
+      });
+
+      const now = new Date();
+      const reviewStatus = {
+        reviewedBy: context.userId ?? 'system',
+        reviewedAt: now.toISOString(),
+      };
+      const customFields = {
+        ...((existing?.customFields as Record<string, unknown>) || {}),
+        _reviewStatus: reviewStatus,
       };
 
       if (existing) {
@@ -1381,7 +1472,7 @@ export async function putContractMetadataValidation(
           data: {
             contractId,
             tenantId: context.tenantId,
-            customFields,
+            customFields: customFields as Prisma.InputJsonValue,
             systemFields: {},
             tags: [],
             lastUpdated: now,
@@ -1390,10 +1481,23 @@ export async function putContractMetadataValidation(
         });
       }
 
+      try {
+        await auditLog({
+          tenantId: context.tenantId,
+          userId: context.userId,
+          action: AuditAction.CONTRACT_UPDATED,
+          resourceType: 'Contract',
+          resourceId: contractId,
+          metadata: { review: 'metadata_confirmed_reviewed', reviewedAt: reviewStatus.reviewedAt },
+        });
+      } catch (auditError) {
+        logger.warn('Failed to write metadata review audit entry', { error: (auditError as Error).message, contractId });
+      }
+
       return createSuccessResponse(context, {
         success: true,
-        message: 'All validated metadata saved successfully',
-        data: { contractId, fieldCount: Object.keys(allFields).length },
+        message: 'Contract metadata marked as reviewed',
+        data: { contractId, reviewStatus },
       });
     } catch {
       // Demo mode fallback — continue with non-persistent response below.

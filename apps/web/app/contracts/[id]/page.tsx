@@ -1245,6 +1245,7 @@ export default function ContractDetailPage() {
                     contractId={contractId}
                     tenantId={getTenantId()}
                     contract={contract as unknown as Record<string, unknown>}
+                    contractType={(contract as any)?.contractType ?? null}
                     overviewData={overviewData}
                     financialData={financialData}
                     onRefresh={handleRefresh}

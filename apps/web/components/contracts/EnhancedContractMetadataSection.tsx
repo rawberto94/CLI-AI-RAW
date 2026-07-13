@@ -52,12 +52,7 @@ import {
   Plus,
   Trash2,
   Eye,
-  MapPin,
-  Hash,
   FileCheck,
-  Settings2,
-  PartyPopper,
-  Undo2,
   Briefcase
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -80,6 +75,7 @@ import {
   DocumentClassification
 } from '@/lib/types/contract-metadata-schema';
 import { formatCurrency, formatDate } from '@/lib/design-tokens';
+import { isFieldRequired } from '@/lib/contracts/metadata-requirements';
 
 // ============ DEBOUNCE HOOK ============
 
@@ -99,49 +95,6 @@ function useDebounce<T extends (...args: Parameters<T>) => void>(
       }, delay);
     }) as T,
     [callback, delay]
-  );
-}
-
-// ============ CONFETTI CELEBRATION COMPONENT ============
-
-function ConfettiCelebration({ show }: { show: boolean }) {
-  if (!show) return null;
-  
-  const confettiColors = ['#10b981', '#6366f1', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
-  const confettiCount = 50;
-  
-  return (
-    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-      <AnimatePresence>
-        {show && Array.from({ length: confettiCount }).map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-3 h-3 rounded-sm"
-            style={{
-              backgroundColor: confettiColors[i % confettiColors.length],
-              left: `${Math.random() * 100}%`,
-            }}
-            initial={{ 
-              top: -20, 
-              rotate: 0,
-              opacity: 1,
-              scale: Math.random() * 0.5 + 0.5
-            }}
-            animate={{ 
-              top: '110%',
-              rotate: Math.random() * 720 - 360,
-              opacity: [1, 1, 0],
-            }}
-            transition={{ 
-              duration: Math.random() * 2 + 2,
-              delay: Math.random() * 0.5,
-              ease: 'easeOut'
-            }}
-            exit={{ opacity: 0 }}
-          />
-        ))}
-      </AnimatePresence>
-    </div>
   );
 }
 
@@ -730,9 +683,9 @@ interface MetadataSectionProps {
   isEditing: boolean;
   onChange: (field: string, value: unknown) => void;
   onFieldSave?: (field: string, value: unknown) => Promise<void>;
-  defaultOpen?: boolean;
   contractId?: string;
   tenantId?: string;
+  contractType?: string | null;
   fieldValidations?: Record<string, { status: string; validatedAt?: string }>;
   onFieldValidated?: (fieldKey: string) => void;
 }
@@ -743,21 +696,19 @@ function MetadataSection({
   isEditing, 
   onChange,
   onFieldSave,
-  defaultOpen = true,
   contractId,
   tenantId,
+  contractType,
   fieldValidations,
   onFieldValidated,
-  
-  sectionProgress // Can be used for external sync, currently calculated internally
-}: MetadataSectionProps & { sectionProgress?: { verified: number; total: number } }) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [isVerifyingAll, setIsVerifyingAll] = useState(false);
+}: MetadataSectionProps) {
   const fields = getFieldsBySection(section);
   const config = SECTION_CONFIG[section];
   const Icon = config.icon;
   
-  // Get fields needing attention in this section (excluding already validated ones)
+  // Get fields needing attention in this section (excluding already validated ones).
+  // A field needs review iff: low extraction confidence, a schema attention flag,
+  // or a required (for this contract type) value is missing — and not yet verified.
   const attentionFields = fields.filter(f => {
     // Skip if field has been validated
     const savedValidation = fieldValidations?.[f.key];
@@ -772,62 +723,24 @@ function MetadataSection({
     // Check if field has attention requirement from schema
     const hasSchemaAttention = f.ui_attention !== 'none';
     
-    // Check if required field is missing a value
+    // Check if required field is missing a value (contract-type-aware)
     const value = (metadata as Record<string, unknown>)[f.key];
-    const isMissingRequired = f.required && (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0));
+    const isMissingRequired = f.required
+      && isFieldRequired(f.key, contractType ?? null)
+      && (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0));
     
     return hasSchemaAttention || hasLowConfidence || needsVerification || isMissingRequired;
   });
   
-  // Get verified fields count
-  const verifiedFields = fields.filter(f => {
-    const savedValidation = fieldValidations?.[f.key];
-    return savedValidation?.status === 'validate' || savedValidation?.status === 'validated';
-  });
-  
-  // Get unverified fields (for "Verify All" button)
-  const unverifiedFields = fields.filter(f => {
-    const savedValidation = fieldValidations?.[f.key];
-    return savedValidation?.status !== 'validate' && savedValidation?.status !== 'validated';
-  });
-  
-  // Calculate progress percentage
-  const totalFields = fields.length;
-  const verifiedCount = verifiedFields.length;
-  const progressPercent = totalFields > 0 ? Math.round((verifiedCount / totalFields) * 100) : 0;
-  
-  // Handler for verifying all unverified fields in section
-  const handleVerifyAll = async () => {
-    if (!contractId || unverifiedFields.length === 0) return;
-    
-    setIsVerifyingAll(true);
-    try {
-      // Verify each unverified field in the section
-      for (const field of unverifiedFields) {
-        const response = await fetch(`/api/contracts/${contractId}/metadata/validate`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-tenant-id': tenantId || 'demo',
-          },
-          body: JSON.stringify({
-            fieldKey: field.key,
-            action: 'validate',
-            newValue: (metadata as Record<string, unknown>)[field.key],
-          }),
-        });
-        
-        if (response.ok) {
-          onFieldValidated?.(field.key);
-        }
-      }
-      toast.success(`${unverifiedFields.length} fields verified in ${config.label}`);
-    } catch {
-      toast.error('Failed to verify all fields');
-    } finally {
-      setIsVerifyingAll(false);
-    }
-  };
+  // Exception-based review: sections open only when they contain flagged fields.
+  // Clean sections stay collapsed so the page surfaces exactly what needs attention.
+  const [isOpen, setIsOpen] = useState(() => attentionFields.length > 0);
+
+  // Flagged fields may arrive asynchronously (metadata loads after mount) —
+  // auto-expand when a section gains flags; never auto-collapse on the user.
+  useEffect(() => {
+    if (attentionFields.length > 0) setIsOpen(true);
+  }, [attentionFields.length]);
   
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -850,20 +763,18 @@ function MetadataSection({
             <div className="text-left">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-slate-800 text-sm">{config.label}</span>
-                {attentionFields.length > 0 ? (
+                {attentionFields.length > 0 && (
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">
-                    {attentionFields.length}
+                    {attentionFields.length} flagged
                   </Badge>
-                ) : verifiedCount === totalFields && totalFields > 0 ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                ) : null}
+                )}
               </div>
             </div>
           </div>
           
           <div className="flex items-center gap-2">
-            {!isOpen && totalFields > 0 && (
-              <span className="text-xs text-slate-400">{verifiedCount}/{totalFields}</span>
+            {!isOpen && fields.length > 0 && attentionFields.length === 0 && (
+              <span className="text-xs text-slate-400">{fields.length} fields</span>
             )}
             <ChevronDown className={cn(
               "h-4 w-4 text-slate-400 transition-transform",
@@ -875,43 +786,6 @@ function MetadataSection({
       
       <CollapsibleContent>
         <div className="mt-3 pl-2 pr-2 pb-2">
-          {/* Clean verification progress */}
-          {totalFields > 0 && (
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-1.5 w-16 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all",
-                      progressPercent >= 80 ? "bg-emerald-500" :
-                      progressPercent >= 50 ? "bg-amber-500" :
-                      "bg-slate-400"
-                    )}
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-                <span className="text-xs text-slate-500">
-                  {verifiedCount}/{totalFields} verified
-                </span>
-              </div>
-              {unverifiedFields.length > 0 && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleVerifyAll}
-                  disabled={isVerifyingAll}
-                  className="h-7 px-2 text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50"
-                >
-                  {isVerifyingAll ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <>Verify all</>
-                  )}
-                </Button>
-              )}
-            </div>
-          )}
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {section === 'parties' ? (
               <div className="col-span-2 space-y-2">
@@ -973,6 +847,7 @@ function MetadataSection({
                   metadata={metadata}
                   contractId={contractId}
                   tenantId={tenantId}
+                  contractType={contractType}
                   fieldValidations={fieldValidations}
                   onFieldValidated={onFieldValidated}
                   index={idx}
@@ -998,6 +873,7 @@ interface MetadataFieldProps {
   metadata: Partial<ContractMetadataSchema>;
   contractId?: string;
   tenantId?: string;
+  contractType?: string | null;
   fieldValidations?: Record<string, { status: string; validatedAt?: string }>;
   onFieldValidated?: (fieldKey: string) => void;
   index?: number;
@@ -1070,6 +946,7 @@ function MetadataField({
   metadata, 
   contractId, 
   tenantId, 
+  contractType,
   fieldValidations, 
   onFieldValidated,
   index = 0
@@ -1096,11 +973,17 @@ function MetadataField({
     }
   }, [isValidatedFromAPI]);
   
-  // Determine if field needs attention (more comprehensive check)
+  // Determine if field needs attention (more comprehensive check).
+  // document_number is a system-generated internal reference — it is never
+  // flagged for review or counted in verification.
   const hasLowConfidence = confidence && confidence.value < 0.8;
   const hasSchemaAttention = field.ui_attention !== 'none';
-  const isMissingRequired = field.required && (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0));
-  const needsAttention = (hasSchemaAttention || hasLowConfidence || confidence?.needsVerification || isMissingRequired) && !isVerified;
+  const isMissingRequired = field.required
+    && isFieldRequired(field.key, contractType ?? null)
+    && (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0));
+  const needsAttention = field.key !== 'document_number'
+    && (hasSchemaAttention || hasLowConfidence || confidence?.needsVerification || isMissingRequired)
+    && !isVerified;
   
   // Determine attention level based on severity
   const getAttentionLevel = (): UIAttention => {
@@ -1197,13 +1080,14 @@ function MetadataField({
         }
         toast.success(`${field.label} verified successfully`);
       } else {
-        // Even if API fails, keep local state
-        // Field validation API returned non-success - handled gracefully
-        toast.success('Field marked as verified');
+        // Revert the optimistic update — a failed verify must not look like success
+        setLocalVerified(false);
+        toast.error('Failed to verify — please retry');
       }
     } catch (error) {
       console.error('Field validation error:', error);
-      toast.success('Field marked as verified');
+      setLocalVerified(false);
+      toast.error('Failed to verify — please retry');
     } finally {
       setIsVerifying(false);
     }
@@ -1213,6 +1097,17 @@ function MetadataField({
     // Special handling for certain fields
     if (field.key === 'document_number') {
       return <CopyableValue value={String(value) || 'Not assigned'} />;
+    }
+
+    if (field.key === 'contract_language' && value) {
+      // Human-readable language name ("en" → "English"), falling back to the raw code
+      try {
+        const displayNames = new Intl.DisplayNames(['en'], { type: 'language' });
+        const name = displayNames.of(String(value));
+        return <span className="text-slate-900">{name || String(value)}</span>;
+      } catch {
+        return <span className="text-slate-900">{String(value)}</span>;
+      }
     }
     
     if (field.type === 'decimal' && field.key === 'tcv_amount') {
@@ -1277,11 +1172,24 @@ function MetadataField({
           addendum: 'Addendum',
           unknown: 'Unknown',
         };
-        return value ? (
-          <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 font-medium">
-            {classLabels[value as string] || String(value)}
-          </Badge>
-        ) : <span className="text-slate-400 italic">Not specified</span>;
+        // A real classification warning renders as an inline alert attached to
+        // this field (never as a separate "Not specified" sibling card).
+        const classificationWarning = (metadata as Record<string, unknown>).document_classification_warning;
+        return (
+          <div className="space-y-1.5">
+            {value ? (
+              <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 font-medium">
+                {classLabels[value as string] || String(value)}
+              </Badge>
+            ) : <span className="text-slate-400 italic">Not specified</span>}
+            {classificationWarning ? (
+              <div className="flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                <span>{String(classificationWarning)}</span>
+              </div>
+            ) : null}
+          </div>
+        );
       }
       return value ? String(value) : <span className="text-slate-400 italic">Not specified</span>;
     }
@@ -1434,6 +1342,10 @@ function MetadataField({
   const canEdit = field.editable && !field.system_generated;
   const showEditMode = isEditing || isFieldEditing;
   
+  // The system-generated classification warning is rendered as an inline alert
+  // on the Document Classification field — never as a standalone field card.
+  if (field.key === 'document_classification_warning') return null;
+
   return (
     <div 
       className={cn(
@@ -1452,7 +1364,7 @@ function MetadataField({
           <Label className="text-xs font-medium text-slate-600">
             {field.label}
           </Label>
-          {field.required && <span className="text-red-400 text-xs">*</span>}
+          {field.required && isFieldRequired(field.key, contractType ?? null) && <span className="text-red-400 text-xs">*</span>}
           {isVerified && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
           {needsAttention && (
             <TooltipProvider>
@@ -1465,8 +1377,13 @@ function MetadataField({
         </div>
         
         <div className="flex items-center gap-1">
-          {!isVerified && !needsAttention && !isEditing && (
-            <button onClick={handleMarkVerified} disabled={isVerifying} className="p-1 hover:bg-violet-50 rounded text-slate-400 hover:text-violet-600">
+          {!isVerified && !isEditing && field.key !== 'document_number' && (
+            <button
+              onClick={handleMarkVerified}
+              disabled={isVerifying}
+              className="p-1 hover:bg-violet-50 rounded text-slate-400 hover:text-violet-600"
+              title={needsAttention ? 'Verify this field to clear the flag' : 'Mark as verified'}
+            >
               {isVerifying ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
             </button>
           )}
@@ -1517,11 +1434,12 @@ interface EnhancedContractMetadataSectionProps {
   tenantId: string;
   initialMetadata?: Partial<ContractMetadataSchema>;
   contract?: Record<string, unknown>; // Legacy contract data for backward compatibility
+  contractType?: string | null; // Drives contract-type-aware required-field rules
   overviewData?: Record<string, unknown>; // AI-extracted overview data
   financialData?: Record<string, unknown>; // AI-extracted financial data
   onSave?: (metadata: Partial<ContractMetadataSchema>) => Promise<void>;
   onRefresh?: () => void;
-  onVerificationChange?: (verificationProgress: number) => void; // Called when verification % changes
+  onVerificationChange?: (flaggedCount: number) => void; // Called when the flagged-field count changes
 }
 
 export function EnhancedContractMetadataSection({
@@ -1529,6 +1447,7 @@ export function EnhancedContractMetadataSection({
   tenantId,
   initialMetadata,
   contract,
+  contractType,
   overviewData,
   financialData,
   onSave,
@@ -1539,6 +1458,10 @@ export function EnhancedContractMetadataSection({
   const [metadataFromAPI, setMetadataFromAPI] = useState<Partial<ContractMetadataSchema> | null>(null);
   const [fieldValidations, setFieldValidations] = useState<Record<string, { status: string; validatedAt?: string }>>({});
   const [isExtractingAI, setIsExtractingAI] = useState(false);
+  // Optimistic-locking version returned by GET and echoed back on PUT.
+  const [metadataVersion, setMetadataVersion] = useState<number | null>(null);
+  // Contract-level review sign-off (exception-based review model).
+  const [reviewStatus, setReviewStatus] = useState<{ reviewedBy: string; reviewedAt: string } | null>(null);
 
   // Metadata read via React Query so (a) the parent contractKeys.detail
   // invalidate from save/AI-extract triggers a refetch, (b) we share one
@@ -1575,7 +1498,17 @@ export function EnhancedContractMetadataSection({
         m._fieldValidations || data.rawMetadata?.customFields?._fieldValidations;
       if (validations) setFieldValidations(validations);
     }
+    if (typeof data.metadataVersion === 'number') setMetadataVersion(data.metadataVersion);
+    if (data.reviewStatus !== undefined) setReviewStatus(data.reviewStatus ?? null);
   }, [metadataQuery.data]);
+
+  // Contract type drives type-aware required-field rules (NDAs need no value, …).
+  // Prefer the explicit prop, then the API classification payload, then legacy contract data.
+  const effectiveContractType =
+    contractType
+    ?? (metadataQuery.data?.classification?.contractType as string | null | undefined)
+    ?? (contract?.contractType as string | null | undefined)
+    ?? null;
   
   // Handler for when a field is validated
   const handleFieldValidated = useCallback((fieldKey: string) => {
@@ -1781,130 +1714,68 @@ export function EnhancedContractMetadataSection({
     setMetadata(mergedInitial);
   }, [isEditing, isSaving, mergedInitial]);
   
-  // Calculate fields needing attention (excluding validated fields)
+  // Calculate fields needing attention (excluding validated fields).
+  // Type-aware: fields exempted for this contract type (e.g. value on an NDA)
+  // never count as needing review.
   const fieldsNeedingAttention = useMemo(() => {
     const baseFields = getFieldsNeedingAttention(metadata);
-    // Filter out fields that have already been validated
     return baseFields.filter(field => {
       const validation = fieldValidations[field.key];
       const isValidated = validation?.status === 'validate' || validation?.status === 'validated';
-      return !isValidated;
+      if (isValidated) return false;
+      if (field.key === 'document_number') return false; // system-generated internal reference
+      // A "missing required value" flag only stands if the field is required for this type
+      const value = (metadata as Record<string, unknown>)[field.key];
+      const isMissing = value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0);
+      if (isMissing && field.required && !isFieldRequired(field.key, effectiveContractType)) return false;
+      return true;
     });
-  }, [metadata, fieldValidations]);
-  
-  // Calculate verified fields count
-  const verifiedFieldsCount = useMemo(() => {
-    return Object.values(fieldValidations).filter(
-      v => v.status === 'validate' || v.status === 'validated'
-    ).length;
-  }, [fieldValidations]);
-  
-  // Calculate total fields for progress
-  const totalFieldsCount = useMemo(() => {
-    return Object.keys(SECTION_CONFIG).reduce((acc, section) => {
-      return acc + getFieldsBySection(section as keyof typeof SECTION_CONFIG).length;
-    }, 0);
-  }, []);
-  
-  // Calculate all unverified fields (for Verify All button)
-  const allUnverifiedFields = useMemo(() => {
-    const allFields = Object.keys(SECTION_CONFIG).flatMap(section => 
-      getFieldsBySection(section as keyof typeof SECTION_CONFIG)
-    );
-    return allFields.filter(f => {
-      const validation = fieldValidations[f.key];
-      return validation?.status !== 'validate' && validation?.status !== 'validated';
-    });
-  }, [fieldValidations]);
-  
-  // Overall progress percentage
-  const overallProgress = totalFieldsCount > 0 ? Math.round((verifiedFieldsCount / totalFieldsCount) * 100) : 0;
-  
-  // Track previous progress for celebration trigger
-  const prevProgressRef = useRef(overallProgress);
-  const [showCelebration, setShowCelebration] = useState(false);
-  
-  // Celebration when reaching 100%
-  useEffect(() => {
-    if (overallProgress === 100 && prevProgressRef.current < 100) {
-      setShowCelebration(true);
-      toast.success('🎉 All metadata fields verified!', {
-        description: 'Great job! Your contract metadata is now fully verified.',
-        duration: 5000
-      });
-      setTimeout(() => setShowCelebration(false), 3000);
-    }
-    prevProgressRef.current = overallProgress;
-  }, [overallProgress]);
+  }, [metadata, fieldValidations, effectiveContractType]);
   
   // Debounced callback to avoid excessive API calls
   const debouncedVerificationChange = useDebounce(
-    useCallback((progress: number) => {
+    useCallback((flaggedCount: number) => {
       if (onVerificationChange) {
-        onVerificationChange(progress);
+        onVerificationChange(flaggedCount);
       }
     }, [onVerificationChange]),
     500
   );
   
-  // Notify parent of verification progress changes (debounced)
+  // Notify parent when the flagged-field count changes (debounced)
   useEffect(() => {
-    debouncedVerificationChange(overallProgress);
-  }, [overallProgress, debouncedVerificationChange]);
+    debouncedVerificationChange(fieldsNeedingAttention.length);
+  }, [fieldsNeedingAttention.length, debouncedVerificationChange]);
   
-  // Calculate section progress for mini indicators
-  const sectionProgress = useMemo(() => {
-    return Object.keys(SECTION_CONFIG).reduce((acc, section) => {
-      const fields = getFieldsBySection(section as keyof typeof SECTION_CONFIG);
-      const verified = fields.filter(f => {
-        const v = fieldValidations[f.key];
-        return v?.status === 'validate' || v?.status === 'validated';
-      }).length;
-      acc[section] = { verified, total: fields.length };
-      return acc;
-    }, {} as Record<string, { verified: number; total: number }>);
-  }, [fieldValidations]);
-  
-  // State for verifying all fields
-  const [isVerifyingAll, setIsVerifyingAll] = useState(false);
-  
-  // Handler to verify all unverified fields at once
-  const handleVerifyAllFields = useCallback(async () => {
-    if (allUnverifiedFields.length === 0) return;
-    
-    setIsVerifyingAll(true);
+  // Contract-level "Confirm reviewed" — persists a review sign-off once every
+  // flagged field has been verified or corrected.
+  const [isConfirmingReview, setIsConfirmingReview] = useState(false);
+  const handleConfirmReviewed = useCallback(async () => {
+    if (fieldsNeedingAttention.length > 0 || reviewStatus) return;
+
+    setIsConfirmingReview(true);
     try {
-      // Batch verify all unverified fields
       const response = await fetch(`/api/contracts/${contractId}/metadata/validate`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'x-tenant-id': tenantId,
         },
-        body: JSON.stringify({
-          allFields: Object.fromEntries(
-            allUnverifiedFields.map(f => [f.key, (metadata as Record<string, unknown>)[f.key]])
-          ),
-        }),
+        body: JSON.stringify({ markReviewed: true }),
       });
-      
-      if (response.ok) {
-        // Update local state for all validated fields
-        const newValidations: Record<string, { status: string; validatedAt: string }> = {};
-        allUnverifiedFields.forEach(f => {
-          newValidations[f.key] = { status: 'validate', validatedAt: new Date().toISOString() };
-        });
-        setFieldValidations(prev => ({ ...prev, ...newValidations }));
-        toast.success(`${allUnverifiedFields.length} fields verified successfully!`);
-      } else {
-        throw new Error('Verification failed');
-      }
+
+      if (!response.ok) throw new Error('Review confirmation failed');
+
+      const data = await response.json().catch(() => null);
+      const confirmed = data?.data?.reviewStatus ?? data?.data?.data?.reviewStatus;
+      setReviewStatus(confirmed ?? { reviewedBy: 'you', reviewedAt: new Date().toISOString() });
+      toast.success('Contract metadata marked as reviewed');
     } catch {
-      toast.error('Failed to verify all fields. Please try again.');
+      toast.error('Failed to confirm review. Please try again.');
     } finally {
-      setIsVerifyingAll(false);
+      setIsConfirmingReview(false);
     }
-  }, [contractId, tenantId, allUnverifiedFields, metadata]);
+  }, [contractId, tenantId, fieldsNeedingAttention.length, reviewStatus]);
   
   const handleChange = useCallback((field: string, value: unknown) => {
     setMetadata(prev => ({ ...prev, [field]: value }));
@@ -1977,6 +1848,8 @@ export function EnhancedContractMetadataSection({
           body: JSON.stringify({
             tenantId,
             metadata: nextMetadata,
+            // Optimistic locking — server returns 409 if someone else saved first
+            ...(metadataVersion != null ? { metadataVersion } : {}),
           })
         });
 
@@ -1984,6 +1857,22 @@ export function EnhancedContractMetadataSection({
         try {
           responseBody = await response.json();
         } catch { /* non-JSON body */ }
+
+        if (response.status === 409) {
+          // Concurrent edit conflict — offer a reload instead of a bare error
+          toast.error('Metadata was modified elsewhere. Reload to see the latest values.', {
+            action: {
+              label: 'Reload',
+              onClick: () => {
+                queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) });
+                queryClient.invalidateQueries({ queryKey: metadataQueryKey });
+                if (onRefresh) onRefresh();
+              },
+            },
+            duration: 10000,
+          });
+          throw new Error('Metadata has been modified by another user. Please refresh and try again.');
+        }
 
         if (!response.ok) {
           // Surface the server's validation message (Zod flatten) instead of
@@ -1998,6 +1887,16 @@ export function EnhancedContractMetadataSection({
           responseBody?.data?.enterpriseMetadata ??
           responseBody?.enterpriseMetadata ??
           null;
+
+        // Store the bumped version so subsequent saves pass the lock check
+        const nextVersion =
+          responseBody?.data?.data?.metadataVersion ??
+          responseBody?.data?.metadataVersion ??
+          responseBody?.metadataVersion;
+        if (typeof nextVersion === 'number') setMetadataVersion(nextVersion);
+
+        // A successful edit clears any prior review sign-off server-side
+        if (reviewStatus) setReviewStatus(null);
       }
       
       const persistedMetadata = normalizeSignatureMetadataSnapshot({
@@ -2043,7 +1942,7 @@ export function EnhancedContractMetadataSection({
     } finally {
       setIsSaving(false);
     }
-  }, [contractId, metadataQueryKey, onRefresh, onSave, queryClient, tenantId, validateMetadata]);
+  }, [contractId, metadataQueryKey, metadataVersion, onRefresh, onSave, queryClient, reviewStatus, tenantId, validateMetadata]);
 
   const handleSave = async () => {
     await persistMetadata(metadata).catch(() => {});
@@ -2113,43 +2012,8 @@ export function EnhancedContractMetadataSection({
     }
   };
   
-  // Reset all verifications handler
-  const [isResettingAll, setIsResettingAll] = useState(false);
-  
-  const handleResetAllVerifications = useCallback(async () => {
-    if (verifiedFieldsCount === 0) return;
-    
-    setIsResettingAll(true);
-    try {
-      const response = await fetch(`/api/contracts/${contractId}/metadata/validate`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-tenant-id': tenantId,
-        },
-        body: JSON.stringify({
-          resetAll: true,
-        }),
-      });
-      
-      if (response.ok) {
-        setFieldValidations({});
-        toast.success('All verifications have been reset');
-      } else {
-        throw new Error('Reset failed');
-      }
-    } catch {
-      toast.error('Failed to reset verifications. Please try again.');
-    } finally {
-      setIsResettingAll(false);
-    }
-  }, [contractId, tenantId, verifiedFieldsCount]);
-  
   return (
     <>
-    {/* Celebration confetti */}
-    <ConfettiCelebration show={showCelebration} />
-    
     <Card className="overflow-hidden border border-slate-200 shadow-sm bg-white">
       {/* Clean header */}
       <CardHeader className="pb-4 border-b border-slate-100">
@@ -2159,7 +2023,13 @@ export function EnhancedContractMetadataSection({
               Contract Metadata
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 mt-0.5">
-              {isEditing ? 'Make changes and click Save' : `${verifiedFieldsCount} of ${totalFieldsCount} fields verified`}
+              {isEditing
+                ? 'Make changes and click Save'
+                : reviewStatus
+                  ? `Reviewed by ${reviewStatus.reviewedBy} on ${formatDate(reviewStatus.reviewedAt)}`
+                  : fieldsNeedingAttention.length > 0
+                    ? `${fieldsNeedingAttention.length} field${fieldsNeedingAttention.length === 1 ? '' : 's'} need review`
+                    : 'All extracted values look good'}
             </CardDescription>
           </div>
           
@@ -2170,6 +2040,28 @@ export function EnhancedContractMetadataSection({
                 {fieldsNeedingAttention.length > 0 && (
                   <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
                     {fieldsNeedingAttention.length} need review
+                  </Badge>
+                )}
+                {fieldsNeedingAttention.length === 0 && !reviewStatus && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleConfirmReviewed}
+                    disabled={isConfirmingReview}
+                    className="h-8 text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                  >
+                    {isConfirmingReview ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <FileCheck className="h-3.5 w-3.5 mr-1.5" />
+                    )}
+                    Confirm reviewed
+                  </Button>
+                )}
+                {reviewStatus && (
+                  <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Reviewed
                   </Badge>
                 )}
                 <Button 
@@ -2248,12 +2140,11 @@ export function EnhancedContractMetadataSection({
             isEditing={isEditing}
             onChange={handleChange}
             onFieldSave={handleFieldSave}
-            defaultOpen={true}
             contractId={contractId}
             tenantId={tenantId}
+            contractType={effectiveContractType}
             fieldValidations={fieldValidations}
             onFieldValidated={handleFieldValidated}
-            sectionProgress={sectionProgress.identification}
           />
           
           <MetadataSection 
@@ -2262,12 +2153,11 @@ export function EnhancedContractMetadataSection({
             isEditing={isEditing}
             onChange={handleChange}
             onFieldSave={handleFieldSave}
-            defaultOpen={true}
             contractId={contractId}
             tenantId={tenantId}
+            contractType={effectiveContractType}
             fieldValidations={fieldValidations}
             onFieldValidated={handleFieldValidated}
-            sectionProgress={sectionProgress.parties}
           />
           
           <MetadataSection 
@@ -2276,12 +2166,11 @@ export function EnhancedContractMetadataSection({
             isEditing={isEditing}
             onChange={handleChange}
             onFieldSave={handleFieldSave}
-            defaultOpen={true}
             contractId={contractId}
             tenantId={tenantId}
+            contractType={effectiveContractType}
             fieldValidations={fieldValidations}
             onFieldValidated={handleFieldValidated}
-            sectionProgress={sectionProgress.commercials}
           />
           
           <MetadataSection 
@@ -2290,12 +2179,11 @@ export function EnhancedContractMetadataSection({
             isEditing={isEditing}
             onChange={handleChange}
             onFieldSave={handleFieldSave}
-            defaultOpen={true}
             contractId={contractId}
             tenantId={tenantId}
+            contractType={effectiveContractType}
             fieldValidations={fieldValidations}
             onFieldValidated={handleFieldValidated}
-            sectionProgress={sectionProgress.dates}
           />
           
           <MetadataSection 
@@ -2304,12 +2192,11 @@ export function EnhancedContractMetadataSection({
             isEditing={isEditing}
             onChange={handleChange}
             onFieldSave={handleFieldSave}
-            defaultOpen={false}
             contractId={contractId}
             tenantId={tenantId}
+            contractType={effectiveContractType}
             fieldValidations={fieldValidations}
             onFieldValidated={handleFieldValidated}
-            sectionProgress={sectionProgress.reminders}
           />
           
           <MetadataSection 
@@ -2318,12 +2205,11 @@ export function EnhancedContractMetadataSection({
             isEditing={isEditing}
             onChange={handleChange}
             onFieldSave={handleFieldSave}
-            defaultOpen={false}
             contractId={contractId}
             tenantId={tenantId}
+            contractType={effectiveContractType}
             fieldValidations={fieldValidations}
             onFieldValidated={handleFieldValidated}
-            sectionProgress={sectionProgress.ownership}
           />
         </div>
       </CardContent>

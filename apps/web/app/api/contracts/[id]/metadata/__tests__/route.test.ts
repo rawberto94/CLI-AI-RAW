@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server';
 const {
   mockContractFindFirst,
   mockContractMetadataFindUnique,
+  mockContractMetadataUpdate,
   mockArtifactFindMany,
   mockTaxonomyCategoryFindUnique,
   mockTaxonomyCategoryFindFirst,
@@ -18,6 +19,7 @@ const {
 } = vi.hoisted(() => ({
   mockContractFindFirst: vi.fn(),
   mockContractMetadataFindUnique: vi.fn(),
+  mockContractMetadataUpdate: vi.fn(),
   mockArtifactFindMany: vi.fn(),
   mockTaxonomyCategoryFindUnique: vi.fn(),
   mockTaxonomyCategoryFindFirst: vi.fn(),
@@ -39,6 +41,7 @@ vi.mock('@/lib/prisma', () => ({
     },
     contractMetadata: {
       findUnique: mockContractMetadataFindUnique,
+      update: mockContractMetadataUpdate,
     },
     artifact: {
       findMany: mockArtifactFindMany,
@@ -106,6 +109,7 @@ describe('/api/contracts/[id]/metadata', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockContractMetadataFindUnique.mockResolvedValue(null);
+    mockContractMetadataUpdate.mockResolvedValue({});
     mockArtifactFindMany.mockResolvedValue([]);
     mockTaxonomyCategoryFindUnique.mockResolvedValue(null);
     mockTaxonomyCategoryFindFirst.mockResolvedValue(null);
@@ -174,6 +178,55 @@ describe('/api/contracts/[id]/metadata', () => {
     expect(response.status).toBe(200);
     expect(data.data.metadata.signature_status).toBe('signed');
     expect(data.data.metadata.signature_required_flag).toBe(false);
+  });
+
+  it('returns 409 when the client metadataVersion is stale', async () => {
+    mockContractFindFirst.mockResolvedValue({ aiMetadata: {}, metadata: {}, metadataVersion: 3 });
+
+    const response = await PUT(createRequest('PUT', {
+      metadata: {
+        document_title: 'Updated title',
+      },
+      metadataVersion: 2,
+    }), routeContext);
+    const data = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('CONFLICT');
+    expect(mockContractUpdate).not.toHaveBeenCalled();
+  });
+
+  it('clears a prior review sign-off when metadata is edited', async () => {
+    mockContractFindFirst.mockResolvedValue({ aiMetadata: {}, metadata: {}, metadataVersion: 1 });
+    mockContractUpdate.mockResolvedValue({ id: 'contract-1', metadataVersion: 2 });
+    mockContractMetadataFindUnique.mockResolvedValue({
+      contractId: 'contract-1',
+      customFields: {
+        _reviewStatus: { reviewedBy: 'user-1', reviewedAt: '2026-01-01T00:00:00.000Z' },
+        _fieldValidations: { start_date: { status: 'validate' } },
+      },
+    });
+
+    const response = await PUT(createRequest('PUT', {
+      metadata: {
+        document_title: 'Updated title',
+      },
+      metadataVersion: 1,
+    }), routeContext);
+
+    expect(response.status).toBe(200);
+    expect(mockContractMetadataUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { contractId: 'contract-1' },
+      data: expect.objectContaining({
+        customFields: expect.not.objectContaining({
+          _reviewStatus: expect.anything(),
+        }),
+      }),
+    }));
+    // Field validations survive a metadata edit — only the review record is cleared
+    const updateArgs = mockContractMetadataUpdate.mock.calls[0][0];
+    expect(updateArgs.data.customFields._fieldValidations.start_date.status).toBe('validate');
   });
 
   it('rejects invalid metadata payloads before writing', async () => {
