@@ -3,6 +3,7 @@
  * Optimizes database queries for rate card operations
  */
 
+import { assertReadOnlyAnalysisSql } from '@repo/utils';
 import { PrismaClient, Prisma } from 'clients-db';
 
 export interface QueryPlan {
@@ -282,7 +283,8 @@ export class QueryOptimizerService {
    */
   async analyzeQuery(query: string): Promise<QueryPlan> {
     try {
-      // $queryRawUnsafe intentional — EXPLAIN of pre-built query from trusted code
+      assertReadOnlyAnalysisSql(query, 'Query optimizer analyzeQuery');
+      // $queryRawUnsafe intentional — EXPLAIN of read-only query validated above
       const plan = await this.prisma.$queryRawUnsafe<any[]>(`EXPLAIN (FORMAT JSON) ${query}`);
       
       const planData = plan[0]['QUERY PLAN'][0];

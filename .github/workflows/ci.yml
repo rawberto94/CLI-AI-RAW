@@ -128,5 +128,5 @@ jobs:
           cache: 'pnpm'
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
-      - name: Audit (non-blocking)
-        run: pnpm audit --audit-level=moderate || true
+      - name: Audit (fail on critical)
+        run: pnpm audit --prod --audit-level=critical

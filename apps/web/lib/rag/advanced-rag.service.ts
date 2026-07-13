@@ -17,6 +17,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { clampSqlInteger } from '@repo/utils';
 import { getSemanticCache } from './semantic-cache.service';
 import { selfCorrectiveRetrieval } from './self-corrective-rag.service';
 import { expandWithGraphContext, getChunkGraph, buildContractGraph } from './chunk-graph.service';
@@ -367,7 +368,7 @@ async function vectorSearch(
     // Default 100 gives 95%+ recall. Enterprise scale can lower to 64 for
     // ~30% faster searches with 92% recall. Override via RAG_EF_SEARCH env.
     const efSearch = parseInt(process.env.RAG_EF_SEARCH || '100', 10);
-    const clampedEfSearch = Math.max(10, Math.min(400, efSearch));
+    const clampedEfSearch = clampSqlInteger(efSearch, 10, 400);
     // SET doesn't accept parameterized values ($1) — use raw unsafe with validated int
     // Use SET LOCAL so it's transaction-scoped and doesn't leak to other pooled connections
     await prisma.$executeRawUnsafe(`SET LOCAL hnsw.ef_search = ${clampedEfSearch}`);

@@ -616,10 +616,12 @@ export function getSecurityHeaders(): Record<string, string> {
     'Strict-Transport-Security':
       'max-age=31536000; includeSubDomains; preload',
 
-    // Content Security Policy
+    // Content Security Policy (middleware sets nonce-based CSP on normal responses)
     'Content-Security-Policy': [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Adjust for your needs
+      process.env.NODE_ENV === 'production'
+        ? "script-src 'self' 'strict-dynamic'"
+        : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self' data:",

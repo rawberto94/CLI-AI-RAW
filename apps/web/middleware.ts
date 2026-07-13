@@ -16,6 +16,13 @@ import { authConfig } from "@/lib/auth.config";
 import { BLANK_DRAFTING_PATH, buildTemplateLibraryPath } from "@/lib/drafting/template-routing";
 import { isTenantSessionExpired } from "@/lib/security/tenant-session-policy";
 import { wafMiddleware } from "@/lib/security/waf";
+import {
+  applySessionIdentityHeaders,
+  buildContentSecurityPolicy,
+  generateCspNonce,
+  isAuthRequired,
+  stripIdentityHeaders,
+} from "@/lib/security/edge-security";
 
 // Edge-compatible auth wrapper (no Prisma/DB dependencies)
 const { auth } = NextAuth(authConfig);
@@ -487,6 +494,21 @@ export default auth(async (req) => {
   
   // Generate or use existing request ID for tracing
   const requestId = req.headers.get('x-request-id') || generateRequestId();
+  const cspNonce = generateCspNonce();
+  const isDev = process.env.NODE_ENV !== 'production';
+
+  /** Strip forged identity headers and forward tracing/nonce to downstream handlers. */
+  const forwardWithNonce = (headers: Headers): Headers => {
+    stripIdentityHeaders(headers);
+    headers.set('x-request-id', requestId);
+    headers.set('x-nonce', cspNonce);
+    return headers;
+  };
+
+  const forwardRequest = () =>
+    NextResponse.next({
+      request: { headers: forwardWithNonce(new Headers(req.headers)) },
+    });
 
   // WAF protection — run before all other checks
   const wafResult = await wafMiddleware(req);
@@ -551,6 +573,7 @@ export default auth(async (req) => {
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('Referrer-Policy', 'origin-when-cross-origin');
     response.headers.set('X-XSS-Protection', '1; mode=block');
+    response.headers.set('Content-Security-Policy', buildContentSecurityPolicy(cspNonce, isDev));
     const host = req.nextUrl.hostname;
     const forwardedProto = req.headers.get('x-forwarded-proto');
     const isHttpsRequest = forwardedProto === 'https' || req.nextUrl.protocol === 'https:';
@@ -560,14 +583,12 @@ export default auth(async (req) => {
     if (process.env.NODE_ENV === 'production' && isHttpsRequest && !isLocalHost) {
       response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
     }
-    // M12: Content-Security-Policy — defined in next.config.mjs headers(), not duplicated here
-    // to avoid the middleware's version overriding the stricter config CSP
     return response;
   };
 
   // Allow static assets
   if (staticPaths.some((path) => pathname.startsWith(path))) {
-    return addTracingHeaders(NextResponse.next());
+    return addTracingHeaders(forwardRequest());
   }
 
   // Allow public paths (auth pages only)
@@ -576,17 +597,17 @@ export default auth(async (req) => {
     if (pathname === "/" && req.auth) {
       return NextResponse.redirect(buildRequestUrl(req, "/dashboard"));
     }
-    return addTracingHeaders(NextResponse.next());
+    return addTracingHeaders(forwardRequest());
   }
 
   // Allow public API paths (health checks only)
   if (publicApiPaths.some((path) => pathname.startsWith(path)) || publicAuthApiPaths.some((path) => matchesRoutePrefix(pathname, path))) {
-    return addTracingHeaders(NextResponse.next());
+    return addTracingHeaders(forwardRequest());
   }
 
   // Allow public signing API (token-validated, no session auth needed)
   if (/^\/api\/signatures\/[^/]+\/sign$/.test(pathname)) {
-    return addTracingHeaders(NextResponse.next());
+    return addTracingHeaders(forwardRequest());
   }
 
   // Check if user is authenticated - redirect to sign-in if not
@@ -721,20 +742,8 @@ export default auth(async (req) => {
           return addTracingHeaders(response);
         }
         // Token valid, allow access
-        const requestHeaders = new Headers(req.headers);
-        requestHeaders.set("x-request-id", requestId);
-        if (req.auth.user?.tenantId) {
-          requestHeaders.set("x-tenant-id", req.auth.user.tenantId);
-        }
-        if (req.auth.user?.id) {
-          requestHeaders.set("x-user-id", req.auth.user.id);
-        }
-        if (req.auth.user?.role) {
-          requestHeaders.set("x-user-role", req.auth.user.role);
-        }
-        if (req.auth.user?.userSessionId) {
-          requestHeaders.set("x-user-session-id", req.auth.user.userSessionId);
-        }
+        const requestHeaders = forwardWithNonce(new Headers(req.headers));
+        applySessionIdentityHeaders(requestHeaders, req.auth.user);
         const response = NextResponse.next({
           request: { headers: requestHeaders },
         });
@@ -758,7 +767,7 @@ export default auth(async (req) => {
   }
 
   // Production mode: Require tenant ID
-  const requireAuth = process.env.REQUIRE_AUTH === "true";
+  const requireAuth = isAuthRequired();
   if (requireAuth && !req.auth.user?.tenantId) {
     if (pathname.startsWith("/api/")) {
       const response = NextResponse.json(
@@ -772,25 +781,8 @@ export default auth(async (req) => {
 
   // Add tenant ID, user ID, and request ID to headers for API routes
   if (pathname.startsWith("/api/")) {
-    const requestHeaders = new Headers(req.headers);
-    requestHeaders.set("x-request-id", requestId);
-    // ALWAYS set x-tenant-id from session (overwriting any client-sent value)
-    // to prevent tenant mismatch between stale localStorage and auth session.
-    // If session has no tenantId, clear any client-sent header to force API fallback.
-    if (req.auth.user?.tenantId) {
-      requestHeaders.set("x-tenant-id", req.auth.user.tenantId);
-    } else {
-      requestHeaders.delete("x-tenant-id");
-    }
-    if (req.auth.user?.id) {
-      requestHeaders.set("x-user-id", req.auth.user.id);
-    }
-    if (req.auth.user?.role) {
-      requestHeaders.set("x-user-role", req.auth.user.role);
-    }
-    if (req.auth.user?.userSessionId) {
-      requestHeaders.set("x-user-session-id", req.auth.user.userSessionId);
-    }
+    const requestHeaders = forwardWithNonce(new Headers(req.headers));
+    applySessionIdentityHeaders(requestHeaders, req.auth.user);
 
     const response = NextResponse.next({
       request: {
@@ -800,8 +792,11 @@ export default auth(async (req) => {
     return addTracingHeaders(response);
   }
 
-  // Apply security headers to page responses
-  const response = NextResponse.next();
+  // Apply security headers to page responses (pass nonce for App Router)
+  const pageHeaders = forwardWithNonce(new Headers(req.headers));
+  const response = NextResponse.next({
+    request: { headers: pageHeaders },
+  });
   return addTracingHeaders(response);
  } catch (err) {
   // Top-level safety net — prevents unhandled middleware errors from crashing the process

@@ -155,12 +155,9 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 
 export const defaultCSP: ContentSecurityPolicy = {
   'default-src': ["'self'"],
-  'script-src': [
-    "'self'",
-    "'unsafe-eval'", // Required for Next.js dev
-    "'unsafe-inline'", // Required for some frameworks
-    ...(isDevelopment ? ["'unsafe-eval'"] : []),
-  ],
+  'script-src': isDevelopment
+    ? ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
+    : ["'self'", "'strict-dynamic'"],
   'style-src': ["'self'", "'unsafe-inline'"],
   'img-src': ["'self'", 'data:', 'blob:', 'https:'],
   'font-src': ["'self'", 'data:'],

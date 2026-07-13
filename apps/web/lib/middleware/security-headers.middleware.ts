@@ -20,18 +20,22 @@ import { NextResponse } from 'next/server';
  * Content Security Policy (CSP) configuration
  * Prevents XSS attacks by controlling which resources can be loaded
  */
+const isProduction = process.env.NODE_ENV === 'production';
+
 export const CSP_DIRECTIVES = {
   // Default source for all content types
   'default-src': ["'self'"],
   
-  // Script sources - allow self and specific trusted domains
-  'script-src': [
-    "'self'",
-    "'unsafe-inline'", // Required for Next.js
-    "'unsafe-eval'", // Required for development
-    'https://vercel.live',
-    'https://va.vercel-scripts.com',
-  ],
+  // Script sources — production uses strict-dynamic (nonce applied in middleware)
+  'script-src': isProduction
+    ? ["'self'", "'strict-dynamic'"]
+    : [
+        "'self'",
+        "'unsafe-inline'",
+        "'unsafe-eval'",
+        'https://vercel.live',
+        'https://va.vercel-scripts.com',
+      ],
   
   // Style sources
   'style-src': [

@@ -68,9 +68,13 @@ const isHttpsOnlyDeployment = (() => {
   }
 })();
 
+// CSP is set per-request in middleware (nonce + strict-dynamic). Static fallback
+// avoids unsafe-inline in production for routes that bypass middleware.
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ""}`,
+  process.env.NODE_ENV === 'production'
+    ? "script-src 'self' 'strict-dynamic'"
+    : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",

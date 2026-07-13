@@ -9,5 +9,6 @@ export * from './contract-extraction';
 export * from './cache';
 export * from './azure-di-region';
 export * from './storage';
+export * from './security/raw-sql-guard';
 // Note: tracing export disabled due to verbatimModuleStyle incompatibility with OpenTelemetry Resource import
 // export * from './tracing';
