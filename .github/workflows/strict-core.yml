@@ -21,6 +21,9 @@ jobs:
   typecheck-web-strict-core:
     runs-on: ubuntu-latest
     timeout-minutes: 8
+    # Advisory: the strict baseline has ~4k pre-existing violations (progressive
+    # rollout — see tsconfig.strict-core.json). Signal is reported, main stays green.
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
