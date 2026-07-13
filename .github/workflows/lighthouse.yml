@@ -20,6 +20,8 @@ jobs:
       # collection validates the Prisma datasource URL without connecting.
       DATABASE_URL: postgresql://user:pass@localhost:5432/test
       DIRECT_DATABASE_URL: postgresql://user:pass@localhost:5432/test
+      NEXTAUTH_SECRET: ci-build-only-placeholder-secret
+      JWT_SECRET: ci-build-only-placeholder-secret
     steps:
       - name: Checkout
         uses: actions/checkout@v4
