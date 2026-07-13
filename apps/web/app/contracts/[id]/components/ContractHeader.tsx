@@ -51,6 +51,7 @@ import {
 interface ContractHeaderProps {
   contractId: string
   filename: string
+  displayTitle?: string
   originalName?: string
   status: string
   signatureStatus?: string | null
@@ -82,6 +83,7 @@ interface ContractHeaderProps {
 export const ContractHeader = memo(function ContractHeader({
   contractId,
   filename,
+  displayTitle,
   originalName,
   status,
   signatureStatus,
@@ -110,8 +112,9 @@ export const ContractHeader = memo(function ContractHeader({
   onRename,
 }: ContractHeaderProps) {
   const isDemo = useDemoMode()
+  const heading = displayTitle || filename || 'Contract Details'
   const [isRenaming, setIsRenaming] = useState(false)
-  const [renameValue, setRenameValue] = useState(filename || '')
+  const [renameValue, setRenameValue] = useState(heading || '')
   const renameInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -123,19 +126,19 @@ export const ContractHeader = memo(function ContractHeader({
 
   const handleRenameSubmit = useCallback(() => {
     const trimmed = renameValue.trim()
-    if (trimmed && trimmed !== filename && onRename) {
+    if (trimmed && trimmed !== heading && onRename) {
       onRename(trimmed)
     }
     setIsRenaming(false)
-  }, [renameValue, filename, onRename])
+  }, [renameValue, heading, onRename])
 
   const handleRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleRenameSubmit()
     if (e.key === 'Escape') {
-      setRenameValue(filename || '')
+      setRenameValue(heading || '')
       setIsRenaming(false)
     }
-  }, [handleRenameSubmit, filename])
+  }, [handleRenameSubmit, heading])
 
   const headerWarnings = React.useMemo(() => {
     const warnings: Array<{
@@ -251,16 +254,19 @@ export const ContractHeader = memo(function ContractHeader({
                           className="text-sm sm:text-base font-semibold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-slate-100 dark:via-slate-300 dark:to-slate-400 bg-clip-text text-transparent truncate max-w-[150px] sm:max-w-[250px] lg:max-w-[350px] cursor-pointer hover:opacity-80 transition-opacity"
                           onDoubleClick={() => {
                             if (onRename) {
-                              setRenameValue(filename || '')
+                              setRenameValue(heading || '')
                               setIsRenaming(true)
                             }
                           }}
                         >
-                          {filename || 'Contract Details'}
+                          {heading}
                         </h1>
                       </TooltipTrigger>
                       <TooltipContent side="bottom">
-                        <p>{filename}</p>
+                        <p>{heading}</p>
+                        {filename && filename !== heading && (
+                          <p className="text-xs text-slate-400 mt-0.5">File: {filename}</p>
+                        )}
                         {originalName && originalName !== filename && (
                           <p className="text-xs text-slate-400 mt-0.5">Original: {originalName}</p>
                         )}

@@ -76,6 +76,12 @@ import {
 } from '@/lib/types/contract-metadata-schema';
 import { formatCurrency, formatDate } from '@/lib/design-tokens';
 import { isFieldRequired } from '@/lib/contracts/metadata-requirements';
+import {
+  enrichCommercialFieldsFromArtifacts,
+  mergePersistedMetadata,
+  resolveDocumentTitle,
+  titleFromSummary,
+} from '@/lib/contracts/metadata-display';
 
 // ============ DEBOUNCE HOOK ============
 
@@ -1552,7 +1558,15 @@ export function EnhancedContractMetadataSection({
     // Map fields from API response (high priority)
     if (contract) {
       if (!base.document_number) base.document_number = String(contract.id || contractId);
-      if (!base.document_title) base.document_title = String(contract.contractTitle || contract.filename || '');
+      if (!base.document_title) {
+        base.document_title = resolveDocumentTitle([
+          String(contract.document_title || ''),
+          String(contract.contractTitle || ''),
+          unwrapString(overviewData?.contractType),
+          titleFromSummary(String(contract.contract_short_description || '')),
+          String(contract.filename || ''),
+        ]);
+      }
       if (!base.currency) base.currency = String(contract.currency || 'USD');
       if (!base.start_date) base.start_date = String(contract.effectiveDate || contract.startDate || '');
       if (!base.end_date) base.end_date = contract.expirationDate || contract.endDate ? String(contract.expirationDate || contract.endDate) : null;
@@ -1650,55 +1664,23 @@ export function EnhancedContractMetadataSection({
       }
     }
     
-    // Map financial data from AI extraction - handle wrapped values
-    if (financialData) {
-      base.tcv_amount = base.tcv_amount || unwrapNumber(financialData.totalValue);
-      base.tcv_text = financialData.totalValue ? formatCurrency(unwrapNumber(financialData.totalValue), base.currency) : '';
-      base.currency = base.currency || unwrapString(financialData.currency) || 'USD';
-      
-      // Map payment terms to payment_type (ensure string conversion for safety)
-      const paymentTerms = unwrapString(financialData.paymentTerms).toLowerCase();
-      if (paymentTerms.includes('milestone')) {
-        base.payment_type = 'milestone';
-      } else if (paymentTerms.includes('time') || paymentTerms.includes('hourly')) {
-        base.payment_type = 'time_and_material';
-      } else if (paymentTerms.includes('fixed') || paymentTerms.includes('lump')) {
-        base.payment_type = 'fixed_price';
-      } else if (paymentTerms.includes('retainer')) {
-        base.payment_type = 'retainer';
-      }
-      
-      // Try to extract billing frequency from payment schedule
-      if (financialData.paymentSchedule && Array.isArray(financialData.paymentSchedule)) {
-        const scheduleLength = financialData.paymentSchedule.length;
-        if (scheduleLength === 4) {
-          base.billing_frequency_type = 'recurring';
-          base.periodicity = 'quarterly';
-        } else if (scheduleLength === 12) {
-          base.billing_frequency_type = 'recurring';
-          base.periodicity = 'monthly';
-        } else if (scheduleLength === 1) {
-          base.billing_frequency_type = 'one_off';
-        }
-      }
-      
-      // Map notice period from penalties or payment terms
-      if (paymentTerms.includes('30 day')) {
-        base.notice_period = '30 days';
-        base.notice_period_days = 30;
-      } else if (paymentTerms.includes('60 day')) {
-        base.notice_period = '60 days';
-        base.notice_period_days = 60;
-      } else if (paymentTerms.includes('90 day')) {
-        base.notice_period = '90 days';
-        base.notice_period_days = 90;
-      }
+    const enriched = enrichCommercialFieldsFromArtifacts(
+      base as Record<string, unknown>,
+      overviewData as Record<string, unknown> | undefined,
+      financialData as Record<string, unknown> | undefined,
+    ) as Partial<ContractMetadataSchema>;
+
+    if (financialData?.totalValue) {
+      enriched.tcv_amount = enriched.tcv_amount || unwrapNumber(financialData.totalValue);
+      enriched.tcv_text = enriched.tcv_text || formatCurrency(unwrapNumber(financialData.totalValue), enriched.currency || 'USD');
+      enriched.currency = enriched.currency || unwrapString(financialData.currency) || 'USD';
     }
-    
-    const withInitialMetadata = { ...base, ...initialMetadata };
-    const withApiMetadata = metadataFromAPI
-      ? { ...withInitialMetadata, ...metadataFromAPI }
-      : withInitialMetadata;
+
+    const withInitialMetadata = { ...enriched, ...initialMetadata };
+    const withApiMetadata = mergePersistedMetadata(
+      withInitialMetadata as Record<string, unknown>,
+      metadataFromAPI as Record<string, unknown> | null,
+    ) as Partial<ContractMetadataSchema>;
 
     return normalizeSignatureMetadataSnapshot(withApiMetadata);
   }, [contractId, contract, overviewData, financialData, initialMetadata, metadataFromAPI, unwrapString, unwrapNumber]);

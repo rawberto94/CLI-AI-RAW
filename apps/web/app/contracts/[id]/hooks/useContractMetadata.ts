@@ -2,6 +2,11 @@
 
 import { useCallback, useMemo } from 'react'
 import type { DocumentClassification } from '@/lib/types/contract-metadata-schema'
+import {
+  enrichCommercialFieldsFromArtifacts,
+  resolveDocumentTitle,
+  titleFromSummary,
+} from '@/lib/contracts/metadata-display'
 
 interface ContractMetadata {
   document_number: string
@@ -241,13 +246,36 @@ export function useContractMetadata(contract: ContractData | null) {
         signatureStatus === 'partially_signed'
       )
     
+    const shortDescription = contract.contract_short_description || contract.description || unwrapValue(execSummaryData?.executiveSummary) || unwrapValue(execSummaryData?.summary) || unwrapValue(overviewData?.summary) || ''
+
+    const commercialBase = enrichCommercialFieldsFromArtifacts(
+      {
+        jurisdiction: contract.jurisdiction || unwrapValue(overviewData?.jurisdiction) || '',
+        payment_type: contract.payment_type || unwrapValue(financialData?.paymentType) || unwrapValue(financialData?.payment_type) || '',
+        billing_frequency_type: contract.billing_frequency_type || unwrapValue(financialData?.billingFrequency) || unwrapValue(financialData?.billing_frequency) || '',
+        periodicity: contract.periodicity || unwrapValue(financialData?.periodicity) || '',
+        notice_period: contract.notice_period || unwrapValue(overviewData?.noticePeriod) || unwrapValue(overviewData?.notice_period) || '',
+        contract_short_description: shortDescription,
+      },
+      overviewData as Record<string, unknown> | undefined,
+      financialData as Record<string, unknown> | undefined,
+    )
+
     return {
       // Identification
       document_number: contract.document_number || contract.id || '',
-      document_title: contract.document_title || (contract as any).contractTitle || unwrapValue(overviewData?.title) || unwrapValue(overviewData?.contractTitle) || contract.filename || '',
-      contract_short_description: contract.contract_short_description || contract.description || unwrapValue(execSummaryData?.executiveSummary) || unwrapValue(execSummaryData?.summary) || unwrapValue(overviewData?.summary) || '',
+      document_title: resolveDocumentTitle([
+        contract.document_title,
+        (contract as any).contractTitle,
+        unwrapValue(overviewData?.contractTitle),
+        unwrapValue(overviewData?.title),
+        unwrapValue(overviewData?.contractType),
+        titleFromSummary(shortDescription),
+        contract.filename,
+      ]),
+      contract_short_description: shortDescription,
       contract_type: (contract as any).contractType || unwrapValue(overviewData?.contractType) || unwrapValue(overviewData?.type) || unwrapValue(overviewData?.contract_type) || '',
-      jurisdiction: contract.jurisdiction || unwrapValue(overviewData?.jurisdiction) || '',
+      jurisdiction: String(commercialBase.jurisdiction || ''),
       contract_language: contract.contract_language || unwrapValue(overviewData?.language) || unwrapValue(overviewData?.contract_language) || '',
       document_classification: contract.document_classification || unwrapValue(overviewData?.documentClassification) || 'contract' as DocumentClassification,
       document_classification_warning: contract.document_classification_warning || unwrapValue(overviewData?.documentClassificationWarning),
@@ -269,14 +297,9 @@ export function useContractMetadata(contract: ContractData | null) {
       tcv_text: contract.tcv_text || 
         unwrapValue(financialData?.description) || 
         unwrapValue(overviewData?.summary) || '',
-      payment_type: contract.payment_type || 
-        unwrapValue(financialData?.paymentType) || 
-        unwrapValue(financialData?.payment_type) || 'none',
-      billing_frequency_type: contract.billing_frequency_type || 
-        unwrapValue(financialData?.billingFrequency) || 
-        unwrapValue(financialData?.billing_frequency) || 'none',
-      periodicity: contract.periodicity || 
-        unwrapValue(financialData?.periodicity) || 'none',
+      payment_type: String(commercialBase.payment_type || 'none'),
+      billing_frequency_type: String(commercialBase.billing_frequency_type || 'none'),
+      periodicity: String(commercialBase.periodicity || 'none'),
       currency: contract.currency || 
         unwrapValue(financialData?.currency) || 
         unwrapValue(overviewData?.currency) || '',
@@ -318,7 +341,7 @@ export function useContractMetadata(contract: ContractData | null) {
       // Reminders & Notices
       reminder_enabled: contract.reminder_enabled ?? true,
       reminder_days_before_end: contract.reminder_days_before_end ?? 60,
-      notice_period: contract.notice_period || unwrapValue(overviewData?.noticePeriod) || unwrapValue(overviewData?.notice_period) || ''
+      notice_period: String(commercialBase.notice_period || ''),
     }
   }, [contract, overviewData, financialData, buildExternalParties, formatDateStr, extractNumericValue, unwrapValue])
   

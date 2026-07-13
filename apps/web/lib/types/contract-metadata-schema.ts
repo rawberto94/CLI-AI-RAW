@@ -571,38 +571,63 @@ export function getFieldsBySection(section: MetadataFieldDefinition['section']):
     .sort((a, b) => a.displayOrder - b.displayOrder);
 }
 
+function isEmptyMetadataFieldValue(value: unknown): boolean {
+  return (
+    value === undefined
+    || value === null
+    || value === ''
+    || (Array.isArray(value) && value.length === 0)
+  );
+}
+
+function fieldNeedsAttentionByRule(
+  field: MetadataFieldDefinition,
+  metadata: Partial<ContractMetadataSchema>,
+): boolean {
+  const value = metadata[field.key];
+
+  switch (field.key) {
+    case 'document_classification_warning':
+      return !isEmptyMetadataFieldValue(value);
+    case 'signature_required_flag':
+      return value === true;
+    case 'signature_status':
+      return isEmptyMetadataFieldValue(value) || value === 'unknown';
+    case 'signature_date': {
+      const status = metadata.signature_status;
+      if (status === 'signed' || status === 'partially_signed') {
+        return isEmptyMetadataFieldValue(value);
+      }
+      return false;
+    }
+    case 'currency':
+    case 'reminder_days_before_end':
+      return field.required && isEmptyMetadataFieldValue(value);
+    default:
+      if (field.ui_attention !== 'none' && field.required) {
+        return isEmptyMetadataFieldValue(value);
+      }
+      return false;
+  }
+}
+
 export function getFieldsNeedingAttention(metadata: Partial<ContractMetadataSchema>): MetadataFieldDefinition[] {
   return CONTRACT_METADATA_FIELDS.filter(field => {
-    // Check if field needs verification based on confidence
+    // Ownership fields are configured in settings, not extracted from documents.
+    if (field.section === 'ownership') return false;
+
     const confidence = metadata._field_confidence?.[field.key];
-    
-    // Low confidence always needs attention
     if (confidence && confidence.value < 0.8) return true;
     if (confidence?.needsVerification) return true;
-    
-    // Check if this field has a ui_attention flag in schema
+
     if (field.ui_attention !== 'none') {
-      // Check if required field is missing
-      if (field.required) {
-        const value = metadata[field.key];
-        if (value === undefined || value === null || value === '' || 
-            (Array.isArray(value) && value.length === 0)) {
-          return true;
-        }
-      }
-      // Field has attention flag - needs review
+      return fieldNeedsAttentionByRule(field, metadata);
+    }
+
+    if (field.required && isEmptyMetadataFieldValue(metadata[field.key])) {
       return true;
     }
-    
-    // Check required fields even without ui_attention flag
-    if (field.required) {
-      const value = metadata[field.key];
-      if (value === undefined || value === null || value === '' || 
-          (Array.isArray(value) && value.length === 0)) {
-        return true;
-      }
-    }
-    
+
     return false;
   });
 }

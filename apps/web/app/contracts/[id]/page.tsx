@@ -213,6 +213,11 @@ export default function ContractDetailPage() {
   const { metadata, riskInfo, complianceInfo, isProcessing, overviewData, financialData } =
     useContractMetadata(contract as any)
 
+  const displayTitle = React.useMemo(
+    () => metadata.document_title || contract?.contractTitle || contract?.filename || 'Contract Details',
+    [metadata.document_title, contract?.contractTitle, contract?.filename],
+  )
+
   // ── Mutations ─────────────────────────────────────────────────────────────
   const aiExtraction = useAIExtraction(contractId)
   const extractObligations = useExtractObligations(contractId)
@@ -391,12 +396,12 @@ export default function ContractDetailPage() {
 
   // ── Dynamic browser tab title ─────────────────────────────────────────────
   useEffect(() => {
-    const name = contractData?.contractTitle || contract?.filename
+    const name = displayTitle
     if (name) {
       document.title = `${name} | ConTigo`
     }
     return () => { document.title = 'Contracts | ConTigo' }
-  }, [contractData?.contractTitle, contract?.filename])
+  }, [displayTitle])
 
   useEffect(() => {
     if (citationRequest && activeTab !== 'details') {
@@ -970,7 +975,7 @@ export default function ContractDetailPage() {
           <Breadcrumbs
             items={[
               { label: 'Contracts', href: '/contracts', icon: FileText },
-              { label: contract?.filename || 'Contract Details' },
+              { label: displayTitle },
             ]}
             showHomeIcon
           />
@@ -982,6 +987,7 @@ export default function ContractDetailPage() {
       <ContractHeader
         contractId={contractId}
         filename={contract?.filename || ''}
+        displayTitle={displayTitle}
         originalName={(contract as any)?.originalName || ''}
         status={contract?.status || 'unknown'}
         signatureStatus={metadata.signature_status}
@@ -1151,6 +1157,19 @@ export default function ContractDetailPage() {
               signatureRequiredFlag={metadata.signature_required_flag}
             />
 
+            <SectionErrorBoundary sectionName="Scores">
+              <ContractScoresCard
+                riskInfo={riskInfo}
+                complianceInfo={complianceInfo}
+                healthInfo={healthData ? {
+                  score: healthData.healthScore,
+                  completeness: healthData.completeness,
+                  issues: healthData.issues,
+                } : null}
+                isProcessing={isProcessing}
+                onRefresh={handleRefresh}
+              />
+            </SectionErrorBoundary>
 
             {/* Quick Actions Bar */}
             <div className="flex flex-wrap items-center gap-2 mb-6 sm:mb-8 no-print">
