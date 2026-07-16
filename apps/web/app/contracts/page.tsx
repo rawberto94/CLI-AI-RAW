@@ -1705,7 +1705,7 @@ export default function ContractsPage() {
 
       {/* Bulk Actions Bar — fixed bottom so it's always visible */}
       <AnimatePresence>
-        {!isDemo && selectedContracts.size > 0 && (
+        {selectedContracts.size > 0 && (
           <motion.div
             key="bulk-actions-bar"
             initial={{ opacity: 0, y: 20 }}
@@ -1739,23 +1739,25 @@ export default function ContractsPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
-                          onClick={() => performBulkAction('export')}
-                          disabled={isProcessingBulk}
-                        >
-                          {isProcessingBulk ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                          <span className="ml-1.5 text-xs font-medium">Export</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">Export selected</TooltipContent>
-                    </Tooltip>
+                    {!isDemo && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
+                            onClick={() => performBulkAction('export')}
+                            disabled={isProcessingBulk}
+                          >
+                            {isProcessingBulk ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                            <span className="ml-1.5 text-xs font-medium">Export</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">Export selected</TooltipContent>
+                      </Tooltip>
+                    )}
 
-                    {selectedContracts.size === 2 && (
+                    {!isDemo && selectedContracts.size === 2 && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -1775,55 +1777,61 @@ export default function ContractsPage() {
                       </Tooltip>
                     )}
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
-                          onClick={() => performBulkAction('share')}
-                          disabled={isProcessingBulk}
-                        >
-                          <Share2 className="h-3.5 w-3.5" />
-                          <span className="ml-1.5 text-xs font-medium">Share</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">Share selected</TooltipContent>
-                    </Tooltip>
+                    {!isDemo && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
+                            onClick={() => performBulkAction('share')}
+                            disabled={isProcessingBulk}
+                          >
+                            <Share2 className="h-3.5 w-3.5" />
+                            <span className="ml-1.5 text-xs font-medium">Share</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">Share selected</TooltipContent>
+                      </Tooltip>
+                    )}
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
-                          onClick={() => setBulkTagDialogOpen(true)}
-                          disabled={isProcessingBulk}
-                        >
-                          <Tag className="h-3.5 w-3.5" />
-                          <span className="ml-1.5 text-xs font-medium">Tag</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">Tag selected</TooltipContent>
-                    </Tooltip>
+                    {!isDemo && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
+                            onClick={() => setBulkTagDialogOpen(true)}
+                            disabled={isProcessingBulk}
+                          >
+                            <Tag className="h-3.5 w-3.5" />
+                            <span className="ml-1.5 text-xs font-medium">Tag</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">Tag selected</TooltipContent>
+                      </Tooltip>
+                    )}
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
-                          onClick={() => setBulkAccessDialogOpen(true)}
-                          disabled={isProcessingBulk}
-                        >
-                          <Users className="h-3.5 w-3.5" />
-                          <span className="ml-1.5 text-xs font-medium">Access</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">Manage access</TooltipContent>
-                    </Tooltip>
+                    {!isDemo && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
+                            onClick={() => setBulkAccessDialogOpen(true)}
+                            disabled={isProcessingBulk}
+                          >
+                            <Users className="h-3.5 w-3.5" />
+                            <span className="ml-1.5 text-xs font-medium">Access</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">Manage access</TooltipContent>
+                      </Tooltip>
+                    )}
 
-                    <div className="w-px h-5 bg-slate-700 mx-0.5" />
+                    {!isDemo && <div className="w-px h-5 bg-slate-700 mx-0.5" />}
 
                     <Tooltip>
                       <TooltipTrigger asChild>
