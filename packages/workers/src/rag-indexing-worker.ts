@@ -561,7 +561,8 @@ Return a JSON object with a "prefixes" key containing an array of strings, one p
     // to prevent zero-embedding window if worker crashes mid-reindex
     jobLogger.info('Storing embeddings in database (atomic transaction)');
     
-    const { toSql } = await import('pgvector/utils');
+    // Inline pgvector toSql to avoid ESM/CJS bundling issues with the pgvector package
+    const toSql = (vec: number[]): string => JSON.stringify(vec);
     
     // Validate embeddings count matches chunks (P0: prevents corrupt vector rows)
     if (embeddings.length !== chunks.length) {

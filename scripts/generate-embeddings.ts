@@ -59,7 +59,7 @@ async function processContractWithSemanticChunking(
   }
 
   // Store in database
-  const { toSql } = await import('pgvector');
+  const toSql = (vec: number[]): string => JSON.stringify(vec);
 
   // Delete existing document chunks only (preserve artifact/metadata chunks at 9900+)
   await prisma.$executeRaw`

@@ -25,7 +25,7 @@ import { hashJson } from './utils/hash';
 import { ensureProcessingJob, updateStep } from './workflow/processing-job';
 import { buildProcessingPlan } from './workflow/planner';
 import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime';
-import { ArtifactQualityValidator, selfCritiqueArtifact } from './utils/artifact-quality-validator';
+import { ArtifactQualityValidator } from './utils/artifact-quality-validator';
 import { AdaptiveRetryStrategy, chunkTextForModel } from './utils/adaptive-retry-strategy';
 import { logAIUsage } from './utils/ai-usage-logger';
 import {
@@ -39,7 +39,10 @@ import {
 } from './contract-type-profiles';
 import {
   DEFAULT_ARTIFACT_TYPES as SHARED_ARTIFACT_TYPES,
+  DEFAULT_ARTIFACT_GROUPS,
   buildArtifactPrompt,
+  buildGroupedPrompt,
+  splitGroupedResponse,
   getSystemPrompt,
   getFallbackTemplate,
   safeParseJSON as sharedSafeParseJSON,
@@ -49,7 +52,9 @@ import {
   UNIFIED_QUALITY_THRESHOLDS,
   type ArtifactTypeConfig as SharedArtifactTypeConfig,
   type PromptContext,
+  type ArtifactGroup,
 } from './utils/artifact-prompts';
+import { TokenAwarePool, estimateTokens } from './utils/token-pool';
 
 // Use unified artifact type config from shared module
 interface ArtifactTypeConfig {
@@ -61,6 +66,7 @@ interface ArtifactTypeConfig {
   maxRetries: number;
   label: string;
   category: 'core' | 'analysis' | 'advanced';
+  model: 'gpt-4o' | 'gpt-4o-mini';
 }
 
 // Map shared config to local type (adds ArtifactType cast)
@@ -138,36 +144,67 @@ async function loadTenantArtifactConfig(tenantId: string): Promise<{
 const logger = pino({ name: 'artifact-generator-worker' });
 const prisma = getClient();
 
-// Module-level OpenAI singleton — avoids re-instantiation per artifact call
+// Module-level OpenAI singletons — avoids re-instantiation per artifact call.
+// Azure OpenAI requires separate clients per deployment, so we keep one for the
+// standard deployment and one for the mini deployment.
 let _openaiSingleton: any = null;
-async function getOpenAIClient(): Promise<any> {
-  if (_openaiSingleton) return _openaiSingleton;
+let _openaiMiniSingleton: any = null;
+async function getOpenAIClient(modelName: string = 'gpt-4o'): Promise<any> {
+  const isMini = modelName.includes('mini');
+
   const apiKey = process.env.OPENAI_API_KEY;
   const isPlaceholderKey = !apiKey || /placeholder/i.test(apiKey);
 
-  // Fall back to Azure OpenAI when OPENAI_API_KEY is unset/placeholder but an
-  // Azure deployment is configured — same chat-completions interface, just
-  // routed through Azure. Keeps artifact generation working in environments
-  // (like this one) that only have Azure credentials provisioned.
-  if (isPlaceholderKey) {
-    const azureKey = process.env.AZURE_OPENAI_API_KEY;
-    const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
-    const azureDeployment = process.env.AZURE_OPENAI_DEPLOYMENT;
-    if (azureKey && azureEndpoint && azureDeployment) {
-      const { AzureOpenAI } = await import('openai');
-      _openaiSingleton = new AzureOpenAI({
+  // Standard (non-Azure) OpenAI: a single client handles all model names.
+  if (!isPlaceholderKey) {
+    if (apiKey) {
+      if (!_openaiSingleton) {
+        const OpenAI = (await import('openai')).default;
+        _openaiSingleton = new OpenAI({ apiKey });
+      }
+      return _openaiSingleton;
+    }
+    return null;
+  }
+
+  // Azure OpenAI path: each deployment is pinned to a model, so we need
+  // separate clients for gpt-4o and gpt-4o-mini.
+  const azureKey = process.env.AZURE_OPENAI_API_KEY;
+  const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+  if (!azureKey || !azureEndpoint) {
+    return null;
+  }
+
+  const { AzureOpenAI } = await import('openai');
+  const deployment = isMini
+    ? (process.env.AZURE_OPENAI_MINI_DEPLOYMENT || process.env.AZURE_OPENAI_DEPLOYMENT)
+    : process.env.AZURE_OPENAI_DEPLOYMENT;
+
+  if (!deployment) {
+    logger.warn({ modelName }, 'No Azure OpenAI deployment configured for model');
+    return null;
+  }
+
+  if (isMini) {
+    if (!_openaiMiniSingleton) {
+      _openaiMiniSingleton = new AzureOpenAI({
         apiKey: azureKey,
         endpoint: azureEndpoint,
         apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-10-21',
-        deployment: azureDeployment,
+        deployment,
       });
-      return _openaiSingleton;
     }
+    return _openaiMiniSingleton;
   }
 
-  if (!apiKey) return null;
-  const OpenAI = (await import('openai')).default;
-  _openaiSingleton = new OpenAI({ apiKey });
+  if (!_openaiSingleton) {
+    _openaiSingleton = new AzureOpenAI({
+      apiKey: azureKey,
+      endpoint: azureEndpoint,
+      apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-10-21',
+      deployment,
+    });
+  }
   return _openaiSingleton;
 }
 
@@ -368,27 +405,41 @@ export async function generateArtifactsJob(
       logger.warn({ error: costCheckErr }, 'DB cost check failed — falling back to in-memory tracker');
     }
 
-    // Generate artifacts in parallel batches for faster processing.
-    // Priority order is preserved within each batch; configurable via ARTIFACT_BATCH_SIZE.
-    const ARTIFACT_BATCH_SIZE = parseInt(process.env.ARTIFACT_BATCH_SIZE || '5', 10);
+    // Build the prompt context once per contract (DI structured data + type hints)
+    const promptCtx = buildArtifactPromptContext(contractText, detectedContractType, contract);
+    const systemPrompt = getSystemPrompt();
+
+    // Group applicable artifact types into the predefined model-aware groups.
+    // This replaces the 14 individual LLM calls with 3–4 grouped calls that send
+    // the contract text only once per group.
+    const applicableTypeSet = new Set(artifactTypes.map(a => a.type as string));
+    const groups = DEFAULT_ARTIFACT_GROUPS
+      .map(g => ({ ...g, types: g.types.filter(t => applicableTypeSet.has(t)) }))
+      .filter(g => g.types.length > 0);
+
+    // Token-aware concurrency pool: paces both in-flight calls and the TPM budget.
+    const pool = new TokenAwarePool({
+      concurrency: parseInt(process.env.ARTIFACT_WORKER_CONCURRENCY || '5', 10),
+      tokensPerMinute: parseInt(process.env.ARTIFACT_TPM_LIMIT || '17000', 10),
+    });
+
     const totalWeight = artifactTypes.reduce((sum, { weight }) => sum + weight, 0);
     let completedWeight = 0;
 
-    for (let batchStart = 0; batchStart < artifactTypes.length; batchStart += ARTIFACT_BATCH_SIZE) {
-      const batch = artifactTypes.slice(batchStart, Math.min(batchStart + ARTIFACT_BATCH_SIZE, artifactTypes.length));
-      logger.info({ batch: Math.floor(batchStart / ARTIFACT_BATCH_SIZE) + 1, batchSize: batch.length, total: artifactTypes.length }, 'Processing artifact batch');
+    const groupTasks = groups.map((group, groupIndex) => ({ group, groupIndex }));
+    const groupResults = await Promise.allSettled(groupTasks.map(async ({ group }) => {
+      // Budget guard
+      const budgetCheck = costTracker.canProceed(contractId, tenantId);
+      if (!budgetCheck.allowed) {
+        logger.warn({ contractId, tenantId, group: group.name, reason: budgetCheck.reason }, '⛔ Artifact group generation blocked by cost budget');
+        throw new Error(`Budget limit reached: ${budgetCheck.reason}`);
+      }
+      if (budgetCheck.warning) {
+        logger.warn({ contractId, tenantId, group: group.name, warning: budgetCheck.warning }, '⚠️ Approaching cost limit');
+      }
 
-      const batchResults = await Promise.allSettled(batch.map(async ({ type, weight, config }) => {
-        // Budget guard: check per-contract and per-tenant cost limits before each artifact
-        const budgetCheck = costTracker.canProceed(contractId, tenantId);
-        if (!budgetCheck.allowed) {
-          logger.warn({ contractId, tenantId, type, reason: budgetCheck.reason }, '⛔ Artifact generation blocked by cost budget');
-          return { type, success: false, error: 'Budget limit reached' };
-        }
-        if (budgetCheck.warning) {
-          logger.warn({ contractId, tenantId, type, warning: budgetCheck.warning }, '⚠️ Approaching cost limit');
-        }
-
+      // Mark all artifact types in the group as running
+      for (const type of group.types) {
         await updateStep({
           tenantId,
           contractId,
@@ -397,160 +448,176 @@ export async function generateArtifactsJob(
           progress: progressBase + Math.round((completedWeight / totalWeight) * 80),
           currentStep: `artifact.${type}`,
         });
+      }
 
-        logger.info({
-          contractId,
-          type,
-          traceId: trace.traceId,
-          qualityThreshold: config?.qualityThreshold || 0.7,
-          maxRetries: config?.maxRetries || 3,
-        }, `Generating ${type} artifact with quality validation`);
+      logger.info({
+        contractId,
+        group: group.name,
+        types: group.types,
+        model: group.model,
+        traceId: trace.traceId,
+      }, `Generating ${group.name} artifact group`);
 
-        // Generate artifact with adaptive retry and quality validation
-        let artifactData: Record<string, any> | null = null;
-        let qualityScore: any = null;
-        let modelUsed = 'unknown';
-        let regenerationAttempts = 0;
-        const maxRegenerations = config?.maxRetries || generationConfig.maxRegenerationAttempts || 2;
+      const groupedPrompt = buildGroupedPrompt(group, promptCtx);
+      const estimatedTokens = estimateTokens(systemPrompt + (groupedPrompt || '')) + 2000;
 
-        while (regenerationAttempts <= maxRegenerations) {
+      return pool.execute(estimatedTokens, async () => {
+        const result = await adaptiveRetry.executeWithRetry(
+          async (model) => {
+            const data = await generateGroupData(group, promptCtx, contractId, tenantId, model.name);
+            return { data, model: model.name };
+          },
+          `Generate ${group.name} group`,
+          group.model
+        );
+        return { group, modelUsed: result.model, groupResult: result.data };
+      });
+    }));
+
+    // Process each group result and save individual artifacts
+    for (let i = 0; i < groupResults.length; i++) {
+      const group = groupTasks[i].group;
+      const groupResult = groupResults[i];
+
+      if (groupResult.status === 'fulfilled') {
+        const { modelUsed, groupResult: dataMap } = groupResult.value;
+
+        for (const type of group.types) {
+          const config = artifactTypes.find(a => a.type === type)?.config;
+          let artifactData = dataMap[type];
+          let qualityScore: any = null;
+
           try {
-            const result = await adaptiveRetry.executeWithRetry(
-              async (model) => {
-                modelUsed = model.name;
-                const data = await generateArtifactData(type, contractText, contractId, tenantId, model.name, detectedContractType, contract);
-                return { data, model: model.name };
-              },
-              `Generate ${type} artifact`
-            );
-
-            artifactData = result.data;
-
-            qualityScore = await qualityValidator.validateArtifact(
-              type,
-              artifactData,
-              contractText
-            );
-
+            qualityScore = await qualityValidator.validateArtifact(type, artifactData, contractText);
             logger.info({
               contractId,
               type,
-              qualityScore: qualityScore.overall.toFixed(2),
-              passesThreshold: qualityScore.passesThreshold,
+              qualityScore: qualityScore?.overall?.toFixed(2),
+              passesThreshold: qualityScore?.passesThreshold,
               configuredThreshold: config?.qualityThreshold || 0.7,
               model: modelUsed,
-              regenerationAttempt: regenerationAttempts,
             }, '✓ Quality validation complete');
+          } catch (validationError) {
+            logger.warn({ contractId, type, error: validationError instanceof Error ? validationError.message : String(validationError) }, 'Artifact quality validation failed');
+          }
 
-            const qualityThreshold = config?.qualityThreshold || 0.7;
-            const meetsThreshold = qualityScore.overall >= qualityThreshold;
+          const qualityThreshold = config?.qualityThreshold || 0.7;
+          const meetsThreshold = qualityScore?.overall >= qualityThreshold || qualityScore?.passesThreshold;
 
-            if (meetsThreshold || qualityScore.passesThreshold) {
-              break;
-            }
-
-            if (!generationConfig.enableSelfCritique) {
-              break;
-            }
-
-            const critique = await selfCritiqueArtifact(type, artifactData, contractText);
-
+          if (!artifactData || !meetsThreshold) {
+            artifactData = artifactData || getFallbackArtifactData(type, contractId);
             logger.warn({
               contractId,
               type,
-              qualityScore: qualityScore.overall.toFixed(2),
-              critiqueIssues: critique.issues.length,
-              shouldRegenerate: critique.shouldRegenerate,
-            }, '⚠️ Low quality detected');
-
-            if (critique.shouldRegenerate && regenerationAttempts < maxRegenerations) {
-              regenerationAttempts++;
-              logger.info({ contractId, type, attempt: regenerationAttempts }, '🔄 Regenerating artifact due to quality issues');
-              continue;
-            } else {
-              logger.warn({ contractId, type }, '⚠️ Accepting low-quality artifact (max regenerations reached)');
-              break;
-            }
-          } catch (error) {
-            if (regenerationAttempts < maxRegenerations) {
-              regenerationAttempts++;
-              logger.warn({
-                contractId,
-                type,
-                error: error instanceof Error ? error.message : String(error),
-                attempt: regenerationAttempts,
-              }, '⚠️ Generation failed, retrying...');
-              continue;
-            }
-            throw error;
-          }
-        }
-
-        if (!artifactData) {
-          throw new Error(`Failed to generate ${type} artifact after ${regenerationAttempts} attempts`);
-        }
-
-        const artifact = await retryWithBackoff(
-          () => createOrUpdateArtifact({
-            contractId,
-            tenantId,
-            type,
-            artifactData,
-            validationStatus: qualityScore?.passesThreshold ? 'valid' : 'needs_review',
-            modelUsed,
-            promptVersion: PROMPT_VERSION,
-            metadata: {
-              qualityScore: qualityScore?.overall || 0,
-              completeness: qualityScore?.completeness || 0,
-              accuracy: qualityScore?.accuracy || 0,
-              consistency: qualityScore?.consistency || 0,
-              confidence: qualityScore?.confidence || 0,
-              regenerationAttempts,
-              qualityIssues: qualityScore?.issues || [],
-              qualityRecommendations: qualityScore?.recommendations || [],
-            },
-          }),
-          {
-            maxRetries: 2,
-            initialDelay: 500,
-            backoffMultiplier: 2,
-            operationName: `Save ${type} artifact`,
-          }
-        );
-
-        logger.info({ contractId, artifactId: artifact.id, type, traceId: trace.traceId }, 'Artifact stored');
-
-        await updateStep({
-          tenantId,
-          contractId,
-          step: `artifact.${type}`,
-          status: 'completed',
-          progress: progressBase + Math.round(((completedWeight + weight) / totalWeight) * 80),
-          currentStep: `artifact.${type}`,
-        });
-
-        return { type, success: true, artifactId: artifact.id, weight };
-      }));
-
-      // Process batch results and apply fallbacks for failures
-      for (let i = 0; i < batchResults.length; i++) {
-        const result = batchResults[i];
-        const type = batch[i].type;
-        if (result.status === 'fulfilled') {
-          const { success, artifactId, weight: artifactWeight, error } = result.value;
-          if (success && artifactId) {
-            artifactIds.push(artifactId);
-            successfulArtifactTypes.push(type);
-            completedWeight += artifactWeight || 1;
-          } else {
-            logger.warn({ contractId, type, error }, 'Artifact generation skipped');
+              qualityScore: qualityScore?.overall?.toFixed(2),
+              threshold: qualityThreshold,
+            }, '⚠️ Artifact below quality threshold or missing; storing as needs_review');
             failedArtifacts.push(type);
+            await updateStep({
+              tenantId,
+              contractId,
+              step: `artifact.${type}`,
+              status: 'failed',
+              progress: progressBase + Math.round((completedWeight / totalWeight) * 80),
+              currentStep: `artifact.${type}`,
+              error: 'Quality threshold not met or missing data',
+            });
+            if (generationConfig.enableFallbackOnError) {
+              try {
+                const fallbackData = getFallbackArtifactData(type, contractId);
+                const existing = await prisma.artifact.findUnique({
+                  where: { contractId_type: { contractId, type: type as any } },
+                  select: { id: true },
+                });
+                if (!existing) {
+                  await createOrUpdateArtifact({
+                    contractId,
+                    tenantId,
+                    type: type as ArtifactType,
+                    artifactData: { ...fallbackData, _fallback: true, _error: 'Quality threshold not met or missing data' },
+                    validationStatus: 'needs_review',
+                    modelUsed: null,
+                    promptVersion: PROMPT_VERSION,
+                  });
+                  logger.info({ contractId, type, traceId: trace.traceId }, 'Fallback artifact stored');
+                }
+              } catch (fallbackError) {
+                logger.warn({ contractId, type, fallbackError }, 'Failed to create fallback artifact');
+              }
+            }
+            if (!generationConfig.continueOnPartialFailure) {
+              throw new Error(`Artifact ${type} failed quality validation`);
+            }
+            continue;
           }
-        } else {
-          const errorMsg = result.reason instanceof Error ? result.reason.message : String(result.reason);
-          logger.error({ error: errorMsg, contractId, type, traceId: trace.traceId }, `Failed to generate ${type} artifact after retries`);
-          failedArtifacts.push(type);
 
+          try {
+            const artifact = await retryWithBackoff(
+              () => createOrUpdateArtifact({
+                contractId,
+                tenantId,
+                type: type as ArtifactType,
+                artifactData,
+                validationStatus: qualityScore?.passesThreshold ? 'valid' : 'needs_review',
+                modelUsed,
+                promptVersion: PROMPT_VERSION,
+                metadata: {
+                  qualityScore: qualityScore?.overall || 0,
+                  completeness: qualityScore?.completeness || 0,
+                  accuracy: qualityScore?.accuracy || 0,
+                  consistency: qualityScore?.consistency || 0,
+                  confidence: qualityScore?.confidence || 0,
+                  regenerationAttempts: 0,
+                  qualityIssues: qualityScore?.issues || [],
+                  qualityRecommendations: qualityScore?.recommendations || [],
+                },
+              }),
+              {
+                maxRetries: 2,
+                initialDelay: 500,
+                backoffMultiplier: 2,
+                operationName: `Save ${type} artifact`,
+              }
+            );
+
+            artifactIds.push(artifact.id);
+            successfulArtifactTypes.push(type);
+            completedWeight += config?.weight || 1;
+            logger.info({ contractId, artifactId: artifact.id, type, traceId: trace.traceId }, 'Artifact stored');
+          } catch (saveError) {
+            const errorMsg = saveError instanceof Error ? saveError.message : String(saveError);
+            logger.error({ error: errorMsg, contractId, type, traceId: trace.traceId }, 'Failed to save artifact');
+            failedArtifacts.push(type);
+            await updateStep({
+              tenantId,
+              contractId,
+              step: `artifact.${type}`,
+              status: 'failed',
+              progress: progressBase + Math.round((completedWeight / totalWeight) * 80),
+              currentStep: `artifact.${type}`,
+              error: errorMsg,
+            });
+            if (!generationConfig.continueOnPartialFailure) {
+              throw saveError;
+            }
+            continue;
+          }
+
+          await updateStep({
+            tenantId,
+            contractId,
+            step: `artifact.${type}`,
+            status: 'completed',
+            progress: progressBase + Math.round((completedWeight / totalWeight) * 80),
+            currentStep: `artifact.${type}`,
+          });
+        }
+      } else {
+        const errorMsg = groupResult.reason instanceof Error ? groupResult.reason.message : String(groupResult.reason);
+        logger.error({ error: errorMsg, contractId, group: group.name, types: group.types, traceId: trace.traceId }, `Failed to generate ${group.name} group after retries`);
+
+        for (const type of group.types) {
+          failedArtifacts.push(type);
           await updateStep({
             tenantId,
             contractId,
@@ -561,7 +628,6 @@ export async function generateArtifactsJob(
             error: errorMsg,
           });
 
-          // Fallback artifact if enabled
           if (generationConfig.enableFallbackOnError) {
             try {
               const fallbackData = getFallbackArtifactData(type, contractId);
@@ -573,7 +639,7 @@ export async function generateArtifactsJob(
                 await createOrUpdateArtifact({
                   contractId,
                   tenantId,
-                  type,
+                  type: type as ArtifactType,
                   artifactData: { ...fallbackData, _fallback: true, _error: errorMsg },
                   validationStatus: 'needs_review',
                   modelUsed: null,
@@ -585,10 +651,10 @@ export async function generateArtifactsJob(
               logger.warn({ contractId, type, fallbackError }, 'Failed to create fallback artifact');
             }
           }
+        }
 
-          if (!generationConfig.continueOnPartialFailure) {
-            throw result.reason;
-          }
+        if (!generationConfig.continueOnPartialFailure) {
+          throw groupResult.reason;
         }
       }
 
@@ -986,174 +1052,175 @@ async function createOrUpdateArtifact(args: {
 }
 
 /**
- * Generate artifact data using OpenAI API - REAL AI ANALYSIS
- * Now uses unified prompts from shared module + cost tracking.
+ * Build the shared PromptContext once per contract. This includes contract-type
+ * hints and any Azure Document Intelligence structured data attached to the contract.
  */
-async function generateArtifactData(
-  type: string,
+function buildArtifactPromptContext(
   contractText: string,
-  contractId: string,
-  tenantId: string,
-  modelName?: string,
   contractType?: string,
   contract?: any
-): Promise<Record<string, any>> {
-
-  try {
-    const openai = await getOpenAIClient();
-    if (!openai) {
-      logger.warn('OPENAI_API_KEY not configured, using fallback templates');
-      return getFallbackTemplate(type);
+): PromptContext {
+  let contractTypeHints = '';
+  if (contractType && contractType !== 'OTHER' && contractType !== 'UNKNOWN') {
+    try {
+      const profile = getContractProfile(contractType as ProfileContractType);
+      const parts: string[] = [
+        `This is a ${profile.displayName} (${contractType}).`,
+        profile.description ? profile.description : '',
+      ];
+      if (profile.extractionHints) parts.push(`Extraction guidance: ${profile.extractionHints}`);
+      if (profile.clauseCategories.length > 0)
+        parts.push(`Key clause categories: ${profile.clauseCategories.slice(0, 8).join(', ')}`);
+      if (profile.riskCategories.length > 0)
+        parts.push(`Risk areas to assess: ${profile.riskCategories.slice(0, 6).join(', ')}`);
+      if (profile.financialFields.length > 0)
+        parts.push(`Financial fields to extract: ${profile.financialFields.slice(0, 6).join(', ')}`);
+      if (profile.keyTermsToExtract.length > 0)
+        parts.push(`Key terms to extract: ${profile.keyTermsToExtract.join(', ')}`);
+      if (profile.mandatoryFields.length > 0)
+        parts.push(`Mandatory fields: ${profile.mandatoryFields.join(', ')}`);
+      if (profile.expectedSections.length > 0)
+        parts.push(`Expected sections: ${profile.expectedSections.join(', ')}`);
+      contractTypeHints = parts.filter(Boolean).join('\n');
+    } catch {
+      // Ignore profile lookup errors — degrade gracefully
     }
-
-    // Build contract-type-specific hints for enhanced extraction
-    let contractTypeHints = '';
-    if (contractType && contractType !== 'OTHER' && contractType !== 'UNKNOWN') {
-      try {
-        const profile = getContractProfile(contractType as ProfileContractType);
-        const parts: string[] = [
-          `This is a ${profile.displayName} (${contractType}).`,
-          profile.description ? profile.description : '',
-        ];
-        if (profile.extractionHints) parts.push(`Extraction guidance: ${profile.extractionHints}`);
-        if (profile.clauseCategories.length > 0)
-          parts.push(`Key clause categories: ${profile.clauseCategories.slice(0, 8).join(', ')}`);
-        if (profile.riskCategories.length > 0)
-          parts.push(`Risk areas to assess: ${profile.riskCategories.slice(0, 6).join(', ')}`);
-        if (profile.financialFields.length > 0)
-          parts.push(`Financial fields to extract: ${profile.financialFields.slice(0, 6).join(', ')}`);
-        if (profile.keyTermsToExtract.length > 0)
-          parts.push(`Key terms to extract: ${profile.keyTermsToExtract.join(', ')}`);
-        if (profile.mandatoryFields.length > 0)
-          parts.push(`Mandatory fields: ${profile.mandatoryFields.join(', ')}`);
-        if (profile.expectedSections.length > 0)
-          parts.push(`Expected sections: ${profile.expectedSections.join(', ')}`);
-        contractTypeHints = parts.filter(Boolean).join('\n');
-      } catch {
-        // Ignore profile lookup errors — degrade gracefully
-      }
-    }
-
-    // Inject DI structured data from the upstream OCR worker when available
-    const aiMetadata = contract?.aiMetadata || {};
-    const diSource = aiMetadata?.ocrStructuredMeta?.source;
-    const diConfidence = aiMetadata?.ocrStructuredMeta?.confidence;
-    const diTables = aiMetadata?.diTables;
-    const diKeyValuePairs = aiMetadata?.diKeyValuePairs;
-    const diContractFields = aiMetadata?.diContractFields;
-    const diInvoiceFields = aiMetadata?.diInvoiceFields;
-    const diParagraphs = aiMetadata?.diParagraphs;
-    const diHandwrittenSpans = aiMetadata?.diHandwrittenSpans;
-    const diDetectedLanguages = aiMetadata?.diDetectedLanguages;
-    const diSelectionMarks = aiMetadata?.diSelectionMarks;
-    const diBarcodes = aiMetadata?.diBarcodes;
-    const diFormulas = aiMetadata?.diFormulas;
-
-    // Use unified prompt builder from shared module
-    const promptCtx: PromptContext = {
-      contractText,
-      contractType,
-      contractTypeHints: contractTypeHints || undefined,
-      ...(diSource ? { diConfidence } : {}),
-      ...(Array.isArray(diTables) && diTables.length > 0 ? { diTables } : {}),
-      ...(Array.isArray(diKeyValuePairs) && diKeyValuePairs.length > 0 ? { diKeyValuePairs } : {}),
-      ...(diContractFields ? { diContractFields } : {}),
-      ...(diInvoiceFields ? { diInvoiceFields } : {}),
-      ...(Array.isArray(diParagraphs) && diParagraphs.length > 0
-        ? {
-            diDocumentStructure: diParagraphs
-              .filter((p: any) => p.role && ['title', 'sectionHeading'].includes(p.role))
-              .map((p: any) => ({ content: (p.content || '').slice(0, 200), role: p.role })),
-          }
-        : {}),
-      ...(Array.isArray(diHandwrittenSpans) && diHandwrittenSpans.length > 0
-        ? {
-            diHandwritingInfo: {
-              hasHandwriting: true,
-              handwrittenSpans: diHandwrittenSpans,
-              handwrittenSpanCount: diHandwrittenSpans.length,
-            },
-          }
-        : {}),
-      ...(Array.isArray(diDetectedLanguages) && diDetectedLanguages.length > 0 ? { diDetectedLanguages } : {}),
-      ...(Array.isArray(diSelectionMarks) && diSelectionMarks.length > 0 ? { diSelectionMarks } : {}),
-      ...(Array.isArray(diBarcodes) && diBarcodes.length > 0 ? { diBarcodes } : {}),
-      ...(Array.isArray(diFormulas) && diFormulas.length > 0 ? { diFormulas } : {}),
-    };
-
-    const prompt = buildArtifactPrompt(type, promptCtx);
-    if (!prompt) {
-      return getFallbackTemplate(type);
-    }
-
-    // Use unified system prompt
-    const systemPrompt = getSystemPrompt();
-
-    logger.info({ type, contractId, textLength: contractText.length }, 'Calling OpenAI for artifact');
-
-    const model = modelName || process.env.OPENAI_MODEL || 'gpt-4o';
-    const response = await openaiBreaker.execute(() =>
-      openai.chat.completions.create({
-        model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt },
-        ],
-        max_tokens: 8192,
-        temperature: 0.1,
-        response_format: { type: 'json_object' },
-      })
-    ) as { choices: Array<{ message: { content: string | null } }>; usage?: { prompt_tokens?: number; completion_tokens?: number } };
-
-    const content = response.choices[0]?.message?.content;
-    if (!content) throw new Error('Empty response');
-
-    const parsed = safeParseJSON(content, type);
-    if (!parsed) {
-      throw new Error('Failed to parse JSON response');
-    }
-
-    // Track token usage and cost
-    const promptTokens = response.usage?.prompt_tokens || 0;
-    const completionTokens = response.usage?.completion_tokens || 0;
-    const cost = estimateTokenCost(model, promptTokens, completionTokens);
-
-    // Feed cost into the budget tracker so per-contract/tenant limits are enforced
-    costTracker.addCost(contractId, tenantId, cost);
-
-    // Persist usage to ai_usage_logs for dashboard & cost alerts
-    logAIUsage({
-      model,
-      endpoint: 'openai',
-      feature: `artifact-generation:${type}`,
-      inputTokens: promptTokens,
-      outputTokens: completionTokens,
-      latencyMs: 0,
-      success: true,
-      tenantId,
-      contractId,
-    }).catch(() => {}); // fire-and-forget
-
-    const artifactData = parsed;
-    artifactData._meta = { 
-      generatedAt: new Date().toISOString(), 
-      aiGenerated: true,
-      model,
-      antiHallucinationEnabled: true,
-      promptVersion: PROMPT_VERSION,
-      tokensUsed: promptTokens + completionTokens,
-      promptTokens,
-      completionTokens,
-      estimatedCost: cost,
-    };
-    
-    logger.info({ type, contractId, certainty: artifactData.certainty, model, tokensUsed: promptTokens + completionTokens, cost: cost.toFixed(6) }, 'AI artifact generated successfully');
-    return artifactData;
-
-  } catch (error) {
-    logger.error({ error, type, contractId }, 'OpenAI failed');
-    throw error;
   }
+
+  const aiMetadata = contract?.aiMetadata || {};
+  const diSource = aiMetadata?.ocrStructuredMeta?.source;
+  const diConfidence = aiMetadata?.ocrStructuredMeta?.confidence;
+  const diTables = aiMetadata?.diTables;
+  const diKeyValuePairs = aiMetadata?.diKeyValuePairs;
+  const diContractFields = aiMetadata?.diContractFields;
+  const diInvoiceFields = aiMetadata?.diInvoiceFields;
+  const diParagraphs = aiMetadata?.diParagraphs;
+  const diHandwrittenSpans = aiMetadata?.diHandwrittenSpans;
+  const diDetectedLanguages = aiMetadata?.diDetectedLanguages;
+  const diSelectionMarks = aiMetadata?.diSelectionMarks;
+  const diBarcodes = aiMetadata?.diBarcodes;
+  const diFormulas = aiMetadata?.diFormulas;
+
+  return {
+    contractText,
+    contractType,
+    contractTypeHints: contractTypeHints || undefined,
+    ...(diSource ? { diConfidence } : {}),
+    ...(Array.isArray(diTables) && diTables.length > 0 ? { diTables } : {}),
+    ...(Array.isArray(diKeyValuePairs) && diKeyValuePairs.length > 0 ? { diKeyValuePairs } : {}),
+    ...(diContractFields ? { diContractFields } : {}),
+    ...(diInvoiceFields ? { diInvoiceFields } : {}),
+    ...(Array.isArray(diParagraphs) && diParagraphs.length > 0
+      ? {
+          diDocumentStructure: diParagraphs
+            .filter((p: any) => p.role && ['title', 'sectionHeading'].includes(p.role))
+            .map((p: any) => ({ content: (p.content || '').slice(0, 200), role: p.role })),
+        }
+      : {}),
+    ...(Array.isArray(diHandwrittenSpans) && diHandwrittenSpans.length > 0
+      ? {
+          diHandwritingInfo: {
+            hasHandwriting: true,
+            handwrittenSpans: diHandwrittenSpans,
+            handwrittenSpanCount: diHandwrittenSpans.length,
+          },
+        }
+      : {}),
+    ...(Array.isArray(diDetectedLanguages) && diDetectedLanguages.length > 0 ? { diDetectedLanguages } : {}),
+    ...(Array.isArray(diSelectionMarks) && diSelectionMarks.length > 0 ? { diSelectionMarks } : {}),
+    ...(Array.isArray(diBarcodes) && diBarcodes.length > 0 ? { diBarcodes } : {}),
+    ...(Array.isArray(diFormulas) && diFormulas.length > 0 ? { diFormulas } : {}),
+  };
+}
+
+/**
+ * Generate all artifact data for a group in a single OpenAI call.
+ * The contract text is sent once, and the response is split per artifact type.
+ */
+async function generateGroupData(
+  group: ArtifactGroup,
+  promptCtx: PromptContext,
+  contractId: string,
+  tenantId: string,
+  modelName: string
+): Promise<Record<string, any>> {
+  const openai = await getOpenAIClient(modelName);
+  if (!openai) {
+    logger.warn('OPENAI_API_KEY not configured, cannot generate group');
+    throw new Error('OpenAI client not configured');
+  }
+
+  const groupedPrompt = buildGroupedPrompt(group, promptCtx);
+  if (!groupedPrompt) {
+    throw new Error(`No prompts built for group ${group.name}`);
+  }
+
+  const systemPrompt = getSystemPrompt();
+
+  logger.info({ group: group.name, contractId, model: modelName, textLength: promptCtx.contractText.length }, 'Calling OpenAI for artifact group');
+
+  const response = await openaiBreaker.execute(() =>
+    openai.chat.completions.create({
+      model: modelName,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: groupedPrompt },
+      ],
+      max_tokens: 16384,
+      temperature: 0.1,
+      response_format: { type: 'json_object' },
+    })
+  ) as { choices: Array<{ message: { content: string | null } }>; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) throw new Error('Empty response');
+
+  const parsed = safeParseJSON(content, group.name);
+  if (!parsed) {
+    throw new Error('Failed to parse JSON response');
+  }
+
+  const promptTokens = response.usage?.prompt_tokens || 0;
+  const completionTokens = response.usage?.completion_tokens || 0;
+  const cost = estimateTokenCost(modelName, promptTokens, completionTokens);
+
+  costTracker.addCost(contractId, tenantId, cost);
+
+  logAIUsage({
+    model: modelName,
+    endpoint: 'openai',
+    feature: `artifact-generation:${group.name}`,
+    inputTokens: promptTokens,
+    outputTokens: completionTokens,
+    latencyMs: 0,
+    success: true,
+    tenantId,
+    contractId,
+  }).catch(() => {}); // fire-and-forget
+
+  const groupResult = splitGroupedResponse(group, parsed);
+
+  for (const type of group.types) {
+    const data = groupResult[type];
+    if (data && typeof data === 'object') {
+      data._meta = {
+        generatedAt: new Date().toISOString(),
+        aiGenerated: true,
+        model: modelName,
+        antiHallucinationEnabled: true,
+        promptVersion: PROMPT_VERSION,
+        tokensUsed: promptTokens + completionTokens,
+        promptTokens,
+        completionTokens,
+        estimatedCost: cost,
+        group: group.name,
+      };
+    }
+  }
+
+  logger.info({ group: group.name, contractId, model: modelName, tokensUsed: promptTokens + completionTokens, cost: cost.toFixed(6) }, 'AI artifact group generated successfully');
+
+  return groupResult;
 }
 
 /**

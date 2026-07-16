@@ -88,9 +88,16 @@ export class AdaptiveRetryStrategy {
    */
   async executeWithRetry<T>(
     operation: (model: ModelConfig, context: RetryContext) => Promise<T>,
-    operationName: string
+    operationName: string,
+    preferredModelName?: string
   ): Promise<T> {
     let currentModelIndex = 0;
+    if (preferredModelName) {
+      const preferredIndex = this.modelHierarchy.findIndex(m => m.name === preferredModelName);
+      if (preferredIndex >= 0) {
+        currentModelIndex = preferredIndex;
+      }
+    }
     let attempt = 0;
     let totalDelayMs = 0;
     let lastError: Error | null = null;

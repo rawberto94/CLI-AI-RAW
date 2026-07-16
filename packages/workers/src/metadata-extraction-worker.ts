@@ -20,6 +20,7 @@ import { ensureProcessingJob, updateStep, assertRetryableReady } from './workflo
 import { RetryableError } from './utils/errors';
 import { sha256 } from './utils/hash';
 import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime';
+import { getQueueService, QUEUE_NAMES } from './compat/repo-utils';
 
 // ============================================================================
 // TYPES
@@ -527,7 +528,6 @@ export async function queueBulkMetadataExtraction(
 // WORKER REGISTRATION
 // ============================================================================
 
-import { Worker } from "bullmq";
 import pino from "pino";
 
 const logger = pino({
@@ -545,22 +545,19 @@ const logger = pino({
 /**
  * Register the metadata extraction worker with BullMQ
  */
-export function registerMetadataExtractionWorker(): Worker {
-  const redisConfig = {
-    host: process.env.REDIS_HOST,
-    port: parseInt(process.env.REDIS_PORT || "6379"),
-    password: process.env.REDIS_PASSWORD,
-    maxRetriesPerRequest: null,
-  };
+export function registerMetadataExtractionWorker() {
+  const queueService = getQueueService();
 
-  const worker = new Worker(
-    METADATA_EXTRACTION_QUEUE,
+  logger.info({ queue: QUEUE_NAMES.METADATA_EXTRACTION }, "📊 Registering metadata extraction worker");
+
+  const worker = queueService.registerWorker<MetadataExtractionJobData, MetadataExtractionResult>(
+    QUEUE_NAMES.METADATA_EXTRACTION,
     async (job) => {
       logger.info({ jobId: job.id, contractId: job.data.contractId }, "Processing metadata extraction job");
-      
+
       try {
         const result = await processMetadataExtractionJob(job);
-        
+
         logger.info({
           jobId: job.id,
           contractId: job.data.contractId,
@@ -568,7 +565,7 @@ export function registerMetadataExtractionWorker(): Worker {
           averageConfidence: result.averageConfidence,
           processingTimeMs: result.processingTimeMs,
         }, "Metadata extraction completed");
-        
+
         return result;
       } catch (error) {
         logger.error({
@@ -580,7 +577,6 @@ export function registerMetadataExtractionWorker(): Worker {
       }
     },
     {
-      connection: redisConfig,
       concurrency: getWorkerConcurrency('METADATA_WORKER_CONCURRENCY', METADATA_EXTRACTION_CONFIG.concurrency),
       limiter: getWorkerLimiter(
         'METADATA_WORKER_LIMIT_MAX',
@@ -590,27 +586,7 @@ export function registerMetadataExtractionWorker(): Worker {
     }
   );
 
-  worker.on("completed", (job, result) => {
-    logger.info({ 
-      jobId: job.id, 
-      contractId: job.data.contractId,
-      fieldsExtracted: result?.fieldsExtracted,
-    }, "✅ Metadata extraction job completed");
-  });
+  logger.info({ queue: QUEUE_NAMES.METADATA_EXTRACTION }, "📊 Metadata extraction worker registered");
 
-  worker.on("failed", (job, error) => {
-    logger.error({
-      jobId: job?.id,
-      contractId: job?.data.contractId,
-      error: error.message,
-    }, "❌ Metadata extraction job failed");
-  });
-
-  worker.on("error", (error) => {
-    logger.error({ error: error.message }, "Worker error");
-  });
-
-  logger.info("📊 Metadata extraction worker registered");
-  
   return worker;
 }

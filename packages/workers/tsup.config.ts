@@ -23,6 +23,7 @@ export default defineConfig({
     'bullmq',
     'ioredis',
     'openai',
+    'pgvector',
     'pino',
     'pino-pretty',
     'dotenv',

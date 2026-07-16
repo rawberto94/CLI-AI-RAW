@@ -353,17 +353,35 @@ export async function selfCritiqueArtifact(
   confidence: number;
   shouldRegenerate: boolean;
 }> {
+  let openai: any = null;
   const apiKey = process.env.OPENAI_API_KEY;
-  
-  if (!apiKey) {
-    logger.warn('OPENAI_API_KEY not configured, skipping self-critique');
+  const isPlaceholderKey = !apiKey || /placeholder/i.test(apiKey);
+
+  // Prefer standard OpenAI; fall back to Azure OpenAI like artifact generation does.
+  if (!isPlaceholderKey && apiKey) {
+    const OpenAI = (await import('openai')).default;
+    openai = new OpenAI({ apiKey });
+  } else {
+    const azureKey = process.env.AZURE_OPENAI_API_KEY;
+    const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+    const azureDeployment = process.env.AZURE_OPENAI_MINI_DEPLOYMENT || process.env.AZURE_OPENAI_DEPLOYMENT;
+    if (azureKey && azureEndpoint && azureDeployment) {
+      const { AzureOpenAI } = await import('openai');
+      openai = new AzureOpenAI({
+        apiKey: azureKey,
+        endpoint: azureEndpoint,
+        apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-10-21',
+        deployment: azureDeployment,
+      });
+    }
+  }
+
+  if (!openai) {
+    logger.warn('No AI API key configured, skipping self-critique');
     return { issues: [], suggestions: [], confidence: 0.5, shouldRegenerate: false };
   }
 
   try {
-    const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ apiKey });
-
     const critiquePrompt = `You are a quality control expert reviewing an AI-generated contract artifact.
 
 Artifact Type: ${artifactType}

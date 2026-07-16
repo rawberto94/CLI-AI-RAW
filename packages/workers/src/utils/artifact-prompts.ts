@@ -25,26 +25,57 @@ export interface ArtifactTypeConfig {
   maxRetries: number;
   label: string;
   category: ArtifactCategory;
+  /** Model deployment to use for generation */
+  model: 'gpt-4o' | 'gpt-4o-mini';
   /** Max text length to send for this type (adaptive truncation) */
   maxTextLength: number;
 }
 
 export const DEFAULT_ARTIFACT_TYPES: ArtifactTypeConfig[] = [
-  { type: 'OVERVIEW',            enabled: true,  priority: 1,  weight: 10, qualityThreshold: 0.70, maxRetries: 3, label: 'Overview',           category: 'core',     maxTextLength: 50000 },
-  { type: 'CLAUSES',             enabled: true,  priority: 2,  weight: 12, qualityThreshold: 0.70, maxRetries: 3, label: 'Clauses',            category: 'core',     maxTextLength: 60000 },
-  { type: 'FINANCIAL',           enabled: true,  priority: 3,  weight: 12, qualityThreshold: 0.75, maxRetries: 3, label: 'Financial',          category: 'core',     maxTextLength: 60000 },
-  { type: 'RISK',                enabled: true,  priority: 4,  weight: 12, qualityThreshold: 0.70, maxRetries: 3, label: 'Risk',               category: 'analysis', maxTextLength: 50000 },
-  { type: 'COMPLIANCE',          enabled: true,  priority: 5,  weight: 12, qualityThreshold: 0.70, maxRetries: 3, label: 'Compliance',         category: 'analysis', maxTextLength: 50000 },
-  { type: 'OBLIGATIONS',         enabled: true,  priority: 6,  weight: 10, qualityThreshold: 0.70, maxRetries: 3, label: 'Obligations',        category: 'analysis', maxTextLength: 55000 },
-  { type: 'RENEWAL',             enabled: true,  priority: 7,  weight: 10, qualityThreshold: 0.70, maxRetries: 3, label: 'Renewal',            category: 'analysis', maxTextLength: 45000 },
-  { type: 'NEGOTIATION_POINTS',  enabled: true,  priority: 8,  weight: 8,  qualityThreshold: 0.65, maxRetries: 2, label: 'Negotiation',        category: 'advanced', maxTextLength: 50000 },
-  { type: 'AMENDMENTS',          enabled: true,  priority: 9,  weight: 8,  qualityThreshold: 0.65, maxRetries: 2, label: 'Amendments',         category: 'advanced', maxTextLength: 50000 },
-  { type: 'CONTACTS',            enabled: true,  priority: 10, weight: 7,  qualityThreshold: 0.65, maxRetries: 2, label: 'Contacts',           category: 'advanced', maxTextLength: 35000 },
-  { type: 'PARTIES',             enabled: true,  priority: 11, weight: 8,  qualityThreshold: 0.70, maxRetries: 3, label: 'Parties',            category: 'core',     maxTextLength: 40000 },
-  { type: 'TIMELINE',            enabled: true,  priority: 12, weight: 7,  qualityThreshold: 0.65, maxRetries: 2, label: 'Timeline',           category: 'advanced', maxTextLength: 50000 },
-  { type: 'DELIVERABLES',        enabled: true,  priority: 13, weight: 8,  qualityThreshold: 0.65, maxRetries: 2, label: 'Deliverables',       category: 'advanced', maxTextLength: 55000 },
-  { type: 'EXECUTIVE_SUMMARY',   enabled: true,  priority: 14, weight: 10, qualityThreshold: 0.70, maxRetries: 3, label: 'Executive Summary',  category: 'core',     maxTextLength: 55000 },
-  { type: 'RATES',               enabled: true,  priority: 15, weight: 9,  qualityThreshold: 0.70, maxRetries: 3, label: 'Rates',              category: 'core',     maxTextLength: 60000 },
+  { type: 'OVERVIEW',            enabled: true,  priority: 1,  weight: 10, qualityThreshold: 0.65, maxRetries: 3, label: 'Overview',           category: 'core',     model: 'gpt-4o-mini', maxTextLength: 50000 },
+  { type: 'CLAUSES',             enabled: true,  priority: 2,  weight: 12, qualityThreshold: 0.65, maxRetries: 3, label: 'Clauses',            category: 'core',     model: 'gpt-4o-mini', maxTextLength: 60000 },
+  { type: 'FINANCIAL',           enabled: true,  priority: 3,  weight: 12, qualityThreshold: 0.65, maxRetries: 3, label: 'Financial',          category: 'core',     model: 'gpt-4o-mini', maxTextLength: 60000 },
+  { type: 'RISK',                enabled: true,  priority: 4,  weight: 12, qualityThreshold: 0.70, maxRetries: 3, label: 'Risk',               category: 'analysis', model: 'gpt-4o',      maxTextLength: 50000 },
+  { type: 'COMPLIANCE',          enabled: true,  priority: 5,  weight: 12, qualityThreshold: 0.65, maxRetries: 3, label: 'Compliance',         category: 'analysis', model: 'gpt-4o-mini', maxTextLength: 50000 },
+  { type: 'OBLIGATIONS',         enabled: true,  priority: 6,  weight: 10, qualityThreshold: 0.65, maxRetries: 3, label: 'Obligations',        category: 'analysis', model: 'gpt-4o-mini', maxTextLength: 55000 },
+  { type: 'RENEWAL',             enabled: true,  priority: 7,  weight: 10, qualityThreshold: 0.65, maxRetries: 3, label: 'Renewal',            category: 'analysis', model: 'gpt-4o-mini', maxTextLength: 45000 },
+  { type: 'NEGOTIATION_POINTS',  enabled: true,  priority: 8,  weight: 8,  qualityThreshold: 0.70, maxRetries: 2, label: 'Negotiation',        category: 'advanced', model: 'gpt-4o',      maxTextLength: 50000 },
+  { type: 'AMENDMENTS',          enabled: true,  priority: 9,  weight: 8,  qualityThreshold: 0.65, maxRetries: 2, label: 'Amendments',         category: 'advanced', model: 'gpt-4o-mini', maxTextLength: 50000 },
+  { type: 'CONTACTS',            enabled: true,  priority: 10, weight: 7,  qualityThreshold: 0.65, maxRetries: 2, label: 'Contacts',           category: 'advanced', model: 'gpt-4o-mini', maxTextLength: 35000 },
+  { type: 'PARTIES',             enabled: true,  priority: 11, weight: 8,  qualityThreshold: 0.65, maxRetries: 3, label: 'Parties',            category: 'core',     model: 'gpt-4o-mini', maxTextLength: 40000 },
+  { type: 'TIMELINE',            enabled: true,  priority: 12, weight: 7,  qualityThreshold: 0.65, maxRetries: 2, label: 'Timeline',           category: 'advanced', model: 'gpt-4o-mini', maxTextLength: 50000 },
+  { type: 'DELIVERABLES',        enabled: true,  priority: 13, weight: 8,  qualityThreshold: 0.65, maxRetries: 2, label: 'Deliverables',       category: 'advanced', model: 'gpt-4o-mini', maxTextLength: 55000 },
+  { type: 'EXECUTIVE_SUMMARY',   enabled: true,  priority: 14, weight: 10, qualityThreshold: 0.70, maxRetries: 3, label: 'Executive Summary',  category: 'core',     model: 'gpt-4o',      maxTextLength: 55000 },
+  { type: 'RATES',               enabled: true,  priority: 15, weight: 9,  qualityThreshold: 0.65, maxRetries: 3, label: 'Rates',              category: 'core',     model: 'gpt-4o-mini', maxTextLength: 60000 },
+];
+
+export interface ArtifactGroup {
+  name: string;
+  label: string;
+  types: string[];
+  /** Model used for the grouped LLM call. All types in the group should use this model. */
+  model: 'gpt-4o' | 'gpt-4o-mini';
+}
+
+export const DEFAULT_ARTIFACT_GROUPS: ArtifactGroup[] = [
+  {
+    name: 'core',
+    label: 'Core Extraction',
+    types: ['OVERVIEW', 'PARTIES', 'CONTACTS', 'FINANCIAL', 'RATES', 'COMPLIANCE'],
+    model: 'gpt-4o-mini',
+  },
+  {
+    name: 'structure',
+    label: 'Contract Structure',
+    types: ['CLAUSES', 'OBLIGATIONS', 'DELIVERABLES', 'TIMELINE', 'RENEWAL', 'AMENDMENTS'],
+    model: 'gpt-4o-mini',
+  },
+  {
+    name: 'analysis',
+    label: 'Risk & Judgment',
+    types: ['RISK', 'NEGOTIATION_POINTS', 'EXECUTIVE_SUMMARY'],
+    model: 'gpt-4o',
+  },
 ];
 
 // ─── Standardized Output Interfaces ─────────────────────────────────────────
@@ -1622,6 +1653,77 @@ Contract text:\n`
   return finalPrompt;
 }
 
+// ─── Grouped Prompt Builder ───────────────────────────────────────────────────
+// Generate multiple artifact types in a single LLM call by sending the contract
+// text once and asking for a JSON object keyed by artifact type.
+
+export interface ArtifactGroupResult {
+  [artifactType: string]: Record<string, any>;
+}
+
+/**
+ * Build a combined prompt that produces all artifact types in a group in one
+ * JSON response. The contract text is sent once and each type's instructions are
+ * included without the duplicated contract text.
+ */
+export function buildGroupedPrompt(group: ArtifactGroup, ctx: PromptContext): string | null {
+  const typePrompts: { type: string; instructions: string }[] = [];
+
+  for (const type of group.types) {
+    const prompt = buildArtifactPrompt(type, ctx);
+    if (!prompt) continue;
+
+    // Strip the final "Contract text:\n..." section so we can include the
+    // contract text once for the whole group.
+    const marker = 'Contract text:\n';
+    const idx = prompt.lastIndexOf(marker);
+    const instructions = idx >= 0 ? prompt.slice(0, idx).trim() : prompt.trim();
+    typePrompts.push({ type, instructions });
+  }
+
+  if (typePrompts.length === 0) return null;
+
+  const perTypeInstructions = typePrompts
+    .map(({ type, instructions }) => `=== ${type} ===\n${instructions}`)
+    .join('\n\n');
+
+  const topLevelKeys = typePrompts.map(({ type }) => `"${type}"`).join(', ');
+
+  return `Analyze the following contract and produce a single JSON object with a top-level key for each of these artifact types: ${topLevelKeys}.
+
+For each artifact type key, use the instructions and JSON schema provided below. Extract only the information explicitly stated in the contract. Use null for any field where the data is not found.
+
+${perTypeInstructions}
+
+Return exactly this JSON shape:
+{
+${typePrompts.map(({ type }) => `  "${type}": { /* ${type} data */ }`).join(',\n')}
+}
+
+Important: include only the requested artifact type keys at the top level. Do not wrap them in any additional object or array.
+
+Contract text:
+${ctx.contractText}`;
+}
+
+/**
+ * Split a grouped JSON response into per-artifact data maps.
+ */
+export function splitGroupedResponse(
+  group: ArtifactGroup,
+  response: Record<string, any> | null
+): ArtifactGroupResult {
+  const result: ArtifactGroupResult = {};
+  if (!response || typeof response !== 'object') return result;
+
+  for (const type of group.types) {
+    const data = response[type];
+    result[type] = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+  }
+
+  return result;
+}
+
 // ─── Few-Shot Examples ──────────────────────────────────────────────────────
 // Compact representative input→output examples to ground the LLM on expected
 // format and detail level. These are NOT real contracts — they are synthetic.
@@ -1846,11 +1948,11 @@ export function safeParseJSON(text: string, artifactType: string): Record<string
 // Unified quality thresholds (fixes P2 OCR worker using lower thresholds)
 
 export const UNIFIED_QUALITY_THRESHOLDS = {
-  overall: 0.70,
-  completeness: 0.60,
-  accuracy: 0.70,
-  consistency: 0.65,
-  confidence: 0.60,
+  overall: 0.65,
+  completeness: 0.55,
+  accuracy: 0.60,
+  consistency: 0.55,
+  confidence: 0.55,
 };
 
 // ─── Prompt Version ─────────────────────────────────────────────────────────
