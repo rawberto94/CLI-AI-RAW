@@ -599,6 +599,9 @@ importers:
       clients-db:
         specifier: workspace:*
         version: link:../clients/db
+      clients-openai:
+        specifier: workspace:*
+        version: link:../clients/openai
       jsonschema:
         specifier: ^1.4.1
         version: 1.5.0
@@ -864,6 +867,9 @@ importers:
       clients-db:
         specifier: workspace:*
         version: link:../clients/db
+      clients-openai:
+        specifier: workspace:*
+        version: link:../clients/openai
       dotenv:
         specifier: ^16.3.1
         version: 16.6.1
@@ -873,6 +879,9 @@ importers:
       openai:
         specifier: ^4.10.0
         version: 4.104.0(zod@3.23.8)
+      pgvector:
+        specifier: ^0.1.8
+        version: 0.1.8
       pino:
         specifier: ^9.5.0
         version: 9.14.0
@@ -904,6 +913,9 @@ importers:
       typescript:
         specifier: ^5.2.2
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@20.19.30)
 
 packages:
 
@@ -24709,7 +24721,7 @@ packages:
       '@types/node': 20.19.30
       esbuild: 0.21.5
       postcss: 8.5.6
-      rollup: 4.56.0
+      rollup: 4.57.1
     optionalDependencies:
       fsevents: 2.3.3
     dev: true
@@ -24748,7 +24760,7 @@ packages:
       '@types/node': 22.19.7
       esbuild: 0.21.5
       postcss: 8.5.6
-      rollup: 4.56.0
+      rollup: 4.57.1
     optionalDependencies:
       fsevents: 2.3.3
     dev: true

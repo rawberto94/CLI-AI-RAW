@@ -44,6 +44,7 @@
     "@langchain/openai": "^0.2.8",
     "@prisma/client": "^5.22.0",
     "clients-db": "workspace:*",
+    "clients-openai": "workspace:*",
     "@repo/data-orchestration": "workspace:*",
     "@repo/utils": "workspace:*",
     "jsonschema": "^1.4.1",

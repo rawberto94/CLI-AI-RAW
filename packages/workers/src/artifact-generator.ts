@@ -145,68 +145,34 @@ async function loadTenantArtifactConfig(tenantId: string): Promise<{
 const logger = pino({ name: 'artifact-generator-worker' });
 const prisma = getClient();
 
-// Module-level OpenAI singletons — avoids re-instantiation per artifact call.
-// Azure OpenAI requires separate clients per deployment, so we keep one for the
-// standard deployment and one for the mini deployment.
+// Module-level OpenAI singletons via shared Azure-first factory (P1-3).
 let _openaiSingleton: any = null;
 let _openaiMiniSingleton: any = null;
 async function getOpenAIClient(modelName: string = 'gpt-4o'): Promise<any> {
   const isMini = modelName.includes('mini');
-
-  const apiKey = process.env.OPENAI_API_KEY;
-  const isPlaceholderKey = !apiKey || /placeholder/i.test(apiKey);
-
-  // Standard (non-Azure) OpenAI: a single client handles all model names.
-  if (!isPlaceholderKey) {
-    if (apiKey) {
-      if (!_openaiSingleton) {
-        const OpenAI = (await import('openai')).default;
-        _openaiSingleton = new OpenAI({ apiKey });
+  try {
+    const { tryCreateOpenAIClient, hasAIClientConfig } = await import('./lib/openai');
+    if (!hasAIClientConfig()) {
+      logger.warn({ modelName }, 'No AI client configured (Azure or OpenAI)');
+      return null;
+    }
+    if (isMini) {
+      if (!_openaiMiniSingleton) {
+        _openaiMiniSingleton = tryCreateOpenAIClient({ preferMini: true });
       }
-      return _openaiSingleton;
+      return _openaiMiniSingleton;
     }
-    return null;
-  }
-
-  // Azure OpenAI path: each deployment is pinned to a model, so we need
-  // separate clients for gpt-4o and gpt-4o-mini.
-  const azureKey = process.env.AZURE_OPENAI_API_KEY;
-  const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
-  if (!azureKey || !azureEndpoint) {
-    return null;
-  }
-
-  const { AzureOpenAI } = await import('openai');
-  const deployment = isMini
-    ? (process.env.AZURE_OPENAI_MINI_DEPLOYMENT || process.env.AZURE_OPENAI_DEPLOYMENT)
-    : process.env.AZURE_OPENAI_DEPLOYMENT;
-
-  if (!deployment) {
-    logger.warn({ modelName }, 'No Azure OpenAI deployment configured for model');
-    return null;
-  }
-
-  if (isMini) {
-    if (!_openaiMiniSingleton) {
-      _openaiMiniSingleton = new AzureOpenAI({
-        apiKey: azureKey,
-        endpoint: azureEndpoint,
-        apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-10-21',
-        deployment,
-      });
+    if (!_openaiSingleton) {
+      _openaiSingleton = tryCreateOpenAIClient({ preferMini: false });
     }
-    return _openaiMiniSingleton;
+    return _openaiSingleton;
+  } catch (err) {
+    logger.warn(
+      { modelName, error: err instanceof Error ? err.message : String(err) },
+      'Failed to create OpenAI client',
+    );
+    return null;
   }
-
-  if (!_openaiSingleton) {
-    _openaiSingleton = new AzureOpenAI({
-      apiKey: azureKey,
-      endpoint: azureEndpoint,
-      apiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-10-21',
-      deployment,
-    });
-  }
-  return _openaiSingleton;
 }
 
 const openaiBreaker = new CircuitBreaker({

@@ -20,12 +20,19 @@ import { z, ZodType } from 'zod';
 import { EventEmitter } from 'events';
 import { prisma } from './lib/prisma';
 
-// Lazy-loaded OpenAI client for embedding generation
+// Lazy-loaded OpenAI client for embedding generation (Azure-first factory)
 let _openai: any = null;
 async function getOpenAI() {
   if (!_openai) {
-    const { default: OpenAI } = await import('openai');
-    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const { createEmbeddingClient, tryCreateOpenAIClient } = await import('clients-openai');
+    try {
+      _openai = createEmbeddingClient();
+    } catch {
+      _openai = tryCreateOpenAIClient();
+    }
+    if (!_openai) {
+      throw new Error('AI client not configured for embeddings');
+    }
   }
   return _openai;
 }

@@ -18,14 +18,19 @@
 
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
-import OpenAI from 'openai';
+import { tryCreateOpenAIClient } from 'clients-openai';
 import { getLearningContext, formatLearningContextForPrompt, invalidateLearningContext } from './learning-context';
 
-// Lazy-init OpenAI client (only created when actually needed)
-let _openai: OpenAI | null = null;
-function getOpenAI(): OpenAI {
+// Lazy-init OpenAI client via Azure-first factory (P1-3)
+let _openai: any = null;
+function getOpenAI(): any {
   if (!_openai) {
-    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    _openai = tryCreateOpenAIClient();
+    if (!_openai) {
+      throw new Error(
+        'AI client not configured (set AZURE_OPENAI_ENDPOINT + AZURE_OPENAI_API_KEY or OPENAI_API_KEY)',
+      );
+    }
   }
   return _openai;
 }

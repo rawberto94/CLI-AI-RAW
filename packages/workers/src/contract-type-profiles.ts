@@ -3767,14 +3767,11 @@ export const CONTRACT_TYPE_KEYWORDS: Record<ContractType, string[]> = {
  */
 export async function detectContractTypeWithAI(text: string): Promise<{ type: ContractType; confidence: number; reasoning: string; matchedKeywords: string[] }> {
   try {
-    const OpenAI = (await import('openai')).default;
-    const apiKey = process.env.OPENAI_API_KEY;
-    
-    if (!apiKey) {
+    const { tryCreateOpenAIClient } = await import('./lib/openai');
+    const openai = tryCreateOpenAIClient();
+    if (!openai) {
       return convertKeywordResultToAIFormat(detectContractTypeKeywords(text));
     }
-    
-    const openai = new OpenAI({ apiKey });
     
     // Get list of available contract types for the AI, grouped by category for better understanding
     const contractTypesByCategory = {

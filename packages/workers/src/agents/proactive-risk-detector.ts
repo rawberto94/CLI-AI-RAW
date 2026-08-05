@@ -1,12 +1,17 @@
 import pino from 'pino';
 import clientsDb from 'clients-db';
-import OpenAI from 'openai';
+import { tryCreateOpenAIClient } from '../lib/openai';
 
-// Lazy-init OpenAI for LLM-powered risk detection
-let _riskOpenAI: OpenAI | null = null;
-function getRiskOpenAI(): OpenAI {
+// Lazy-init OpenAI for LLM-powered risk detection (Azure-first factory)
+let _riskOpenAI: any = null;
+function getRiskOpenAI(): any {
   if (!_riskOpenAI) {
-    _riskOpenAI = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    _riskOpenAI = tryCreateOpenAIClient();
+    if (!_riskOpenAI) {
+      throw new Error(
+        'AI client not configured for risk detection (set AZURE_OPENAI_* or OPENAI_API_KEY)',
+      );
+    }
   }
   return _riskOpenAI;
 }

@@ -16,7 +16,7 @@ import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaClient } from '@prisma/client';
 import { prisma as defaultPrisma } from './lib/prisma';
-import OpenAI from 'openai';
+import { tryCreateOpenAIClient } from 'clients-openai';
 
 // ============================================================================
 // TYPES
@@ -181,14 +181,14 @@ export interface ObligationDashboardMetrics {
 
 export class ObligationTrackingAgent extends EventEmitter {
   private prisma: PrismaClient;
-  private openai: OpenAI;
+  private openai: ReturnType<typeof tryCreateOpenAIClient>;
   private monitoringInterval: NodeJS.Timeout | null = null;
   private isMonitoring: boolean = false;
 
   constructor(prisma?: PrismaClient) {
     super();
     this.prisma = prisma || defaultPrisma;
-    this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    this.openai = tryCreateOpenAIClient();
   }
 
   // ============================================================================

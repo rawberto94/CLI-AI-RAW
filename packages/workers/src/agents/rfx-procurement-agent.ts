@@ -18,7 +18,7 @@ import { BaseAgent } from './base-agent';
 import type { AgentInput, AgentOutput, AgentEvent } from './types';
 import { logger } from '../utils/logger';
 import { prisma } from '../lib/prisma';
-import OpenAI from 'openai';
+import { tryCreateOpenAIClient } from '../lib/openai';
 import { v4 as uuidv4 } from 'uuid';
 
 // ============================================================================
@@ -167,11 +167,11 @@ export class RFxProcurementAgent extends BaseAgent {
     'savings-analysis',
   ];
 
-  private openai: OpenAI;
+  private openai: ReturnType<typeof tryCreateOpenAIClient>;
 
   constructor() {
     super();
-    this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    this.openai = tryCreateOpenAIClient();
   }
 
   // ============================================================================

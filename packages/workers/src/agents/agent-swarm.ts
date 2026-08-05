@@ -9,7 +9,7 @@
 
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
-import OpenAI from 'openai';
+import { tryCreateOpenAIClient } from '../lib/openai';
 import { logger } from '../utils/logger';
 
 // ============================================================================
@@ -178,13 +178,13 @@ export class AgentRegistry {
 
 export class AgentSwarm extends EventEmitter {
   private registry: AgentRegistry;
-  private openai: OpenAI;
+  private openai: ReturnType<typeof tryCreateOpenAIClient>;
   private activeTasks: Map<string, SwarmTeam> = new Map();
 
   constructor() {
     super();
     this.registry = new AgentRegistry();
-    this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    this.openai = tryCreateOpenAIClient();
     this.initializeDefaultAgents();
   }
 
